@@ -15,7 +15,7 @@
 	} from '@reborn/ui';
 	import { AlertTriangle, Trash2 } from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
-	import { goto } from '$lib/utils/navigation';
+	import { base } from '$app/paths';
 	import { createLogger } from '@reborn/utils';
 	import { logout as authLogout } from '$lib/auth';
 
@@ -66,9 +66,15 @@
 				return;
 			}
 
-			// Clear local data and redirect to login
+			// Clear local data: auth state + IndexedDB + hard redirect
 			await authLogout(true);
-			await goto('/auth/login');
+			try {
+				const { clearAllUserData } = await import('@reborn/storage');
+				await clearAllUserData();
+			} catch {
+				// Best-effort — pre-login clear will catch any remnants
+			}
+			window.location.href = `${base}/auth/login`;
 		} catch (err: unknown) {
 			logger.error('Failed to delete account:', err);
 			error = $t('settings.delete_account.error_generic');
