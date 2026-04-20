@@ -76,12 +76,15 @@ const BATCH_SIZE = 100;
 
 async function decryptTaskEntry(
 	enc: TaskEncryptedBooleans
-): Promise<{ id: string } & TaskIndexEntry> {
+): Promise<({ id: string } & TaskIndexEntry) | null> {
 	let title = '';
 	try {
 		title = await cryptoManager.decryptText(enc.title_encrypted);
 	} catch {
-		title = '';
+		// Decryption failed — likely stale data from another user's session.
+		// Return null so build() can filter this entry out instead of showing
+		// a blank task card in the UI.
+		return null;
 	}
 
 	// Decrypt metadata bundle for fields not available as shadow indexes
@@ -170,6 +173,7 @@ class TaskIndex {
 				const batch = allEncrypted.slice(i, i + BATCH_SIZE);
 				const entries = await Promise.all(batch.map(decryptTaskEntry));
 				for (const e of entries) {
+					if (!e) continue; // Skip undecryptable entries (stale cross-user data)
 					const { id, ...entry } = e;
 					map.set(id, entry);
 				}
