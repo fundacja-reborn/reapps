@@ -37,32 +37,31 @@ interface LoggerConfig {
 /**
  * Determines default log level based on environment.
  *
- * Server-side: reads LOG_LEVEL env var, falls back to WARN when NODE_ENV=production.
- * Client-side (Vite): uses import.meta.env.PROD (replaced at build time).
- * Default: DEBUG (development).
+ * Browser: defaults to WARN (runtime check — immune to bundler tree-shaking).
+ * Server (Node.js): reads LOG_LEVEL env var, falls back to WARN when NODE_ENV=production.
+ * Override at runtime via LoggerGlobal.setMinLevel().
  */
 function getDefaultMinLevel(): number {
-  // Server-side (Node.js): process.env is available
-  if (typeof process !== 'undefined' && process.env) {
-    const envLevel = process.env.LOG_LEVEL?.toUpperCase();
-    if (envLevel && envLevel in LOG_LEVELS) {
-      return LOG_LEVELS[envLevel as keyof LogLevel];
-    }
-    if (process.env.NODE_ENV === 'production') {
-      return LOG_LEVELS.WARN;
-    }
+  // Browser: default to WARN — suppress debug/info in production.
+  // Dev override via import.meta.hot check in hooks.client.ts.
+  if (typeof window !== 'undefined') {
+    return LOG_LEVELS.WARN;
   }
 
-  // Client-side (Vite): import.meta.env.PROD is statically replaced at build time
+  // Server (Node.js): check environment variables
   try {
-    const meta = import.meta as Record<string, any>;
-    if (meta.env?.PROD) {
-      return LOG_LEVELS.WARN;
+    if (typeof process !== 'undefined' && process.env) {
+      const envLevel = process.env.LOG_LEVEL?.toUpperCase();
+      if (envLevel && envLevel in LOG_LEVELS) {
+        return LOG_LEVELS[envLevel as keyof LogLevel];
+      }
+      if (process.env.NODE_ENV === 'production') {
+        return LOG_LEVELS.WARN;
+      }
     }
   } catch {
-    // import.meta.env not available outside Vite/browser context
+    // process not available
   }
-
   return LOG_LEVELS.DEBUG;
 }
 
@@ -114,11 +113,13 @@ export const LoggerGlobal = {
  * Creates a logger instance for a specific module
  */
 export function createLogger(moduleName: string): Logger {
-  // Initialize module config if not exists
+  // Initialize module config if not exists.
+  // Module starts at DEBUG — globalConfig.minLevel acts as the effective floor.
+  // This ensures LoggerGlobal.setMinLevel() works for already-created loggers.
   if (!moduleConfigs.has(moduleName)) {
     moduleConfigs.set(moduleName, {
       enabled: true,
-      minLevel: globalConfig.minLevel
+      minLevel: LOG_LEVELS.DEBUG
     });
   }
 
