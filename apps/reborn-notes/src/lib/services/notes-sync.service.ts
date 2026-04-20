@@ -15,7 +15,6 @@ import {
   noteStore,
   folderStore,
   tagStore,
-  noteTagStore,
   noteTagOperations,
   noteTagQueries,
   noteHistoryStore,
@@ -107,16 +106,11 @@ export async function pullFromServer(): Promise<boolean> {
   let success = true;
   let gotUnauthorized = false;
   try {
-    // Clear stale data before pulling — prevents phantom notes from a previous
-    // user session (different master key → decryption errors).
-    await Promise.all([
-      noteStore.clear(),
-      folderStore.clear(),
-      tagStore.clear(),
-      noteTagStore.clear(),
-      noteHistoryStore.clear()
-    ]);
-
+    // NOTE: We intentionally do NOT clear local stores before pulling.
+    // Each pull* helper merges by sync_version and skips items with
+    // sync_status='pending' — clearing would wipe offline edits that haven't
+    // been pushed yet (observed data loss in offline → online transitions).
+    // Cross-user cleanup is handled by clearAllUserData() during login/logout.
     await Promise.all([
       pullFolders().catch((e) => {
         if (isUnauthorizedError(e)) gotUnauthorized = true;
@@ -213,6 +207,18 @@ async function pullFolders(): Promise<void> {
       await folderStore.save(folder);
     })
   );
+
+  // Remove local folders that no longer exist on the server (deleted on another device).
+  // Only remove 'synced' items — 'pending' items were created/edited locally and not yet pushed.
+  const serverFolderIds = new Set((data as Array<{ id: string }>).map((f) => f.id));
+  const allLocalFolders = (await folderStore.getAll()) as FolderEncrypted[];
+  const orphanIds = allLocalFolders
+    .filter((f) => f.sync_status === 'synced' && !serverFolderIds.has(f.id))
+    .map((f) => f.id);
+  if (orphanIds.length > 0) {
+    await folderStore.deleteMany(orphanIds);
+    logger.debug(`Removed ${orphanIds.length} locally-synced folders no longer on server`);
+  }
 }
 
 async function pullTags(): Promise<void> {
@@ -257,6 +263,17 @@ async function pullTags(): Promise<void> {
       });
     })
   );
+
+  // Remove local tags that no longer exist on the server (hard-deleted on another device).
+  const serverTagIds = new Set((data as Array<{ id: string }>).map((t) => t.id));
+  const allLocalTags = (await tagStore.getAll()) as TagEncrypted[];
+  const orphanTagIds = allLocalTags
+    .filter((t) => t.sync_status === 'synced' && !serverTagIds.has(t.id))
+    .map((t) => t.id);
+  if (orphanTagIds.length > 0) {
+    await tagStore.deleteMany(orphanTagIds);
+    logger.debug(`Removed ${orphanTagIds.length} locally-synced tags no longer on server`);
+  }
 }
 
 async function pullNotes(): Promise<void> {
@@ -352,6 +369,21 @@ async function pullNotes(): Promise<void> {
       }
     })
   );
+
+  // Remove local notes that no longer exist on the server (permanently deleted on another device).
+  // We use include_archived=true above, so the server returns soft-deleted notes too.
+  // If a note is missing from the response entirely, it was permanently deleted.
+  const serverNoteIds = new Set(
+    (data as Array<{ id: string }>).map((n) => n.id)
+  );
+  const allLocalNotes = (await noteStore.getAll()) as NoteStoredLocal[];
+  const orphanNoteIds = allLocalNotes
+    .filter((n) => n.sync_status === 'synced' && !serverNoteIds.has(n.id))
+    .map((n) => n.id);
+  if (orphanNoteIds.length > 0) {
+    await noteStore.deleteMany(orphanNoteIds);
+    logger.debug(`Removed ${orphanNoteIds.length} locally-synced notes no longer on server`);
+  }
 }
 
 // ── Push helpers — IndexedDB → server ────────────────────────────

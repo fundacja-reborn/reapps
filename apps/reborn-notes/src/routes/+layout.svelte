@@ -79,6 +79,9 @@
       // Build NoteIndex FIRST (in parallel with folders/tags), then refresh notesStore
       await Promise.all([foldersStore.refresh(), tagsStore.refresh(), noteIndex.build()]);
       notesStore.refresh();
+      // Push pending offline edits BEFORE pull — otherwise pullFromServer's
+      // version checks could mask unsynced local changes on the next write.
+      await pushPendingItems().catch(() => {});
       const synced = await pullFromServer();
       if (synced) {
         await refreshStoresAfterPull();
@@ -129,7 +132,11 @@
         // Build NoteIndex in parallel with folders/tags (data already in IndexedDB from init above)
         await noteIndex.build();
         notesStore.refresh();
-        pullFromServer()
+        // Push pending offline edits BEFORE pull — guarantees local unsynced
+        // changes reach the server before we merge the remote state in.
+        pushPendingItems()
+          .catch(() => {})
+          .then(() => pullFromServer())
           .then(async (synced) => {
             if (synced) {
               await refreshStoresAfterPull();
