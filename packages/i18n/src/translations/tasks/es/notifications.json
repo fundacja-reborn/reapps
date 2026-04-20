@@ -1,0 +1,11 @@
+{
+  "task_due": {
+    "title": "¡Se acerca la fecha límite de la tarea!",
+    "body_time": "Tiene una tarea programada para las {time}.",
+    "body_date": "Tiene una tarea programada para el {date}.",
+    "body_today": "Tiene una tarea programada para hoy.",
+    "body_unknown": "Tiene una tarea programada para una fecha no especificada."
+  },
+  "token_required": "Se requiere el token de notificación.",
+  "registration_failed": "El registro del token de notificación falló."
+}

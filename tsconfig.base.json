@@ -1,0 +1,34 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "sourceMap": true,
+    "declaration": true,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@reborn-apps/storage": ["packages/storage/src/index.ts"],
+      "@reborn/api-client": ["packages/api-client/src/index.ts"],
+      "@reborn/auth": ["packages/auth/src/index.ts"],
+      "@reborn/crypto": ["packages/crypto/src/index.ts"],
+      "@reborn/database": ["packages/database/src/index.ts"],
+      "@reborn/storage": ["packages/storage/src/index.ts"],
+      "@reborn/types": ["packages/types/src/index.ts"],
+      "@reborn/ui": ["packages/ui/src/index.ts"],
+      "@reborn/utils": ["packages/utils/src/index.ts"],
+      "@reborn/i18n": ["packages/i18n/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}

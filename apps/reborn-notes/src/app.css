@@ -1,0 +1,117 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import './styles/fonts.css';
+@import '../../../packages/ui/src/styles/global.css';
+
+/*
+ * Notes-specific theme overrides.
+ * Base dark theme lives in packages/ui/src/styles/global.css (single source of truth).
+ * Only Notes-specific light/dark deviations are declared here.
+ */
+:root {
+  --accent: oklch(0.95 0 0);
+  --sidebar-accent: oklch(0.95 0 0);
+  --sidebar: oklch(0.98 0 0); /* very subtle gray — columns 1 & 2 */
+  --icon-rail: oklch(0.98 0 0); /* slightly darker for icon rail */
+  --tag-mix: 13%;
+  --tag-fg-mix: 100%;
+  --tag-border-mix: 33%;
+}
+.dark {
+  --accent: oklch(0.371 0 0);
+  --accent-foreground: oklch(0.87 0 0);
+  --sidebar: oklch(0.17 0 0);
+  --sidebar-accent: oklch(0.2 0 0);
+  --icon-rail: oklch(0.12 0 0);
+  --tag-mix: 18%;
+  --tag-fg-mix: 55%;
+  --tag-border-mix: 25%;
+}
+
+/* Notes uses Roboto as primary font */
+@theme inline {
+  --font-sans:
+    'Roboto', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/* Tailwind v4 content sources */
+@source "./app.html";
+@source "./lib/**/*.{svelte,js,ts}";
+@source "./routes/**/*.{svelte,js,ts}";
+@source "../../../packages/ui/src/**/*.{svelte,js,ts}";
+
+/* Dark mode scrollbar */
+@layer base {
+  .dark * {
+    scrollbar-color: #333 transparent;
+  }
+  .dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .dark ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background-color: #333;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background-color: #555;
+  }
+  .dark ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* Note item colors — consistent with reborn-task .task-item-bg */
+@layer base {
+  .note-item-bg {
+    background-color: #f2f2f2;
+    background-clip: padding-box;
+  }
+
+  .note-item-bg:hover {
+    background-color: #e8e8e8;
+  }
+
+  .dark .note-item-bg {
+    background-color: oklch(0.269 0 0);
+    background-clip: padding-box;
+  }
+
+  .dark .note-item-bg:hover {
+    background-color: oklch(0.371 0 0);
+  }
+}
+
+/* CodeMirror base styles */
+@layer base {
+  .cm-editor {
+    height: 100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  .cm-editor.cm-focused {
+    outline: none;
+  }
+
+  .cm-scroller {
+    overflow: auto;
+  }
+
+  .cm-content {
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  /* Placeholder styling */
+  .cm-placeholder {
+    color: var(--muted-foreground);
+  }
+}

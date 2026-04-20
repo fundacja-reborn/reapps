@@ -1,0 +1,9 @@
+{
+  "navigation_deferred": "Navegación aplazada",
+  "list_created_offline": "Lista creada correctamente. La navegación se completará cuando se restablezca la conexión.",
+  "offline_mode": "Trabajando sin conexión",
+  "list_created_offline_info": "Lista creada. Puede seguir trabajando sin conexión.",
+  "first_run_online_required": "Se requiere conexión a Internet",
+  "first_run_online_required_desc": "La configuración inicial requiere una conexión a Internet para descargar los datos de su cuenta.",
+  "first_run_retry": "Intentar de nuevo"
+}

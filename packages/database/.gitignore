@@ -1,0 +1,26 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+*.tsbuildinfo
+
+# Prisma generated client
+src/generated
+
+# Logs
+*.log
+
+# Testing
+coverage
+.nyc_output
+
+# IDE
+.idea
+.vscode
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma — migrations MUST be tracked in git for prisma migrate deploy to work

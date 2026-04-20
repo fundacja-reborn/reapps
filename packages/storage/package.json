@@ -1,0 +1,29 @@
+{
+  "name": "@reborn/storage",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@reborn/crypto": "workspace:*",
+    "@reborn/types": "workspace:*",
+    "@reborn/utils": "workspace:*",
+    "idb": "8.0.3"
+  },
+  "devDependencies": {
+    "tsup": "8.5.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.4"
+  }
+}

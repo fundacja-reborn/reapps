@@ -1,0 +1,22 @@
+{
+  "extends": ["html-validate:recommended"],
+  "rules": {
+    "no-inline-style": "off",
+    "require-sri": "off",
+    "no-trailing-whitespace": "off",
+    "element-required-attributes": "off",
+    "valid-id": "off"
+  },
+  "elements": [
+    "html5",
+    {
+      "html": {
+        "attributes": {
+          "lang": {
+            "enum": ["%lang%", "en", "pl"]
+          }
+        }
+      }
+    }
+  ]
+}

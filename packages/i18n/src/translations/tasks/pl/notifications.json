@@ -1,0 +1,11 @@
+{
+  "task_due": {
+    "title": "Zbliża się termin zadania!",
+    "body_time": "Masz zadanie zaplanowane na {time}.",
+    "body_date": "Masz zadanie zaplanowane na {date}.",
+    "body_today": "Masz zadanie zaplanowane na dziś.",
+    "body_unknown": "Masz zadanie zaplanowane na nieokreślony termin."
+  },
+  "token_required": "Token powiadomień jest wymagany.",
+  "registration_failed": "Rejestracja tokenu powiadomień nie powiodła się."
+}

@@ -1,0 +1,15 @@
+{
+  "title": "Benutzerprofil",
+  "description": "Verwalten Sie Ihr Konto und Ihre Sicherheitseinstellungen",
+  "user_info": "Kontoinformationen",
+  "username": "Benutzername",
+  "email": "E-Mail-Adresse",
+  "member_since": "Mitglied seit",
+  "security": "Sicherheit",
+  "security_description": "Verwalten Sie Ihre Sicherheitseinstellungen",
+  "change_password": "Passwort \u00e4ndern",
+  "enable_2fa": "Zwei-Faktor-Authentifizierung aktivieren",
+  "danger_zone": "Gefahrenbereich",
+  "danger_zone_description": "Unwiderrufliche Aktionen f\u00fcr Ihr Konto",
+  "delete_account": "Konto l\u00f6schen"
+}

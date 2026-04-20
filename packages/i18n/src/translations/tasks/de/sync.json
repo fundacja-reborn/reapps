@@ -1,0 +1,62 @@
+{
+  "sync_now": "Jetzt synchronisieren",
+  "syncing": "Synchronisierung l\u00e4uft...",
+  "actions_title": "Synchronisierungsaktionen",
+  "actions_description": "Synchronisierungsprozesse manuell steuern",
+  "about_title": "\u00dcber die Synchronisation",
+  "about_offline_first": "RebornTask verwendet einen Offline-first-Ansatz. Ihre Daten werden zuerst lokal auf Ihrem Ger\u00e4t gespeichert und dann im Hintergrund mit dem Server synchronisiert.",
+  "about_e2e": "Alle Ihre Daten sind Ende-zu-Ende-verschl\u00fcsselt. Das bedeutet, dass nur Ihr Ger\u00e4t den tats\u00e4chlichen Inhalt Ihrer Aufgaben, Listen und Teilaufgaben lesen kann. Der Server speichert nur verschl\u00fcsselte Daten.",
+  "about_resolution": "Wenn Konflikte zwischen Ger\u00e4ten auftreten, l\u00f6st das System diese automatisch nach dem Prinzip \u201Eletzte \u00c4nderung gewinnt\u201C, bewahrt aber wann immer m\u00f6glich alle Ihre Daten.",
+  "status": {
+    "online": "Online",
+    "offline": "Offline",
+    "pending": "Ausstehend",
+    "in_progress": "In Bearbeitung",
+    "completed": "Abgeschlossen",
+    "failed": "Fehlgeschlagen"
+  },
+  "pending_operations": "{count} ausstehende Operationen",
+  "failed_operations": "{count} fehlgeschlagen",
+  "connect_to_sync": "Stellen Sie eine Internetverbindung her, um zu synchronisieren",
+  "cleanup_failed": "Fehlgeschlagene Operationen bereinigen",
+  "force_sync": "Synchronisation erzwingen",
+  "show_details": "Details anzeigen",
+  "hide_details": "Details ausblenden",
+  "cleanup_result": "{count} fehlgeschlagene Operationen bereinigt",
+  "operations_details": "Ausstehende Operationen",
+  "retry_count": "Wiederholungsversuche",
+  "created": "Erstellt",
+  "error": "Fehler",
+  "force_full_sync": "Vollst\u00e4ndige Synchronisation erzwingen",
+  "check_repair": "Speicher pr\u00fcfen & reparieren",
+  "operation_success": "Operation erfolgreich abgeschlossen",
+  "operation_error": "Fehler",
+  "entity_type": {
+    "task_list": "Aufgabenliste",
+    "task": "Aufgabe",
+    "sub_task": "Teilaufgabe"
+  },
+  "operation_type": {
+    "create": "Erstellen",
+    "update": "Aktualisieren",
+    "delete": "L\u00f6schen"
+  },
+  "automatic_info": "Die Synchronisation funktioniert automatisch im Hintergrund. Manuelle Aktionen sind optional und f\u00fcr erweiterte Fehlerbehebung oder seltene F\u00e4lle gedacht.",
+  "success": "Synchronisation erfolgreich abgeschlossen",
+  "partial_failure": "Synchronisation abgeschlossen, aber {count} Operationen fehlgeschlagen. Tippen Sie erneut, um zu bereinigen.",
+  "failed": "Synchronisation fehlgeschlagen",
+  "indicator": {
+    "synced": "Synchronisiert",
+    "syncing": "Synchronisierung l\u00e4uft...",
+    "offline": "Offline",
+    "error": "Synchronisierungsfehler",
+    "pending": "Ausstehende Synchronisation ({count})",
+    "tap_to_sync": "Tippen zum Synchronisieren",
+    "tap_to_retry": "Tippen zum Wiederholen oder Bereinigen",
+    "last_sync": "Letzte Synchronisation: {time}",
+    "conflict_title": "Daten auf einem anderen Ger\u00e4t ge\u00e4ndert",
+    "conflict_message": "Neuere Daten wurden auf dem Server erkannt. Aktualisierte Daten wurden heruntergeladen.",
+    "conflict_action": "Aktualisieren",
+    "session_expired": "Sitzung abgelaufen"
+  }
+}

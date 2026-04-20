@@ -1,0 +1,71 @@
+{
+	"name": "reborn-task",
+	"$schema": "../../node_modules/nx/schemas/project-schema.json",
+	"sourceRoot": "apps/reborn-task/src",
+	"projectType": "application",
+	"targets": {
+		"build": {
+			"executor": "nx:run-commands",
+			"outputs": ["{projectRoot}/build"],
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "vite build"
+			}
+		},
+		"dev": {
+			"executor": "nx:run-commands",
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "dotenv -e ../../.env -- vite dev --port 4200"
+			}
+		},
+		"dev-host": {
+			"executor": "nx:run-commands",
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "dotenv -e ../../.env -- vite dev --port 4200 --host 0.0.0.0"
+			}
+		},
+		"sync": {
+			"executor": "nx:run-commands",
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "svelte-kit sync"
+			}
+		},
+		"preview": {
+			"executor": "nx:run-commands",
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "vite preview"
+			}
+		},
+		"serve": {
+			"executor": "nx:run-commands",
+			"dependsOn": ["build"],
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "dotenv -e ../../.env -- node build"
+			}
+		},
+		"test": {
+			"executor": "nx:run-commands",
+			"outputs": ["{workspaceRoot}/coverage/apps/reborn-task"],
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "vitest run --passWithNoTests"
+			}
+		},
+		"lint": {
+			"executor": "@nx/eslint:lint"
+		},
+		"check": {
+			"executor": "nx:run-commands",
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "dotenv -e ../../.env -- sh -c 'svelte-kit sync && svelte-check --tsconfig ./tsconfig.check.json --threshold warning'"
+			}
+		}
+	},
+	"tags": []
+}

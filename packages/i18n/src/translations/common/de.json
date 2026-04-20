@@ -1,0 +1,290 @@
+{
+  "app": {
+    "name": "Reborn",
+    "loading": "Anwendung wird geladen..."
+  },
+  "dates": {
+    "today": "heute",
+    "tomorrow": "morgen",
+    "yesterday": "gestern",
+    "in_days": "in {count} {days}",
+    "overdue": "überfällig"
+  },
+  "language": {
+    "label": "Sprache",
+    "names": {
+      "en": "Englisch",
+      "pl": "Polnisch",
+      "de": "Deutsch",
+      "es": "Spanisch",
+      "fr": "Französisch"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Anmelden",
+      "description": "Willkommen zurück! Geben Sie Ihre Zugangsdaten ein, um fortzufahren.",
+      "username_label": "Benutzername",
+      "username_placeholder": "Geben Sie Ihren Benutzernamen ein",
+      "password_label": "Passwort",
+      "password_placeholder": "Geben Sie Ihr Passwort ein",
+      "submit_button": "Anmelden",
+      "errors": {
+        "username_password_required": "Benutzername und Passwort sind erforderlich",
+        "invalid_credentials": "Ungültiger Benutzername oder Passwort",
+        "network_error": "Netzwerkfehler. Bitte versuchen Sie es erneut",
+        "server_error": "Serverfehler. Bitte versuchen Sie es später erneut",
+        "invalid_request": "Ungültiges Anforderungsformat",
+        "master_key_load_failed": "Der Verschlüsselungsschlüssel konnte nicht geladen werden. Bitte überprüfen Sie Ihr Passwort und versuchen Sie es erneut",
+        "session_creation_failed": "Sitzung konnte nicht erstellt werden. Bitte versuchen Sie es erneut"
+      },
+      "success": "Erfolgreich angemeldet",
+      "progress": {
+        "authenticating": "Authentifizierung...",
+        "loading_encryption_key": "Verschlüsselungsschlüssel wird geladen...",
+        "initializing_storage": "Sicherer Speicher wird initialisiert...",
+        "syncing_data": "Daten werden synchronisiert...",
+        "complete": "Anmeldung abgeschlossen, Weiterleitung..."
+      },
+      "reasons": {
+        "e2e_missing": "Ihre Sitzung wurde zurückgesetzt. Bitte melden Sie sich erneut an, um die Verschlüsselungsschlüssel wiederherzustellen.",
+        "session_expired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+        "auth_required": "Bitte melden Sie sich an, um fortzufahren."
+      }
+    },
+    "register": {
+      "title": "Konto erstellen",
+      "description": "Registrieren Sie sich für ein neues Konto",
+      "username_label": "Benutzername",
+      "password_label": "Passwort",
+      "confirm_password_label": "Passwort bestätigen",
+      "submit_button": "Registrieren",
+      "register_disabled": "Die Registrierung ist vorübergehend deaktiviert. Bitte versuchen Sie es später erneut.",
+      "errors": {
+        "username_password_required": "Benutzername und Passwort sind erforderlich",
+        "user_already_exists": "Benutzername ist bereits vergeben",
+        "passwords_do_not_match": "Passwörter stimmen nicht überein",
+        "network_error": "Netzwerkfehler. Bitte versuchen Sie es erneut",
+        "server_error": "Serverfehler. Bitte versuchen Sie es später erneut"
+      },
+      "success": "Registrierung erfolgreich"
+    },
+    "logout": {
+      "success": "Sie wurden erfolgreich abgemeldet",
+      "error": "Beim Abmelden ist ein Fehler aufgetreten"
+    },
+    "session": {
+      "expired_banner": "Sitzung abgelaufen — klicken Sie, um sich erneut anzumelden",
+      "reauth_title": "Sitzung abgelaufen",
+      "reauth_description": "Ihre Sitzung ist abgelaufen. Geben Sie Ihr Passwort ein, um fortzufahren, ohne Ihre Daten zu verlieren.",
+      "username_label": "Benutzername",
+      "password_label": "Passwort",
+      "password_placeholder": "Geben Sie Ihr Passwort ein",
+      "submit_button": "Anmelden",
+      "submitting": "Anmeldung...",
+      "error_auth_failed": "Authentifizierung fehlgeschlagen. Bitte überprüfen Sie Ihr Passwort.",
+      "error_unknown": "Authentifizierung fehlgeschlagen",
+      "empty_no_data": "Keine Daten verfügbar — Sitzung abgelaufen. Melden Sie sich erneut an, um Ihre Daten zu synchronisieren."
+    },
+    "2fa": {
+      "recovery_code_label": "Wiederherstellungscode",
+      "code_label": "2FA-Code",
+      "use_2fa_code": "2FA-Code verwenden",
+      "use_recovery_code": "Wiederherstellungscode verwenden",
+      "verify_button": "Überprüfen",
+      "errors": {
+        "invalid_code": "Ungültiger 2FA- oder Wiederherstellungscode.",
+        "code_required": "2FA-Code ist erforderlich.",
+        "recovery_required": "Wiederherstellungscode ist erforderlich.",
+        "verification_failed": "Überprüfung fehlgeschlagen.",
+        "decrypt_failed": "2FA-Geheimnis konnte nicht verarbeitet werden. Bitte stellen Sie sicher, dass Ihr Passwort korrekt ist.",
+        "secret_format": "Ungültiges 2FA-Geheimnisformat."
+      }
+    }
+  },
+  "common": {
+    "loading": "Laden",
+    "info": "Information",
+    "back": "Zurück",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "create": "Erstellen",
+    "creating": "Wird erstellt...",
+    "submitting": "Wird gesendet...",
+    "settings": "Einstellungen",
+    "logout": "Abmelden",
+    "delete": "Löschen",
+    "add": "Hinzufügen",
+    "saving": "Wird gespeichert...",
+    "ok": "OK",
+    "or": "oder",
+    "initializing": "Initialisierung",
+    "initializing_message": "Bitte warten Sie, während wir Ihren sicheren Speicher einrichten",
+    "syncing_data": "Ihre Daten werden synchronisiert...",
+    "error": "Fehler",
+    "initialization_error": "Fehler beim Initialisieren der Anwendung",
+    "back_to_login": "Zurück zur Anmeldung",
+    "e2e_required": "Verschlüsselung erforderlich",
+    "e2e_required_message": "Diese Anwendung erfordert Ende-zu-Ende-Verschlüsselung für Ihre Sicherheit. Bitte melden Sie sich erneut an, um Ihre Verschlüsselungsschlüssel wiederherzustellen.",
+    "ready": "Bereit",
+    "general_navigation_error": "Bei der Navigation ist ein Problem aufgetreten",
+    "added": "Hinzugefügt",
+    "last_used": "Zuletzt verwendet",
+    "verify": "Überprüfen",
+    "name": "Name",
+    "saved": "Gespeichert",
+    "save_error": "Speichern fehlgeschlagen",
+    "deleted": "Gelöscht",
+    "deleting": "Wird gelöscht...",
+    "delete_error": "Löschen fehlgeschlagen",
+    "never": "Nie",
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "days_ago": "vor {days} Tagen",
+    "continue": "Fortfahren",
+    "search": "Suchen",
+    "edit": "Bearbeiten",
+    "close": "Schließen",
+    "confirm": "Bestätigen",
+    "actions": "Aktionen",
+    "yes": "Ja",
+    "no": "Nein",
+    "enabled": "Aktiviert",
+    "disabled": "Deaktiviert",
+    "apply": "Anwenden",
+    "select_date": "Datum auswählen",
+    "undo": "Rückgängig",
+    "go_back": "Zurück",
+    "created_at": "Erstellt am",
+    "updated_at": "Aktualisiert am"
+  },
+  "offline": {
+    "indicator_active": "Offline-Modus aktiv",
+    "action_sync_now": "Jetzt synchronisieren",
+    "indicator_syncing": "Daten werden synchronisiert...",
+    "indicator_not_synced": "Daten müssen synchronisiert werden",
+    "alert_title": "Sie sind offline",
+    "alert_description": "Änderungen werden lokal gespeichert. Die Synchronisierung wird fortgesetzt, sobald Sie wieder online sind.",
+    "device_offline": "Sie sind derzeit offline. Ihre Änderungen werden lokal gespeichert und synchronisiert, wenn Sie sich wieder verbinden.",
+    "offline_mode": "Offline-Modus",
+    "not_available_offline": "Im Offline-Modus nicht verfügbar",
+    "offline_navigation_tip": "Navigation und Daten sind lokal verfügbar",
+    "storage_not_initialized_offline": "Lokaler Speicher ist nicht initialisiert",
+    "saved_offline": "Offline gespeichert. Wird synchronisiert, wenn die Verbindung wiederhergestellt ist."
+  },
+  "profile": {
+    "title": "Benutzerprofil",
+    "description": "Ihre Profileinstellungen anzeigen und verwalten",
+    "username": "Benutzername",
+    "language": "Bevorzugte Sprache",
+    "logout_button": "Abmelden",
+    "created_at": "Konto erstellt",
+    "last_login": "Letzte Anmeldung",
+    "logged_as": "Angemeldet als",
+    "language_settings": "Spracheinstellungen",
+    "language_description": "Wählen Sie Ihre bevorzugte Sprache für die Anwendung",
+    "language_updated": "Spracheinstellung wurde aktualisiert",
+    "change_password": "Passwort ändern",
+    "password_description": "Ändern Sie Ihr Kontopasswort",
+    "current_password": "Aktuelles Passwort",
+    "new_password": "Neues Passwort",
+    "confirm_password": "Passwort bestätigen",
+    "password_updated": "Passwort wurde aktualisiert",
+    "update_error": "Beim Aktualisieren ist ein Fehler aufgetreten",
+    "current_password_placeholder": "Geben Sie Ihr aktuelles Passwort ein",
+    "new_password_placeholder": "Geben Sie Ihr neues Passwort ein",
+    "confirm_password_placeholder": "Bestätigen Sie Ihr neues Passwort",
+    "current_password_required": "Aktuelles Passwort ist erforderlich",
+    "new_password_required": "Neues Passwort ist erforderlich",
+    "password_too_short": "Das Passwort muss mindestens 8 Zeichen lang sein",
+    "invalid_current_password": "Ungültiges aktuelles Passwort",
+    "save_password": "Passwort speichern",
+    "submit_button": "Absenden",
+    "cancel_button": "Abbrechen"
+  },
+  "password": {
+    "requirements": "Das Passwort muss mindestens 8 Zeichen lang sein und Groß- und Kleinbuchstaben, Zahlen sowie Sonderzeichen enthalten",
+    "errors": {
+      "min_length": "Das Passwort muss mindestens 8 Zeichen lang sein",
+      "require_uppercase": "Das Passwort muss mindestens einen Großbuchstaben enthalten",
+      "require_lowercase": "Das Passwort muss mindestens einen Kleinbuchstaben enthalten",
+      "require_number": "Das Passwort muss mindestens eine Zahl enthalten",
+      "require_special": "Das Passwort muss mindestens ein Sonderzeichen enthalten"
+    },
+    "required": "Passwort ist erforderlich",
+    "incorrect": "Falsches Passwort",
+    "verification_failed": "Passwortüberprüfung fehlgeschlagen"
+  },
+  "theme": {
+    "title": "Erscheinungsbild",
+    "description": "Passen Sie das Erscheinungsbild der Anwendung an",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System",
+    "toggle": "Design umschalten",
+    "toggle_theme": "Design umschalten",
+    "updated": "Design wurde aktualisiert"
+  },
+  "appearance": {
+    "title": "Erscheinungsbild",
+    "description": "Passen Sie das Aussehen der App an",
+    "theme": "Design",
+    "theme_desc": "Wählen Sie das Farbschema der App",
+    "language": "Sprache",
+    "language_desc": "Sprache der Benutzeroberfläche",
+    "language_updated": "Sprache wurde aktualisiert",
+    "date_time": "Datum & Uhrzeit",
+    "date_time_desc": "Passen Sie das Anzeigeformat für Datum und Uhrzeit an",
+    "date_format": "Datumsformat",
+    "date_format_updated": "Datumsformat wurde aktualisiert",
+    "time_format": "Uhrzeitformat",
+    "time_format_updated": "Uhrzeitformat wurde aktualisiert",
+    "time_12h": "12-Stunden (2:30 PM)",
+    "time_24h": "24-Stunden (14:30)",
+    "select_date_format": "Datumsformat auswählen",
+    "select_time_format": "Uhrzeitformat auswählen",
+    "select_language": "Sprache auswählen",
+    "reset": "Auf Standard zurücksetzen",
+    "reset_done": "Standardeinstellungen wiederhergestellt"
+  },
+  "errors": {
+    "network": "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.",
+    "server": "Serverfehler. Bitte versuchen Sie es später erneut.",
+    "unknown": "Ein unbekannter Fehler ist aufgetreten.",
+    "validation": "Validierungsfehler. Bitte überprüfen Sie Ihre Eingabe.",
+    "not_found": "Ressource nicht gefunden.",
+    "unauthorized": "Sie sind nicht berechtigt, diese Aktion auszuführen.",
+    "forbidden": "Zugriff verweigert."
+  },
+  "sync": {
+    "status_title": "Synchronisierungsstatus",
+    "status_description": "Überwachen Sie den Synchronisierungsstatus und beheben Sie Synchronisierungsprobleme",
+    "synchronizing": "Synchronisierung",
+    "completed": "Synchronisiert",
+    "failed": "Synchronisierung fehlgeschlagen",
+    "pending": "Ausstehende Synchronisierung",
+    "offline_warning": "Das Gerät ist derzeit offline. Einige Aktionen sind deaktiviert, bis Sie sich wieder verbinden."
+  },
+  "update": {
+    "title": "Update verfügbar",
+    "description": "Eine neue Version der App ist verfügbar. Aktualisieren Sie jetzt für die neuesten Funktionen und Verbesserungen.",
+    "button_update": "Jetzt aktualisieren",
+    "button_later": "Später"
+  },
+  "time": {
+    "hour": "Stunde",
+    "minute": "Minute"
+  },
+  "brand": {
+    "copyright": "© {years} Reborn Foundation. Alle Rechte vorbehalten.",
+    "license": "AGPL-3.0"
+  },
+  "pwa": {
+    "install_title_task": "Installieren Sie re/task auf Ihrem Gerät",
+    "install_title_notes": "Installieren Sie re/notes auf Ihrem Gerät",
+    "install_description_task": "Schneller Zugriff vom Startbildschirm, Offline-Modus und Benachrichtigungen.",
+    "install_description_notes": "Schneller Zugriff vom Startbildschirm und Offline-Modus.",
+    "install_button": "Installieren",
+    "install_ios_description": "Tippen Sie auf das Teilen-Symbol (⎙) und wählen Sie \u201EZum Home-Bildschirm\u201C."
+  }
+}

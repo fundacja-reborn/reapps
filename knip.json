@@ -1,0 +1,73 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    "apps/*": {
+      "entry": [
+        "src/main.ts!",
+        "src/app.html!",
+        "svelte.config.js!",
+        "vite.config.ts!",
+        "src/service-worker.ts!"
+      ],
+      "project": [
+        "src/**/*.ts!",
+        "src/**/*.svelte!"
+      ],
+      "ignore": [
+        "vite.config.ts.bak"
+      ]
+    },
+    "packages/*": {
+      "entry": [
+        "src/index.ts!",
+        "svelte.config.js!",
+        "vite.config.ts!",
+        "tsup.config.ts!",
+        "build.mjs!"
+      ],
+      "project": [
+        "src/**/*.ts!",
+        "src/**/*.svelte!"
+      ],
+      "ignore": [
+        "vite.config.simple.ts",
+        "vite.config.ts.bak",
+        "demo/src/**",
+        "*.storybook.js"
+      ]
+    }
+  },
+  "ignore": [
+    "**/*.d.ts",
+    "**/vitest.config.ts",
+    "**/eslint.config.js",
+    "**/eslint.config.mjs",
+    "**/postcss.config.js",
+    "**/tailwind.config.js",
+    "**/prisma/seed.ts",
+    "tmp/**",
+    "dist/**",
+    ".nx/**",
+    "scripts/**"
+  ],
+  "ignoreDependencies": [
+    "@nx/eslint-plugin",
+    "@swc-node/register",
+    "@swc/core",
+    "@types/node",
+    "dotenv-cli",
+    "jsonc-eslint-parser",
+    "prettier-plugin-svelte",
+    "svelte",
+    "tslib",
+    "typescript-eslint",
+    "server-only"
+  ],
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  },
+  "nx": {
+    "config": "**/project.json"
+  }
+}

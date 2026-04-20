@@ -1,0 +1,43 @@
+{
+  "name": "@reborn/database",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "prebuild": "dotenv -e ../../.env -- prisma generate",
+    "build": "tsup",
+    "postinstall": "dotenv -e ../../.env -- prisma generate",
+    "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist --skipLibCheck && test -f dist/src/index.d.ts && cp dist/src/index.d.ts dist/ && test -f dist/src/index.d.ts.map && cp dist/src/index.d.ts.map dist/ || true",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "test": "vitest",
+    "db:migrate": "dotenv -e ../../.env -- prisma migrate dev && dotenv -e ../../.env -- prisma generate",
+    "db:generate": "dotenv -e ../../.env -- prisma generate",
+    "db:studio": "dotenv -e ../../.env -- prisma studio",
+    "db:seed": "dotenv -e ../../.env -- tsx src/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.6.0",
+    "@prisma/client": "7.7.0",
+    "dotenv": "16.6.1",
+    "pg": "8.20.0"
+  },
+  "devDependencies": {
+    "@reborn/crypto": "workspace:*",
+    "@reborn/types": "workspace:*",
+    "@reborn/utils": "workspace:*",
+    "@types/pg": "8.15.4",
+    "dotenv-cli": "8.0.0",
+    "prisma": "7.7.0",
+    "tsup": "8.5.1",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.4"
+  }
+}

@@ -1,0 +1,964 @@
+<script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+  import { EditorView, keymap, placeholder as placeholderExt } from '@codemirror/view';
+  import { EditorState, Compartment } from '@codemirror/state';
+  import { markdown } from '@codemirror/lang-markdown';
+  import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
+  import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+  import { oneDark } from '@codemirror/theme-one-dark';
+  import { noteLinkAutocomplete, type NoteLinkItem } from '$lib/editor/note-link-autocomplete';
+  import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
+  import { isDataUri } from '$lib/utils/markdown-sanitizer';
+  import { toastStore } from '@reborn/ui';
+  import {
+    Bold,
+    Italic,
+    Strikethrough,
+    Code,
+    Link,
+    List,
+    ListOrdered,
+    Quote,
+    SquareCode,
+    Undo2,
+    Redo2,
+    FileText,
+    ImageIcon,
+    Table2
+  } from '@lucide/svelte';
+  import * as Dialog from '@reborn/ui/components/dialog';
+  import { undo, redo } from '@codemirror/commands';
+  import { t } from '$lib/stores/i18n.store';
+
+  let {
+    content = '',
+    placeholder = 'Start writing...',
+    readonly = false,
+    parentScroll = false,
+    isMobile = false,
+    panelReady = true,
+    splitView = false,
+    onchange,
+    onscrollerinit,
+    onnotelinkrequest,
+    availableNotes = [],
+    currentNoteId = null,
+    externalDialogOpen = false
+  }: {
+    content?: string;
+    placeholder?: string;
+    readonly?: boolean;
+    /** When true, the editor grows to content height (no own scroll) and toolbar becomes sticky + centered. */
+    parentScroll?: boolean;
+    /** When true, enables mobile-specific toolbar behavior (sticky over virtual keyboard). */
+    isMobile?: boolean;
+    /** When true, the parent panel transition has completed (safe for position:fixed). Defaults to true for non-mobile contexts. */
+    panelReady?: boolean;
+    /** When true, indicates editor is in split view context (toolbar full-width, no max-w centering). */
+    splitView?: boolean;
+    onchange?: (content: string) => void;
+    /** Called once after CM6 mounts — passes the scrollable .cm-scroller element */
+    onscrollerinit?: (el: HTMLElement) => void;
+    /** Called when user requests to insert a note link (toolbar button or Ctrl+Shift+K) */
+    onnotelinkrequest?: () => void;
+    /** Notes available for [[ autocomplete */
+    availableNotes?: NoteLinkItem[];
+    /** Current note id (excluded from autocomplete suggestions) */
+    currentNoteId?: string | null;
+    /** When true, an external dialog (e.g. NotePicker) is open — hides mobile toolbar. */
+    externalDialogOpen?: boolean;
+  } = $props();
+
+  let editorRootEl: HTMLDivElement;
+  let editorContainer: HTMLDivElement;
+  let view: EditorView | undefined;
+  let isExternalUpdate = false;
+  const themeCompartment = new Compartment();
+  const readonlyCompartment = new Compartment();
+  const autocompleteCompartment = new Compartment();
+
+  function isDark(): boolean {
+    return document.documentElement.classList.contains('dark');
+  }
+
+  // ── Formatting helpers ──────────────────────────────────────────
+
+  function wrapSelection(marker: string): boolean {
+    if (!view) return false;
+    const { state } = view;
+    const sel = state.selection.main;
+    const selected = state.sliceDoc(sel.from, sel.to);
+
+    let insert: string;
+    let anchor: number;
+    let head: number;
+
+    if (selected) {
+      if (
+        selected.startsWith(marker) &&
+        selected.endsWith(marker) &&
+        selected.length > marker.length * 2
+      ) {
+        insert = selected.slice(marker.length, -marker.length);
+        anchor = sel.from;
+        head = sel.from + insert.length;
+      } else {
+        insert = `${marker}${selected}${marker}`;
+        anchor = sel.from;
+        head = sel.from + insert.length;
+      }
+    } else {
+      insert = `${marker}${marker}`;
+      anchor = sel.from + marker.length;
+      head = anchor;
+    }
+
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to, insert },
+      selection: { anchor, head }
+    });
+    view.focus();
+    return true;
+  }
+
+  function prefixLine(prefix: string): boolean {
+    if (!view) return false;
+    const { state } = view;
+    const line = state.doc.lineAt(state.selection.main.from);
+    const text = line.text;
+
+    if (text.startsWith(prefix)) {
+      view.dispatch({ changes: { from: line.from, to: line.from + prefix.length, insert: '' } });
+    } else {
+      // Remove other common prefixes first
+      const stripped = text.replace(/^(#{1,6} |> |- |\d+\. )/, '');
+      view.dispatch({ changes: { from: line.from, to: line.to, insert: `${prefix}${stripped}` } });
+    }
+    view.focus();
+    return true;
+  }
+
+  function insertHeading(level: number): boolean {
+    return prefixLine('#'.repeat(level) + ' ');
+  }
+
+  function insertLink(): boolean {
+    if (!view) return false;
+    const { state } = view;
+    const sel = state.selection.main;
+    const selected = state.sliceDoc(sel.from, sel.to);
+    const text = selected || $t('editor.link_text');
+    const insert = `[${text}](url)`;
+    const urlStart = sel.from + text.length + 3;
+
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to, insert },
+      selection: { anchor: urlStart, head: urlStart + 3 }
+    });
+    view.focus();
+    return true;
+  }
+
+  export function insertNoteLink(noteId: string, title: string): void {
+    if (!view) return;
+    const { state } = view;
+    const sel = state.selection.main;
+    const insert = `[${title}](note:${noteId})`;
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to, insert },
+      selection: { anchor: sel.from + insert.length }
+    });
+    view.focus();
+  }
+
+  function insertCodeBlock(): boolean {
+    if (!view) return false;
+    const { state } = view;
+    const sel = state.selection.main;
+    const selected = state.sliceDoc(sel.from, sel.to);
+
+    if (selected.includes('\n') || !selected) {
+      const insert = selected ? `\`\`\`\n${selected}\n\`\`\`` : '```\n\n```';
+      const anchor = selected ? sel.from + insert.length : sel.from + 4;
+      view.dispatch({ changes: { from: sel.from, to: sel.to, insert }, selection: { anchor } });
+    } else {
+      wrapSelection('`');
+    }
+    view.focus();
+    return true;
+  }
+
+  let showImageDialog = $state(false);
+  let imageUrl = $state('');
+  let imageAlt = $state('');
+  let isBase64Url = $derived(isDataUri(imageUrl));
+
+  function openImageDialog() {
+    if (isMobile) view?.contentDOM.blur();
+    imageUrl = '';
+    imageAlt = '';
+    showImageDialog = true;
+  }
+
+  function insertImage() {
+    if (!view || !imageUrl.trim()) return;
+    if (isDataUri(imageUrl.trim())) {
+      toastStore.warning($t('editor.image_base64_blocked'));
+      return;
+    }
+    const { state } = view;
+    const sel = state.selection.main;
+    const alt = imageAlt.trim() || 'image';
+    const insert = `![${alt}](${imageUrl.trim()})`;
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to, insert },
+      selection: { anchor: sel.from + insert.length }
+    });
+    view.focus();
+    showImageDialog = false;
+  }
+
+  function handleImageDialogKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      insertImage();
+    } else if (e.key === 'Escape') {
+      showImageDialog = false;
+    }
+  }
+
+  // ── Table insert ────────────────────────────────────────────────
+
+  let showTableDialog = $state(false);
+  let tableCols = $state(3);
+  let tableRows = $state(2);
+
+  /** When any popup dialog is open, hide the mobile toolbar to avoid z-index conflicts. */
+  const anyDialogOpen = $derived(showImageDialog || showTableDialog || externalDialogOpen);
+
+  function openTableDialog() {
+    if (isMobile) view?.contentDOM.blur();
+    tableCols = 3;
+    tableRows = 2;
+    showTableDialog = true;
+  }
+
+  function insertTable() {
+    const cols = Number.isFinite(tableCols) ? Math.floor(tableCols) : 0;
+    const rows = Number.isFinite(tableRows) ? Math.floor(tableRows) : 0;
+    if (!view || cols < 1 || cols > 10 || rows < 0 || rows > 20) return;
+    const { state } = view;
+    const sel = state.selection.main;
+
+    const header = '| ' + Array.from({ length: cols }, (_, i) => `Col ${i + 1}`).join(' | ') + ' |';
+    const separator = '| ' + Array.from({ length: cols }, () => '---').join(' | ') + ' |';
+    const emptyRow = '| ' + Array.from({ length: cols }, () => '   ').join(' | ') + ' |';
+    const bodyRows = rows > 0 ? '\n' + Array.from({ length: rows }, () => emptyRow).join('\n') : '';
+
+    const insert = header + '\n' + separator + bodyRows + '\n';
+
+    // Place cursor at first header cell content ("Col 1")
+    const cursorPos = sel.from + 2;
+
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to, insert },
+      selection: { anchor: cursorPos, head: cursorPos + `Col 1`.length }
+    });
+    view.focus();
+    showTableDialog = false;
+  }
+
+  function handleTableDialogKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      insertTable();
+    } else if (e.key === 'Escape') {
+      showTableDialog = false;
+    }
+  }
+
+  // ── Editor init ─────────────────────────────────────────────────
+
+  onMount(() => {
+    const customKeymap = keymap.of([
+      { key: 'Mod-b', run: () => wrapSelection('**') },
+      { key: 'Mod-i', run: () => wrapSelection('_') },
+      { key: 'Mod-k', run: () => insertLink() },
+      {
+        key: 'Mod-Shift-k',
+        run: () => {
+          onnotelinkrequest?.();
+          return true;
+        }
+      },
+      ...defaultKeymap,
+      ...historyKeymap,
+      indentWithTab
+    ]);
+
+    const state = EditorState.create({
+      doc: content,
+      extensions: [
+        history(),
+        markdown(),
+        syntaxHighlighting(defaultHighlightStyle),
+        EditorView.lineWrapping,
+        customKeymap,
+        themeCompartment.of(isDark() ? oneDark : []),
+        readonlyCompartment.of(EditorState.readOnly.of(readonly)),
+        placeholderExt(placeholder),
+        autocompleteCompartment.of(noteLinkAutocomplete(() => availableNotes, currentNoteId)),
+        noteLinkDecoration,
+        EditorView.domEventHandlers({
+          paste(e) {
+            const files = e.clipboardData?.files;
+            if (files && files.length > 0) {
+              for (const file of Array.from(files)) {
+                if (file.type.startsWith('image/')) {
+                  e.preventDefault();
+                  toastStore.warning($t('editor.image_paste_blocked'));
+                  return;
+                }
+              }
+            }
+            const text = e.clipboardData?.getData('text/plain') ?? '';
+            if (/!\[[^\]]*\]\(data:/i.test(text)) {
+              e.preventDefault();
+              toastStore.warning($t('editor.image_base64_blocked'));
+              return;
+            }
+          },
+          drop(e) {
+            const files = e.dataTransfer?.files;
+            if (files && files.length > 0) {
+              for (const file of Array.from(files)) {
+                if (file.type.startsWith('image/')) {
+                  e.preventDefault();
+                  toastStore.warning($t('editor.image_drop_blocked'));
+                  return;
+                }
+              }
+            }
+          }
+        }),
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged && !isExternalUpdate) {
+            const doc = update.state.doc.toString();
+            onchange?.(doc);
+          }
+        })
+      ]
+    });
+
+    view = new EditorView({ state, parent: editorContainer });
+
+    // Expose the CM6 scroller element for parent scroll-sync
+    const scroller = editorContainer.querySelector('.cm-scroller') as HTMLElement | null;
+    if (scroller) onscrollerinit?.(scroller);
+
+    // Sync dark mode with HTML class changes
+    const observer = new MutationObserver(() => {
+      view?.dispatch({
+        effects: themeCompartment.reconfigure(isDark() ? oneDark : [])
+      });
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    return () => observer.disconnect();
+  });
+
+  // Sync content prop → editor when changed externally (without triggering onchange)
+  $effect(() => {
+    if (!view) return;
+    const current = view.state.doc.toString();
+    if (content !== current) {
+      isExternalUpdate = true;
+      view.dispatch({
+        changes: { from: 0, to: current.length, insert: content }
+      });
+      isExternalUpdate = false;
+    }
+  });
+
+  // Sync readonly prop
+  $effect(() => {
+    view?.dispatch({
+      effects: readonlyCompartment.reconfigure(EditorState.readOnly.of(readonly))
+    });
+  });
+
+  // Sync autocomplete notes list
+  $effect(() => {
+    // Access reactive props to track them
+    const notes = availableNotes;
+    const noteId = currentNoteId;
+    view?.dispatch({
+      effects: autocompleteCompartment.reconfigure(noteLinkAutocomplete(() => notes, noteId))
+    });
+  });
+
+  onDestroy(() => {
+    view?.destroy();
+  });
+
+  // ── Mobile virtual keyboard tracking ────────────────────────────
+  let mobileKeyboardOpen = $state(false);
+  let toolbarBottomPx = $state(0);
+  const KEYBOARD_THRESHOLD = 0.85;
+  const KEYBOARD_MIN_DIFF_PX = 150;
+
+  $effect(() => {
+    if (!isMobile) return;
+    if (typeof window === 'undefined') return;
+
+    const vv = window.visualViewport ?? null;
+    let layoutHeight = window.innerHeight;
+    let vvDetected = false;
+    let focusDetected = false;
+    let focusTimer: ReturnType<typeof setTimeout> | undefined;
+
+    function recalcLayout() {
+      // Update layoutHeight only when keyboard is likely closed
+      const currentHeight = vv ? vv.height : window.innerHeight;
+      if (currentHeight / window.innerHeight > 0.9) {
+        layoutHeight = window.innerHeight;
+      }
+    }
+
+    function applyState() {
+      mobileKeyboardOpen = vvDetected || focusDetected;
+      if (!mobileKeyboardOpen) toolbarBottomPx = 0;
+    }
+
+    // ── Strategy 1: visualViewport (primary) ──
+    function onVVResize() {
+      if (!vv) return;
+      const visibleHeight = vv.height;
+      vvDetected =
+        visibleHeight < layoutHeight * KEYBOARD_THRESHOLD &&
+        layoutHeight - visibleHeight > KEYBOARD_MIN_DIFF_PX;
+      // Without interactive-widget=resizes-content the layout viewport stays
+      // full-size when the keyboard opens (default resizes-visual behaviour).
+      // position:fixed bottom:0 would land behind the keyboard, so we compute
+      // the real offset from the visualViewport API.
+      if (vvDetected) {
+        toolbarBottomPx = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      } else {
+        toolbarBottomPx = 0;
+        recalcLayout();
+      }
+      applyState();
+    }
+
+    // ── Strategy 2: focus-based fallback ──
+    // Scoped to editorRootEl so toolbar button clicks don't trigger focusout→hide.
+    function onFocusIn(e: FocusEvent) {
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      const isEditable =
+        target.isContentEditable ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'INPUT';
+      if (!isEditable) return;
+
+      clearTimeout(focusTimer);
+      // Delay to let visualViewport fire first
+      focusTimer = setTimeout(() => {
+        if (!vvDetected) {
+          focusDetected = true;
+          applyState();
+        }
+      }, 300);
+    }
+
+    function onFocusOut(e: FocusEvent) {
+      clearTimeout(focusTimer);
+      // If focus moves to another element inside this component (e.g. toolbar button),
+      // keep focusDetected — the keyboard is still open.
+      const related = e.relatedTarget as Node | null;
+      if (related && editorRootEl?.contains(related)) return;
+      focusTimer = setTimeout(() => {
+        focusDetected = false;
+        if (!vvDetected) applyState();
+      }, 200);
+    }
+
+    // ── Bind events ──
+    const rootEl = editorRootEl;
+    if (vv) {
+      vv.addEventListener('resize', onVVResize);
+      vv.addEventListener('scroll', onVVResize);
+    }
+    rootEl?.addEventListener('focusin', onFocusIn);
+    rootEl?.addEventListener('focusout', onFocusOut);
+    window.addEventListener('orientationchange', recalcLayout);
+
+    return () => {
+      if (vv) {
+        vv.removeEventListener('resize', onVVResize);
+        vv.removeEventListener('scroll', onVVResize);
+      }
+      rootEl?.removeEventListener('focusin', onFocusIn);
+      rootEl?.removeEventListener('focusout', onFocusOut);
+      window.removeEventListener('orientationchange', recalcLayout);
+      clearTimeout(focusTimer);
+      mobileKeyboardOpen = false;
+      toolbarBottomPx = 0;
+    };
+  });
+</script>
+
+<div bind:this={editorRootEl} class="flex flex-col" class:h-full={!parentScroll}>
+  <!-- Toolbar -->
+  {#if !readonly}
+    {#snippet toolbarButtons()}
+      <!-- History -->
+      <button
+        type="button"
+        onclick={() => view && undo(view)}
+        title={$t('editor.undo_shortcut')}
+        class="toolbar-btn"
+        aria-label={$t('editor.undo')}
+      >
+        <Undo2 class="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onclick={() => view && redo(view)}
+        title={$t('editor.redo_shortcut')}
+        class="toolbar-btn"
+        aria-label={$t('editor.redo')}
+      >
+        <Redo2 class="h-4 w-4" />
+      </button>
+
+      <div class="mx-1 h-5 w-px bg-border" role="separator"></div>
+
+      <!-- Headings -->
+      <button
+        type="button"
+        onclick={() => insertHeading(1)}
+        title={$t('editor.formatting.heading1')}
+        class="toolbar-btn font-bold"
+        aria-label={$t('editor.formatting.heading1')}>H1</button
+      >
+      <button
+        type="button"
+        onclick={() => insertHeading(2)}
+        title={$t('editor.formatting.heading2')}
+        class="toolbar-btn font-bold"
+        aria-label={$t('editor.formatting.heading2')}>H2</button
+      >
+      <button
+        type="button"
+        onclick={() => insertHeading(3)}
+        title={$t('editor.formatting.heading3')}
+        class="toolbar-btn font-bold"
+        aria-label={$t('editor.formatting.heading3')}>H3</button
+      >
+
+      <div class="mx-1 h-5 w-px bg-border" role="separator"></div>
+
+      <!-- Inline formatting -->
+      <button
+        type="button"
+        onclick={() => wrapSelection('**')}
+        title={$t('editor.formatting.bold') + ' (Ctrl+B)'}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.bold')}
+      >
+        <Bold class="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onclick={() => wrapSelection('_')}
+        title={$t('editor.formatting.italic') + ' (Ctrl+I)'}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.italic')}
+      >
+        <Italic class="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onclick={() => wrapSelection('~~')}
+        title={$t('editor.formatting.strikethrough')}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.strikethrough')}
+      >
+        <Strikethrough class="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onclick={() => wrapSelection('`')}
+        title={$t('editor.formatting.code')}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.code')}
+      >
+        <Code class="h-4 w-4" />
+      </button>
+
+      <div class="mx-1 h-5 w-px bg-border" role="separator"></div>
+
+      <!-- Block elements -->
+      <button
+        type="button"
+        onclick={() => prefixLine('- ')}
+        title={$t('editor.formatting.bullet_list')}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.bullet_list')}
+      >
+        <List class="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onclick={() => prefixLine('1. ')}
+        title={$t('editor.formatting.numbered_list')}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.numbered_list')}
+      >
+        <ListOrdered class="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onclick={() => prefixLine('> ')}
+        title={$t('editor.formatting.quote')}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.quote')}
+      >
+        <Quote class="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onclick={insertCodeBlock}
+        title={$t('editor.formatting.code_block')}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.code_block')}
+      >
+        <SquareCode class="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onclick={openTableDialog}
+        title={$t('editor.formatting.insert_table')}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.insert_table')}
+      >
+        <Table2 class="h-4 w-4" />
+      </button>
+
+      <div class="mx-1 h-5 w-px bg-border" role="separator"></div>
+
+      <!-- Link -->
+      <button
+        type="button"
+        onclick={insertLink}
+        title={$t('editor.formatting.link') + ' (Ctrl+K)'}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.link')}
+      >
+        <Link class="h-4 w-4" />
+      </button>
+
+      <!-- Note Link -->
+      <button
+        type="button"
+        onclick={() => onnotelinkrequest?.()}
+        title={$t('editor.formatting.note_link') + ' (Ctrl+Shift+K)'}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.note_link')}
+      >
+        <FileText class="h-4 w-4" />
+      </button>
+
+      <div class="mx-1 h-5 w-px bg-border" role="separator"></div>
+
+      <!-- Insert Image -->
+      <button
+        type="button"
+        onclick={openImageDialog}
+        title={$t('editor.formatting.insert_image')}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.insert_image')}
+      >
+        <ImageIcon class="h-4 w-4" />
+      </button>
+    {/snippet}
+
+    {#if isMobile && mobileKeyboardOpen && panelReady && !anyDialogOpen}
+      <!-- Mobile: fixed toolbar above virtual keyboard with slide-up animation -->
+      <div
+        class="mobile-keyboard-toolbar"
+        style:bottom="{toolbarBottomPx}px"
+      >
+        <div class="flex items-center gap-0.5 px-2 py-1.5">
+          {@render toolbarButtons()}
+        </div>
+      </div>
+    {:else if isMobile}
+      <!-- Mobile: toolbar hidden when keyboard is closed (no-op) -->
+    {:else if parentScroll && !splitView}
+      <div class="sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-5">
+        <div class="mx-auto max-w-3xl">
+          <div class="flex flex-wrap items-center gap-0.5 py-1.5">
+            {@render toolbarButtons()}
+          </div>
+        </div>
+      </div>
+    {:else if parentScroll && splitView}
+      <!-- Split: sticky toolbar, full-width (no max-w centering) -->
+      <div class="sticky -top-px z-10 bg-background/95 backdrop-blur-sm border-t border-b">
+        <div class="flex flex-nowrap items-center gap-0.5 overflow-x-auto px-2 py-1.5">
+          {@render toolbarButtons()}
+        </div>
+      </div>
+    {:else}
+      <div class="flex flex-wrap items-center gap-0.5 border-b bg-background px-2 py-1.5">
+        {@render toolbarButtons()}
+      </div>
+    {/if}
+  {/if}
+
+  <!-- Image insert dialog (portaled via shadcn Dialog) -->
+  <Dialog.Root bind:open={showImageDialog}>
+    <Dialog.Content class="max-w-sm gap-0 p-0" onkeydown={handleImageDialogKeydown}>
+      <Dialog.Header class="border-b px-4 py-3">
+        <Dialog.Title class="text-sm font-medium">{$t('editor.formatting.insert_image')}</Dialog.Title>
+      </Dialog.Header>
+      <div class="space-y-3 px-4 py-4">
+        <div>
+          <label class="block text-[0.8125rem] font-medium text-foreground mb-1" for="image-url-input">{$t('editor.image_url')}</label>
+          <input
+            id="image-url-input"
+            type="url"
+            bind:value={imageUrl}
+            placeholder="https://example.com/photo.jpg"
+            class="w-full rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+            class:border-destructive={isBase64Url}
+          />
+          {#if isBase64Url}
+            <p class="mt-1 text-xs text-destructive">{$t('editor.image_base64_blocked')}</p>
+          {/if}
+        </div>
+        <div>
+          <label class="block text-[0.8125rem] font-medium text-foreground mb-1" for="image-alt-input">{$t('editor.image_alt')}</label>
+          <input
+            id="image-alt-input"
+            type="text"
+            bind:value={imageAlt}
+            placeholder={$t('editor.image_alt')}
+            class="w-full rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+          />
+        </div>
+        <div class="flex justify-end gap-2 pt-1">
+          <button
+            type="button"
+            class="rounded-md bg-muted px-3 py-1.5 text-[0.8125rem] text-muted-foreground"
+            onclick={() => (showImageDialog = false)}
+          >
+            {$t('editor.image_cancel')}
+          </button>
+          <button
+            type="button"
+            class="rounded-md bg-primary px-3 py-1.5 text-[0.8125rem] text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick={insertImage}
+            disabled={!imageUrl.trim() || isBase64Url}
+          >
+            {$t('editor.image_insert')}
+          </button>
+        </div>
+      </div>
+    </Dialog.Content>
+  </Dialog.Root>
+
+  <!-- Table insert dialog (portaled via shadcn Dialog) -->
+  <Dialog.Root bind:open={showTableDialog}>
+    <Dialog.Content class="max-w-sm gap-0 p-0" onkeydown={handleTableDialogKeydown}>
+      <Dialog.Header class="border-b px-4 py-3">
+        <Dialog.Title class="text-sm font-medium">{$t('editor.formatting.insert_table')}</Dialog.Title>
+      </Dialog.Header>
+      <div class="space-y-3 px-4 py-4">
+        <div>
+          <label class="block text-[0.8125rem] font-medium text-foreground mb-1" for="table-cols-input">{$t('editor.table_columns')}</label>
+          <input
+            id="table-cols-input"
+            type="number"
+            min="1"
+            max="10"
+            bind:value={tableCols}
+            class="w-full rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+          />
+        </div>
+        <div>
+          <label class="block text-[0.8125rem] font-medium text-foreground mb-1" for="table-rows-input">{$t('editor.table_rows')}</label>
+          <input
+            id="table-rows-input"
+            type="number"
+            min="0"
+            max="20"
+            bind:value={tableRows}
+            class="w-full rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+          />
+        </div>
+        <div class="flex justify-end gap-2 pt-1">
+          <button
+            type="button"
+            class="rounded-md bg-muted px-3 py-1.5 text-[0.8125rem] text-muted-foreground"
+            onclick={() => (showTableDialog = false)}
+          >
+            {$t('editor.table_cancel')}
+          </button>
+          <button
+            type="button"
+            class="rounded-md bg-primary px-3 py-1.5 text-[0.8125rem] text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick={insertTable}
+            disabled={!tableCols || tableCols < 1 || tableCols > 10}
+          >
+            {$t('editor.table_insert')}
+          </button>
+        </div>
+      </div>
+    </Dialog.Content>
+  </Dialog.Root>
+
+  <!-- CodeMirror mount point -->
+  <div
+    bind:this={editorContainer}
+    class="cm-host {parentScroll ? '' : 'min-h-0 flex-1 overflow-auto'}"
+    class:cm-parent-scroll={parentScroll}
+    aria-label={$t('editor.note_editor')}
+  ></div>
+
+  {#if isMobile && mobileKeyboardOpen && panelReady && !anyDialogOpen}
+    <!-- Spacer so content isn't hidden behind the fixed toolbar -->
+    <div class="h-13 shrink-0"></div>
+  {/if}
+</div>
+
+<style>
+  :global(.cm-host .cm-editor) {
+    height: 100%;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  :global(.cm-host.cm-parent-scroll .cm-editor) {
+    height: auto;
+  }
+
+  :global(.cm-host.cm-parent-scroll .cm-scroller) {
+    overflow: visible !important;
+  }
+
+  :global(.cm-host .cm-scroller) {
+    padding: 1.25rem 1rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  :global(.cm-host .cm-content) {
+    max-width: 48rem; /* max-w-3xl */
+    margin: 0 auto;
+    font-size: 1rem; /* 16px — prevents iOS auto-zoom on focus */
+    line-height: 1.7;
+  }
+
+  @media (min-width: 768px) {
+    :global(.cm-host .cm-scroller) {
+      padding: 1.5rem 1.25rem;
+    }
+    :global(.cm-host .cm-content) {
+      font-size: 0.875rem; /* 14px on desktop */
+    }
+  }
+
+  :global(.cm-host .cm-editor.cm-focused) {
+    outline: none;
+  }
+
+  /* Force app background in dark mode (oneDark uses its own #282c34) */
+  :global(.dark .cm-host .cm-editor) {
+    background-color: var(--background);
+  }
+  :global(.dark .cm-host .cm-editor .cm-gutters) {
+    background-color: var(--background);
+    border-right: none;
+  }
+
+  /* Light mode */
+  :global(.cm-host .cm-editor:not(.cm-dark-theme) .cm-content) {
+    caret-color: currentColor;
+  }
+
+  /* Note link decoration */
+  :global(.cm-host .cm-note-link) {
+    color: var(--primary);
+    text-decoration: underline dashed;
+    text-underline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  .toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    padding: 0 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+  }
+
+  .toolbar-btn:hover {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+  }
+
+  /* ── Mobile keyboard toolbar ─────────────────────────────── */
+  .mobile-keyboard-toolbar {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100vw;
+    z-index: 9999;
+    background-color: var(--background);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    animation: toolbar-slide-up 0.2s ease-out;
+  }
+
+  @keyframes toolbar-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(1rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .mobile-keyboard-toolbar .toolbar-btn {
+    flex-shrink: 0;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding: 0 0.375rem;
+  }
+
+  /* Enlarge icons inside mobile toolbar for better touch targets */
+  .mobile-keyboard-toolbar .toolbar-btn :global(svg) {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  /* Hide separators inside the fixed mobile toolbar to save space */
+  .mobile-keyboard-toolbar [role='separator'] {
+    display: none;
+  }
+</style>

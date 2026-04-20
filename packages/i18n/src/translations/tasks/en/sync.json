@@ -1,0 +1,62 @@
+{
+  "sync_now": "Sync Now",
+  "syncing": "Syncing...",
+  "actions_title": "Synchronization Actions",
+  "actions_description": "Manually control synchronization processes",
+  "about_title": "About Synchronization",
+  "about_offline_first": "RebornTask uses an offline-first approach. Your data is stored locally on your device first and then synchronized to the server in the background.",
+  "about_e2e": "All your data is end-to-end encrypted, meaning that only your device can read the actual content of your tasks, lists, and subtasks. The server only stores encrypted data.",
+  "about_resolution": "If conflicts occur between devices, the system automatically resolves them using the 'last update wins' strategy, but preserves all your data whenever possible.",
+  "status": {
+    "online": "Online",
+    "offline": "Offline",
+    "pending": "Pending",
+    "in_progress": "In Progress",
+    "completed": "Completed",
+    "failed": "Failed"
+  },
+  "pending_operations": "{count} operations pending",
+  "failed_operations": "{count} failed",
+  "connect_to_sync": "Connect to the internet to synchronize",
+  "cleanup_failed": "Clean up failed operations",
+  "force_sync": "Force Synchronization",
+  "show_details": "Show Details",
+  "hide_details": "Hide Details",
+  "cleanup_result": "Cleaned up {count} failed operations",
+  "operations_details": "Pending Operations",
+  "retry_count": "Retries",
+  "created": "Created",
+  "error": "Error",
+  "force_full_sync": "Force Full Synchronization",
+  "check_repair": "Check & Repair Storage",
+  "operation_success": "Operation completed successfully",
+  "operation_error": "Error",
+  "entity_type": {
+    "task_list": "Task List",
+    "task": "Task",
+    "sub_task": "Subtask"
+  },
+  "operation_type": {
+    "create": "Create",
+    "update": "Update",
+    "delete": "Delete"
+  },
+  "automatic_info": "Synchronization works automatically in the background. Manual actions are optional and intended for advanced troubleshooting or to force sync in rare cases.",
+  "success": "Synchronization completed successfully",
+  "partial_failure": "Sync completed, but {count} operations failed. Tap again to clear.",
+  "failed": "Synchronization failed",
+  "indicator": {
+    "synced": "Synced",
+    "syncing": "Syncing...",
+    "offline": "Offline",
+    "error": "Sync error",
+    "pending": "Pending sync ({count})",
+    "tap_to_sync": "Tap to sync",
+    "tap_to_retry": "Tap to retry or clear",
+    "last_sync": "Last sync: {time}",
+    "conflict_title": "Data changed on another device",
+    "conflict_message": "Newer data was detected on the server. Updated data has been downloaded.",
+    "conflict_action": "Refresh",
+    "session_expired": "Session expired"
+  }
+}

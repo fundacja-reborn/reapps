@@ -1,0 +1,7 @@
+{
+  "navigation_failed": "Navigation failed",
+  "unknown": "Unknown error",
+  "offline_title": "You are offline",
+  "offline_description": "This page is not available offline. Connect to the internet and try again.",
+  "retry": "Try again"
+}

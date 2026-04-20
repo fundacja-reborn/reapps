@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "declarationDir": "./dist",
+    "composite": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts"],
+  "references": [
+    { "path": "../types" },
+    { "path": "../utils" },
+    { "path": "../crypto" },
+    { "path": "../auth" }
+  ]
+}

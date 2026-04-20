@@ -1,0 +1,49 @@
+{
+  "privacy": {
+    "title": "Polityka Prywatności",
+    "description": "Jak zarządzamy Twoimi danymi",
+    "content": {
+      "intro": "reborn/task poważnie traktuje Twoją prywatność. Jesteśmy zobowiązani do ochrony Twoich danych osobowych.",
+      "zero_knowledge": "Nasza aplikacja wykorzystuje szyfrowanie end-to-end i architekturę Zero Knowledge, co oznacza, że Twoje dane zadań są szyfrowane na Twoim urządzeniu przed wysłaniem na nasze serwery. Nie mamy dostępu do treści Twoich zadań.",
+      "what_we_collect": "Co zbieramy",
+      "collect_list": [
+        "Nazwa użytkownika (aby zapewnić unikalność)",
+        "Znaczniki czasu logowania (do identyfikacji nieaktywnych kont)",
+        "Zaszyfrowane dane zadań (których nie możemy odczytać)"
+      ],
+      "what_we_dont_collect": "Czego nie zbieramy",
+      "dont_collect_list": [
+        "Adres email (opcjonalnie)",
+        "Informacje osobiste poza nazwą użytkownika",
+        "Treść Twoich zadań (ze względu na szyfrowanie)"
+      ],
+      "data_security": "Bezpieczeństwo Danych",
+      "security_text": "Wszystkie wrażliwe dane są szyfrowane przy użyciu szyfrowania AES-GCM. Twoje hasło nigdy nie jest przechowywane na naszych serwerach. Stosujemy standardowe w branży środki bezpieczeństwa do ochrony naszej infrastruktury.",
+      "cookies": "Pliki Cookie i Lokalne Przechowywanie",
+      "cookies_text": "Używamy plików cookie i lokalnego przechowywania tylko dla niezbędnych funkcji, takich jak utrzymywanie Cię zalogowanym i zapisywanie Twoich preferencji."
+    }
+  },
+  "support": {
+    "title": "Wsparcie dla Fundacji Reborn",
+    "description": "Pomóż nam wprowadzać zmiany",
+    "content": {
+      "intro": "Fundacja Reborn jest dedykowana wspieraniu innowacyjnych projektów, które priorytetowo traktują prywatność i bezpieczeństwo danych w erze cyfrowej.",
+      "mission_title": "Nasza Misja",
+      "mission_text": "Tworzenie i utrzymywanie narzędzi open-source, które chronią prywatność użytkowników i promują prawa cyfrowe dla wszystkich.",
+      "why_donate_title": "Dlaczego Warto Wspierać?",
+      "why_donate": [
+        "Wspieranie rozwoju aplikacji zorientowanych na prywatność",
+        "Pomoc w utrzymaniu infrastruktury dla darmowych usług",
+        "Umożliwienie badań nad lepszymi metodami szyfrowania",
+        "Finansowanie programów edukacyjnych na temat prywatności cyfrowej"
+      ],
+      "donation_title": "Opcje Darowizny",
+      "donation_options": {
+        "crypto": "Kryptowaluty",
+        "bank": "Przelew Bankowy",
+        "contact": "Aby uzyskać więcej informacji na temat możliwości dokonania darowizny, skontaktuj się z nami pod adresem support@example.org"
+      },
+      "disclaimer": "Uwaga: Strona stworzona w celach demonstracyjnych. Ta strona pokazuje, jak może wyglądać strona darowizn."
+    }
+  }
+}

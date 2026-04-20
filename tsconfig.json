@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    { "path": "./packages/types" },
+    { "path": "./packages/utils" },
+    { "path": "./packages/crypto" },
+    { "path": "./packages/database" },
+    { "path": "./packages/storage" },
+    { "path": "./packages/auth" },
+    { "path": "./packages/api-client" },
+    { "path": "./apps/reborn-task" },
+    { "path": "./apps/reborn-notes" }
+  ]
+}

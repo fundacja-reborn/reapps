@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./dist",
+    "declarationDir": "./dist",
+    "module": "ESNext",
+    "lib": ["ES2022", "dom"],
+    "target": "ES2022",
+    "types": ["node"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
+  "references": [
+    { "path": "../types" },
+    { "path": "../utils" },
+    { "path": "../crypto" }
+  ]
+}

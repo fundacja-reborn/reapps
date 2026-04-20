@@ -1,0 +1,175 @@
+{
+  "my_tasks": "Mis tareas",
+  "completed": "Completadas",
+  "add_new": "Nueva tarea",
+  "add_task": "Añadir tarea",
+  "add_task_description": "Añadir descripción de la tarea",
+  "search_placeholder": "Buscar tareas...",
+  "hide_completed": "Ocultar completadas",
+  "show_completed": "Mostrar completadas",
+  "show_all": "Mostrar todas",
+  "show_starred": "Mostrar destacadas",
+  "add": "Añadir tarea",
+  "edit": "Editar tarea",
+  "delete": {
+    "title": "Eliminar tarea",
+    "confirm_message": "¿Está seguro de que desea eliminar la tarea '{title}'?",
+    "this_only": "Eliminar solo esta ocurrencia",
+    "future": "Eliminar esta y todas las ocurrencias futuras"
+  },
+  "delete_confirmation": "¿Está seguro de que desea eliminar esta tarea? Esta acción no se puede deshacer.",
+  "toggle_completion": "Alternar completada",
+  "toggle_star": "Alternar destacada",
+  "due_date": "Fecha de vencimiento",
+  "description": "Descripción",
+  "title": "Título",
+  "title_placeholder": "Introduzca el título de la tarea",
+  "description_placeholder": "Introduzca la descripción de la tarea (opcional)",
+  "edit_description": "Edite los datos de su tarea",
+  "select_date": "Seleccionar fecha",
+  "select_list": "Seleccionar lista",
+  "move_to_list": "Mover a lista",
+  "move_task": "Mover tarea",
+  "move_task_description": "Seleccione una lista a la que mover esta tarea",
+  "recurring": {
+    "reset_notification": "La tarea ha sido restablecida con nueva fecha de vencimiento: {date}",
+    "completed_notification": "La tarea ha sido completada y ya no se repetirá",
+    "next_occurrence": "Próxima ocurrencia: {date}",
+    "remaining_occurrences": "{count, plural, =1 {# ocurrencia restante} other {# ocurrencias restantes}}",
+    "last_occurrence": "Esta fue la última ocurrencia de esta tarea recurrente",
+    "completed_count": "{count}x"
+  },
+  "subtasks": {
+    "add": "Añadir subtarea",
+    "placeholder": "Introduzca el nombre de la subtarea",
+    "header": "Subtareas",
+    "delete": {
+      "title": "Eliminar subtarea",
+      "description": "¿Está seguro de que desea eliminar esta subtarea?",
+      "confirm": "Eliminar",
+      "cancel": "Cancelar",
+      "error": "Error al eliminar la subtarea. Por favor, inténtelo de nuevo.",
+      "error_with_details": "Error al eliminar la subtarea: {errorMessage}. Por favor, inténtelo de nuevo.",
+      "processing": "Eliminando..."
+    }
+  },
+  "errors": {
+    "title_required": "El título de la tarea es obligatorio",
+    "fetch_failed": "Error al obtener las tareas",
+    "create_failed": "Error al crear la tarea",
+    "update_failed": "Error al actualizar la tarea",
+    "delete_failed": "Error al eliminar la tarea",
+    "list_not_found": "Lista de tareas no encontrada",
+    "task_not_found": "Tarea no encontrada",
+    "required_fields": "Faltan campos obligatorios",
+    "list_id_required": "Se requiere el ID de la lista de tareas",
+    "autosave_failed": "Error en el guardado automático. Es posible que sus cambios no se hayan guardado.",
+    "invalid_date": "Formato de fecha no válido",
+    "list_required": "Por favor, seleccione una lista de tareas",
+    "move_failed": "Error al mover la tarea a la nueva lista"
+  },
+  "view": {
+    "title": "Detalles de la tarea",
+    "back": "Volver a las tareas",
+    "select_task": "Seleccione una tarea"
+  },
+  "fields": {
+    "title": "Título de la tarea",
+    "description": "Descripción de la tarea",
+    "due_date": "Fecha",
+    "recurring": "Recurrente",
+    "recurrence_rule": "Patrón de recurrencia (p. ej., FREQ=WEEKLY;BYDAY=MO,WE,FR)",
+    "completed_at": "Completada el",
+    "next_occurrence": "Próxima ocurrencia",
+    "completed_count": "Ocurrencias completadas"
+  },
+  "actions": {
+    "delete": "Eliminar tarea",
+    "toggle_star": "Alternar destacada",
+    "move_to_list": "Mover a otra lista",
+    "more_options": "Más opciones"
+  },
+  "aria": {
+    "mark_as_complete": "Marcar como completada",
+    "mark_as_incomplete": "Marcar como incompleta",
+    "add_star": "Añadir estrella",
+    "remove_star": "Eliminar estrella",
+    "active_tasks": "Tareas activas"
+  },
+  "date": {
+    "select": "Seleccionar fecha",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "selected": "Fecha seleccionada",
+    "change": "Cambiar fecha",
+    "today": "hoy",
+    "tomorrow": "mañana",
+    "yesterday": "ayer",
+    "in_n_days": "{count, plural, =0 {hoy} =1 {en 1 día} other {en {count} días}}"
+  },
+  "time": {
+    "select_time": "Seleccionar hora",
+    "select": "Seleccionar hora",
+    "time": "Hora",
+    "hours": "Horas",
+    "minutes": "Minutos",
+    "add_time": "Añadir hora",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar"
+  },
+  "properties": {
+    "title": "Propiedades",
+    "delete": {
+      "date": {
+        "title": "Eliminar fecha",
+        "description": "¿Está seguro de que desea eliminar la fecha? Esto también eliminará la hora y los ajustes de recurrencia."
+      },
+      "time": {
+        "title": "Eliminar hora",
+        "description": "¿Está seguro de que desea eliminar la hora?"
+      },
+      "recurrence": {
+        "title": "Eliminar recurrencia",
+        "description": "¿Está seguro de que desea eliminar los ajustes de recurrencia?"
+      }
+    }
+  },
+  "recurrence": {
+    "title": "Configurar recurrencia",
+    "description": "Configure con qué frecuencia debe repetirse esta tarea",
+    "add": "Añadir recurrencia",
+    "edit": "Editar recurrencia",
+    "frequency": {
+      "label": "Frecuencia",
+      "daily": "Diaria",
+      "weekly": "Semanal",
+      "monthly": "Mensual",
+      "yearly": "Anual"
+    },
+    "interval": {
+      "label": "Repetir cada",
+      "daily": "día(s)",
+      "weekly": "semana(s)",
+      "monthly": "mes(es)",
+      "yearly": "año(s)"
+    },
+    "days": {
+      "label": "En los días",
+      "monday": "Lunes",
+      "tuesday": "Martes",
+      "wednesday": "Miércoles",
+      "thursday": "Jueves",
+      "friday": "Viernes",
+      "saturday": "Sábado",
+      "sunday": "Domingo"
+    },
+    "end": {
+      "label": "Finaliza",
+      "never": "Nunca",
+      "after": "Después de",
+      "on_date": "En fecha",
+      "occurrences": "ocurrencias"
+    }
+  },
+  "more_options": "Más opciones"
+}

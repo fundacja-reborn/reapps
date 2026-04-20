@@ -1,0 +1,53 @@
+{
+  "name": "@reborn/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Internationalization package for Reborn apps",
+  "keywords": [
+    "i18n",
+    "translations",
+    "internationalization",
+    "svelte"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.spec.*"
+  ],
+  "scripts": {
+    "build": "pnpm run clean && pnpm run build:types && tsup && pnpm copy-translations",
+    "build:types": "tsc -p tsconfig.build.json",
+    "copy-translations": "mkdir -p dist && cp -r src/translations dist/",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo",
+    "test": "vitest run",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "svelte-i18n": "4.0.1"
+  },
+  "devDependencies": {
+    "@reborn/types": "workspace:*",
+    "@sveltejs/vite-plugin-svelte": "5.1.1",
+    "@types/node": "24.12.2",
+    "svelte": "5.55.1",
+    "tsup": "8.5.1",
+    "typescript": "5.9.3",
+    "vite": "8.0.8",
+    "vitest": "4.1.4"
+  },
+  "peerDependencies": {
+    "svelte": "5.0.0"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "privacy": {
+    "title": "Datenschutzrichtlinie",
+    "description": "Wie wir mit Ihren Daten umgehen",
+    "content": {
+      "intro": "reborn/task nimmt Ihren Datenschutz ernst. Wir setzen uns f\u00fcr den Schutz Ihrer pers\u00f6nlichen Daten ein.",
+      "zero_knowledge": "Unsere Anwendung verwendet Ende-zu-Ende-Verschl\u00fcsselung und Zero-Knowledge-Architektur. Das bedeutet, dass Ihre Aufgabendaten auf Ihrem Ger\u00e4t verschl\u00fcsselt werden, bevor sie an unsere Server gesendet werden. Wir k\u00f6nnen den Inhalt Ihrer Aufgaben nicht einsehen.",
+      "what_we_collect": "Was wir erfassen",
+      "collect_list": [
+        "Benutzername (zur Gew\u00e4hrleistung der Eindeutigkeit)",
+        "Anmeldezeitstempel (zur Erkennung inaktiver Konten)",
+        "Verschl\u00fcsselte Aufgabendaten (die wir nicht lesen k\u00f6nnen)"
+      ],
+      "what_we_dont_collect": "Was wir nicht erfassen",
+      "dont_collect_list": [
+        "E-Mail-Adresse (optional)",
+        "Pers\u00f6nliche Informationen \u00fcber Ihren Benutzernamen hinaus",
+        "Den Inhalt Ihrer Aufgaben (aufgrund der Verschl\u00fcsselung)"
+      ],
+      "data_security": "Datensicherheit",
+      "security_text": "Alle sensiblen Daten werden mit AES-GCM-Verschl\u00fcsselung gesch\u00fctzt. Ihr Passwort wird niemals auf unseren Servern gespeichert. Wir verwenden branchenstandard Sicherheitsma\u00dfnahmen zum Schutz unserer Infrastruktur.",
+      "cookies": "Cookies und lokaler Speicher",
+      "cookies_text": "Wir verwenden Cookies und lokalen Speicher ausschlie\u00dflich f\u00fcr wesentliche Funktionen wie die Aufrechterhaltung Ihrer Anmeldung und die Speicherung Ihrer Einstellungen."
+    }
+  },
+  "support": {
+    "title": "Reborn Foundation unterst\u00fctzen",
+    "description": "Helfen Sie uns, etwas zu bewirken",
+    "content": {
+      "intro": "Die Reborn Foundation widmet sich der Unterst\u00fctzung innovativer Projekte, die Datenschutz und Datensicherheit im digitalen Zeitalter priorisieren.",
+      "mission_title": "Unsere Mission",
+      "mission_text": "Open-Source-Werkzeuge zu schaffen und zu pflegen, die die Privatsph\u00e4re der Nutzer sch\u00fctzen und digitale Rechte f\u00fcr alle f\u00f6rdern.",
+      "why_donate_title": "Warum spenden?",
+      "why_donate": [
+        "Unterst\u00fctzung der Entwicklung datenschutzorientierter Anwendungen",
+        "Hilfe bei der Wartung der Infrastruktur f\u00fcr kostenlose Dienste",
+        "Erm\u00f6glichung von Forschung zu besseren Verschl\u00fcsselungsmethoden",
+        "Finanzierung von Bildungsprogrammen zum Thema digitaler Datenschutz"
+      ],
+      "donation_title": "Spendenm\u00f6glichkeiten",
+      "donation_options": {
+        "crypto": "Kryptow\u00e4hrung",
+        "bank": "Bank\u00fcberweisung",
+        "contact": "F\u00fcr weitere Informationen zur Spende kontaktieren Sie uns bitte unter support@example.org"
+      },
+      "disclaimer": "Hinweis: Website zu Demonstrationszwecken erstellt. Diese Seite zeigt, wie eine Spendenseite aussehen k\u00f6nnte."
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "task_due": {
+    "title": "\u00c9ch\u00e9ance de t\u00e2che approchante !",
+    "body_time": "Vous avez une t\u00e2che pr\u00e9vue pour {time}.",
+    "body_date": "Vous avez une t\u00e2che pr\u00e9vue pour le {date}.",
+    "body_today": "Vous avez une t\u00e2che pr\u00e9vue pour aujourd'hui.",
+    "body_unknown": "Vous avez une t\u00e2che pr\u00e9vue pour une date non sp\u00e9cifi\u00e9e."
+  },
+  "token_required": "Le jeton de notification est requis.",
+  "registration_failed": "L'enregistrement du jeton de notification a \u00e9chou\u00e9."
+}

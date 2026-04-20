@@ -1,0 +1,12 @@
+node_modules
+.nx/cache
+.nx/workspace-data
+.git
+.svelte-kit
+dist
+tmp
+build
+coverage
+logs
+*.tsbuildinfo
+.DS_Store

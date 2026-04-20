@@ -1,0 +1,15 @@
+{
+  "title": "Profil utilisateur",
+  "description": "G\u00e9rez votre compte et vos param\u00e8tres de s\u00e9curit\u00e9",
+  "user_info": "Informations du compte",
+  "username": "Nom d'utilisateur",
+  "email": "Adresse e-mail",
+  "member_since": "Membre depuis",
+  "security": "S\u00e9curit\u00e9",
+  "security_description": "G\u00e9rez les param\u00e8tres de s\u00e9curit\u00e9 de votre compte",
+  "change_password": "Changer le mot de passe",
+  "enable_2fa": "Activer l'authentification \u00e0 deux facteurs",
+  "danger_zone": "Zone de danger",
+  "danger_zone_description": "Actions irr\u00e9versibles li\u00e9es \u00e0 votre compte",
+  "delete_account": "Supprimer le compte"
+}

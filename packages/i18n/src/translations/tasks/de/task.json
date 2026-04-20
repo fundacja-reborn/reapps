@@ -1,0 +1,240 @@
+{
+  "sidebar": {
+    "tagline": "Zero-Knowledge-Aufgabenverwaltung",
+    "task_lists": "Aufgabenlisten",
+    "new_list": "Neue Liste",
+    "starred_tasks": "Markierte Aufgaben",
+    "completed_tasks": "Erledigte Aufgaben",
+    "trash": "Papierkorb"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Willkommen zur\u00fcck, {username}!",
+    "total_tasks": "Aufgaben gesamt",
+    "completed_today": "Heute erledigt",
+    "overdue": "\u00dcberf\u00e4llig",
+    "total_lists": "Aufgabenlisten",
+    "across_all_lists": "\u00fcber alle Listen",
+    "great_progress": "Guter Fortschritt!",
+    "needs_attention": "Erfordert Aufmerksamkeit",
+    "all_on_track": "Alles auf Kurs",
+    "organized_tasks": "organisierte Sammlungen",
+    "upcoming_tasks": "Anstehende Aufgaben",
+    "next_7_days": "N\u00e4chste 7 Tage",
+    "no_upcoming_tasks": "Keine anstehenden Aufgaben",
+    "tasks_coming_soon": "Aufgabenfunktionen in K\u00fcrze",
+    "recent_activity": "Letzte Aktivit\u00e4t",
+    "your_latest_actions": "Ihre letzten Aktionen",
+    "activity_coming_soon": "Aktivit\u00e4tsverfolgung in K\u00fcrze",
+    "productivity_score": "Produktivit\u00e4tswert",
+    "this_week": "Diese Woche",
+    "score_coming_soon": "Bewertungsberechnung in K\u00fcrze"
+  },
+  "fields": {
+    "title": "Titel",
+    "description": "Beschreibung",
+    "due_date": "F\u00e4lligkeitsdatum",
+    "list": "Aufgabenliste",
+    "time": "Uhrzeit",
+    "add_time": "Uhrzeit festlegen",
+    "select_date": "Datum ausw\u00e4hlen",
+    "clear_date": "Datum l\u00f6schen",
+    "set_time": "Uhrzeit festlegen",
+    "recurrence": "Wiederholung",
+    "toggle_recurrence": "Wiederholung umschalten"
+  },
+  "placeholders": {
+    "title": "Aufgabentitel eingeben",
+    "description": "Beschreibung hinzuf\u00fcgen (optional)",
+    "due_date": "F\u00e4lligkeitsdatum ausw\u00e4hlen",
+    "list": "Aufgabenliste ausw\u00e4hlen",
+    "add_description": "Aufgabenbeschreibung hinzuf\u00fcgen"
+  },
+  "create": {
+    "title": "Neue Aufgabe",
+    "description": "Eine neue Aufgabe zur Liste hinzuf\u00fcgen"
+  },
+  "errors": {
+    "title_required": "Aufgabentitel ist erforderlich",
+    "create_failed": "Aufgabe konnte nicht erstellt werden",
+    "update_failed": "Aufgabe konnte nicht aktualisiert werden",
+    "not_found": "Aufgabe nicht gefunden",
+    "load_failed": "Aufgabe konnte nicht geladen werden",
+    "delete_failed": "Aufgabe konnte nicht gel\u00f6scht werden",
+    "reorder_failed": "Aufgabe konnte nicht neu sortiert werden",
+    "restore_failed": "Aufgabe konnte nicht wiederhergestellt werden",
+    "move_failed": "Aufgabe konnte nicht verschoben werden",
+    "title_too_long": "Titel \u00fcberschreitet die maximale Gr\u00f6\u00dfe ({max})",
+    "description_too_long": "Beschreibung \u00fcberschreitet die maximale Gr\u00f6\u00dfe ({max})"
+  },
+  "success": {
+    "created": "Aufgabe erfolgreich erstellt",
+    "updated": "Aufgabe erfolgreich aktualisiert",
+    "deleted": "Aufgabe erfolgreich gel\u00f6scht",
+    "restored": "Aufgabe erfolgreich wiederhergestellt",
+    "starred": "Aufgabe markiert",
+    "unstarred": "Markierung entfernt",
+    "completed": "Aufgabe als erledigt markiert",
+    "uncompleted": "Aufgabe als unerledigt markiert",
+    "moved": "Aufgabe erfolgreich verschoben"
+  },
+  "status": {
+    "completed": "Erledigt",
+    "starred": "Markiert",
+    "recurring": "Wiederkehrend"
+  },
+  "detail": {
+    "title": "Aufgabendetails"
+  },
+  "completed_at": "Erledigt am",
+  "select_date": "Datum ausw\u00e4hlen",
+  "undo": {
+    "message": "Aufgabe wurde gel\u00f6scht",
+    "action": "R\u00fcckg\u00e4ngig"
+  },
+  "aria": {
+    "delete_task": "Aufgabe l\u00f6schen"
+  },
+  "move_to_list": "In Liste verschieben",
+  "move_to_list_description": "W\u00e4hlen Sie die Liste, in die Sie diese Aufgabe verschieben m\u00f6chten.",
+  "move_task_description": "W\u00e4hlen Sie die Liste, in die Sie die Aufgabe verschieben m\u00f6chten.",
+  "options": "Aufgabenoptionen",
+  "mark_complete": "Als erledigt markieren",
+  "mark_incomplete": "Als unerledigt markieren",
+  "recurrence_label": "Wiederholen",
+  "remove_date": "Datum entfernen",
+  "remove_date_title": "F\u00e4lligkeitsdatum entfernen",
+  "remove_date_description": "Dies entfernt auch die Uhrzeit- und Wiederholungseinstellungen.",
+  "remove_date_instance_description": "Dies l\u00f6st diese Aufgabe auch vom Wiederholungszyklus.",
+  "remove_recurrence_title": "Wiederholung entfernen",
+  "remove_recurrence_description": "Die Aufgabe wird nicht mehr wiederholt.",
+  "recurrence": {
+    "title": "Aufgabenwiederholung",
+    "description": "Legen Sie fest, wie oft die Aufgabe wiederholt werden soll.",
+    "add": "Wiederholung hinzuf\u00fcgen",
+    "edit": "Wiederholung bearbeiten",
+    "interval": {
+      "label": "Intervall"
+    },
+    "frequency": {
+      "label": "H\u00e4ufigkeit",
+      "daily": "T\u00e4glich",
+      "weekly": "W\u00f6chentlich",
+      "monthly": "Monatlich",
+      "yearly": "J\u00e4hrlich"
+    },
+    "every_n": {
+      "daily": "Alle {n} {n, plural, =1 {Tag} other {Tage}}",
+      "weekly": "Alle {n} {n, plural, =1 {Woche} other {Wochen}}",
+      "monthly": "Alle {n} {n, plural, =1 {Monat} other {Monate}}",
+      "yearly": "Alle {n} {n, plural, =1 {Jahr} other {Jahre}}"
+    },
+    "n_times": "{n, plural, =1 {# Mal} other {# Mal}}",
+    "until": "bis",
+    "days": {
+      "label": "Wochentage",
+      "monday": "Montag",
+      "tuesday": "Dienstag",
+      "wednesday": "Mittwoch",
+      "thursday": "Donnerstag",
+      "friday": "Freitag",
+      "saturday": "Samstag",
+      "sunday": "Sonntag"
+    },
+    "end": {
+      "label": "Wiederholung beenden",
+      "never": "Nie",
+      "after": "Nach",
+      "occurrences": "Wiederholungen",
+      "on_date": "Am Datum"
+    }
+  },
+  "subtasks": {
+    "title": "Teilaufgaben",
+    "add": "Teilaufgabe hinzuf\u00fcgen",
+    "add_placeholder": "Teilaufgabenname eingeben",
+    "created": "Teilaufgabe erstellt",
+    "updated": "Teilaufgabe aktualisiert",
+    "deleted": "Teilaufgabe gel\u00f6scht",
+    "marked_complete": "Teilaufgabe als erledigt markiert",
+    "marked_incomplete": "Teilaufgabe als unerledigt markiert",
+    "create_failed": "Teilaufgabe konnte nicht erstellt werden",
+    "update_failed": "Teilaufgabe konnte nicht aktualisiert werden",
+    "delete_failed": "Teilaufgabe konnte nicht gel\u00f6scht werden",
+    "delete_title": "Teilaufgabe l\u00f6schen",
+    "delete_description": "Sind Sie sicher, dass Sie die Teilaufgabe \u201E{title}\u201C l\u00f6schen m\u00f6chten? Diese Aktion kann nicht r\u00fcckg\u00e4ngig gemacht werden.",
+    "reordered": "Teilaufgaben neu sortiert",
+    "reorder_failed": "Teilaufgaben konnten nicht neu sortiert werden",
+    "add_aria": "Teilaufgabe hinzuf\u00fcgen",
+    "cancel_aria": "Hinzuf\u00fcgen der Teilaufgabe abbrechen"
+  },
+  "trash": {
+    "title": "Papierkorb",
+    "description": "Aufgaben im Papierkorb werden nach 30 Tagen automatisch gel\u00f6scht.",
+    "banner_message": "Diese Aufgabe befindet sich im Papierkorb",
+    "banner_restore_hint": "Stellen Sie sie wieder her oder l\u00f6schen Sie sie endg\u00fcltig.",
+    "empty": "Papierkorb ist leer",
+    "count": "{count} {count, plural, one {Aufgabe} other {Aufgaben}} im Papierkorb",
+    "from_list": "Aus Liste",
+    "deleted_on": "Gel\u00f6scht am",
+    "restore": "Wiederherstellen",
+    "restored": "Aufgabe erfolgreich wiederhergestellt",
+    "restore_failed": "Aufgabe konnte nicht wiederhergestellt werden",
+    "permanently_deleted": "Aufgabe endg\u00fcltig gel\u00f6scht",
+    "permanently_delete": "Endg\u00fcltig l\u00f6schen",
+    "delete_failed": "Aufgabe konnte nicht gel\u00f6scht werden",
+    "empty_trash": "Papierkorb leeren",
+    "emptied": "Papierkorb erfolgreich geleert",
+    "empty_failed": "Papierkorb konnte nicht geleert werden",
+    "auto_delete_warning": "Wird automatisch in {days} {days, plural, one {Tag} other {Tagen}} gel\u00f6scht",
+    "auto_delete_info": "Aufgaben, die sich l\u00e4nger als 30 Tage im Papierkorb befinden, werden automatisch gel\u00f6scht.",
+    "auto_purged": "{count} alte {count, plural, one {Aufgabe} other {Aufgaben}} automatisch gel\u00f6scht",
+    "unknown_list": "Unbekannte Liste",
+    "confirm_delete_title": "Aufgabe endg\u00fcltig l\u00f6schen",
+    "confirm_delete_description": "Sind Sie sicher, dass Sie die Aufgabe \u201E{title}\u201C endg\u00fcltig l\u00f6schen m\u00f6chten? Diese Aktion kann nicht r\u00fcckg\u00e4ngig gemacht werden.",
+    "confirm_empty_title": "Papierkorb leeren",
+    "confirm_empty_description": "Sind Sie sicher, dass Sie {count} {count, plural, one {Aufgabe} other {Aufgaben}} endg\u00fcltig l\u00f6schen m\u00f6chten? Diese Aktion kann nicht r\u00fcckg\u00e4ngig gemacht werden."
+  },
+  "delete": {
+    "title": "Aufgabe l\u00f6schen",
+    "confirm_message": "Sind Sie sicher, dass Sie die Aufgabe \u201E{title}\u201C l\u00f6schen m\u00f6chten? Diese Aktion kann nicht r\u00fcckg\u00e4ngig gemacht werden.",
+    "this_only": "Nur dieses Vorkommen",
+    "future": "Dieses und alle zuk\u00fcnftigen Vorkommen"
+  },
+  "select_from_list": "W\u00e4hlen Sie eine Aufgabe aus der Liste",
+  "select_from_list_or": "oder w\u00e4hlen Sie eine Aufgabe aus der Liste",
+  "select_from_list_hint": "Klicken Sie auf eine Aufgabe in der Seitenleiste, um ihre Details anzuzeigen",
+  "no_tasks_yet": "Sie haben noch keine Aufgaben",
+  "no_tasks_yet_hint": "Erstellen Sie Ihre erste Aufgabe, um zu beginnen",
+  "add_new": "Neue Aufgabe",
+  "empty_list": "Keine Aufgaben in dieser Liste",
+  "recurring_instance": {
+    "recurrence_info": "Wiederholung",
+    "skip": "Dieses Vorkommen \u00fcberspringen",
+    "skip_title": "Vorkommen \u00fcberspringen",
+    "skip_description": "Sind Sie sicher, dass Sie dieses Vorkommen \u00fcberspringen m\u00f6chten? Die Aufgabe wird aus der Liste entfernt, aber der Wiederholungszyklus bleibt aktiv.",
+    "skip_success": "Vorkommen \u00fcbersprungen",
+    "stop_cycle": "Wiederholung beenden",
+    "stop_cycle_title": "Wiederholung beenden",
+    "stop_cycle_description": "Dies l\u00f6scht alle zuk\u00fcnftigen Vorkommen. Die Aufgabe wird nicht mehr wiederholt.",
+    "stop_cycle_success": "Wiederholung beendet",
+    "history": "Vorkommensverlauf",
+    "history_title": "Vorkommensverlauf",
+    "history_empty": "Keine Vorkommen zum Anzeigen",
+    "history_current": "Aktuell",
+    "edit_recurrence": "Wiederholung bearbeiten",
+    "edit_options_title": "Wiederholung \u00e4ndern",
+    "edit_options_description": "Welche Vorkommen sollen ge\u00e4ndert werden?",
+    "edit_option_this_and_future": "Dieses und zuk\u00fcnftige Vorkommen",
+    "edit_option_all": "Alle Vorkommen",
+    "edit_success": "Wiederholung aktualisiert"
+  },
+  "empty_state": "Keine Aufgaben",
+  "quick_add": {
+    "placeholder": "Aufgabe hinzuf\u00fcgen...",
+    "add_to_list": "Hinzuf\u00fcgen zu:",
+    "hint_today": "Aufgabe mit heutigem Datum",
+    "hint_starred": "Markierte Aufgabe",
+    "hint_upcoming": "Aufgabe f\u00fcr morgen"
+  }
+}

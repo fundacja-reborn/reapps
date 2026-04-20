@@ -1,0 +1,175 @@
+{
+  "my_tasks": "Meine Aufgaben",
+  "completed": "Erledigt",
+  "add_new": "Neue Aufgabe",
+  "add_task": "Aufgabe hinzuf\u00fcgen",
+  "add_task_description": "Aufgabenbeschreibung hinzuf\u00fcgen",
+  "search_placeholder": "Aufgaben suchen...",
+  "hide_completed": "Erledigte ausblenden",
+  "show_completed": "Erledigte anzeigen",
+  "show_all": "Alle anzeigen",
+  "show_starred": "Markierte anzeigen",
+  "add": "Aufgabe hinzuf\u00fcgen",
+  "edit": "Aufgabe bearbeiten",
+  "delete": {
+    "title": "Aufgabe l\u00f6schen",
+    "confirm_message": "Sind Sie sicher, dass Sie die Aufgabe \u201E{title}\u201C l\u00f6schen m\u00f6chten?",
+    "this_only": "Nur dieses Vorkommen l\u00f6schen",
+    "future": "Dieses und alle zuk\u00fcnftigen Vorkommen l\u00f6schen"
+  },
+  "delete_confirmation": "Sind Sie sicher, dass Sie diese Aufgabe l\u00f6schen m\u00f6chten? Diese Aktion kann nicht r\u00fcckg\u00e4ngig gemacht werden.",
+  "toggle_completion": "Erledigung umschalten",
+  "toggle_star": "Markierung umschalten",
+  "due_date": "F\u00e4lligkeitsdatum",
+  "description": "Beschreibung",
+  "title": "Titel",
+  "title_placeholder": "Aufgabentitel eingeben",
+  "description_placeholder": "Aufgabenbeschreibung eingeben (optional)",
+  "edit_description": "Ihre Aufgabendaten bearbeiten",
+  "select_date": "Datum ausw\u00e4hlen",
+  "select_list": "Liste ausw\u00e4hlen",
+  "move_to_list": "In Liste verschieben",
+  "move_task": "Aufgabe verschieben",
+  "move_task_description": "W\u00e4hlen Sie eine Liste, in die diese Aufgabe verschoben werden soll",
+  "recurring": {
+    "reset_notification": "Aufgabe wurde mit neuem F\u00e4lligkeitsdatum zur\u00fcckgesetzt: {date}",
+    "completed_notification": "Aufgabe wurde erledigt und wird nicht mehr wiederholt",
+    "next_occurrence": "N\u00e4chstes Vorkommen: {date}",
+    "remaining_occurrences": "{count, plural, =1 {# Vorkommen verbleibend} other {# Vorkommen verbleibend}}",
+    "last_occurrence": "Dies war das letzte Vorkommen dieser wiederkehrenden Aufgabe",
+    "completed_count": "{count}x"
+  },
+  "subtasks": {
+    "add": "Teilaufgabe hinzuf\u00fcgen",
+    "placeholder": "Teilaufgabenname eingeben",
+    "header": "Teilaufgaben",
+    "delete": {
+      "title": "Teilaufgabe l\u00f6schen",
+      "description": "Sind Sie sicher, dass Sie diese Teilaufgabe l\u00f6schen m\u00f6chten?",
+      "confirm": "L\u00f6schen",
+      "cancel": "Abbrechen",
+      "error": "Teilaufgabe konnte nicht gel\u00f6scht werden. Bitte versuchen Sie es erneut.",
+      "error_with_details": "Teilaufgabe konnte nicht gel\u00f6scht werden: {errorMessage}. Bitte versuchen Sie es erneut.",
+      "processing": "Wird gel\u00f6scht..."
+    }
+  },
+  "errors": {
+    "title_required": "Aufgabentitel ist erforderlich",
+    "fetch_failed": "Aufgaben konnten nicht abgerufen werden",
+    "create_failed": "Aufgabe konnte nicht erstellt werden",
+    "update_failed": "Aufgabe konnte nicht aktualisiert werden",
+    "delete_failed": "Aufgabe konnte nicht gel\u00f6scht werden",
+    "list_not_found": "Aufgabenliste nicht gefunden",
+    "task_not_found": "Aufgabe nicht gefunden",
+    "required_fields": "Pflichtfelder fehlen",
+    "list_id_required": "Aufgabenlisten-ID ist erforderlich",
+    "autosave_failed": "Automatisches Speichern fehlgeschlagen. Ihre \u00c4nderungen wurden m\u00f6glicherweise nicht gespeichert.",
+    "invalid_date": "Ung\u00fcltiges Datumsformat",
+    "list_required": "Bitte w\u00e4hlen Sie eine Aufgabenliste",
+    "move_failed": "Aufgabe konnte nicht in die neue Liste verschoben werden"
+  },
+  "view": {
+    "title": "Aufgabendetails",
+    "back": "Zur\u00fcck zu Aufgaben",
+    "select_task": "Aufgabe ausw\u00e4hlen"
+  },
+  "fields": {
+    "title": "Aufgabentitel",
+    "description": "Aufgabenbeschreibung",
+    "due_date": "Datum",
+    "recurring": "Wiederkehrend",
+    "recurrence_rule": "Wiederholungsmuster (z.B. FREQ=WEEKLY;BYDAY=MO,WE,FR)",
+    "completed_at": "Erledigt am",
+    "next_occurrence": "N\u00e4chstes Vorkommen",
+    "completed_count": "Erledigte Vorkommen"
+  },
+  "actions": {
+    "delete": "Aufgabe l\u00f6schen",
+    "toggle_star": "Markierung umschalten",
+    "move_to_list": "In andere Liste verschieben",
+    "more_options": "Weitere Optionen"
+  },
+  "aria": {
+    "mark_as_complete": "Als erledigt markieren",
+    "mark_as_incomplete": "Als unerledigt markieren",
+    "add_star": "Markierung hinzuf\u00fcgen",
+    "remove_star": "Markierung entfernen",
+    "active_tasks": "Aktive Aufgaben"
+  },
+  "date": {
+    "select": "Datum ausw\u00e4hlen",
+    "confirm": "Best\u00e4tigen",
+    "cancel": "Abbrechen",
+    "selected": "Ausgew\u00e4hltes Datum",
+    "change": "Datum \u00e4ndern",
+    "today": "heute",
+    "tomorrow": "morgen",
+    "yesterday": "gestern",
+    "in_n_days": "{count, plural, =0 {heute} =1 {in 1 Tag} other {in {count} Tagen}}"
+  },
+  "time": {
+    "select_time": "Uhrzeit ausw\u00e4hlen",
+    "select": "Uhrzeit ausw\u00e4hlen",
+    "time": "Uhrzeit",
+    "hours": "Stunden",
+    "minutes": "Minuten",
+    "add_time": "Uhrzeit hinzuf\u00fcgen",
+    "confirm": "Best\u00e4tigen",
+    "cancel": "Abbrechen"
+  },
+  "properties": {
+    "title": "Eigenschaften",
+    "delete": {
+      "date": {
+        "title": "Datum l\u00f6schen",
+        "description": "Sind Sie sicher, dass Sie das Datum l\u00f6schen m\u00f6chten? Dies entfernt auch die Uhrzeit- und Wiederholungseinstellungen."
+      },
+      "time": {
+        "title": "Uhrzeit l\u00f6schen",
+        "description": "Sind Sie sicher, dass Sie die Uhrzeit l\u00f6schen m\u00f6chten?"
+      },
+      "recurrence": {
+        "title": "Wiederholung l\u00f6schen",
+        "description": "Sind Sie sicher, dass Sie die Wiederholungseinstellungen l\u00f6schen m\u00f6chten?"
+      }
+    }
+  },
+  "recurrence": {
+    "title": "Wiederholung festlegen",
+    "description": "Konfigurieren Sie, wie oft diese Aufgabe wiederholt werden soll",
+    "add": "Wiederholung hinzuf\u00fcgen",
+    "edit": "Wiederholung bearbeiten",
+    "frequency": {
+      "label": "H\u00e4ufigkeit",
+      "daily": "T\u00e4glich",
+      "weekly": "W\u00f6chentlich",
+      "monthly": "Monatlich",
+      "yearly": "J\u00e4hrlich"
+    },
+    "interval": {
+      "label": "Wiederholen alle",
+      "daily": "Tag(e)",
+      "weekly": "Woche(n)",
+      "monthly": "Monat(e)",
+      "yearly": "Jahr(e)"
+    },
+    "days": {
+      "label": "An Tagen",
+      "monday": "Montag",
+      "tuesday": "Dienstag",
+      "wednesday": "Mittwoch",
+      "thursday": "Donnerstag",
+      "friday": "Freitag",
+      "saturday": "Samstag",
+      "sunday": "Sonntag"
+    },
+    "end": {
+      "label": "Endet",
+      "never": "Nie",
+      "after": "Nach",
+      "on_date": "Am Datum",
+      "occurrences": "Vorkommen"
+    }
+  },
+  "more_options": "Weitere Optionen"
+}

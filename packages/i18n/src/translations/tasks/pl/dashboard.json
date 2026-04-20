@@ -1,0 +1,22 @@
+{
+  "title": "Panel główny",
+  "welcome": "Witaj ponownie, {username}!",
+  "logout": "Wyloguj",
+  "logging_out": "Wylogowywanie...",
+  "user_info": "Informacje o koncie",
+  "username": "Nazwa użytkownika",
+  "member_since": "Użytkownik od",
+  "total_tasks": "Wszystkie zadania",
+  "total_lists": "Listy zadań",
+  "due_today": "Na dziś",
+  "tasks_coming_soon": "Śledzenie zadań wkrótce dostępne",
+  "lists_coming_soon": "Zarządzanie listami wkrótce dostępne",
+  "calendar_coming_soon": "Widok kalendarza wkrótce dostępny",
+  "coming_soon_title": "Funkcje dostępne wkrótce",
+  "coming_soon_description": "Pracujemy nad kompletnym systemem zarządzania zadaniami. Oto co nadchodzi:",
+  "feature_lists": "Listy zadań do organizacji pracy",
+  "feature_tasks": "Pełne zarządzanie zadaniami z terminami i opisami",
+  "feature_reminders": "Inteligentne przypomnienia i powiadomienia",
+  "feature_sync": "Synchronizacja w czasie rzeczywistym między urządzeniami",
+  "feature_offline": "Pełna funkcjonalność offline"
+}

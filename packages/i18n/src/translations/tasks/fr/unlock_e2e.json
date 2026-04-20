@@ -1,0 +1,12 @@
+{
+  "title": "D\u00e9verrouiller la session",
+  "description": "Entrez votre mot de passe pour acc\u00e9der \u00e0 vos donn\u00e9es chiffr\u00e9es.",
+  "password_label": "Mot de passe",
+  "submit_button": "D\u00e9verrouiller",
+  "logged_in_as": "Connect\u00e9 en tant que",
+  "wrong_account": "Mauvais compte ?",
+  "errors": {
+    "invalid_password": "Mot de passe invalide. Veuillez r\u00e9essayer.",
+    "unknown": "Une erreur inconnue s'est produite lors du d\u00e9verrouillage de votre cl\u00e9."
+  }
+}

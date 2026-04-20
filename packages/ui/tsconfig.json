@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./dist",
+    "declarationDir": "./dist",
+    "rootDir": "./src",
+    "types": ["vite/client", "svelte"]
+  },
+  "include": ["src/**/*", "src/ambient.d.ts"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],
+  "references": [
+    { "path": "../types" }
+  ]
+}

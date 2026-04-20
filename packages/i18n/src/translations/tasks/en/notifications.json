@@ -1,0 +1,11 @@
+{
+  "task_due": {
+    "title": "Task deadline approaching!",
+    "body_time": "You have a task scheduled for {time}.",
+    "body_date": "You have a task scheduled for {date}.",
+    "body_today": "You have a task scheduled for today.",
+    "body_unknown": "You have a task scheduled for an unspecified date."
+  },
+  "token_required": "Notification token is required.",
+  "registration_failed": "Notification token registration failed."
+}

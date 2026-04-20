@@ -1,0 +1,175 @@
+{
+  "my_tasks": "My Tasks",
+  "completed": "Completed",
+  "add_new": "New Task",
+  "add_task": "Add Task",
+  "add_task_description": "Add task description",
+  "search_placeholder": "Search tasks...",
+  "hide_completed": "Hide Completed",
+  "show_completed": "Show Completed",
+  "show_all": "Show All",
+  "show_starred": "Show Starred",
+  "add": "Add Task",
+  "edit": "Edit Task",
+  "delete": {
+    "title": "Delete task",
+    "confirm_message": "Are you sure you want to delete task '{title}'?",
+    "this_only": "Delete only this occurrence",
+    "future": "Delete this and all future occurrences"
+  },
+  "delete_confirmation": "Are you sure you want to delete this task? This action cannot be undone.",
+  "toggle_completion": "Toggle completion",
+  "toggle_star": "Toggle star",
+  "due_date": "Due date",
+  "description": "Description",
+  "title": "Title",
+  "title_placeholder": "Enter task title",
+  "description_placeholder": "Enter task description (optional)",
+  "edit_description": "Edit your task data",
+  "select_date": "Select date",
+  "select_list": "Select list",
+  "move_to_list": "Move to list",
+  "move_task": "Move Task",
+  "move_task_description": "Select a list to move this task to",
+  "recurring": {
+    "reset_notification": "Task has been reset with new due date: {date}",
+    "completed_notification": "Task has been completed and will not recur anymore",
+    "next_occurrence": "Next occurrence: {date}",
+    "remaining_occurrences": "{count, plural, =1 {# occurrence remaining} other {# occurrences remaining}}",
+    "last_occurrence": "This was the last occurrence of this recurring task",
+    "completed_count": "{count}x"
+  },
+  "subtasks": {
+    "add": "Add subtask",
+    "placeholder": "Enter subtask name",
+    "header": "Subtasks",
+    "delete": {
+      "title": "Delete subtask",
+      "description": "Are you sure you want to delete this subtask?",
+      "confirm": "Delete",
+      "cancel": "Cancel",
+      "error": "Failed to delete subtask. Please try again.",
+      "error_with_details": "Failed to delete subtask: {errorMessage}. Please try again.",
+      "processing": "Deleting..."
+    }
+  },
+  "errors": {
+    "title_required": "Task title is required",
+    "fetch_failed": "Failed to fetch tasks",
+    "create_failed": "Failed to create task",
+    "update_failed": "Failed to update task",
+    "delete_failed": "Failed to delete task",
+    "list_not_found": "Task list not found",
+    "task_not_found": "Task not found",
+    "required_fields": "Required fields are missing",
+    "list_id_required": "Task list ID is required",
+    "autosave_failed": "Auto-save failed. Your changes may not be saved.",
+    "invalid_date": "Invalid date format",
+    "list_required": "Please select a task list",
+    "move_failed": "Failed to move task to new list"
+  },
+  "view": {
+    "title": "Task Details",
+    "back": "Back to tasks",
+    "select_task": "Select a task"
+  },
+  "fields": {
+    "title": "Task title",
+    "description": "Task description",
+    "due_date": "Date",
+    "recurring": "Recurring",
+    "recurrence_rule": "Recurrence pattern (e.g. FREQ=WEEKLY;BYDAY=MO,WE,FR)",
+    "completed_at": "Completed on",
+    "next_occurrence": "Next occurrence",
+    "completed_count": "Completed occurrences"
+  },
+  "actions": {
+    "delete": "Delete task",
+    "toggle_star": "Toggle star",
+    "move_to_list": "Move to another list",
+    "more_options": "More options"
+  },
+  "aria": {
+    "mark_as_complete": "Mark as complete",
+    "mark_as_incomplete": "Mark as incomplete",
+    "add_star": "Add star",
+    "remove_star": "Remove star",
+    "active_tasks": "Active tasks"
+  },
+  "date": {
+    "select": "Select date",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "selected": "Selected date",
+    "change": "Change date",
+    "today": "today",
+    "tomorrow": "tomorrow",
+    "yesterday": "yesterday",
+    "in_n_days": "{count, plural, =0 {today} =1 {in 1 day} other {in {count} days}}"
+  },
+  "time": {
+    "select_time": "Select time",
+    "select": "Select time",
+    "time": "Time",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "add_time": "Add time",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "properties": {
+    "title": "Properties",
+    "delete": {
+      "date": {
+        "title": "Delete date",
+        "description": "Are you sure you want to delete the date? This will also remove the time and recurrence settings."
+      },
+      "time": {
+        "title": "Delete time",
+        "description": "Are you sure you want to delete the time?"
+      },
+      "recurrence": {
+        "title": "Delete recurrence",
+        "description": "Are you sure you want to delete the recurrence settings?"
+      }
+    }
+  },
+  "recurrence": {
+    "title": "Set Recurrence",
+    "description": "Configure how often this task should repeat",
+    "add": "Add recurrence",
+    "edit": "Edit recurrence",
+    "frequency": {
+      "label": "Frequency",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "yearly": "Yearly"
+    },
+    "interval": {
+      "label": "Repeat every",
+      "daily": "day(s)",
+      "weekly": "week(s)",
+      "monthly": "month(s)",
+      "yearly": "year(s)"
+    },
+    "days": {
+      "label": "On days",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    },
+    "end": {
+      "label": "Ends",
+      "never": "Never",
+      "after": "After",
+      "on_date": "On date",
+      "occurrences": "occurrences"
+    }
+  },
+  "more_options": "More options"
+}

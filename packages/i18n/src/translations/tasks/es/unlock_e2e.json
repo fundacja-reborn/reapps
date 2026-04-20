@@ -1,0 +1,12 @@
+{
+  "title": "Desbloquear sesión",
+  "description": "Introduzca su contraseña para acceder a sus datos cifrados.",
+  "password_label": "Contraseña",
+  "submit_button": "Desbloquear",
+  "logged_in_as": "Sesión iniciada como",
+  "wrong_account": "¿Cuenta incorrecta?",
+  "errors": {
+    "invalid_password": "Contraseña no válida. Por favor, inténtelo de nuevo.",
+    "unknown": "Se produjo un error desconocido al desbloquear su clave."
+  }
+}

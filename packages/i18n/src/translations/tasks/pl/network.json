@@ -1,0 +1,9 @@
+{
+  "navigation_deferred": "Nawigacja odroczona",
+  "list_created_offline": "Lista została utworzona. Nawigacja zostanie dokończona po przywróceniu połączenia.",
+  "offline_mode": "Praca offline",
+  "list_created_offline_info": "Lista utworzona. Możesz kontynuować pracę w trybie offline.",
+  "first_run_online_required": "Wymagane połączenie z internetem",
+  "first_run_online_required_desc": "Pierwsza konfiguracja wymaga połączenia z internetem, aby pobrać dane konta.",
+  "first_run_retry": "Spróbuj ponownie"
+}

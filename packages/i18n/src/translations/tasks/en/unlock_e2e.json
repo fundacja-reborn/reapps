@@ -1,0 +1,12 @@
+{
+  "title": "Unlock Session",
+  "description": "Enter your password to access your encrypted data.",
+  "password_label": "Password",
+  "submit_button": "Unlock",
+  "logged_in_as": "Logged in as",
+  "wrong_account": "Wrong account?",
+  "errors": {
+    "invalid_password": "Invalid password. Please try again.",
+    "unknown": "An unknown error occurred while unlocking your key."
+  }
+}

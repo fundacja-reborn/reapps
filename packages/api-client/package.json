@@ -1,0 +1,47 @@
+{
+  "name": "@reborn/api-client",
+  "version": "0.1.0",
+  "description": "Universal API client for Reborn apps with E2E encryption support",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:run": "vitest run",
+    "lint": "eslint src",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@reborn/auth": "workspace:*",
+    "@reborn/crypto": "workspace:*",
+    "@reborn/types": "workspace:*",
+    "@reborn/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.2",
+    "@vitest/ui": "4.1.4",
+    "eslint": "9.39.4",
+    "tsup": "8.5.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.4"
+  },
+  "peerDependencies": {
+    "@reborn/auth": "workspace:*",
+    "@reborn/crypto": "workspace:*"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

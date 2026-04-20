@@ -1,0 +1,9 @@
+{
+  "navigation_deferred": "Navigation deferred",
+  "list_created_offline": "List created successfully. Navigation will complete when connection is restored.",
+  "offline_mode": "Working offline",
+  "list_created_offline_info": "List created. You can continue working offline.",
+  "first_run_online_required": "Internet connection required",
+  "first_run_online_required_desc": "Initial setup requires an internet connection to download your account data.",
+  "first_run_retry": "Try again"
+}

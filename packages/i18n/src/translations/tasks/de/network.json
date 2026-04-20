@@ -1,0 +1,9 @@
+{
+  "navigation_deferred": "Navigation verz\u00f6gert",
+  "list_created_offline": "Liste erfolgreich erstellt. Die Navigation wird fortgesetzt, sobald die Verbindung wiederhergestellt ist.",
+  "offline_mode": "Offline-Modus",
+  "list_created_offline_info": "Liste erstellt. Sie k\u00f6nnen offline weiterarbeiten.",
+  "first_run_online_required": "Internetverbindung erforderlich",
+  "first_run_online_required_desc": "Die Ersteinrichtung erfordert eine Internetverbindung, um Ihre Kontodaten herunterzuladen.",
+  "first_run_retry": "Erneut versuchen"
+}

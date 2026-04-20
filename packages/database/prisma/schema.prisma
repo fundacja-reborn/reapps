@@ -1,0 +1,283 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== USER & AUTHENTICATION ====================
+
+model User {
+  id                    String         @id @default(uuid())
+  username              String         @unique
+  password_hash         String
+  master_key_encrypted  String
+  master_key_salt       String         @default("")
+  created_at            DateTime       @default(now())
+  updated_at            DateTime       @updatedAt
+  last_login_at         DateTime?
+  
+  // User preferences (encrypted in settings_encrypted)
+  settings_encrypted    String?        // Contains theme, language, date format, etc.
+  
+  // Relations
+  recoveryCodes         RecoveryCode[]
+  taskLists             TaskList[]
+  tasks                 Task[]
+  twoFactorAuth         TwoFactorAuth?
+  sessions              UserSession[]
+  refreshTokens         RefreshToken[]
+  webPushSubscriptions  UserWebPushSubscription[]
+  
+  // Notes-related relations
+  notes                 Note[]
+  folders               Folder[]
+  tags                  Tag[]
+  noteVersions          NoteVersion[]
+  idempotencyKeys       IdempotencyKey[]
+  
+  @@index([username])
+  @@index([created_at])
+}
+
+model UserSession {
+  id                    String         @id @default(uuid())
+  user_id               String
+  login_at              DateTime       @default(now())
+  expires_at            DateTime
+  is_active             Boolean        @default(true)
+  device_info_encrypted String?
+
+  user          User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([user_id, is_active])
+  @@index([expires_at])
+}
+
+model RefreshToken {
+  id         String       @id @default(uuid())
+  user_id    String
+  token      String       @unique
+  family_id  String       // Groups tokens from the same login session (rotation chain)
+  is_revoked Boolean      @default(false) // Marked true after rotation; reuse = compromise
+  expires_at DateTime
+  created_at DateTime     @default(now())
+  session_id String?      // Links to UserSession — nullable for backward compatibility
+
+  user       User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  session    UserSession? @relation(fields: [session_id], references: [id], onDelete: SetNull)
+
+  @@index([token])
+  @@index([user_id])
+  @@index([family_id])
+  @@index([expires_at])
+  @@index([session_id])
+}
+
+model RecoveryCode {
+  id         String   @id @default(uuid())
+  user_id    String
+  code_hash  String
+  created_at DateTime @default(now())
+  is_used    Boolean  @default(false)
+  used_at    DateTime?
+  
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@index([user_id, is_used])
+}
+
+model TwoFactorAuth {
+  id               String   @id @default(uuid())
+  user_id          String   @unique
+  secret_encrypted String   // E2E encrypted (for client-side backup)
+  secret_server    String   // Server-side TOTP secret (needed for verification at login)
+  is_enabled       Boolean  @default(false)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  user             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model UserWebPushSubscription {
+  id           String   @id @default(uuid())
+  user_id      String
+  endpoint     String   @unique
+  keys_encrypted String   // E2E encrypted JSON
+  created_at   DateTime @default(now())
+  last_used_at DateTime @updatedAt
+  is_active    Boolean  @default(true)
+  device_info_encrypted String?  // E2E encrypted
+  
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@index([user_id, is_active])
+}
+
+// ==================== TASKS ====================
+
+model TaskList {
+  id                 String    @id @default(uuid())
+  user_id            String
+  name_encrypted     String    // E2E encrypted
+  metadata_encrypted String?   // E2E encrypted (color, icon)
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime? // Soft delete
+  is_default         Boolean   @default(false)
+  order_index        Int       @default(0)
+  sync_version       Int       @default(0)
+  
+  tasks              Task[]
+  user               User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@index([user_id, is_default])
+  @@index([user_id, deleted_at])
+}
+
+model Task {
+  id                          String    @id @default(uuid())
+  user_id                     String    // Denormalized for easier queries
+  task_list_id                String
+  title_encrypted             String    // E2E encrypted
+  description_encrypted       String?   // E2E encrypted
+  metadata_encrypted          String    // E2E encrypted (TaskSensitiveMetadata bundle)
+  recurrence_rule_encrypted   String?   // RRULE string (E2E encrypted)
+  parent_task_id              String?   // References the template task
+  is_template                 Int       @default(0) @db.SmallInt // Structural, not behavioral
+  created_at                  DateTime  @default(now())
+  updated_at                  DateTime  @updatedAt
+  deleted_at                  DateTime? // Soft delete
+  position                    Float     @default(0)
+  sync_version                Int       @default(0)
+
+  subTasks                    SubTask[]
+  taskList                    TaskList  @relation(fields: [task_list_id], references: [id], onDelete: Cascade)
+  user                        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, deleted_at])
+  @@index([task_list_id])
+  @@index([parent_task_id])
+}
+
+model SubTask {
+  id                 String    @id @default(uuid())
+  task_id            String
+  name_encrypted     String    // E2E encrypted
+  metadata_encrypted String?   // E2E encrypted (SubtaskSensitiveMetadata)
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime? // Soft delete
+  position           Float     @default(0)
+  sync_version       Int       @default(0)
+
+  task               Task      @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@index([task_id, position])
+}
+
+// ==================== NOTES ====================
+
+model Folder {
+  id               String   @id @default(uuid())
+  user_id          String
+  parent_id        String?
+  name_encrypted   String   // E2E encrypted
+  color_encrypted  String?  // E2E encrypted (hex color)
+  icon_encrypted   String?  // E2E encrypted (icon name)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  order_index      Int      @default(0)
+  is_archived      Boolean  @default(false)
+  sync_version     Int      @default(0)
+  
+  // Self-relation for folder hierarchy
+  parent           Folder?  @relation("FolderHierarchy", fields: [parent_id], references: [id], onDelete: Cascade)
+  children         Folder[] @relation("FolderHierarchy")
+  
+  // Relations
+  notes            Note[]
+  user             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@index([user_id, is_archived])
+  @@index([parent_id])
+}
+
+model Note {
+  id                   String     @id @default(uuid())
+  user_id              String
+  folder_id            String?
+  title_encrypted      String     // E2E encrypted
+  content_encrypted    String     // E2E encrypted (Markdown)
+  excerpt_encrypted    String?    // E2E encrypted (first 200 chars for preview)
+  metadata_encrypted   String?    // E2E encrypted (NoteSensitiveMetadata: is_starred, is_pinned, tags)
+  created_at           DateTime   @default(now())
+  updated_at           DateTime   @updatedAt
+  deleted_at           DateTime?  // Soft delete
+  is_archived          Boolean    @default(false)  // Operational — stays plain
+  order_index          Int        @default(0)
+  sync_version         Int        @default(0)
+
+  // Relations
+  folder               Folder?    @relation(fields: [folder_id], references: [id], onDelete: SetNull)
+  user                 User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  versions             NoteVersion[]
+
+  @@index([user_id, deleted_at])
+  @@index([folder_id])
+  @@index([updated_at])
+}
+
+model Tag {
+  id              String    @id @default(uuid())
+  user_id         String
+  name_encrypted  String    // E2E encrypted
+  color_encrypted String?   // E2E encrypted (hex color)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  sync_version    Int       @default(0)
+  
+  // Relations
+  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@unique([user_id, name_encrypted]) // Ensure unique tag names per user
+  @@index([user_id])
+}
+
+model NoteVersion {
+  id                 String   @id @default(uuid())
+  note_id            String
+  user_id            String
+  title_encrypted    String   // E2E encrypted
+  content_encrypted  String   // E2E encrypted
+  created_at         DateTime @default(now())
+
+  // Relations
+  note               Note     @relation(fields: [note_id], references: [id], onDelete: Cascade)
+  user               User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([note_id, created_at])
+  @@index([user_id])
+}
+
+// ==================== IDEMPOTENCY ====================
+
+model IdempotencyKey {
+  key             String   @id // UUID from client
+  user_id         String
+  method          String   // HTTP method (POST, PUT, PATCH, DELETE)
+  path            String   // API path
+  response_status Int      // Cached HTTP status code
+  response_body   String   // Cached JSON response body
+  created_at      DateTime @default(now())
+  expires_at      DateTime // created_at + 24h
+
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+}
+

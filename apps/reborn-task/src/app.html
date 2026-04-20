@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="%lang%" data-sveltekit-template>
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>re/task</title>
+		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+		<meta name="theme-color" content="#43a047" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<meta name="apple-mobile-web-app-title" content="re/task" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/icons/apple-touch-icon.png" />
+		%sveltekit.head%
+		<script nonce="%sveltekit.nonce%">
+			(function(){
+				try{
+					var t=localStorage.getItem('reborn-task-theme');
+					var d=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);
+					if(d)document.documentElement.classList.add('dark');
+				}catch(e){}
+			})()
+		</script>
+	</head>
+	<!-- htmlhint inline-style-disabled:false -->
+	<!-- webhint-disable no-inline-styles -->
+	<body data-sveltekit-preload-data="hover">
+		<!-- Initial loading indicator — styled via inline <style> block below so
+		     it displays immediately, before the app's CSS bundle loads. The
+		     inline dark-mode script in <head> runs BEFORE this renders, so the
+		     .dark class is already set on <html> when the selectors below apply.
+		-->
+		<div id="app-loading">
+			<div class="app-loading__inner">
+				<div class="app-loading__spinner"></div>
+				<p>Loading re/task...</p>
+			</div>
+		</div>
+		<style nonce="%sveltekit.nonce%">
+			@keyframes spin {
+				to { transform: rotate(360deg); }
+			}
+			#app-loading {
+				position: fixed;
+				inset: 0;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: #f9fafb;
+				color: #6b7280;
+				font-family: system-ui;
+			}
+			#app-loading .app-loading__inner {
+				text-align: center;
+			}
+			#app-loading .app-loading__spinner {
+				width: 32px;
+				height: 32px;
+				margin: 0 auto 16px;
+				border: 3px solid #e5e7eb;
+				border-top-color: #43a047;
+				border-radius: 50%;
+				animation: spin 1s linear infinite;
+			}
+			.dark #app-loading {
+				background: #252525;
+				color: #a3a3a3;
+			}
+			.dark #app-loading .app-loading__spinner {
+				border-color: #404040;
+				border-top-color: #43a047;
+			}
+			/* Hide loading indicator when app is ready */
+			body:has(.svelte-app-ready) #app-loading {
+				display: none !important;
+			}
+		</style>
+		<div style="display: contents">
+			%sveltekit.body%
+		</div>
+	</body>
+</html>

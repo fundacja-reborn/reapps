@@ -1,0 +1,49 @@
+{
+  "privacy": {
+    "title": "Privacy Policy",
+    "description": "How we handle your data",
+    "content": {
+      "intro": "reborn/task takes your privacy seriously. We are committed to protecting your personal data.",
+      "zero_knowledge": "Our application uses end-to-end encryption and Zero Knowledge architecture, which means that your task data is encrypted on your device before being sent to our servers. We cannot access the content of your tasks.",
+      "what_we_collect": "What we collect",
+      "collect_list": [
+        "Username (to ensure uniqueness)",
+        "Login timestamps (to identify inactive accounts)",
+        "Encrypted task data (which we cannot read)"
+      ],
+      "what_we_dont_collect": "What we don't collect",
+      "dont_collect_list": [
+        "Email address (optional)",
+        "Personal information beyond your username",
+        "The content of your tasks (due to encryption)"
+      ],
+      "data_security": "Data Security",
+      "security_text": "All sensitive data is encrypted using AES-GCM encryption. Your password is never stored on our servers. We use industry-standard security measures to protect our infrastructure.",
+      "cookies": "Cookies and Local Storage",
+      "cookies_text": "We use cookies and local storage only for essential functionality like keeping you logged in and storing your preferences."
+    }
+  },
+  "support": {
+    "title": "Support Reborn Foundation",
+    "description": "Help us make a difference",
+    "content": {
+      "intro": "The Reborn Foundation is dedicated to supporting innovative projects that prioritize privacy and data security in the digital age.",
+      "mission_title": "Our Mission",
+      "mission_text": "To create and sustain open-source tools that protect user privacy and promote digital rights for everyone.",
+      "why_donate_title": "Why Donate?",
+      "why_donate": [
+        "Support development of privacy-focused applications",
+        "Help maintain infrastructure for free services",
+        "Enable research into better encryption methods",
+        "Fund educational programs about digital privacy"
+      ],
+      "donation_title": "Donation Options",
+      "donation_options": {
+        "crypto": "Cryptocurrency",
+        "bank": "Bank Transfer",
+        "contact": "For more information on how to donate, please contact us at support@example.org"
+      },
+      "disclaimer": "Note: Site created for demonstration purposes. This page showcases how a donation page might look."
+    }
+  }
+}

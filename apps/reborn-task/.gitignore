@@ -1,0 +1,14 @@
+.DS_Store
+node_modules
+/build
+/.svelte-kit
+/package
+.env
+.env.*
+!.env.example
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Tailwind v4 doesn't need config file
+tailwind.config.js
+tailwind.config.js.backup

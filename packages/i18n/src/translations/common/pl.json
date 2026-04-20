@@ -1,0 +1,290 @@
+{
+  "app": {
+    "name": "Reborn",
+    "loading": "Ładowanie aplikacji..."
+  },
+  "dates": {
+    "today": "dzisiaj",
+    "tomorrow": "jutro",
+    "yesterday": "wczoraj",
+    "in_days": "za {count} {days}",
+    "overdue": "przeterminowane"
+  },
+  "language": {
+    "label": "Język",
+    "names": {
+      "en": "Angielski",
+      "pl": "Polski",
+      "de": "Niemiecki",
+      "es": "Hiszpański",
+      "fr": "Francuski"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Logowanie",
+      "description": "Witaj ponownie! Wprowadź swoje dane, aby kontynuować.",
+      "username_label": "Nazwa użytkownika",
+      "username_placeholder": "Wprowadź swoją nazwę użytkownika",
+      "password_label": "Hasło",
+      "password_placeholder": "Wprowadź swoje hasło",
+      "submit_button": "Zaloguj się",
+      "errors": {
+        "username_password_required": "Nazwa użytkownika i hasło są wymagane",
+        "invalid_credentials": "Nieprawidłowa nazwa użytkownika lub hasło",
+        "network_error": "Błąd sieci. Proszę spróbować ponownie",
+        "server_error": "Błąd serwera. Proszę spróbować później",
+        "invalid_request": "Nieprawidłowy format żądania",
+        "master_key_load_failed": "Nie udało się załadować klucza szyfrowania. Sprawdź swoje hasło i spróbuj ponownie",
+        "session_creation_failed": "Nie udało się utworzyć sesji. Spróbuj ponownie"
+      },
+      "success": "Pomyślnie zalogowano",
+      "progress": {
+        "authenticating": "Uwierzytelnianie...",
+        "loading_encryption_key": "Ładowanie klucza szyfrowania...",
+        "initializing_storage": "Inicjalizacja bezpiecznego przechowywania...",
+        "syncing_data": "Synchronizacja danych...",
+        "complete": "Logowanie zakończone, przekierowywanie..."
+      },
+      "reasons": {
+        "e2e_missing": "Twoja sesja została zresetowana. Zaloguj się ponownie, aby przywrócić klucze szyfrowania.",
+        "session_expired": "Twoja sesja wygasła. Zaloguj się ponownie.",
+        "auth_required": "Zaloguj się, aby kontynuować."
+      }
+    },
+    "register": {
+      "title": "Utwórz konto",
+      "description": "Zarejestruj nowe konto",
+      "username_label": "Nazwa użytkownika",
+      "password_label": "Hasło",
+      "confirm_password_label": "Potwierdź hasło",
+      "submit_button": "Zarejestruj się",
+      "register_disabled": "Rejestracja jest chwilowo wyłączona. Spróbuj ponownie później.",
+      "errors": {
+        "username_password_required": "Nazwa użytkownika i hasło są wymagane",
+        "user_already_exists": "Nazwa użytkownika już istnieje",
+        "passwords_do_not_match": "Hasła nie pasują do siebie",
+        "network_error": "Błąd sieci. Proszę spróbować ponownie",
+        "server_error": "Błąd serwera. Proszę spróbować później"
+      },
+      "success": "Rejestracja zakończona sukcesem"
+    },
+    "logout": {
+      "success": "Zostałeś pomyślnie wylogowany",
+      "error": "Wystąpił błąd podczas wylogowywania"
+    },
+    "session": {
+      "expired_banner": "Sesja wygasła — kliknij, aby zalogować się ponownie",
+      "reauth_title": "Sesja wygasła",
+      "reauth_description": "Twoja sesja wygasła. Wprowadź hasło, aby kontynuować bez utraty danych.",
+      "username_label": "Nazwa użytkownika",
+      "password_label": "Hasło",
+      "password_placeholder": "Wprowadź swoje hasło",
+      "submit_button": "Zaloguj się",
+      "submitting": "Logowanie...",
+      "error_auth_failed": "Uwierzytelnianie nie powiodło się. Sprawdź swoje hasło.",
+      "error_unknown": "Uwierzytelnianie nie powiodło się",
+      "empty_no_data": "Brak danych — sesja wygasła. Zaloguj się ponownie, aby zsynchronizować dane."
+    },
+    "2fa": {
+      "recovery_code_label": "Kod zapasowy",
+      "code_label": "Kod 2FA",
+      "use_2fa_code": "Użyj kodu z aplikacji",
+      "use_recovery_code": "Użyj kodu zapasowego",
+      "verify_button": "Zweryfikuj",
+      "errors": {
+        "invalid_code": "Nieprawidłowy kod 2FA lub kod zapasowy.",
+        "code_required": "Kod 2FA jest wymagany.",
+        "recovery_required": "Kod zapasowy jest wymagany.",
+        "verification_failed": "Weryfikacja nie powiodła się.",
+        "decrypt_failed": "Nie udało się przetworzyć sekretu 2FA. Upewnij się, że hasło jest poprawne.",
+        "secret_format": "Nieprawidłowy format sekretu 2FA."
+      }
+    }
+  },
+  "common": {
+    "loading": "Ładowanie",
+    "info": "Informacja",
+    "back": "Wstecz",
+    "cancel": "Anuluj",
+    "save": "Zapisz",
+    "create": "Utwórz",
+    "creating": "Tworzenie...",
+    "submitting": "Zapisywanie...",
+    "settings": "Ustawienia",
+    "logout": "Wyloguj się",
+    "delete": "Usuń",
+    "add": "Dodaj",
+    "saving": "zapisywanie...",
+    "ok": "OK",
+    "or": "lub",
+    "initializing": "Inicjalizacja",
+    "initializing_message": "Proszę czekać, trwa konfiguracja bezpiecznego przechowywania danych",
+    "syncing_data": "Synchronizacja danych...",
+    "error": "Błąd",
+    "initialization_error": "Błąd inicjalizacji aplikacji",
+    "back_to_login": "Powrót do logowania",
+    "e2e_required": "Wymagane szyfrowanie",
+    "e2e_required_message": "Ta aplikacja wymaga szyfrowania end-to-end dla bezpieczeństwa. Zaloguj się ponownie, aby odzyskać klucze szyfrowania.",
+    "ready": "Gotowe",
+    "general_navigation_error": "Wystąpił problem podczas nawigacji",
+    "added": "Dodano",
+    "last_used": "Ostatnio używane",
+    "verify": "Zweryfikuj",
+    "name": "Nazwa",
+    "saved": "Zapisano",
+    "save_error": "Nie udało się zapisać",
+    "deleted": "Usunięto",
+    "deleting": "Usuwanie...",
+    "delete_error": "Nie udało się usunąć",
+    "never": "Nigdy",
+    "today": "Dzisiaj",
+    "yesterday": "Wczoraj",
+    "days_ago": "{days} dni temu",
+    "continue": "Kontynuuj",
+    "search": "Szukaj",
+    "edit": "Edytuj",
+    "close": "Zamknij",
+    "confirm": "Potwierdź",
+    "actions": "Akcje",
+    "yes": "Tak",
+    "no": "Nie",
+    "enabled": "Włączone",
+    "disabled": "Wyłączone",
+    "apply": "Zastosuj",
+    "select_date": "Wybierz datę",
+    "undo": "Cofnij",
+    "go_back": "Wróć",
+    "created_at": "Utworzono",
+    "updated_at": "Zaktualizowano"
+  },
+  "offline": {
+    "indicator_active": "Tryb offline aktywny",
+    "action_sync_now": "Synchronizuj teraz",
+    "indicator_syncing": "Synchronizacja danych...",
+    "indicator_not_synced": "Dane wymagają synchronizacji",
+    "alert_title": "Jesteś w trybie offline",
+    "alert_description": "Zmiany zapisano lokalnie. Synchronizacja zostanie wznowiona po połączeniu.",
+    "device_offline": "Jesteś obecnie offline. Twoje zmiany zostaną zapisane lokalnie i zsynchronizowane po ponownym połączeniu.",
+    "offline_mode": "Tryb Offline",
+    "not_available_offline": "Niedostępne w trybie offline",
+    "offline_navigation_tip": "Nawigacja i dane są dostępne lokalnie",
+    "storage_not_initialized_offline": "Pamięć lokalna nie jest zainicjalizowana",
+    "saved_offline": "Zapisano offline. Zsynchronizuje się po przywróceniu połączenia."
+  },
+  "profile": {
+    "title": "Profil Użytkownika",
+    "description": "Przeglądaj i zarządzaj ustawieniami profilu",
+    "username": "Nazwa użytkownika",
+    "language": "Preferowany język",
+    "logout_button": "Wyloguj się",
+    "created_at": "Konto utworzone",
+    "last_login": "Ostatnie logowanie",
+    "logged_as": "Zalogowany jako",
+    "language_settings": "Ustawienia języka",
+    "language_description": "Wybierz preferowany język aplikacji",
+    "language_updated": "Preferencje językowe zostały zaktualizowane",
+    "change_password": "Zmień hasło",
+    "password_description": "Zmień hasło do swojego konta",
+    "current_password": "Aktualne hasło",
+    "new_password": "Nowe hasło",
+    "confirm_password": "Potwierdź hasło",
+    "password_updated": "Hasło zostało zaktualizowane",
+    "update_error": "Wystąpił błąd podczas aktualizacji",
+    "current_password_placeholder": "Wprowadź swoje aktualne hasło",
+    "new_password_placeholder": "Wprowadź swoje nowe hasło",
+    "confirm_password_placeholder": "Potwierdź swoje nowe hasło",
+    "current_password_required": "Aktualne hasło jest wymagane",
+    "new_password_required": "Nowe hasło jest wymagane",
+    "password_too_short": "Hasło musi mieć co najmniej 8 znaków",
+    "invalid_current_password": "Aktualne hasło jest nieprawidłowe",
+    "save_password": "Zapisz hasło",
+    "submit_button": "Zatwierdź",
+    "cancel_button": "Anuluj"
+  },
+  "password": {
+    "requirements": "Hasło musi mieć co najmniej 8 znaków i zawierać wielkie i małe litery, cyfry oraz znaki specjalne",
+    "errors": {
+      "min_length": "Hasło musi mieć co najmniej 8 znaków",
+      "require_uppercase": "Hasło musi zawierać co najmniej jedną wielką literę",
+      "require_lowercase": "Hasło musi zawierać co najmniej jedną małą literę",
+      "require_number": "Hasło musi zawierać co najmniej jedną cyfrę",
+      "require_special": "Hasło musi zawierać co najmniej jeden znak specjalny"
+    },
+    "required": "Hasło jest wymagane",
+    "incorrect": "Nieprawidłowe hasło",
+    "verification_failed": "Nie udało się zweryfikować hasła"
+  },
+  "theme": {
+    "title": "Wygląd",
+    "description": "Dostosuj wygląd aplikacji",
+    "light": "Jasny",
+    "dark": "Ciemny",
+    "system": "Systemowy",
+    "toggle": "Przełącz motyw",
+    "toggle_theme": "Przełącz motyw",
+    "updated": "Motyw został zaktualizowany"
+  },
+  "appearance": {
+    "title": "Wygląd",
+    "description": "Dostosuj wygląd i działanie aplikacji",
+    "theme": "Motyw",
+    "theme_desc": "Wybierz schemat kolorów aplikacji",
+    "language": "Język",
+    "language_desc": "Język interfejsu",
+    "language_updated": "Język został zaktualizowany",
+    "date_time": "Data i czas",
+    "date_time_desc": "Dostosuj format wyświetlania daty i czasu",
+    "date_format": "Format daty",
+    "date_format_updated": "Format daty został zaktualizowany",
+    "time_format": "Format czasu",
+    "time_format_updated": "Format czasu został zaktualizowany",
+    "time_12h": "12-godzinny (2:30 PM)",
+    "time_24h": "24-godzinny (14:30)",
+    "select_date_format": "Wybierz format daty",
+    "select_time_format": "Wybierz format czasu",
+    "select_language": "Wybierz język",
+    "reset": "Przywróć domyślne",
+    "reset_done": "Przywrócono domyślne ustawienia"
+  },
+  "errors": {
+    "network": "Błąd sieci. Sprawdź połączenie.",
+    "server": "Błąd serwera. Spróbuj ponownie później.",
+    "unknown": "Wystąpił nieznany błąd.",
+    "validation": "Błąd walidacji. Sprawdź wprowadzone dane.",
+    "not_found": "Zasób nie został znaleziony.",
+    "unauthorized": "Nie masz uprawnień do wykonania tej akcji.",
+    "forbidden": "Dostęp zabroniony."
+  },
+  "sync": {
+    "status_title": "Status Synchronizacji",
+    "status_description": "Monitoruj status synchronizacji i rozwiązuj problemy z synchronizacją",
+    "synchronizing": "Synchronizacja",
+    "completed": "Zsynchronizowano",
+    "failed": "Synchronizacja nieudana",
+    "pending": "Oczekuje na synchronizację",
+    "offline_warning": "Urządzenie jest obecnie offline. Niektóre działania są wyłączone do czasu ponownego połączenia."
+  },
+  "update": {
+    "title": "Dostępna aktualizacja",
+    "description": "Nowa wersja aplikacji jest dostępna. Zaktualizuj teraz, aby uzyskać najnowsze funkcje i usprawnienia.",
+    "button_update": "Aktualizuj teraz",
+    "button_later": "Później"
+  },
+  "time": {
+    "hour": "Godzina",
+    "minute": "Minuta"
+  },
+  "brand": {
+    "copyright": "© {years} Fundacja Reborn. Wszelkie prawa zastrzeżone.",
+    "license": "AGPL-3.0"
+  },
+  "pwa": {
+    "install_title_task": "Zainstaluj re/task na swoim urządzeniu",
+    "install_title_notes": "Zainstaluj re/notes na swoim urządzeniu",
+    "install_description_task": "Szybki dostęp z ekranu głównego, praca offline i powiadomienia.",
+    "install_description_notes": "Szybki dostęp z ekranu głównego i praca offline.",
+    "install_button": "Zainstaluj",
+    "install_ios_description": "Kliknij ikonę udostępniania (⎙) i wybierz \"Dodaj do ekranu głównego\"."
+  }
+}

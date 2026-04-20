@@ -1,0 +1,12 @@
+{
+  "title": "Odszyfruj dane",
+  "description": "Aby uzyskać dostęp do swoich zaszyfrowanych danych, podaj hasło do konta.",
+  "password_label": "Hasło",
+  "submit_button": "Odblokuj",
+  "logged_in_as": "Zalogowany jako",
+  "wrong_account": "Nie to konto?",
+  "errors": {
+    "invalid_password": "Nieprawidłowe hasło. Spróbuj ponownie.",
+    "unknown": "Wystąpił nieznany błąd podczas odblokowywania klucza."
+  }
+}

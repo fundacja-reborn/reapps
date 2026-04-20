@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@swc/core'
+  - esbuild
+  - nx
+  - prisma
+  - svelte-preprocess

@@ -1,0 +1,175 @@
+{
+  "my_tasks": "Moje zadania",
+  "completed": "Zakończone",
+  "add_new": "Nowe zadanie",
+  "add_task": "Dodaj zadanie",
+  "add_task_description": "Dodaj opis zadania (opcjonalnie)",
+  "search_placeholder": "Szukaj zadań...",
+  "hide_completed": "Ukryj zakończone",
+  "show_completed": "Pokaż zakończone",
+  "show_all": "Pokaż wszystkie",
+  "show_starred": "Pokaż oznaczone gwiazdką",
+  "add": "Dodaj zadanie",
+  "edit": "Edytuj zadanie",
+  "delete": {
+    "title": "Usuń zadanie",
+    "confirm_message": "Czy na pewno chcesz usunąć zadanie '{title}'?",
+    "this_only": "Usuń tylko to wystąpienie",
+    "future": "Usuń to i wszystkie przyszłe wystąpienia"
+  },
+  "delete_confirmation": "Czy na pewno chcesz usunąć to zadanie? Tej akcji nie można cofnąć.",
+  "toggle_completion": "Przełącz wykonanie",
+  "toggle_star": "Przełącz gwiazdkę",
+  "due_date": "Termin wykonania",
+  "description": "Opis",
+  "title": "Tytuł",
+  "title_placeholder": "Wprowadź tytuł zadania",
+  "description_placeholder": "Wprowadź opis zadania (opcjonalnie)",
+  "edit_description": "Edytuj dane swojego zadania",
+  "select_date": "Wybierz datę",
+  "select_list": "Wybierz listę",
+  "move_to_list": "Przenieś do listy",
+  "move_task": "Przenieś zadanie",
+  "move_task_description": "Wybierz listę, do której chcesz przenieść to zadanie",
+  "recurring": {
+    "reset_notification": "Zadanie zostało zresetowane z nową datą: {date}",
+    "completed_notification": "Zadanie zostało zakończone i nie będzie się już powtórzyć",
+    "next_occurrence": "Następne wystąpienie: {date}",
+    "remaining_occurrences": "{count, plural, =1 {Pozostało # wystąpienie} few {Pozostały # wystąpienia} many {Pozostało # wystąpień} other {Pozostało # wystąpień}}",
+    "last_occurrence": "To było ostatnie wystąpienie tego zadania cyklicznego",
+    "completed_count": "{count}x"
+  },
+  "subtasks": {
+    "add": "Dodaj podzadanie",
+    "placeholder": "Wprowadź nazwę podzadania",
+    "header": "Podzadania do wykonania",
+    "delete": {
+      "title": "Usuń podzadanie",
+      "description": "Czy na pewno chcesz usunąć to podzadanie?",
+      "confirm": "Usuń",
+      "cancel": "Anuluj",
+      "error": "Nie udało się usunąć podzadania. Spróbuj ponownie.",
+      "error_with_details": "Nie udało się usunąć podzadania: {errorMessage}. Spróbuj ponownie.",
+      "processing": "Usuwanie..."
+    }
+  },
+  "errors": {
+    "title_required": "Tytuł zadania jest wymagany",
+    "fetch_failed": "Nie udało się pobrać zadań",
+    "create_failed": "Nie udało się utworzyć zadania",
+    "update_failed": "Nie udało się zaktualizować zadania",
+    "delete_failed": "Nie udało się usunąć zadania",
+    "list_not_found": "Lista zadań nie została znaleziona",
+    "task_not_found": "Zadanie nie zostało znalezione",
+    "required_fields": "Brakuje wymaganych pól",
+    "list_id_required": "ID listy zadań jest wymagane",
+    "autosave_failed": "Automatyczne zapisywanie nie powiodło się",
+    "invalid_date": "Nieprawidłowy format daty",
+    "list_required": "Proszę wybrać listę zadań",
+    "move_failed": "Nie udało się przenieść zadania na nową listę"
+  },
+  "view": {
+    "title": "Szczegóły zadania",
+    "back": "Powrót do zadań",
+    "select_task": "Wybierz zadanie"
+  },
+  "fields": {
+    "title": "Tytuł zadania",
+    "description": "Opis zadania",
+    "due_date": "Termin wykonania",
+    "recurring": "Zadanie cykliczne",
+    "recurrence_rule": "Wzorzec powtarzania (np. FREQ=WEEKLY;BYDAY=MO,WE,FR)",
+    "completed_at": "Wykonano dnia",
+    "next_occurrence": "Następne wystąpienie",
+    "completed_count": "Liczba ukończeń"
+  },
+  "actions": {
+    "delete": "Usuń zadanie",
+    "toggle_star": "Przełącz gwiazdkę",
+    "move_to_list": "Przenieś do innej listy",
+    "more_options": "Więcej opcji"
+  },
+  "aria": {
+    "mark_as_complete": "Oznacz jako ukończone",
+    "mark_as_incomplete": "Oznacz jako nieukończone",
+    "add_star": "Dodaj gwiazdkę",
+    "remove_star": "Usuń gwiazdkę",
+    "active_tasks": "Aktywne zadania"
+  },
+  "date": {
+    "select": "Wybierz datę",
+    "confirm": "Potwierdź",
+    "cancel": "Anuluj",
+    "selected": "Wybrana data",
+    "change": "Zmień datę",
+    "today": "dzisiaj",
+    "tomorrow": "jutro",
+    "yesterday": "wczoraj",
+    "in_n_days": "{count, plural, =0 {dzisiaj} =1 {za 1 dzień} few {za {count} dni} many {za {count} dni} other {za {count} dni}}"
+  },
+  "time": {
+    "select_time": "Wybierz czas",
+    "select": "Wybierz czas",
+    "time": "Czas",
+    "hours": "Godziny",
+    "minutes": "Minuty",
+    "add_time": "Dodaj czas",
+    "confirm": "Potwierdź",
+    "cancel": "Anuluj"
+  },
+  "properties": {
+    "title": "Właściwości",
+    "delete": {
+      "date": {
+        "title": "Usuń datę",
+        "description": "Czy na pewno chcesz usunąć datę? Spowoduje to również usunięcie ustawień czasu i powtarzania."
+      },
+      "time": {
+        "title": "Usuń czas",
+        "description": "Czy na pewno chcesz usunąć czas?"
+      },
+      "recurrence": {
+        "title": "Usuń powtarzanie",
+        "description": "Czy na pewno chcesz usunąć ustawienia powtarzania?"
+      }
+    }
+  },
+  "recurrence": {
+    "title": "Ustaw powtarzanie",
+    "description": "Skonfiguruj, jak często to zadanie powinno się powtarzać",
+    "add": "Dodaj powtarzanie",
+    "edit": "Edytuj powtarzanie",
+    "frequency": {
+      "label": "Częstotliwość",
+      "daily": "Codziennie",
+      "weekly": "Co tydzień",
+      "monthly": "Co miesiąc",
+      "yearly": "Co rok"
+    },
+    "interval": {
+      "label": "Powtarzaj co",
+      "daily": "dzień/dni",
+      "weekly": "tydzień/tygodnie",
+      "monthly": "miesiąc/miesięcy",
+      "yearly": "rok/lata"
+    },
+    "days": {
+      "label": "W dni",
+      "monday": "Poniedziałek",
+      "tuesday": "Wtorek",
+      "wednesday": "Środa",
+      "thursday": "Czwartek",
+      "friday": "Piątek",
+      "saturday": "Sobota",
+      "sunday": "Niedziela"
+    },
+    "end": {
+      "label": "Kończy się",
+      "never": "Nigdy",
+      "after": "Po",
+      "on_date": "W dniu",
+      "occurrences": "wystąpieniach"
+    }
+  },
+  "more_options": "Więcej opcji"
+}

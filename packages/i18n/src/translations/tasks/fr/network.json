@@ -1,0 +1,9 @@
+{
+  "navigation_deferred": "Navigation diff\u00e9r\u00e9e",
+  "list_created_offline": "Liste cr\u00e9\u00e9e avec succ\u00e8s. La navigation se terminera lorsque la connexion sera r\u00e9tablie.",
+  "offline_mode": "Mode hors ligne",
+  "list_created_offline_info": "Liste cr\u00e9\u00e9e. Vous pouvez continuer \u00e0 travailler hors ligne.",
+  "first_run_online_required": "Connexion Internet requise",
+  "first_run_online_required_desc": "La configuration initiale n\u00e9cessite une connexion Internet pour t\u00e9l\u00e9charger les donn\u00e9es de votre compte.",
+  "first_run_retry": "R\u00e9essayer"
+}

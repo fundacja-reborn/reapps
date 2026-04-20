@@ -1,0 +1,11 @@
+{
+  "task_due": {
+    "title": "Aufgabenfrist n\u00e4hert sich!",
+    "body_time": "Sie haben eine Aufgabe f\u00fcr {time} geplant.",
+    "body_date": "Sie haben eine Aufgabe f\u00fcr {date} geplant.",
+    "body_today": "Sie haben eine Aufgabe f\u00fcr heute geplant.",
+    "body_unknown": "Sie haben eine Aufgabe f\u00fcr ein unbestimmtes Datum geplant."
+  },
+  "token_required": "Benachrichtigungstoken ist erforderlich.",
+  "registration_failed": "Registrierung des Benachrichtigungstokens fehlgeschlagen."
+}

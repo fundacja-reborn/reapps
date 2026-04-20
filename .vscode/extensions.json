@@ -1,0 +1,35 @@
+{
+  "recommendations": [
+    // Svelte & SvelteKit
+    "svelte.svelte-vscode",
+    
+    // TypeScript & JavaScript
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    
+    // CSS & Tailwind
+    "bradlc.vscode-tailwindcss",
+    
+    // Nx & Monorepo
+    "nrwl.angular-console",
+    
+    // Git
+    "eamodio.gitlens",
+    
+    // Editor Config
+    "editorconfig.editorconfig",
+    
+    // Prisma
+    "prisma.prisma",
+    
+    // Markdown
+    "yzhang.markdown-all-in-one",
+    
+    // Optional - but not Edge Tools if causing issues
+    // "ms-edgedevtools.vscode-edge-devtools"
+  ],
+  "unwantedRecommendations": [
+    // Disable tools that don't understand SvelteKit templates
+    "ms-edgedevtools.vscode-edge-devtools"
+  ]
+}

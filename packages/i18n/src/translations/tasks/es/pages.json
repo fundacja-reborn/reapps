@@ -1,0 +1,49 @@
+{
+  "privacy": {
+    "title": "Política de privacidad",
+    "description": "Cómo gestionamos sus datos",
+    "content": {
+      "intro": "reborn/task se toma muy en serio su privacidad. Nos comprometemos a proteger sus datos personales.",
+      "zero_knowledge": "Nuestra aplicación utiliza cifrado de extremo a extremo y arquitectura de conocimiento cero, lo que significa que los datos de sus tareas se cifran en su dispositivo antes de enviarse a nuestros servidores. No podemos acceder al contenido de sus tareas.",
+      "what_we_collect": "Qué recopilamos",
+      "collect_list": [
+        "Nombre de usuario (para garantizar la unicidad)",
+        "Marcas de tiempo de inicio de sesión (para identificar cuentas inactivas)",
+        "Datos de tareas cifrados (que no podemos leer)"
+      ],
+      "what_we_dont_collect": "Qué no recopilamos",
+      "dont_collect_list": [
+        "Dirección de correo electrónico (opcional)",
+        "Información personal más allá de su nombre de usuario",
+        "El contenido de sus tareas (debido al cifrado)"
+      ],
+      "data_security": "Seguridad de los datos",
+      "security_text": "Todos los datos sensibles se cifran mediante cifrado AES-GCM. Su contraseña nunca se almacena en nuestros servidores. Utilizamos medidas de seguridad estándar de la industria para proteger nuestra infraestructura.",
+      "cookies": "Cookies y almacenamiento local",
+      "cookies_text": "Utilizamos cookies y almacenamiento local únicamente para funciones esenciales, como mantener su sesión iniciada y almacenar sus preferencias."
+    }
+  },
+  "support": {
+    "title": "Apoyar a la Fundación Reborn",
+    "description": "Ayúdenos a marcar la diferencia",
+    "content": {
+      "intro": "La Fundación Reborn se dedica a apoyar proyectos innovadores que priorizan la privacidad y la seguridad de los datos en la era digital.",
+      "mission_title": "Nuestra misión",
+      "mission_text": "Crear y mantener herramientas de código abierto que protejan la privacidad del usuario y promuevan los derechos digitales para todos.",
+      "why_donate_title": "¿Por qué donar?",
+      "why_donate": [
+        "Apoye el desarrollo de aplicaciones centradas en la privacidad",
+        "Ayude a mantener la infraestructura para servicios gratuitos",
+        "Permita la investigación de mejores métodos de cifrado",
+        "Financie programas educativos sobre privacidad digital"
+      ],
+      "donation_title": "Opciones de donación",
+      "donation_options": {
+        "crypto": "Criptomoneda",
+        "bank": "Transferencia bancaria",
+        "contact": "Para más información sobre cómo donar, contáctenos en support@example.org"
+      },
+      "disclaimer": "Nota: Sitio creado con fines demostrativos. Esta página muestra cómo podría verse una página de donaciones."
+    }
+  }
+}

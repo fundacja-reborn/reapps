@@ -1,0 +1,290 @@
+{
+  "app": {
+    "name": "Reborn",
+    "loading": "Cargando aplicación..."
+  },
+  "dates": {
+    "today": "hoy",
+    "tomorrow": "mañana",
+    "yesterday": "ayer",
+    "in_days": "en {count} {days}",
+    "overdue": "atrasado"
+  },
+  "language": {
+    "label": "Idioma",
+    "names": {
+      "en": "Inglés",
+      "pl": "Polaco",
+      "de": "Alemán",
+      "es": "Español",
+      "fr": "Francés"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Iniciar sesión",
+      "description": "¡Bienvenido de nuevo! Introduzca sus credenciales para continuar.",
+      "username_label": "Nombre de usuario",
+      "username_placeholder": "Introduzca su nombre de usuario",
+      "password_label": "Contraseña",
+      "password_placeholder": "Introduzca su contraseña",
+      "submit_button": "Iniciar sesión",
+      "errors": {
+        "username_password_required": "El nombre de usuario y la contraseña son obligatorios",
+        "invalid_credentials": "Nombre de usuario o contraseña no válidos",
+        "network_error": "Error de red. Por favor, inténtelo de nuevo",
+        "server_error": "Error del servidor. Por favor, inténtelo más tarde",
+        "invalid_request": "Formato de solicitud no válido",
+        "master_key_load_failed": "No se pudo cargar la clave de cifrado. Por favor, verifique su contraseña e inténtelo de nuevo",
+        "session_creation_failed": "No se pudo crear la sesión. Por favor, inténtelo de nuevo"
+      },
+      "success": "Sesión iniciada correctamente",
+      "progress": {
+        "authenticating": "Autenticando...",
+        "loading_encryption_key": "Cargando clave de cifrado...",
+        "initializing_storage": "Inicializando almacenamiento seguro...",
+        "syncing_data": "Sincronizando datos...",
+        "complete": "Inicio de sesión completado, redirigiendo..."
+      },
+      "reasons": {
+        "e2e_missing": "Su sesión fue restablecida. Por favor, inicie sesión de nuevo para restaurar las claves de cifrado.",
+        "session_expired": "Su sesión ha expirado. Por favor, inicie sesión de nuevo.",
+        "auth_required": "Por favor, inicie sesión para continuar."
+      }
+    },
+    "register": {
+      "title": "Crear cuenta",
+      "description": "Regístrese para crear una nueva cuenta",
+      "username_label": "Nombre de usuario",
+      "password_label": "Contraseña",
+      "confirm_password_label": "Confirmar contraseña",
+      "submit_button": "Registrarse",
+      "register_disabled": "El registro está temporalmente deshabilitado. Por favor, inténtelo más tarde.",
+      "errors": {
+        "username_password_required": "El nombre de usuario y la contraseña son obligatorios",
+        "user_already_exists": "El nombre de usuario ya existe",
+        "passwords_do_not_match": "Las contraseñas no coinciden",
+        "network_error": "Error de red. Por favor, inténtelo de nuevo",
+        "server_error": "Error del servidor. Por favor, inténtelo más tarde"
+      },
+      "success": "Registro completado correctamente"
+    },
+    "logout": {
+      "success": "Se ha cerrado la sesión correctamente",
+      "error": "Se produjo un error al cerrar la sesión"
+    },
+    "session": {
+      "expired_banner": "Sesión expirada — haga clic para iniciar sesión de nuevo",
+      "reauth_title": "Sesión expirada",
+      "reauth_description": "Su sesión ha expirado. Introduzca su contraseña para continuar sin perder sus datos.",
+      "username_label": "Nombre de usuario",
+      "password_label": "Contraseña",
+      "password_placeholder": "Introduzca su contraseña",
+      "submit_button": "Iniciar sesión",
+      "submitting": "Iniciando sesión...",
+      "error_auth_failed": "La autenticación falló. Por favor, verifique su contraseña.",
+      "error_unknown": "La autenticación falló",
+      "empty_no_data": "No hay datos disponibles — sesión expirada. Inicie sesión de nuevo para sincronizar sus datos."
+    },
+    "2fa": {
+      "recovery_code_label": "Código de recuperación",
+      "code_label": "Código 2FA",
+      "use_2fa_code": "Usar código 2FA",
+      "use_recovery_code": "Usar código de recuperación",
+      "verify_button": "Verificar",
+      "errors": {
+        "invalid_code": "Código 2FA o de recuperación no válido.",
+        "code_required": "El código 2FA es obligatorio.",
+        "recovery_required": "El código de recuperación es obligatorio.",
+        "verification_failed": "La verificación falló.",
+        "decrypt_failed": "No se pudo procesar el secreto 2FA. Por favor, asegúrese de que su contraseña sea correcta.",
+        "secret_format": "Formato de secreto 2FA no válido."
+      }
+    }
+  },
+  "common": {
+    "loading": "Cargando",
+    "info": "Información",
+    "back": "Atrás",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "create": "Crear",
+    "creating": "Creando...",
+    "submitting": "Enviando...",
+    "settings": "Configuración",
+    "logout": "Cerrar sesión",
+    "delete": "Eliminar",
+    "add": "Añadir",
+    "saving": "guardando...",
+    "ok": "Aceptar",
+    "or": "o",
+    "initializing": "Inicializando",
+    "initializing_message": "Por favor, espere mientras configuramos su almacenamiento seguro",
+    "syncing_data": "Sincronizando sus datos...",
+    "error": "Error",
+    "initialization_error": "Error al inicializar la aplicación",
+    "back_to_login": "Volver al inicio de sesión",
+    "e2e_required": "Cifrado requerido",
+    "e2e_required_message": "Esta aplicación requiere cifrado de extremo a extremo para su seguridad. Por favor, inicie sesión de nuevo para restaurar sus claves de cifrado.",
+    "ready": "Listo",
+    "general_navigation_error": "Se produjo un problema con la navegación",
+    "added": "Añadido",
+    "last_used": "Último uso",
+    "verify": "Verificar",
+    "name": "Nombre",
+    "saved": "Guardado",
+    "save_error": "Error al guardar",
+    "deleted": "Eliminado",
+    "deleting": "Eliminando...",
+    "delete_error": "Error al eliminar",
+    "never": "Nunca",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "days_ago": "hace {days} días",
+    "continue": "Continuar",
+    "search": "Buscar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "actions": "Acciones",
+    "yes": "Sí",
+    "no": "No",
+    "enabled": "Habilitado",
+    "disabled": "Deshabilitado",
+    "apply": "Aplicar",
+    "select_date": "Seleccionar fecha",
+    "undo": "Deshacer",
+    "go_back": "Volver",
+    "created_at": "Fecha de creación",
+    "updated_at": "Fecha de actualización"
+  },
+  "offline": {
+    "indicator_active": "Modo sin conexión activo",
+    "action_sync_now": "Sincronizar ahora",
+    "indicator_syncing": "Sincronizando datos...",
+    "indicator_not_synced": "Los datos requieren sincronización",
+    "alert_title": "No tiene conexión",
+    "alert_description": "Los cambios se guardan localmente. La sincronización se reanudará cuando vuelva a estar en línea.",
+    "device_offline": "Actualmente no tiene conexión. Sus cambios se guardarán localmente y se sincronizarán cuando se reconecte.",
+    "offline_mode": "Modo sin conexión",
+    "not_available_offline": "No disponible en modo sin conexión",
+    "offline_navigation_tip": "La navegación y los datos están disponibles localmente",
+    "storage_not_initialized_offline": "El almacenamiento local no está inicializado",
+    "saved_offline": "Guardado sin conexión. Se sincronizará cuando se restablezca la conexión."
+  },
+  "profile": {
+    "title": "Perfil de usuario",
+    "description": "Vea y gestione la configuración de su perfil",
+    "username": "Nombre de usuario",
+    "language": "Idioma preferido",
+    "logout_button": "Cerrar sesión",
+    "created_at": "Cuenta creada",
+    "last_login": "Último inicio de sesión",
+    "logged_as": "Conectado como",
+    "language_settings": "Configuración de idioma",
+    "language_description": "Elija su idioma preferido para la aplicación",
+    "language_updated": "La preferencia de idioma ha sido actualizada",
+    "change_password": "Cambiar contraseña",
+    "password_description": "Cambie la contraseña de su cuenta",
+    "current_password": "Contraseña actual",
+    "new_password": "Nueva contraseña",
+    "confirm_password": "Confirmar contraseña",
+    "password_updated": "La contraseña ha sido actualizada",
+    "update_error": "Se produjo un error durante la actualización",
+    "current_password_placeholder": "Introduzca su contraseña actual",
+    "new_password_placeholder": "Introduzca su nueva contraseña",
+    "confirm_password_placeholder": "Confirme su nueva contraseña",
+    "current_password_required": "La contraseña actual es obligatoria",
+    "new_password_required": "La nueva contraseña es obligatoria",
+    "password_too_short": "La contraseña debe tener al menos 8 caracteres",
+    "invalid_current_password": "Contraseña actual no válida",
+    "save_password": "Guardar contraseña",
+    "submit_button": "Enviar",
+    "cancel_button": "Cancelar"
+  },
+  "password": {
+    "requirements": "La contraseña debe tener al menos 8 caracteres y contener letras mayúsculas y minúsculas, números y caracteres especiales",
+    "errors": {
+      "min_length": "La contraseña debe tener al menos 8 caracteres",
+      "require_uppercase": "La contraseña debe contener al menos una letra mayúscula",
+      "require_lowercase": "La contraseña debe contener al menos una letra minúscula",
+      "require_number": "La contraseña debe contener al menos un número",
+      "require_special": "La contraseña debe contener al menos un carácter especial"
+    },
+    "required": "La contraseña es obligatoria",
+    "incorrect": "Contraseña incorrecta",
+    "verification_failed": "No se pudo verificar la contraseña"
+  },
+  "theme": {
+    "title": "Apariencia",
+    "description": "Personalice la apariencia de la aplicación",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema",
+    "toggle": "Cambiar tema",
+    "toggle_theme": "Cambiar tema",
+    "updated": "El tema ha sido actualizado"
+  },
+  "appearance": {
+    "title": "Apariencia",
+    "description": "Personalice el aspecto de la aplicación",
+    "theme": "Tema",
+    "theme_desc": "Elija el esquema de colores de la aplicación",
+    "language": "Idioma",
+    "language_desc": "Idioma de la interfaz",
+    "language_updated": "El idioma ha sido actualizado",
+    "date_time": "Fecha y hora",
+    "date_time_desc": "Personalice el formato de visualización de fecha y hora",
+    "date_format": "Formato de fecha",
+    "date_format_updated": "El formato de fecha ha sido actualizado",
+    "time_format": "Formato de hora",
+    "time_format_updated": "El formato de hora ha sido actualizado",
+    "time_12h": "12 horas (2:30 PM)",
+    "time_24h": "24 horas (14:30)",
+    "select_date_format": "Seleccionar formato de fecha",
+    "select_time_format": "Seleccionar formato de hora",
+    "select_language": "Seleccionar idioma",
+    "reset": "Restablecer valores predeterminados",
+    "reset_done": "Configuración predeterminada restaurada"
+  },
+  "errors": {
+    "network": "Error de red. Por favor, compruebe su conexión.",
+    "server": "Error del servidor. Por favor, inténtelo más tarde.",
+    "unknown": "Se produjo un error desconocido.",
+    "validation": "Error de validación. Por favor, compruebe los datos introducidos.",
+    "not_found": "Recurso no encontrado.",
+    "unauthorized": "No está autorizado para realizar esta acción.",
+    "forbidden": "Acceso denegado."
+  },
+  "sync": {
+    "status_title": "Estado de sincronización",
+    "status_description": "Supervise el estado de sincronización y resuelva problemas de sincronización",
+    "synchronizing": "Sincronizando",
+    "completed": "Sincronizado",
+    "failed": "La sincronización falló",
+    "pending": "Sincronización pendiente",
+    "offline_warning": "El dispositivo no tiene conexión actualmente. Algunas acciones están deshabilitadas hasta que se reconecte."
+  },
+  "update": {
+    "title": "Actualización disponible",
+    "description": "Hay una nueva versión de la aplicación disponible. Actualice ahora para obtener las últimas funciones y mejoras.",
+    "button_update": "Actualizar ahora",
+    "button_later": "Más tarde"
+  },
+  "time": {
+    "hour": "Hora",
+    "minute": "Minuto"
+  },
+  "brand": {
+    "copyright": "© {years} Reborn Foundation. Todos los derechos reservados.",
+    "license": "AGPL-3.0"
+  },
+  "pwa": {
+    "install_title_task": "Instale re/task en su dispositivo",
+    "install_title_notes": "Instale re/notes en su dispositivo",
+    "install_description_task": "Acceso rápido desde su pantalla de inicio, modo sin conexión y notificaciones.",
+    "install_description_notes": "Acceso rápido desde su pantalla de inicio y modo sin conexión.",
+    "install_button": "Instalar",
+    "install_ios_description": "Pulse el icono de compartir (⎙) y seleccione \"Añadir a la pantalla de inicio\"."
+  }
+}

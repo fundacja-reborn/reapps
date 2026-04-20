@@ -1,0 +1,939 @@
+/**
+ * Export / Import service for Reborn Notes.
+ *
+ * Handles:
+ *  - Single note  → .md file download
+ *  - Folder / all → .zip archive download (uses JSZip via dynamic import)
+ *  - Full backup  → .json file download (raw IndexedDB data)
+ *  - Import       → .md file(s) → new notes
+ */
+import type {
+  NoteDecrypted,
+  NoteEncrypted,
+  NoteStoredLocal,
+  NoteSensitiveMetadata,
+  FolderWithChildren
+} from '@reborn/types';
+import {
+  schemas,
+  MAX_NOTE_CONTENT_BYTES
+} from '@reborn/types';
+import {
+  noteStore,
+  folderStore,
+  tagStore,
+  noteTagStore,
+  noteTagOperations,
+  noteTagQueries,
+  type NoteTag
+} from '@reborn/storage';
+import { get } from 'svelte/store';
+import { authStore } from '$lib/stores/auth.store';
+import {
+  deriveKeyFromPassword,
+  generateSalt,
+  encryptData,
+  decryptData,
+  arrayBufferToBase64,
+  base64ToArrayBuffer,
+  cryptoManager
+} from '@reborn/crypto';
+import { createLogger } from '@reborn/utils';
+import * as NoteService from './note.service';
+import * as FolderService from './folder.service';
+import * as TagService from './tag.service';
+import { pushNote, pushFolder, pushTag, pushPendingItems } from './notes-sync.service';
+import { noteIndex } from './note-index.svelte';
+import {
+  parseMarkdownFile,
+  extractFolderSegments,
+  containsHiddenSegment,
+  normalizeFrontmatterDate
+} from './markdown-import-utils';
+import { sanitizeMarkdownContent, sanitizeTags } from '$lib/utils/markdown-sanitizer';
+
+const logger = createLogger('ExportImport');
+
+/** Max import file size: 100 MB (aligned with per-user storage quota). */
+const MAX_IMPORT_FILE_SIZE = 100 * 1024 * 1024;
+
+/** UUID v4 regex (strict: 8-4-4-4-12 hex chars). */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Attempt to fix common UUID corruptions found in IndexedDB data:
+ * - Missing leading zeros in groups (e.g., 7-char first group → pad to 8)
+ * Returns the UUID unchanged if it's already valid, or `null` if unrepairable.
+ */
+function tryFixUuid(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  if (UUID_RE.test(value)) return value; // already valid
+
+  const parts = value.split('-');
+  if (parts.length !== 5) return null;
+
+  const expectedLengths = [8, 4, 4, 4, 12];
+  const fixed = parts.map((part, i) => {
+    const expected = expectedLengths[i];
+    if (part.length === expected) return part;
+    if (part.length < expected && part.length >= expected - 2) {
+      // Pad with leading zeros (most likely corruption: dropped leading '0')
+      return part.padStart(expected, '0');
+    }
+    return null; // too short or too long — unrepairable
+  });
+
+  if (fixed.includes(null)) return null;
+  const result = fixed.join('-');
+  return UUID_RE.test(result) ? result : null;
+}
+
+/**
+ * Pre-process a raw entity object: attempt to fix UUID fields before Zod
+ * validation. Returns the object with fixed UUIDs and a list of field
+ * names that were repaired (for logging).
+ */
+function fixEntityUuids(
+  raw: Record<string, unknown>,
+  uuidFields: string[]
+): { fixed: Record<string, unknown>; repairedFields: string[] } {
+  const fixed = { ...raw };
+  const repairedFields: string[] = [];
+  for (const field of uuidFields) {
+    if (field in fixed && typeof fixed[field] === 'string' && !UUID_RE.test(fixed[field] as string)) {
+      const repaired = tryFixUuid(fixed[field]);
+      if (repaired) {
+        fixed[field] = repaired;
+        repairedFields.push(field);
+      }
+    }
+  }
+  return { fixed, repairedFields };
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function sanitizeFilename(name: string): string {
+  return (name.replace(/[\\/:*?"<>|\n\r\t]/g, '_').trim() || 'untitled').slice(0, 100);
+}
+
+function buildFrontmatter(note: NoteDecrypted, tagNames: string[]): string {
+  const escapeYaml = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const lines = [
+    '---',
+    `title: "${escapeYaml(note.title)}"`,
+    `created: ${note.created_at}`,
+    `modified: ${note.updated_at}`
+  ];
+  if (tagNames.length > 0) {
+    lines.push(`tags: [${tagNames.map((t) => `"${escapeYaml(t)}"`).join(', ')}]`);
+  }
+  lines.push('---', '');
+  return lines.join('\n');
+}
+
+function buildMarkdownContent(note: NoteDecrypted, tagNames: string[]): string {
+  return buildFrontmatter(note, tagNames) + note.content;
+}
+
+/** Flatten folder tree to map: id → relative path (e.g. "Work/Projects"). */
+function buildFolderPathMap(nodes: FolderWithChildren[], prefix = ''): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const f of nodes) {
+    const segment = sanitizeFilename(f.name);
+    const path = prefix ? `${prefix}/${segment}` : segment;
+    map.set(f.id, path);
+    for (const [k, v] of buildFolderPathMap(f.children ?? [], path)) {
+      map.set(k, v);
+    }
+  }
+  return map;
+}
+
+// ── Export ───────────────────────────────────────────────────────────────────
+
+/** Export a single note as a .md file download. */
+export function exportNoteAsMarkdown(note: NoteDecrypted, tagNames: string[] = []): void {
+  const content = buildMarkdownContent(note, tagNames);
+  const blob = new Blob([content], { type: 'text/markdown; charset=utf-8' });
+  downloadBlob(blob, `${sanitizeFilename(note.title)}.md`);
+}
+
+/** Export multiple notes as a .zip archive (JSZip, dynamically imported). */
+export async function exportNotesAsZip(
+  notes: NoteDecrypted[],
+  folderTree: FolderWithChildren[],
+  archiveName = 'reborn-notes-export'
+): Promise<void> {
+  // Resolve tag names for all notes in bulk
+  const allTags = await tagStore.getAll();
+  const allNoteTagRelations = await noteTagStore.getAll();
+  // Decrypt tag names — tags are stored encrypted in IndexedDB
+  const tagNameById = new Map<string, string>();
+  if (cryptoManager.isInitialized()) {
+    for (const t of allTags) {
+      try {
+        const name = await cryptoManager.decryptText(t.name_encrypted);
+        tagNameById.set(t.id, name);
+      } catch {
+        tagNameById.set(t.id, t.name_encrypted);
+      }
+    }
+  }
+  const tagsByNote = new Map<string, string[]>();
+  for (const rel of allNoteTagRelations) {
+    const arr = tagsByNote.get(rel.note_id) ?? [];
+    const name = tagNameById.get(rel.tag_id);
+    if (name) arr.push(name);
+    tagsByNote.set(rel.note_id, arr);
+  }
+
+  const { default: JSZip } = await import('jszip');
+  const zip = new JSZip();
+  const folderPaths = buildFolderPathMap(folderTree);
+  const usedPaths = new Set<string>();
+
+  for (const note of notes) {
+    const tagNames = tagsByNote.get(note.id) ?? [];
+    const content = buildMarkdownContent(note, tagNames);
+    const dir = note.folder_id ? (folderPaths.get(note.folder_id) ?? '') : '';
+    const base = sanitizeFilename(note.title);
+    let filePath = dir ? `${dir}/${base}.md` : `${base}.md`;
+
+    // Deduplicate filenames within the same directory
+    let counter = 1;
+    while (usedPaths.has(filePath)) {
+      filePath = dir ? `${dir}/${base}_${counter}.md` : `${base}_${counter}.md`;
+      counter++;
+    }
+    usedPaths.add(filePath);
+    zip.file(filePath, content);
+  }
+
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+  downloadBlob(blob, `${archiveName}.zip`);
+}
+
+/**
+ * Strip local-only shadow indexes from a note before persisting to a file.
+ *
+ * Zero Knowledge: `is_pinned` and `is_starred` live ONLY locally; their
+ * authoritative copy is inside `metadata_encrypted`. They are rebuilt on
+ * import. `is_archived` is operational (server-aware) and stays plain.
+ * Note-tag relations are also encoded inside `metadata_encrypted.tags`.
+ */
+function stripNoteShadowIndexes(note: NoteStoredLocal): NoteEncrypted {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { is_pinned, is_starred, ...rest } = note;
+  return rest;
+}
+
+/** Normalize UUID fields in exported entities (fix corrupted IndexedDB data). */
+function normalizeExportUuids<T extends { id: string }>(
+  items: T[],
+  uuidFields: string[]
+): T[] {
+  return items.map((item) => {
+    let modified = false;
+    const copy = { ...item };
+    for (const field of uuidFields) {
+      const val = (copy as Record<string, unknown>)[field];
+      if (typeof val === 'string' && !UUID_RE.test(val)) {
+        const repaired = tryFixUuid(val);
+        if (repaired) {
+          (copy as Record<string, unknown>)[field] = repaired;
+          modified = true;
+        }
+      }
+    }
+    if (modified) {
+      logger.warn(`Export: naprawiono UUID dla elementu ${copy.id}`);
+    }
+    return copy;
+  });
+}
+
+/**
+ * Export a full JSON backup of all note-related data from IndexedDB.
+ *
+ * Zero Knowledge: shadow indexes (is_pinned, is_starred) are stripped from
+ * notes; they will be rebuilt from `metadata_encrypted` on import.
+ * Note-tag relations are NOT included — they are encoded inside each note's
+ * `metadata_encrypted.tags` and rebuilt on import.
+ */
+export async function exportJsonBackup(): Promise<void> {
+  const [notes, folders, tags] = await Promise.all([
+    noteStore.getAll() as Promise<NoteStoredLocal[]>,
+    folderStore.getAll(),
+    tagStore.getAll()
+  ]);
+
+  const sanitizedNotes: NoteEncrypted[] = normalizeExportUuids(
+    notes.map(stripNoteShadowIndexes),
+    ['id', 'user_id', 'folder_id']
+  );
+  const sanitizedFolders = normalizeExportUuids(folders, ['id', 'user_id', 'parent_id']);
+  const sanitizedTags = normalizeExportUuids(tags, ['id', 'user_id']);
+
+  const backup = {
+    version: 1,
+    exported_at: new Date().toISOString(),
+    app: 'reborn-notes',
+    data: { notes: sanitizedNotes, folders: sanitizedFolders, tags: sanitizedTags }
+  };
+
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: 'application/json; charset=utf-8' });
+  const date = new Date().toISOString().slice(0, 10);
+  downloadBlob(blob, `reborn-notes-backup-${date}.json`);
+}
+
+/**
+ * Export a password-encrypted JSON backup.
+ * Uses PBKDF2 to derive an AES-256-GCM key from the user-provided password.
+ * The output file contains: version, salt (base64), iv (base64), data (base64 ciphertext).
+ * This backup can be imported on any account with the correct password.
+ *
+ * Zero Knowledge: shadow indexes are stripped before encryption (defense in
+ * depth — even if the password leaks, no extra signal beyond what's already
+ * in `metadata_encrypted`).
+ */
+export async function exportEncryptedBackup(password: string): Promise<void> {
+  const [notes, folders, tags] = await Promise.all([
+    noteStore.getAll() as Promise<NoteStoredLocal[]>,
+    folderStore.getAll(),
+    tagStore.getAll()
+  ]);
+
+  const sanitizedNotes: NoteEncrypted[] = normalizeExportUuids(
+    notes.map(stripNoteShadowIndexes),
+    ['id', 'user_id', 'folder_id']
+  );
+  const sanitizedFolders = normalizeExportUuids(folders, ['id', 'user_id', 'parent_id']);
+  const sanitizedTags = normalizeExportUuids(tags, ['id', 'user_id']);
+
+  const backup = {
+    exported_at: new Date().toISOString(),
+    app: 'reborn-notes',
+    data: { notes: sanitizedNotes, folders: sanitizedFolders, tags: sanitizedTags }
+  };
+
+  const json = JSON.stringify(backup);
+  const salt = await generateSalt(16);
+  const key = await deriveKeyFromPassword(password, salt);
+  const { encryptedData, iv } = await encryptData(json, key);
+
+  const envelope = {
+    version: 2,
+    encryption: 'aes-256-gcm-pbkdf2',
+    salt: arrayBufferToBase64(salt),
+    iv: arrayBufferToBase64(iv),
+    data: arrayBufferToBase64(encryptedData)
+  };
+
+  const blob = new Blob([JSON.stringify(envelope, null, 2)], {
+    type: 'application/json; charset=utf-8'
+  });
+  const date = new Date().toISOString().slice(0, 10);
+  downloadBlob(blob, `reborn-notes-backup-encrypted-${date}.json`);
+}
+
+// ── Backup format detection & types ──────────────────────────────────────────
+
+type BackupV1 = {
+  version: 1;
+  data: {
+    notes: Record<string, unknown>[];
+    folders: Record<string, unknown>[];
+    tags: Record<string, unknown>[];
+    /**
+     * Legacy field — pre-fix backups dumped raw note-tag relations.
+     * Current backups encode tag IDs inside `metadata_encrypted.tags` and
+     * omit this field. Kept optional for backwards compat with old files.
+     */
+    noteTags?: Record<string, unknown>[];
+  };
+};
+
+type BackupV2 = {
+  version: 2;
+  encryption: string;
+  salt: string;
+  iv: string;
+  data: string;
+};
+
+export type ImportBackupResult = {
+  notes: number;
+  folders: number;
+  tags: number;
+  noteTags: number;
+  skipped: number;
+  errors: string[];
+};
+
+/**
+ * Check if a backup file is encrypted (version 2).
+ * Call this before importJsonBackup to know if a password is needed.
+ */
+export function isEncryptedBackup(raw: string): boolean {
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed.version === 2 && typeof parsed.encryption === 'string';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Import a JSON backup file (version 1 plaintext or version 2 encrypted).
+ * - Validates each item with Zod schemas before saving.
+ * - Uses timestamp-based conflict resolution: skips items where the local version is newer.
+ * - Forces sync_status='pending' and triggers pushPendingItems() after import.
+ */
+export async function importJsonBackup(
+  raw: string,
+  password?: string
+): Promise<ImportBackupResult> {
+  // raw is already in memory (file.text() in UI), but guard against absurd sizes
+  if (raw.length > MAX_IMPORT_FILE_SIZE) {
+    throw new Error(`Plik backupu (${Math.round(raw.length / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)} MB.`);
+  }
+
+  const userId = get(authStore).userId;
+  if (!userId) {
+    throw new Error('Użytkownik nie jest zalogowany.');
+  }
+
+  const parsed = JSON.parse(raw);
+  let backupData: BackupV1['data'];
+
+  if (parsed.version === 2) {
+    // Encrypted backup
+    if (!password) throw new Error('Ten backup jest zaszyfrowany. Podaj hasło.');
+    const envelope = parsed as BackupV2;
+    const salt = base64ToArrayBuffer(envelope.salt);
+    const iv = base64ToArrayBuffer(envelope.iv);
+    const ciphertext = base64ToArrayBuffer(envelope.data);
+    const key = await deriveKeyFromPassword(password, salt);
+    let decrypted: string;
+    try {
+      decrypted = (await decryptData(ciphertext, key, iv, 'string')) as string;
+    } catch {
+      throw new Error('Nieprawidłowe hasło lub uszkodzony plik backupu.');
+    }
+    const inner = JSON.parse(decrypted);
+    backupData = inner.data;
+  } else if (parsed.version === 1) {
+    // Plaintext backup
+    backupData = (parsed as BackupV1).data;
+  } else {
+    throw new Error('Nieznany format backupu.');
+  }
+
+  const now = new Date().toISOString();
+  const result: ImportBackupResult = {
+    notes: 0, folders: 0, tags: 0, noteTags: 0, skipped: 0, errors: []
+  };
+
+  // Import folders first (notes reference them)
+  for (const folder of backupData.folders ?? []) {
+    try {
+      const { fixed: fixedFolder, repairedFields: repairedFolderFields } = fixEntityUuids(
+        folder as Record<string, unknown>,
+        ['id', 'user_id', 'parent_id']
+      );
+      if (repairedFolderFields.length > 0) {
+        logger.warn(`Folder ${fixedFolder.id}: naprawiono UUID w polach: ${repairedFolderFields.join(', ')}`);
+      }
+      const parsed = schemas.FolderEncryptedSchema.safeParse(fixedFolder);
+      if (!parsed.success) {
+        result.errors.push(`Folder ${fixedFolder.id}: walidacja nie powiodła się — ${parsed.error.issues[0]?.message}`);
+        continue;
+      }
+      const validated = parsed.data;
+      const existing = await folderStore.get(validated.id);
+      if (existing && existing.updated_at >= validated.updated_at) {
+        result.skipped++;
+        continue;
+      }
+      const toSave = {
+        ...validated,
+        user_id: userId,
+        sync_status: 'pending' as const,
+        sync_version: 0,
+        updated_at: now
+      };
+      await folderStore.save(toSave);
+      pushFolder(toSave);
+      result.folders++;
+    } catch (e: unknown) {
+      result.errors.push(`Folder ${folder.id}: ${e instanceof Error ? e.message : 'błąd'}`);
+    }
+  }
+
+  // Import tags
+  for (const tag of backupData.tags ?? []) {
+    try {
+      const { fixed: fixedTag, repairedFields: repairedTagFields } = fixEntityUuids(
+        tag as Record<string, unknown>,
+        ['id', 'user_id']
+      );
+      if (repairedTagFields.length > 0) {
+        logger.warn(`Tag ${fixedTag.id}: naprawiono UUID w polach: ${repairedTagFields.join(', ')}`);
+      }
+      const parsed = schemas.TagEncryptedSchema.safeParse(fixedTag);
+      if (!parsed.success) {
+        result.errors.push(`Tag ${fixedTag.id}: walidacja nie powiodła się — ${parsed.error.issues[0]?.message}`);
+        continue;
+      }
+      const validated = parsed.data;
+      const existing = await tagStore.get(validated.id);
+      if (existing && existing.updated_at >= validated.updated_at) {
+        result.skipped++;
+        continue;
+      }
+      const toSave = {
+        ...validated,
+        user_id: userId,
+        sync_status: 'pending' as const,
+        sync_version: 0,
+        updated_at: now
+      };
+      await tagStore.save(toSave);
+      pushTag(toSave);
+      result.tags++;
+    } catch (e: unknown) {
+      result.errors.push(`Tag ${tag.id}: ${e instanceof Error ? e.message : 'błąd'}`);
+    }
+  }
+
+  // Import notes — strip any shadow indexes a legacy file may have, then
+  // rebuild them locally from `metadata_encrypted` (Zero Knowledge: shadow
+  // indexes are NEVER trusted from a file).
+  for (const note of backupData.notes ?? []) {
+    try {
+      // Strip shadow indexes from raw input before validation. Zod's safeParse
+      // strips unknowns, so this is mostly defensive — it makes the intent
+      // explicit and tolerates legacy files.
+      const wireCandidate = stripUnknownNoteShadowIndexes(note) as Record<string, unknown>;
+      const { fixed: fixedNote, repairedFields: repairedNoteFields } = fixEntityUuids(
+        wireCandidate,
+        ['id', 'user_id', 'folder_id']
+      );
+      if (repairedNoteFields.length > 0) {
+        logger.warn(`Note ${fixedNote.id}: naprawiono UUID w polach: ${repairedNoteFields.join(', ')}`);
+      }
+      const parsed = schemas.NoteEncryptedSchema.safeParse(fixedNote);
+      if (!parsed.success) {
+        result.errors.push(`Note ${(fixedNote as { id?: string }).id ?? '?'}: walidacja nie powiodła się — ${parsed.error.issues[0]?.message}`);
+        continue;
+      }
+      const validated = parsed.data;
+      const existing = await noteStore.get(validated.id);
+      if (existing && existing.updated_at >= validated.updated_at) {
+        result.skipped++;
+        continue;
+      }
+
+      // Rebuild shadow indexes + tag list from metadata_encrypted (mirrors pullNotes()).
+      let is_pinned = false;
+      let is_starred = false;
+      let metaTagIds: string[] = [];
+      try {
+        if (validated.metadata_encrypted && cryptoManager.isInitialized()) {
+          const meta = await cryptoManager.decryptObject<NoteSensitiveMetadata>(
+            validated.metadata_encrypted
+          );
+          is_pinned = meta.is_pinned ?? false;
+          is_starred = meta.is_starred ?? false;
+          metaTagIds = meta.tags ?? [];
+        }
+      } catch (decryptErr) {
+        logger.error(
+          `METADATA_DECRYPT_FAILED for imported note ${validated.id} — shadow indexes will use defaults`,
+          decryptErr
+        );
+      }
+
+      const wire: NoteEncrypted = {
+        ...validated,
+        user_id: userId,
+        sync_status: 'pending',
+        sync_version: 0,
+        updated_at: now
+      };
+      const toSave: NoteStoredLocal = {
+        ...wire,
+        is_pinned,
+        is_starred
+      };
+      await noteStore.save(toSave);
+
+      // Rebuild local note-tag associations from metadata_encrypted.tags
+      // (mirrors pullNotes() — relations are not stored in the file directly).
+      if (metaTagIds.length > 0) {
+        const currentTagIds = await noteTagQueries.getTagsForNote(validated.id);
+        const toAdd = metaTagIds.filter((id) => !currentTagIds.includes(id));
+        const toRemove = currentTagIds.filter((id) => !metaTagIds.includes(id));
+        await Promise.all([
+          ...toAdd.map((tagId) =>
+            noteTagOperations
+              .addTagToNote(validated.id, tagId)
+              .catch((e) => logger.warn('Failed to add tag to note', e))
+          ),
+          ...toRemove.map((tagId) =>
+            noteTagOperations
+              .removeTagFromNote(validated.id, tagId)
+              .catch((e) => logger.warn('Failed to remove tag from note', e))
+          )
+        ]);
+      }
+
+      pushNote(wire);
+      result.notes++;
+    } catch (e: unknown) {
+      result.errors.push(`Note ${(note as { id?: string }).id ?? '?'}: ${e instanceof Error ? e.message : 'błąd'}`);
+    }
+  }
+
+  // Backwards compat: legacy v1 backups contained an explicit `noteTags`
+  // array. We still honor it for old files, but new exports omit it because
+  // tag IDs already live inside metadata_encrypted.tags.
+  for (const rel of backupData.noteTags ?? []) {
+    try {
+      const parsed = schemas.NoteTagSchema.safeParse(rel);
+      if (!parsed.success) {
+        result.errors.push(`NoteTag: walidacja nie powiodła się — ${parsed.error.issues[0]?.message}`);
+        continue;
+      }
+      const rawId = (rel as Record<string, unknown>).id;
+      const id = typeof rawId === 'string' ? rawId : crypto.randomUUID();
+      const noteTag: NoteTag = { ...parsed.data, id };
+      await noteTagStore.save(noteTag);
+      result.noteTags++;
+    } catch (e: unknown) {
+      result.errors.push(`NoteTag: ${e instanceof Error ? e.message : 'błąd'}`);
+    }
+  }
+
+  // Rebuild in-memory note title index so imported notes are visible
+  // immediately without requiring a reload.
+  try {
+    await noteIndex.rebuild();
+  } catch (e: unknown) {
+    logger.warn('Failed to rebuild note index after import', e);
+  }
+
+  // Trigger background sync for any items that didn't get pushed inline
+  void pushPendingItems();
+
+  logger.info('Import complete', {
+    folders: result.folders,
+    tags: result.tags,
+    notes: result.notes,
+    noteTags: result.noteTags,
+    skipped: result.skipped,
+    errors: result.errors.length
+  });
+
+  return result;
+}
+
+/**
+ * Defensive strip — drops local-only shadow keys before Zod validation.
+ * `safeParse` already strips unknowns, but doing it explicitly documents
+ * the Zero Knowledge invariant: these fields must be rebuilt from
+ * `metadata_encrypted`, never trusted from a file.
+ */
+function stripUnknownNoteShadowIndexes(raw: unknown): unknown {
+  if (typeof raw !== 'object' || raw === null) return raw;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { is_pinned, is_starred, ...rest } = raw as Record<string, unknown>;
+  return rest;
+}
+
+// ── Import ───────────────────────────────────────────────────────────────────
+
+/** Import notes from an array of .md File objects. Returns { imported, errors, strippedCount }. */
+export async function importMarkdownFiles(
+  files: File[],
+  folderId?: string
+): Promise<{ imported: number; errors: string[]; strippedCount: number }> {
+  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+  if (totalSize > MAX_IMPORT_FILE_SIZE) {
+    throw new Error(`Łączny rozmiar plików (${Math.round(totalSize / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)} MB.`);
+  }
+
+  let imported = 0;
+  let strippedCount = 0;
+  const errors: string[] = [];
+
+  for (const file of files) {
+    try {
+      const raw = await file.text();
+      const { title, content } = parseMarkdownFile(raw);
+      const { sanitized, stripped } = sanitizeMarkdownContent(content);
+      strippedCount += stripped.length;
+      const noteTitle = title ?? (file.name.replace(/\.md$/i, '') || 'Untitled');
+      await NoteService.createNote(noteTitle, sanitized, folderId);
+      imported++;
+    } catch (e: unknown) {
+      errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    }
+  }
+
+  return { imported, errors, strippedCount };
+}
+
+// ── Folder Import (Obsidian-style vault) ────────────────────────────────────
+
+/** Flat lookup entry for folder find-or-create logic. */
+type FolderLookupEntry = { id: string; name: string; parent_id: string | undefined };
+
+/** Flatten the decrypted folder tree into `{ id, name, parent_id }` entries. */
+function flattenFolderTree(nodes: FolderWithChildren[]): FolderLookupEntry[] {
+  const out: FolderLookupEntry[] = [];
+  const walk = (ns: FolderWithChildren[]) => {
+    for (const n of ns) {
+      out.push({ id: n.id, name: n.name, parent_id: n.parent_id });
+      if (n.children?.length) walk(n.children);
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
+/**
+ * Walk a path of folder segments and return the leaf folder id, creating
+ * any missing intermediate folders. Matches existing folders case-insensitively
+ * on (parent_id, name). Mutates `lookup` so subsequent calls in the same
+ * batch can reuse folders created earlier in this import.
+ */
+async function findOrCreateFolderByPath(
+  pathSegments: string[],
+  lookup: FolderLookupEntry[],
+  counter: { count: number }
+): Promise<string | undefined> {
+  if (pathSegments.length === 0) return undefined;
+
+  let parentId: string | undefined = undefined;
+  for (const segment of pathSegments) {
+    const segmentLower = segment.toLowerCase();
+    const existing = lookup.find(
+      (f) => f.parent_id === parentId && f.name.toLowerCase() === segmentLower
+    );
+    if (existing) {
+      parentId = existing.id;
+      continue;
+    }
+    const newId = await FolderService.createFolder(segment, parentId);
+    lookup.push({ id: newId, name: segment, parent_id: parentId });
+    counter.count++;
+    parentId = newId;
+  }
+  return parentId;
+}
+
+/**
+ * Find an existing tag by name (case-insensitive) or create a new one.
+ * Mutates `lookup` so repeated tags within a batch don't create duplicates.
+ */
+async function findOrCreateTagByName(
+  tagName: string,
+  lookup: Array<{ id: string; name: string }>,
+  counter: { count: number }
+): Promise<string> {
+  const lower = tagName.toLowerCase();
+  const existing = lookup.find((t) => t.name.toLowerCase() === lower);
+  if (existing) return existing.id;
+  const newId = await TagService.createTag(tagName);
+  lookup.push({ id: newId, name: tagName });
+  counter.count++;
+  return newId;
+}
+
+export type ImportFolderResult = {
+  imported: number;
+  foldersCreated: number;
+  tagsCreated: number;
+  skippedNonMarkdown: number;
+  skippedTooLarge: number;
+  skippedHidden: number;
+  strippedCount: number;
+  errors: string[];
+};
+
+/**
+ * Import a folder tree of Markdown files (Obsidian-style vault).
+ *
+ * Reproduces the directory hierarchy as reborn-notes folders, imports every
+ * `.md` file as a note, and rebuilds tags from `tags:` frontmatter. Files
+ * that exceed {@link MAX_NOTE_CONTENT_BYTES} (500 KB plaintext cap),
+ * non-markdown files, and files inside hidden directories (e.g. `.obsidian/`,
+ * `.trash/`) are skipped with per-category counters.
+ *
+ * Folder matching is case-insensitive within the same parent, so re-running
+ * the import against an existing structure reuses folders instead of
+ * duplicating them.
+ *
+ * TODO(duplication): notes are currently NOT deduplicated — re-importing the
+ * same vault creates a second copy of each note. A future improvement could
+ * skip creation when a note with the same title already exists in the target
+ * folder (requires decrypting NoteIndex entries for each candidate folder).
+ */
+export async function importFolder(files: File[]): Promise<ImportFolderResult> {
+  const result: ImportFolderResult = {
+    imported: 0,
+    foldersCreated: 0,
+    tagsCreated: 0,
+    skippedNonMarkdown: 0,
+    skippedTooLarge: 0,
+    skippedHidden: 0,
+    strippedCount: 0,
+    errors: []
+  };
+
+  // 1. Skip files in hidden directories (.obsidian/, .trash/, etc.).
+  //    Applied FIRST so we don't pollute the non-markdown counter with
+  //    .json/.css plugin internals — those get their own bucket.
+  const visibleFiles: File[] = [];
+  for (const f of files) {
+    if (containsHiddenSegment(f.webkitRelativePath)) {
+      result.skippedHidden++;
+    } else {
+      visibleFiles.push(f);
+    }
+  }
+
+  // 2. Filter non-markdown files.
+  const mdFiles: File[] = [];
+  for (const f of visibleFiles) {
+    if (f.name.toLowerCase().endsWith('.md')) {
+      mdFiles.push(f);
+    } else {
+      result.skippedNonMarkdown++;
+    }
+  }
+
+  // 3. Filter files exceeding the per-note plaintext cap.
+  const sizedFiles: File[] = [];
+  for (const f of mdFiles) {
+    if (f.size > MAX_NOTE_CONTENT_BYTES) {
+      result.skippedTooLarge++;
+    } else {
+      sizedFiles.push(f);
+    }
+  }
+
+  // 4. Enforce the shared total-import cap.
+  const totalSize = sizedFiles.reduce((sum, f) => sum + f.size, 0);
+  if (totalSize > MAX_IMPORT_FILE_SIZE) {
+    throw new Error(
+      `Łączny rozmiar plików (${Math.round(totalSize / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)} MB.`
+    );
+  }
+
+  if (sizedFiles.length === 0) return result;
+
+  // 5. Load existing folders/tags once so find-or-create can dedupe against
+  //    both previous state AND items created earlier in this batch.
+  const folderTree = await FolderService.getFolderTree();
+  const folderLookup = flattenFolderTree(folderTree);
+  const tagLookup: Array<{ id: string; name: string }> = (
+    await TagService.getAllTags()
+  ).map((t) => ({ id: t.id, name: t.name }));
+  const foldersCounter = { count: 0 };
+  const tagsCounter = { count: 0 };
+
+  // 6. Resolve every unique directory path to a folder id up-front.
+  const pathToFolderId = new Map<string, string | undefined>();
+  for (const file of sizedFiles) {
+    const segments = extractFolderSegments(file.webkitRelativePath);
+    const key = segments.join('/');
+    if (pathToFolderId.has(key)) continue;
+    try {
+      const folderId = await findOrCreateFolderByPath(segments, folderLookup, foldersCounter);
+      pathToFolderId.set(key, folderId);
+    } catch (e: unknown) {
+      pathToFolderId.set(key, undefined);
+      result.errors.push(`Folder "${key}": ${e instanceof Error ? e.message : 'błąd'}`);
+    }
+  }
+  result.foldersCreated = foldersCounter.count;
+
+  // 7. Import each note, attach tags, preserve frontmatter timestamps.
+  //    skipSync: true — avoid per-note pushNote/pushNoteUpdate race condition.
+  //    Bulk push happens after the loop (step 7b).
+  const importedNoteIds: string[] = [];
+  for (const file of sizedFiles) {
+    try {
+      const raw = await file.text();
+      const parsed = parseMarkdownFile(raw);
+      const segments = extractFolderSegments(file.webkitRelativePath);
+      const folderId = pathToFolderId.get(segments.join('/'));
+
+      const fallbackTitle = file.name.replace(/\.md$/i, '') || 'Untitled';
+      const title = (parsed.title ?? '').trim() || fallbackTitle;
+
+      const { sanitized: sanitizedContent, stripped } = sanitizeMarkdownContent(parsed.content);
+      result.strippedCount += stripped.length;
+
+      const createdAt = normalizeFrontmatterDate(parsed.created);
+      const modifiedAt = normalizeFrontmatterDate(parsed.modified);
+
+      const noteId = await NoteService.createNote(title, sanitizedContent, folderId, {
+        createdAt: createdAt ?? undefined,
+        updatedAt: modifiedAt ?? createdAt ?? undefined,
+        skipSync: true
+      });
+      importedNoteIds.push(noteId);
+
+      if (parsed.tags.length > 0) {
+        const { sanitized: safeTags } = sanitizeTags(parsed.tags);
+        const tagIds: string[] = [];
+        for (const tagName of safeTags) {
+          try {
+            const tagId = await findOrCreateTagByName(tagName, tagLookup, tagsCounter);
+            tagIds.push(tagId);
+          } catch (e: unknown) {
+            result.errors.push(`Tag "${tagName}": ${e instanceof Error ? e.message : 'błąd'}`);
+          }
+        }
+        if (tagIds.length > 0) {
+          await TagService.setTagsForNote(noteId, tagIds, { skipSync: true });
+        }
+      }
+
+      result.imported++;
+    } catch (e: unknown) {
+      result.errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    }
+  }
+  result.tagsCreated = tagsCounter.count;
+
+  // 7b. Bulk-push all imported notes (latest version from IndexedDB, with tags).
+  for (const noteId of importedNoteIds) {
+    const note = await noteStore.get(noteId);
+    if (note) pushNote(note);
+  }
+
+  // 8. Rebuild in-memory title index so imports are visible immediately.
+  try {
+    await noteIndex.rebuild();
+  } catch (e: unknown) {
+    logger.warn('Failed to rebuild note index after folder import', e);
+  }
+
+  logger.info('Folder import complete', result);
+  return result;
+}

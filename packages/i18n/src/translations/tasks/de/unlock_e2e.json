@@ -1,0 +1,12 @@
+{
+  "title": "Sitzung entsperren",
+  "description": "Geben Sie Ihr Passwort ein, um auf Ihre verschl\u00fcsselten Daten zuzugreifen.",
+  "password_label": "Passwort",
+  "submit_button": "Entsperren",
+  "logged_in_as": "Angemeldet als",
+  "wrong_account": "Falsches Konto?",
+  "errors": {
+    "invalid_password": "Ung\u00fcltiges Passwort. Bitte versuchen Sie es erneut.",
+    "unknown": "Ein unbekannter Fehler ist beim Entsperren Ihres Schl\u00fcssels aufgetreten."
+  }
+}

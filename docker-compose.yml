@@ -1,0 +1,97 @@
+name: reborn-apps
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: reborn
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d reborn']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: node:20-alpine
+    working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '4200:4200'
+    volumes:
+      - .:/app
+      # Isolated node_modules — avoids host/container platform conflicts
+      - node_modules:/app/node_modules
+      # Isolated .nx — avoids macOS/Linux workspace-data conflicts
+      - nx_cache:/app/.nx
+    env_file:
+      - .env
+    # DATABASE_URL in 'environment' overrides the value from .env
+    # — points to the 'db' container (not localhost)
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: 'postgresql://postgres:postgres@db:5432/reborn?sslmode=disable'
+      NX_DAEMON: 'false'
+      CI: 'true'
+    command: >
+      sh -c "
+        npm install -g pnpm@10 --quiet &&
+        pnpm install &&
+        pnpm --filter @reborn/database exec prisma migrate deploy &&
+        pnpm nx build @reborn/database &&
+        pnpm nx dev-host reborn-task
+      "
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:4200']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # Reborn Notes — uruchamiany opcjonalnie z profilem: docker compose --profile with-notes up
+  # Korzysta z tej samej bazy PostgreSQL i tego samego node_modules co reborn-task
+  notes:
+    image: node:20-alpine
+    working_dir: /app
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - '4201:4201'
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - nx_cache:/app/.nx
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: 'postgresql://postgres:postgres@db:5432/reborn?sslmode=disable'
+      NX_DAEMON: 'false'
+      CI: 'true'
+    command: >
+      sh -c "
+        npm install -g pnpm@10 --quiet &&
+        pnpm nx dev-host reborn-notes
+      "
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:4201']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    profiles:
+      - with-notes
+
+volumes:
+  postgres_data:
+  node_modules:
+  nx_cache:

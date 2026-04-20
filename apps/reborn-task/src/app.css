@@ -1,0 +1,115 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* Tailwind v4 content sources */
+@source "./app.html";
+@source "./lib/**/*.{svelte,js,ts}";
+@source "./routes/**/*.{svelte,js,ts}";
+@source "../../../packages/ui/src/**/*.{svelte,js,ts}";
+
+@import '../../../packages/ui/src/styles/global.css';
+
+/* Additional app-specific styles */
+@layer base {
+	/* App-specific overrides can go here */
+}
+
+/* Task detail page styles */
+@layer components {
+	/* Subtle hover effect for task properties */
+	.task-property-item:hover {
+		background-color: hsl(var(--muted) / 0.5);
+	}
+
+	/* Better spacing for inline editors */
+	.task-inline-editor {
+		min-height: 1.5rem;
+		line-height: 1.5;
+	}
+
+	/* Task item colors */
+	.task-item-bg {
+		background-color: #f2f2f2;
+		/* Ensure opaque background to cover delete button */
+		background-clip: padding-box;
+	}
+
+	.dark .task-item-bg {
+		background-color: oklch(0.269 0 0); /* Using --muted color from dark theme */
+		/* Ensure opaque background to cover delete button */
+		background-clip: padding-box;
+	}
+
+	/* Task item date colors */
+	.task-date-overdue {
+		--text-color: oklch(0.577 0.245 27.325);
+		color: var(--text-color);
+	}
+
+	.dark .task-date-overdue {
+		--text-color: oklch(0.704 0.191 22.216);
+	}
+
+	/* Orange color for icons */
+	.text-orange-500 {
+		color: #ff8c42;
+	}
+
+	/* Amber color for icons */
+	.text-amber-500 {
+		color: #ffd166;
+	}
+
+	/* Badge for today's tasks */
+	.task-badge-today {
+		background-color: #ff8c42 !important;
+		color: #ffffff !important;
+		border: none;
+	}
+
+	.dark .task-badge-today {
+		background-color: #ff8c42 !important;
+		color: #ffffff !important;
+		border: none;
+	}
+
+	/* Badge for tomorrow's tasks */
+	.task-badge-tomorrow {
+		background-color: #ffd166 !important;
+		color: #333333 !important;
+		border: none;
+	}
+
+	.dark .task-badge-tomorrow {
+		background-color: #ffd166 !important;
+		color: #333333 !important;
+		border: none;
+	}
+
+	/* Hover states for task item */
+	.task-item-bg:hover {
+		background-color: #e8e8e8;
+	}
+
+	.dark .task-item-bg:hover {
+		background-color: oklch(0.371 0 0); /* Using --accent color from dark theme */
+	}
+
+	/* Remove focus outline/ring from task items */
+	.task-item-bg:focus,
+	.task-item-bg:focus-visible {
+		outline: none;
+		box-shadow: none;
+	}
+
+	/* Swipeable item styles */
+	.swipeable-item-container {
+		/* Ensure clean edges when swiping */
+		isolation: isolate;
+	}
+
+	.swipeable-item-container *:focus {
+		outline: none;
+		box-shadow: none;
+	}
+}

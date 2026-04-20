@@ -1,0 +1,240 @@
+{
+  "sidebar": {
+    "tagline": "Offline-first z E2E",
+    "task_lists": "Listy zadań",
+    "new_list": "Nowa lista",
+    "starred_tasks": "Zadania z gwiazdką",
+    "completed_tasks": "Wykonane zadania",
+    "trash": "Kosz"
+  },
+  "dashboard": {
+    "title": "Panel główny",
+    "welcome": "Witaj ponownie, {username}!",
+    "total_tasks": "Wszystkie zadania",
+    "completed_today": "Ukończone dziś",
+    "overdue": "Przeterminowane",
+    "total_lists": "Listy zadań",
+    "across_all_lists": "we wszystkich listach",
+    "great_progress": "Świetny postęp!",
+    "needs_attention": "Wymaga uwagi",
+    "all_on_track": "Wszystko na bieżąco",
+    "organized_tasks": "Zorganizowane zadania",
+    "upcoming_tasks": "Nadchodzące zadania",
+    "next_7_days": "Następne 7 dni",
+    "no_upcoming_tasks": "Brak nadchodzących zadań",
+    "tasks_coming_soon": "Funkcja zadań wkrótce dostępna",
+    "recent_activity": "Ostatnia aktywność",
+    "your_latest_actions": "Twoje ostatnie działania",
+    "activity_coming_soon": "Historia aktywności wkrótce dostępna",
+    "productivity_score": "Wskaźnik produktywności",
+    "this_week": "W tym tygodniu",
+    "score_coming_soon": "Wskaźnik wkrótce dostępny"
+  },
+  "fields": {
+    "title": "Tytuł",
+    "description": "Opis",
+    "due_date": "Termin wykonania",
+    "list": "Lista zadań",
+    "time": "Czas",
+    "add_time": "Ustaw czas",
+    "select_date": "Wybierz datę",
+    "clear_date": "Wyczyść datę",
+    "set_time": "Ustaw godzinę",
+    "recurrence": "Powtarzanie",
+    "toggle_recurrence": "Przełącz powtarzanie"
+  },
+  "placeholders": {
+    "title": "Wprowadź tytuł zadania",
+    "description": "Dodaj opis (opcjonalnie)",
+    "due_date": "Wybierz termin wykonania",
+    "list": "Wybierz listę zadań",
+    "add_description": "Dodaj opis zadania"
+  },
+  "create": {
+    "title": "Nowe zadanie",
+    "description": "Dodaj nowe zadanie do listy"
+  },
+  "errors": {
+    "title_required": "Tytuł zadania jest wymagany",
+    "create_failed": "Nie udało się utworzyć zadania",
+    "update_failed": "Nie udało się zaktualizować zadania",
+    "not_found": "Zadanie nie zostało znalezione",
+    "load_failed": "Nie udało się załadować zadania",
+    "delete_failed": "Nie udało się usunąć zadania",
+    "reorder_failed": "Nie udało się zmienić kolejności zadania",
+    "restore_failed": "Nie udało się przywrócić zadania",
+    "move_failed": "Nie udało się przenieść zadania",
+    "title_too_long": "Tytuł przekracza maksymalny rozmiar ({max})",
+    "description_too_long": "Opis przekracza maksymalny rozmiar ({max})"
+  },
+  "success": {
+    "created": "Zadanie zostało utworzone",
+    "updated": "Zadanie zostało zaktualizowane",
+    "deleted": "Zadanie zostało usunięte",
+    "restored": "Zadanie zostało przywrócone",
+    "starred": "Zadanie zostało oznaczone gwiazdką",
+    "unstarred": "Gwizdka została usunięta",
+    "completed": "Zadanie zostało ukończone",
+    "uncompleted": "Zadanie oznaczone jako nieukończone",
+    "moved": "Zadanie zostało przeniesione"
+  },
+  "status": {
+    "completed": "Ukończone",
+    "starred": "Z gwiazdką",
+    "recurring": "Cykliczne"
+  },
+  "detail": {
+    "title": "Szczegóły zadania"
+  },
+  "completed_at": "Ukończono",
+  "select_date": "Wybierz datę",
+  "undo": {
+    "message": "Zadanie zostało usunięte",
+    "action": "Cofnij"
+  },
+  "aria": {
+    "delete_task": "Usuń zadanie"
+  },
+  "move_to_list": "Przenieś do listy",
+  "move_to_list_description": "Wybierz listę, do której chcesz przenieść to zadanie.",
+  "move_task_description": "Wybierz listę, do której chcesz przenieść zadanie.",
+  "options": "Opcje zadania",
+  "mark_complete": "Oznacz jako ukończone",
+  "mark_incomplete": "Oznacz jako nieukończone",
+  "recurrence_label": "Powtarzanie",
+  "remove_date": "Usuń datę",
+  "remove_date_title": "Usuń termin wykonania",
+  "remove_date_description": "Spowoduje to również usunięcie ustawień czasu i powtarzania.",
+  "remove_date_instance_description": "Spowoduje to również odłączenie tego zadania od cyklu powtarzania.",
+  "remove_recurrence_title": "Usuń powtarzanie",
+  "remove_recurrence_description": "Zadanie nie będzie już powtarzane.",
+  "recurrence": {
+    "title": "Powtarzanie zadania",
+    "description": "Ustaw częstotliwość powtarzania zadania.",
+    "add": "Dodaj powtarzanie",
+    "edit": "Edytuj powtarzanie",
+    "interval": {
+      "label": "Co ile?"
+    },
+    "frequency": {
+      "daily": "Codziennie",
+      "weekly": "Co tydzień",
+      "monthly": "Co miesiąc",
+      "yearly": "Co rok",
+      "label": "Częstotliwość"
+    },
+    "days": {
+      "label": "Dni tygodnia",
+      "monday": "Poniedziałek",
+      "tuesday": "Wtorek",
+      "wednesday": "Środa",
+      "thursday": "Czwartek",
+      "friday": "Piątek",
+      "saturday": "Sobota",
+      "sunday": "Niedziela"
+    },
+    "end": {
+      "label": "Zakończ powtarzanie",
+      "never": "Nigdy",
+      "after": "Po",
+      "occurrences": "powtórzeniach",
+      "on_date": "W dniu"
+    },
+    "every_n": {
+      "daily": "Co {n} {n, plural, =1 {dzień} few {dni} many {dni} other {dni}}",
+      "weekly": "Co {n} {n, plural, =1 {tydzień} few {tygodnie} many {tygodni} other {tygodni}}",
+      "monthly": "Co {n} {n, plural, =1 {miesiąc} few {miesiące} many {miesięcy} other {miesięcy}}",
+      "yearly": "Co {n} {n, plural, =1 {rok} few {lata} many {lat} other {lat}}"
+    },
+    "n_times": "{n, plural, =1 {# raz} few {# razy} many {# razy} other {# razy}}",
+    "until": "do"
+  },
+  "subtasks": {
+    "title": "Podzadania",
+    "add": "Dodaj podzadanie",
+    "add_placeholder": "Wprowadź nazwę podzadania",
+    "created": "Podzadanie zostało utworzone",
+    "updated": "Podzadanie zostało zaktualizowane",
+    "deleted": "Podzadanie zostało usunięte",
+    "marked_complete": "Podzadanie oznaczone jako ukończone",
+    "marked_incomplete": "Podzadanie oznaczone jako nieukończone",
+    "create_failed": "Nie udało się utworzyć podzadania",
+    "update_failed": "Nie udało się zaktualizować podzadania",
+    "delete_failed": "Nie udało się usunąć podzadania",
+    "delete_title": "Usuń podzadanie",
+    "delete_description": "Czy na pewno chcesz usunąć podzadanie \"{title}\"? Tej operacji nie można cofnąć.",
+    "reordered": "Zmieniono kolejność podzadań",
+    "reorder_failed": "Nie udało się zmienić kolejności podzadań",
+    "add_aria": "Dodaj podzadanie",
+    "cancel_aria": "Anuluj dodawanie podzadania"
+  },
+  "trash": {
+    "title": "Kosz",
+    "description": "Zadania w koszu są automatycznie usuwane po 30 dniach.",
+    "banner_message": "To zadanie znajduje się w koszu",
+    "banner_restore_hint": "Przywróć je lub usuń na stałe.",
+    "empty": "Kosz jest pusty",
+    "count": "{count} {count, plural, one {zadanie} few {zadania} many {zadań} other {zadań}} w koszu",
+    "from_list": "Z listy",
+    "deleted_on": "Usunięte",
+    "restore": "Przywróć",
+    "restored": "Zadanie zostało przywrócone",
+    "restore_failed": "Nie udało się przywrócić zadania",
+    "permanently_deleted": "Zadanie zostało trwale usunięte",
+    "permanently_delete": "Usuń trwale",
+    "delete_failed": "Nie udało się usunąć zadania",
+    "empty_trash": "Opróżnij kosz",
+    "emptied": "Kosz został opróżniony",
+    "empty_failed": "Nie udało się opróżnić kosza",
+    "auto_delete_warning": "Zostanie automatycznie usunięte za {days} {days, plural, one {dzień} few {dni} many {dni} other {dni}}",
+    "auto_delete_info": "Zadania przebywające w koszu dłużej niż 30 dni są automatycznie usuwane.",
+    "auto_purged": "Automatycznie usunięto {count} {count, plural, one {stare zadanie} few {stare zadania} many {starych zadań} other {starych zadań}}",
+    "unknown_list": "Nieznana lista",
+    "confirm_delete_title": "Trwale usuń zadanie",
+    "confirm_delete_description": "Czy na pewno chcesz trwale usunąć zadanie \"{title}\"? Tej operacji nie można cofnąć.",
+    "confirm_empty_title": "Opróżnij kosz",
+    "confirm_empty_description": "Czy na pewno chcesz trwale usunąć {count} {count, plural, one {zadanie} few {zadania} many {zadań} other {zadań}}? Tej operacji nie można cofnąć."
+  },
+  "delete": {
+    "title": "Usuń zadanie",
+    "confirm_message": "Czy na pewno chcesz usunąć zadanie \"{title}\"? Tej operacji nie można cofnąć.",
+    "this_only": "Tylko to wystąpienie",
+    "future": "To i wszystkie przyszłe wystąpienia"
+  },
+  "select_from_list": "Wybierz zadanie z listy",
+  "select_from_list_or": "lub wybierz zadanie z listy po lewej",
+  "select_from_list_hint": "Kliknij zadanie w panelu bocznym, aby zobaczyć jego szczegóły",
+  "no_tasks_yet": "Nie masz jeszcze żadnych zadań",
+  "no_tasks_yet_hint": "Utwórz swoje pierwsze zadanie, aby rozpocząć",
+  "add_new": "Nowe zadanie",
+  "empty_list": "Brak zadań na tej liście",
+  "recurring_instance": {
+    "recurrence_info": "Powtarzanie",
+    "skip": "Pomiń to wystąpienie",
+    "skip_title": "Pomiń wystąpienie",
+    "skip_description": "Czy na pewno chcesz pominąć to wystąpienie? Zadanie zniknie z listy, ale cykl powtarzania pozostanie aktywny.",
+    "skip_success": "Wystąpienie zostało pominięte",
+    "stop_cycle": "Zatrzymaj cykl",
+    "stop_cycle_title": "Zatrzymaj powtarzanie",
+    "stop_cycle_description": "Spowoduje to usunięcie wszystkich przyszłych wystąpień. Zadanie nie będzie już powtarzane.",
+    "stop_cycle_success": "Cykl powtarzania został zatrzymany",
+    "history": "Historia wystąpień",
+    "history_title": "Historia wystąpień",
+    "history_empty": "Brak wystąpień do wyświetlenia",
+    "history_current": "Bieżące",
+    "edit_recurrence": "Edytuj powtarzanie",
+    "edit_options_title": "Zmień powtarzanie",
+    "edit_options_description": "Które wystąpienia mają zostać zmienione?",
+    "edit_option_this_and_future": "To i przyszłe wystąpienia",
+    "edit_option_all": "Wszystkie wystąpienia",
+    "edit_success": "Powtarzanie zostało zaktualizowane"
+  },
+  "empty_state": "Brak zadań",
+  "quick_add": {
+    "placeholder": "Dodaj zadanie...",
+    "add_to_list": "Dodaj do:",
+    "hint_today": "Zadanie z dzisiejszą datą",
+    "hint_starred": "Zadanie z gwiazdką",
+    "hint_upcoming": "Zadanie na jutro"
+  }
+}

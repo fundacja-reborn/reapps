@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./dist",
+    "declarationDir": "./dist",
+    "declaration": true,
+    "declarationMap": true,
+    "types": ["node", "svelte"],
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.json"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],
+  "references": [
+    { "path": "../types" }
+  ]
+}

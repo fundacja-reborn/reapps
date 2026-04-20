@@ -1,0 +1,290 @@
+{
+  "app": {
+    "name": "Reborn",
+    "loading": "Loading application..."
+  },
+  "dates": {
+    "today": "today",
+    "tomorrow": "tomorrow",
+    "yesterday": "yesterday",
+    "in_days": "in {count} {days}",
+    "overdue": "overdue"
+  },
+  "language": {
+    "label": "Language",
+    "names": {
+      "en": "English",
+      "pl": "Polish",
+      "de": "German",
+      "es": "Spanish",
+      "fr": "French"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "description": "Welcome back! Enter your credentials to continue.",
+      "username_label": "Username",
+      "username_placeholder": "Enter your username",
+      "password_label": "Password",
+      "password_placeholder": "Enter your password",
+      "submit_button": "Sign In",
+      "errors": {
+        "username_password_required": "Username and password are required",
+        "invalid_credentials": "Invalid username or password",
+        "network_error": "Network error. Please try again",
+        "server_error": "Server error. Please try again later",
+        "invalid_request": "Invalid request format",
+        "master_key_load_failed": "Failed to load encryption key. Please check your password and try again",
+        "session_creation_failed": "Failed to create session. Please try again"
+      },
+      "success": "Successfully logged in",
+      "progress": {
+        "authenticating": "Authenticating...",
+        "loading_encryption_key": "Loading encryption key...",
+        "initializing_storage": "Initializing secure storage...",
+        "syncing_data": "Synchronizing data...",
+        "complete": "Login complete, redirecting..."
+      },
+      "reasons": {
+        "e2e_missing": "Your session was reset. Please log in again to restore encryption keys.",
+        "session_expired": "Your session has expired. Please log in again.",
+        "auth_required": "Please log in to continue."
+      }
+    },
+    "register": {
+      "title": "Create Account",
+      "description": "Sign up for a new account",
+      "username_label": "Username",
+      "password_label": "Password",
+      "confirm_password_label": "Confirm Password",
+      "submit_button": "Sign Up",
+      "register_disabled": "Registration is temporarily disabled. Please try again later.",
+      "errors": {
+        "username_password_required": "Username and password are required",
+        "user_already_exists": "Username already exists",
+        "passwords_do_not_match": "Passwords do not match",
+        "network_error": "Network error. Please try again",
+        "server_error": "Server error. Please try again later"
+      },
+      "success": "Registration successful"
+    },
+    "logout": {
+      "success": "You have been successfully logged out",
+      "error": "An error occurred while logging out"
+    },
+    "session": {
+      "expired_banner": "Session expired — click to sign in again",
+      "reauth_title": "Session expired",
+      "reauth_description": "Your session has expired. Enter your password to continue without losing your data.",
+      "username_label": "Username",
+      "password_label": "Password",
+      "password_placeholder": "Enter your password",
+      "submit_button": "Sign in",
+      "submitting": "Signing in...",
+      "error_auth_failed": "Authentication failed. Please check your password.",
+      "error_unknown": "Authentication failed",
+      "empty_no_data": "No data available — session expired. Sign in again to sync your data."
+    },
+    "2fa": {
+      "recovery_code_label": "Recovery Code",
+      "code_label": "2FA code",
+      "use_2fa_code": "Use 2FA code",
+      "use_recovery_code": "Use recovery code",
+      "verify_button": "Verify",
+      "errors": {
+        "invalid_code": "Invalid 2FA or recovery code.",
+        "code_required": "2FA code is required.",
+        "recovery_required": "Recovery code is required.",
+        "verification_failed": "Verification failed.",
+        "decrypt_failed": "Failed to process 2FA secret. Please ensure your password is correct.",
+        "secret_format": "Invalid 2FA secret format."
+      }
+    }
+  },
+  "common": {
+    "loading": "Loading",
+    "info": "Information",
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "creating": "Creating...",
+    "submitting": "Submitting...",
+    "settings": "Settings",
+    "logout": "Logout",
+    "delete": "Delete",
+    "add": "Add",
+    "saving": "saving...",
+    "ok": "OK",
+    "or": "or",
+    "initializing": "Initializing",
+    "initializing_message": "Please wait while we set up your secure storage",
+    "syncing_data": "Synchronizing your data...",
+    "error": "Error",
+    "initialization_error": "Error initializing application",
+    "back_to_login": "Back to Login",
+    "e2e_required": "Encryption Required",
+    "e2e_required_message": "This application requires end-to-end encryption for your security. Please log in again to restore your encryption keys.",
+    "ready": "Ready",
+    "general_navigation_error": "There was a problem with navigation",
+    "added": "Added",
+    "last_used": "Last used",
+    "verify": "Verify",
+    "name": "Name",
+    "saved": "Saved",
+    "save_error": "Failed to save",
+    "deleted": "Deleted",
+    "deleting": "Deleting...",
+    "delete_error": "Failed to delete",
+    "never": "Never",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "days_ago": "{days} days ago",
+    "continue": "Continue",
+    "search": "Search",
+    "edit": "Edit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "actions": "Actions",
+    "yes": "Yes",
+    "no": "No",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "apply": "Apply",
+    "select_date": "Select date",
+    "undo": "Undo",
+    "go_back": "Go back",
+    "created_at": "Created at",
+    "updated_at": "Updated at"
+  },
+  "offline": {
+    "indicator_active": "Offline mode active",
+    "action_sync_now": "Sync Now",
+    "indicator_syncing": "Synchronizing data...",
+    "indicator_not_synced": "Data requires synchronization",
+    "alert_title": "You are offline",
+    "alert_description": "Changes saved locally. Sync will resume when online.",
+    "device_offline": "You are currently offline. Your changes will be saved locally and synchronized when you reconnect.",
+    "offline_mode": "Offline Mode",
+    "not_available_offline": "Not available in offline mode",
+    "offline_navigation_tip": "Navigation and data are available locally",
+    "storage_not_initialized_offline": "Local storage is not initialized",
+    "saved_offline": "Saved offline. Will sync when connection is restored."
+  },
+  "profile": {
+    "title": "User Profile",
+    "description": "View and manage your profile settings",
+    "username": "Username",
+    "language": "Preferred Language",
+    "logout_button": "Sign Out",
+    "created_at": "Account Created",
+    "last_login": "Last Login",
+    "logged_as": "Logged in as",
+    "language_settings": "Language Settings",
+    "language_description": "Choose your preferred language for the application",
+    "language_updated": "Language preference has been updated",
+    "change_password": "Change Password",
+    "password_description": "Change your account password",
+    "current_password": "Current Password",
+    "new_password": "New Password",
+    "confirm_password": "Confirm Password",
+    "password_updated": "Password has been updated",
+    "update_error": "An error occurred while updating",
+    "current_password_placeholder": "Enter your current password",
+    "new_password_placeholder": "Enter your new password",
+    "confirm_password_placeholder": "Confirm your new password",
+    "current_password_required": "Current password is required",
+    "new_password_required": "New password is required",
+    "password_too_short": "Password must be at least 8 characters long",
+    "invalid_current_password": "Invalid current password",
+    "save_password": "Save Password",
+    "submit_button": "Submit",
+    "cancel_button": "Cancel"
+  },
+  "password": {
+    "requirements": "Password must be at least 8 characters long and contain uppercase and lowercase letters, numbers, and special characters",
+    "errors": {
+      "min_length": "Password must be at least 8 characters long",
+      "require_uppercase": "Password must contain at least one uppercase letter",
+      "require_lowercase": "Password must contain at least one lowercase letter",
+      "require_number": "Password must contain at least one number",
+      "require_special": "Password must contain at least one special character"
+    },
+    "required": "Password is required",
+    "incorrect": "Incorrect password",
+    "verification_failed": "Failed to verify password"
+  },
+  "theme": {
+    "title": "Appearance",
+    "description": "Customize the application appearance",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "toggle": "Toggle theme",
+    "toggle_theme": "Toggle theme",
+    "updated": "Theme has been updated"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "description": "Customize the look and feel of the app",
+    "theme": "Theme",
+    "theme_desc": "Choose the app colour scheme",
+    "language": "Language",
+    "language_desc": "Interface language",
+    "language_updated": "Language has been updated",
+    "date_time": "Date & Time",
+    "date_time_desc": "Customize date and time display format",
+    "date_format": "Date format",
+    "date_format_updated": "Date format has been updated",
+    "time_format": "Time format",
+    "time_format_updated": "Time format has been updated",
+    "time_12h": "12-hour (2:30 PM)",
+    "time_24h": "24-hour (14:30)",
+    "select_date_format": "Select date format",
+    "select_time_format": "Select time format",
+    "select_language": "Select language",
+    "reset": "Reset to defaults",
+    "reset_done": "Default settings restored"
+  },
+  "errors": {
+    "network": "Network error. Please check your connection.",
+    "server": "Server error. Please try again later.",
+    "unknown": "An unknown error occurred.",
+    "validation": "Validation error. Please check your input.",
+    "not_found": "Resource not found.",
+    "unauthorized": "You are not authorized to perform this action.",
+    "forbidden": "Access forbidden."
+  },
+  "sync": {
+    "status_title": "Synchronization Status",
+    "status_description": "Monitor the synchronization status and resolve sync issues",
+    "synchronizing": "Synchronizing",
+    "completed": "Synchronized",
+    "failed": "Sync failed",
+    "pending": "Pending sync",
+    "offline_warning": "Device is currently offline. Some actions are disabled until you reconnect."
+  },
+  "update": {
+    "title": "Update Available",
+    "description": "A new version of the app is available. Update now for the latest features and improvements.",
+    "button_update": "Update Now",
+    "button_later": "Later"
+  },
+  "time": {
+    "hour": "Hour",
+    "minute": "Minute"
+  },
+  "brand": {
+    "copyright": "© {years} Reborn Foundation. All rights reserved.",
+    "license": "AGPL-3.0"
+  },
+  "pwa": {
+    "install_title_task": "Install re/task on your device",
+    "install_title_notes": "Install re/notes on your device",
+    "install_description_task": "Quick access from your home screen, offline mode and notifications.",
+    "install_description_notes": "Quick access from your home screen and offline mode.",
+    "install_button": "Install",
+    "install_ios_description": "Tap the share icon (⎙) and select \"Add to Home Screen\"."
+  }
+}

@@ -1,0 +1,42 @@
+# docker-compose.proxy.yml — Development reverse proxy override
+#
+# Adds nginx on port 80 so both apps share the same origin (localhost:80),
+# enabling SSO via shared localStorage — identical to the production setup.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.proxy.yml --profile with-notes up
+#
+# After startup:
+#   http://localhost/task   → Reborn Task
+#   http://localhost/notes  → Reborn Notes
+#
+# Hot-module replacement (HMR) still works — Vite servers remain exposed
+# directly on ports 4200 (task) and 4201 (notes). The browser connects
+# to them directly for HMR, and loads pages through nginx for SSO.
+
+services:
+  app:
+    environment:
+      PUBLIC_BASE_PATH: /task
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:4200/task/']
+
+  notes:
+    environment:
+      PUBLIC_BASE_PATH: /notes
+      PUBLIC_TASK_URL: /task
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:4201/notes/']
+
+  proxy:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    volumes:
+      - ./nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy
+      notes:
+        condition: service_healthy

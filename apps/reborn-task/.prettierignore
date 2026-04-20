@@ -1,0 +1,17 @@
+# Ignore files for PNPM, NPM and YARN
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Ignore build outputs
+.svelte-kit/
+build/
+dist/
+
+# Ignore node modules
+node_modules/
+
+# Ignore files
+.env
+.env.*
+!.env.example

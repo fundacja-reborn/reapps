@@ -1,0 +1,15 @@
+{
+  "title": "Profil użytkownika",
+  "description": "Zarządzaj swoim kontem i ustawieniami bezpieczeństwa",
+  "user_info": "Informacje o koncie",
+  "username": "Nazwa użytkownika",
+  "email": "Adres email",
+  "member_since": "Użytkownik od",
+  "security": "Bezpieczeństwo",
+  "security_description": "Zarządzaj ustawieniami bezpieczeństwa swojego konta",
+  "change_password": "Zmień hasło",
+  "enable_2fa": "Włącz uwierzytelnianie dwuskładnikowe",
+  "danger_zone": "Strefa niebezpieczeństwa",
+  "danger_zone_description": "Nieodwracalne akcje dotyczące Twojego konta",
+  "delete_account": "Usuń konto"
+}

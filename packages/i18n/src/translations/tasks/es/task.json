@@ -1,0 +1,240 @@
+{
+  "sidebar": {
+    "tagline": "Gestión de tareas con conocimiento cero",
+    "task_lists": "Listas de tareas",
+    "new_list": "Nueva lista",
+    "starred_tasks": "Tareas destacadas",
+    "completed_tasks": "Tareas completadas",
+    "trash": "Papelera"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "welcome": "¡Bienvenido de nuevo, {username}!",
+    "total_tasks": "Total de tareas",
+    "completed_today": "Completadas hoy",
+    "overdue": "Atrasadas",
+    "total_lists": "Listas de tareas",
+    "across_all_lists": "en todas las listas",
+    "great_progress": "¡Gran progreso!",
+    "needs_attention": "Requiere atención",
+    "all_on_track": "Todo en orden",
+    "organized_tasks": "colecciones organizadas",
+    "upcoming_tasks": "Próximas tareas",
+    "next_7_days": "Próximos 7 días",
+    "no_upcoming_tasks": "No hay próximas tareas",
+    "tasks_coming_soon": "Funciones de tareas próximamente",
+    "recent_activity": "Actividad reciente",
+    "your_latest_actions": "Sus últimas acciones",
+    "activity_coming_soon": "Seguimiento de actividad próximamente",
+    "productivity_score": "Puntuación de productividad",
+    "this_week": "Esta semana",
+    "score_coming_soon": "Cálculo de puntuación próximamente"
+  },
+  "fields": {
+    "title": "Título",
+    "description": "Descripción",
+    "due_date": "Fecha de vencimiento",
+    "list": "Lista de tareas",
+    "time": "Hora",
+    "add_time": "Establecer hora",
+    "select_date": "Seleccionar fecha",
+    "clear_date": "Borrar fecha",
+    "set_time": "Establecer hora",
+    "recurrence": "Recurrencia",
+    "toggle_recurrence": "Alternar recurrencia"
+  },
+  "placeholders": {
+    "title": "Introduzca el título de la tarea",
+    "description": "Añadir descripción (opcional)",
+    "due_date": "Seleccionar fecha de vencimiento",
+    "list": "Seleccionar lista de tareas",
+    "add_description": "Añadir descripción de la tarea"
+  },
+  "create": {
+    "title": "Nueva tarea",
+    "description": "Añadir una nueva tarea a la lista"
+  },
+  "errors": {
+    "title_required": "El título de la tarea es obligatorio",
+    "create_failed": "Error al crear la tarea",
+    "update_failed": "Error al actualizar la tarea",
+    "not_found": "Tarea no encontrada",
+    "load_failed": "Error al cargar la tarea",
+    "delete_failed": "Error al eliminar la tarea",
+    "reorder_failed": "Error al reordenar la tarea",
+    "restore_failed": "Error al restaurar la tarea",
+    "move_failed": "Error al mover la tarea",
+    "title_too_long": "El título excede el tamaño máximo ({max})",
+    "description_too_long": "La descripción excede el tamaño máximo ({max})"
+  },
+  "success": {
+    "created": "Tarea creada correctamente",
+    "updated": "Tarea actualizada correctamente",
+    "deleted": "Tarea eliminada correctamente",
+    "restored": "Tarea restaurada correctamente",
+    "starred": "Tarea marcada como destacada",
+    "unstarred": "Estrella eliminada",
+    "completed": "Tarea marcada como completada",
+    "uncompleted": "Tarea marcada como incompleta",
+    "moved": "Tarea movida correctamente"
+  },
+  "status": {
+    "completed": "Completada",
+    "starred": "Destacada",
+    "recurring": "Recurrente"
+  },
+  "detail": {
+    "title": "Detalles de la tarea"
+  },
+  "completed_at": "Completada el",
+  "select_date": "Seleccionar fecha",
+  "undo": {
+    "message": "La tarea ha sido eliminada",
+    "action": "Deshacer"
+  },
+  "aria": {
+    "delete_task": "Eliminar tarea"
+  },
+  "move_to_list": "Mover a lista",
+  "move_to_list_description": "Seleccione la lista a la que desea mover esta tarea.",
+  "move_task_description": "Seleccione la lista a la que desea mover la tarea.",
+  "options": "Opciones de la tarea",
+  "mark_complete": "Marcar como completada",
+  "mark_incomplete": "Marcar como incompleta",
+  "recurrence_label": "Repetir",
+  "remove_date": "Eliminar fecha",
+  "remove_date_title": "Eliminar fecha de vencimiento",
+  "remove_date_description": "Esto también eliminará la hora y los ajustes de recurrencia.",
+  "remove_date_instance_description": "Esto también desvinculará esta tarea del ciclo de recurrencia.",
+  "remove_recurrence_title": "Eliminar recurrencia",
+  "remove_recurrence_description": "La tarea ya no se repetirá.",
+  "recurrence": {
+    "title": "Recurrencia de la tarea",
+    "description": "Establezca con qué frecuencia debe repetirse la tarea.",
+    "add": "Añadir recurrencia",
+    "edit": "Editar recurrencia",
+    "interval": {
+      "label": "Intervalo"
+    },
+    "frequency": {
+      "label": "Frecuencia",
+      "daily": "Diaria",
+      "weekly": "Semanal",
+      "monthly": "Mensual",
+      "yearly": "Anual"
+    },
+    "every_n": {
+      "daily": "Cada {n} {n, plural, =1 {día} other {días}}",
+      "weekly": "Cada {n} {n, plural, =1 {semana} other {semanas}}",
+      "monthly": "Cada {n} {n, plural, =1 {mes} other {meses}}",
+      "yearly": "Cada {n} {n, plural, =1 {año} other {años}}"
+    },
+    "n_times": "{n, plural, =1 {# vez} other {# veces}}",
+    "until": "hasta",
+    "days": {
+      "label": "Días de la semana",
+      "monday": "Lunes",
+      "tuesday": "Martes",
+      "wednesday": "Miércoles",
+      "thursday": "Jueves",
+      "friday": "Viernes",
+      "saturday": "Sábado",
+      "sunday": "Domingo"
+    },
+    "end": {
+      "label": "Fin de la recurrencia",
+      "never": "Nunca",
+      "after": "Después de",
+      "occurrences": "ocurrencias",
+      "on_date": "En fecha"
+    }
+  },
+  "subtasks": {
+    "title": "Subtareas",
+    "add": "Añadir subtarea",
+    "add_placeholder": "Introduzca el nombre de la subtarea",
+    "created": "Subtarea creada",
+    "updated": "Subtarea actualizada",
+    "deleted": "Subtarea eliminada",
+    "marked_complete": "Subtarea marcada como completada",
+    "marked_incomplete": "Subtarea marcada como incompleta",
+    "create_failed": "Error al crear la subtarea",
+    "update_failed": "Error al actualizar la subtarea",
+    "delete_failed": "Error al eliminar la subtarea",
+    "delete_title": "Eliminar subtarea",
+    "delete_description": "¿Está seguro de que desea eliminar la subtarea \"{title}\"? Esta acción no se puede deshacer.",
+    "reordered": "Subtareas reordenadas",
+    "reorder_failed": "Error al reordenar las subtareas",
+    "add_aria": "Añadir subtarea",
+    "cancel_aria": "Cancelar adición de subtarea"
+  },
+  "trash": {
+    "title": "Papelera",
+    "description": "Las tareas en la papelera se eliminan automáticamente después de 30 días.",
+    "banner_message": "Esta tarea está en la papelera",
+    "banner_restore_hint": "Restáurela o elimínela permanentemente.",
+    "empty": "La papelera está vacía",
+    "count": "{count} {count, plural, one {tarea} other {tareas}} en la papelera",
+    "from_list": "De la lista",
+    "deleted_on": "Eliminada el",
+    "restore": "Restaurar",
+    "restored": "Tarea restaurada correctamente",
+    "restore_failed": "Error al restaurar la tarea",
+    "permanently_deleted": "Tarea eliminada permanentemente",
+    "permanently_delete": "Eliminar permanentemente",
+    "delete_failed": "Error al eliminar la tarea",
+    "empty_trash": "Vaciar papelera",
+    "emptied": "Papelera vaciada correctamente",
+    "empty_failed": "Error al vaciar la papelera",
+    "auto_delete_warning": "Se eliminará automáticamente en {days} {days, plural, one {día} other {días}}",
+    "auto_delete_info": "Las tareas que lleven más de 30 días en la papelera se eliminan automáticamente.",
+    "auto_purged": "Se eliminaron automáticamente {count} {count, plural, one {tarea antigua} other {tareas antiguas}}",
+    "unknown_list": "Lista desconocida",
+    "confirm_delete_title": "Eliminar tarea permanentemente",
+    "confirm_delete_description": "¿Está seguro de que desea eliminar permanentemente la tarea \"{title}\"? Esta acción no se puede deshacer.",
+    "confirm_empty_title": "Vaciar papelera",
+    "confirm_empty_description": "¿Está seguro de que desea eliminar permanentemente {count} {count, plural, one {tarea} other {tareas}}? Esta acción no se puede deshacer."
+  },
+  "delete": {
+    "title": "Eliminar tarea",
+    "confirm_message": "¿Está seguro de que desea eliminar la tarea \"{title}\"? Esta acción no se puede deshacer.",
+    "this_only": "Solo esta ocurrencia",
+    "future": "Esta y todas las ocurrencias futuras"
+  },
+  "select_from_list": "Seleccione una tarea de la lista",
+  "select_from_list_or": "o seleccione una tarea de la lista",
+  "select_from_list_hint": "Pulse una tarea en la barra lateral para ver sus detalles",
+  "no_tasks_yet": "Aún no tiene ninguna tarea",
+  "no_tasks_yet_hint": "Cree su primera tarea para comenzar",
+  "add_new": "Nueva tarea",
+  "empty_list": "No hay tareas en esta lista",
+  "recurring_instance": {
+    "recurrence_info": "Recurrencia",
+    "skip": "Omitir esta ocurrencia",
+    "skip_title": "Omitir ocurrencia",
+    "skip_description": "¿Está seguro de que desea omitir esta ocurrencia? La tarea se eliminará de la lista, pero el ciclo de recurrencia seguirá activo.",
+    "skip_success": "Ocurrencia omitida",
+    "stop_cycle": "Detener recurrencia",
+    "stop_cycle_title": "Detener recurrencia",
+    "stop_cycle_description": "Esto eliminará todas las ocurrencias futuras. La tarea ya no se repetirá.",
+    "stop_cycle_success": "Recurrencia detenida",
+    "history": "Historial de ocurrencias",
+    "history_title": "Historial de ocurrencias",
+    "history_empty": "No hay ocurrencias para mostrar",
+    "history_current": "Actual",
+    "edit_recurrence": "Editar recurrencia",
+    "edit_options_title": "Cambiar recurrencia",
+    "edit_options_description": "¿Qué ocurrencias deben cambiarse?",
+    "edit_option_this_and_future": "Esta y las ocurrencias futuras",
+    "edit_option_all": "Todas las ocurrencias",
+    "edit_success": "Recurrencia actualizada"
+  },
+  "empty_state": "Sin tareas",
+  "quick_add": {
+    "placeholder": "Añadir una tarea...",
+    "add_to_list": "Añadir a:",
+    "hint_today": "Tarea con la fecha de hoy",
+    "hint_starred": "Tarea destacada",
+    "hint_upcoming": "Tarea para mañana"
+  }
+}

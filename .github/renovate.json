@@ -1,0 +1,77 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits"],
+  "schedule": ["before 9am on Monday"],
+  "timezone": "Europe/Warsaw",
+  "labels": ["dependencies"],
+  "rangeStrategy": "pin",
+  "packageRules": [
+    {
+      "description": "Automerge patch-level security updates",
+      "matchUpdateTypes": ["patch"],
+      "matchCategories": ["security"],
+      "automerge": true,
+      "automergeType": "pr",
+      "labels": ["dependencies", "security", "automerge"]
+    },
+    {
+      "description": "Group patch updates (non-security)",
+      "matchUpdateTypes": ["patch"],
+      "excludeCategories": ["security"],
+      "groupName": "patch-updates",
+      "automerge": false
+    },
+    {
+      "description": "Group minor updates",
+      "matchUpdateTypes": ["minor"],
+      "groupName": "minor-updates",
+      "automerge": false
+    },
+    {
+      "description": "Major updates — separate PRs, require manual review",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "major"]
+    },
+    {
+      "description": "Group Svelte ecosystem updates",
+      "matchPackagePatterns": ["^svelte", "^@sveltejs/"],
+      "groupName": "svelte",
+      "automerge": false
+    },
+    {
+      "description": "Group Nx monorepo updates",
+      "matchPackagePatterns": ["^@nx/", "^nx$"],
+      "groupName": "nx",
+      "automerge": false
+    },
+    {
+      "description": "Group Prisma updates",
+      "matchPackagePatterns": ["^@prisma/", "^prisma$"],
+      "groupName": "prisma",
+      "automerge": false
+    },
+    {
+      "description": "Group TailwindCSS updates",
+      "matchPackagePatterns": ["^tailwindcss", "^@tailwindcss/"],
+      "groupName": "tailwindcss",
+      "automerge": false
+    },
+    {
+      "description": "Pin GitHub Actions digests for security",
+      "matchManagers": ["github-actions"],
+      "automerge": false,
+      "labels": ["dependencies", "ci"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "automerge": true,
+    "automergeType": "pr",
+    "semanticCommitType": "fix"
+  },
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "platformAutomerge": true
+}

@@ -1,0 +1,1422 @@
+<script lang="ts">
+  import { onMount, onDestroy, untrack } from 'svelte';
+  import { beforeNavigate } from '$app/navigation';
+  import { base } from '$app/paths';
+  import { SvelteSet } from 'svelte/reactivity';
+  import { FolderPlus, Plus, ArrowLeft, Lock } from '@lucide/svelte';
+
+  // Layout
+  import IconNav, { type Section } from '$lib/components/layout/IconNav.svelte';
+  import SidebarAutoClose from '$lib/components/layout/SidebarAutoClose.svelte';
+  import SyncStatusFooter from '$lib/components/sync/SyncStatusFooter.svelte';
+  import {
+    SidebarProvider,
+    Sidebar,
+    SidebarHeader,
+    SidebarContent,
+    SidebarInset,
+    SidebarTrigger
+  } from '@reborn/ui/sidebar';
+  import * as Tooltip from '@reborn/ui/components/tooltip';
+
+  // Content components
+  import NoteList from '$lib/components/NoteList.svelte';
+  import NotePicker from '$lib/components/NotePicker.svelte';
+
+  import VersionHistorySheet from '$lib/components/VersionHistorySheet.svelte';
+  import FolderTree, { pendingRenameId } from '$lib/components/sidebar/FolderTree.svelte';
+  import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
+  import NoteEditor from '$lib/components/NoteEditor.svelte';
+
+  // Extracted components
+  import NoteEditorHeader from '$lib/components/editor/NoteEditorHeader.svelte';
+  import HistoryHeader from '$lib/components/editor/HistoryHeader.svelte';
+  import NoteContentArea from '$lib/components/editor/NoteContentArea.svelte';
+  import NoteDetailActions from '$lib/components/editor/NoteDetailActions.svelte';
+  import NoteMetadataBar from '$lib/components/editor/NoteMetadataBar.svelte';
+  import NoteActionSheet from '$lib/components/notes/NoteActionSheet.svelte';
+  import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
+  import TagSidebarSection from '$lib/components/tags/TagSidebarSection.svelte';
+  import TagListMobile from '$lib/components/tags/TagListMobile.svelte';
+  import TagActionSheet from '$lib/components/tags/TagActionSheet.svelte';
+
+  // Stores / services
+  import { notesStore, activeNoteId, type NoteListItem } from '$lib/stores/notes.store';
+  import * as NoteService from '$lib/services/note.service';
+  import { exportNoteAsMarkdown } from '$lib/services/export-import.service';
+  import { foldersStore } from '$lib/stores/folders.store';
+  import { tagsStore } from '$lib/stores/tags.store';
+  import { getSettings } from '$lib/utils/app-settings';
+  import { imageLoadMode } from '$lib/stores/app-settings.store';
+  import { t } from '$lib/stores/i18n.store';
+  import { noteDetailService } from '$lib/services/note-detail.service.svelte';
+  import { noteIndex } from '$lib/services/note-index.svelte';
+  import { tagManager } from '$lib/services/tag-manager.svelte';
+  import { toastStore } from '@reborn/ui';
+  import { flattenFolderTree, getAncestorIds } from '$lib/utils/folder-helpers';
+  import { goto } from '$lib/utils/navigation';
+  import { createScrollSync } from '$lib/utils/scroll-sync';
+
+  type ViewMode = 'edit' | 'split' | 'preview';
+
+  // ── Section / nav state ──────────────────────────────────────────
+  let activeSection = $state<Section>('all');
+  let activeFolderId = $state<string | null | undefined>(undefined);
+  let activeTagId = $state<string | null>(null);
+  const activeStarred = $derived(activeSection === 'starred');
+  const activeTrash = $derived(activeSection === 'trash');
+
+  // ── Tag: mobile new tag input focus ────────────────────────────
+  let mobileNewTagInput = $state<HTMLInputElement | null>(null);
+
+  $effect(() => {
+    if (tagManager.creatingTag && mobileNewTagInput) {
+      mobileNewTagInput.focus();
+    }
+  });
+
+  // Folder tree expand state
+  let expandedIds = new SvelteSet<string>();
+
+  // Permanent delete dialog (toolbar)
+  let permanentDeleteDialogOpen = $state(false);
+
+  // ── Detail-view action menu (kebab in tag bar) ────────────────
+  let detailActionSheetOpen = $state(false);
+  let detailMoveSheetOpen = $state(false);
+  let detailMovingNoteId = $state<string | null>(null);
+  let detailDeleteDialogOpen = $state(false);
+
+  const detailMenuNote = $derived(
+    $activeNoteId ? ($notesStore.find((n) => n.id === $activeNoteId) ?? null) : null
+  );
+
+  async function handleDetailPin() {
+    detailActionSheetOpen = false;
+    if (!$activeNoteId) return;
+    await notesStore.togglePin($activeNoteId);
+  }
+
+  async function handleDetailStar() {
+    detailActionSheetOpen = false;
+    if (!$activeNoteId) return;
+    await notesStore.toggleStar($activeNoteId);
+  }
+
+  function handleDetailOpenMoveMobile() {
+    detailActionSheetOpen = false;
+    if (!$activeNoteId) return;
+    detailMovingNoteId = $activeNoteId;
+    detailMoveSheetOpen = true;
+  }
+
+  async function handleDetailMoveDesktop(folderId: string | null, e?: Event) {
+    e?.stopPropagation();
+    if (!$activeNoteId) return;
+    await notesStore.move($activeNoteId, folderId);
+  }
+
+  async function handleDetailMoveMobile(noteId: string, folderId: string | null, e?: Event) {
+    e?.stopPropagation();
+    detailMoveSheetOpen = false;
+    detailMovingNoteId = null;
+    await notesStore.move(noteId, folderId);
+  }
+
+  async function handleDetailExport(noteArg?: NoteListItem) {
+    detailActionSheetOpen = false;
+    const target = noteArg ?? detailMenuNote;
+    if (!target) return;
+    const fullNote = await NoteService.getNote(target.id);
+    if (!fullNote) {
+      toastStore.error($t('notes.export_failed'));
+      return;
+    }
+    const tagNames = $tagsStore.filter((tg) => target.tags?.includes(tg.id)).map((tg) => tg.name);
+    exportNoteAsMarkdown(fullNote, tagNames);
+  }
+
+  async function handleDetailCopyLink(noteArg?: NoteListItem) {
+    detailActionSheetOpen = false;
+    const target = noteArg ?? detailMenuNote;
+    if (!target) return;
+    const title = target.title || $t('notes.untitled');
+    const link = `[${title}](note:${target.id})`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toastStore.success($t('notes.note_link_copied'));
+    } catch {
+      toastStore.error('Failed to copy');
+    }
+  }
+
+  function handleDetailDelete() {
+    detailActionSheetOpen = false;
+    detailDeleteDialogOpen = true;
+  }
+
+  function handleDetailHistory() {
+    detailActionSheetOpen = false;
+    historyMode = historyMode === 'closed' ? 'list' : 'closed';
+    if (historyMode === 'closed') {
+      resetHistoryState();
+    }
+  }
+
+  async function confirmDetailDelete() {
+    if (!$activeNoteId) return;
+    const id = $activeNoteId;
+    await notesStore.remove(id);
+    activeNoteId.set(null);
+  }
+
+  // Save-error dialog (shown when flush fails before navigation)
+  let saveErrorDialogOpen = $state(false);
+  let pendingNavigationAction: (() => void) | null = null;
+
+  // ── Editor ──────────────────────────────────────────────────────
+  let viewMode = $state<ViewMode>('edit');
+  type HistoryMode = 'closed' | 'list' | 'diff';
+  let historyMode = $state<HistoryMode>('closed');
+  let selectedVersion = $state<import('@reborn/types').NoteHistoryDecrypted | null>(null);
+  let previousVersion = $state<import('@reborn/types').NoteHistoryDecrypted | null>(null);
+  let historyViewMode = $state<'preview' | 'diff'>('preview');
+  let restoreDialogOpen = $state(false);
+  let isLatestVersion = $state(false);
+  let showEncryptionXRay = $state(false);
+
+  // ── Scroll & title visibility (desktop + mobile) ────────────────
+  let desktopTitleVisible = $state(true);
+  let desktopTitleSentinel = $state<HTMLDivElement>();
+
+  $effect(() => {
+    const el = desktopTitleSentinel;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        desktopTitleVisible = entry.isIntersecting;
+      },
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
+
+  let mobileTitleVisible = $state(true);
+  let mobileTitleSentinel = $state<HTMLDivElement>();
+
+  $effect(() => {
+    const el = mobileTitleSentinel;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        mobileTitleVisible = entry.isIntersecting;
+      },
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
+
+  // ── Mobile ──────────────────────────────────────────────────────
+  let isMobile = $state(false);
+  let closeSidebarSignal = $state(0);
+  const effectiveViewMode = $derived(isMobile && viewMode === 'split' ? 'edit' : viewMode);
+  /** True after the editor panel slide-in transition completes (prevents broken position:fixed during transform). */
+  let mobilePanelReady = $state(false);
+
+  // Mobile drill-down navigation state
+  type MobileView = 'list' | 'folder-tree' | 'tag-list';
+  let mobileView = $state<MobileView>('list');
+
+  // ── Mobile: virtual history for native back gesture ────────────
+  let mobileHistoryDepth = 0;
+  let skipPopstateCount = 0;
+
+  function pushMobileHistory() {
+    if (!isMobile) return;
+    history.pushState({ _rn: 'app' }, '');
+    mobileHistoryDepth++;
+  }
+
+  function resetMobileHistory() {
+    if (mobileHistoryDepth > 0) {
+      skipPopstateCount += mobileHistoryDepth;
+      history.go(-mobileHistoryDepth);
+      mobileHistoryDepth = 0;
+    }
+  }
+
+  /** Navigate one level up based on current app state. Called by popstate handler. */
+  function navigateUp() {
+    if ($activeNoteId != null) {
+      noteDetailService.flushAndSnapshot();
+      activeNoteId.set(null);
+    } else if (mobileView === 'list' && activeSection === 'folders' && activeFolderId !== undefined) {
+      activeFolderId = undefined;
+      activeNoteId.set(null);
+      mobileView = 'folder-tree';
+    } else if (mobileView === 'list' && activeSection === 'tags' && activeTagId !== null) {
+      activeTagId = null;
+      activeNoteId.set(null);
+      mobileView = 'tag-list';
+    } else if (mobileView === 'folder-tree' || mobileView === 'tag-list') {
+      mobileView = 'list';
+      activeSection = 'all';
+    }
+  }
+
+  $effect(() => {
+    const section = activeSection;
+    if (!isMobile) return;
+    if (section === 'folders') {
+      mobileView = 'folder-tree';
+    } else if (section === 'tags') {
+      mobileView = 'tag-list';
+    } else {
+      mobileView = 'list';
+    }
+  });
+
+  // Reset panelReady only when panel visibility changes (null ↔ non-null).
+  // Switching between two notes doesn't trigger a slide — skip reset.
+  let prevNoteIdForPanel: string | null | undefined;
+  $effect(() => {
+    const currentId = $activeNoteId;
+    const hadNote = prevNoteIdForPanel != null;
+    const hasNote = currentId != null;
+    prevNoteIdForPanel = currentId;
+    if (hadNote !== hasNote) {
+      mobilePanelReady = false;
+    }
+  });
+
+  function handleMobilePanelTransitionEnd(e: TransitionEvent) {
+    // Tailwind v4 uses individual `translate` property (not composed `transform`).
+    // Ignore bubbled events from children — only react to this element's transition.
+    if (
+      (e.propertyName === 'translate' || e.propertyName === 'transform') &&
+      e.target === e.currentTarget
+    ) {
+      mobilePanelReady = !!$activeNoteId;
+    }
+  }
+
+  function handleMobileBack() {
+    if (isMobile && mobileHistoryDepth > 0) {
+      history.back();
+    } else {
+      navigateUp();
+    }
+  }
+
+  // ── Mobile: swipe-back gesture ─────────────────────────────────
+  let swipeStartX = 0;
+  let swipeStartY = 0;
+  let swiping = false;
+
+  function handleSwipeStart(e: TouchEvent) {
+    const touch = e.touches[0];
+    if (touch.clientX < 30) {
+      swipeStartX = touch.clientX;
+      swipeStartY = touch.clientY;
+      swiping = true;
+    }
+  }
+
+  async function handleSwipeEnd(e: TouchEvent) {
+    if (!swiping) return;
+    swiping = false;
+    const dx = e.changedTouches[0].clientX - swipeStartX;
+    const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY);
+    if (dx > 80 && dy < 50) {
+      if (isMobile && mobileHistoryDepth > 0) {
+        history.back();
+      } else {
+        await noteDetailService.flushAndSnapshot();
+        activeNoteId.set(null);
+      }
+    }
+  }
+
+  // ── Mobile: push history when note opens ───────────────────────
+  let prevNoteIdForHistory: string | null = null;
+  $effect(() => {
+    const id = $activeNoteId;
+    if (isMobile && id != null && prevNoteIdForHistory == null) {
+      pushMobileHistory();
+    }
+    prevNoteIdForHistory = id;
+  });
+
+  // ── Derived: should main area show note list? ──────────────────
+  const showNoteListInMain = $derived(
+    (activeSection === 'folders' && activeFolderId !== undefined) ||
+      (activeSection === 'tags' && activeTagId !== null)
+  );
+
+  // ── Derived labels ───────────────────────────────────────────────
+  const activeFolderName = $derived.by(() => {
+    if (activeSection === 'search') return $t('nav.search');
+    if (activeSection === 'trash') return $t('nav.trash');
+    if (activeSection === 'starred') return $t('nav.starred');
+    if (activeSection === 'all') return $t('nav.all_notes');
+    if (activeSection === 'tags') {
+      const tag = $tagsStore.find((t) => t.id === activeTagId);
+      return tag ? tag.name : $t('nav.tags');
+    }
+    if (activeFolderId === undefined) return $t('nav.all_notes');
+    if (activeFolderId === null) return $t('nav.no_folder');
+    return (
+      flattenFolderTree($foldersStore).find((f) => f.id === activeFolderId)?.name ??
+      $t('nav.folders')
+    );
+  });
+
+  let activeNoteFolderName = $derived.by(() => {
+    if (!$activeNoteId || noteDetailService.folderId == null) return null;
+    return (
+      flattenFolderTree($foldersStore).find((f) => f.id === noteDetailService.folderId)?.name ??
+      null
+    );
+  });
+
+  // ── Sync store filters to nav state ─────────────────────────────
+  let prevSection: Section | null = null;
+  $effect(() => {
+    const section = activeSection;
+    const folderId = activeSection === 'folders' ? activeFolderId : undefined;
+    const tagId = activeSection === 'tags' ? activeTagId : null;
+
+    if (section !== prevSection) {
+      untrack(() => {
+        // Reset mobile history stack when switching sections via IconNav
+        if (isMobile) resetMobileHistory();
+
+        if (section !== 'folders') activeFolderId = undefined;
+        if (section !== 'tags') {
+          activeTagId = null;
+          tagManager.resetSection();
+        }
+        noteDetailService.flushAndSnapshot().then(() => activeNoteId.set(null));
+
+        // Push history entry for drill-down sections (folders/tags)
+        if (isMobile && (section === 'folders' || section === 'tags')) {
+          pushMobileHistory();
+        }
+      });
+      prevSection = section;
+    }
+
+    // untrack: store updates are write-only side effects —
+    // this effect should only react to section/folder/tag changes, not store internals.
+    untrack(() => {
+      if (section === 'trash') {
+        notesStore.setTrash(true);
+      } else if (section === 'starred') {
+        notesStore.setStarred(true);
+      } else if (section === 'tags' && tagId) {
+        notesStore.setTag(tagId);
+      } else if (section === 'folders') {
+        notesStore.setFolder(folderId);
+      } else {
+        notesStore.setFolder(undefined);
+      }
+    });
+  });
+
+  // Load note content when active note changes
+  let prevNoteId: string | null = null;
+  $effect(() => {
+    const id = $activeNoteId;
+    historyMode = 'closed';
+    selectedVersion = null;
+    previousVersion = null;
+    historyViewMode = 'preview';
+    showEncryptionXRay = false;
+
+    const prev = prevNoteId;
+    prevNoteId = id;
+
+    if (!id) {
+      if (prev) {
+        untrack(() => noteDetailService.flushAndSnapshot(prev));
+      }
+      untrack(() => noteDetailService.reset());
+      return;
+    }
+
+    if (untrack(() => noteDetailService.isNewNote)) {
+      viewMode = 'edit';
+    } else {
+      viewMode = 'preview';
+    }
+    untrack(() => noteDetailService.loadNote(id));
+  });
+
+  // ── New note ─────────────────────────────────────────────────────
+  async function handleNewNote() {
+    const date = new Date().toISOString().slice(0, 10);
+    const settings = await getSettings();
+    const prefix = settings?.language === 'pl' ? 'Notatka' : 'Note';
+    const id = await notesStore.create(`${prefix} ${date}`, '');
+    noteDetailService.setNewNote();
+    activeNoteId.set(id);
+  }
+
+  // ── Folder management ────────────────────────────────────────────
+  async function handleNewFolder() {
+    const id = await foldersStore.create($t('folders.new_folder'));
+    pendingRenameId.set(id);
+  }
+
+  async function handleSectionClick(section: Section) {
+    // Fires on every IconNav click. Resets sub-selection when re-clicking the
+    // already-active section so users can always get back to the section root.
+    if (section !== activeSection) return;
+    if (section === 'folders' && activeFolderId !== undefined) {
+      await noteDetailService.flushAndSnapshot();
+      if (isMobile) resetMobileHistory();
+      activeFolderId = undefined;
+      activeNoteId.set(null);
+      if (isMobile) {
+        mobileView = 'folder-tree';
+        pushMobileHistory();
+      }
+    } else if (section === 'tags' && activeTagId !== null) {
+      await noteDetailService.flushAndSnapshot();
+      if (isMobile) resetMobileHistory();
+      activeTagId = null;
+      activeNoteId.set(null);
+      if (isMobile) {
+        mobileView = 'tag-list';
+        pushMobileHistory();
+      }
+    }
+  }
+
+  async function handleFolderSelect(id: string | null) {
+    await noteDetailService.flushAndSnapshot();
+    activeFolderId = id;
+    activeNoteId.set(null);
+    if (isMobile) {
+      mobileView = 'list';
+      pushMobileHistory();
+    } else {
+      closeSidebarSignal++;
+    }
+  }
+
+  async function handleTagSelect(tagId: string) {
+    await noteDetailService.flushAndSnapshot();
+    activeTagId = tagId;
+    activeNoteId.set(null);
+    if (isMobile) {
+      mobileView = 'list';
+      pushMobileHistory();
+    } else {
+      closeSidebarSignal++;
+    }
+  }
+
+  // ── Autosave (delegated to noteDetailService) ─────────────────
+  function handleContentChange(content: string) {
+    noteDetailService.setContentDebounced(content);
+  }
+
+  function handleTitleInput(e: Event) {
+    noteDetailService.setTitleDebounced((e.target as HTMLInputElement).value);
+  }
+
+  async function handleRestoreVersion(title: string, content: string) {
+    await noteDetailService.restoreVersion(title, content);
+  }
+
+  // ── History helpers ──────────────────────────────────────────────
+  function resetHistoryState() {
+    selectedVersion = null;
+    previousVersion = null;
+    historyViewMode = 'preview';
+    isLatestVersion = false;
+  }
+
+  function closeHistory() {
+    historyMode = 'closed';
+    resetHistoryState();
+  }
+
+  // ── Internal note links ──────────────────────────────────────────
+  async function handleNoteLink(noteId: string) {
+    await noteDetailService.flushAndSnapshot();
+    const note = await notesStore.loadNote(noteId);
+    if (!note) {
+      toastStore.error($t('notes.note_not_found'));
+      return;
+    }
+    if (note.is_archived) {
+      toastStore.info($t('notes.note_in_trash'));
+      return;
+    }
+    activeNoteId.set(noteId);
+  }
+
+  function resolveNoteTitle(noteId: string): string | undefined {
+    return noteIndex.getTitle(noteId);
+  }
+
+  // ── Note link picker ─────────────────────────────────────────────
+  let notePickerOpen = $state(false);
+  let notePickerNotes = $state<{ id: string; title: string }[]>([]);
+  let editorRef = $state<NoteEditor | null>(null);
+
+  const autocompleteNotes = $derived(noteIndex.getAll());
+
+  async function openNotePicker() {
+    notePickerNotes = noteIndex.getAll();
+    notePickerOpen = true;
+  }
+
+  function handleNotePickerSelect(noteId: string, title: string) {
+    editorRef?.insertNoteLink(noteId, title);
+  }
+
+  // ── Scroll sync (split view) ──────────────────────────────────────
+  const scrollSync = createScrollSync();
+  let previewScrollEl = $state<HTMLElement | null>(null);
+  let desktopEditorScrollContainer = $state<HTMLElement | null>(null);
+
+  $effect(() => {
+    if (!previewScrollEl) return;
+    scrollSync.previewScrollEl = previewScrollEl;
+    previewScrollEl.addEventListener('scroll', scrollSync.syncPreviewToEditor, { passive: true });
+    return () => previewScrollEl?.removeEventListener('scroll', scrollSync.syncPreviewToEditor);
+  });
+
+  // When in split view with parentScroll, use the parent scroll container instead of .cm-scroller
+  $effect(() => {
+    if (effectiveViewMode === 'split' && desktopEditorScrollContainer) {
+      scrollSync.setScrollContainer(desktopEditorScrollContainer);
+      return () => scrollSync.setScrollContainer(null);
+    }
+  });
+
+  // ── Folder breadcrumb navigation ──────────────────────────────────
+  function navigateToNoteFolder() {
+    activeSection = 'folders';
+    activeFolderId = noteDetailService.folderId as string | null | undefined;
+    if (noteDetailService.folderId) {
+      getAncestorIds(noteDetailService.folderId, $foldersStore).forEach((id) =>
+        expandedIds.add(id)
+      );
+    }
+    activeNoteId.set(null);
+  }
+
+  // ── beforeNavigate — flush before SvelteKit navigation ─────────
+  beforeNavigate(({ cancel }) => {
+    if (noteDetailService.hasPendingChanges()) {
+      cancel();
+      noteDetailService.flushAndSnapshot().then((ok) => {
+        if (!ok) {
+          saveErrorDialogOpen = true;
+        }
+      });
+    }
+  });
+
+  // ── Mobile + beforeunload + visibilitychange ──────────────────
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    isMobile = mq.matches;
+    mq.addEventListener('change', (e) => {
+      isMobile = e.matches;
+    });
+
+    // ── Mobile: virtual history guard entry ──────────────────────
+    // Creates a "trampoline" entry so that native back gestures trigger
+    // popstate instead of exiting the PWA.
+    if (mq.matches) {
+      history.replaceState({ _rn: 'guard' }, '');
+      history.pushState({ _rn: 'app' }, '');
+    }
+
+    // Remove old persistent handler if re-mounting (e.g., returning from /settings)
+    if ((window as any).__rnPopstateHandler) {
+      window.removeEventListener('popstate', (window as any).__rnPopstateHandler);
+    }
+
+    let mounted = true;
+
+    function handlePopstate(e: PopStateEvent) {
+      if (!window.matchMedia('(max-width: 767px)').matches) return;
+
+      // When component is NOT mounted (e.g., on /settings) and we land
+      // on a custom history entry, SvelteKit won't handle it because the
+      // state isn't in its format. Force navigation back to app root.
+      if (!mounted && e.state?._rn) {
+        goto('/', { replaceState: true });
+        return;
+      }
+
+      // Skip events triggered by resetMobileHistory()'s history.go(-N)
+      if (skipPopstateCount > 0) {
+        skipPopstateCount--;
+        // Re-push the app entry so we stay above the guard
+        history.pushState({ _rn: 'app' }, '');
+        return;
+      }
+
+      if (mobileHistoryDepth > 0) {
+        mobileHistoryDepth--;
+        navigateUp();
+      }
+
+      // Trampoline: if we landed on the guard entry, push a new app entry
+      // so the next back gesture doesn't exit the PWA.
+      if (e.state?._rn === 'guard') {
+        history.pushState({ _rn: 'app' }, '');
+      }
+    }
+
+    (window as any).__rnPopstateHandler = handlePopstate;
+    window.addEventListener('popstate', handlePopstate);
+
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (noteDetailService.hasPendingChanges()) {
+        e.preventDefault();
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden' && noteDetailService.hasPendingChanges()) {
+        noteDetailService.flushAndSnapshot();
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      mounted = false;
+      // DON'T remove popstate handler — it must persist for settings→root navigation
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  });
+
+  onDestroy(() => {
+    noteDetailService.reset();
+    scrollSync.destroy();
+  });
+</script>
+
+<svelte:head>
+  <title>re/notes</title>
+</svelte:head>
+
+<svelte:window
+  onclick={(e) => {
+    if (
+      tagManager.colorPickerTagId &&
+      !(e.target as HTMLElement)?.closest('[data-tagcolorpicker]')
+    ) {
+      tagManager.colorPickerTagId = null;
+    }
+  }}
+  onkeydown={(e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      activeSection = 'search';
+    }
+  }}
+/>
+
+{#if isMobile}
+  <!-- ══════════════════════════════════════════════════════════════════
+     MOBILE: Master-Detail with two full-screen panels
+     ══════════════════════════════════════════════════════════════════ -->
+  <Tooltip.Provider delayDuration={0}>
+    <div class="relative h-[100dvh] overflow-hidden bg-sidebar">
+      <!-- ── Panel 1: Icon Rail + List ──────────────────────────────── -->
+      <div
+        class="absolute inset-0 flex transition-transform duration-300 ease-in-out"
+        class:-translate-x-full={!!$activeNoteId}
+      >
+        <!-- Icon rail (vertical, always visible) -->
+        <IconNav
+          bind:activeSection
+          onNewNote={handleNewNote}
+          onsectionclick={handleSectionClick}
+          alwaysVisible
+        />
+
+        <!-- Content area (list / folder tree / tag list) -->
+        <div class="flex flex-1 flex-col min-w-0 overflow-hidden">
+          <!-- Header (hidden when NoteList handles its own header) -->
+          {#if !(mobileView === 'list' && (activeSection === 'starred' || activeSection === 'trash' || (activeSection === 'folders' && activeFolderId !== undefined) || (activeSection === 'tags' && activeTagId !== null)))}
+            <div class="flex h-14 shrink-0 items-center gap-1 border-b border-sidebar-border px-3">
+              {#if mobileView === 'folder-tree' || mobileView === 'tag-list'}
+                <button
+                  type="button"
+                  onclick={handleMobileBack}
+                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sidebar-foreground
+                   hover:bg-sidebar-accent transition-colors"
+                  aria-label={$t('nav.back')}
+                >
+                  <ArrowLeft class="h-5 w-5" />
+                </button>
+                <span class="min-w-0 flex-1 truncate text-sm font-medium text-sidebar-foreground">
+                  {mobileView === 'folder-tree' ? $t('nav.folders') : $t('nav.tags')}
+                </span>
+                {#if mobileView === 'folder-tree'}
+                  <button
+                    type="button"
+                    onclick={handleNewFolder}
+                    title={$t('folders.new_folder')}
+                    aria-label={$t('folders.new_folder')}
+                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sidebar-foreground
+                     transition-colors hover:bg-sidebar-accent"
+                  >
+                    <FolderPlus class="h-5 w-5" />
+                  </button>
+                {:else}
+                  <button
+                    type="button"
+                    onclick={() => {
+                      tagManager.creatingTag = !tagManager.creatingTag;
+                      if (tagManager.creatingTag) tagManager.tagSearch = '';
+                    }}
+                    title={$t('tags.new_tag')}
+                    aria-label={$t('tags.new_tag')}
+                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sidebar-foreground
+                     transition-colors hover:bg-sidebar-accent"
+                  >
+                    <Plus class="h-5 w-5" />
+                  </button>
+                {/if}
+              {:else if activeSection === 'folders' && activeFolderId !== undefined}
+                <button
+                  type="button"
+                  onclick={() => {
+                    if (mobileHistoryDepth > 0) {
+                      history.back();
+                    } else {
+                      activeFolderId = undefined;
+                      activeNoteId.set(null);
+                      mobileView = 'folder-tree';
+                    }
+                  }}
+                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sidebar-foreground
+                   hover:bg-sidebar-accent transition-colors"
+                  aria-label={$t('nav.back')}
+                >
+                  <ArrowLeft class="h-5 w-5" />
+                </button>
+                <span class="min-w-0 flex-1 truncate text-sm font-medium text-sidebar-foreground">
+                  {activeFolderName}
+                </span>
+              {:else if activeSection === 'tags' && activeTagId !== null}
+                <button
+                  type="button"
+                  onclick={() => {
+                    if (mobileHistoryDepth > 0) {
+                      history.back();
+                    } else {
+                      activeTagId = null;
+                      activeNoteId.set(null);
+                      mobileView = 'tag-list';
+                    }
+                  }}
+                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sidebar-foreground
+                   hover:bg-sidebar-accent transition-colors"
+                  aria-label={$t('nav.back')}
+                >
+                  <ArrowLeft class="h-5 w-5" />
+                </button>
+                <span class="min-w-0 flex-1 truncate text-sm font-medium text-sidebar-foreground">
+                  {activeFolderName}
+                </span>
+              {:else if activeSection === 'all' || activeSection === 'search'}
+                <span class="px-2">
+                  <img
+                    src="{base}/logo-black.svg"
+                    alt="re/notes"
+                    class="h-5 w-auto block dark:hidden"
+                  />
+                  <img
+                    src="{base}/logo-white.svg"
+                    alt="re/notes"
+                    class="h-5 w-auto hidden dark:block dark:opacity-80"
+                  />
+                </span>
+              {/if}
+            </div>
+          {/if}
+
+          <!-- Content -->
+          <div class="flex-1 overflow-hidden">
+            {#if mobileView === 'folder-tree'}
+              <div class="flex flex-col overflow-hidden h-full">
+                <div class="flex-1 overflow-y-auto px-2 py-2">
+                  {#if $foldersStore.length === 0}
+                    <p class="px-2 py-1 text-xs text-muted-foreground">
+                      {$t('folders.no_folders_short')}
+                    </p>
+                  {:else}
+                    <FolderTree
+                      nodes={$foldersStore}
+                      activeFolderId={activeFolderId ?? null}
+                      {expandedIds}
+                      onselect={handleFolderSelect}
+                    />
+                  {/if}
+                </div>
+              </div>
+            {:else if mobileView === 'tag-list'}
+              <TagListMobile {activeTagId} onselect={handleTagSelect} bind:mobileNewTagInput />
+            {:else}
+              <NoteList
+                {activeFolderName}
+                {activeSection}
+                isTrash={activeTrash}
+                autoFocusSearch={activeSection === 'search'}
+                searchOnly={activeSection === 'search'}
+                prominentHeader={activeStarred ||
+                  activeTrash ||
+                  (activeSection === 'folders' && activeFolderId !== undefined) ||
+                  (activeSection === 'tags' && activeTagId !== null)}
+                onback={activeSection === 'folders' && activeFolderId !== undefined
+                  ? () => {
+                      if (isMobile && mobileHistoryDepth > 0) {
+                        history.back();
+                      } else {
+                        activeFolderId = undefined;
+                        activeNoteId.set(null);
+                        mobileView = 'folder-tree';
+                      }
+                    }
+                  : activeSection === 'tags' && activeTagId !== null
+                    ? () => {
+                        if (isMobile && mobileHistoryDepth > 0) {
+                          history.back();
+                        } else {
+                          activeTagId = null;
+                          activeNoteId.set(null);
+                          mobileView = 'tag-list';
+                        }
+                      }
+                    : undefined}
+                oncreate={handleNewNote}
+              />
+            {/if}
+          </div>
+
+          <SyncStatusFooter />
+        </div>
+      </div>
+
+      <!-- ── Panel 2: Note Editor ───────────────────────────────────── -->
+      <div
+        class="absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-in-out"
+        class:translate-x-full={!$activeNoteId}
+        ontouchstart={handleSwipeStart}
+        ontouchend={handleSwipeEnd}
+        ontransitionend={handleMobilePanelTransitionEnd}
+        role="region"
+        aria-label="Note editor"
+      >
+        {#if $activeNoteId}
+          {#if historyMode === 'diff' && selectedVersion}
+            <HistoryHeader
+              {isMobile}
+              {selectedVersion}
+              {previousVersion}
+              {isLatestVersion}
+              bind:historyViewMode
+              onback={() => {
+                if (isMobile && mobileHistoryDepth > 0) {
+                  history.back();
+                } else {
+                  activeNoteId.set(null);
+                }
+              }}
+              onclose={closeHistory}
+              onrestore={() => {
+                restoreDialogOpen = true;
+              }}
+              onshowlist={() => {
+                historyMode = 'list';
+              }}
+            />
+
+            <NoteContentArea
+              noteId={$activeNoteId}
+              {effectiveViewMode}
+              bind:showEncryptionXRay
+              {historyMode}
+              {historyViewMode}
+              {selectedVersion}
+              {previousVersion}
+              bind:editorRef
+              bind:previewScrollEl
+              {autocompleteNotes}
+              oncontentchange={handleContentChange}
+              onscrollerinit={scrollSync.initEditorScroller}
+              onnotelinkrequest={openNotePicker}
+              onnotelink={handleNoteLink}
+              {resolveNoteTitle}
+              imageLoadMode={$imageLoadMode}
+            />
+          {:else}
+            <!-- Sticky header stays above scroll -->
+            <NoteEditorHeader
+              {isMobile}
+              {activeTrash}
+              bind:viewMode
+              {effectiveViewMode}
+              bind:historyMode
+              onback={() => {
+                if (isMobile && mobileHistoryDepth > 0) {
+                  history.back();
+                } else {
+                  activeNoteId.set(null);
+                }
+              }}
+              onshowxray={() => {
+                showEncryptionXRay = true;
+              }}
+              onrestore={async () => {
+                await notesStore.restore($activeNoteId!);
+                activeNoteId.set(null);
+              }}
+              onpermanentdelete={() => {
+                permanentDeleteDialogOpen = true;
+              }}
+              onhistoryreset={resetHistoryState}
+              title={noteDetailService.title}
+              showTitle={!mobileTitleVisible}
+            >
+              {#snippet actions()}
+                <NoteDetailActions
+                  note={detailMenuNote}
+                  onmenuopen={() => (detailActionSheetOpen = true)}
+                  onpin={handleDetailPin}
+                  onstar={handleDetailStar}
+                  onmove={handleDetailMoveDesktop}
+                  onexport={() => handleDetailExport()}
+                  oncopylink={() => handleDetailCopyLink()}
+                  onshowxray={() => { showEncryptionXRay = true; }}
+                  ondelete={handleDetailDelete}
+                />
+              {/snippet}
+            </NoteEditorHeader>
+
+            <!-- Scrollable: metadata + content scroll away -->
+            <div class="flex flex-1 flex-col overflow-y-auto">
+              <div bind:this={mobileTitleSentinel} class="h-0 w-0 shrink-0"></div>
+
+              <NoteMetadataBar
+                {isMobile}
+                {activeTrash}
+                title={noteDetailService.title}
+                folderName={activeNoteFolderName}
+                noteId={$activeNoteId}
+                updatedAt={detailMenuNote?.updated_at ?? null}
+                ontitleinput={handleTitleInput}
+                onfolderclick={navigateToNoteFolder}
+              />
+
+              <NoteContentArea
+                noteId={$activeNoteId}
+                {effectiveViewMode}
+                bind:showEncryptionXRay
+                {historyMode}
+                {historyViewMode}
+                {selectedVersion}
+                {previousVersion}
+                bind:editorRef
+                bind:previewScrollEl
+                {autocompleteNotes}
+                {isMobile}
+                panelReady={mobilePanelReady}
+                parentScroll={true}
+                oncontentchange={handleContentChange}
+                onscrollerinit={scrollSync.initEditorScroller}
+                onnotelinkrequest={openNotePicker}
+                onnotelink={handleNoteLink}
+                {resolveNoteTitle}
+                imageLoadMode={$imageLoadMode}
+                externalDialogOpen={notePickerOpen}
+              />
+            </div>
+          {/if}
+        {:else}
+          <div class="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+            <p class="text-sm">{$t('notes.select_or_create')}</p>
+          </div>
+        {/if}
+      </div>
+    </div>
+  </Tooltip.Provider>
+{:else}
+  <!-- ══════════════════════════════════════════════════════════════════
+     DESKTOP: Original 3-column layout
+     ══════════════════════════════════════════════════════════════════ -->
+  <SidebarProvider style="height: 100vh; min-height: 0; overflow: hidden; --sidebar-width: 24rem;">
+    <Sidebar
+      variant="inset"
+      collapsible="offcanvas"
+      class="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
+    >
+      <SidebarAutoClose {closeSidebarSignal} />
+
+      <!-- ── Icon rail (desktop only) ────────────────────────────── -->
+      <IconNav
+        bind:activeSection
+        onNewNote={handleNewNote}
+        onsectionclick={handleSectionClick}
+      />
+
+      <!-- ── Content panel ───────────────────────────────────────── -->
+      <div class="flex flex-1 flex-col min-w-0 overflow-hidden">
+        <SidebarHeader class="border-b p-0 gap-0">
+          <div class="flex h-12 items-center gap-2 px-5">
+            <img src="{base}/logo-black.svg" alt="re/notes" class="h-4 w-auto block dark:hidden" />
+            <img
+              src="{base}/logo-white.svg"
+              alt="re/notes"
+              class="h-4 w-auto hidden dark:block dark:opacity-80"
+            />
+          </div>
+        </SidebarHeader>
+
+        <SidebarContent class="p-0 gap-0">
+          {#if activeSection === 'folders'}
+            <div class="flex flex-col overflow-hidden h-full">
+              <div class="flex h-10 shrink-0 items-center gap-1 px-5">
+                <span class="min-w-0 flex-1 truncate text-sm font-normal">{$t('nav.folders')}</span>
+                <button
+                  type="button"
+                  onclick={handleNewFolder}
+                  title={$t('folders.new_folder')}
+                  aria-label={$t('folders.new_folder')}
+                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground
+                         transition-colors hover:bg-accent hover:text-accent-foreground"
+                >
+                  <FolderPlus class="h-4 w-4" />
+                </button>
+              </div>
+              <div class="mx-3 border-t"></div>
+              <div class="flex-1 overflow-y-auto px-2 py-2">
+                {#if $foldersStore.length === 0}
+                  <p class="px-2 py-4 text-center text-xs text-muted-foreground">
+                    {$t('folders.no_folders_short')}
+                  </p>
+                {:else}
+                  <FolderTree
+                    nodes={$foldersStore}
+                    activeFolderId={activeFolderId ?? null}
+                    {expandedIds}
+                    onselect={handleFolderSelect}
+                  />
+                {/if}
+              </div>
+            </div>
+          {:else if activeSection === 'tags'}
+            <TagSidebarSection
+              {activeTagId}
+              onselect={handleTagSelect}
+              ondelete={(tagId) => tagManager.handleDeleteTag(tagId)}
+            />
+          {:else if activeSection === 'search'}
+            <NoteList
+              {activeFolderName}
+              {activeSection}
+              isTrash={false}
+              autoFocusSearch
+              searchOnly
+              oncreate={handleNewNote}
+            />
+          {:else}
+            <NoteList
+              {activeFolderName}
+              {activeSection}
+              isTrash={activeTrash}
+              oncreate={handleNewNote}
+            />
+          {/if}
+        </SidebarContent>
+        <SyncStatusFooter />
+      </div>
+    </Sidebar>
+
+    <!-- ── Column 3: Main content area ─────────────────────────────── -->
+    <SidebarInset class="overflow-hidden flex flex-col min-w-0 bg-background">
+      {#if $activeNoteId}
+        {#if historyMode === 'diff' && selectedVersion}
+          <HistoryHeader
+            {isMobile}
+            {selectedVersion}
+            {previousVersion}
+            {isLatestVersion}
+            bind:historyViewMode
+            onclose={closeHistory}
+            onrestore={() => {
+              restoreDialogOpen = true;
+            }}
+            onshowlist={() => {
+              historyMode = 'list';
+            }}
+          />
+
+          <NoteContentArea
+            noteId={$activeNoteId}
+            {effectiveViewMode}
+            bind:showEncryptionXRay
+            {historyMode}
+            {historyViewMode}
+            {selectedVersion}
+            {previousVersion}
+            bind:editorRef
+            bind:previewScrollEl
+            {autocompleteNotes}
+            oncontentchange={handleContentChange}
+            onscrollerinit={scrollSync.initEditorScroller}
+            onnotelinkrequest={openNotePicker}
+            onnotelink={handleNoteLink}
+            {resolveNoteTitle}
+          />
+        {:else}
+          <NoteEditorHeader
+            {isMobile}
+            {activeTrash}
+            bind:viewMode
+            {effectiveViewMode}
+            bind:historyMode
+            onback={() => activeNoteId.set(null)}
+            onshowxray={() => {
+              showEncryptionXRay = true;
+            }}
+            onrestore={async () => {
+              await notesStore.restore($activeNoteId!);
+              activeNoteId.set(null);
+            }}
+            onpermanentdelete={() => {
+              permanentDeleteDialogOpen = true;
+            }}
+            onhistoryreset={resetHistoryState}
+            title={noteDetailService.title}
+            showTitle={!desktopTitleVisible}
+          >
+            {#snippet actions()}
+              <NoteDetailActions
+                note={detailMenuNote}
+                onmenuopen={() => (detailActionSheetOpen = true)}
+                onpin={handleDetailPin}
+                onstar={handleDetailStar}
+                onmove={handleDetailMoveDesktop}
+                onexport={() => handleDetailExport()}
+                oncopylink={() => handleDetailCopyLink()}
+                onshowxray={() => { showEncryptionXRay = true; }}
+                ondelete={handleDetailDelete}
+              />
+            {/snippet}
+          </NoteEditorHeader>
+
+          <!-- Scrollable area: metadata + toolbar + editor scroll together -->
+          <div
+            bind:this={desktopEditorScrollContainer}
+            class="flex flex-1 flex-col min-h-0 overflow-y-auto"
+          >
+            <div bind:this={desktopTitleSentinel} class="h-0 w-0 shrink-0"></div>
+
+            <NoteMetadataBar
+              {isMobile}
+              {activeTrash}
+              title={noteDetailService.title}
+              folderName={activeNoteFolderName}
+              noteId={$activeNoteId}
+              updatedAt={detailMenuNote?.updated_at ?? null}
+              {effectiveViewMode}
+              ontitleinput={handleTitleInput}
+              onfolderclick={navigateToNoteFolder}
+            />
+
+            <NoteContentArea
+              noteId={$activeNoteId}
+              {effectiveViewMode}
+              bind:showEncryptionXRay
+              {historyMode}
+              {historyViewMode}
+              {selectedVersion}
+              {previousVersion}
+              bind:editorRef
+              bind:previewScrollEl
+              {autocompleteNotes}
+              parentScroll={true}
+              oncontentchange={handleContentChange}
+              onscrollerinit={scrollSync.initEditorScroller}
+              onnotelinkrequest={openNotePicker}
+              onnotelink={handleNoteLink}
+              {resolveNoteTitle}
+            />
+          </div>
+        {/if}
+      {:else if showNoteListInMain}
+        <div class="mx-auto h-full w-full max-w-4xl px-6 pt-6 flex flex-col">
+          <NoteList
+            {activeFolderName}
+            {activeSection}
+            isTrash={false}
+            showSidebarTrigger
+            oncreate={handleNewNote}
+          />
+        </div>
+      {:else}
+        <header class="flex h-12 shrink-0 items-center gap-2 border-b border-border/60 px-6">
+          <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
+          <span class="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+            {activeFolderName}
+          </span>
+          <span
+            class="hidden sm:inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/50
+                 px-2 py-0.5 text-xs text-muted-foreground select-none"
+            title={$t('e2e.badge_tooltip')}
+          >
+            <Lock class="h-3 w-3" />
+            <span class="hidden lg:inline">{$t('e2e.badge')}</span><span class="lg:hidden"
+              >{$t('e2e.badge_short')}</span
+            >
+          </span>
+        </header>
+        <div class="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+          <div class="flex flex-col items-center gap-1 text-center">
+            <p class="text-sm">{$t('notes.select_or_create')}</p>
+            <p class="text-xs opacity-60">{$t('notes.e2e_info')}</p>
+          </div>
+        </div>
+      {/if}
+    </SidebarInset>
+  </SidebarProvider>
+{/if}
+
+<ConfirmDialog
+  bind:open={permanentDeleteDialogOpen}
+  title={$t('notes.perm_delete_title')}
+  description={$t('notes.perm_delete_desc')}
+  confirmText={$t('notes.perm_delete_confirm')}
+  destructive
+  onConfirm={async () => {
+    await notesStore.permanentDelete($activeNoteId!);
+    activeNoteId.set(null);
+  }}
+/>
+
+<ConfirmDialog
+  bind:open={saveErrorDialogOpen}
+  title={$t('save_status.error_title')}
+  description={$t('save_status.error_desc')}
+  confirmText={$t('save_status.discard')}
+  cancelText={$t('save_status.keep_editing')}
+  destructive
+  onConfirm={() => {
+    noteDetailService.reset();
+    if (pendingNavigationAction) {
+      pendingNavigationAction();
+      pendingNavigationAction = null;
+    }
+  }}
+  onCancel={() => {
+    pendingNavigationAction = null;
+  }}
+/>
+
+<ConfirmDialog
+  bind:open={tagManager.deleteTagDialogOpen}
+  title={$t('folders.delete_tag_title')}
+  description={$t('folders.delete_tag_desc')}
+  confirmText={$t('tags.delete_tag')}
+  destructive
+  onConfirm={() =>
+    tagManager.confirmDeleteTag(activeTagId, () => {
+      activeTagId = null;
+    })}
+/>
+
+<NotePicker
+  bind:open={notePickerOpen}
+  notes={notePickerNotes}
+  excludeNoteId={$activeNoteId}
+  onselect={handleNotePickerSelect}
+/>
+
+{#if $activeNoteId}
+  {@const historySheetOpen = historyMode === 'list'}
+  <VersionHistorySheet
+    noteId={$activeNoteId}
+    open={historySheetOpen}
+    onselect={(version, prevVersion, isLatest) => {
+      selectedVersion = version;
+      previousVersion = prevVersion;
+      isLatestVersion = isLatest;
+      historyMode = 'diff';
+    }}
+    onclose={() => {
+      if (selectedVersion) {
+        historyMode = 'diff';
+      } else {
+        historyMode = 'closed';
+        historyViewMode = 'preview';
+      }
+    }}
+  />
+{/if}
+
+<ConfirmDialog
+  bind:open={restoreDialogOpen}
+  title={$t('history.restore_title')}
+  description={$t('history.restore_desc')}
+  confirmText={$t('history.restore_version')}
+  onConfirm={async () => {
+    if (selectedVersion) {
+      await handleRestoreVersion(selectedVersion.title, selectedVersion.content);
+      closeHistory();
+    }
+  }}
+/>
+
+<TagActionSheet ondelete={(tagId) => tagManager.handleDeleteTag(tagId)} />
+
+<!-- Detail-view action menu (mobile bottom sheet) -->
+<NoteActionSheet
+  bind:open={detailActionSheetOpen}
+  note={detailMenuNote}
+  onpin={() => handleDetailPin()}
+  onstar={() => handleDetailStar()}
+  onmove={() => handleDetailOpenMoveMobile()}
+  onexport={(note) => handleDetailExport(note)}
+  oncopylink={(note) => handleDetailCopyLink(note)}
+  ondelete={() => handleDetailDelete()}
+  onhistory={handleDetailHistory}
+  onshowxray={() => { showEncryptionXRay = true; }}
+  onrestore={() => {}}
+  onpermanentdelete={() => {}}
+/>
+
+<!-- Detail-view move-to-folder (mobile bottom sheet) -->
+{#if isMobile}
+  <MoveToFolderMenu
+    noteId={detailMovingNoteId}
+    bind:open={detailMoveSheetOpen}
+    onmove={handleDetailMoveMobile}
+  />
+{/if}
+
+<ConfirmDialog
+  bind:open={detailDeleteDialogOpen}
+  title={$t('notes.delete_title')}
+  description={$t('notes.delete_desc')}
+  confirmText={$t('notes.delete_note')}
+  destructive
+  onConfirm={confirmDetailDelete}
+/>

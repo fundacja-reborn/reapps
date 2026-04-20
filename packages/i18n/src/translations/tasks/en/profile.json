@@ -1,0 +1,15 @@
+{
+  "title": "User Profile",
+  "description": "Manage your account and security settings",
+  "user_info": "Account Information",
+  "username": "Username",
+  "email": "Email address",
+  "member_since": "Member since",
+  "security": "Security",
+  "security_description": "Manage your account security settings",
+  "change_password": "Change password",
+  "enable_2fa": "Enable two-factor authentication",
+  "danger_zone": "Danger Zone",
+  "danger_zone_description": "Irreversible actions related to your account",
+  "delete_account": "Delete account"
+}

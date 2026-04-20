@@ -1,0 +1,62 @@
+{
+  "sync_now": "Sincronizar ahora",
+  "syncing": "Sincronizando...",
+  "actions_title": "Acciones de sincronización",
+  "actions_description": "Controle manualmente los procesos de sincronización",
+  "about_title": "Acerca de la sincronización",
+  "about_offline_first": "RebornTask utiliza un enfoque sin conexión primero. Sus datos se almacenan primero localmente en su dispositivo y luego se sincronizan con el servidor en segundo plano.",
+  "about_e2e": "Todos sus datos están cifrados de extremo a extremo, lo que significa que solo su dispositivo puede leer el contenido real de sus tareas, listas y subtareas. El servidor solo almacena datos cifrados.",
+  "about_resolution": "Si se producen conflictos entre dispositivos, el sistema los resuelve automáticamente usando la estrategia de 'la última actualización prevalece', pero conserva todos sus datos siempre que sea posible.",
+  "status": {
+    "online": "En línea",
+    "offline": "Sin conexión",
+    "pending": "Pendiente",
+    "in_progress": "En curso",
+    "completed": "Completado",
+    "failed": "Fallido"
+  },
+  "pending_operations": "{count} operaciones pendientes",
+  "failed_operations": "{count} fallidas",
+  "connect_to_sync": "Conéctese a Internet para sincronizar",
+  "cleanup_failed": "Limpiar operaciones fallidas",
+  "force_sync": "Forzar sincronización",
+  "show_details": "Mostrar detalles",
+  "hide_details": "Ocultar detalles",
+  "cleanup_result": "Se limpiaron {count} operaciones fallidas",
+  "operations_details": "Operaciones pendientes",
+  "retry_count": "Reintentos",
+  "created": "Creada",
+  "error": "Error",
+  "force_full_sync": "Forzar sincronización completa",
+  "check_repair": "Verificar y reparar almacenamiento",
+  "operation_success": "Operación completada correctamente",
+  "operation_error": "Error",
+  "entity_type": {
+    "task_list": "Lista de tareas",
+    "task": "Tarea",
+    "sub_task": "Subtarea"
+  },
+  "operation_type": {
+    "create": "Crear",
+    "update": "Actualizar",
+    "delete": "Eliminar"
+  },
+  "automatic_info": "La sincronización funciona automáticamente en segundo plano. Las acciones manuales son opcionales y están destinadas a la resolución avanzada de problemas o para forzar la sincronización en casos excepcionales.",
+  "success": "Sincronización completada correctamente",
+  "partial_failure": "Sincronización completada, pero {count} operaciones fallaron. Pulse de nuevo para limpiar.",
+  "failed": "La sincronización falló",
+  "indicator": {
+    "synced": "Sincronizado",
+    "syncing": "Sincronizando...",
+    "offline": "Sin conexión",
+    "error": "Error de sincronización",
+    "pending": "Sincronización pendiente ({count})",
+    "tap_to_sync": "Pulse para sincronizar",
+    "tap_to_retry": "Pulse para reintentar o limpiar",
+    "last_sync": "Última sincronización: {time}",
+    "conflict_title": "Datos modificados en otro dispositivo",
+    "conflict_message": "Se detectaron datos más recientes en el servidor. Los datos actualizados han sido descargados.",
+    "conflict_action": "Actualizar",
+    "session_expired": "Sesión expirada"
+  }
+}

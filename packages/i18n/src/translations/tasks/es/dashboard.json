@@ -1,0 +1,22 @@
+{
+  "title": "Panel",
+  "welcome": "¡Bienvenido de nuevo, {username}!",
+  "logout": "Cerrar sesión",
+  "logging_out": "Cerrando sesión...",
+  "user_info": "Información de la cuenta",
+  "username": "Nombre de usuario",
+  "member_since": "Miembro desde",
+  "total_tasks": "Total de tareas",
+  "total_lists": "Listas de tareas",
+  "due_today": "Para hoy",
+  "tasks_coming_soon": "Seguimiento de tareas próximamente",
+  "lists_coming_soon": "Gestión de listas próximamente",
+  "calendar_coming_soon": "Vista de calendario próximamente",
+  "coming_soon_title": "Funciones próximamente",
+  "coming_soon_description": "Estamos trabajando para ofrecerle una experiencia completa de gestión de tareas. Esto es lo que viene:",
+  "feature_lists": "Listas de tareas para organizar su trabajo",
+  "feature_tasks": "Gestión completa de tareas con fechas de vencimiento y descripciones",
+  "feature_reminders": "Recordatorios y notificaciones inteligentes",
+  "feature_sync": "Sincronización en tiempo real entre dispositivos",
+  "feature_offline": "Funcionalidad completa sin conexión"
+}

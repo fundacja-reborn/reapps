@@ -1,0 +1,22 @@
+{
+  "title": "Tableau de bord",
+  "welcome": "Bon retour, {username} !",
+  "logout": "D\u00e9connexion",
+  "logging_out": "D\u00e9connexion en cours...",
+  "user_info": "Informations du compte",
+  "username": "Nom d'utilisateur",
+  "member_since": "Membre depuis",
+  "total_tasks": "Total des t\u00e2ches",
+  "total_lists": "Listes de t\u00e2ches",
+  "due_today": "Pour aujourd'hui",
+  "tasks_coming_soon": "Suivi des t\u00e2ches bient\u00f4t disponible",
+  "lists_coming_soon": "Gestion des listes bient\u00f4t disponible",
+  "calendar_coming_soon": "Vue calendrier bient\u00f4t disponible",
+  "coming_soon_title": "Fonctionnalit\u00e9s \u00e0 venir",
+  "coming_soon_description": "Nous travaillons activement pour vous offrir une exp\u00e9rience compl\u00e8te de gestion des t\u00e2ches. Voici ce qui arrive :",
+  "feature_lists": "Listes de t\u00e2ches pour organiser votre travail",
+  "feature_tasks": "Gestion compl\u00e8te des t\u00e2ches avec dates d'\u00e9ch\u00e9ance et descriptions",
+  "feature_reminders": "Rappels intelligents et notifications",
+  "feature_sync": "Synchronisation en temps r\u00e9el entre appareils",
+  "feature_offline": "Fonctionnement hors ligne complet"
+}

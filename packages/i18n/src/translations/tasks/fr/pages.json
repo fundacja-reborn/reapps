@@ -1,0 +1,49 @@
+{
+  "privacy": {
+    "title": "Politique de confidentialit\u00e9",
+    "description": "Comment nous traitons vos donn\u00e9es",
+    "content": {
+      "intro": "reborn/task prend votre vie priv\u00e9e au s\u00e9rieux. Nous nous engageons \u00e0 prot\u00e9ger vos donn\u00e9es personnelles.",
+      "zero_knowledge": "Notre application utilise le chiffrement de bout en bout et l'architecture Zero Knowledge, ce qui signifie que vos donn\u00e9es de t\u00e2ches sont chiffr\u00e9es sur votre appareil avant d'\u00eatre envoy\u00e9es \u00e0 nos serveurs. Nous ne pouvons pas acc\u00e9der au contenu de vos t\u00e2ches.",
+      "what_we_collect": "Ce que nous collectons",
+      "collect_list": [
+        "Nom d'utilisateur (pour garantir l'unicit\u00e9)",
+        "Horodatages de connexion (pour identifier les comptes inactifs)",
+        "Donn\u00e9es de t\u00e2ches chiffr\u00e9es (que nous ne pouvons pas lire)"
+      ],
+      "what_we_dont_collect": "Ce que nous ne collectons pas",
+      "dont_collect_list": [
+        "Adresse e-mail (facultative)",
+        "Informations personnelles au-del\u00e0 de votre nom d'utilisateur",
+        "Le contenu de vos t\u00e2ches (en raison du chiffrement)"
+      ],
+      "data_security": "S\u00e9curit\u00e9 des donn\u00e9es",
+      "security_text": "Toutes les donn\u00e9es sensibles sont chiffr\u00e9es avec le chiffrement AES-GCM. Votre mot de passe n'est jamais stock\u00e9 sur nos serveurs. Nous utilisons des mesures de s\u00e9curit\u00e9 conformes aux normes de l'industrie pour prot\u00e9ger notre infrastructure.",
+      "cookies": "Cookies et stockage local",
+      "cookies_text": "Nous utilisons les cookies et le stockage local uniquement pour les fonctionnalit\u00e9s essentielles comme le maintien de votre connexion et l'enregistrement de vos pr\u00e9f\u00e9rences."
+    }
+  },
+  "support": {
+    "title": "Soutenir la Fondation Reborn",
+    "description": "Aidez-nous \u00e0 faire la diff\u00e9rence",
+    "content": {
+      "intro": "La Fondation Reborn se consacre au soutien de projets innovants qui accordent la priorit\u00e9 \u00e0 la vie priv\u00e9e et \u00e0 la s\u00e9curit\u00e9 des donn\u00e9es \u00e0 l'\u00e8re num\u00e9rique.",
+      "mission_title": "Notre mission",
+      "mission_text": "Cr\u00e9er et maintenir des outils open source qui prot\u00e8gent la vie priv\u00e9e des utilisateurs et promeuvent les droits num\u00e9riques pour tous.",
+      "why_donate_title": "Pourquoi faire un don ?",
+      "why_donate": [
+        "Soutenir le d\u00e9veloppement d'applications ax\u00e9es sur la confidentialit\u00e9",
+        "Aider \u00e0 maintenir l'infrastructure des services gratuits",
+        "Permettre la recherche sur de meilleures m\u00e9thodes de chiffrement",
+        "Financer des programmes \u00e9ducatifs sur la vie priv\u00e9e num\u00e9rique"
+      ],
+      "donation_title": "Options de don",
+      "donation_options": {
+        "crypto": "Cryptomonnaie",
+        "bank": "Virement bancaire",
+        "contact": "Pour plus d'informations sur la fa\u00e7on de faire un don, veuillez nous contacter \u00e0 support@example.org"
+      },
+      "disclaimer": "Note : Site cr\u00e9\u00e9 \u00e0 des fins de d\u00e9monstration. Cette page pr\u00e9sente \u00e0 quoi pourrait ressembler une page de don."
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "sync_now": "Synchroniser maintenant",
+  "syncing": "Synchronisation...",
+  "actions_title": "Actions de synchronisation",
+  "actions_description": "Contr\u00f4lez manuellement les processus de synchronisation",
+  "about_title": "\u00c0 propos de la synchronisation",
+  "about_offline_first": "RebornTask utilise une approche hors ligne d'abord. Vos donn\u00e9es sont d'abord stock\u00e9es localement sur votre appareil, puis synchronis\u00e9es avec le serveur en arri\u00e8re-plan.",
+  "about_e2e": "Toutes vos donn\u00e9es sont chiffr\u00e9es de bout en bout, ce qui signifie que seul votre appareil peut lire le contenu r\u00e9el de vos t\u00e2ches, listes et sous-t\u00e2ches. Le serveur ne stocke que des donn\u00e9es chiffr\u00e9es.",
+  "about_resolution": "En cas de conflits entre appareils, le syst\u00e8me les r\u00e9sout automatiquement en utilisant la strat\u00e9gie \u00ab la derni\u00e8re mise \u00e0 jour l'emporte \u00bb, tout en pr\u00e9servant vos donn\u00e9es autant que possible.",
+  "status": {
+    "online": "En ligne",
+    "offline": "Hors ligne",
+    "pending": "En attente",
+    "in_progress": "En cours",
+    "completed": "Termin\u00e9",
+    "failed": "\u00c9chou\u00e9"
+  },
+  "pending_operations": "{count} op\u00e9rations en attente",
+  "failed_operations": "{count} \u00e9chou\u00e9es",
+  "connect_to_sync": "Connectez-vous \u00e0 Internet pour synchroniser",
+  "cleanup_failed": "Nettoyer les op\u00e9rations \u00e9chou\u00e9es",
+  "force_sync": "Forcer la synchronisation",
+  "show_details": "Afficher les d\u00e9tails",
+  "hide_details": "Masquer les d\u00e9tails",
+  "cleanup_result": "{count} op\u00e9rations \u00e9chou\u00e9es nettoy\u00e9es",
+  "operations_details": "Op\u00e9rations en attente",
+  "retry_count": "Tentatives",
+  "created": "Cr\u00e9\u00e9",
+  "error": "Erreur",
+  "force_full_sync": "Forcer la synchronisation compl\u00e8te",
+  "check_repair": "V\u00e9rifier et r\u00e9parer le stockage",
+  "operation_success": "Op\u00e9ration termin\u00e9e avec succ\u00e8s",
+  "operation_error": "Erreur",
+  "entity_type": {
+    "task_list": "Liste de t\u00e2ches",
+    "task": "T\u00e2che",
+    "sub_task": "Sous-t\u00e2che"
+  },
+  "operation_type": {
+    "create": "Cr\u00e9er",
+    "update": "Mettre \u00e0 jour",
+    "delete": "Supprimer"
+  },
+  "automatic_info": "La synchronisation fonctionne automatiquement en arri\u00e8re-plan. Les actions manuelles sont facultatives et destin\u00e9es au d\u00e9pannage avanc\u00e9 ou pour forcer la synchronisation dans de rares cas.",
+  "success": "Synchronisation termin\u00e9e avec succ\u00e8s",
+  "partial_failure": "Synchronisation termin\u00e9e, mais {count} op\u00e9rations ont \u00e9chou\u00e9. Appuyez \u00e0 nouveau pour effacer.",
+  "failed": "La synchronisation a \u00e9chou\u00e9",
+  "indicator": {
+    "synced": "Synchronis\u00e9",
+    "syncing": "Synchronisation...",
+    "offline": "Hors ligne",
+    "error": "Erreur de synchronisation",
+    "pending": "Synchronisation en attente ({count})",
+    "tap_to_sync": "Appuyez pour synchroniser",
+    "tap_to_retry": "Appuyez pour r\u00e9essayer ou effacer",
+    "last_sync": "Derni\u00e8re synchronisation : {time}",
+    "conflict_title": "Donn\u00e9es modifi\u00e9es sur un autre appareil",
+    "conflict_message": "Des donn\u00e9es plus r\u00e9centes ont \u00e9t\u00e9 d\u00e9tect\u00e9es sur le serveur. Les donn\u00e9es mises \u00e0 jour ont \u00e9t\u00e9 t\u00e9l\u00e9charg\u00e9es.",
+    "conflict_action": "Actualiser",
+    "session_expired": "Session expir\u00e9e"
+  }
+}

@@ -1,0 +1,240 @@
+{
+  "sidebar": {
+    "tagline": "Zero-knowledge task management",
+    "task_lists": "Task Lists",
+    "new_list": "New List",
+    "starred_tasks": "Starred Tasks",
+    "completed_tasks": "Completed Tasks",
+    "trash": "Trash"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back, {username}!",
+    "total_tasks": "Total Tasks",
+    "completed_today": "Completed Today",
+    "overdue": "Overdue",
+    "total_lists": "Task Lists",
+    "across_all_lists": "across all lists",
+    "great_progress": "Great progress!",
+    "needs_attention": "Needs attention",
+    "all_on_track": "All on track",
+    "organized_tasks": "organized collections",
+    "upcoming_tasks": "Upcoming Tasks",
+    "next_7_days": "Next 7 days",
+    "no_upcoming_tasks": "No upcoming tasks",
+    "tasks_coming_soon": "Task features coming soon",
+    "recent_activity": "Recent Activity",
+    "your_latest_actions": "Your latest actions",
+    "activity_coming_soon": "Activity tracking coming soon",
+    "productivity_score": "Productivity Score",
+    "this_week": "This week",
+    "score_coming_soon": "Score calculation coming soon"
+  },
+  "fields": {
+    "title": "Title",
+    "description": "Description",
+    "due_date": "Due date",
+    "list": "Task list",
+    "time": "Time",
+    "add_time": "Set time",
+    "select_date": "Select date",
+    "clear_date": "Clear date",
+    "set_time": "Set time",
+    "recurrence": "Recurrence",
+    "toggle_recurrence": "Toggle recurrence"
+  },
+  "placeholders": {
+    "title": "Enter task title",
+    "description": "Add description (optional)",
+    "due_date": "Select due date",
+    "list": "Select task list",
+    "add_description": "Add task description"
+  },
+  "create": {
+    "title": "New Task",
+    "description": "Add a new task to the list"
+  },
+  "errors": {
+    "title_required": "Task title is required",
+    "create_failed": "Failed to create task",
+    "update_failed": "Failed to update task",
+    "not_found": "Task not found",
+    "load_failed": "Failed to load task",
+    "delete_failed": "Failed to delete task",
+    "reorder_failed": "Failed to reorder task",
+    "restore_failed": "Failed to restore task",
+    "move_failed": "Failed to move task",
+    "title_too_long": "Title exceeds maximum size ({max})",
+    "description_too_long": "Description exceeds maximum size ({max})"
+  },
+  "success": {
+    "created": "Task created successfully",
+    "updated": "Task updated successfully",
+    "deleted": "Task deleted successfully",
+    "restored": "Task restored successfully",
+    "starred": "Task starred",
+    "unstarred": "Star removed",
+    "completed": "Task marked as completed",
+    "uncompleted": "Task marked as incomplete",
+    "moved": "Task moved successfully"
+  },
+  "status": {
+    "completed": "Completed",
+    "starred": "Starred",
+    "recurring": "Recurring"
+  },
+  "detail": {
+    "title": "Task Details"
+  },
+  "completed_at": "Completed at",
+  "select_date": "Select date",
+  "undo": {
+    "message": "Task has been deleted",
+    "action": "Undo"
+  },
+  "aria": {
+    "delete_task": "Delete task"
+  },
+  "move_to_list": "Move to list",
+  "move_to_list_description": "Select the list where you want to move this task.",
+  "move_task_description": "Select the list where you want to move the task.",
+  "options": "Task options",
+  "mark_complete": "Mark as complete",
+  "mark_incomplete": "Mark as incomplete",
+  "recurrence_label": "Repeat",
+  "remove_date": "Remove date",
+  "remove_date_title": "Remove due date",
+  "remove_date_description": "This will also remove the time and recurrence settings.",
+  "remove_date_instance_description": "This will also detach this task from the recurring cycle.",
+  "remove_recurrence_title": "Remove recurrence",
+  "remove_recurrence_description": "The task will no longer repeat.",
+  "recurrence": {
+    "title": "Task recurrence",
+    "description": "Set how often the task should repeat.",
+    "add": "Add recurrence",
+    "edit": "Edit recurrence",
+    "interval": {
+      "label": "Interval"
+    },
+    "frequency": {
+      "label": "Frequency",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "yearly": "Yearly"
+    },
+    "every_n": {
+      "daily": "Every {n} {n, plural, =1 {day} other {days}}",
+      "weekly": "Every {n} {n, plural, =1 {week} other {weeks}}",
+      "monthly": "Every {n} {n, plural, =1 {month} other {months}}",
+      "yearly": "Every {n} {n, plural, =1 {year} other {years}}"
+    },
+    "n_times": "{n, plural, =1 {# time} other {# times}}",
+    "until": "until",
+    "days": {
+      "label": "Days of week",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    },
+    "end": {
+      "label": "End recurrence",
+      "never": "Never",
+      "after": "After",
+      "occurrences": "occurrences",
+      "on_date": "On date"
+    }
+  },
+  "subtasks": {
+    "title": "Subtasks",
+    "add": "Add subtask",
+    "add_placeholder": "Enter subtask name",
+    "created": "Subtask created",
+    "updated": "Subtask updated",
+    "deleted": "Subtask deleted",
+    "marked_complete": "Subtask marked as complete",
+    "marked_incomplete": "Subtask marked as incomplete",
+    "create_failed": "Failed to create subtask",
+    "update_failed": "Failed to update subtask",
+    "delete_failed": "Failed to delete subtask",
+    "delete_title": "Delete subtask",
+    "delete_description": "Are you sure you want to delete subtask \"{title}\"? This action cannot be undone.",
+    "reordered": "Subtasks reordered",
+    "reorder_failed": "Failed to reorder subtasks",
+    "add_aria": "Add subtask",
+    "cancel_aria": "Cancel adding subtask"
+  },
+  "trash": {
+    "title": "Trash",
+    "description": "Tasks in trash are automatically deleted after 30 days.",
+    "banner_message": "This task is in the trash",
+    "banner_restore_hint": "Restore it or delete it permanently.",
+    "empty": "Trash is empty",
+    "count": "{count} {count, plural, one {task} other {tasks}} in trash",
+    "from_list": "From list",
+    "deleted_on": "Deleted on",
+    "restore": "Restore",
+    "restored": "Task restored successfully",
+    "restore_failed": "Failed to restore task",
+    "permanently_deleted": "Task permanently deleted",
+    "permanently_delete": "Delete permanently",
+    "delete_failed": "Failed to delete task",
+    "empty_trash": "Empty trash",
+    "emptied": "Trash emptied successfully",
+    "empty_failed": "Failed to empty trash",
+    "auto_delete_warning": "Will be automatically deleted in {days} {days, plural, one {day} other {days}}",
+    "auto_delete_info": "Tasks that have been in trash for more than 30 days are automatically deleted.",
+    "auto_purged": "Automatically deleted {count} old {count, plural, one {task} other {tasks}}",
+    "unknown_list": "Unknown list",
+    "confirm_delete_title": "Permanently delete task",
+    "confirm_delete_description": "Are you sure you want to permanently delete task \"{title}\"? This action cannot be undone.",
+    "confirm_empty_title": "Empty trash",
+    "confirm_empty_description": "Are you sure you want to permanently delete {count} {count, plural, one {task} other {tasks}}? This action cannot be undone."
+  },
+  "delete": {
+    "title": "Delete task",
+    "confirm_message": "Are you sure you want to delete task \"{title}\"? This action cannot be undone.",
+    "this_only": "Only this occurrence",
+    "future": "This and all future occurrences"
+  },
+  "select_from_list": "Select a task from the list",
+  "select_from_list_or": "or select a task from the list",
+  "select_from_list_hint": "Click a task in the sidebar to view its details",
+  "no_tasks_yet": "You don't have any tasks yet",
+  "no_tasks_yet_hint": "Create your first task to get started",
+  "add_new": "New task",
+  "empty_list": "No tasks in this list",
+  "recurring_instance": {
+    "recurrence_info": "Recurrence",
+    "skip": "Skip this occurrence",
+    "skip_title": "Skip occurrence",
+    "skip_description": "Are you sure you want to skip this occurrence? The task will be removed from the list, but the recurrence cycle will remain active.",
+    "skip_success": "Occurrence skipped",
+    "stop_cycle": "Stop recurrence",
+    "stop_cycle_title": "Stop recurrence",
+    "stop_cycle_description": "This will delete all future occurrences. The task will no longer repeat.",
+    "stop_cycle_success": "Recurrence stopped",
+    "history": "Occurrence history",
+    "history_title": "Occurrence history",
+    "history_empty": "No occurrences to display",
+    "history_current": "Current",
+    "edit_recurrence": "Edit recurrence",
+    "edit_options_title": "Change recurrence",
+    "edit_options_description": "Which occurrences should be changed?",
+    "edit_option_this_and_future": "This and future occurrences",
+    "edit_option_all": "All occurrences",
+    "edit_success": "Recurrence updated"
+  },
+  "empty_state": "No tasks",
+  "quick_add": {
+    "placeholder": "Add a task...",
+    "add_to_list": "Add to:",
+    "hint_today": "Task with today's date",
+    "hint_starred": "Starred task",
+    "hint_upcoming": "Task for tomorrow"
+  }
+}

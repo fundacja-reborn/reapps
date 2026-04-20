@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./dist",
+    "declarationDir": "./dist",
+    "declaration": true,
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"]
+}

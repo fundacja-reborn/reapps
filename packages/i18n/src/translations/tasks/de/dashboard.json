@@ -1,0 +1,22 @@
+{
+  "title": "Dashboard",
+  "welcome": "Willkommen zur\u00fcck, {username}!",
+  "logout": "Abmelden",
+  "logging_out": "Abmeldung l\u00e4uft...",
+  "user_info": "Kontoinformationen",
+  "username": "Benutzername",
+  "member_since": "Mitglied seit",
+  "total_tasks": "Aufgaben gesamt",
+  "total_lists": "Aufgabenlisten",
+  "due_today": "F\u00e4llig heute",
+  "tasks_coming_soon": "Aufgabenverfolgung in K\u00fcrze",
+  "lists_coming_soon": "Listenverwaltung in K\u00fcrze",
+  "calendar_coming_soon": "Kalenderansicht in K\u00fcrze",
+  "coming_soon_title": "Bald verf\u00fcgbar",
+  "coming_soon_description": "Wir arbeiten intensiv daran, Ihnen ein vollst\u00e4ndiges Aufgabenmanagement zu bieten. Folgendes ist geplant:",
+  "feature_lists": "Aufgabenlisten zur Organisation Ihrer Arbeit",
+  "feature_tasks": "Vollst\u00e4ndiges Aufgabenmanagement mit F\u00e4lligkeitsdaten und Beschreibungen",
+  "feature_reminders": "Intelligente Erinnerungen und Benachrichtigungen",
+  "feature_sync": "Echtzeit-Synchronisation \u00fcber alle Ger\u00e4te",
+  "feature_offline": "Vollst\u00e4ndige Offline-Funktionalit\u00e4t"
+}

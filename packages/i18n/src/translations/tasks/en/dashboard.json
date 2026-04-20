@@ -1,0 +1,22 @@
+{
+  "title": "Dashboard",
+  "welcome": "Welcome back, {username}!",
+  "logout": "Logout",
+  "logging_out": "Logging out...",
+  "user_info": "Account Information",
+  "username": "Username",
+  "member_since": "Member since",
+  "total_tasks": "Total Tasks",
+  "total_lists": "Task Lists",
+  "due_today": "Due Today",
+  "tasks_coming_soon": "Task tracking coming soon",
+  "lists_coming_soon": "List management coming soon",
+  "calendar_coming_soon": "Calendar view coming soon",
+  "coming_soon_title": "Features Coming Soon",
+  "coming_soon_description": "We're working hard to bring you a complete task management experience. Here's what's coming:",
+  "feature_lists": "Task lists to organize your work",
+  "feature_tasks": "Full task management with due dates and descriptions",
+  "feature_reminders": "Smart reminders and notifications",
+  "feature_sync": "Real-time synchronization across devices",
+  "feature_offline": "Complete offline functionality"
+}

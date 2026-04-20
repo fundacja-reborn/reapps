@@ -1,0 +1,175 @@
+{
+  "my_tasks": "Mes t\u00e2ches",
+  "completed": "Termin\u00e9es",
+  "add_new": "Nouvelle t\u00e2che",
+  "add_task": "Ajouter une t\u00e2che",
+  "add_task_description": "Ajouter une description de t\u00e2che",
+  "search_placeholder": "Rechercher des t\u00e2ches...",
+  "hide_completed": "Masquer les termin\u00e9es",
+  "show_completed": "Afficher les termin\u00e9es",
+  "show_all": "Tout afficher",
+  "show_starred": "Afficher les favoris",
+  "add": "Ajouter une t\u00e2che",
+  "edit": "Modifier la t\u00e2che",
+  "delete": {
+    "title": "Supprimer la t\u00e2che",
+    "confirm_message": "\u00cates-vous s\u00fbr de vouloir supprimer la t\u00e2che \u00ab {title} \u00bb ?",
+    "this_only": "Supprimer uniquement cette occurrence",
+    "future": "Supprimer cette occurrence et toutes les futures"
+  },
+  "delete_confirmation": "\u00cates-vous s\u00fbr de vouloir supprimer cette t\u00e2che ? Cette action est irr\u00e9versible.",
+  "toggle_completion": "Basculer l'\u00e9tat de compl\u00e9tion",
+  "toggle_star": "Basculer le favori",
+  "due_date": "Date d'\u00e9ch\u00e9ance",
+  "description": "Description",
+  "title": "Titre",
+  "title_placeholder": "Entrez le titre de la t\u00e2che",
+  "description_placeholder": "Entrez la description de la t\u00e2che (facultatif)",
+  "edit_description": "Modifiez les donn\u00e9es de votre t\u00e2che",
+  "select_date": "S\u00e9lectionner une date",
+  "select_list": "S\u00e9lectionner une liste",
+  "move_to_list": "D\u00e9placer vers une liste",
+  "move_task": "D\u00e9placer la t\u00e2che",
+  "move_task_description": "S\u00e9lectionnez une liste pour y d\u00e9placer cette t\u00e2che",
+  "recurring": {
+    "reset_notification": "La t\u00e2che a \u00e9t\u00e9 r\u00e9initialis\u00e9e avec une nouvelle date d'\u00e9ch\u00e9ance : {date}",
+    "completed_notification": "La t\u00e2che est termin\u00e9e et ne se r\u00e9p\u00e9tera plus",
+    "next_occurrence": "Prochaine occurrence : {date}",
+    "remaining_occurrences": "{count, plural, =1 {# occurrence restante} other {# occurrences restantes}}",
+    "last_occurrence": "C'\u00e9tait la derni\u00e8re occurrence de cette t\u00e2che r\u00e9currente",
+    "completed_count": "{count}x"
+  },
+  "subtasks": {
+    "add": "Ajouter une sous-t\u00e2che",
+    "placeholder": "Entrez le nom de la sous-t\u00e2che",
+    "header": "Sous-t\u00e2ches",
+    "delete": {
+      "title": "Supprimer la sous-t\u00e2che",
+      "description": "\u00cates-vous s\u00fbr de vouloir supprimer cette sous-t\u00e2che ?",
+      "confirm": "Supprimer",
+      "cancel": "Annuler",
+      "error": "\u00c9chec de la suppression de la sous-t\u00e2che. Veuillez r\u00e9essayer.",
+      "error_with_details": "\u00c9chec de la suppression de la sous-t\u00e2che : {errorMessage}. Veuillez r\u00e9essayer.",
+      "processing": "Suppression..."
+    }
+  },
+  "errors": {
+    "title_required": "Le titre de la t\u00e2che est requis",
+    "fetch_failed": "\u00c9chec de la r\u00e9cup\u00e9ration des t\u00e2ches",
+    "create_failed": "\u00c9chec de la cr\u00e9ation de la t\u00e2che",
+    "update_failed": "\u00c9chec de la mise \u00e0 jour de la t\u00e2che",
+    "delete_failed": "\u00c9chec de la suppression de la t\u00e2che",
+    "list_not_found": "Liste de t\u00e2ches introuvable",
+    "task_not_found": "T\u00e2che introuvable",
+    "required_fields": "Des champs obligatoires sont manquants",
+    "list_id_required": "L'identifiant de la liste de t\u00e2ches est requis",
+    "autosave_failed": "L'enregistrement automatique a \u00e9chou\u00e9. Vos modifications pourraient ne pas \u00eatre sauvegard\u00e9es.",
+    "invalid_date": "Format de date invalide",
+    "list_required": "Veuillez s\u00e9lectionner une liste de t\u00e2ches",
+    "move_failed": "\u00c9chec du d\u00e9placement de la t\u00e2che vers la nouvelle liste"
+  },
+  "view": {
+    "title": "D\u00e9tails de la t\u00e2che",
+    "back": "Retour aux t\u00e2ches",
+    "select_task": "S\u00e9lectionner une t\u00e2che"
+  },
+  "fields": {
+    "title": "Titre de la t\u00e2che",
+    "description": "Description de la t\u00e2che",
+    "due_date": "Date",
+    "recurring": "R\u00e9currente",
+    "recurrence_rule": "R\u00e8gle de r\u00e9currence (ex. FREQ=WEEKLY;BYDAY=MO,WE,FR)",
+    "completed_at": "Termin\u00e9e le",
+    "next_occurrence": "Prochaine occurrence",
+    "completed_count": "Occurrences termin\u00e9es"
+  },
+  "actions": {
+    "delete": "Supprimer la t\u00e2che",
+    "toggle_star": "Basculer le favori",
+    "move_to_list": "D\u00e9placer vers une autre liste",
+    "more_options": "Plus d'options"
+  },
+  "aria": {
+    "mark_as_complete": "Marquer comme termin\u00e9e",
+    "mark_as_incomplete": "Marquer comme non termin\u00e9e",
+    "add_star": "Ajouter aux favoris",
+    "remove_star": "Retirer des favoris",
+    "active_tasks": "T\u00e2ches actives"
+  },
+  "date": {
+    "select": "S\u00e9lectionner une date",
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "selected": "Date s\u00e9lectionn\u00e9e",
+    "change": "Changer la date",
+    "today": "aujourd'hui",
+    "tomorrow": "demain",
+    "yesterday": "hier",
+    "in_n_days": "{count, plural, =0 {aujourd'hui} =1 {dans 1 jour} other {dans {count} jours}}"
+  },
+  "time": {
+    "select_time": "S\u00e9lectionner l'heure",
+    "select": "S\u00e9lectionner l'heure",
+    "time": "Heure",
+    "hours": "Heures",
+    "minutes": "Minutes",
+    "add_time": "Ajouter l'heure",
+    "confirm": "Confirmer",
+    "cancel": "Annuler"
+  },
+  "properties": {
+    "title": "Propri\u00e9t\u00e9s",
+    "delete": {
+      "date": {
+        "title": "Supprimer la date",
+        "description": "\u00cates-vous s\u00fbr de vouloir supprimer la date ? Cela supprimera \u00e9galement l'heure et les param\u00e8tres de r\u00e9currence."
+      },
+      "time": {
+        "title": "Supprimer l'heure",
+        "description": "\u00cates-vous s\u00fbr de vouloir supprimer l'heure ?"
+      },
+      "recurrence": {
+        "title": "Supprimer la r\u00e9currence",
+        "description": "\u00cates-vous s\u00fbr de vouloir supprimer les param\u00e8tres de r\u00e9currence ?"
+      }
+    }
+  },
+  "recurrence": {
+    "title": "D\u00e9finir la r\u00e9currence",
+    "description": "Configurez la fr\u00e9quence de r\u00e9p\u00e9tition de cette t\u00e2che",
+    "add": "Ajouter une r\u00e9currence",
+    "edit": "Modifier la r\u00e9currence",
+    "frequency": {
+      "label": "Fr\u00e9quence",
+      "daily": "Quotidien",
+      "weekly": "Hebdomadaire",
+      "monthly": "Mensuel",
+      "yearly": "Annuel"
+    },
+    "interval": {
+      "label": "R\u00e9p\u00e9ter tous les",
+      "daily": "jour(s)",
+      "weekly": "semaine(s)",
+      "monthly": "mois",
+      "yearly": "an(s)"
+    },
+    "days": {
+      "label": "Les jours",
+      "monday": "Lundi",
+      "tuesday": "Mardi",
+      "wednesday": "Mercredi",
+      "thursday": "Jeudi",
+      "friday": "Vendredi",
+      "saturday": "Samedi",
+      "sunday": "Dimanche"
+    },
+    "end": {
+      "label": "Se termine",
+      "never": "Jamais",
+      "after": "Apr\u00e8s",
+      "on_date": "\u00c0 une date",
+      "occurrences": "occurrences"
+    }
+  },
+  "more_options": "Plus d'options"
+}

@@ -1,0 +1,71 @@
+{
+  "name": "reborn-notes",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/reborn-notes/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/build"],
+      "options": {
+        "cwd": "apps/reborn-notes",
+        "command": "vite build"
+      }
+    },
+    "sync": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/reborn-notes",
+        "command": "svelte-kit sync"
+      }
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/reborn-notes",
+        "command": "dotenv -e ../../.env -- vite dev --port 4201"
+      }
+    },
+    "dev-host": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/reborn-notes",
+        "command": "dotenv -e ../../.env -- vite dev --port 4201 --host 0.0.0.0"
+      }
+    },
+    "preview": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/reborn-notes",
+        "command": "vite preview"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "cwd": "apps/reborn-notes",
+        "command": "dotenv -e ../../.env -- node build"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/apps/reborn-notes"],
+      "options": {
+        "cwd": "apps/reborn-notes",
+        "command": "vitest run --passWithNoTests"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/reborn-notes",
+        "command": "dotenv -e ../../.env -- sh -c 'svelte-kit sync && svelte-check --tsconfig ./tsconfig.check.json --threshold warning'"
+      }
+    }
+  },
+  "tags": []
+}

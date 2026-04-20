@@ -1,0 +1,7 @@
+{
+  "navigation_failed": "La navegación falló",
+  "unknown": "Error desconocido",
+  "offline_title": "No tiene conexión",
+  "offline_description": "Esta página no está disponible sin conexión. Conéctese a Internet e inténtelo de nuevo.",
+  "retry": "Intentar de nuevo"
+}

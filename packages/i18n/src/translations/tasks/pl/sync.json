@@ -1,0 +1,62 @@
+{
+  "sync_now": "Synchronizuj teraz",
+  "syncing": "Synchronizacja...",
+  "actions_title": "Akcje Synchronizacji",
+  "actions_description": "Ręcznie steruj procesami synchronizacji",
+  "about_title": "O Synchronizacji",
+  "about_offline_first": "RebornTask używa podejścia offline-first. Twoje dane są najpierw przechowywane lokalnie na urządzeniu, a następnie synchronizowane z serwerem w tle.",
+  "about_e2e": "Wszystkie Twoje dane są szyfrowane end-to-end, co oznacza, że tylko Twoje urządzenie może odczytać rzeczywistą zawartość Twoich zadań, list i podzadań. Serwer przechowuje tylko zaszyfrowane dane.",
+  "about_resolution": "Jeśli wystąpią konflikty między urządzeniami, system automatycznie rozwiązuje je przy użyciu strategii 'ostatnia aktualizacja wygrywa', ale zachowuje wszystkie Twoje dane, gdy tylko jest to możliwe.",
+  "status": {
+    "online": "Online",
+    "offline": "Offline",
+    "pending": "Oczekujące",
+    "in_progress": "W trakcie",
+    "completed": "Zakończono",
+    "failed": "Błąd"
+  },
+  "pending_operations": "Oczekujące operacje: {count}",
+  "failed_operations": "nieudanych: {count}",
+  "connect_to_sync": "Połącz się z internetem, aby zsynchronizować",
+  "cleanup_failed": "Wyczyść nieudane operacje",
+  "force_sync": "Wymuś synchronizację",
+  "show_details": "Pokaż szczegóły",
+  "hide_details": "Ukryj szczegóły",
+  "cleanup_result": "Wyczyszczono {count} nieudanych operacji",
+  "operations_details": "Oczekujące operacje",
+  "retry_count": "Próby",
+  "created": "Utworzono",
+  "error": "Błąd",
+  "force_full_sync": "Wymuś pełną synchronizację",
+  "check_repair": "Sprawdź i napraw dane",
+  "operation_success": "Operacja zakończona pomyślnie",
+  "operation_error": "Błąd",
+  "entity_type": {
+    "task_list": "Lista zadań",
+    "task": "Zadanie",
+    "sub_task": "Podzadanie"
+  },
+  "operation_type": {
+    "create": "Utworzenie",
+    "update": "Aktualizacja",
+    "delete": "Usunięcie"
+  },
+  "automatic_info": "Synchronizacja działa automatycznie w tle. Ręczne akcje są opcjonalne i służą zaawansowanej diagnostyce lub wymuszeniu synchronizacji w wyjątkowych sytuacjach.",
+  "success": "Synchronizacja zakończona pomyślnie",
+  "partial_failure": "Synchronizacja zakończona, ale {count} operacji nie powiodło się. Dotknij ponownie, aby wyczyścić.",
+  "failed": "Synchronizacja nie powiodła się",
+  "indicator": {
+    "synced": "Zsynchronizowano",
+    "syncing": "Synchronizacja...",
+    "offline": "Tryb offline",
+    "error": "Błąd synchronizacji",
+    "pending": "Oczekuje na synchronizację ({count})",
+    "tap_to_sync": "Dotknij, aby zsynchronizować",
+    "tap_to_retry": "Dotknij, aby ponowić lub wyczyścić",
+    "last_sync": "Ostatnia synchronizacja: {time}",
+    "conflict_title": "Dane zmienione na innym urządzeniu",
+    "conflict_message": "Wykryto nowsze dane na serwerze. Pobrano zaktualizowane dane.",
+    "conflict_action": "Odśwież",
+    "session_expired": "Sesja wygasła"
+  }
+}

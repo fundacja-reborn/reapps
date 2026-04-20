@@ -1,0 +1,240 @@
+{
+  "sidebar": {
+    "tagline": "Gestion de t\u00e2ches zero-knowledge",
+    "task_lists": "Listes de t\u00e2ches",
+    "new_list": "Nouvelle liste",
+    "starred_tasks": "T\u00e2ches favorites",
+    "completed_tasks": "T\u00e2ches termin\u00e9es",
+    "trash": "Corbeille"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bon retour, {username} !",
+    "total_tasks": "Total des t\u00e2ches",
+    "completed_today": "Termin\u00e9es aujourd'hui",
+    "overdue": "En retard",
+    "total_lists": "Listes de t\u00e2ches",
+    "across_all_lists": "dans toutes les listes",
+    "great_progress": "Excellente progression !",
+    "needs_attention": "N\u00e9cessite votre attention",
+    "all_on_track": "Tout est en ordre",
+    "organized_tasks": "collections organis\u00e9es",
+    "upcoming_tasks": "T\u00e2ches \u00e0 venir",
+    "next_7_days": "7 prochains jours",
+    "no_upcoming_tasks": "Aucune t\u00e2che \u00e0 venir",
+    "tasks_coming_soon": "Fonctionnalit\u00e9s de t\u00e2ches bient\u00f4t disponibles",
+    "recent_activity": "Activit\u00e9 r\u00e9cente",
+    "your_latest_actions": "Vos derni\u00e8res actions",
+    "activity_coming_soon": "Suivi d'activit\u00e9 bient\u00f4t disponible",
+    "productivity_score": "Score de productivit\u00e9",
+    "this_week": "Cette semaine",
+    "score_coming_soon": "Calcul du score bient\u00f4t disponible"
+  },
+  "fields": {
+    "title": "Titre",
+    "description": "Description",
+    "due_date": "Date d'\u00e9ch\u00e9ance",
+    "list": "Liste de t\u00e2ches",
+    "time": "Heure",
+    "add_time": "D\u00e9finir l'heure",
+    "select_date": "S\u00e9lectionner une date",
+    "clear_date": "Effacer la date",
+    "set_time": "D\u00e9finir l'heure",
+    "recurrence": "R\u00e9currence",
+    "toggle_recurrence": "Activer/d\u00e9sactiver la r\u00e9currence"
+  },
+  "placeholders": {
+    "title": "Entrez le titre de la t\u00e2che",
+    "description": "Ajouter une description (facultatif)",
+    "due_date": "S\u00e9lectionner une date d'\u00e9ch\u00e9ance",
+    "list": "S\u00e9lectionner une liste de t\u00e2ches",
+    "add_description": "Ajouter une description de t\u00e2che"
+  },
+  "create": {
+    "title": "Nouvelle t\u00e2che",
+    "description": "Ajouter une nouvelle t\u00e2che \u00e0 la liste"
+  },
+  "errors": {
+    "title_required": "Le titre de la t\u00e2che est requis",
+    "create_failed": "\u00c9chec de la cr\u00e9ation de la t\u00e2che",
+    "update_failed": "\u00c9chec de la mise \u00e0 jour de la t\u00e2che",
+    "not_found": "T\u00e2che introuvable",
+    "load_failed": "\u00c9chec du chargement de la t\u00e2che",
+    "delete_failed": "\u00c9chec de la suppression de la t\u00e2che",
+    "reorder_failed": "\u00c9chec de la r\u00e9organisation de la t\u00e2che",
+    "restore_failed": "\u00c9chec de la restauration de la t\u00e2che",
+    "move_failed": "\u00c9chec du d\u00e9placement de la t\u00e2che",
+    "title_too_long": "Le titre d\u00e9passe la taille maximale ({max})",
+    "description_too_long": "La description d\u00e9passe la taille maximale ({max})"
+  },
+  "success": {
+    "created": "T\u00e2che cr\u00e9\u00e9e avec succ\u00e8s",
+    "updated": "T\u00e2che mise \u00e0 jour avec succ\u00e8s",
+    "deleted": "T\u00e2che supprim\u00e9e avec succ\u00e8s",
+    "restored": "T\u00e2che restaur\u00e9e avec succ\u00e8s",
+    "starred": "T\u00e2che ajout\u00e9e aux favoris",
+    "unstarred": "Retir\u00e9e des favoris",
+    "completed": "T\u00e2che marqu\u00e9e comme termin\u00e9e",
+    "uncompleted": "T\u00e2che marqu\u00e9e comme non termin\u00e9e",
+    "moved": "T\u00e2che d\u00e9plac\u00e9e avec succ\u00e8s"
+  },
+  "status": {
+    "completed": "Termin\u00e9e",
+    "starred": "Favoris",
+    "recurring": "R\u00e9currente"
+  },
+  "detail": {
+    "title": "D\u00e9tails de la t\u00e2che"
+  },
+  "completed_at": "Termin\u00e9e le",
+  "select_date": "S\u00e9lectionner une date",
+  "undo": {
+    "message": "La t\u00e2che a \u00e9t\u00e9 supprim\u00e9e",
+    "action": "Annuler"
+  },
+  "aria": {
+    "delete_task": "Supprimer la t\u00e2che"
+  },
+  "move_to_list": "D\u00e9placer vers une liste",
+  "move_to_list_description": "S\u00e9lectionnez la liste o\u00f9 vous souhaitez d\u00e9placer cette t\u00e2che.",
+  "move_task_description": "S\u00e9lectionnez la liste o\u00f9 vous souhaitez d\u00e9placer la t\u00e2che.",
+  "options": "Options de la t\u00e2che",
+  "mark_complete": "Marquer comme termin\u00e9e",
+  "mark_incomplete": "Marquer comme non termin\u00e9e",
+  "recurrence_label": "R\u00e9p\u00e9ter",
+  "remove_date": "Supprimer la date",
+  "remove_date_title": "Supprimer la date d'\u00e9ch\u00e9ance",
+  "remove_date_description": "Cela supprimera \u00e9galement l'heure et les param\u00e8tres de r\u00e9currence.",
+  "remove_date_instance_description": "Cela d\u00e9tachera \u00e9galement cette t\u00e2che du cycle r\u00e9current.",
+  "remove_recurrence_title": "Supprimer la r\u00e9currence",
+  "remove_recurrence_description": "La t\u00e2che ne se r\u00e9p\u00e9tera plus.",
+  "recurrence": {
+    "title": "R\u00e9currence de la t\u00e2che",
+    "description": "D\u00e9finissez la fr\u00e9quence de r\u00e9p\u00e9tition de la t\u00e2che.",
+    "add": "Ajouter une r\u00e9currence",
+    "edit": "Modifier la r\u00e9currence",
+    "interval": {
+      "label": "Intervalle"
+    },
+    "frequency": {
+      "label": "Fr\u00e9quence",
+      "daily": "Quotidien",
+      "weekly": "Hebdomadaire",
+      "monthly": "Mensuel",
+      "yearly": "Annuel"
+    },
+    "every_n": {
+      "daily": "Tous les {n} {n, plural, =1 {jour} other {jours}}",
+      "weekly": "Toutes les {n} {n, plural, =1 {semaine} other {semaines}}",
+      "monthly": "Tous les {n} {n, plural, =1 {mois} other {mois}}",
+      "yearly": "Tous les {n} {n, plural, =1 {an} other {ans}}"
+    },
+    "n_times": "{n, plural, =1 {# fois} other {# fois}}",
+    "until": "jusqu'au",
+    "days": {
+      "label": "Jours de la semaine",
+      "monday": "Lundi",
+      "tuesday": "Mardi",
+      "wednesday": "Mercredi",
+      "thursday": "Jeudi",
+      "friday": "Vendredi",
+      "saturday": "Samedi",
+      "sunday": "Dimanche"
+    },
+    "end": {
+      "label": "Fin de la r\u00e9currence",
+      "never": "Jamais",
+      "after": "Apr\u00e8s",
+      "occurrences": "occurrences",
+      "on_date": "\u00c0 une date"
+    }
+  },
+  "subtasks": {
+    "title": "Sous-t\u00e2ches",
+    "add": "Ajouter une sous-t\u00e2che",
+    "add_placeholder": "Entrez le nom de la sous-t\u00e2che",
+    "created": "Sous-t\u00e2che cr\u00e9\u00e9e",
+    "updated": "Sous-t\u00e2che mise \u00e0 jour",
+    "deleted": "Sous-t\u00e2che supprim\u00e9e",
+    "marked_complete": "Sous-t\u00e2che marqu\u00e9e comme termin\u00e9e",
+    "marked_incomplete": "Sous-t\u00e2che marqu\u00e9e comme non termin\u00e9e",
+    "create_failed": "\u00c9chec de la cr\u00e9ation de la sous-t\u00e2che",
+    "update_failed": "\u00c9chec de la mise \u00e0 jour de la sous-t\u00e2che",
+    "delete_failed": "\u00c9chec de la suppression de la sous-t\u00e2che",
+    "delete_title": "Supprimer la sous-t\u00e2che",
+    "delete_description": "\u00cates-vous s\u00fbr de vouloir supprimer la sous-t\u00e2che \u00ab {title} \u00bb ? Cette action est irr\u00e9versible.",
+    "reordered": "Sous-t\u00e2ches r\u00e9organis\u00e9es",
+    "reorder_failed": "\u00c9chec de la r\u00e9organisation des sous-t\u00e2ches",
+    "add_aria": "Ajouter une sous-t\u00e2che",
+    "cancel_aria": "Annuler l'ajout de sous-t\u00e2che"
+  },
+  "trash": {
+    "title": "Corbeille",
+    "description": "Les t\u00e2ches dans la corbeille sont automatiquement supprim\u00e9es apr\u00e8s 30 jours.",
+    "banner_message": "Cette t\u00e2che est dans la corbeille",
+    "banner_restore_hint": "Restaurez-la ou supprimez-la d\u00e9finitivement.",
+    "empty": "La corbeille est vide",
+    "count": "{count} {count, plural, one {t\u00e2che} other {t\u00e2ches}} dans la corbeille",
+    "from_list": "De la liste",
+    "deleted_on": "Supprim\u00e9e le",
+    "restore": "Restaurer",
+    "restored": "T\u00e2che restaur\u00e9e avec succ\u00e8s",
+    "restore_failed": "\u00c9chec de la restauration de la t\u00e2che",
+    "permanently_deleted": "T\u00e2che supprim\u00e9e d\u00e9finitivement",
+    "permanently_delete": "Supprimer d\u00e9finitivement",
+    "delete_failed": "\u00c9chec de la suppression de la t\u00e2che",
+    "empty_trash": "Vider la corbeille",
+    "emptied": "Corbeille vid\u00e9e avec succ\u00e8s",
+    "empty_failed": "\u00c9chec du vidage de la corbeille",
+    "auto_delete_warning": "Sera automatiquement supprim\u00e9e dans {days} {days, plural, one {jour} other {jours}}",
+    "auto_delete_info": "Les t\u00e2ches dans la corbeille depuis plus de 30 jours sont automatiquement supprim\u00e9es.",
+    "auto_purged": "{count} {count, plural, one {ancienne t\u00e2che supprim\u00e9e} other {anciennes t\u00e2ches supprim\u00e9es}} automatiquement",
+    "unknown_list": "Liste inconnue",
+    "confirm_delete_title": "Supprimer d\u00e9finitivement la t\u00e2che",
+    "confirm_delete_description": "\u00cates-vous s\u00fbr de vouloir supprimer d\u00e9finitivement la t\u00e2che \u00ab {title} \u00bb ? Cette action est irr\u00e9versible.",
+    "confirm_empty_title": "Vider la corbeille",
+    "confirm_empty_description": "\u00cates-vous s\u00fbr de vouloir supprimer d\u00e9finitivement {count} {count, plural, one {t\u00e2che} other {t\u00e2ches}} ? Cette action est irr\u00e9versible."
+  },
+  "delete": {
+    "title": "Supprimer la t\u00e2che",
+    "confirm_message": "\u00cates-vous s\u00fbr de vouloir supprimer la t\u00e2che \u00ab {title} \u00bb ? Cette action est irr\u00e9versible.",
+    "this_only": "Uniquement cette occurrence",
+    "future": "Cette occurrence et toutes les futures"
+  },
+  "select_from_list": "S\u00e9lectionnez une t\u00e2che dans la liste",
+  "select_from_list_or": "ou s\u00e9lectionnez une t\u00e2che dans la liste",
+  "select_from_list_hint": "Cliquez sur une t\u00e2che dans la barre lat\u00e9rale pour voir ses d\u00e9tails",
+  "no_tasks_yet": "Vous n'avez pas encore de t\u00e2ches",
+  "no_tasks_yet_hint": "Cr\u00e9ez votre premi\u00e8re t\u00e2che pour commencer",
+  "add_new": "Nouvelle t\u00e2che",
+  "empty_list": "Aucune t\u00e2che dans cette liste",
+  "recurring_instance": {
+    "recurrence_info": "R\u00e9currence",
+    "skip": "Ignorer cette occurrence",
+    "skip_title": "Ignorer l'occurrence",
+    "skip_description": "\u00cates-vous s\u00fbr de vouloir ignorer cette occurrence ? La t\u00e2che sera retir\u00e9e de la liste, mais le cycle de r\u00e9currence restera actif.",
+    "skip_success": "Occurrence ignor\u00e9e",
+    "stop_cycle": "Arr\u00eater la r\u00e9currence",
+    "stop_cycle_title": "Arr\u00eater la r\u00e9currence",
+    "stop_cycle_description": "Cela supprimera toutes les occurrences futures. La t\u00e2che ne se r\u00e9p\u00e9tera plus.",
+    "stop_cycle_success": "R\u00e9currence arr\u00eat\u00e9e",
+    "history": "Historique des occurrences",
+    "history_title": "Historique des occurrences",
+    "history_empty": "Aucune occurrence \u00e0 afficher",
+    "history_current": "Actuelle",
+    "edit_recurrence": "Modifier la r\u00e9currence",
+    "edit_options_title": "Modifier la r\u00e9currence",
+    "edit_options_description": "Quelles occurrences doivent \u00eatre modifi\u00e9es ?",
+    "edit_option_this_and_future": "Cette occurrence et les futures",
+    "edit_option_all": "Toutes les occurrences",
+    "edit_success": "R\u00e9currence mise \u00e0 jour"
+  },
+  "empty_state": "Aucune t\u00e2che",
+  "quick_add": {
+    "placeholder": "Ajouter une t\u00e2che...",
+    "add_to_list": "Ajouter \u00e0 :",
+    "hint_today": "T\u00e2che avec la date d'aujourd'hui",
+    "hint_starred": "T\u00e2che favorite",
+    "hint_upcoming": "T\u00e2che pour demain"
+  }
+}

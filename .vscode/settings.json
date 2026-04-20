@@ -1,0 +1,62 @@
+{
+  // Disable HTML validation for SvelteKit template files
+  "html.validate.scripts": false,
+  "html.validate.styles": false,
+  "html.validate.templates": false,
+  "html.customData": ["./apps/reborn-task/html-data.json"],
+
+  // File-specific settings
+  "[html]": {
+    "editor.formatOnSave": false
+  },
+
+  // File associations
+  "files.associations": {
+    "app.html": "html"
+  },
+
+  // Exclude app.html from certain validations
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.svelte-kit": true,
+    "**/dist": true,
+    "**/.nx": true
+  },
+
+  // Microsoft Edge Tools - disable warnings for app.html
+  "microsoft-edge-tools.webhint.enableHints": {
+    "no-inline-styles": false
+  },
+
+  // HTML hint configuration
+  "htmlhint.options": {
+    "inline-style-disabled": false,
+    "title-require": false
+  },
+
+  // Disable specific axe rules for template files
+  "axe-linter.disable": ["document-title", "html-lang-valid"],
+
+  // Copilot Agent — selektywne zatwierdzanie
+  "chat.agent.autoApprove": false, // NIE globalne auto-approve
+  "chat.tools.autoApprove": {
+    "editFiles": "always", // edycja plików — OK
+    "readFiles": "always", // odczyt — OK
+    "codebase": "always", // przeszukiwanie kodu — OK
+    "runInTerminal": "whitelisted" // komendy — tylko whitelist
+  },
+
+  // Bezpieczne komendy bez pytania
+  "chat.tools.terminalAllowList": [
+    "pnpm nx check *",
+    "pnpm nx lint *",
+    "pnpm nx test *",
+    "pnpm test",
+    "npx svelte-check*",
+    "npx tsc --noEmit*",
+    "cat *",
+    "ls *",
+    "grep *",
+    "pnpm nx build *"
+  ]
+}
