@@ -1,5 +1,11 @@
 import type { HandleClientError } from '@sveltejs/kit';
+import { LoggerGlobal, LOG_LEVELS } from '@reborn/utils';
 import { initializeStorage } from '@reborn/storage';
+
+// Enable debug logs only in Vite dev server (import.meta.hot is stripped in production builds).
+if (import.meta.hot) {
+  LoggerGlobal.setMinLevel(LOG_LEVELS.DEBUG);
+}
 import { startSwUpdateWatcher } from '$lib/services/sw-update.service';
 import { startPwaInstallPrompt } from '$lib/services/pwa-install.service';
 
