@@ -29,24 +29,36 @@ declare global {
 export class AuthOperationsService {
 	/**
 	 * Initialize storage callback
-	 * This is called from AuthService after successful login/unlock
+	 * This is called from AuthService after successful login/unlock.
+	 *
+	 * `context` distinguishes user-switching flows (login) from same-user key
+	 * restore on app start (restore). Clearing IndexedDB is only correct for
+	 * login — on restore it would wipe offline changes that haven't been synced.
 	 */
-	private async onStorageInit(cryptoManager: CryptoManager, authToken?: string) {
-		logger.info('Initializing storage with E2E encryption');
+	private async onStorageInit(
+		cryptoManager: CryptoManager,
+		context: 'login' | 'restore' = 'login',
+		authToken?: string
+	) {
+		logger.info(`Initializing storage with E2E encryption (context=${context})`);
 
 		try {
 			// Database is now initialized in @reborn/storage package
 			logger.info('Using @reborn/storage for data management');
 
-			// Clear any previous user's data from IndexedDB before starting new session.
-			// Prevents ghost tasks when switching users or after account deletion + re-register.
-			const { clearAllUserData, isDatabaseInitialized } = await import('@reborn/storage');
-			if (isDatabaseInitialized()) {
-				try {
-					await clearAllUserData();
-					logger.info('Cleared previous user data from IndexedDB before login');
-				} catch (err) {
-					logger.error('Failed to clear IndexedDB before login:', err);
+			// Clear any previous user's data from IndexedDB ONLY on login — prevents
+			// ghost tasks when switching users or after account deletion + re-register.
+			// On 'restore' (same user, master key loaded from IndexedDB on app start)
+			// we MUST preserve local data, otherwise offline edits are lost.
+			if (context === 'login') {
+				const { clearAllUserData, isDatabaseInitialized } = await import('@reborn/storage');
+				if (isDatabaseInitialized()) {
+					try {
+						await clearAllUserData();
+						logger.info('Cleared previous user data from IndexedDB before login');
+					} catch (err) {
+						logger.error('Failed to clear IndexedDB before login:', err);
+					}
 				}
 			}
 
@@ -457,8 +469,9 @@ export class AuthOperationsService {
 			if (cryptoManager.isInitialized()) {
 				logger.info('E2E initialized (master key restored from IndexedDB)');
 
-				// Trigger onStorageInit to ensure stores are initialized
-				await this.onStorageInit(cryptoManager);
+				// Trigger onStorageInit to ensure stores are initialized.
+				// 'restore' context — same user, key loaded from IndexedDB. Do NOT clear data.
+				await this.onStorageInit(cryptoManager, 'restore');
 
 				// Update session to reflect E2E status
 				const sessionManager = this.getSessionManager();

@@ -22,7 +22,10 @@ let sessionManager: SessionManager | null = globalThis.__sessionManagerInstance 
  * Initialize the auth service (should be called once on app start)
  */
 export function initializeAuthService(
-	onStorageInit?: (cryptoManager: CryptoManager) => Promise<void>,
+	onStorageInit?: (
+		cryptoManager: CryptoManager,
+		context: 'login' | 'restore'
+	) => Promise<void>,
 	onLanguageChange?: (language: string) => void
 ): { authService: AuthService; sessionManager: SessionManager } {
 	if (!browser) {

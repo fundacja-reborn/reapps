@@ -52,7 +52,10 @@ export class AuthService implements IAuthService {
     private sessionManager: SessionManager,
     private storage: IAuthStorage,
     private apiClient: IAuthApiClient,
-    private onStorageInit?: (cryptoManager: CryptoManager) => Promise<void>,
+    private onStorageInit?: (
+      cryptoManager: CryptoManager,
+      context: 'login' | 'restore'
+    ) => Promise<void>,
     private onLanguageChange?: (language: string) => void
   ) {}
 
@@ -309,7 +312,7 @@ export class AuthService implements IAuthService {
       // Initialize storage with E2E
       if (this.onStorageInit) {
         try {
-          await this.onStorageInit(this.cryptoManager);
+          await this.onStorageInit(this.cryptoManager, 'login');
           logger.info('Storage initialized with E2E after login');
         } catch (storageError) {
           logger.error('Failed to initialize storage after login:', storageError);
@@ -365,7 +368,7 @@ export class AuthService implements IAuthService {
       // Initialize storage with E2E
       if (this.onStorageInit) {
         try {
-          await this.onStorageInit(this.cryptoManager);
+          await this.onStorageInit(this.cryptoManager, 'login');
           logger.info('E2E storage initialized after 2FA login');
         } catch (storageError) {
           logger.error('Failed to initialize storage after 2FA login:', storageError);
@@ -482,7 +485,7 @@ export class AuthService implements IAuthService {
 
       // Initialize storage with E2E
       if (this.onStorageInit) {
-        await this.onStorageInit(this.cryptoManager);
+        await this.onStorageInit(this.cryptoManager, 'login');
       }
 
       logger.info('Offline login successful');
@@ -580,7 +583,7 @@ export class AuthService implements IAuthService {
       // Initialize storage with E2E if callback provided
       if (this.onStorageInit) {
         try {
-          await this.onStorageInit(this.cryptoManager);
+          await this.onStorageInit(this.cryptoManager, 'restore');
           logger.info('Storage re-initialized with E2E after unlock');
         } catch (storageError) {
           logger.error('Failed to re-initialize storage after E2E unlock:', storageError);

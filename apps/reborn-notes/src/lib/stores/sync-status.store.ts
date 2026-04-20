@@ -27,17 +27,22 @@ function createOnlineStore() {
   if (browser) {
     window.addEventListener('online', () => {
       set(true);
-      // Trigger sync when coming back online (lazy import to avoid circular deps)
-      import('$lib/services/notes-sync.service').then(({ pullFromServer, pushPendingItems, refreshStoresAfterPull }) => {
-        // fire-and-forget: background sync, errors handled internally
-        pushPendingItems().catch(() => {});
-        // fire-and-forget: background sync, errors handled internally
-        pullFromServer()
-          .then(async (synced) => {
+      // Trigger sync when coming back online (lazy import to avoid circular deps).
+      // CRITICAL: push BEFORE pull — running them in parallel risks pull reaching
+      // the server before push completes, so items still 'pending' locally would
+      // be re-fetched as already-synced versions and subsequent push attempts
+      // would conflict.
+      import('$lib/services/notes-sync.service').then(
+        async ({ pullFromServer, pushPendingItems, refreshStoresAfterPull }) => {
+          try {
+            await pushPendingItems();
+            const synced = await pullFromServer();
             if (synced) await refreshStoresAfterPull();
-          })
-          .catch(() => {});
-      });
+          } catch {
+            // fire-and-forget: background sync, errors handled internally
+          }
+        }
+      );
     });
     window.addEventListener('offline', () => set(false));
   }
