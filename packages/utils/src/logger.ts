@@ -36,11 +36,13 @@ interface LoggerConfig {
 
 /**
  * Determines default log level based on environment.
- * Reads LOG_LEVEL env var (DEBUG/INFO/WARN/ERROR), falls back to:
- * - WARN in production (NODE_ENV=production)
- * - DEBUG otherwise
+ *
+ * Server-side: reads LOG_LEVEL env var, falls back to WARN when NODE_ENV=production.
+ * Client-side (Vite): uses import.meta.env.PROD (replaced at build time).
+ * Default: DEBUG (development).
  */
 function getDefaultMinLevel(): number {
+  // Server-side (Node.js): process.env is available
   if (typeof process !== 'undefined' && process.env) {
     const envLevel = process.env.LOG_LEVEL?.toUpperCase();
     if (envLevel && envLevel in LOG_LEVELS) {
@@ -50,6 +52,17 @@ function getDefaultMinLevel(): number {
       return LOG_LEVELS.WARN;
     }
   }
+
+  // Client-side (Vite): import.meta.env.PROD is statically replaced at build time
+  try {
+    const meta = import.meta as Record<string, any>;
+    if (meta.env?.PROD) {
+      return LOG_LEVELS.WARN;
+    }
+  } catch {
+    // import.meta.env not available outside Vite/browser context
+  }
+
   return LOG_LEVELS.DEBUG;
 }
 
