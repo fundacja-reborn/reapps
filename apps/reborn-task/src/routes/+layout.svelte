@@ -36,6 +36,15 @@
 		}
 	});
 
+	// Reset sync flag when user logs out — allows re-sync for next login.
+	// Defensive: even though logout now uses hard redirect (which clears all
+	// in-memory state), this handles edge cases like internal navigation.
+	$effect(() => {
+		if (browser && $session?.isInitialized && !$session?.isAuthenticated) {
+			hasTriggeredInitialSync = false;
+		}
+	});
+
 	// Re-decrypt stores and pull from server when E2E key becomes available.
 	// Covers cross-app login (storage event → /auth/unlock → E2E unlocked) and
 	// any other path where hasE2E flips to true after layout already mounted.
