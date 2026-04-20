@@ -7,17 +7,8 @@
   "rangeStrategy": "pin",
   "packageRules": [
     {
-      "description": "Automerge patch-level security updates",
+      "description": "Group patch updates",
       "matchUpdateTypes": ["patch"],
-      "matchCategories": ["security"],
-      "automerge": true,
-      "automergeType": "pr",
-      "labels": ["dependencies", "security", "automerge"]
-    },
-    {
-      "description": "Group patch updates (non-security)",
-      "matchUpdateTypes": ["patch"],
-      "excludeCategories": ["security"],
       "groupName": "patch-updates",
       "automerge": false
     },
@@ -35,25 +26,25 @@
     },
     {
       "description": "Group Svelte ecosystem updates",
-      "matchPackagePatterns": ["^svelte", "^@sveltejs/"],
+      "matchPackageNames": ["/^svelte/", "/^@sveltejs\\//"],
       "groupName": "svelte",
       "automerge": false
     },
     {
       "description": "Group Nx monorepo updates",
-      "matchPackagePatterns": ["^@nx/", "^nx$"],
+      "matchPackageNames": ["/^@nx\\//", "/^nx$/"],
       "groupName": "nx",
       "automerge": false
     },
     {
       "description": "Group Prisma updates",
-      "matchPackagePatterns": ["^@prisma/", "^prisma$"],
+      "matchPackageNames": ["/^@prisma\\//", "/^prisma$/"],
       "groupName": "prisma",
       "automerge": false
     },
     {
       "description": "Group TailwindCSS updates",
-      "matchPackagePatterns": ["^tailwindcss", "^@tailwindcss/"],
+      "matchPackageNames": ["/^tailwindcss/", "/^@tailwindcss\\//"],
       "groupName": "tailwindcss",
       "automerge": false
     },
