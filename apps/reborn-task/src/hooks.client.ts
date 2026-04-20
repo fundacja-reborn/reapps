@@ -1,6 +1,11 @@
 import type { HandleClientError } from '@sveltejs/kit';
-import { createLogger } from '@reborn/utils';
+import { createLogger, LoggerGlobal, LOG_LEVELS } from '@reborn/utils';
 import { initializeStorage } from '@reborn/storage';
+
+// Enable debug logs only in Vite dev server (import.meta.hot is stripped in production builds).
+if (import.meta.hot) {
+  LoggerGlobal.setMinLevel(LOG_LEVELS.DEBUG);
+}
 import { cryptoManager } from '@reborn/crypto';
 import { base } from '$app/paths';
 import { trashManagementService } from '$lib/services/trash-management.service';
