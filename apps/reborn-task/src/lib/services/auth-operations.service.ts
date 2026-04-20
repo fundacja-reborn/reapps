@@ -1,5 +1,5 @@
 import { browser } from '$app/environment';
-import { goto } from '$lib/utils/navigation';
+import { base } from '$app/paths';
 import {
 	initializeAuthService,
 	getAuthService,
@@ -37,6 +37,18 @@ export class AuthOperationsService {
 		try {
 			// Database is now initialized in @reborn/storage package
 			logger.info('Using @reborn/storage for data management');
+
+			// Clear any previous user's data from IndexedDB before starting new session.
+			// Prevents ghost tasks when switching users or after account deletion + re-register.
+			const { clearAllUserData, isDatabaseInitialized } = await import('@reborn/storage');
+			if (isDatabaseInitialized()) {
+				try {
+					await clearAllUserData();
+					logger.info('Cleared previous user data from IndexedDB before login');
+				} catch (err) {
+					logger.error('Failed to clear IndexedDB before login:', err);
+				}
+			}
 
 			// Import only stores used by Reborn Task app
 			const {
@@ -243,8 +255,9 @@ export class AuthOperationsService {
 				// Don't interrupt logout process on error
 			}
 
-			// Redirect to login
-			await goto('/auth/login');
+			// Hard redirect to login — guarantees ALL in-memory state
+			// (Svelte stores, module singletons, $state) is cleared.
+			window.location.href = `${base}/auth/login`;
 		}
 	}
 
@@ -302,7 +315,9 @@ export class AuthOperationsService {
 			logger.error('Failed to clear user data:', error);
 		}
 
-		await goto('/auth/login');
+		// Hard redirect to login — guarantees ALL in-memory state
+		// (Svelte stores, module singletons, $state) is cleared.
+		window.location.href = `${base}/auth/login`;
 	}
 
 	/**
