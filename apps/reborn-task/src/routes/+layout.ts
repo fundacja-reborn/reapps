@@ -3,8 +3,6 @@ import { browser } from '$app/environment';
 import { initI18n } from '$lib/stores/i18n.store';
 import { authOperationsService } from '$lib/services/auth-operations.service';
 import { createLogger } from '@reborn/utils';
-// --- STORAGE INIT ---
-import { initializeStorage } from '@reborn/storage';
 
 const logger = createLogger('RootLayoutLoad');
 
@@ -28,33 +26,20 @@ export const load: LayoutLoad = async ({ data }) => {
 		};
 	}
 
-	// Initialize i18n first (fast operation)
-	await initI18n();
+	// Initialize i18n with a timeout so a slow/offline dynamic import()
+	// doesn't block layout rendering indefinitely. Translations fall back
+	// to message keys if this times out.
+	await Promise.race([
+		initI18n(),
+		new Promise<void>((resolve) => setTimeout(resolve, 5000))
+	]);
 
-	// --- STORAGE INIT ---
-	if (browser) {
-		try {
-			// Check if storage is already initialized to avoid duplicate initialization
-			const { isDatabaseInitialized } = await import('@reborn/storage');
-			if (!isDatabaseInitialized()) {
-				await initializeStorage('task');
-				logger.info('Storage initialized');
-			} else {
-				logger.debug('Storage already initialized, skipping');
-			}
-
-			// Initialize app-specific settings for RebornTask (this is idempotent)
-			const { initializeSettings } = await import('$lib/utils/app-settings');
-			await initializeSettings();
-			logger.debug('App settings check completed');
-
-			// Don't refresh settings store here - it will be done after auth
-			// This prevents unnecessary database operations for non-authenticated users
-		} catch (error: unknown) {
-			logger.error('Failed to initialize storage', error);
-			// Let app continue even if storage initialization fails
-		}
-	}
+	// NOTE: Storage & settings initialization removed from here — they are
+	// already initialized in hooks.client.ts (fire-and-forget) and
+	// +layout.svelte onMount() (with isDatabaseInitialized guard).
+	// Awaiting IndexedDB in +layout.ts load() blocks the ENTIRE render
+	// because SvelteKit waits for load() to complete before mounting the
+	// component tree (so the 2s timeout in onMount never fires).
 
 	// Initialize auth on client side WITHOUT BLOCKING
 	if (browser) {

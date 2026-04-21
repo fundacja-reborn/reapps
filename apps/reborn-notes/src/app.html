@@ -76,6 +76,32 @@
 				display: none !important;
 			}
 		</style>
+		<script nonce="%sveltekit.nonce%">
+			// Detect offline + no service worker (cache evicted) → show message immediately.
+			// Detect stalled JS init → after 15s replace spinner with offline message.
+			(function(){
+				var el=document.getElementById('app-loading');
+				if(!el)return;
+				var offline=typeof navigator!=='undefined'&&!navigator.onLine;
+				var noSW=typeof navigator!=='undefined'&&!navigator.serviceWorker?.controller;
+				if(offline&&noSW){
+					el.querySelector('.app-loading__spinner').style.display='none';
+					el.querySelector('p').textContent='Brak połączenia z siecią. Połącz się i spróbuj ponownie.';
+					return;
+				}
+				setTimeout(function(){
+					if(!document.querySelector('.svelte-app-ready')){
+						el.querySelector('.app-loading__spinner').style.display='none';
+						var p=el.querySelector('p');
+						if(navigator.onLine){
+							p.textContent='Ładowanie trwa dłużej niż zwykle. Spróbuj odświeżyć stronę.';
+						}else{
+							p.textContent='Brak połączenia z siecią. Połącz się i spróbuj ponownie.';
+						}
+					}
+				},15000);
+			})()
+		</script>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>
