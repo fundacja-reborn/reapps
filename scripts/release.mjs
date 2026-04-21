@@ -28,8 +28,12 @@ import { releaseChangelog, releaseVersion } from 'nx/release/index.js';
 import { readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(new URL('..', import.meta.url).pathname);
+// fileURLToPath (not url.pathname) so spaces in the repo path are decoded
+// from %20 to real spaces — otherwise cwd points to a nonexistent dir and
+// every spawned git call fails with ENOENT on paths like "Projekty Dev".
+const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 const PRIVATE_MANIFESTS = [
 	'package.json',
