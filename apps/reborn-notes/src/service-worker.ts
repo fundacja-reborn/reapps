@@ -22,8 +22,67 @@ const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-${version}`;
 // All static assets to pre-cache
 const ASSETS = [...build, ...files];
 
-// Critical routes to pre-cache for offline support
-const CRITICAL_ROUTES = [`${base}/`, `${base}/auth/login`, `${base}/auth/unlock`];
+// Critical routes to pre-cache for offline support — prefixed with `base`
+// so the list survives sub-path deployments (e.g. PUBLIC_BASE_PATH=/notes).
+const CRITICAL_ROUTES = [
+  `${base}/`,
+  `${base}/auth/login`,
+  `${base}/auth/register`,
+  `${base}/auth/unlock`,
+  `${base}/auth/2fa`
+];
+
+// App-shell key used as SPA fallback for any navigation request whose exact
+// URL isn't cached. SvelteKit's client router takes over once this HTML loads.
+const APP_SHELL = `${base}/`;
+
+// Minimal offline HTML shown when even the app shell is missing from cache
+// (e.g. first install happened offline). Plain HTML + inline CSS so it does
+// not require a CSP nonce. Reload button triggers a normal navigation which
+// will retry the fetch handler.
+const OFFLINE_HTML = `<!DOCTYPE html>
+<html lang="pl"><head><meta charset="utf-8"><title>Offline — re/notes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html,body{margin:0;height:100%;font-family:system-ui;background:#f9fafb;color:#374151;display:flex;align-items:center;justify-content:center}
+.box{max-width:320px;text-align:center;padding:24px}
+h1{font-size:18px;margin:0 0 8px;font-weight:600}
+p{font-size:14px;line-height:1.5;margin:0 0 16px;color:#6b7280}
+button{appearance:none;border:0;border-radius:8px;padding:10px 16px;background:#fbc02d;color:#1f2937;font-size:14px;font-weight:500;cursor:pointer}
+@media (prefers-color-scheme: dark){html,body{background:#252525;color:#e5e7eb}p{color:#a3a3a3}}
+</style></head><body><div class="box"><h1>Brak połączenia</h1>
+<p>Ta strona nie została jeszcze zapisana w pamięci podręcznej aplikacji. Połącz się z siecią i spróbuj ponownie.</p>
+<button onclick="location.reload()">Spróbuj ponownie</button></div></body></html>`;
+
+const OFFLINE_RESPONSE = () =>
+  new Response(OFFLINE_HTML, {
+    status: 503,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' }
+  });
+
+// Race a network fetch against a short timeout so slow/airplane-mode requests
+// don't block the service worker while the OS waits for DNS/TCP to time out
+// (30+ seconds on mobile). Rejects on timeout, letting callers fall back to
+// cache immediately.
+async function fetchWithTimeout(request: Request, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(request, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Background refresh for stale-while-revalidate — never throws.
+function refreshInBackground(cache: Cache, request: Request, timeoutMs = 5000): Promise<void> {
+  return fetchWithTimeout(request, timeoutMs)
+    .then((response) => {
+      if (response.ok) return cache.put(request, response.clone()).catch(() => {});
+    })
+    .catch(() => {
+      /* best-effort refresh — silent on failure */
+    });
+}
 
 // ── Install ──────────────────────────────────────────────────────────────────
 
@@ -47,7 +106,9 @@ sw.addEventListener('install', (event) => {
         try {
           const res = await fetch(route);
           if (res.ok) await routesCache.put(route, res);
-        } catch { /* offline during install — skip */ }
+        } catch {
+          /* offline during install — skip */
+        }
       })
     );
   }
@@ -91,22 +152,42 @@ sw.addEventListener('fetch', (event) => {
       if (runtimeFallback) return runtimeFallback;
     }
 
-    // Navigation requests — network first, fall back to cached shell
+    // Navigation requests — cache-first with SPA app-shell fallback.
+    //
+    // The previous "network-first" strategy blocked offline cold start in
+    // airplane mode because mobile browsers wait 30+ s for `fetch()` to
+    // reject before the cache fallback ran. Cache-first returns the shell
+    // immediately; a background refresh keeps content fresh when online
+    // (stale-while-revalidate).
     if (event.request.mode === 'navigate') {
+      const routesCache = await caches.open(ROUTES_CACHE);
+
+      // 1. Exact URL cached → return immediately, refresh in background.
+      const cachedExact = await routesCache.match(event.request);
+      if (cachedExact) {
+        event.waitUntil(refreshInBackground(routesCache, event.request));
+        return cachedExact;
+      }
+
+      // 2. SPA fallback — cached app-shell HTML. SvelteKit's client router
+      //    takes over after hydration and resolves the real route.
+      const shell = await routesCache.match(APP_SHELL);
+      if (shell) {
+        event.waitUntil(refreshInBackground(routesCache, event.request));
+        return shell;
+      }
+
+      // 3. No cached shell — try network with a short timeout so we don't
+      //    hang on a stale DNS lookup.
       try {
-        const response = await fetch(event.request);
+        const response = await fetchWithTimeout(event.request, 3000);
         if (response.ok) {
-          const routesCache = await caches.open(ROUTES_CACHE);
-          routesCache.put(event.request, response.clone());
+          routesCache.put(event.request, response.clone()).catch(() => {});
         }
         return response;
       } catch {
-        const routesCache = await caches.open(ROUTES_CACHE);
-        const cached = await routesCache.match(event.request);
-        if (cached) return cached;
-        // Fall back to the app shell
-        const shell = await cache.match('/') ?? await cache.match(url.origin + '/');
-        if (shell) return shell;
+        // 4. Absolute last resort — minimal inline offline page.
+        return OFFLINE_RESPONSE();
       }
     }
 
@@ -115,13 +196,12 @@ sw.addEventListener('fetch', (event) => {
       const runtimeCache = await caches.open(RUNTIME_CACHE);
       const cached = await runtimeCache.match(event.request);
       if (cached) {
-        // fire-and-forget: cache storage is best-effort
-        fetch(event.request).then((r) => { if (r.ok) runtimeCache.put(event.request, r); }).catch(() => {});
+        event.waitUntil(refreshInBackground(runtimeCache, event.request));
         return cached;
       }
       try {
-        const response = await fetch(event.request);
-        if (response.ok) runtimeCache.put(event.request, response.clone());
+        const response = await fetchWithTimeout(event.request, 3000);
+        if (response.ok) runtimeCache.put(event.request, response.clone()).catch(() => {});
         return response;
       } catch {
         // Network failed — cross-cache fallback: check build assets cache
@@ -131,10 +211,10 @@ sw.addEventListener('fetch', (event) => {
       }
     }
 
-    // Everything else — network with cache fallback
+    // Everything else — network with a timeout, fall back to cache
     try {
-      const response = await fetch(event.request);
-      if (response.ok) cache.put(event.request, response.clone());
+      const response = await fetchWithTimeout(event.request, 3000);
+      if (response.ok) cache.put(event.request, response.clone()).catch(() => {});
       return response;
     } catch {
       const cached = await cache.match(event.request);
