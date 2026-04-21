@@ -8,6 +8,7 @@ import {
 	logout as authLogout,
 	unlockE2E as authUnlockE2E
 } from '$lib/auth';
+import { AuthStorageAdapter } from '$lib/auth/adapters/authStorage';
 import { createLogger } from '@reborn/utils';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@reborn/i18n';
 import type { CryptoManager } from '@reborn/crypto';
@@ -548,22 +549,27 @@ export class AuthOperationsService {
 			if (!navigator.onLine) {
 				logger.info('App is offline');
 
-				// Check for existing tokens and master key
-				if (hasTokens) {
-					// Mark as authenticated if we have tokens
+				// Prefer stored credentials as the source of truth for offline auth.
+				// `access_token` is short-lived and may be missing/expired after a cold
+				// PWA start, while `reborn_auth_credentials` persists the user profile
+				// and wrapped master key — mirrors the pattern used by reborn-notes.
+				const storage = new AuthStorageAdapter();
+				const credentials = await storage.getCredentials();
+				if (credentials) {
+					logger.info('Offline credentials available, marking session authenticated');
+					// Populate both isAuthenticated AND user so layout guards don't
+					// redirect to /auth/login while we still have a valid profile.
+					sessionManager.setAuthenticated(credentials.user_profile, false);
+				} else if (hasTokens) {
+					// Legacy fallback — token present but no credentials record.
 					sessionManager.setSession({ isAuthenticated: true });
 				}
 
-				// Always check E2E status — master key may be in IndexedDB
+				// Always check E2E status — master key may be in IndexedDB.
+				// This will flip hasE2E=true once cryptoManager.waitForRestore() resolves.
 				await this.checkE2EStatus();
 
 				sessionManager.setLoading(false);
-
-				const authService = getAuthService();
-				const hasOffline = await authService.hasOfflineCredentials();
-				if (hasOffline) {
-					logger.info('Offline credentials available');
-				}
 
 				return;
 			}
