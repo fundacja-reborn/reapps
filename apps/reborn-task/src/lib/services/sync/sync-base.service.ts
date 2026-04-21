@@ -2,7 +2,6 @@ import { ApiClient } from '@reborn/api-client';
 import { PUBLIC_BASE_PATH } from '$env/static/public';
 import { createLogger } from '@reborn/utils';
 import type { Logger } from '@reborn/utils';
-import { sessionExpired } from '$lib/stores/session-expired.store';
 
 /**
  * Base class for sync services with common functionality
@@ -81,8 +80,9 @@ export abstract class SyncBaseService {
 		if (!response.success) {
 			const errorMessage = response.error || response.message;
 			if (this.isAuthError(errorMessage) || response.status === 401 || response.status === 403) {
-				this.logger.warn(`Authentication error during ${entityType} sync`);
-				sessionExpired.set(true);
+				this.logger.warn(
+					`Authentication error during ${entityType} sync. Session-expired flag is managed by auth bootstrap/refresh flow.`
+				);
 				return;
 			}
 			throw new Error(errorMessage || `Failed to fetch ${entityType}`);
