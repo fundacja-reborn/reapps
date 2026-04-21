@@ -131,7 +131,8 @@ export async function renameTag(id: string, name: string): Promise<void> {
   await tagOperations.saveTag({
     ...existing,
     name_encrypted,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending'
   });
   pushTagUpdate(id, { name_encrypted });
 }
@@ -144,7 +145,8 @@ export async function updateTagColor(id: string, color: string | undefined): Pro
   await tagOperations.saveTag({
     ...existing,
     color_encrypted,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending'
   });
   pushTagUpdate(id, { color_encrypted: color_encrypted ?? null });
 }
@@ -185,7 +187,8 @@ export async function deleteTag(id: string): Promise<void> {
       await noteStore.save({
         ...existing,
         metadata_encrypted: metadataEncrypted,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        sync_status: 'pending'
       });
       pushNoteUpdate(noteId, { metadata_encrypted: metadataEncrypted });
     }
@@ -253,7 +256,8 @@ export async function setTagsForNote(noteId: string, tagIds: string[], options?:
     await noteStore.save({
       ...existing,
       metadata_encrypted: metadataEncrypted,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      sync_status: 'pending'
     });
     if (!options?.skipSync) {
       pushNoteUpdate(noteId, { metadata_encrypted: metadataEncrypted });
@@ -310,7 +314,8 @@ export async function mergeTags(sourceTagId: string, targetTagId: string): Promi
       await noteStore.save({
         ...existing,
         metadata_encrypted: metadataEncrypted,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        sync_status: 'pending'
       });
       pushNoteUpdate(noteId, { metadata_encrypted: metadataEncrypted });
     }

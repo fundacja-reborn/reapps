@@ -250,11 +250,12 @@ export async function updateNote(id: string, title: string, content: string): Pr
   const existing = await noteStore.get(id);
   if (!existing) throw new Error('Note not found');
   const now = new Date().toISOString();
-  const updated = {
+  const updated: NoteStoredLocal = {
     ...existing,
     title_encrypted: await encodeText(title),
     content_encrypted: await encodeText(content),
-    updated_at: now
+    updated_at: now,
+    sync_status: 'pending'
   };
   await noteStore.save(updated);
   pushNoteUpdate(id, {
@@ -273,7 +274,12 @@ export async function renameNote(id: string, title: string): Promise<void> {
   if (!existing) throw new Error('Note not found');
   const now = new Date().toISOString();
   const title_encrypted = await encodeText(title.trim() || 'Untitled');
-  await noteStore.save({ ...existing, title_encrypted, updated_at: now });
+  await noteStore.save({
+    ...existing,
+    title_encrypted,
+    updated_at: now,
+    sync_status: 'pending'
+  });
   pushNoteUpdate(id, { title_encrypted });
   noteIndex.patch(id, {
     title: title.trim() || 'Untitled',
@@ -299,12 +305,17 @@ export async function deleteNote(id: string): Promise<void> {
     return;
   }
 
+  // Mark pending so pushPendingItems can retry if pushNoteDelete fails.
+  const archived = await noteStore.get(id);
+  if (archived) await noteStore.save({ ...archived, sync_status: 'pending' });
   pushNoteDelete(id);
 }
 
 /** Move a note to a different folder (null = root/unorganized). */
 export async function moveNoteToFolder(id: string, folderId: string | null): Promise<void> {
   await noteOperations.moveToFolder(id, folderId);
+  const current = await noteStore.get(id);
+  if (current) await noteStore.save({ ...current, sync_status: 'pending' });
   pushNoteUpdate(id, { folder_id: folderId ?? undefined });
   noteIndex.patch(id, { folderId: folderId ?? undefined });
 }
@@ -329,7 +340,8 @@ export async function togglePin(id: string): Promise<void> {
     ...existing,
     is_pinned: newPinned,
     metadata_encrypted: metadataEncrypted,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending'
   });
   pushNoteUpdate(id, { metadata_encrypted: metadataEncrypted });
   noteIndex.patch(id, { isPinned: newPinned });
@@ -355,7 +367,8 @@ export async function toggleStar(id: string): Promise<void> {
     ...existing,
     is_starred: newStarred,
     metadata_encrypted: metadataEncrypted,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending'
   });
   pushNoteUpdate(id, { metadata_encrypted: metadataEncrypted });
   noteIndex.patch(id, { isStarred: newStarred });
@@ -375,6 +388,8 @@ export async function getArchivedNotes(): Promise<NoteDecrypted[]> {
 /** Restore a note from trash (unarchive). */
 export async function restoreNote(id: string): Promise<void> {
   await noteOperations.unarchive(id);
+  const current = await noteStore.get(id);
+  if (current) await noteStore.save({ ...current, sync_status: 'pending' });
   // Update cache: mark as not archived
   noteIndex.patch(id, { isArchived: false });
   pushNoteRestore(id);

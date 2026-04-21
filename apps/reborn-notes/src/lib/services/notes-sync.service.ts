@@ -189,6 +189,18 @@ async function pullFolders(): Promise<void> {
       // Skip if server version is not newer than local
       const serverVersion = f.sync_version ?? 1;
       if (localFolder && serverVersion <= (localFolder.sync_version ?? 0)) {
+        // Reconciliation: if local ciphertext differs from server at equal sync_version,
+        // a previous push silently failed and left sync_status='synced'. Re-mark pending
+        // so the next pushPendingItems() sends the local edit. See guideline 36, rule 9.
+        if (
+          localFolder.sync_status === 'synced' &&
+          (localFolder.name_encrypted !== f.name_encrypted ||
+            (localFolder.parent_id ?? null) !== (f.parent_id ?? null) ||
+            localFolder.order_index !== f.order_index)
+        ) {
+          logger.warn(`Reconciling orphaned folder edit ${f.id} — marking pending`);
+          await folderStore.save({ ...localFolder, sync_status: 'pending' });
+        }
         return;
       }
 
@@ -247,6 +259,15 @@ async function pullTags(): Promise<void> {
       // Compare sync_version — skip if server is not newer
       const serverVersion = t.sync_version ?? 1;
       if (localTag && serverVersion <= (localTag.sync_version ?? 0)) {
+        // Reconciliation: see pullFolders() for rationale.
+        if (
+          localTag.sync_status === 'synced' &&
+          (localTag.name_encrypted !== t.name_encrypted ||
+            (localTag.color_encrypted ?? null) !== (t.color_encrypted ?? null))
+        ) {
+          logger.warn(`Reconciling orphaned tag edit ${t.id} — marking pending`);
+          await tagStore.save({ ...localTag, sync_status: 'pending' });
+        }
         return;
       }
 
@@ -306,6 +327,19 @@ async function pullNotes(): Promise<void> {
       // Skip if server version is not newer than local (sync_version conflict detection)
       const serverVersion = n.sync_version ?? 1;
       if (localNote && serverVersion <= (localNote.sync_version ?? 0)) {
+        // Reconciliation: see pullFolders() for rationale. Covers notes whose edits
+        // never reached the server because sync_status was left at 'synced' after
+        // a failed fire-and-forget push.
+        if (
+          localNote.sync_status === 'synced' &&
+          (localNote.title_encrypted !== n.title_encrypted ||
+            localNote.content_encrypted !== n.content_encrypted ||
+            (localNote.metadata_encrypted ?? null) !== (n.metadata_encrypted ?? null) ||
+            (localNote.folder_id ?? null) !== (n.folder_id ?? null))
+        ) {
+          logger.warn(`Reconciling orphaned note edit ${n.id} — marking pending`);
+          await noteStore.save({ ...localNote, sync_status: 'pending' });
+        }
         return;
       }
 

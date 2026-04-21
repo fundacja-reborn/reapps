@@ -95,7 +95,12 @@ export async function renameFolder(id: string, name: string): Promise<void> {
   const existing = await folderStore.get(id);
   if (!existing) throw new Error('Folder not found');
   const name_encrypted = await encodeName(name.trim());
-  await folderStore.save({ ...existing, name_encrypted, updated_at: new Date().toISOString() });
+  await folderStore.save({
+    ...existing,
+    name_encrypted,
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending'
+  });
   pushFolderUpdate(id, { name_encrypted });
 }
 
@@ -112,6 +117,8 @@ export async function deleteFolder(id: string): Promise<void> {
 
 export async function moveFolderToParent(id: string, newParentId: string | null): Promise<void> {
   await folderOperations.moveFolder(id, newParentId);
+  const current = await folderStore.get(id);
+  if (current) await folderStore.save({ ...current, sync_status: 'pending' });
   pushFolderUpdate(id, { parent_id: newParentId });
 }
 
@@ -120,6 +127,10 @@ export async function reorderSiblings(
   orderedIds: string[]
 ): Promise<void> {
   await folderOperations.reorderFolders(parentId, orderedIds);
+  for (const folderId of orderedIds) {
+    const current = await folderStore.get(folderId);
+    if (current) await folderStore.save({ ...current, sync_status: 'pending' });
+  }
   orderedIds.forEach((folderId, index) => {
     pushFolderUpdate(folderId, { order_index: index });
   });
