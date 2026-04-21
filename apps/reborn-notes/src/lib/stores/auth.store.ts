@@ -97,10 +97,18 @@ function createAuthStore() {
       if (!newState.isAuthenticated) {
         // Cross-app logout detected — hard redirect avoids reactive cascades
         // (empty stores, "?" avatar, effect_update_depth_exceeded).
+        // Clear Notes IndexedDB BEFORE redirect so a subsequent login with
+        // a different account can't reach decrypt with stale ciphertexts
+        // encrypted under the previous user's master key (OperationError).
         logger.info('Cross-app logout detected via storage event — redirecting to login');
         sessionExpired.set(false);
         cryptoManager.clearMasterKey();
-        window.location.href = `${base}/auth/login`;
+        import('@reborn/storage')
+          .then(({ clearAllUserData }) => clearAllUserData())
+          .catch((err) => logger.error('Failed to clear IndexedDB on cross-app logout:', err))
+          .finally(() => {
+            window.location.href = `${base}/auth/login`;
+          });
         return;
       }
 

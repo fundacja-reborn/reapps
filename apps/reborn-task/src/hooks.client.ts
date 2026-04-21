@@ -9,6 +9,7 @@ if (import.meta.hot) {
 import { cryptoManager } from '@reborn/crypto';
 import { base } from '$app/paths';
 import { authOperationsService } from '$lib/services/auth-operations.service';
+import { sessionExpired } from '$lib/stores/session-expired.store';
 import { trashManagementService } from '$lib/services/trash-management.service';
 import { recurrenceService } from '$lib/services/recurrence.service';
 import { pushNotificationService } from '$lib/services/push-notification.service';
@@ -71,11 +72,25 @@ window.addEventListener('storage', (e) => {
 	if (e.key !== CREDENTIALS_KEY) return;
 
 	if (e.newValue === null) {
-		// Credentials removed → cross-app (or cross-tab) logout
+		// Credentials removed → cross-app (or cross-tab) logout.
+		// Clear local state BEFORE the redirect so the next login doesn't
+		// find stale ciphertexts in IndexedDB encrypted under a previous
+		// user's master key — that caused AES-GCM OperationError on decrypt.
 		logger.info('Cross-app logout detected via storage event — redirecting to login');
+		sessionExpired.set(false);
 		cryptoManager.clearMasterKey();
-		window.location.href = `${base}/auth/login`;
-	} else if (e.oldValue === null) {
+		// Fire-and-forget — the hard redirect below completes the logout even
+		// if the IDB clear is still in flight.
+		import('@reborn/storage')
+			.then(({ clearAllUserData }) => clearAllUserData())
+			.catch((err) => logger.error('Failed to clear IndexedDB on cross-app logout:', err))
+			.finally(() => {
+				window.location.href = `${base}/auth/login`;
+			});
+		return;
+	}
+
+	if (e.oldValue === null) {
 		// Credentials appeared (was absent, now present) → cross-app login
 		// Redirect to E2E unlock — master key must be decrypted with the user's password
 		logger.info('Cross-app login detected via storage event — redirecting to unlock');

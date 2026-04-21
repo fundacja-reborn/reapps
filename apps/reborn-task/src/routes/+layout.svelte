@@ -163,6 +163,15 @@
 					const { refreshDecryptedSubtasks } = await import('$lib/stores/decrypted-subtasks.store');
 					await Promise.all([refreshDecryptedLists(), refreshDecryptedSubtasks()]);
 					logger.info('Decrypted stores refreshed');
+
+					// If the restored master key doesn't match the ciphertexts in IDB
+					// (e.g. cross-app login after account switch), wipe local data and
+					// re-pull from server. No-op on the happy path.
+					const recovered = await authOperationsService.recoverFromKeyMismatch();
+					if (recovered) {
+						await Promise.all([refreshDecryptedLists(), refreshDecryptedSubtasks()]);
+					}
+
 					// Build task index cache (blocking — stores read from index)
 					await taskTitleIndex.build();
 					// E2E already active on mount → prevent $effect from duplicating sync
@@ -186,6 +195,15 @@
 					offlineOperationsStore.refreshItems()
 				]);
 				logger.info('Decrypted stores refreshed on mount');
+
+				// If the restored master key doesn't match the ciphertexts in IDB
+				// (e.g. cross-app login after account switch), wipe local data and
+				// re-pull from server. No-op on the happy path.
+				const recovered = await authOperationsService.recoverFromKeyMismatch();
+				if (recovered) {
+					await Promise.all([refreshDecryptedLists(), refreshDecryptedSubtasks()]);
+				}
+
 				// Build task index cache (blocking — stores read from index)
 				await taskTitleIndex.build();
 				// E2E already active on mount → prevent $effect from duplicating sync

@@ -28,6 +28,66 @@ declare global {
 }
 
 export class AuthOperationsService {
+	/**
+	 * Detect local IDB data encrypted under a different master key than the one
+	 * currently loaded, and recover by wiping local data + re-pulling from server.
+	 *
+	 * Happens when a user logs out in the peer app (storage event clears the
+	 * crypto key) and logs in as a different user, but Task's IndexedDB still
+	 * holds ciphertexts from the previous user. Next decrypt throws AES-GCM
+	 * OperationError — this helper turns that into a clean recovery.
+	 *
+	 * Safe no-op when: no key loaded, IDB empty, offline, or data is readable.
+	 * Returns `true` if a recovery wipe was performed (caller should re-sync).
+	 */
+	async recoverFromKeyMismatch(): Promise<boolean> {
+		if (!browser) return false;
+		try {
+			const { cryptoManager } = await import('@reborn/crypto');
+			if (!cryptoManager.isInitialized()) return false;
+
+			const { listStore } = await import('@reborn/storage');
+			const { get } = await import('svelte/store');
+
+			const encryptedLists = get(listStore.items) as Array<{
+				name_encrypted?: string;
+				deleted_at?: string | null;
+			}>;
+			const probe = encryptedLists.find((l) => !l.deleted_at && l.name_encrypted);
+			if (!probe?.name_encrypted) return false;
+
+			try {
+				await cryptoManager.decryptText(probe.name_encrypted);
+				return false; // data decrypts — all good
+			} catch {
+				logger.warn(
+					'Local data appears encrypted under a different master key — recovering'
+				);
+			}
+
+			if (!navigator.onLine) {
+				logger.error(
+					'Offline — cannot wipe & re-pull. Local Task data will remain unreadable until online.'
+				);
+				return false;
+			}
+
+			const { clearAllUserData } = await import('@reborn/storage');
+			await clearAllUserData();
+			logger.info('Local IndexedDB wiped after key/data mismatch — triggering initial sync');
+
+			try {
+				await syncService.initialSync();
+			} catch (err) {
+				logger.error('Initial sync after recovery failed:', err);
+			}
+			return true;
+		} catch (error: unknown) {
+			logger.error('Key-mismatch recovery failed:', error);
+			return false;
+		}
+	}
+
 	private isDefinitiveSessionExpiry(message: string | undefined): boolean {
 		if (!message) return false;
 		const normalized = message.toLowerCase();
@@ -125,6 +185,20 @@ export class AuthOperationsService {
 			} catch (loadError) {
 				logger.error('Failed to load task lists:', loadError);
 				// Continue - empty list is better than failure
+			}
+
+			// Restore path: guard against stale ciphertexts encrypted under a
+			// previous user's key. `context==='login'` already cleared IDB above,
+			// so this is a no-op there.
+			if (context === 'restore') {
+				const recovered = await this.recoverFromKeyMismatch();
+				if (recovered) {
+					try {
+						await taskListStore.loadLists();
+					} catch (err) {
+						logger.error('Failed to reload lists after key-mismatch recovery:', err);
+					}
+				}
 			}
 
 			// Perform initial sync if online (non-blocking)
