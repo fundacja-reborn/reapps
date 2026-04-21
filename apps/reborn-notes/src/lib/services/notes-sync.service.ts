@@ -449,13 +449,12 @@ export async function pushPendingItems(): Promise<void> {
   await Promise.allSettled([
     ...pendingFolders.map((f) =>
       pushSilently(async (idempotencyKey) => {
-        const payload = {
-          id: f.id,
+        const pushedFields = {
           name_encrypted: f.name_encrypted,
           parent_id: f.parent_id ?? null,
-          order_index: f.order_index,
-          created_at: f.created_at
+          order_index: f.order_index
         };
+        const payload = { id: f.id, ...pushedFields, created_at: f.created_at };
         validateEncryptedPayload(payload as Record<string, unknown>);
         const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders`, {
           method: 'POST',
@@ -465,22 +464,23 @@ export async function pushPendingItems(): Promise<void> {
         if (!res.ok) throw new Error(`POST /api/folders: ${res.status}`);
         const { data: resData } = await res.json();
         const current = await folderStore.get(f.id);
-        if (current)
+        if (current) {
+          const stillDirty = pushedFieldsDiffer(current, pushedFields);
           await folderStore.save({
             ...current,
-            sync_status: 'synced',
+            sync_status: stillDirty ? 'pending' : 'synced',
             sync_version: resData?.sync_version ?? 1
           });
+        }
       })
     ),
     ...pendingTags.map((t) =>
       pushSilently(async (idempotencyKey) => {
-        const payload = {
-          id: t.id,
+        const pushedFields = {
           name_encrypted: t.name_encrypted,
-          color_encrypted: t.color_encrypted ?? null,
-          created_at: t.created_at
+          color_encrypted: t.color_encrypted ?? null
         };
+        const payload = { id: t.id, ...pushedFields, created_at: t.created_at };
         validateEncryptedPayload(payload as Record<string, unknown>);
         const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags`, {
           method: 'POST',
@@ -490,12 +490,14 @@ export async function pushPendingItems(): Promise<void> {
         if (!res.ok) throw new Error(`POST /api/tags: ${res.status}`);
         const { data: resData } = await res.json();
         const current = await tagStore.get(t.id);
-        if (current)
+        if (current) {
+          const stillDirty = pushedFieldsDiffer(current, pushedFields);
           await tagStore.save({
             ...current,
-            sync_status: 'synced',
+            sync_status: stillDirty ? 'pending' : 'synced',
             sync_version: resData?.sync_version ?? 1
           });
+        }
       })
     )
   ]);
@@ -504,11 +506,15 @@ export async function pushPendingItems(): Promise<void> {
   await Promise.allSettled(
     pendingNotes.map((n) =>
       pushSilently(async (idempotencyKey) => {
-        const payload = {
-          id: n.id,
+        const pushedFields = {
           title_encrypted: n.title_encrypted,
           content_encrypted: n.content_encrypted,
           folder_id: n.folder_id ?? null,
+          metadata_encrypted: n.metadata_encrypted ?? null
+        };
+        const payload = {
+          id: n.id,
+          ...pushedFields,
           metadata_encrypted: n.metadata_encrypted ?? undefined,
           created_at: n.created_at
         };
@@ -521,12 +527,14 @@ export async function pushPendingItems(): Promise<void> {
         if (!res.ok) throw new Error(`POST /api/notes: ${res.status}`);
         const { data: resData } = await res.json();
         const current = await noteStore.get(n.id);
-        if (current)
+        if (current) {
+          const stillDirty = pushedFieldsDiffer(current, pushedFields);
           await noteStore.save({
             ...current,
-            sync_status: 'synced',
+            sync_status: stillDirty ? 'pending' : 'synced',
             sync_version: resData?.sync_version ?? 1
           });
+        }
       })
     )
   );
@@ -571,13 +579,37 @@ async function pushSilently(fn: (idempotencyKey: string) => Promise<void>): Prom
   }
 }
 
+/**
+ * Return true if any key in `pushed` has a different value in `current`.
+ *
+ * Used by push success callbacks to detect the race where a second local edit
+ * ran while the first push was in flight: naive `sync_status: 'synced'` after
+ * push would clobber the second edit's 'pending' marker and strand it offline.
+ * When the compare flags a change, callers must keep `sync_status: 'pending'`
+ * so the next `pushPendingItems()` sends the newer edit. `undefined`/`null` are
+ * treated as equal so omitted-vs-explicit-null doesn't register as a change.
+ */
+function pushedFieldsDiffer(current: object, pushed: Record<string, unknown>): boolean {
+  const rec = current as Record<string, unknown>;
+  for (const key of Object.keys(pushed)) {
+    const p = pushed[key] ?? null;
+    const c = rec[key] ?? null;
+    if (p !== c) return true;
+  }
+  return false;
+}
+
 export function pushNote(note: NoteEncrypted | NoteStoredLocal): void {
   void pushSilently(async (idempotencyKey) => {
-    const payload = {
-      id: note.id,
+    const pushedFields = {
       title_encrypted: note.title_encrypted,
       content_encrypted: note.content_encrypted,
       folder_id: note.folder_id ?? null,
+      metadata_encrypted: note.metadata_encrypted ?? null
+    };
+    const payload = {
+      id: note.id,
+      ...pushedFields,
       metadata_encrypted: note.metadata_encrypted ?? undefined,
       created_at: note.created_at
     };
@@ -590,12 +622,17 @@ export function pushNote(note: NoteEncrypted | NoteStoredLocal): void {
     if (!res.ok) throw new Error(`POST /api/notes: ${res.status}`);
     const { data } = await res.json();
     const current = await noteStore.get(note.id);
-    if (current)
+    if (current) {
+      const stillDirty = pushedFieldsDiffer(current, pushedFields);
+      if (stillDirty) {
+        logger.debug(`Note ${note.id} changed during push — keeping sync_status=pending`);
+      }
       await noteStore.save({
         ...current,
-        sync_status: 'synced',
+        sync_status: stillDirty ? 'pending' : 'synced',
         sync_version: data?.sync_version ?? 1
       });
+    }
   });
 }
 
@@ -618,12 +655,17 @@ export function pushNoteUpdate(
     if (!res.ok) throw new Error(`PATCH /api/notes/${id}: ${res.status}`);
     const { data } = await res.json();
     const current = await noteStore.get(id);
-    if (current)
+    if (current) {
+      const stillDirty = pushedFieldsDiffer(current, fields);
+      if (stillDirty) {
+        logger.debug(`Note ${id} changed during push — keeping sync_status=pending`);
+      }
       await noteStore.save({
         ...current,
-        sync_status: 'synced',
+        sync_status: stillDirty ? 'pending' : 'synced',
         sync_version: data?.sync_version ?? current.sync_version ?? 1
       });
+    }
   });
 }
 
@@ -661,11 +703,14 @@ export function pushFolder(
   >
 ): void {
   void pushSilently(async (idempotencyKey) => {
-    const payload = {
-      id: folder.id,
+    const pushedFields = {
       name_encrypted: folder.name_encrypted,
       parent_id: folder.parent_id ?? null,
-      order_index: folder.order_index,
+      order_index: folder.order_index
+    };
+    const payload = {
+      id: folder.id,
+      ...pushedFields,
       created_at: folder.created_at
     };
     validateEncryptedPayload(payload as Record<string, unknown>);
@@ -677,12 +722,17 @@ export function pushFolder(
     if (!res.ok) throw new Error(`POST /api/folders: ${res.status}`);
     const { data } = await res.json();
     const current = await folderStore.get(folder.id);
-    if (current)
+    if (current) {
+      const stillDirty = pushedFieldsDiffer(current, pushedFields);
+      if (stillDirty) {
+        logger.debug(`Folder ${folder.id} changed during push — keeping sync_status=pending`);
+      }
       await folderStore.save({
         ...current,
-        sync_status: 'synced',
+        sync_status: stillDirty ? 'pending' : 'synced',
         sync_version: data?.sync_version ?? 1
       });
+    }
   });
 }
 
@@ -700,12 +750,17 @@ export function pushFolderUpdate(
     if (!res.ok) throw new Error(`PATCH /api/folders/${id}: ${res.status}`);
     const { data } = await res.json();
     const current = await folderStore.get(id);
-    if (current)
+    if (current) {
+      const stillDirty = pushedFieldsDiffer(current, fields);
+      if (stillDirty) {
+        logger.debug(`Folder ${id} changed during push — keeping sync_status=pending`);
+      }
       await folderStore.save({
         ...current,
-        sync_status: 'synced',
+        sync_status: stillDirty ? 'pending' : 'synced',
         sync_version: data?.sync_version ?? current.sync_version ?? 1
       });
+    }
   });
 }
 
@@ -728,10 +783,13 @@ export function pushTag(tag: {
   created_at: string;
 }): void {
   void pushSilently(async (idempotencyKey) => {
+    const pushedFields = {
+      name_encrypted: tag.name_encrypted,
+      color_encrypted: tag.color_encrypted ?? null
+    };
     const payload = {
       id: tag.id,
-      name_encrypted: tag.name_encrypted,
-      color_encrypted: tag.color_encrypted ?? null,
+      ...pushedFields,
       created_at: tag.created_at
     };
     validateEncryptedPayload(payload as Record<string, unknown>);
@@ -743,12 +801,17 @@ export function pushTag(tag: {
     if (!res.ok) throw new Error(`POST /api/tags: ${res.status}`);
     const { data: resData } = await res.json();
     const current = await tagStore.get(tag.id);
-    if (current)
+    if (current) {
+      const stillDirty = pushedFieldsDiffer(current, pushedFields);
+      if (stillDirty) {
+        logger.debug(`Tag ${tag.id} changed during push — keeping sync_status=pending`);
+      }
       await tagStore.save({
         ...current,
-        sync_status: 'synced',
+        sync_status: stillDirty ? 'pending' : 'synced',
         sync_version: resData?.sync_version ?? 1
       });
+    }
   });
 }
 
@@ -766,12 +829,17 @@ export function pushTagUpdate(
     if (!res.ok) throw new Error(`PATCH /api/tags/${id}: ${res.status}`);
     const { data: resData } = await res.json();
     const current = await tagStore.get(id);
-    if (current)
+    if (current) {
+      const stillDirty = pushedFieldsDiffer(current, fields);
+      if (stillDirty) {
+        logger.debug(`Tag ${id} changed during push — keeping sync_status=pending`);
+      }
       await tagStore.save({
         ...current,
-        sync_status: 'synced',
+        sync_status: stillDirty ? 'pending' : 'synced',
         sync_version: resData?.sync_version ?? current.sync_version + 1
       });
+    }
   });
 }
 
