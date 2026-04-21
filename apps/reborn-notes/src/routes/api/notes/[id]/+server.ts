@@ -123,14 +123,25 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
 
     if (permanent) {
       await prisma.note.delete({ where: { id: params.id } });
-    } else {
-      await prisma.note.update({
-        where: { id: params.id },
-        data: { deleted_at: new Date() }
-      });
+      return json({ success: true });
     }
 
-    return json({ success: true });
+    // Soft-delete MUST bump sync_version so other devices pick up the archive
+    // state on next pull. Without the bump the pull-side gate
+    // `serverVersion <= localVersion` short-circuits and `is_archived` never
+    // propagates across devices. See guideline 36 rule 11.e.
+    const updated = await prisma.note.update({
+      where: { id: params.id },
+      data: { deleted_at: new Date(), sync_version: { increment: 1 } }
+    });
+
+    return json({
+      success: true,
+      data: {
+        sync_version: updated.sync_version,
+        updated_at: updated.updated_at.toISOString()
+      }
+    });
   } catch (err: unknown) {
     logger.error('DELETE /api/notes/[id] error:', err);
     return json({ success: false, error: 'Internal server error' }, { status: 500 });

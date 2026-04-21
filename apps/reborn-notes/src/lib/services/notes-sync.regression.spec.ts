@@ -154,6 +154,64 @@ describe('notes-sync — regression (offline data loss)', () => {
     expect(fn).toMatch(/pushNoteDelete\s*\(\s*n\.id\s*\)/);
   });
 
+  it('soft-delete and restore endpoints bump sync_version and return it (BUG-6)', () => {
+    const deleteSrc = readFileSync(
+      resolve(__dirname, '../../routes/api/notes/[id]/+server.ts'),
+      'utf-8'
+    );
+    // Soft delete branch (the non-permanent one) must bump sync_version and
+    // return the new value, otherwise pull-side version gate skips the archive
+    // propagation on the second device.
+    const deleteHandler = deleteSrc.slice(deleteSrc.indexOf('export const DELETE'));
+    expect(deleteHandler).toMatch(/deleted_at:\s*new Date\(\)/);
+    expect(deleteHandler).toMatch(/sync_version:\s*\{\s*increment:\s*1\s*\}/);
+    expect(deleteHandler).toMatch(/sync_version:\s*updated\.sync_version/);
+
+    const restoreSrc = readFileSync(
+      resolve(__dirname, '../../routes/api/notes/[id]/restore/+server.ts'),
+      'utf-8'
+    );
+    const restoreHandler = restoreSrc.slice(restoreSrc.indexOf('export const POST'));
+    expect(restoreHandler).toMatch(/deleted_at:\s*null/);
+    expect(restoreHandler).toMatch(/sync_version:\s*\{\s*increment:\s*1\s*\}/);
+    expect(restoreHandler).toMatch(/sync_version:\s*updated\.sync_version/);
+  });
+
+  it('pushNoteDelete and pushNoteRestore mirror server sync_version locally (BUG-6)', () => {
+    const src = readSource('./notes-sync.service.ts');
+
+    const deleteBody = src.slice(
+      src.indexOf('export function pushNoteDelete'),
+      src.indexOf('export function pushNoteRestore')
+    );
+    // Must parse the response body and extract sync_version.
+    expect(deleteBody).toMatch(/await res\.json\(\)/);
+    expect(deleteBody).toMatch(/data\?\.sync_version/);
+    // And apply it in noteStore.save under serverSyncVersion.
+    expect(deleteBody).toMatch(/sync_version:\s*serverSyncVersion/);
+
+    const restoreBody = src.slice(
+      src.indexOf('export function pushNoteRestore'),
+      src.indexOf('export function pushFolder')
+    );
+    expect(restoreBody).toMatch(/await res\.json\(\)/);
+    expect(restoreBody).toMatch(/data\?\.sync_version/);
+    expect(restoreBody).toMatch(/sync_version:\s*serverSyncVersion/);
+  });
+
+  it('pullNotes reconciles is_archived when server differs, even at equal sync_version (BUG-6)', () => {
+    const src = readSource('./notes-sync.service.ts');
+    const pullNotes = src.slice(
+      src.indexOf('async function pullNotes'),
+      src.indexOf('// ── Push helpers')
+    );
+    // The equal-version branch must check !!localNote.is_archived against
+    // serverArchived and save when they differ.
+    expect(pullNotes).toMatch(/serverArchived\s*=\s*!!n\.deleted_at\s*\|\|\s*!!n\.is_archived/);
+    expect(pullNotes).toMatch(/!!localNote\.is_archived\s*!==\s*serverArchived/);
+    expect(pullNotes).toMatch(/is_archived:\s*serverArchived/);
+  });
+
   it('pull helpers remove ghost items (synced locally but deleted on server)', () => {
     const src = readSource('./notes-sync.service.ts');
 
