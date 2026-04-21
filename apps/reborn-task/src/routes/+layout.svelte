@@ -144,12 +144,17 @@
 					await initializeStorage('task');
 					logger.info('Database initialized successfully');
 
-					// Force refresh of all stores after initialization
-					const { taskStore, listStore, subtaskStore } = await import('@reborn/storage');
+					// Force refresh of all stores after initialization.
+					// offlineOperationsStore must be refreshed on cold start so its reactive
+					// writable reflects rows persisted in IndexedDB — otherwise pending-count
+					// indicators show 0 until the first local mutation triggers a refresh.
+					const { taskStore, listStore, subtaskStore, offlineOperationsStore } =
+						await import('@reborn/storage');
 					await Promise.all([
 						taskStore.refreshItems(),
 						listStore.refreshItems(),
-						subtaskStore.refreshItems()
+						subtaskStore.refreshItems(),
+						offlineOperationsStore.refreshItems()
 					]);
 					logger.info('All stores refreshed after initialization');
 
@@ -168,11 +173,18 @@
 			} else {
 				logger.info('Database already initialized');
 
-				// Refresh decrypted stores on mount even if database was already initialized
+				// Refresh decrypted stores on mount even if database was already initialized.
+				// Also refresh offlineOperationsStore so pending-count indicators are accurate
+				// on cold start (derived stores feed SyncStatusIndicator / SyncStatusFooter).
 				const { refreshDecryptedLists } = await import('$lib/stores/decrypted-lists.store');
 				const { refreshDecryptedSubtasks } = await import('$lib/stores/decrypted-subtasks.store');
+				const { offlineOperationsStore } = await import('@reborn/storage');
 
-				await Promise.all([refreshDecryptedLists(), refreshDecryptedSubtasks()]);
+				await Promise.all([
+					refreshDecryptedLists(),
+					refreshDecryptedSubtasks(),
+					offlineOperationsStore.refreshItems()
+				]);
 				logger.info('Decrypted stores refreshed on mount');
 				// Build task index cache (blocking — stores read from index)
 				await taskTitleIndex.build();
