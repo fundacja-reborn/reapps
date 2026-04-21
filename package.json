@@ -1,6 +1,6 @@
 {
   "name": "@reborn-apps/source",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "clean": "chmod +x ./scripts/clean-all.sh && ./scripts/clean-all.sh",
@@ -15,8 +15,8 @@
     "db:seed": "cd packages/database && pnpm db:seed",
     "db:setup": "pnpm db:generate && pnpm db:migrate && pnpm db:seed",
     "knip": "knip",
-    "release": "nx release",
-    "release:dry": "nx release --dry-run"
+    "release": "node scripts/release.mjs",
+    "release:dry": "node scripts/release.mjs --dry-run"
   },
   "private": true,
   "devDependencies": {
