@@ -88,8 +88,15 @@ export class CryptoManager {
 
   // ── IndexedDB persistence ────────────────────────────────────
 
+  /** Timeout (ms) for IndexedDB open — prevents hanging on locked/corrupted DB. */
+  private readonly IDB_TIMEOUT_MS = 5_000;
+
   private openIDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('IndexedDB open timed out'));
+      }, this.IDB_TIMEOUT_MS);
+
       const request = indexedDB.open(this.IDB_NAME, 1);
       request.onupgradeneeded = () => {
         const db = request.result;
@@ -97,8 +104,14 @@ export class CryptoManager {
           db.createObjectStore(this.IDB_STORE);
         }
       };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        clearTimeout(timer);
+        resolve(request.result);
+      };
+      request.onerror = () => {
+        clearTimeout(timer);
+        reject(request.error);
+      };
     });
   }
 
@@ -193,14 +206,30 @@ export class CryptoManager {
     }
   }
 
+  /** Timeout (ms) for waitForRestore — prevents layout from hanging on slow IDB. */
+  private readonly RESTORE_TIMEOUT_MS = 5_000;
+
   /**
    * Wait for key restore to complete.
    * Use in auth guards to ensure restore has finished before checking isInitialized().
+   * Returns false on timeout so the app can still render (user will see unlock screen).
    * @returns true if a key was successfully restored, false otherwise
    */
   public async waitForRestore(): Promise<boolean> {
     if (!this.restorePromise) return false;
-    return this.restorePromise;
+    try {
+      return await Promise.race([
+        this.restorePromise,
+        new Promise<boolean>((resolve) =>
+          setTimeout(() => {
+            logger.warn('waitForRestore timed out — proceeding without key');
+            resolve(false);
+          }, this.RESTORE_TIMEOUT_MS)
+        )
+      ]);
+    } catch {
+      return false;
+    }
   }
 
   /**
