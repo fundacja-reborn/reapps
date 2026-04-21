@@ -27,6 +27,30 @@ declare global {
 }
 
 export class AuthOperationsService {
+	private isDefinitiveSessionExpiry(message: string | undefined): boolean {
+		if (!message) return false;
+		const normalized = message.toLowerCase();
+		return (
+			normalized.includes('unauthorized') ||
+			normalized.includes('forbidden') ||
+			normalized.includes('expired') ||
+			normalized.includes('invalid') ||
+			normalized.includes('revoked') ||
+			normalized.includes('401') ||
+			normalized.includes('403')
+		);
+	}
+
+	private markSessionExpired(reason: string): void {
+		if (!browser || !navigator.onLine) return;
+		logger.warn(`Marking session as expired (${reason})`);
+		sessionExpired.set(true);
+	}
+
+	private clearSessionExpired(): void {
+		sessionExpired.set(false);
+	}
+
 	/**
 	 * Initialize storage callback
 	 * This is called from AuthService after successful login/unlock.
@@ -201,7 +225,7 @@ export class AuthOperationsService {
 			// This ensures tokens are available BEFORE AuthService.completeLogin runs
 
 			// Clear stale session-expired banner from a previous session
-			sessionExpired.set(false);
+			this.clearSessionExpired();
 
 			return result;
 		} catch (error: unknown) {
@@ -237,7 +261,7 @@ export class AuthOperationsService {
 			await authLogout();
 		} finally {
 			// Reset session expired flag — this is an intentional logout, not expiry
-			sessionExpired.set(false);
+			this.clearSessionExpired();
 
 			// Clear tokens
 			localStorage.removeItem('access_token');
@@ -296,7 +320,7 @@ export class AuthOperationsService {
 		}
 
 		// Reset session expired flag — this is an intentional logout, not expiry
-		sessionExpired.set(false);
+		this.clearSessionExpired();
 
 		// Clear auth state in memory (master key, session manager)
 		try {
@@ -422,7 +446,10 @@ export class AuthOperationsService {
 				timeoutPromise
 			]).catch((error) => {
 				logger.warn('Token refresh failed or timed out:', error);
-				return { success: false };
+				return {
+					success: false,
+					message: error instanceof Error ? error.message : 'Token refresh failed'
+				};
 			});
 
 			if (result && result.success && 'accessToken' in result && result.accessToken) {
@@ -435,17 +462,20 @@ export class AuthOperationsService {
 				syncService.setAuthToken(result.accessToken);
 				logger.debug('Auth token updated in sync service after refresh');
 
+				this.clearSessionExpired();
+
 				// Mark session as initialized and authenticated
 				sessionManager.setSession({ isInitialized: true });
 
 				return true;
 			}
 
-			// Token refresh failed — mark session as expired but do NOT clear auth data.
-			// Tokens may still be valid for a later retry; clearing them would force
-			// a full re-login even for transient network errors.
-			logger.debug('Token refresh failed, marking session as expired');
-			sessionExpired.set(true);
+			const message = 'message' in result ? result.message : undefined;
+			if (this.isDefinitiveSessionExpiry(message)) {
+				this.markSessionExpired('checkSession-refresh-failed');
+			} else {
+				logger.debug('Token refresh failed for transient reason, keeping session-expired flag unchanged');
+			}
 
 			return false;
 		} catch (error: unknown) {
@@ -491,6 +521,7 @@ export class AuthOperationsService {
 		if (!browser) return;
 
 		logger.info('Starting auth initialization');
+		this.clearSessionExpired();
 
 		this.ensureAuthServiceInitialized();
 
@@ -620,22 +651,27 @@ export class AuthOperationsService {
 					// Note: refresh_token is managed exclusively via httpOnly cookie
 					syncService.setAuthToken(result.accessToken);
 					logger.debug('Background token refresh successful');
+					this.clearSessionExpired();
 					consecutiveFailures = 0;
 				} else {
-					consecutiveFailures++;
-					logger.warn(`Background token refresh unsuccessful (attempt ${consecutiveFailures}/${MAX_RETRIES + 1})`);
-					if (consecutiveFailures > MAX_RETRIES) {
-						sessionExpired.set(true);
+					const failureMessage = result.message;
+					if (this.isDefinitiveSessionExpiry(failureMessage)) {
+						consecutiveFailures++;
+						logger.warn(
+							`Background token refresh reports expired session (attempt ${consecutiveFailures}/${MAX_RETRIES + 1})`
+						);
+						if (consecutiveFailures > MAX_RETRIES) {
+							this.markSessionExpired('background-refresh-expired');
+							consecutiveFailures = 0;
+						}
+					} else {
+						logger.warn('Background token refresh failed for transient reason, skipping session-expired flag update');
 						consecutiveFailures = 0;
 					}
 				}
 			} catch (error: unknown) {
-				consecutiveFailures++;
-				logger.error(`Background token refresh failed (attempt ${consecutiveFailures}/${MAX_RETRIES + 1}):`, error);
-				if (consecutiveFailures > MAX_RETRIES) {
-					sessionExpired.set(true);
-					consecutiveFailures = 0;
-				}
+				logger.error('Background token refresh failed due to network/runtime error:', error);
+				consecutiveFailures = 0;
 			}
 		}, REFRESH_INTERVAL_MS);
 	}
@@ -708,7 +744,7 @@ export class AuthOperationsService {
 			syncService.setAuthToken(data.access_token);
 
 			// Clear session expired flag
-			sessionExpired.set(false);
+			this.clearSessionExpired();
 
 			// Restart background token refresh
 			this.startBackgroundTokenRefresh();
