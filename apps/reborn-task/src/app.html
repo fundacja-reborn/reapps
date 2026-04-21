@@ -83,7 +83,13 @@
 				var el=document.getElementById('app-loading');
 				if(!el)return;
 				var offline=typeof navigator!=='undefined'&&!navigator.onLine;
-				var noSW=typeof navigator!=='undefined'&&!navigator.serviceWorker?.controller;
+				// On iOS Safari PWA cold starts `navigator.serviceWorker.controller` is
+				// transiently null even when a service worker is registered and will
+				// soon take control, so the previous `!controller` probe produced a
+				// false "Brak połączenia" screen. Only fail fast when the browser has
+				// no Service Worker API at all — otherwise let the 15s stall timeout
+				// below decide.
+				var noSW=typeof navigator!=='undefined'&&!('serviceWorker' in navigator);
 				if(offline&&noSW){
 					el.querySelector('.app-loading__spinner').style.display='none';
 					el.querySelector('p').textContent='Brak połączenia z siecią. Połącz się i spróbuj ponownie.';

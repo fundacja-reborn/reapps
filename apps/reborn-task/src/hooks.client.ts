@@ -8,6 +8,7 @@ if (import.meta.hot) {
 }
 import { cryptoManager } from '@reborn/crypto';
 import { base } from '$app/paths';
+import { authOperationsService } from '$lib/services/auth-operations.service';
 import { trashManagementService } from '$lib/services/trash-management.service';
 import { recurrenceService } from '$lib/services/recurrence.service';
 import { pushNotificationService } from '$lib/services/push-notification.service';
@@ -15,6 +16,15 @@ import { startSwUpdateWatcher } from '$lib/services/sw-update.service';
 import { startPwaInstallPrompt } from '$lib/services/pwa-install.service';
 
 const logger = createLogger('hooks.client');
+
+// Eagerly construct the session manager singleton at module load time so that
+// `auth.store.ts` (which retries on a short interval) can attach immediately
+// instead of racing `initializeAuth()` behind the 5s i18n timeout in +layout.ts.
+try {
+	authOperationsService.getSessionManager();
+} catch (error: unknown) {
+	logger.error('Failed to eagerly initialize session manager:', error);
+}
 
 // ---------------------------------------------------------------------------
 // Client-side error handler — detect offline chunk-loading failures
