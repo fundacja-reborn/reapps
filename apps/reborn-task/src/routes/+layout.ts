@@ -16,14 +16,14 @@ export const ssr = false;
 // Enable prerendering for static pages (auth pages)
 export const prerender = false;
 
-export const load: LayoutLoad = async ({ data }) => {
+export const load: LayoutLoad = async () => {
 	logger.debug('Layout load started');
 
 	// Prevent re-initialization on client-side navigation
 	if (browser && isInitialized) {
 		logger.debug('Already initialized, skipping');
 		return {
-			user: data?.user || null
+			user: null
 		};
 	}
 
@@ -74,22 +74,12 @@ export const load: LayoutLoad = async ({ data }) => {
 		logger.debug('Server environment, skipping auth initialization');
 	}
 
-	// Initialize session store with server data
-	if (browser && data?.user) {
-		// Dynamic import to avoid SSR issues
-		const sessionManager = authOperationsService.getSessionManager();
-		try {
-			if (sessionManager && typeof sessionManager.setAuthenticated === 'function') {
-				sessionManager.setAuthenticated(data.user, true);
-			}
-		} catch (error: unknown) {
-			logger.error('Failed to set user in session manager:', error);
-		}
-	}
+	// Note: no server-side auth data is fetched for this app — sessions are
+	// restored entirely on the client by hooks.client.ts + SessionManager.
 
 	logger.debug('Layout load completed');
 
 	return {
-		user: data?.user || null
+		user: null
 	};
 };
