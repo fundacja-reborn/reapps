@@ -53,6 +53,9 @@ vitest.config.*.timestamp*
 .env
 
 
+# Git identity (local only — do not expose personal email)
+.mailmap
+
 # Claude Code
 .claude/
 **/home/
