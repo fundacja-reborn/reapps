@@ -437,17 +437,35 @@ export async function pushPendingItems(): Promise<void> {
 
   const pendingFolders = allFolders.filter((f) => f.sync_status === 'pending');
   const pendingTags = allTags.filter((t) => t.sync_status === 'pending');
-  const pendingNotes = allNotes.filter((n) => n.sync_status === 'pending');
+  // Partition notes by is_archived: non-archived pending rows are failed
+  // creates/updates and go through POST /api/notes; archived pending rows are
+  // failed soft-deletes and must be retried via pushNoteDelete. Before this
+  // split, a retried archived note would have been POSTed like a new note,
+  // resurrecting it on the server.
+  const pendingNotes = allNotes.filter(
+    (n) => n.sync_status === 'pending' && !n.is_archived
+  );
+  const pendingArchivedNotes = allNotes.filter(
+    (n) => n.sync_status === 'pending' && n.is_archived
+  );
 
-  if (pendingFolders.length + pendingTags.length + pendingNotes.length === 0) return;
+  if (
+    pendingFolders.length +
+      pendingTags.length +
+      pendingNotes.length +
+      pendingArchivedNotes.length ===
+    0
+  )
+    return;
 
   logger.info(
-    `Pushing pending items: ${pendingFolders.length} folders, ${pendingTags.length} tags, ${pendingNotes.length} notes`
+    `Pushing pending items: ${pendingFolders.length} folders, ${pendingTags.length} tags, ${pendingNotes.length} notes, ${pendingArchivedNotes.length} archived notes`
   );
 
   // Push folders & tags first (notes reference them)
   await Promise.allSettled([
     ...pendingFolders.map((f) =>
+      serializePerEntity('folder', f.id, () =>
       pushSilently(async (idempotencyKey) => {
         const pushedFields = {
           name_encrypted: f.name_encrypted,
@@ -473,71 +491,84 @@ export async function pushPendingItems(): Promise<void> {
           });
         }
       })
+      )
     ),
     ...pendingTags.map((t) =>
-      pushSilently(async (idempotencyKey) => {
-        const pushedFields = {
-          name_encrypted: t.name_encrypted,
-          color_encrypted: t.color_encrypted ?? null
-        };
-        const payload = { id: t.id, ...pushedFields, created_at: t.created_at };
-        validateEncryptedPayload(payload as Record<string, unknown>);
-        const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags`, {
-          method: 'POST',
-          headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error(`POST /api/tags: ${res.status}`);
-        const { data: resData } = await res.json();
-        const current = await tagStore.get(t.id);
-        if (current) {
-          const stillDirty = pushedFieldsDiffer(current, pushedFields);
-          await tagStore.save({
-            ...current,
-            sync_status: stillDirty ? 'pending' : 'synced',
-            sync_version: resData?.sync_version ?? 1
+      serializePerEntity('tag', t.id, () =>
+        pushSilently(async (idempotencyKey) => {
+          const pushedFields = {
+            name_encrypted: t.name_encrypted,
+            color_encrypted: t.color_encrypted ?? null
+          };
+          const payload = { id: t.id, ...pushedFields, created_at: t.created_at };
+          validateEncryptedPayload(payload as Record<string, unknown>);
+          const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags`, {
+            method: 'POST',
+            headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+            body: JSON.stringify(payload)
           });
-        }
-      })
+          if (!res.ok) throw new Error(`POST /api/tags: ${res.status}`);
+          const { data: resData } = await res.json();
+          const current = await tagStore.get(t.id);
+          if (current) {
+            const stillDirty = pushedFieldsDiffer(current, pushedFields);
+            await tagStore.save({
+              ...current,
+              sync_status: stillDirty ? 'pending' : 'synced',
+              sync_version: resData?.sync_version ?? 1
+            });
+          }
+        })
+      )
     )
   ]);
 
-  // Then push notes
+  // Then push notes (POST for creates/updates)
   await Promise.allSettled(
     pendingNotes.map((n) =>
-      pushSilently(async (idempotencyKey) => {
-        const pushedFields = {
-          title_encrypted: n.title_encrypted,
-          content_encrypted: n.content_encrypted,
-          folder_id: n.folder_id ?? null,
-          metadata_encrypted: n.metadata_encrypted ?? null
-        };
-        const payload = {
-          id: n.id,
-          ...pushedFields,
-          metadata_encrypted: n.metadata_encrypted ?? undefined,
-          created_at: n.created_at
-        };
-        validateEncryptedPayload(payload as Record<string, unknown>);
-        const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes`, {
-          method: 'POST',
-          headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error(`POST /api/notes: ${res.status}`);
-        const { data: resData } = await res.json();
-        const current = await noteStore.get(n.id);
-        if (current) {
-          const stillDirty = pushedFieldsDiffer(current, pushedFields);
-          await noteStore.save({
-            ...current,
-            sync_status: stillDirty ? 'pending' : 'synced',
-            sync_version: resData?.sync_version ?? 1
+      serializePerEntity('note', n.id, () =>
+        pushSilently(async (idempotencyKey) => {
+          const pushedFields = {
+            title_encrypted: n.title_encrypted,
+            content_encrypted: n.content_encrypted,
+            folder_id: n.folder_id ?? null,
+            metadata_encrypted: n.metadata_encrypted ?? null
+          };
+          const payload = {
+            id: n.id,
+            ...pushedFields,
+            metadata_encrypted: n.metadata_encrypted ?? undefined,
+            created_at: n.created_at
+          };
+          validateEncryptedPayload(payload as Record<string, unknown>);
+          const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes`, {
+            method: 'POST',
+            headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+            body: JSON.stringify(payload)
           });
-        }
-      })
+          if (!res.ok) throw new Error(`POST /api/notes: ${res.status}`);
+          const { data: resData } = await res.json();
+          const current = await noteStore.get(n.id);
+          if (current) {
+            const stillDirty = pushedFieldsDiffer(current, pushedFields);
+            await noteStore.save({
+              ...current,
+              sync_status: stillDirty ? 'pending' : 'synced',
+              sync_version: resData?.sync_version ?? 1
+            });
+          }
+        })
+      )
     )
   );
+
+  // Retry archived-pending notes via DELETE (see partition comment above).
+  // pushNoteDelete is itself serialized per-entity, so if a POST for the same
+  // note is still in the chain (e.g. first-time create+archive), the DELETE
+  // waits for it to land.
+  for (const n of pendingArchivedNotes) {
+    pushNoteDelete(n.id);
+  }
 
   // Push pending note versions
   await pushPendingVersions();
@@ -580,6 +611,38 @@ async function pushSilently(fn: (idempotencyKey: string) => Promise<void>): Prom
 }
 
 /**
+ * Per-entity FIFO queue. All `push*` operations targeting the same
+ * `(type, id)` pair are chained so they execute sequentially, preventing the
+ * network from reordering create/update/delete/restore for a single entity.
+ *
+ * Without this, the browser can dispatch a POST /folders and a DELETE
+ * /folders/{id} concurrently; if the network delivers DELETE first the folder
+ * stays on the server after the POST — divergent from the empty local state.
+ * The delete↔restore race for notes has the same shape.
+ *
+ * Different entities keep running in parallel. A chain entry clears itself
+ * from the map once it's the tail, so the map doesn't grow unbounded.
+ */
+const entityChains = new Map<string, Promise<unknown>>();
+
+function serializePerEntity<T>(
+  type: 'note' | 'folder' | 'tag',
+  id: string,
+  task: () => Promise<T>
+): Promise<T> {
+  const key = `${type}:${id}`;
+  const prev = entityChains.get(key) ?? Promise.resolve();
+  const next = prev.then(task, task);
+  entityChains.set(
+    key,
+    next.finally(() => {
+      if (entityChains.get(key) === next) entityChains.delete(key);
+    })
+  );
+  return next;
+}
+
+/**
  * Return true if any key in `pushed` has a different value in `current`.
  *
  * Used by push success callbacks to detect the race where a second local edit
@@ -600,40 +663,42 @@ function pushedFieldsDiffer(current: object, pushed: Record<string, unknown>): b
 }
 
 export function pushNote(note: NoteEncrypted | NoteStoredLocal): void {
-  void pushSilently(async (idempotencyKey) => {
-    const pushedFields = {
-      title_encrypted: note.title_encrypted,
-      content_encrypted: note.content_encrypted,
-      folder_id: note.folder_id ?? null,
-      metadata_encrypted: note.metadata_encrypted ?? null
-    };
-    const payload = {
-      id: note.id,
-      ...pushedFields,
-      metadata_encrypted: note.metadata_encrypted ?? undefined,
-      created_at: note.created_at
-    };
-    validateEncryptedPayload(payload as Record<string, unknown>);
-    const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes`, {
-      method: 'POST',
-      headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error(`POST /api/notes: ${res.status}`);
-    const { data } = await res.json();
-    const current = await noteStore.get(note.id);
-    if (current) {
-      const stillDirty = pushedFieldsDiffer(current, pushedFields);
-      if (stillDirty) {
-        logger.debug(`Note ${note.id} changed during push — keeping sync_status=pending`);
-      }
-      await noteStore.save({
-        ...current,
-        sync_status: stillDirty ? 'pending' : 'synced',
-        sync_version: data?.sync_version ?? 1
+  void serializePerEntity('note', note.id, () =>
+    pushSilently(async (idempotencyKey) => {
+      const pushedFields = {
+        title_encrypted: note.title_encrypted,
+        content_encrypted: note.content_encrypted,
+        folder_id: note.folder_id ?? null,
+        metadata_encrypted: note.metadata_encrypted ?? null
+      };
+      const payload = {
+        id: note.id,
+        ...pushedFields,
+        metadata_encrypted: note.metadata_encrypted ?? undefined,
+        created_at: note.created_at
+      };
+      validateEncryptedPayload(payload as Record<string, unknown>);
+      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes`, {
+        method: 'POST',
+        headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(payload)
       });
-    }
-  });
+      if (!res.ok) throw new Error(`POST /api/notes: ${res.status}`);
+      const { data } = await res.json();
+      const current = await noteStore.get(note.id);
+      if (current) {
+        const stillDirty = pushedFieldsDiffer(current, pushedFields);
+        if (stillDirty) {
+          logger.debug(`Note ${note.id} changed during push — keeping sync_status=pending`);
+        }
+        await noteStore.save({
+          ...current,
+          sync_status: stillDirty ? 'pending' : 'synced',
+          sync_version: data?.sync_version ?? 1
+        });
+      }
+    })
+  );
 }
 
 export function pushNoteUpdate(
@@ -645,55 +710,84 @@ export function pushNoteUpdate(
     >
   >
 ): void {
-  void pushSilently(async (idempotencyKey) => {
-    validateEncryptedPayload(fields as Record<string, unknown>);
-    const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes/${id}`, {
-      method: 'PATCH',
-      headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify(fields)
-    });
-    if (!res.ok) throw new Error(`PATCH /api/notes/${id}: ${res.status}`);
-    const { data } = await res.json();
-    const current = await noteStore.get(id);
-    if (current) {
-      const stillDirty = pushedFieldsDiffer(current, fields);
-      if (stillDirty) {
-        logger.debug(`Note ${id} changed during push — keeping sync_status=pending`);
-      }
-      await noteStore.save({
-        ...current,
-        sync_status: stillDirty ? 'pending' : 'synced',
-        sync_version: data?.sync_version ?? current.sync_version ?? 1
+  void serializePerEntity('note', id, () =>
+    pushSilently(async (idempotencyKey) => {
+      validateEncryptedPayload(fields as Record<string, unknown>);
+      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes/${id}`, {
+        method: 'PATCH',
+        headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(fields)
       });
-    }
-  });
+      if (!res.ok) throw new Error(`PATCH /api/notes/${id}: ${res.status}`);
+      const { data } = await res.json();
+      const current = await noteStore.get(id);
+      if (current) {
+        const stillDirty = pushedFieldsDiffer(current, fields);
+        if (stillDirty) {
+          logger.debug(`Note ${id} changed during push — keeping sync_status=pending`);
+        }
+        await noteStore.save({
+          ...current,
+          sync_status: stillDirty ? 'pending' : 'synced',
+          sync_version: data?.sync_version ?? current.sync_version ?? 1
+        });
+      }
+    })
+  );
 }
 
 export function pushNoteDelete(id: string, permanent = false): void {
-  void pushSilently(async (idempotencyKey) => {
-    const path = permanent ? `/api/notes/${id}?permanent=true` : `/api/notes/${id}`;
-    const res = await authFetch(`${PUBLIC_BASE_PATH}${path}`, {
-      method: 'DELETE',
-      headers: { 'Idempotency-Key': idempotencyKey }
-    });
-    if (!res.ok) throw new Error(`DELETE /api/notes/${id}: ${res.status}`);
-    if (!permanent) {
-      const archived = await noteStore.get(id);
-      if (archived) await noteStore.save({ ...archived, sync_status: 'synced' });
-    }
-  });
+  void serializePerEntity('note', id, () =>
+    pushSilently(async (idempotencyKey) => {
+      const path = permanent ? `/api/notes/${id}?permanent=true` : `/api/notes/${id}`;
+      const res = await authFetch(`${PUBLIC_BASE_PATH}${path}`, {
+        method: 'DELETE',
+        headers: { 'Idempotency-Key': idempotencyKey }
+      });
+      if (!res.ok) throw new Error(`DELETE /api/notes/${id}: ${res.status}`);
+      if (permanent) return;
+
+      // Intent-check: if the user restored the note while DELETE was in flight,
+      // `current.is_archived` will be false. Marking 'synced' would strand the
+      // local restore — chain a pushNoteRestore instead. See guideline 36 rule 11.b.
+      const current = await noteStore.get(id);
+      if (!current) return;
+      if (current.is_archived) {
+        await noteStore.save({ ...current, sync_status: 'synced' });
+      } else {
+        logger.debug(`Note ${id} restored during delete push — chaining restore`);
+        await noteStore.save({ ...current, sync_status: 'pending' });
+        pushNoteRestore(id);
+      }
+    })
+  );
 }
 
 export function pushNoteRestore(id: string): void {
-  void pushSilently(async (idempotencyKey) => {
-    const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes/${id}/restore`, {
-      method: 'POST',
-      headers: { 'Idempotency-Key': idempotencyKey }
-    });
-    if (!res.ok) throw new Error(`POST /api/notes/${id}/restore: ${res.status}`);
-    const current = await noteStore.get(id);
-    if (current) await noteStore.save({ ...current, sync_status: 'synced', sync_version: 1 });
-  });
+  void serializePerEntity('note', id, () =>
+    pushSilently(async (idempotencyKey) => {
+      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes/${id}/restore`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKey }
+      });
+      if (!res.ok) throw new Error(`POST /api/notes/${id}/restore: ${res.status}`);
+
+      // Intent-check: if the user re-archived the note while /restore was in
+      // flight, chain a pushNoteDelete to catch up. `sync_version` must be
+      // preserved — the restore endpoint doesn't bump it server-side and
+      // doesn't return it, so clobbering with `1` (old behaviour) sabotaged
+      // conflict detection in the next pull. See guideline 36 rule 11.b.
+      const current = await noteStore.get(id);
+      if (!current) return;
+      if (!current.is_archived) {
+        await noteStore.save({ ...current, sync_status: 'synced' });
+      } else {
+        logger.debug(`Note ${id} re-archived during restore push — chaining delete`);
+        await noteStore.save({ ...current, sync_status: 'pending' });
+        pushNoteDelete(id);
+      }
+    })
+  );
 }
 
 export function pushFolder(
@@ -702,78 +796,86 @@ export function pushFolder(
     'id' | 'name_encrypted' | 'parent_id' | 'order_index' | 'created_at'
   >
 ): void {
-  void pushSilently(async (idempotencyKey) => {
-    const pushedFields = {
-      name_encrypted: folder.name_encrypted,
-      parent_id: folder.parent_id ?? null,
-      order_index: folder.order_index
-    };
-    const payload = {
-      id: folder.id,
-      ...pushedFields,
-      created_at: folder.created_at
-    };
-    validateEncryptedPayload(payload as Record<string, unknown>);
-    const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders`, {
-      method: 'POST',
-      headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error(`POST /api/folders: ${res.status}`);
-    const { data } = await res.json();
-    const current = await folderStore.get(folder.id);
-    if (current) {
-      const stillDirty = pushedFieldsDiffer(current, pushedFields);
-      if (stillDirty) {
-        logger.debug(`Folder ${folder.id} changed during push — keeping sync_status=pending`);
-      }
-      await folderStore.save({
-        ...current,
-        sync_status: stillDirty ? 'pending' : 'synced',
-        sync_version: data?.sync_version ?? 1
+  void serializePerEntity('folder', folder.id, () =>
+    pushSilently(async (idempotencyKey) => {
+      const pushedFields = {
+        name_encrypted: folder.name_encrypted,
+        parent_id: folder.parent_id ?? null,
+        order_index: folder.order_index
+      };
+      const payload = {
+        id: folder.id,
+        ...pushedFields,
+        created_at: folder.created_at
+      };
+      validateEncryptedPayload(payload as Record<string, unknown>);
+      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders`, {
+        method: 'POST',
+        headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(payload)
       });
-    }
-  });
+      if (!res.ok) throw new Error(`POST /api/folders: ${res.status}`);
+      const { data } = await res.json();
+      const current = await folderStore.get(folder.id);
+      if (current) {
+        const stillDirty = pushedFieldsDiffer(current, pushedFields);
+        if (stillDirty) {
+          logger.debug(`Folder ${folder.id} changed during push — keeping sync_status=pending`);
+        }
+        await folderStore.save({
+          ...current,
+          sync_status: stillDirty ? 'pending' : 'synced',
+          sync_version: data?.sync_version ?? 1
+        });
+      }
+    })
+  );
 }
 
 export function pushFolderUpdate(
   id: string,
   fields: { name_encrypted?: string; parent_id?: string | null; order_index?: number }
 ): void {
-  void pushSilently(async (idempotencyKey) => {
-    validateEncryptedPayload(fields as Record<string, unknown>);
-    const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders/${id}`, {
-      method: 'PATCH',
-      headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify(fields)
-    });
-    if (!res.ok) throw new Error(`PATCH /api/folders/${id}: ${res.status}`);
-    const { data } = await res.json();
-    const current = await folderStore.get(id);
-    if (current) {
-      const stillDirty = pushedFieldsDiffer(current, fields);
-      if (stillDirty) {
-        logger.debug(`Folder ${id} changed during push — keeping sync_status=pending`);
-      }
-      await folderStore.save({
-        ...current,
-        sync_status: stillDirty ? 'pending' : 'synced',
-        sync_version: data?.sync_version ?? current.sync_version ?? 1
+  void serializePerEntity('folder', id, () =>
+    pushSilently(async (idempotencyKey) => {
+      validateEncryptedPayload(fields as Record<string, unknown>);
+      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders/${id}`, {
+        method: 'PATCH',
+        headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(fields)
       });
-    }
-  });
+      if (!res.ok) throw new Error(`PATCH /api/folders/${id}: ${res.status}`);
+      const { data } = await res.json();
+      const current = await folderStore.get(id);
+      if (current) {
+        const stillDirty = pushedFieldsDiffer(current, fields);
+        if (stillDirty) {
+          logger.debug(`Folder ${id} changed during push — keeping sync_status=pending`);
+        }
+        await folderStore.save({
+          ...current,
+          sync_status: stillDirty ? 'pending' : 'synced',
+          sync_version: data?.sync_version ?? current.sync_version ?? 1
+        });
+      }
+    })
+  );
 }
 
 export function pushFolderDelete(id: string): void {
-  void pushSilently(async (idempotencyKey) => {
-    const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders/${id}`, {
-      method: 'DELETE',
-      headers: { 'Idempotency-Key': idempotencyKey }
-    });
-    if (!res.ok) throw new Error(`DELETE /api/folders/${id}: ${res.status}`);
-    const current = await folderStore.get(id);
-    if (current) await folderStore.save({ ...current, sync_status: 'synced', sync_version: 1 });
-  });
+  void serializePerEntity('folder', id, () =>
+    pushSilently(async (idempotencyKey) => {
+      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders/${id}`, {
+        method: 'DELETE',
+        headers: { 'Idempotency-Key': idempotencyKey }
+      });
+      if (!res.ok) throw new Error(`DELETE /api/folders/${id}: ${res.status}`);
+      // Folder is hard-deleted locally before this runs (see folder.service.ts
+      // deleteFolder), so there is nothing to reconcile. We deliberately do NOT
+      // resurrect the row and clobber sync_version the way the old code did —
+      // that broke conflict detection on the rare in-flight re-sync path.
+    })
+  );
 }
 
 export function pushTag(tag: {
@@ -782,77 +884,84 @@ export function pushTag(tag: {
   color_encrypted?: string;
   created_at: string;
 }): void {
-  void pushSilently(async (idempotencyKey) => {
-    const pushedFields = {
-      name_encrypted: tag.name_encrypted,
-      color_encrypted: tag.color_encrypted ?? null
-    };
-    const payload = {
-      id: tag.id,
-      ...pushedFields,
-      created_at: tag.created_at
-    };
-    validateEncryptedPayload(payload as Record<string, unknown>);
-    const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags`, {
-      method: 'POST',
-      headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error(`POST /api/tags: ${res.status}`);
-    const { data: resData } = await res.json();
-    const current = await tagStore.get(tag.id);
-    if (current) {
-      const stillDirty = pushedFieldsDiffer(current, pushedFields);
-      if (stillDirty) {
-        logger.debug(`Tag ${tag.id} changed during push — keeping sync_status=pending`);
-      }
-      await tagStore.save({
-        ...current,
-        sync_status: stillDirty ? 'pending' : 'synced',
-        sync_version: resData?.sync_version ?? 1
+  void serializePerEntity('tag', tag.id, () =>
+    pushSilently(async (idempotencyKey) => {
+      const pushedFields = {
+        name_encrypted: tag.name_encrypted,
+        color_encrypted: tag.color_encrypted ?? null
+      };
+      const payload = {
+        id: tag.id,
+        ...pushedFields,
+        created_at: tag.created_at
+      };
+      validateEncryptedPayload(payload as Record<string, unknown>);
+      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags`, {
+        method: 'POST',
+        headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(payload)
       });
-    }
-  });
+      if (!res.ok) throw new Error(`POST /api/tags: ${res.status}`);
+      const { data: resData } = await res.json();
+      const current = await tagStore.get(tag.id);
+      if (current) {
+        const stillDirty = pushedFieldsDiffer(current, pushedFields);
+        if (stillDirty) {
+          logger.debug(`Tag ${tag.id} changed during push — keeping sync_status=pending`);
+        }
+        await tagStore.save({
+          ...current,
+          sync_status: stillDirty ? 'pending' : 'synced',
+          sync_version: resData?.sync_version ?? 1
+        });
+      }
+    })
+  );
 }
 
 export function pushTagUpdate(
   id: string,
   fields: { name_encrypted?: string; color_encrypted?: string | null }
 ): void {
-  void pushSilently(async (idempotencyKey) => {
-    validateEncryptedPayload(fields as Record<string, unknown>);
-    const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags/${id}`, {
-      method: 'PATCH',
-      headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify(fields)
-    });
-    if (!res.ok) throw new Error(`PATCH /api/tags/${id}: ${res.status}`);
-    const { data: resData } = await res.json();
-    const current = await tagStore.get(id);
-    if (current) {
-      const stillDirty = pushedFieldsDiffer(current, fields);
-      if (stillDirty) {
-        logger.debug(`Tag ${id} changed during push — keeping sync_status=pending`);
-      }
-      await tagStore.save({
-        ...current,
-        sync_status: stillDirty ? 'pending' : 'synced',
-        sync_version: resData?.sync_version ?? current.sync_version + 1
+  void serializePerEntity('tag', id, () =>
+    pushSilently(async (idempotencyKey) => {
+      validateEncryptedPayload(fields as Record<string, unknown>);
+      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags/${id}`, {
+        method: 'PATCH',
+        headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(fields)
       });
-    }
-  });
+      if (!res.ok) throw new Error(`PATCH /api/tags/${id}: ${res.status}`);
+      const { data: resData } = await res.json();
+      const current = await tagStore.get(id);
+      if (current) {
+        const stillDirty = pushedFieldsDiffer(current, fields);
+        if (stillDirty) {
+          logger.debug(`Tag ${id} changed during push — keeping sync_status=pending`);
+        }
+        await tagStore.save({
+          ...current,
+          sync_status: stillDirty ? 'pending' : 'synced',
+          sync_version: resData?.sync_version ?? current.sync_version + 1
+        });
+      }
+    })
+  );
 }
 
 export function pushTagDelete(id: string): void {
-  void pushSilently(async (idempotencyKey) => {
-    const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags/${id}`, {
-      method: 'DELETE',
-      headers: { 'Idempotency-Key': idempotencyKey }
-    });
-    if (!res.ok) throw new Error(`DELETE /api/tags/${id}: ${res.status}`);
-    const current = await tagStore.get(id);
-    if (current) await tagStore.save({ ...current, sync_status: 'synced', sync_version: 1 });
-  });
+  void serializePerEntity('tag', id, () =>
+    pushSilently(async (idempotencyKey) => {
+      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags/${id}`, {
+        method: 'DELETE',
+        headers: { 'Idempotency-Key': idempotencyKey }
+      });
+      if (!res.ok) throw new Error(`DELETE /api/tags/${id}: ${res.status}`);
+      // Tag is hard-deleted locally before this runs (see tag.service.ts
+      // deleteTag), so there is nothing to reconcile. No sync_version reset —
+      // that's the same bug we removed from pushFolderDelete.
+    })
+  );
 }
 
 // ── Note version sync ──────────────────────────────────────────────
