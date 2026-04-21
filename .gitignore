@@ -71,7 +71,8 @@ memory/
 .github/instructions/
 .githooks/
 docs/development/
-scripts/
+scripts/*
+!scripts/release.mjs
 tmp/
 patches/
 *.bak
