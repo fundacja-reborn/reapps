@@ -326,7 +326,26 @@ async function pullNotes(): Promise<void> {
 
       // Skip if server version is not newer than local (sync_version conflict detection)
       const serverVersion = n.sync_version ?? 1;
+      const serverArchived = !!n.deleted_at || !!n.is_archived;
       if (localNote && serverVersion <= (localNote.sync_version ?? 0)) {
+        // Archive-state reconciliation (rule 11.e defense in depth). Even when
+        // versions match, if the server says archived and we say active (or
+        // vice versa), trust the server. This guards against:
+        //   1. Old server deploys that didn't bump sync_version on soft-delete/restore.
+        //   2. Rows where the server bumped but the client's pushNoteDelete/Restore
+        //      response was dropped before we could mirror the new version locally.
+        // We only adjust is_archived here — content fields stay as they are so
+        // local edits aren't clobbered.
+        if (
+          localNote.sync_status === 'synced' &&
+          !!localNote.is_archived !== serverArchived
+        ) {
+          logger.info(
+            `Reconciling archive state for note ${n.id}: local=${localNote.is_archived} server=${serverArchived}`
+          );
+          await noteStore.save({ ...localNote, is_archived: serverArchived });
+        }
+
         // Reconciliation: see pullFolders() for rationale. Covers notes whose edits
         // never reached the server because sync_status was left at 'synced' after
         // a failed fire-and-forget push.
@@ -375,7 +394,7 @@ async function pullNotes(): Promise<void> {
         metadata_encrypted: n.metadata_encrypted,
         is_pinned,
         is_starred,
-        is_archived: !!n.deleted_at || !!n.is_archived,
+        is_archived: serverArchived,
         sync_version: serverVersion,
         sync_status: 'synced',
         created_at: n.created_at,
@@ -747,16 +766,37 @@ export function pushNoteDelete(id: string, permanent = false): void {
       if (!res.ok) throw new Error(`DELETE /api/notes/${id}: ${res.status}`);
       if (permanent) return;
 
+      // Server bumps sync_version on soft-delete (since rule 11.e) and returns
+      // the new value. We MUST mirror it locally, otherwise the next pull sees
+      // server=N+1 vs local=N and re-applies the archive state we already have
+      // — harmless but churn. More importantly, future pushes would operate on
+      // stale sync_version and look like conflicts.
+      let serverSyncVersion: number | undefined;
+      try {
+        const body = await res.json();
+        serverSyncVersion = body?.data?.sync_version;
+      } catch {
+        // Old server deploy — no body. Leave sync_version untouched.
+      }
+
       // Intent-check: if the user restored the note while DELETE was in flight,
       // `current.is_archived` will be false. Marking 'synced' would strand the
       // local restore — chain a pushNoteRestore instead. See guideline 36 rule 11.b.
       const current = await noteStore.get(id);
       if (!current) return;
       if (current.is_archived) {
-        await noteStore.save({ ...current, sync_status: 'synced' });
+        await noteStore.save({
+          ...current,
+          sync_status: 'synced',
+          sync_version: serverSyncVersion ?? current.sync_version
+        });
       } else {
         logger.debug(`Note ${id} restored during delete push — chaining restore`);
-        await noteStore.save({ ...current, sync_status: 'pending' });
+        await noteStore.save({
+          ...current,
+          sync_status: 'pending',
+          sync_version: serverSyncVersion ?? current.sync_version
+        });
         pushNoteRestore(id);
       }
     })
@@ -772,18 +812,33 @@ export function pushNoteRestore(id: string): void {
       });
       if (!res.ok) throw new Error(`POST /api/notes/${id}/restore: ${res.status}`);
 
+      // Server bumps sync_version on restore (since rule 11.e) and returns it.
+      // Mirror locally; fall back to preserving the current value on old deploys.
+      let serverSyncVersion: number | undefined;
+      try {
+        const body = await res.json();
+        serverSyncVersion = body?.data?.sync_version;
+      } catch {
+        // Old server deploy — no body.
+      }
+
       // Intent-check: if the user re-archived the note while /restore was in
-      // flight, chain a pushNoteDelete to catch up. `sync_version` must be
-      // preserved — the restore endpoint doesn't bump it server-side and
-      // doesn't return it, so clobbering with `1` (old behaviour) sabotaged
-      // conflict detection in the next pull. See guideline 36 rule 11.b.
+      // flight, chain a pushNoteDelete to catch up. See guideline 36 rule 11.b.
       const current = await noteStore.get(id);
       if (!current) return;
       if (!current.is_archived) {
-        await noteStore.save({ ...current, sync_status: 'synced' });
+        await noteStore.save({
+          ...current,
+          sync_status: 'synced',
+          sync_version: serverSyncVersion ?? current.sync_version
+        });
       } else {
         logger.debug(`Note ${id} re-archived during restore push — chaining delete`);
-        await noteStore.save({ ...current, sync_status: 'pending' });
+        await noteStore.save({
+          ...current,
+          sync_status: 'pending',
+          sync_version: serverSyncVersion ?? current.sync_version
+        });
         pushNoteDelete(id);
       }
     })
