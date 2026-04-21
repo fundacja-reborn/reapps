@@ -63,6 +63,19 @@ export async function initializeStorage(appName: 'task' | 'notes'): Promise<void
   );
   const logger = createLogger('storage');
 
+  /** Timeout (ms) for individual IndexedDB open operations. */
+  const IDB_OPEN_TIMEOUT_MS = 8_000;
+
+  /** Race a promise against a timeout. Rejects on expiry. */
+  function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+      )
+    ]);
+  }
+
   try {
     // Check if already initialized
     if (isDatabaseInitialized()) {
@@ -72,7 +85,11 @@ export async function initializeStorage(appName: 'task' | 'notes'): Promise<void
 
     // If the connection was closed (e.g. to unblock another tab's upgrade),
     // try to reconnect before going through full initialization.
-    const reconnected = await databaseManager.reconnect();
+    const reconnected = await withTimeout(
+      databaseManager.reconnect(),
+      IDB_OPEN_TIMEOUT_MS,
+      'databaseManager.reconnect()'
+    );
     if (reconnected) {
       logger.info('Database reconnected after connection loss');
       return;
@@ -93,7 +110,11 @@ export async function initializeStorage(appName: 'task' | 'notes'): Promise<void
       const { openDB } = await import('idb');
 
       try {
-        const checkDb = await openDB(config.name);
+        const checkDb = await withTimeout(
+          openDB(config.name),
+          IDB_OPEN_TIMEOUT_MS,
+          'pre-check openDB'
+        );
         const currentVersion = checkDb.version;
         checkDb.close();
 
@@ -125,7 +146,11 @@ export async function initializeStorage(appName: 'task' | 'notes'): Promise<void
       logger.error('Database pre-check failed', error);
     }
 
-    const db = await initDatabase(config);
+    const db = await withTimeout(
+      initDatabase(config),
+      IDB_OPEN_TIMEOUT_MS,
+      'initDatabase'
+    );
     logger.info('Storage initialized successfully', {
       dbName: config.name,
       actualVersion: db.version,
