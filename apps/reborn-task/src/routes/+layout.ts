@@ -56,7 +56,17 @@ export const load: LayoutLoad = async ({ data }) => {
 			});
 		}
 
-		await authBootstrapPromise;
+		// Cap the wait so offline cold starts don't stack i18n (5s) + auth
+		// bootstrap (another 3–5s of IndexedDB + store refreshes) on top of
+		// each other and push total load past the 15s app.html stall timer.
+		// hooks.client.ts eagerly constructs the SessionManager, and
+		// initializeAuth() sets {isInitialized,isAuthenticated} before any
+		// slow IO, so routes can make redirect decisions even if bootstrap
+		// continues in the background.
+		await Promise.race([
+			authBootstrapPromise,
+			new Promise<void>((resolve) => setTimeout(resolve, 3000))
+		]);
 
 		// Mark as initialized to prevent re-runs
 		isInitialized = true;

@@ -40,6 +40,14 @@
 
 		const currentSession = $session;
 
+		// Wait until the session store has finished bootstrapping. Without this
+		// guard the first reactive pass sees {isInitialized:false, isAuthenticated:false}
+		// and bounces to /auth/login before initializeAuth() has even populated
+		// the store — producing the offline redirect loop.
+		if (!currentSession.isInitialized || currentSession.isLoading) {
+			return;
+		}
+
 		// If user is not authenticated, redirect to login
 		if (!currentSession.isAuthenticated) {
 			logger.debug('User not authenticated, redirecting to login');
