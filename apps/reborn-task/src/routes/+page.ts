@@ -28,6 +28,26 @@ export const load: PageLoad = async ({ parent }) => {
 		// NOTE: `redirect()` throws a `Redirect` sentinel that SvelteKit catches
 		// upstream — it MUST NOT be wrapped in try/catch here or the happy path
 		// gets swallowed and every visit falls through to /auth/unlock.
+
+		// Offline cold start: decide the redirect target from persisted
+		// credentials directly. The session store may still be mid-bootstrap
+		// at this point (checkE2EStatus can take 5s+ waiting on the crypto
+		// manager's IndexedDB restore), and using waitForSessionReady() would
+		// race setAuthenticated() — producing the classic offline symptom
+		// "/ → /auth/login" even though valid credentials are on disk.
+		if (!navigator.onLine) {
+			const hasCredentials = !!localStorage.getItem('reborn_auth_credentials');
+			if (!hasCredentials) {
+				redirect(303, `${base}/auth/login`);
+			}
+			const { cryptoManager } = await import('@reborn/crypto');
+			await cryptoManager.waitForRestore();
+			redirect(
+				303,
+				cryptoManager.isInitialized() ? `${base}/all` : `${base}/auth/unlock`
+			);
+		}
+
 		let currentSession: Awaited<ReturnType<typeof waitForSessionReady>>;
 		try {
 			currentSession = await waitForSessionReady();

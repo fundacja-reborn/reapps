@@ -540,10 +540,13 @@ export class AuthOperationsService {
 				logger.debug('Auth token restored to sync service from localStorage');
 			}
 
-			// Mark session as initialized. If we have tokens, also set isLoading=true
-			// so that (app) layout guard waits for the background auth check to complete.
-			sessionManager.setSession({ isInitialized: true, isLoading: hasTokens });
-			logger.debug('Session marked as initialized', { isLoading: hasTokens });
+			// Mark session as initialized but keep isLoading=true until we've
+			// finished reading persisted credentials. Flipping isLoading=false here
+			// would let `+page.ts` waitForSessionReady() return on {isAuthenticated:false}
+			// and bounce an offline cold start to /auth/login before setAuthenticated()
+			// has had a chance to run.
+			sessionManager.setSession({ isInitialized: true, isLoading: true });
+			logger.debug('Session marked as initialized (isLoading=true until auth resolves)');
 
 			// Check if we're offline
 			if (!navigator.onLine) {
@@ -555,7 +558,7 @@ export class AuthOperationsService {
 				// and wrapped master key — mirrors the pattern used by reborn-notes.
 				const storage = new AuthStorageAdapter();
 				const credentials = await storage.getCredentials();
-				if (credentials) {
+				if (credentials?.user_profile) {
 					logger.info('Offline credentials available, marking session authenticated');
 					// Populate both isAuthenticated AND user so layout guards don't
 					// redirect to /auth/login while we still have a valid profile.
@@ -610,6 +613,11 @@ export class AuthOperationsService {
 				if (hasOffline) {
 					logger.info('Offline credentials available');
 				}
+
+				// Release the isLoading=true we set at the top of this try{} —
+				// without this flip, waitForSessionReady() would never return and
+				// +page.ts would stall until its 1.5s polling timeout.
+				sessionManager.setLoading(false);
 			}
 		} catch (error: unknown) {
 			logger.error('Auth initialization failed:', error);
