@@ -25,22 +25,22 @@ export const load: PageLoad = async ({ parent }) => {
 
 	// Client-side only redirect
 	if (browser) {
+		// NOTE: `redirect()` throws a `Redirect` sentinel that SvelteKit catches
+		// upstream — it MUST NOT be wrapped in try/catch here or the happy path
+		// gets swallowed and every visit falls through to /auth/unlock.
+		let currentSession: Awaited<ReturnType<typeof waitForSessionReady>>;
 		try {
-			const currentSession = await waitForSessionReady();
-
-			if (currentSession.isAuthenticated) {
-				if (currentSession.hasE2E) {
-					redirect(303, `${base}/all`);
-				}
-				redirect(303, `${base}/auth/unlock`);
-			}
-
-			redirect(303, `${base}/auth/login`);
+			currentSession = await waitForSessionReady();
 		} catch {
-			// Fallback path if auth bootstrap fails unexpectedly
 			const hasTokens = !!localStorage.getItem('access_token');
 			redirect(303, hasTokens ? `${base}/auth/unlock` : `${base}/auth/login`);
 		}
+
+		if (currentSession.isAuthenticated) {
+			redirect(303, currentSession.hasE2E ? `${base}/all` : `${base}/auth/unlock`);
+		}
+
+		redirect(303, `${base}/auth/login`);
 	}
 
 	// Server-side: just return empty object
