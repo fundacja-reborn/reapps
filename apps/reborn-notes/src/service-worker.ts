@@ -221,6 +221,17 @@ sw.addEventListener('fetch', (event) => {
       if (cached) return cached;
     }
 
+    // SvelteKit fetches `__data.json` for any route that has a server load.
+    // Offline, we can't reach the server; returning 404 makes SvelteKit
+    // render its own 404 page. Respond with an empty server-data payload so
+    // the universal load still runs and the client router can take over.
+    if (url.pathname.endsWith('/__data.json') || url.pathname.endsWith('__data.json')) {
+      return new Response(JSON.stringify({ type: 'data', nodes: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     return new Response('Not found', { status: 404 });
   }
 
