@@ -3,9 +3,65 @@ import { browser } from '$app/environment';
 import { createSessionStore } from '@reborn/auth';
 import { getSessionManager } from '$lib/auth';
 import type { AuthSession, ReactiveStore } from '@reborn/auth';
+import { cryptoManager } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 
 const logger = createLogger('AuthStore');
+
+function readSessionFallbackFromStorage(): AuthSession {
+	const empty: AuthSession = {
+		isAuthenticated: false,
+		isInitialized: true,
+		hasE2E: false,
+		user: null,
+		error: 'Session bootstrap timeout',
+		isLoading: false,
+		isLoggingOut: false
+	};
+
+	if (!browser) return empty;
+
+	try {
+		const accessToken = localStorage.getItem('access_token');
+		const rawCredentials = localStorage.getItem('reborn_auth_credentials');
+		if (!accessToken || !rawCredentials) return empty;
+
+		const parsed = JSON.parse(rawCredentials) as {
+			user_profile?: {
+				id?: string;
+				username?: string;
+				created_at?: string;
+				updated_at?: string;
+				preferred_language?: string;
+				preferred_date_format?: string;
+				is_2fa_enabled?: boolean;
+			};
+		};
+
+		const userProfile = parsed?.user_profile;
+		if (!userProfile?.id || !userProfile?.username) return empty;
+
+		return {
+			isAuthenticated: true,
+			isInitialized: true,
+			hasE2E: cryptoManager.isInitialized(),
+			user: {
+				id: userProfile.id,
+				username: userProfile.username,
+				created_at: userProfile.created_at ?? new Date(0).toISOString(),
+				updated_at: userProfile.updated_at ?? new Date(0).toISOString(),
+				preferred_language: userProfile.preferred_language,
+				preferred_date_format: userProfile.preferred_date_format,
+				is_2fa_enabled: userProfile.is_2fa_enabled
+			},
+			error: 'Session manager unavailable, using local fallback',
+			isLoading: false,
+			isLoggingOut: false
+		};
+	} catch {
+		return empty;
+	}
+}
 
 // Helper function to create Svelte-compatible store
 function createSvelteStore<T>(initialValue: T): ReactiveStore<T> {
@@ -94,17 +150,9 @@ function getOrCreateSessionStore(): Readable<AuthSession> {
 				retryCount++;
 				if (retryCount >= maxRetries) {
 					clearInterval(retryInterval);
-					// Mark as initialized to unblock UI
-					store.set({
-						isAuthenticated: false,
-						isInitialized: true,
-						hasE2E: false,
-						user: null,
-						error: null,
-						isLoading: false,
-						isLoggingOut: false
-					});
-					logger.warn('Failed to connect to session manager after retries');
+					const fallbackSession = readSessionFallbackFromStorage();
+					store.set(fallbackSession);
+					logger.warn('Failed to connect to session manager after retries, using storage fallback');
 				}
 			}
 		}, 100);
