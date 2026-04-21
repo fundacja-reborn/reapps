@@ -5,6 +5,7 @@
 	import { page } from '$app/stores';
 	import { t } from '$lib/stores/i18n.store';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
+	import { sessionExpired } from '$lib/stores/session-expired.store';
 	import { LoginPage } from '@reborn/ui';
 	import { createLogger } from '@reborn/utils';
 
@@ -19,6 +20,10 @@
 			// Get return URL from query params
 			const url = new URL($page.url);
 			returnTo = url.searchParams.get('returnTo') || '/all';
+			// Reaching the login page = there's no live session to expire.
+			// Belt-and-suspenders cleanup so the banner never lingers when
+			// a non-standard path dropped us here (cross-app logout, etc.).
+			sessionExpired.set(false);
 		}
 	});
 

@@ -6,6 +6,7 @@
   import { page } from '$app/stores';
   import { LoginPage } from '@reborn/ui';
   import { authStore } from '$lib/stores/auth.store';
+  import { sessionExpired } from '$lib/stores/sync-status.store';
   import { loginInNotes } from '$lib/services/notes-auth.service';
   import { t } from '$lib/stores/i18n.store';
 
@@ -20,6 +21,10 @@
   });
 
   onMount(() => {
+    // Reaching the login page = no live session to expire.
+    // Belt-and-suspenders cleanup so the banner never lingers when a
+    // non-standard path dropped us here (cross-app logout, etc.).
+    sessionExpired.set(false);
     if ($authStore.isAuthenticated) {
       goto($authStore.hasE2E ? returnTo : '/auth/unlock');
     }
