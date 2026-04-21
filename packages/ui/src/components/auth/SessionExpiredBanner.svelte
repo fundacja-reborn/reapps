@@ -3,47 +3,34 @@
   Non-dismissible banner shown when the user's session has expired.
   Displays at the top of the page and opens a re-auth modal on click.
   Does NOT trigger logout — preserves master key in RAM (offline-first).
+
+  The modal handles the full re-auth flow, including the 2FA second step
+  when the account has two-factor authentication enabled.
 -->
 <script lang="ts">
   import { AlertTriangle } from '@lucide/svelte';
   import { t } from '@reborn/i18n';
   import ReAuthModal from './ReAuthModal.svelte';
+  import type { ReAuthResult } from './reauth-types';
 
   let {
     username = '',
     visible = false,
-    onReAuth
+    onReAuth,
+    onVerifyTotp
   } = $props<{
     username?: string;
     visible?: boolean;
-    onReAuth?: (password: string) => Promise<boolean>;
+    /** Submit password — may return `two_factor_required` to trigger TOTP step. */
+    onReAuth?: (password: string) => Promise<ReAuthResult>;
+    /** Submit TOTP / recovery code after `two_factor_required`. */
+    onVerifyTotp?: (userId: string, code: string) => Promise<ReAuthResult>;
   }>();
 
   let modalOpen = $state(false);
-  let loading = $state(false);
-  let error = $state<string | null>(null);
 
   function handleBannerClick() {
-    error = null;
     modalOpen = true;
-  }
-
-  async function handleSubmit(password: string) {
-    loading = true;
-    error = null;
-
-    try {
-      const success = await onReAuth?.(password);
-      if (success) {
-        modalOpen = false;
-      } else {
-        error = $t('auth.session.error_auth_failed');
-      }
-    } catch (err: unknown) {
-      error = err instanceof Error ? err.message : $t('auth.session.error_unknown');
-    } finally {
-      loading = false;
-    }
   }
 </script>
 
@@ -60,4 +47,9 @@
   </div>
 {/if}
 
-<ReAuthModal bind:open={modalOpen} {username} {loading} {error} onSubmit={handleSubmit} />
+<ReAuthModal
+  bind:open={modalOpen}
+  {username}
+  onSubmitPassword={onReAuth}
+  onSubmitTotp={onVerifyTotp}
+/>

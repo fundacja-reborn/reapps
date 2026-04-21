@@ -84,7 +84,19 @@
       "submitting": "Signing in...",
       "error_auth_failed": "Authentication failed. Please check your password.",
       "error_unknown": "Authentication failed",
-      "empty_no_data": "No data available — session expired. Sign in again to sync your data."
+      "error_locked": "Account temporarily locked. Too many failed attempts. Try again in {seconds}s.",
+      "empty_no_data": "No data available — session expired. Sign in again to sync your data.",
+      "totp_title": "Two-factor verification",
+      "totp_description": "Enter the code from your authenticator app to finish re-authenticating.",
+      "totp_label": "2FA code",
+      "totp_placeholder": "000000",
+      "totp_submit_button": "Verify",
+      "totp_verifying": "Verifying...",
+      "totp_error_invalid": "Invalid code. Please try again.",
+      "use_recovery": "Use a recovery code",
+      "use_app": "Use authenticator app",
+      "recovery_label": "Recovery code",
+      "recovery_placeholder": "XXXXX-XXXXX"
     },
     "2fa": {
       "recovery_code_label": "Recovery Code",

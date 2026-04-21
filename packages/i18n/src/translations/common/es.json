@@ -84,7 +84,19 @@
       "submitting": "Iniciando sesión...",
       "error_auth_failed": "La autenticación falló. Por favor, verifique su contraseña.",
       "error_unknown": "La autenticación falló",
-      "empty_no_data": "No hay datos disponibles — sesión expirada. Inicie sesión de nuevo para sincronizar sus datos."
+      "error_locked": "Cuenta bloqueada temporalmente. Demasiados intentos fallidos. Inténtelo de nuevo en {seconds}s.",
+      "empty_no_data": "No hay datos disponibles — sesión expirada. Inicie sesión de nuevo para sincronizar sus datos.",
+      "totp_title": "Verificación en dos pasos",
+      "totp_description": "Introduzca el código de su aplicación de autenticación para terminar de iniciar sesión de nuevo.",
+      "totp_label": "Código 2FA",
+      "totp_placeholder": "000000",
+      "totp_submit_button": "Verificar",
+      "totp_verifying": "Verificando...",
+      "totp_error_invalid": "Código no válido. Inténtelo de nuevo.",
+      "use_recovery": "Usar código de recuperación",
+      "use_app": "Usar aplicación de autenticación",
+      "recovery_label": "Código de recuperación",
+      "recovery_placeholder": "XXXXX-XXXXX"
     },
     "2fa": {
       "recovery_code_label": "Código de recuperación",

@@ -4,6 +4,7 @@ import type {
 	RegisterResult,
 	TwoFactorVerificationResult
 } from '@reborn/auth';
+import { withRefreshLock } from '@reborn/auth';
 import { createLogger } from '@reborn/utils';
 import { syncService } from '$lib/services/sync.service';
 
@@ -185,52 +186,72 @@ export class AuthApiAdapter implements IAuthApiClient {
 	}
 
 	async refreshToken(_refreshToken?: string): Promise<LoginResult> {
-		try {
-			// Refresh token is sent automatically via httpOnly cookie.
-			// The _refreshToken parameter is kept for interface compatibility but ignored.
-			const response = await fetch(`${this.apiUrl}/auth/refresh`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({})
-			});
+		// Serialize refresh across every tab/app on this origin so concurrent
+		// calls from reborn-task + reborn-notes cannot both hit /api/auth/refresh
+		// with the same refresh-token cookie (which would trip the server's
+		// token-reuse detector and invalidate the entire family). Inside the
+		// lock, first check whether another tab already produced a fresh token
+		// so we can skip the redundant fetch.
+		const tokenBeforeLock =
+			typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
 
-			const data = await response.json();
+		return withRefreshLock(async () => {
+			const current =
+				typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
+			if (current && current !== tokenBeforeLock) {
+				// Another tab refreshed for us while we were queued — use that token,
+				// don't call the server again.
+				syncService.setAuthToken(current);
+				return { success: true, accessToken: current };
+			}
 
-			if (!response.ok || !data.success) {
+			try {
+				// Refresh token is sent automatically via httpOnly cookie.
+				// The _refreshToken parameter is kept for interface compatibility but ignored.
+				const response = await fetch(`${this.apiUrl}/auth/refresh`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({})
+				});
+
+				const data = await response.json();
+
+				if (!response.ok || !data.success) {
+					return {
+						success: false,
+						message: data.error || 'Token refresh failed'
+					};
+				}
+
+				const result: LoginResult = {
+					success: true,
+					user: data.data.user,
+					accessToken: data.data.access_token,
+					// refresh_token is managed exclusively via httpOnly cookie (set by server)
+					encryptedMasterKey: data.data.encryptedMasterKey,
+					masterKeySalt: data.data.masterKeySalt
+				};
+
+				// Set token in sync service immediately
+				if (result.accessToken) {
+					// Save to localStorage
+					localStorage.setItem('access_token', result.accessToken);
+					// Note: refresh_token is managed exclusively via httpOnly cookie (set by server)
+					// Then set in sync service
+					syncService.setAuthToken(result.accessToken);
+					logger.debug('Auth token set in sync service immediately after refresh API call');
+				}
+
+				return result;
+			} catch (error: unknown) {
+				logger.error('Token refresh API error:', error);
 				return {
 					success: false,
-					message: data.error || 'Token refresh failed'
+					message: error instanceof Error ? error.message : 'Network error'
 				};
 			}
-
-			const result: LoginResult = {
-				success: true,
-				user: data.data.user,
-				accessToken: data.data.access_token,
-				// refresh_token is managed exclusively via httpOnly cookie (set by server)
-				encryptedMasterKey: data.data.encryptedMasterKey,
-				masterKeySalt: data.data.masterKeySalt
-			};
-
-			// Set token in sync service immediately
-			if (result.accessToken) {
-				// Save to localStorage
-				localStorage.setItem('access_token', result.accessToken);
-				// Note: refresh_token is managed exclusively via httpOnly cookie (set by server)
-				// Then set in sync service
-				syncService.setAuthToken(result.accessToken);
-				logger.debug('Auth token set in sync service immediately after refresh API call');
-			}
-
-			return result;
-		} catch (error: unknown) {
-			logger.error('Token refresh API error:', error);
-			return {
-				success: false,
-				message: error instanceof Error ? error.message : 'Network error'
-			};
-		}
+		});
 	}
 }
