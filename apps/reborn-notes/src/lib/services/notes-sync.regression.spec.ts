@@ -67,6 +67,93 @@ describe('notes-sync — regression (offline data loss)', () => {
     expect(firstPushCall).toBeLessThan(firstPullCall);
   });
 
+  it('delete/restore push ops are serialized per-entity (BUG-5 part A/B/C)', () => {
+    const src = readSource('./notes-sync.service.ts');
+
+    // The helper itself must exist.
+    expect(src).toMatch(/function\s+serializePerEntity\s*</);
+
+    // Every push* that mutates a single (type, id) must route through it,
+    // otherwise the network can reorder the wire and diverge server vs local.
+    const mustSerialize: Array<[RegExp, 'note' | 'folder' | 'tag']> = [
+      [/export function pushNote\b/, 'note'],
+      [/export function pushNoteUpdate\b/, 'note'],
+      [/export function pushNoteDelete\b/, 'note'],
+      [/export function pushNoteRestore\b/, 'note'],
+      [/export function pushFolder\b/, 'folder'],
+      [/export function pushFolderUpdate\b/, 'folder'],
+      [/export function pushFolderDelete\b/, 'folder'],
+      [/export function pushTag\b/, 'tag'],
+      [/export function pushTagUpdate\b/, 'tag'],
+      [/export function pushTagDelete\b/, 'tag']
+    ];
+    for (const [signature, type] of mustSerialize) {
+      const match = signature.exec(src);
+      expect(match, `signature not found: ${signature}`).not.toBeNull();
+      const start = match!.index;
+      // Scan only the next ~600 chars — long enough for the wrapper, short
+      // enough to avoid crossing into the next function.
+      const body = src.slice(start, start + 600);
+      expect(body, `${signature} must call serializePerEntity('${type}', …)`).toMatch(
+        new RegExp(`serializePerEntity\\(\\s*'${type}'`)
+      );
+    }
+  });
+
+  it('pushNoteDelete chains restore when is_archived flipped during push (BUG-5 A)', () => {
+    const src = readSource('./notes-sync.service.ts');
+    const body = src.slice(
+      src.indexOf('export function pushNoteDelete'),
+      src.indexOf('export function pushNoteRestore')
+    );
+    // Intent-check branch: if current.is_archived is false, chain restore.
+    expect(body).toMatch(/current\.is_archived/);
+    expect(body).toMatch(/pushNoteRestore\s*\(\s*id\s*\)/);
+    // Must keep sync_status pending when intent flipped.
+    expect(body).toMatch(/sync_status:\s*'pending'/);
+  });
+
+  it('pushNoteRestore chains delete when is_archived flipped during push (BUG-5 A)', () => {
+    const src = readSource('./notes-sync.service.ts');
+    const body = src.slice(
+      src.indexOf('export function pushNoteRestore'),
+      src.indexOf('export function pushFolder')
+    );
+    expect(body).toMatch(/current\.is_archived/);
+    expect(body).toMatch(/pushNoteDelete\s*\(\s*id\s*\)/);
+    // Old bug: sync_version clobbered to 1 after restore. Must NOT reappear.
+    expect(body).not.toMatch(/sync_version:\s*1\b/);
+  });
+
+  it('pushFolderDelete / pushTagDelete do not clobber sync_version to 1 (BUG-5)', () => {
+    const src = readSource('./notes-sync.service.ts');
+
+    const folderDelete = src.slice(
+      src.indexOf('export function pushFolderDelete'),
+      src.indexOf('export function pushTag\b') !== -1
+        ? src.indexOf('export function pushTag\b')
+        : src.indexOf('export function pushTag(')
+    );
+    expect(folderDelete).not.toMatch(/sync_version:\s*1\b/);
+
+    const tagDelete = src.slice(src.indexOf('export function pushTagDelete'));
+    expect(tagDelete).not.toMatch(/sync_version:\s*1\b/);
+  });
+
+  it('pushPendingItems partitions archived pending notes into delete retries (BUG-5)', () => {
+    const src = readSource('./notes-sync.service.ts');
+    const fn = src.slice(
+      src.indexOf('export async function pushPendingItems'),
+      src.indexOf('/** Retry a function with exponential backoff')
+    );
+    // Non-archived pending notes still POST /api/notes.
+    expect(fn).toMatch(/const\s+pendingNotes\s*=\s*allNotes\.filter/);
+    expect(fn).toMatch(/!n\.is_archived/);
+    // Archived pending notes get their own bucket and go through pushNoteDelete.
+    expect(fn).toMatch(/const\s+pendingArchivedNotes\s*=\s*allNotes\.filter/);
+    expect(fn).toMatch(/pushNoteDelete\s*\(\s*n\.id\s*\)/);
+  });
+
   it('pull helpers remove ghost items (synced locally but deleted on server)', () => {
     const src = readSource('./notes-sync.service.ts');
 
