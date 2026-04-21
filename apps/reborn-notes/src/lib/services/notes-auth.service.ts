@@ -10,6 +10,7 @@ import { authStore, CREDENTIALS_KEY, ACCESS_TOKEN_KEY } from '$lib/stores/auth.s
 import { sessionExpired } from '$lib/stores/sync-status.store';
 import { clearAllUserData, isDatabaseInitialized } from '@reborn/storage';
 import { createLogger } from '@reborn/utils';
+import type { ReAuthResult } from '@reborn/ui';
 
 const logger = createLogger('Notes-Auth');
 
@@ -103,70 +104,138 @@ export async function loginInNotes(username: string, password: string): Promise<
   }
 }
 
+/** Pull fresh data from server and refresh in-memory stores after re-auth. */
+async function refreshAfterReauth(): Promise<void> {
+  try {
+    const { pullFromServer, refreshStoresAfterPull } = await import(
+      '$lib/services/notes-sync.service'
+    );
+    const synced = await pullFromServer();
+    if (synced) await refreshStoresAfterPull();
+  } catch {
+    // Non-blocking — re-auth succeeded even if sync fails.
+    // User can trigger manual sync via SyncStatusFooter.
+  }
+}
+
 /**
- * Re-authenticate after session expiry.
- * Calls login API to obtain new tokens, saves them to localStorage,
- * but does NOT clear the master key from CryptoManager (preserves E2E access).
- * Resets sessionExpired flag and triggers a sync pull.
+ * Re-authenticate after session expiry — password step.
+ *
+ * Calls /api/auth/login to obtain new tokens. Master key in CryptoManager is
+ * preserved (E2E access kept across session-expiry events).
+ *
+ * If the account has 2FA enabled the endpoint returns `twoFactorRequired: true`
+ * without an access token — we propagate that to the caller so the UI can
+ * collect a TOTP/recovery code and call {@link verifyTotpForReauth}.
  */
-export async function reAuthenticate(password: string): Promise<boolean> {
-  const credentials = localStorage.getItem(CREDENTIALS_KEY);
-  if (!credentials) return false;
+export async function reAuthenticate(password: string): Promise<ReAuthResult> {
+  const credentialsRaw = localStorage.getItem(CREDENTIALS_KEY);
+  if (!credentialsRaw) return { kind: 'error', message: 'Missing credentials' };
 
   let username: string;
   try {
-    const parsed = JSON.parse(credentials);
+    const parsed = JSON.parse(credentialsRaw);
     username = parsed.user_profile?.username;
-    if (!username) return false;
+    if (!username) return { kind: 'error', message: 'Missing username' };
   } catch {
-    return false;
+    return { kind: 'error', message: 'Corrupted credentials' };
   }
 
+  let res: Response;
   try {
-    const res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/login`, {
+    res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
     });
-
-    const body = await res.json();
-    if (!res.ok || !body.success || !body.data?.access_token) return false;
-
-    const { data } = body;
-
-    // Update access token in localStorage (SSO-compatible)
-    localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
-    // Note: refresh_token is managed exclusively via httpOnly cookie (set by server)
-
-    // Update credentials (keep existing master key + profile)
-    try {
-      const existing = JSON.parse(credentials);
-      localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(existing));
-    } catch {
-      /* keep existing credentials */
-    }
-
-    // Clear session expired flag
-    sessionExpired.set(false);
-
-    // Pull fresh data from server and refresh in-memory stores.
-    // Without refreshStoresAfterPull(), pullFromServer() only writes to IndexedDB
-    // and the UI remains stale until a manual page reload.
-    try {
-      const { pullFromServer, refreshStoresAfterPull } = await import(
-        '$lib/services/notes-sync.service'
-      );
-      const synced = await pullFromServer();
-      if (synced) {
-        await refreshStoresAfterPull();
-      }
-    } catch {
-      // Non-blocking — re-auth succeeded even if sync fails.
-      // User can trigger manual sync via SyncStatusFooter.
-    }
-
-    return true;
-  } catch {
-    return false;
+  } catch (err) {
+    return { kind: 'error', message: err instanceof Error ? err.message : 'Network error' };
   }
+
+  if (res.status === 429) {
+    const retryAfterHeader = res.headers.get('Retry-After');
+    const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 0;
+    return { kind: 'locked', retryAfter: Number.isFinite(retryAfter) ? retryAfter : 0 };
+  }
+
+  if (res.status === 401) return { kind: 'invalid_password' };
+
+  let body: any;
+  try {
+    body = await res.json();
+  } catch {
+    return { kind: 'error', message: 'Invalid server response' };
+  }
+
+  if (!res.ok || !body?.success) {
+    return { kind: 'error', message: body?.error };
+  }
+
+  const { data } = body;
+
+  if (data?.twoFactorRequired) {
+    if (!data.userId) return { kind: 'error', message: 'Missing userId in 2FA response' };
+    return { kind: 'two_factor_required', userId: data.userId };
+  }
+
+  if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
+
+  localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+
+  // Credentials remain the same — touch to ensure they're still parseable
+  try {
+    localStorage.setItem(CREDENTIALS_KEY, credentialsRaw);
+  } catch {
+    /* keep existing */
+  }
+
+  sessionExpired.set(false);
+  await refreshAfterReauth();
+  return { kind: 'ok' };
+}
+
+/**
+ * Re-authenticate after session expiry — TOTP step (invoked from ReAuthModal
+ * after {@link reAuthenticate} returned `two_factor_required`).
+ */
+export async function verifyTotpForReauth(userId: string, code: string): Promise<ReAuthResult> {
+  let res: Response;
+  try {
+    res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, code })
+    });
+  } catch (err) {
+    return { kind: 'error', message: err instanceof Error ? err.message : 'Network error' };
+  }
+
+  if (res.status === 429) {
+    const retryAfterHeader = res.headers.get('Retry-After');
+    const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 0;
+    return { kind: 'locked', retryAfter: Number.isFinite(retryAfter) ? retryAfter : 0 };
+  }
+
+  let body: any;
+  try {
+    body = await res.json();
+  } catch {
+    return { kind: 'error', message: 'Invalid server response' };
+  }
+
+  if (!res.ok || !body?.success) {
+    // The server returns 400 for invalid codes — treat as invalid_totp so the
+    // UI can show a code-specific error instead of the generic password one.
+    if (res.status === 400) return { kind: 'invalid_totp' };
+    return { kind: 'error', message: body?.error };
+  }
+
+  const { data } = body;
+  if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
+
+  localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+
+  sessionExpired.set(false);
+  await refreshAfterReauth();
+  return { kind: 'ok' };
 }

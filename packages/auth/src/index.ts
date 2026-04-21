@@ -35,6 +35,9 @@ export type {
 export { solvePowChallenge } from './utils/pow-solver';
 export type { PowChallengeData } from './utils/pow-solver';
 
+// Cross-tab/cross-app refresh-token coordination
+export { withRefreshLock } from './utils/refresh-lock';
+
 // Export guards
 export {
   createAuthGuard,

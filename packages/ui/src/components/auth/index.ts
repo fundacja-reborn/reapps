@@ -11,3 +11,4 @@ export { default as UnlockE2E } from './UnlockE2E.svelte';
 export { default as UnlockPage } from './UnlockPage.svelte';
 export { default as SessionExpiredBanner } from './SessionExpiredBanner.svelte';
 export { default as ReAuthModal } from './ReAuthModal.svelte';
+export type { ReAuthResult } from './reauth-types';

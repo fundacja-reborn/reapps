@@ -84,7 +84,19 @@
       "submitting": "Logowanie...",
       "error_auth_failed": "Uwierzytelnianie nie powiodło się. Sprawdź swoje hasło.",
       "error_unknown": "Uwierzytelnianie nie powiodło się",
-      "empty_no_data": "Brak danych — sesja wygasła. Zaloguj się ponownie, aby zsynchronizować dane."
+      "error_locked": "Konto tymczasowo zablokowane. Zbyt wiele nieudanych prób. Spróbuj ponownie za {seconds} s.",
+      "empty_no_data": "Brak danych — sesja wygasła. Zaloguj się ponownie, aby zsynchronizować dane.",
+      "totp_title": "Weryfikacja dwuetapowa",
+      "totp_description": "Wprowadź kod z aplikacji uwierzytelniającej, aby dokończyć ponowne logowanie.",
+      "totp_label": "Kod 2FA",
+      "totp_placeholder": "000000",
+      "totp_submit_button": "Zweryfikuj",
+      "totp_verifying": "Weryfikacja...",
+      "totp_error_invalid": "Nieprawidłowy kod. Spróbuj ponownie.",
+      "use_recovery": "Użyj kodu zapasowego",
+      "use_app": "Użyj kodu z aplikacji",
+      "recovery_label": "Kod zapasowy",
+      "recovery_placeholder": "XXXXX-XXXXX"
     },
     "2fa": {
       "recovery_code_label": "Kod zapasowy",

@@ -84,7 +84,19 @@
       "submitting": "Anmeldung...",
       "error_auth_failed": "Authentifizierung fehlgeschlagen. Bitte überprüfen Sie Ihr Passwort.",
       "error_unknown": "Authentifizierung fehlgeschlagen",
-      "empty_no_data": "Keine Daten verfügbar — Sitzung abgelaufen. Melden Sie sich erneut an, um Ihre Daten zu synchronisieren."
+      "error_locked": "Konto vorübergehend gesperrt. Zu viele fehlgeschlagene Versuche. Erneut versuchen in {seconds}s.",
+      "empty_no_data": "Keine Daten verfügbar — Sitzung abgelaufen. Melden Sie sich erneut an, um Ihre Daten zu synchronisieren.",
+      "totp_title": "Zwei-Faktor-Verifizierung",
+      "totp_description": "Geben Sie den Code aus Ihrer Authenticator-App ein, um die erneute Anmeldung abzuschließen.",
+      "totp_label": "2FA-Code",
+      "totp_placeholder": "000000",
+      "totp_submit_button": "Verifizieren",
+      "totp_verifying": "Verifizierung...",
+      "totp_error_invalid": "Ungültiger Code. Bitte versuchen Sie es erneut.",
+      "use_recovery": "Wiederherstellungscode verwenden",
+      "use_app": "Authenticator-App verwenden",
+      "recovery_label": "Wiederherstellungscode",
+      "recovery_placeholder": "XXXXX-XXXXX"
     },
     "2fa": {
       "recovery_code_label": "Wiederherstellungscode",

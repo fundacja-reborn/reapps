@@ -84,7 +84,19 @@
       "submitting": "Connexion...",
       "error_auth_failed": "L'authentification a échoué. Veuillez vérifier votre mot de passe.",
       "error_unknown": "L'authentification a échoué",
-      "empty_no_data": "Aucune donnée disponible — session expirée. Reconnectez-vous pour synchroniser vos données."
+      "error_locked": "Compte temporairement verrouillé. Trop de tentatives échouées. Réessayez dans {seconds}s.",
+      "empty_no_data": "Aucune donnée disponible — session expirée. Reconnectez-vous pour synchroniser vos données.",
+      "totp_title": "Vérification à deux facteurs",
+      "totp_description": "Entrez le code de votre application d'authentification pour terminer la reconnexion.",
+      "totp_label": "Code 2FA",
+      "totp_placeholder": "000000",
+      "totp_submit_button": "Vérifier",
+      "totp_verifying": "Vérification...",
+      "totp_error_invalid": "Code invalide. Veuillez réessayer.",
+      "use_recovery": "Utiliser un code de récupération",
+      "use_app": "Utiliser l'application d'authentification",
+      "recovery_label": "Code de récupération",
+      "recovery_placeholder": "XXXXX-XXXXX"
     },
     "2fa": {
       "recovery_code_label": "Code de récupération",

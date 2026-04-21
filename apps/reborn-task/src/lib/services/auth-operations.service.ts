@@ -12,6 +12,7 @@ import { AuthStorageAdapter } from '$lib/auth/adapters/authStorage';
 import { createLogger } from '@reborn/utils';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@reborn/i18n';
 import type { CryptoManager } from '@reborn/crypto';
+import type { ReAuthResult } from '@reborn/ui';
 import { syncService } from './sync.service';
 import { taskTitleIndex } from './task-title-index.svelte';
 import { taskListStore } from '$lib/stores/decrypted-lists.store';
@@ -449,13 +450,15 @@ export class AuthOperationsService {
 				if (navigator.onLine) {
 					const sessionValid = await this.checkSession();
 					if (!sessionValid) {
-						// Session expired — re-authenticate with the same password
+						// Session expired — re-authenticate with the same password.
+						// If 2FA is required or re-auth fails, leave the banner flow to
+						// prompt the user; unlock itself already succeeded.
 						logger.info('Session expired after unlock, attempting auto re-authentication');
-						const reAuthOk = await this.reAuthenticate(password);
-						if (reAuthOk) {
+						const reAuthResult = await this.reAuthenticate(password);
+						if (reAuthResult.kind === 'ok') {
 							logger.info('Auto re-authentication successful after unlock');
 						} else {
-							logger.warn('Auto re-authentication failed after unlock');
+							logger.warn(`Auto re-authentication did not complete: ${reAuthResult.kind}`);
 						}
 					}
 
@@ -783,87 +786,149 @@ export class AuthOperationsService {
 		// is cleaned up by CryptoManager.clearMasterKey() during the logout flow.
 	}
 
+	/** Pull fresh data from server and refresh in-memory stores after re-auth. */
+	private async refreshAfterReauth(accessToken: string): Promise<void> {
+		localStorage.setItem('access_token', accessToken);
+		syncService.setAuthToken(accessToken);
+		this.clearSessionExpired();
+		this.startBackgroundTokenRefresh();
+
+		try {
+			await syncService.initialSync();
+
+			const { refreshDecryptedLists } = await import('$lib/stores/decrypted-lists.store');
+			const { refreshDecryptedSubtasks } = await import(
+				'$lib/stores/decrypted-subtasks.store'
+			);
+
+			await taskListStore.loadLists();
+			await Promise.all([refreshDecryptedLists(), refreshDecryptedSubtasks()]);
+			await taskTitleIndex.rebuild();
+
+			const { taskCounts } = await import('$lib/stores/task-counts.store');
+			taskCounts.refresh();
+		} catch {
+			// Non-blocking — re-auth succeeded even if sync fails.
+			// User can trigger manual sync later.
+		}
+	}
+
 	/**
-	 * Re-authenticate after session expiry.
-	 * Calls login API to obtain new tokens, saves them to localStorage,
-	 * but does NOT clear the master key from CryptoManager (preserves E2E access).
-	 * Resets sessionExpired flag and triggers a sync.
+	 * Re-authenticate after session expiry — password step.
+	 *
+	 * Calls /api/auth/login to obtain new tokens. Master key in CryptoManager
+	 * is preserved (E2E access kept across session-expiry events).
+	 *
+	 * If the account has 2FA enabled, the endpoint returns `twoFactorRequired`
+	 * without an access token — propagate that so the UI can collect a TOTP
+	 * code and call {@link verifyTotpForReauth}.
 	 */
-	async reAuthenticate(password: string): Promise<boolean> {
-		if (!browser) return false;
+	async reAuthenticate(password: string): Promise<ReAuthResult> {
+		if (!browser) return { kind: 'error', message: 'Not in browser' };
 
 		const credentials = localStorage.getItem('reborn_auth_credentials');
-		if (!credentials) return false;
+		if (!credentials) return { kind: 'error', message: 'Missing credentials' };
 
 		let username: string;
 		try {
 			const parsed = JSON.parse(credentials);
 			username = parsed.user_profile?.username;
-			if (!username) return false;
+			if (!username) return { kind: 'error', message: 'Missing username' };
 		} catch {
-			return false;
+			return { kind: 'error', message: 'Corrupted credentials' };
 		}
 
+		const { PUBLIC_BASE_PATH } = await import('$env/static/public');
+		let res: Response;
 		try {
-			const { PUBLIC_BASE_PATH } = await import('$env/static/public');
-			const res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/login`, {
+			res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/login`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ username, password })
 			});
-
-			const body = await res.json();
-			if (!res.ok || !body.success || !body.data?.access_token) return false;
-
-			const { data } = body;
-
-			// Update access token
-			localStorage.setItem('access_token', data.access_token);
-			// Note: refresh_token is managed exclusively via httpOnly cookie (set by server)
-
-			// Update credentials (keep existing master key + profile)
-			try {
-				const existing = JSON.parse(credentials);
-				localStorage.setItem('reborn_auth_credentials', JSON.stringify(existing));
-			} catch {
-				/* keep existing */
-			}
-
-			// Update sync service auth token
-			syncService.setAuthToken(data.access_token);
-
-			// Clear session expired flag
-			this.clearSessionExpired();
-
-			// Restart background token refresh
-			this.startBackgroundTokenRefresh();
-
-			// Pull fresh data from server and refresh in-memory stores.
-			// syncToServer() only pushes local ops — after session expiry we need
-			// a full pull so IndexedDB (and the UI) reflect the server state.
-			try {
-				await syncService.initialSync();
-
-				const { refreshDecryptedLists } = await import('$lib/stores/decrypted-lists.store');
-				const { refreshDecryptedSubtasks } = await import(
-					'$lib/stores/decrypted-subtasks.store'
-				);
-
-				await taskListStore.loadLists();
-				await Promise.all([refreshDecryptedLists(), refreshDecryptedSubtasks()]);
-				await taskTitleIndex.rebuild();
-
-				const { taskCounts } = await import('$lib/stores/task-counts.store');
-				taskCounts.refresh();
-			} catch {
-				// Non-blocking — re-auth succeeded even if sync fails.
-				// User can trigger manual sync later.
-			}
-
-			return true;
-		} catch {
-			return false;
+		} catch (err) {
+			return {
+				kind: 'error',
+				message: err instanceof Error ? err.message : 'Network error'
+			};
 		}
+
+		if (res.status === 429) {
+			const retryAfterHeader = res.headers.get('Retry-After');
+			const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 0;
+			return { kind: 'locked', retryAfter: Number.isFinite(retryAfter) ? retryAfter : 0 };
+		}
+
+		if (res.status === 401) return { kind: 'invalid_password' };
+
+		let body: any;
+		try {
+			body = await res.json();
+		} catch {
+			return { kind: 'error', message: 'Invalid server response' };
+		}
+
+		if (!res.ok || !body?.success) return { kind: 'error', message: body?.error };
+
+		const { data } = body;
+
+		if (data?.twoFactorRequired) {
+			if (!data.userId)
+				return { kind: 'error', message: 'Missing userId in 2FA response' };
+			return { kind: 'two_factor_required', userId: data.userId };
+		}
+
+		if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
+
+		await this.refreshAfterReauth(data.access_token);
+		return { kind: 'ok' };
+	}
+
+	/**
+	 * Re-authenticate after session expiry — TOTP step (invoked from
+	 * ReAuthModal after {@link reAuthenticate} returned `two_factor_required`).
+	 */
+	async verifyTotpForReauth(userId: string, code: string): Promise<ReAuthResult> {
+		if (!browser) return { kind: 'error', message: 'Not in browser' };
+
+		const { PUBLIC_BASE_PATH } = await import('$env/static/public');
+		let res: Response;
+		try {
+			res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa/verify`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ userId, code })
+			});
+		} catch (err) {
+			return {
+				kind: 'error',
+				message: err instanceof Error ? err.message : 'Network error'
+			};
+		}
+
+		if (res.status === 429) {
+			const retryAfterHeader = res.headers.get('Retry-After');
+			const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 0;
+			return { kind: 'locked', retryAfter: Number.isFinite(retryAfter) ? retryAfter : 0 };
+		}
+
+		let body: any;
+		try {
+			body = await res.json();
+		} catch {
+			return { kind: 'error', message: 'Invalid server response' };
+		}
+
+		if (!res.ok || !body?.success) {
+			if (res.status === 400) return { kind: 'invalid_totp' };
+			return { kind: 'error', message: body?.error };
+		}
+
+		const { data } = body;
+		if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
+
+		await this.refreshAfterReauth(data.access_token);
+		return { kind: 'ok' };
 	}
 
 	/**

@@ -19,7 +19,7 @@
   import { noteIndex } from '$lib/services/note-index.svelte';
   import { refreshPendingCount, isOnline, sessionExpired } from '$lib/stores/sync-status.store';
   import { initI18n, setLocale, locale } from '$lib/stores/i18n.store';
-  import { reAuthenticate } from '$lib/services/notes-auth.service';
+  import { reAuthenticate, verifyTotpForReauth } from '$lib/services/notes-auth.service';
   import { SessionExpiredBanner } from '@reborn/ui';
   import LoadingScreen from '$lib/components/LoadingScreen.svelte';
   import { createLogger } from '@reborn/utils';
@@ -232,6 +232,7 @@
       visible={$sessionExpired && navigator.onLine}
       username={$authStore.username ?? ''}
       onReAuth={reAuthenticate}
+      onVerifyTotp={verifyTotpForReauth}
     />
     {@render children()}
     <Toaster />

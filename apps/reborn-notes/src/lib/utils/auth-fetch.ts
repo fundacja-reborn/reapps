@@ -1,5 +1,6 @@
 import { base } from '$app/paths';
 import { sessionExpired } from '$lib/stores/sync-status.store';
+import { withRefreshLock } from '@reborn/auth';
 
 /**
  * Fetch wrapper with automatic token refresh for authenticated API calls.
@@ -7,17 +8,26 @@ import { sessionExpired } from '$lib/stores/sync-status.store';
  * If the initial request returns 401, attempts to refresh the access token
  * using the stored refresh_token, then retries the original request once.
  *
- * Uses a singleton refresh promise to prevent race conditions when multiple
- * concurrent requests all receive 401 at the same time.
+ * `withRefreshLock` serializes the refresh across every tab/app on this
+ * origin so that reborn-task + reborn-notes cannot both hit /api/auth/refresh
+ * with the same refresh-token cookie (which would trip the server-side token
+ * reuse detector and invalidate the entire token family). An in-process
+ * singleton prevents redundant fetches from concurrent 401s inside one tab.
  *
  * Usage: drop-in replacement for `fetch()` in authenticated pages.
  */
 
-// Singleton: only one refresh request can be in-flight at a time.
+// In-tab singleton: only one refresh fetch can be in-flight inside this tab.
 // All concurrent 401 handlers wait on the same promise.
 let refreshPromise: Promise<string | null> | null = null;
 
-async function doRefresh(): Promise<string | null> {
+async function doRefresh(tokenBeforeLock: string | null): Promise<string | null> {
+  // Inside the cross-tab lock another tab may have already refreshed for us.
+  // If the localStorage access token changed while we were queued, skip the
+  // redundant fetch and use the fresh one.
+  const current = localStorage.getItem('access_token');
+  if (current && current !== tokenBeforeLock) return current;
+
   try {
     // Refresh token is sent automatically via httpOnly cookie — no need to read from localStorage
     const refreshRes = await fetch(`${base}/api/auth/refresh`, {
@@ -42,7 +52,8 @@ async function doRefresh(): Promise<string | null> {
 
 function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
-    refreshPromise = doRefresh().finally(() => {
+    const tokenBeforeLock = localStorage.getItem('access_token');
+    refreshPromise = withRefreshLock(() => doRefresh(tokenBeforeLock)).finally(() => {
       refreshPromise = null;
     });
   }
