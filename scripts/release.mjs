@@ -28,11 +28,14 @@ const argv = process.argv.slice(2);
 const dryRun = argv.includes('--dry-run');
 const firstRelease = argv.includes('--first-release');
 const verbose = argv.includes('--verbose');
+const specifierArg = argv.find((a) => a.startsWith('--specifier='));
+const specifier = specifierArg ? specifierArg.split('=')[1] : undefined;
 
 const { workspaceVersion, projectsVersionData } = await releaseVersion({
 	dryRun,
 	firstRelease,
 	verbose,
+	...(specifier ? { specifier } : {}),
 	gitCommit: false,
 	gitTag: false,
 	stageChanges: true
