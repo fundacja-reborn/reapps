@@ -62,14 +62,16 @@ export const offlineOperationsStore = {
 	},
 
 	/**
-	 * Get pending operations synchronously from current store value
+	 * Get pending operations directly from IndexedDB.
+	 *
+	 * Reads from the persistent store (not the reactive `items` writable) so that
+	 * sync works on cold start even when no code path has populated `items` yet —
+	 * e.g. PWA restart with an existing session, where `$effect`-on-hasE2E triggers
+	 * `initialSync` before any operation has run `refreshItems` as a side-effect.
 	 */
-	getPendingOperations(): StorageOfflineOperation[] {
-		let operations: StorageOfflineOperation[] = [];
-		storageOfflineOps.items.subscribe(value => {
-			operations = value.filter(op => op.status === 'pending' || !op.status);
-		})();
-		return operations;
+	async getPendingOperations(): Promise<StorageOfflineOperation[]> {
+		const all = await storageOfflineOps.getAll();
+		return all.filter(op => op.status === 'pending' || !op.status);
 	},
 
 	/**

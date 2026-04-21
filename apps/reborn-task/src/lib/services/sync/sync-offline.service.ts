@@ -20,7 +20,7 @@ export class SyncOfflineService extends SyncBaseService {
 	/**
 	 * Get pending offline operations
 	 */
-	getPendingOperations(): StorageOfflineOperation[] {
+	async getPendingOperations(): Promise<StorageOfflineOperation[]> {
 		return offlineOperationsStore.getPendingOperations();
 	}
 
@@ -45,8 +45,8 @@ export class SyncOfflineService extends SyncBaseService {
 	/**
 	 * Get IDs of entities that have pending or failed operations in the queue
 	 */
-	getPendingEntityIds(entityType?: string): Set<string> {
-		const ops = this.getPendingOperations();
+	async getPendingEntityIds(entityType?: string): Promise<Set<string>> {
+		const ops = await this.getPendingOperations();
 		const ids = new Set<string>();
 		for (const op of ops) {
 			if (!entityType || op.entityType === entityType) {
