@@ -8,6 +8,7 @@ const logger = createLogger('RootLayoutLoad');
 
 // Global flag to prevent multiple initializations
 let isInitialized = false;
+let authBootstrapPromise: Promise<void> | null = null;
 
 // Disable SSR for offline-first app
 export const ssr = false;
@@ -41,23 +42,21 @@ export const load: LayoutLoad = async ({ data }) => {
 	// because SvelteKit waits for load() to complete before mounting the
 	// component tree (so the 2s timeout in onMount never fires).
 
-	// Initialize auth on client side WITHOUT BLOCKING
+	// Initialize auth on client side and wait for bootstrap handoff.
+	// We intentionally await the shared bootstrap promise so downstream routes
+	// don't race against a still-uninitialized session store.
 	if (browser) {
-		logger.debug('Browser environment detected, will initialize auth');
-		// Start auth initialization in background
-		// DO NOT await - let the layout load immediately
-		authOperationsService
-			.initializeAuth()
-			.then(() => {
-				logger.debug('Auth initialized in background');
-			})
-			.catch((error: unknown) => {
-				logger.error('Failed to initialize auth in background:', error);
-				// Don't throw - let app work even if auth fails
+		logger.debug('Browser environment detected, initializing auth bootstrap');
+
+		if (!authBootstrapPromise) {
+			authBootstrapPromise = authOperationsService.initializeAuth().catch((error: unknown) => {
+				logger.error('Failed to initialize auth bootstrap:', error);
+				// Reset the promise so the app can retry on next navigation.
+				authBootstrapPromise = null;
 			});
-		// Give a tiny bit of time for session to be marked as initialized
-		// This is a compromise between instant loading and avoiding flicker
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		}
+
+		await authBootstrapPromise;
 
 		// Mark as initialized to prevent re-runs
 		isInitialized = true;
