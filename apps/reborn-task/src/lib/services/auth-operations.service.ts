@@ -489,6 +489,13 @@ export class AuthOperationsService {
 	 * Check and restore E2E encryption status.
 	 * Uses CryptoManager.waitForRestore() which restores the master key from
 	 * IndexedDB (survives browser/PWA restart) or sessionStorage (fallback).
+	 *
+	 * We only flip `hasE2E` here — do NOT trigger onStorageInit('restore').
+	 * +layout.svelte's onMount already awaits cryptoManager.waitForRestore()
+	 * and refreshes all stores; the $effect watching hasE2E runs initialSync
+	 * with a `hasTriggeredInitialSync` dedup flag. Calling onStorageInit here
+	 * would race those two paths and, on offline cold starts, caused decrypt
+	 * `OperationError` failures and a bogus redirect to /auth/login.
 	 */
 	private async checkE2EStatus() {
 		try {
@@ -499,12 +506,6 @@ export class AuthOperationsService {
 
 			if (cryptoManager.isInitialized()) {
 				logger.info('E2E initialized (master key restored from IndexedDB)');
-
-				// Trigger onStorageInit to ensure stores are initialized.
-				// 'restore' context — same user, key loaded from IndexedDB. Do NOT clear data.
-				await this.onStorageInit(cryptoManager, 'restore');
-
-				// Update session to reflect E2E status
 				const sessionManager = this.getSessionManager();
 				sessionManager.setSession({ hasE2E: true });
 			} else {
