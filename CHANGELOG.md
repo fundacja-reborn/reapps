@@ -1,3 +1,17 @@
+## 0.1.2 (2026-04-21)
+
+### 🩹 Fixes
+
+- **auth:** recover from master key / IDB ciphertext mismatch ([76d2281](https://github.com/fundacja-reborn/reapps/commit/76d2281))
+- **release:** sync private workspace manifests in nx release ([dd424be](https://github.com/fundacja-reborn/reapps/commit/dd424be))
+- **release:** add --specifier flag and release:patch/minor scripts ([a7ba4b8](https://github.com/fundacja-reborn/reapps/commit/a7ba4b8))
+- **release:** detect conventional-commits bump across whole workspace ([3280f6e](https://github.com/fundacja-reborn/reapps/commit/3280f6e))
+- **release:** decode spaces in repo path when resolving workspace root ([a2a7751](https://github.com/fundacja-reborn/reapps/commit/a2a7751))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.1.1 (2026-04-21)
 
 ### 🩹 Fixes
