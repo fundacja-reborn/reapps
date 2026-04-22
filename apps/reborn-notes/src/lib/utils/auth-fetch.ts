@@ -1,6 +1,9 @@
 import { base } from '$app/paths';
 import { sessionExpired } from '$lib/stores/sync-status.store';
 import { withRefreshLock } from '@reborn/auth';
+import { createLogger } from '@reborn/utils';
+
+const logger = createLogger('AuthFetch');
 
 /**
  * Fetch wrapper with automatic token refresh for authenticated API calls.
@@ -42,16 +45,14 @@ async function doRefresh(tokenBeforeLock: string | null): Promise<string | null>
       // Remove once the session-expiry root cause is identified.
       try {
         const errBody = await refreshRes.clone().json();
-        // eslint-disable-next-line no-console
-        console.warn('[auth-fetch] /api/auth/refresh failed', {
+        logger.warn('/api/auth/refresh failed', {
           status: refreshRes.status,
           body: errBody,
           hasDocumentCookie: typeof document !== 'undefined' && document.cookie.length > 0,
           time: new Date().toISOString()
         });
       } catch (parseErr) {
-        // eslint-disable-next-line no-console
-        console.warn('[auth-fetch] /api/auth/refresh failed (non-JSON body)', {
+        logger.warn('/api/auth/refresh failed (non-JSON body)', {
           status: refreshRes.status,
           time: new Date().toISOString(),
           parseErr
