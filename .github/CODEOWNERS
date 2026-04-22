@@ -1,0 +1,36 @@
+# CODEOWNERS — Reborn Apps
+#
+# Each line is a file pattern followed by one or more owners.
+# Owners are automatically requested for review when someone opens a PR
+# that modifies matching files.
+#
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-security/customizing-your-repository/about-code-owners
+
+# Default owner — applies to everything unless overridden below
+*                                       @rerefu
+
+# --- Security-critical paths ---
+# Zero Knowledge E2E encryption, auth, key management
+/packages/crypto/                       @rerefu
+/packages/auth/                         @rerefu
+/packages/database/prisma/              @rerefu
+/packages/storage/src/sync/             @rerefu
+
+# Server-side auth & API routes
+/apps/reborn-task/src/routes/api/       @rerefu
+/apps/reborn-task/src/hooks.server.ts   @rerefu
+/apps/reborn-notes/src/routes/api/      @rerefu
+/apps/reborn-notes/src/hooks.server.ts  @rerefu
+
+# --- Infrastructure & release ---
+/.github/                               @rerefu
+/docker-compose*.yml                    @rerefu
+/Dockerfile*                            @rerefu
+/nx.json                                @rerefu
+/pnpm-workspace.yaml                    @rerefu
+/package.json                           @rerefu
+
+# --- Security policy ---
+/SECURITY.md                            @rerefu
+/docs/security/                         @rerefu
+/docs/architecture/                     @rerefu
