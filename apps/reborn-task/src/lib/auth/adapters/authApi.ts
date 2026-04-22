@@ -219,6 +219,15 @@ export class AuthApiAdapter implements IAuthApiClient {
 				const data = await response.json();
 
 				if (!response.ok || !data.success) {
+					// DIAGNOSTIC (temporary): surface server-side refresh failure reason so we can
+					// distinguish "Token reuse detected" vs "Invalid or expired" vs "No refresh token".
+					// Remove once the session-expiry root cause is identified.
+					logger.warn('/api/auth/refresh failed', {
+						status: response.status,
+						body: data,
+						hasDocumentCookie: typeof document !== 'undefined' && document.cookie.length > 0,
+						time: new Date().toISOString()
+					});
 					return {
 						success: false,
 						message: data.error || 'Token refresh failed'

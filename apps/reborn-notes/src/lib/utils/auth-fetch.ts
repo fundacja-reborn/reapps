@@ -1,6 +1,9 @@
 import { base } from '$app/paths';
 import { sessionExpired } from '$lib/stores/sync-status.store';
 import { withRefreshLock } from '@reborn/auth';
+import { createLogger } from '@reborn/utils';
+
+const logger = createLogger('AuthFetch');
 
 /**
  * Fetch wrapper with automatic token refresh for authenticated API calls.
@@ -36,7 +39,27 @@ async function doRefresh(tokenBeforeLock: string | null): Promise<string | null>
       body: JSON.stringify({})
     });
 
-    if (!refreshRes.ok) return null;
+    if (!refreshRes.ok) {
+      // DIAGNOSTIC (temporary): surface server-side refresh failure reason so we can
+      // distinguish "Token reuse detected" vs "Invalid or expired" vs "No refresh token".
+      // Remove once the session-expiry root cause is identified.
+      try {
+        const errBody = await refreshRes.clone().json();
+        logger.warn('/api/auth/refresh failed', {
+          status: refreshRes.status,
+          body: errBody,
+          hasDocumentCookie: typeof document !== 'undefined' && document.cookie.length > 0,
+          time: new Date().toISOString()
+        });
+      } catch (parseErr) {
+        logger.warn('/api/auth/refresh failed (non-JSON body)', {
+          status: refreshRes.status,
+          time: new Date().toISOString(),
+          parseErr
+        });
+      }
+      return null;
+    }
 
     const refreshData = await refreshRes.json();
     if (!refreshData.success || !refreshData.data?.access_token) return null;
