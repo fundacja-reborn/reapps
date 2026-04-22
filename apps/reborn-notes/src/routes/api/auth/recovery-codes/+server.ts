@@ -10,12 +10,19 @@ const logger = createLogger('Notes-RecoveryCodes');
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_COUNT = 8;
 const CODE_LENGTH = 10;
+// Rejection sampling threshold: largest multiple of alphabet length that fits in a byte.
+// Bytes at or above this bound are discarded to keep the distribution uniform.
+const UNBIASED_BYTE_CEILING = Math.floor(256 / CODE_ALPHABET.length) * CODE_ALPHABET.length;
 
 function generateCode(): string {
-  const bytes = randomBytes(CODE_LENGTH);
   let code = '';
-  for (let i = 0; i < CODE_LENGTH; i++) {
-    code += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  while (code.length < CODE_LENGTH) {
+    const bytes = randomBytes(CODE_LENGTH);
+    for (let i = 0; i < bytes.length && code.length < CODE_LENGTH; i++) {
+      if (bytes[i] < UNBIASED_BYTE_CEILING) {
+        code += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+      }
+    }
   }
   return `${code.slice(0, 5)}-${code.slice(5)}`;
 }

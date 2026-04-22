@@ -53,7 +53,10 @@ export function getPasswordRequirementsMessage(): string {
  * Validates email format
  */
 export function validateEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // RFC 5321 caps total length at 254; bound first to avoid ReDoS on pathological input.
+  if (email.length > 254) return false;
+  // TLD segment excludes '.' so the regex has a single deterministic split point (last dot).
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@.]+$/;
   return emailRegex.test(email);
 }
 

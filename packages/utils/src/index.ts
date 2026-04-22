@@ -10,9 +10,6 @@ export * from './validation';
 // Constants
 export * from './constants';
 
-// Class name utilities
-export * from './cn';
-
 // User-Agent utilities
 export * from './user-agent';
 
@@ -35,4 +32,3 @@ export {
   sanitizeInput,
   PASSWORD_REQUIREMENTS
 } from './validation';
-export { cn, twMerge, tw } from './cn';
