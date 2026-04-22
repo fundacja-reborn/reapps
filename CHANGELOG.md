@@ -1,3 +1,17 @@
+## 0.1.3 (2026-04-22)
+
+### 🩹 Fixes
+
+- **auth:** handle 2FA in re-auth flow and serialize refresh across tabs ([aca2cf3](https://github.com/fundacja-reborn/reapps/commit/aca2cf3))
+- **notes:** mark sync_status pending on every local mutation ([92eed2a](https://github.com/fundacja-reborn/reapps/commit/92eed2a))
+- **notes:** keep sync_status pending when entity mutated during push ([1cb907f](https://github.com/fundacja-reborn/reapps/commit/1cb907f))
+- **notes:** serialize per-entity push ops and intent-check delete/restore ([2aa7bac](https://github.com/fundacja-reborn/reapps/commit/2aa7bac))
+- **notes:** propagate soft-delete and restore across devices ([5e01b7c](https://github.com/fundacja-reborn/reapps/commit/5e01b7c))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.1.2 (2026-04-21)
 
 ### 🩹 Fixes
