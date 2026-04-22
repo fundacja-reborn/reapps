@@ -77,7 +77,7 @@
     </div>`;
   };
 
-  marked.use({ renderer });
+  marked.use({ renderer, gfm: true, breaks: true });
 
   const html = $derived.by(() => {
     if (!content) return '';
