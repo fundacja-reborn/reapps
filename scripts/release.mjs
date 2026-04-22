@@ -59,6 +59,26 @@ function git(args) {
 	return execFileSync('git', args, { cwd: ROOT, encoding: 'utf-8' }).trim();
 }
 
+// nx.json configures `createRelease: "github"`, which requires nx to call the
+// GitHub REST API. nx reads the token from GITHUB_TOKEN/GH_TOKEN only — it does
+// not fall back to `gh auth`. When neither env var is set (typical local dev),
+// the API call 401s and nx drops into an interactive prompt that hangs
+// non-TTY runs. Fix: source the token from `gh auth token` when available.
+function ensureGithubToken() {
+	if (process.env.GITHUB_TOKEN || process.env.GH_TOKEN) return;
+	try {
+		const token = execFileSync('gh', ['auth', 'token'], { encoding: 'utf-8' }).trim();
+		if (token) {
+			process.env.GITHUB_TOKEN = token;
+			console.log('[release] Sourced GITHUB_TOKEN from `gh auth token`.');
+		}
+	} catch {
+		console.warn(
+			'[release] No GITHUB_TOKEN/GH_TOKEN set and `gh auth token` unavailable — GitHub Release creation may fail.'
+		);
+	}
+}
+
 function getLastReleaseTag() {
 	try {
 		const tags = git(['tag', '--list', 'v*', '--sort=-v:refname'])
@@ -158,6 +178,8 @@ for (const relPath of PRIVATE_MANIFESTS) {
 if (!dryRun && syncedFiles.length > 0) {
 	execFileSync('git', ['add', '--', ...syncedFiles], { stdio: 'inherit', cwd: ROOT });
 }
+
+if (!dryRun) ensureGithubToken();
 
 await releaseChangelog({
 	dryRun,
