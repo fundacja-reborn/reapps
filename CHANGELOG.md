@@ -1,3 +1,14 @@
+## 0.1.4 (2026-04-22)
+
+### 🩹 Fixes
+
+- **notes:** render single newlines as line breaks in markdown preview ([a9efa3d](https://github.com/fundacja-reborn/reapps/commit/a9efa3d))
+- **security:** address CodeQL findings ([#26](https://github.com/fundacja-reborn/reapps/pull/26))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.1.3 (2026-04-22)
 
 ### 🩹 Fixes
