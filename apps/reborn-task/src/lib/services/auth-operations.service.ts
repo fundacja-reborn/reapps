@@ -618,84 +618,60 @@ export class AuthOperationsService {
 				logger.debug('Auth token restored to sync service from localStorage');
 			}
 
-			// Mark session as initialized but keep isLoading=true until we've
-			// finished reading persisted credentials. Flipping isLoading=false here
-			// would let `+page.ts` waitForSessionReady() return on {isAuthenticated:false}
-			// and bounce an offline cold start to /auth/login before setAuthenticated()
+			// Mark session as initialized but keep isLoading=true until persisted
+			// credentials have been read. Flipping isLoading=false here would let
+			// `+page.ts` waitForSessionReady() return on {isAuthenticated:false}
+			// and bounce a cold start to /auth/login before setAuthenticated()
 			// has had a chance to run.
 			sessionManager.setSession({ isInitialized: true, isLoading: true });
 			logger.debug('Session marked as initialized (isLoading=true until auth resolves)');
 
-			// Check if we're offline
-			if (!navigator.onLine) {
-				logger.info('App is offline');
-
-				// Prefer stored credentials as the source of truth for offline auth.
-				// `access_token` is short-lived and may be missing/expired after a cold
-				// PWA start, while `reborn_auth_credentials` persists the user profile
-				// and wrapped master key — mirrors the pattern used by reborn-notes.
-				const storage = new AuthStorageAdapter();
-				const credentials = await storage.getCredentials();
-				if (credentials?.user_profile) {
-					logger.info('Offline credentials available, marking session authenticated');
-					// Populate both isAuthenticated AND user so layout guards don't
-					// redirect to /auth/login while we still have a valid profile.
-					sessionManager.setAuthenticated(credentials.user_profile, false);
-				} else if (hasTokens) {
-					// Legacy fallback — token present but no credentials record.
-					sessionManager.setSession({ isAuthenticated: true });
-				}
-
-				// Always check E2E status — master key may be in IndexedDB.
-				// This will flip hasE2E=true once cryptoManager.waitForRestore() resolves.
-				await this.checkE2EStatus();
-
-				sessionManager.setLoading(false);
-
-				return;
+			// Hydrate isAuthenticated from persisted credentials unconditionally —
+			// mirrors reborn-notes' authStore.initialize(). We intentionally do NOT
+			// branch on navigator.onLine: an active VPN tunnel (e.g. Proton) causes
+			// navigator.onLine to report true even in airplane mode, which used to
+			// skip this path and wait on a network refresh that could never succeed,
+			// leaving the user stranded on /auth/login.
+			const storage = new AuthStorageAdapter();
+			const credentials = await storage.getCredentials();
+			if (credentials?.user_profile) {
+				logger.info('Restoring session from persisted credentials');
+				sessionManager.setAuthenticated(credentials.user_profile, false);
+			} else if (hasTokens) {
+				// Legacy fallback — access token without a credentials record.
+				sessionManager.setSession({ isAuthenticated: true });
 			}
 
-			// Online - try to refresh session in background if tokens exist
-			if (hasTokens) {
-				logger.debug('Found tokens, attempting to restore session...');
+			// Restore E2E status from IndexedDB (master key may survive PWA restart).
+			await this.checkE2EStatus();
 
-				// Check session without blocking - use Promise.resolve to ensure async execution
-				// but don't wait for it to complete
+			// Release isLoading before any network work so the UI can render.
+			sessionManager.setLoading(false);
+
+			// Background refresh — non-critical. A definitive 401/invalid_grant
+			// sets sessionExpired=true (banner + re-auth, master key preserved;
+			// see docs/development/guidelines/31-session-expiry-handling.md).
+			// Transient network errors are left alone — the user may actually be
+			// offline despite navigator.onLine=true (e.g. VPN tunnel without
+			// upstream connectivity).
+			if (navigator.onLine && hasTokens) {
+				logger.debug('Online with tokens — refreshing session in background');
 				Promise.resolve().then(async () => {
 					try {
 						const success = await this.checkSession();
 						if (success) {
-							logger.debug('Session restored successfully');
-							// Check E2E status after successful session restore
-							await this.checkE2EStatus();
-							// Start background token refresh after successful restore
 							this.startBackgroundTokenRefresh();
-						} else {
-							logger.debug('Session restore failed');
-							// Even if session restore failed, check E2E status — master key may be in IndexedDB
-							await this.checkE2EStatus();
 						}
 					} catch (error: unknown) {
-						logger.error('Error restoring session:', error);
-						// Even on error, check E2E status — master key may be in IndexedDB
-						await this.checkE2EStatus();
-					} finally {
-						sessionManager.setLoading(false);
+						logger.warn('Background session refresh failed (non-fatal):', error);
 					}
 				});
-			} else {
-				// No tokens - check for offline credentials
+			} else if (!hasTokens) {
 				const authService = getAuthService();
 				const hasOffline = await authService.hasOfflineCredentials();
-
 				if (hasOffline) {
 					logger.info('Offline credentials available');
 				}
-
-				// Release the isLoading=true we set at the top of this try{} —
-				// without this flip, waitForSessionReady() would never return and
-				// +page.ts would stall until its 1.5s polling timeout.
-				sessionManager.setLoading(false);
 			}
 		} catch (error: unknown) {
 			logger.error('Auth initialization failed:', error);
