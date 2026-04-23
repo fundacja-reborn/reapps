@@ -17,6 +17,8 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
   <img src="https://img.shields.io/badge/encryption-E2E%20Zero%20Knowledge-green.svg" alt="E2E Encryption">
   <img src="https://img.shields.io/badge/hosting-100%25%20EU-blue.svg" alt="EU Hosting">
+  <a href="https://stats.uptimerobot.com/JDB9dZbrRv"><img src="https://img.shields.io/uptimerobot/status/m802908750-73cd6617a77cb5c5c4895145.svg?label=re%2Ftask" alt="re/task status"></a>
+  <a href="https://stats.uptimerobot.com/JDB9dZbrRv"><img src="https://img.shields.io/uptimerobot/status/m802908780-a72ba338421275c9fc937b76.svg?label=re%2Fnotes" alt="re/notes status"></a>
 </p>
 
 ---
@@ -104,6 +106,8 @@ A free public instance is available at **[reapps.eu](https://reapps.eu)**, maint
 | re/notes | [reapps.eu/notes](https://reapps.eu/notes) |
 
 No email required. Create an account with just a username and password.
+
+**Live status:** [stats.uptimerobot.com/JDB9dZbrRv](https://stats.uptimerobot.com/JDB9dZbrRv)
 
 ## Self-hosting
 
