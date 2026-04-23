@@ -4,6 +4,10 @@ import type { RequestHandler } from './$types';
 
 declare const __APP_VERSION__: string;
 
+// Lightweight reachability check. Skips the DB round-trip so the client-side
+// connectivity probe stays fast and costs nothing beyond routing the request.
+export const HEAD: RequestHandler = () => new Response(null, { status: 200 });
+
 export const GET: RequestHandler = async () => {
 	let dbStatus = 'unknown';
 

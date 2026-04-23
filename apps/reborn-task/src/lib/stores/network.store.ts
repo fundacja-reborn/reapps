@@ -1,61 +1,45 @@
-import { writable, derived } from 'svelte/store';
+import { derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { createLogger } from '@reborn/utils';
 import { syncService } from '$lib/services/sync.service';
+import {
+	connectivity,
+	connectivityStore,
+	isOnline as connectivityIsOnline,
+	checkOnline as checkConnectivityOnline
+} from './connectivity.store';
 
 const logger = createLogger('NetworkStore');
 
-// Create online/offline status store
-function createNetworkStore() {
-	const { subscribe, set } = writable(browser ? navigator.onLine : true);
-	
-	if (browser) {
-		// Set up event listeners
-		const handleOnline = () => {
-			logger.info('Network status: Online');
-			set(true);
-			
-			// Trigger sync when coming back online
-			logger.info('Triggering sync after coming online');
-			syncService.syncToServer().catch(error => {
+// Re-export the active-probe connectivity store under the legacy `isOnline`
+// name. `navigator.onLine` lies under an active VPN tunnel (e.g. Proton in
+// airplane mode) so we back this with a real HTTP probe — see
+// `connectivity.store.ts`.
+export const isOnline = connectivityIsOnline;
+
+// Trigger sync on offline → online transitions, matching the old
+// `window.addEventListener('online')` handler.
+if (browser && connectivityStore) {
+	let wasOnline = connectivityStore.getState().status === 'online';
+	connectivity.subscribe(($c) => {
+		const nowOnline = $c.status === 'online';
+		if (nowOnline && !wasOnline) {
+			logger.info('Connectivity restored — triggering sync');
+			syncService.syncToServer().catch((error) => {
 				logger.error('Failed to sync after coming online:', error);
 			});
-		};
-		
-		const handleOffline = () => {
-			logger.info('Network status: Offline');
-			set(false);
-		};
-		
-		// Add event listeners
-		window.addEventListener('online', handleOnline);
-		window.addEventListener('offline', handleOffline);
-		
-		// Clean up on unload
-		window.addEventListener('beforeunload', () => {
-			window.removeEventListener('online', handleOnline);
-			window.removeEventListener('offline', handleOffline);
-		});
-	}
-	
-	return {
-		subscribe
-	};
+		}
+		wasOnline = nowOnline;
+	});
 }
-
-// Export the store
-export const isOnline = createNetworkStore();
 
 // Derived store for network status message
-export const networkStatus = derived(
-	isOnline,
-	$isOnline => $isOnline ? 'Online' : 'Offline'
+export const networkStatus = derived(isOnline, ($isOnline) =>
+	$isOnline ? 'Online' : 'Offline'
 );
 
-// Helper to check if we're online
-export function checkOnline(): boolean {
-	return browser ? navigator.onLine : true;
-}
+// Synchronous helper, probe-backed.
+export const checkOnline = checkConnectivityOnline;
 
 /**
  * Determines if an error is network-related

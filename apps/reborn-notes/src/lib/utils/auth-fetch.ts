@@ -83,6 +83,19 @@ function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
+/**
+ * Default per-request timeout. Without this a fetch against a VPN black hole
+ * (navigator.onLine=true but no upstream) never resolves, so sync's `finally`
+ * never runs and the spinner spins forever. Caller-provided `init.signal`
+ * takes precedence — if present, we respect it untouched.
+ */
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+
+function buildSignal(init?: RequestInit): AbortSignal {
+  if (init?.signal) return init.signal;
+  return AbortSignal.timeout(DEFAULT_REQUEST_TIMEOUT_MS);
+}
+
 export async function authFetch(input: string, init?: RequestInit): Promise<Response> {
   const accessToken = localStorage.getItem('access_token');
 
@@ -91,7 +104,8 @@ export async function authFetch(input: string, init?: RequestInit): Promise<Resp
     headers.set('Authorization', `Bearer ${accessToken}`);
   }
 
-  const response = await fetch(input, { ...init, headers });
+  const signal = buildSignal(init);
+  const response = await fetch(input, { ...init, headers, signal });
 
   if (response.status !== 401) return response;
 
@@ -102,8 +116,9 @@ export async function authFetch(input: string, init?: RequestInit): Promise<Resp
     return response;
   }
 
-  // Retry original request with the new token
+  // Retry original request with the new token. Reuse the same signal so the
+  // retry inherits the caller's cancellation / timeout budget.
   const retryHeaders = new Headers(init?.headers);
   retryHeaders.set('Authorization', `Bearer ${newToken}`);
-  return fetch(input, { ...init, headers: retryHeaders });
+  return fetch(input, { ...init, headers: retryHeaders, signal });
 }

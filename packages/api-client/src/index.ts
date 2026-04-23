@@ -26,6 +26,15 @@ export { OfflineQueue } from './utils/offline-queue';
 export { IdResolver } from './utils/id-resolver';
 export { RetryManager } from './utils/retry-manager';
 
+// Connectivity probe
+export {
+  probeOnline,
+  getConnectivity,
+  ConnectivityStore,
+  __resetConnectivityForTests
+} from './connectivity';
+export type { ConnectivityStatus, ConnectivityState, ConnectivityOptions } from './connectivity';
+
 // Endpoint exports
 export { AuthEndpoints } from './endpoints/auth';
 export { TaskEndpoints } from './endpoints/tasks';

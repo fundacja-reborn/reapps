@@ -44,6 +44,7 @@ import {
 import { authFetch } from '$lib/utils/auth-fetch';
 import { validateEncryptedPayload } from '@reborn/crypto';
 import { refreshQuota } from '$lib/stores/storage-quota.store';
+import { connectivityStore } from '$lib/stores/connectivity.store';
 
 const logger = createLogger('Notes-Sync');
 
@@ -51,6 +52,27 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 function isUnauthorizedError(e: unknown): boolean {
   return e instanceof Error && e.message.includes('401');
+}
+
+function isNetworkError(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  if (e.name === 'AbortError' || e.name === 'TimeoutError') return true;
+  const msg = e.message.toLowerCase();
+  return (
+    msg.includes('failed to fetch') ||
+    msg.includes('network') ||
+    msg.includes('timeout') ||
+    msg.includes('abort')
+  );
+}
+
+/**
+ * Central hook for any caught sync error. Hints the connectivity store whenever
+ * the failure smells like a dead network — which `navigator.onLine` would
+ * otherwise miss under an active VPN tunnel.
+ */
+function reportSyncError(e: unknown): void {
+  if (isNetworkError(e)) connectivityStore?.markFailure();
 }
 
 function isAuthenticated(): boolean {
@@ -114,11 +136,13 @@ export async function pullFromServer(): Promise<boolean> {
     await Promise.all([
       pullFolders().catch((e) => {
         if (isUnauthorizedError(e)) gotUnauthorized = true;
+        reportSyncError(e);
         logger.error('Pull folders failed:', e);
         success = false;
       }),
       pullTags().catch((e) => {
         if (isUnauthorizedError(e)) gotUnauthorized = true;
+        reportSyncError(e);
         logger.error('Pull tags failed:', e);
         success = false;
       })
@@ -127,6 +151,7 @@ export async function pullFromServer(): Promise<boolean> {
     if (!gotUnauthorized) {
       await pullNotes().catch((e) => {
         if (isUnauthorizedError(e)) gotUnauthorized = true;
+        reportSyncError(e);
         logger.error('Pull notes failed:', e);
         success = false;
       });
@@ -136,6 +161,7 @@ export async function pullFromServer(): Promise<boolean> {
         const allNotes = (await noteStore.getAll()) as NoteEncrypted[];
         const noteIds = allNotes.map((n) => n.id);
         await pullNoteVersions(noteIds).catch((e) => {
+          reportSyncError(e);
           logger.error('Pull note versions failed:', e);
           // Non-critical — don't set success=false
         });
@@ -151,7 +177,8 @@ export async function pullFromServer(): Promise<boolean> {
     } else {
       syncError.set(true);
     }
-  } catch {
+  } catch (e) {
+    reportSyncError(e);
     syncError.set(true);
     success = false;
   } finally {
@@ -623,6 +650,7 @@ async function pushSilently(fn: (idempotencyKey: string) => Promise<void>): Prom
   try {
     await retryWithBackoff(() => fn(idempotencyKey));
   } catch (err: unknown) {
+    reportSyncError(err);
     logger.error('Push sync failed after retries (will retry on next periodic sync):', err);
   } finally {
     void refreshPendingCount();
