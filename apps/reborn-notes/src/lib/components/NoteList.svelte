@@ -241,6 +241,9 @@
   const activeMenuNote = $derived(
     menuOpenId ? ($notesStore.find((n) => n.id === menuOpenId) ?? null) : null
   );
+  const movingNote = $derived(
+    movingNoteId ? ($notesStore.find((n) => n.id === movingNoteId) ?? null) : null
+  );
 </script>
 
 <svelte:window onclick={onWindowClick} />
@@ -387,7 +390,12 @@
 
 <!-- Mobile: Move to folder Sheet -->
 {#if isMobileQuery.value}
-  <MoveToFolderMenu noteId={movingNoteId} bind:open={moveSheetOpen} onmove={handleMove} />
+  <MoveToFolderMenu
+    noteId={movingNoteId}
+    currentFolderId={movingNote?.folder_id ?? null}
+    bind:open={moveSheetOpen}
+    onmove={handleMove}
+  />
 {/if}
 
 <ConfirmDialog

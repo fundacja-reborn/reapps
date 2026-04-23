@@ -200,7 +200,14 @@
 
         <!-- Move to folder submenu (desktop only) -->
         {#if !isMobileQuery.value && movingNoteId === note.id}
-          <MoveToFolderMenu noteId={note.id} open={false} {onmove} />
+          <MoveToFolderMenu
+            noteId={note.id}
+            currentFolderId={note.folder_id ?? null}
+            {onmove}
+            onclose={() => {
+              movingNoteId = null;
+            }}
+          />
         {/if}
       {/if}
     </div>
