@@ -143,7 +143,14 @@
 
       {#if isMoveMenuOpen}
         <div data-note-detail-move>
-          <MoveToFolderMenu noteId={note.id} open={false} onmove={handleFolderSelected} />
+          <MoveToFolderMenu
+            noteId={note.id}
+            currentFolderId={note.folder_id ?? null}
+            onmove={handleFolderSelected}
+            onclose={() => {
+              isMoveMenuOpen = false;
+            }}
+          />
         </div>
       {/if}
     {/if}

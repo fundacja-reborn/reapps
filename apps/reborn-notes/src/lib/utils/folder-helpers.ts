@@ -23,6 +23,58 @@ export function flattenFoldersWithDepth(
   ]);
 }
 
+/** Return direct children of the folder with the given id, or root-level folders for `null`. */
+export function findChildrenOfParent(
+  tree: FolderWithChildren[],
+  parentId: string | null
+): FolderWithChildren[] {
+  if (parentId === null) return tree;
+  function find(nodes: FolderWithChildren[]): FolderWithChildren | null {
+    for (const n of nodes) {
+      if (n.id === parentId) return n;
+      const sub = find(n.children ?? []);
+      if (sub) return sub;
+    }
+    return null;
+  }
+  return find(tree)?.children ?? [];
+}
+
+/** Build the path from root to `folderId` as a list of {id, name}. Returns [] for null. */
+export function buildBreadcrumb(
+  tree: FolderWithChildren[],
+  folderId: string | null
+): { id: string; name: string }[] {
+  if (!folderId) return [];
+  const path: { id: string; name: string }[] = [];
+  function dfs(nodes: FolderWithChildren[], trail: { id: string; name: string }[]): boolean {
+    for (const n of nodes) {
+      const next = [...trail, { id: n.id, name: n.name }];
+      if (n.id === folderId) {
+        path.push(...next);
+        return true;
+      }
+      if (dfs(n.children ?? [], next)) return true;
+    }
+    return false;
+  }
+  dfs(tree, []);
+  return path;
+}
+
+/** Ancestor path to `folderId` as text (excludes the folder itself). Empty for root-level. */
+export function buildPathString(
+  tree: FolderWithChildren[],
+  folderId: string,
+  separator = ' / '
+): string {
+  const crumbs = buildBreadcrumb(tree, folderId);
+  return crumbs
+    .slice(0, -1)
+    .map((c) => c.name)
+    .join(separator);
+}
+
 /** Return IDs of all ancestors (parent → root) so the tree can be expanded to show `folderId`. */
 export function getAncestorIds(folderId: string, tree: FolderWithChildren[]): string[] {
   const parentMap = new Map<string, string>();
