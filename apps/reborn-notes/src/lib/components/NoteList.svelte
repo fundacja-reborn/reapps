@@ -5,6 +5,7 @@
   import * as NoteService from '$lib/services/note.service';
   import { toastStore } from '@reborn/ui';
   import { notesStore, activeNoteId } from '$lib/stores/notes.store';
+  import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import type { NoteListItem } from '$lib/stores/notes.store';
   import { tagsStore } from '$lib/stores/tags.store';
   import { SidebarTrigger } from '@reborn/ui/sidebar';
@@ -178,6 +179,7 @@
     movingNoteId = null;
     moveSheetOpen = false;
     await notesStore.move(noteId, folderId);
+    if (noteId === $activeNoteId) noteDetailService.folderId = folderId;
   }
 
   async function handleTogglePin(noteId: string, e?: Event) {

@@ -114,6 +114,7 @@
     e?.stopPropagation();
     if (!$activeNoteId) return;
     await notesStore.move($activeNoteId, folderId);
+    noteDetailService.folderId = folderId;
   }
 
   async function handleDetailMoveMobile(noteId: string, folderId: string | null, e?: Event) {
@@ -121,6 +122,7 @@
     detailMoveSheetOpen = false;
     detailMovingNoteId = null;
     await notesStore.move(noteId, folderId);
+    if (noteId === $activeNoteId) noteDetailService.folderId = folderId;
   }
 
   async function handleDetailExport(noteArg?: NoteListItem) {
