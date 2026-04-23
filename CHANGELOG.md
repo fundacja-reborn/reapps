@@ -1,3 +1,18 @@
+## 0.2.0 (2026-04-23)
+
+### 🚀 Features
+
+- **notes:** add back arrow to desktop note header ([#29](https://github.com/fundacja-reborn/reapps/pull/29))
+
+### 🩹 Fixes
+
+- back sync indicator with real connectivity probe ([#31](https://github.com/fundacja-reborn/reapps/pull/31))
+- **task:** restore offline session regardless of navigator.onLine ([#30](https://github.com/fundacja-reborn/reapps/pull/30))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.1.4 (2026-04-22)
 
 ### 🩹 Fixes
