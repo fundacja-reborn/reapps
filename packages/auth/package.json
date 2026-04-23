@@ -23,7 +23,7 @@
     "@reborn/types": "workspace:*",
     "@reborn/utils": "workspace:*",
     "jose": "6.2.2",
-    "uuid": "11.1.0"
+    "uuid": "14.0.0"
   },
   "devDependencies": {
     "tsup": "8.5.1",
