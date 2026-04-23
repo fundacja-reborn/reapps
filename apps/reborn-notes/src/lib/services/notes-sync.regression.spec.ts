@@ -31,12 +31,12 @@ describe('notes-sync — regression (offline data loss)', () => {
 
   it('online handler pushes pending items BEFORE pulling (BUG-3)', () => {
     const src = readSource('../stores/sync-status.store.ts');
-    const onlineHandler = src.slice(
-      src.indexOf("addEventListener('online'"),
-      src.indexOf("addEventListener('offline'")
-    );
-    // Look only at CALL sites, not the destructuring import (which lists names
-    // in arbitrary order).
+    // The online-transition handler now lives inside a connectivity.subscribe
+    // callback (we replaced navigator.onLine with a probe-backed store). Scope
+    // the check to that callback block.
+    const anchor = src.indexOf('connectivity.subscribe');
+    expect(anchor).toBeGreaterThan(-1);
+    const onlineHandler = src.slice(anchor, anchor + 1500);
     const pushCallIdx = onlineHandler.search(/pushPendingItems\s*\(/);
     const pullCallIdx = onlineHandler.search(/pullFromServer\s*\(/);
     expect(pushCallIdx).toBeGreaterThan(-1);

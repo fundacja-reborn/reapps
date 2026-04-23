@@ -1,6 +1,12 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { noteStore, folderStore, tagStore } from '@reborn/storage';
+import {
+  connectivity,
+  connectivityStore,
+  isOnline as connectivityIsOnline,
+  checkOnline as checkConnectivityOnline
+} from './connectivity.store';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -21,17 +27,23 @@ export interface SyncStatusState {
 
 // ── Online/offline ───────────────────────────────────────────────
 
-function createOnlineStore() {
-  const { subscribe, set } = writable(browser ? navigator.onLine : true);
+// Re-export the active-probe connectivity store under the legacy `isOnline`
+// name so consumers don't need to change. `navigator.onLine` is unreliable
+// with a VPN tunnel (e.g. Proton in airplane mode), so we back this with a
+// real HTTP probe — see `connectivity.store.ts`.
+export const isOnline = connectivityIsOnline;
 
-  if (browser) {
-    window.addEventListener('online', () => {
-      set(true);
-      // Trigger sync when coming back online (lazy import to avoid circular deps).
-      // CRITICAL: push BEFORE pull — running them in parallel risks pull reaching
-      // the server before push completes, so items still 'pending' locally would
-      // be re-fetched as already-synced versions and subsequent push attempts
-      // would conflict.
+/** Synchronous helper to check current online status (probe-backed). */
+export const checkOnline = checkConnectivityOnline;
+
+// When connectivity transitions offline → online, kick off a sync just like
+// the old `window.addEventListener('online')` handler did. CRITICAL: push
+// BEFORE pull — parallel runs let pull overwrite still-pending offline edits.
+if (browser && connectivityStore) {
+  let wasOnline = connectivityStore.getState().status === 'online';
+  connectivity.subscribe(($c) => {
+    const nowOnline = $c.status === 'online';
+    if (nowOnline && !wasOnline) {
       import('$lib/services/notes-sync.service').then(
         async ({ pullFromServer, pushPendingItems, refreshStoresAfterPull }) => {
           try {
@@ -39,22 +51,13 @@ function createOnlineStore() {
             const synced = await pullFromServer();
             if (synced) await refreshStoresAfterPull();
           } catch {
-            // fire-and-forget: background sync, errors handled internally
+            // fire-and-forget
           }
         }
       );
-    });
-    window.addEventListener('offline', () => set(false));
-  }
-
-  return { subscribe };
-}
-
-export const isOnline = createOnlineStore();
-
-/** Synchronous helper to check current online status */
-export function checkOnline(): boolean {
-  return browser ? navigator.onLine : true;
+    }
+    wasOnline = nowOnline;
+  });
 }
 
 // ── Sync progress (set by sync service) ─────────────────────────
