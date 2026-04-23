@@ -6,9 +6,18 @@ import { SyncListsService } from './sync-lists.service';
 import { SyncTasksService } from './sync-tasks.service';
 import { SyncSubtasksService } from './sync-subtasks.service';
 import { SyncOfflineService } from './sync-offline.service';
+import { connectivityStore, checkOnline } from '$lib/stores/connectivity.store';
+import { isNetworkError } from '$lib/stores/network.store';
 import type { StorageOfflineOperation, TaskEncryptedBooleans } from '@reborn/types';
 
 const logger = createLogger('SyncService');
+
+/** Hint the connectivity probe on network-smelling errors so the indicator
+ * catches up with reality (navigator.onLine cannot, because a VPN tunnel
+ * satisfies the browser's "interface present" heuristic). */
+function reportIfNetwork(err: unknown): void {
+	if (isNetworkError(err)) connectivityStore?.markFailure();
+}
 
 export interface SyncProgress {
 	isInProgress: boolean;
@@ -266,6 +275,7 @@ class SyncService {
 
 			logger.info('Initial sync completed');
 		} catch (error: unknown) {
+			reportIfNetwork(error);
 			logger.error('Initial sync failed:', error);
 			this.updateProgress({
 				isInProgress: false,
@@ -286,7 +296,7 @@ class SyncService {
 	 * Multiple calls within the delay window are collapsed into one sync.
 	 */
 	scheduleSyncSoon(): void {
-		if (!navigator.onLine) return;
+		if (!checkOnline()) return;
 
 		if (this.syncSoonTimer) {
 			clearTimeout(this.syncSoonTimer);
@@ -306,7 +316,7 @@ class SyncService {
 	 * Unlike initialSync(), no progress callbacks and no soft-delete wait.
 	 */
 	async periodicSync(): Promise<void> {
-		if (!navigator.onLine) {
+		if (!checkOnline()) {
 			logger.debug('Offline - skipping periodic sync');
 			return;
 		}
@@ -350,6 +360,7 @@ class SyncService {
 
 			logger.info('Periodic sync completed');
 		} catch (error: unknown) {
+			reportIfNetwork(error);
 			logger.error('Periodic sync failed:', error);
 		} finally {
 			this.isSyncing = false;
@@ -361,7 +372,7 @@ class SyncService {
 	 * This should be called periodically or after changes
 	 */
 	async syncToServer(): Promise<{ failedCount: number }> {
-		if (!navigator.onLine) {
+		if (!checkOnline()) {
 			logger.info('Offline - skipping sync to server');
 			return { failedCount: 0 };
 		}
@@ -387,6 +398,7 @@ class SyncService {
 
 			return { failedCount: result.failedCount };
 		} catch (error: unknown) {
+			reportIfNetwork(error);
 			logger.error('Failed to sync to server:', error);
 			throw error;
 		} finally {
@@ -405,7 +417,7 @@ class SyncService {
 		const processedOps: StorageOfflineOperation[] = [];
 		let failedCount = 0;
 
-		if (!navigator.onLine) {
+		if (!checkOnline()) {
 			logger.info('Offline - skipping offline operations sync');
 			return { processedOps, failedCount };
 		}
@@ -464,6 +476,7 @@ class SyncService {
 					// Track processed operation
 					processedOps.push(operation);
 				} catch (error: unknown) {
+					reportIfNetwork(error);
 					logger.error(`Failed to sync operation ${operation.id}:`, error);
 					failedCount++;
 
@@ -484,6 +497,7 @@ class SyncService {
 			// Refresh task counts after syncing changes
 			taskCounts.refresh();
 		} catch (error: unknown) {
+			reportIfNetwork(error);
 			logger.error('Failed to sync offline operations:', error);
 		}
 

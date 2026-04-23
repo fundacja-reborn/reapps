@@ -17,9 +17,12 @@ export abstract class SyncBaseService {
 		const baseUrl = `${PUBLIC_BASE_PATH}/api`;
 		this.logger.debug('Initializing sync service with base URL:', baseUrl);
 
-		// Create API client - AuthInterceptor will handle auth headers
+		// Create API client - AuthInterceptor will handle auth headers.
+		// Shorter timeout so a VPN black hole (navigator.onLine=true but no
+		// upstream) doesn't hang a sync for the default 30 s.
 		this.apiClient = new ApiClient({
-			baseUrl
+			baseUrl,
+			timeout: 15_000
 		});
 	}
 
