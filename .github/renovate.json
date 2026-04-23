@@ -60,7 +60,8 @@
     "labels": ["security"],
     "automerge": true,
     "automergeType": "pr",
-    "semanticCommitType": "fix"
+    "semanticCommitType": "fix",
+    "minimumReleaseAge": "3 days"
   },
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
