@@ -13,7 +13,6 @@
     Trash2,
     AlertTriangle
   } from '@lucide/svelte';
-  import { SidebarTrigger } from '@reborn/ui/sidebar';
   import { t } from '$lib/stores/i18n.store';
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import type { Snippet } from 'svelte';
@@ -77,19 +76,16 @@
   class="flex h-14 md:h-12 shrink-0 items-center gap-2 border-b border-border/60
     {isMobile ? 'px-3' : 'px-6'}"
 >
-  {#if isMobile}
-    <button
-      type="button"
-      onclick={onback}
-      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-foreground
-         hover:bg-accent transition-colors -ml-1"
-      aria-label={$t('nav.back')}
-    >
-      <ArrowLeft class="h-5 w-5" />
-    </button>
-  {:else}
-    <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
-  {/if}
+  <button
+    type="button"
+    onclick={onback}
+    class="flex shrink-0 items-center justify-center rounded-md text-foreground
+       hover:bg-accent transition-colors -ml-1
+       {isMobile ? 'h-11 w-11' : 'h-8 w-8'}"
+    aria-label={$t('nav.back')}
+  >
+    <ArrowLeft class={isMobile ? 'h-5 w-5' : 'h-4 w-4'} />
+  </button>
 
   <!-- Small title (shown when large title scrolls out of view) -->
   {#if title}
