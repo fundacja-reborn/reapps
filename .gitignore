@@ -80,8 +80,9 @@ patches/
 fix-build.sh
 reborn-apps.code-workspace
 
-# Production config — deployed via SCP, not in repo
+# Production/staging config — deployed via SCP, not in repo
 docker-compose.prod.yml
+docker-compose.staging.yml
 nginx/prod.conf
 
 # Dev Container (Claude Code specific mounts)
