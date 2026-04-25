@@ -83,7 +83,14 @@ export async function getFolderTree(): Promise<FolderWithChildren[]> {
   return Promise.all(all.map(convertNode as never));
 }
 
-export async function createFolder(name: string, parentId?: string): Promise<string> {
+// `options.skipSync` defers the network push to the caller — used by batch
+// importers (folder/vault import) that must order folder pushes BEFORE note
+// pushes to avoid the server's `folder_id` FK check returning 404.
+export async function createFolder(
+  name: string,
+  parentId?: string,
+  options?: { skipSync?: boolean }
+): Promise<string> {
   const data: Omit<FolderEncrypted, 'id' | 'order_index' | 'created_at' | 'updated_at'> = {
     user_id: getUserId(),
     name_encrypted: await encodeName(name.trim()),
@@ -94,7 +101,7 @@ export async function createFolder(name: string, parentId?: string): Promise<str
   };
   const id = await folderOperations.createFolder(data);
   const created = await folderStore.get(id);
-  if (created)
+  if (created && !options?.skipSync)
     pushFolder({
       id: created.id,
       name_encrypted: created.name_encrypted,

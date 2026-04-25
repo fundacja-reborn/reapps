@@ -45,6 +45,7 @@ import { authFetch } from '$lib/utils/auth-fetch';
 import { validateEncryptedPayload } from '@reborn/crypto';
 import { refreshQuota } from '$lib/stores/storage-quota.store';
 import { connectivityStore } from '$lib/stores/connectivity.store';
+import { buildFolderLayers } from './folder-push-order';
 
 const logger = createLogger('Notes-Sync');
 
@@ -508,38 +509,50 @@ export async function pushPendingItems(): Promise<void> {
     `Pushing pending items: ${pendingFolders.length} folders, ${pendingTags.length} tags, ${pendingNotes.length} notes, ${pendingArchivedNotes.length} archived notes`
   );
 
-  // Push folders & tags first (notes reference them)
-  await Promise.allSettled([
-    ...pendingFolders.map((f) =>
-      serializePerEntity('folder', f.id, () =>
-      pushSilently(async (idempotencyKey) => {
-        const pushedFields = {
-          name_encrypted: f.name_encrypted,
-          parent_id: f.parent_id ?? null,
-          order_index: f.order_index
-        };
-        const payload = { id: f.id, ...pushedFields, created_at: f.created_at };
-        validateEncryptedPayload(payload as Record<string, unknown>);
-        const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders`, {
-          method: 'POST',
-          headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error(`POST /api/folders: ${res.status}`);
-        const { data: resData } = await res.json();
-        const current = await folderStore.get(f.id);
-        if (current) {
-          const stillDirty = pushedFieldsDiffer(current, pushedFields);
-          await folderStore.save({
-            ...current,
-            sync_status: stillDirty ? 'pending' : 'synced',
-            sync_version: resData?.sync_version ?? 1
-          });
-        }
-      })
+  // Push folders BFS-by-layer so parents land before children. Server's
+  // POST /api/folders rejects with 404 "Parent folder not found" when
+  // parent_id references a folder not yet on the server — flat
+  // Promise.allSettled would 404-spam mid-batch on vault imports with
+  // nested hierarchies. Siblings within a layer push in parallel.
+  for (const layer of buildFolderLayers(pendingFolders)) {
+    await Promise.allSettled(
+      layer.map((f) =>
+        serializePerEntity('folder', f.id, () =>
+          pushSilently(async (idempotencyKey) => {
+            const pushedFields = {
+              name_encrypted: f.name_encrypted,
+              parent_id: f.parent_id ?? null,
+              order_index: f.order_index
+            };
+            const payload = { id: f.id, ...pushedFields, created_at: f.created_at };
+            validateEncryptedPayload(payload as Record<string, unknown>);
+            const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders`, {
+              method: 'POST',
+              headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+              body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error(`POST /api/folders: ${res.status}`);
+            const { data: resData } = await res.json();
+            const current = await folderStore.get(f.id);
+            if (current) {
+              const stillDirty = pushedFieldsDiffer(current, pushedFields);
+              await folderStore.save({
+                ...current,
+                sync_status: stillDirty ? 'pending' : 'synced',
+                sync_version: resData?.sync_version ?? 1
+              });
+            }
+          })
+        )
       )
-    ),
-    ...pendingTags.map((t) =>
+    );
+  }
+
+  // Tags don't reference folders — push in parallel after folders are
+  // settled. Notes' metadata_encrypted may embed tag ids, so tags must
+  // land before the notes layer below.
+  await Promise.allSettled(
+    pendingTags.map((t) =>
       serializePerEntity('tag', t.id, () =>
         pushSilently(async (idempotencyKey) => {
           const pushedFields = {
@@ -567,7 +580,7 @@ export async function pushPendingItems(): Promise<void> {
         })
       )
     )
-  ]);
+  );
 
   // Then push notes (POST for creates/updates)
   await Promise.allSettled(

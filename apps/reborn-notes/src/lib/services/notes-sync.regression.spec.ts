@@ -239,4 +239,71 @@ describe('notes-sync — regression (offline data loss)', () => {
     expect(pullNotes).toMatch(/noteStore\.deleteMany/);
     expect(pullNotes).toMatch(/sync_status.*===.*'synced'/);
   });
+
+  it('pushPendingItems pushes folders BFS-by-layer (parent before child)', () => {
+    // Server's POST /api/folders FK-checks parent_id and 404s if the parent
+    // isn't on the server yet. Flat Promise.allSettled would 404-spam mid-batch
+    // on nested vault imports — pushPendingItems must use buildFolderLayers
+    // and await each layer before starting the next.
+    const src = readSource('./notes-sync.service.ts');
+    const fn = src.slice(
+      src.indexOf('export async function pushPendingItems'),
+      src.indexOf('/** Retry a function with exponential backoff')
+    );
+
+    // Must consume the layered helper.
+    expect(fn).toMatch(/buildFolderLayers\s*\(\s*pendingFolders\s*\)/);
+
+    // The folder push must live inside `for (const layer of …)` with an
+    // `await Promise.allSettled` per iteration. Loose match: `for` block
+    // appears, and within the file, the `/api/folders` POST is reachable
+    // only through that loop.
+    expect(fn).toMatch(/for\s*\(\s*const\s+layer\s+of\s+buildFolderLayers/);
+
+    // Sanity: the old flat folder-and-tag combined Promise.allSettled is gone.
+    // (If both were in one settle, layering wouldn't matter.)
+    const foldersPostIdx = fn.indexOf("'/api/folders'") >= 0
+      ? fn.indexOf("'/api/folders'")
+      : fn.indexOf('/api/folders');
+    const tagsPostIdx = fn.indexOf("'/api/tags'") >= 0
+      ? fn.indexOf("'/api/tags'")
+      : fn.indexOf('/api/tags');
+    expect(foldersPostIdx).toBeGreaterThan(-1);
+    expect(tagsPostIdx).toBeGreaterThan(-1);
+    // Between folders POST and tags POST there must be a `})` closing the
+    // folder for-loop, then a fresh `await Promise.allSettled` for tags.
+    const between = fn.slice(foldersPostIdx, tagsPostIdx);
+    expect(between).toMatch(/await\s+Promise\.allSettled/);
+  });
+
+  it('importFolder bulk-pushes via pushPendingItems, not per-note pushNote', () => {
+    // Without ordering, notes POST before their just-created folders land,
+    // and the server's folder_id FK check returns 404. The fix routes every
+    // create through skipSync and finishes with one ordered pushPendingItems().
+    const src = readSource('./export-import.service.ts');
+
+    // Helpers (findOrCreateFolderByPath / findOrCreateTagByName) live above
+    // importFolder. Scope the skipSync checks to that helper region so we
+    // don't accidentally match unrelated callsites.
+    const helpersStart = src.indexOf('async function findOrCreateFolderByPath');
+    const importFolderStart = src.indexOf('export async function importFolder');
+    expect(helpersStart).toBeGreaterThan(-1);
+    expect(importFolderStart).toBeGreaterThan(helpersStart);
+    const helpers = src.slice(helpersStart, importFolderStart);
+
+    expect(helpers).toMatch(
+      /FolderService\.createFolder\([^)]*\{\s*skipSync:\s*true\s*\}\s*\)/
+    );
+    expect(helpers).toMatch(
+      /TagService\.createTag\([^)]*\{\s*skipSync:\s*true\s*\}\s*\)/
+    );
+
+    // No direct pushNote/pushFolder/pushTag calls inside importFolder —
+    // pushPendingItems() is the single push path so order is enforced.
+    const importFolder = src.slice(importFolderStart);
+    expect(importFolder).not.toMatch(/\bpushNote\s*\(/);
+    expect(importFolder).not.toMatch(/\bpushFolder\s*\(/);
+    expect(importFolder).not.toMatch(/\bpushTag\s*\(/);
+    expect(importFolder).toMatch(/pushPendingItems\s*\(/);
+  });
 });
