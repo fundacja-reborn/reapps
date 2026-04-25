@@ -234,7 +234,7 @@
     >
       <Trash2 class="h-3.5 w-3.5" />
       {#if !isMobile}
-        {$t('notes.delete')}
+        {$t('notes.delete_permanently')}
       {/if}
     </button>
   {/if}
