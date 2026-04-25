@@ -245,26 +245,40 @@ export async function createNote(
   return id;
 }
 
-/** Update note title and/or content. Does NOT create version history — use saveVersionSnapshot(). */
-export async function updateNote(id: string, title: string, content: string): Promise<void> {
+/**
+ * Update note title and/or content. Does NOT create version history — use saveVersionSnapshot().
+ *
+ * `options.updatedAt` lets importers preserve the source file's modified
+ * timestamp (e.g. Obsidian frontmatter) when overwriting an existing note.
+ * `options.skipSync` defers the network push to the caller — used by batch
+ * importers that bulk-push at the end to avoid per-file race conditions.
+ */
+export async function updateNote(
+  id: string,
+  title: string,
+  content: string,
+  options?: { updatedAt?: string; skipSync?: boolean }
+): Promise<void> {
   const existing = await noteStore.get(id);
   if (!existing) throw new Error('Note not found');
-  const now = new Date().toISOString();
+  const updatedAt = options?.updatedAt ?? new Date().toISOString();
   const updated: NoteStoredLocal = {
     ...existing,
     title_encrypted: await encodeText(title),
     content_encrypted: await encodeText(content),
-    updated_at: now,
+    updated_at: updatedAt,
     sync_status: 'pending'
   };
   await noteStore.save(updated);
-  pushNoteUpdate(id, {
-    title_encrypted: updated.title_encrypted,
-    content_encrypted: updated.content_encrypted
-  });
+  if (!options?.skipSync) {
+    pushNoteUpdate(id, {
+      title_encrypted: updated.title_encrypted,
+      content_encrypted: updated.content_encrypted
+    });
+  }
   noteIndex.patch(id, {
     title,
-    updatedAt: now
+    updatedAt
   });
 }
 

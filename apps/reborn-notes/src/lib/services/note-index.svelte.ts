@@ -181,6 +181,22 @@ class NoteIndex {
     return this._map.size;
   }
 
+  /**
+   * Snapshot of all non-archived entries for dedup / lookup callers (e.g.
+   * the markdown import pipeline). Returns a new array each call — safe
+   * to mutate. Excludes archived notes; importer should not collide with
+   * trashed titles.
+   */
+  entries(): { id: string; title: string; folderId: string | undefined }[] {
+    void this._version;
+    const out: { id: string; title: string; folderId: string | undefined }[] = [];
+    for (const [id, e] of this._map) {
+      if (e.isArchived) continue;
+      out.push({ id, title: e.title, folderId: e.folderId });
+    }
+    return out;
+  }
+
   /** Whether build() is in progress. */
   get isBuilding(): boolean {
     return this._building;
