@@ -1,3 +1,17 @@
+## 0.3.0 (2026-04-25)
+
+### 🚀 Features
+
+- **notes:** add duplicate handling strategies for markdown folder import ([#38](https://github.com/fundacja-reborn/reapps/pull/38))
+
+### 🩹 Fixes
+
+- **deps:** update dependency uuid to v14 ([#35](https://github.com/fundacja-reborn/reapps/pull/35))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.2.0 (2026-04-23)
 
 ### 🚀 Features
