@@ -1,3 +1,13 @@
+## 0.6.2 (2026-04-25)
+
+### 🩹 Fixes
+
+- **notes:** repair PDF export on iOS Safari and Android PWA ([#48](https://github.com/fundacja-reborn/reapps/pull/48))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.6.1 (2026-04-25)
 
 ### 🩹 Fixes
