@@ -115,18 +115,28 @@
     "folder_actions": "Acciones de carpeta",
     "collapse": "Contraer",
     "expand": "Expandir",
-    "delete_confirm": "¿Eliminar \"{name}\" y todas sus subcarpetas?",
-    "delete_confirm_leaf": "¿Eliminar la carpeta \"{name}\"?",
     "delete_tag_title": "Eliminar etiqueta",
     "delete_tag_desc": "Esta etiqueta se eliminará de todas las notas.",
-    "delete_folder_title": "Eliminar carpeta",
+    "delete_dialog": {
+      "title": "Eliminar carpeta \"{name}\"",
+      "loading": "Contando elementos…",
+      "summary_empty": "Esta carpeta está vacía.",
+      "summary_notes_only": "Esta carpeta contiene {notes} nota(s).",
+      "summary_subfolders_only": "Esta carpeta contiene {subfolders} subcarpeta(s).",
+      "summary_both": "Esta carpeta contiene {notes} nota(s) y {subfolders} subcarpeta(s).",
+      "mode_detach_label": "Mover notas a Todas las notas",
+      "mode_detach_hint": "Recomendado. Las notas se conservan y siguen disponibles en Todas las notas.",
+      "mode_cascade_label": "Mover notas a la papelera",
+      "mode_cascade_hint": "Las notas (incluidas las de las subcarpetas) se moverán a la papelera y se podrán restaurar desde allí.",
+      "confirm_detach": "Eliminar carpeta",
+      "confirm_cascade": "Eliminar carpeta y notas",
+      "cancel": "Cancelar"
+    },
     "errors": {
       "create_failed": "Error al crear la carpeta",
       "update_failed": "Error al actualizar la carpeta",
       "delete_failed": "Error al eliminar la carpeta",
-      "name_required": "El nombre de la carpeta es obligatorio",
-      "has_notes": "No se puede eliminar una carpeta con notas",
-      "has_subfolders": "No se puede eliminar una carpeta con subcarpetas"
+      "name_required": "El nombre de la carpeta es obligatorio"
     },
     "success": {
       "created": "Carpeta creada con éxito",

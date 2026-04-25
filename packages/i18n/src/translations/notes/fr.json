@@ -115,18 +115,28 @@
     "folder_actions": "Actions sur le dossier",
     "collapse": "Réduire",
     "expand": "Développer",
-    "delete_confirm": "Supprimer \"{name}\" et tous ses sous-dossiers ?",
-    "delete_confirm_leaf": "Supprimer le dossier \"{name}\" ?",
     "delete_tag_title": "Supprimer le tag",
     "delete_tag_desc": "Ce tag sera retiré de toutes les notes.",
-    "delete_folder_title": "Supprimer le dossier",
+    "delete_dialog": {
+      "title": "Supprimer le dossier \"{name}\"",
+      "loading": "Comptage des éléments…",
+      "summary_empty": "Ce dossier est vide.",
+      "summary_notes_only": "Ce dossier contient {notes} note(s).",
+      "summary_subfolders_only": "Ce dossier contient {subfolders} sous-dossier(s).",
+      "summary_both": "Ce dossier contient {notes} note(s) et {subfolders} sous-dossier(s).",
+      "mode_detach_label": "Déplacer les notes vers Toutes les notes",
+      "mode_detach_hint": "Recommandé. Les notes sont conservées et restent accessibles depuis Toutes les notes.",
+      "mode_cascade_label": "Déplacer les notes vers la corbeille",
+      "mode_cascade_hint": "Les notes (y compris celles des sous-dossiers) seront placées dans la corbeille et pourront y être restaurées.",
+      "confirm_detach": "Supprimer le dossier",
+      "confirm_cascade": "Supprimer le dossier et les notes",
+      "cancel": "Annuler"
+    },
     "errors": {
       "create_failed": "Échec de la création du dossier",
       "update_failed": "Échec de la mise à jour du dossier",
       "delete_failed": "Échec de la suppression du dossier",
-      "name_required": "Le nom du dossier est obligatoire",
-      "has_notes": "Impossible de supprimer un dossier contenant des notes",
-      "has_subfolders": "Impossible de supprimer un dossier contenant des sous-dossiers"
+      "name_required": "Le nom du dossier est obligatoire"
     },
     "success": {
       "created": "Dossier créé avec succès",

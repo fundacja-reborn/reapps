@@ -2,6 +2,10 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import type { FolderWithChildren } from '@reborn/types';
 import * as FolderService from '$lib/services/folder.service';
+import type {
+  DeleteFolderMode,
+  FolderDeleteSummary
+} from '$lib/services/folder.service';
 
 function createFoldersStore() {
   const tree = writable<FolderWithChildren[]>([]);
@@ -33,9 +37,13 @@ function createFoldersStore() {
     await refresh();
   }
 
-  async function remove(id: string): Promise<void> {
-    await FolderService.deleteFolder(id);
+  async function remove(id: string, mode: DeleteFolderMode = 'detach'): Promise<void> {
+    await FolderService.deleteFolder(id, mode);
     await refresh();
+  }
+
+  async function getDeleteSummary(id: string): Promise<FolderDeleteSummary> {
+    return FolderService.getFolderDeleteSummary(id);
   }
 
   async function move(id: string, newParentId: string | null): Promise<void> {
@@ -56,6 +64,7 @@ function createFoldersStore() {
     create,
     rename,
     remove,
+    getDeleteSummary,
     move,
     reorder
   };

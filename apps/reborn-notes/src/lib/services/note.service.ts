@@ -330,7 +330,9 @@ export async function moveNoteToFolder(id: string, folderId: string | null): Pro
   await noteOperations.moveToFolder(id, folderId);
   const current = await noteStore.get(id);
   if (current) await noteStore.save({ ...current, sync_status: 'pending' });
-  pushNoteUpdate(id, { folder_id: folderId ?? undefined });
+  // Send null (not undefined) so the server's `'folder_id' in data` check fires
+  // and Prisma actually clears the column when moving to root.
+  pushNoteUpdate(id, { folder_id: folderId });
   noteIndex.patch(id, { folderId: folderId ?? undefined });
 }
 
