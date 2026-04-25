@@ -900,7 +900,10 @@ async function findOrCreateFolderByPath(
       parentId = existing.id;
       continue;
     }
-    const newId = await FolderService.createFolder(segment, parentId);
+    // skipSync: folder import bulk-pushes everything via pushPendingItems()
+    // at the end so folders are guaranteed on the server before notes that
+    // reference them — otherwise the server's folder_id FK check returns 404.
+    const newId = await FolderService.createFolder(segment, parentId, { skipSync: true });
     lookup.push({ id: newId, name: segment, parent_id: parentId });
     counter.count++;
     parentId = newId;
@@ -920,7 +923,8 @@ async function findOrCreateTagByName(
   const lower = tagName.toLowerCase();
   const existing = lookup.find((t) => t.name.toLowerCase() === lower);
   if (existing) return existing.id;
-  const newId = await TagService.createTag(tagName);
+  // skipSync: see findOrCreateFolderByPath — bulk push at end of importFolder().
+  const newId = await TagService.createTag(tagName, undefined, { skipSync: true });
   lookup.push({ id: newId, name: tagName });
   counter.count++;
   return newId;
@@ -1055,7 +1059,6 @@ export async function importFolder(
   // 7. Import each note via the duplicate strategy helper.
   //    skipSync: true — avoid per-note pushNote/pushNoteUpdate race condition.
   //    Bulk push happens after the loop (step 7b).
-  const importedNoteIds: string[] = [];
   for (const file of sizedFiles) {
     try {
       const raw = await file.text();
@@ -1087,7 +1090,7 @@ export async function importFolder(
         }
       }
 
-      const { outcome, noteId } = await applyDuplicateStrategy({
+      const { outcome } = await applyDuplicateStrategy({
         baseTitle: title,
         content: sanitizedContent,
         folderId,
@@ -1104,7 +1107,6 @@ export async function importFolder(
         if (outcome === 'overwritten') result.duplicatesOverwritten++;
         else if (outcome === 'renamed') result.duplicatesRenamed++;
         result.imported++;
-        importedNoteIds.push(noteId);
       }
     } catch (e: unknown) {
       result.errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Unknown error'}`);
@@ -1112,11 +1114,13 @@ export async function importFolder(
   }
   result.tagsCreated = tagsCounter.count;
 
-  // 7b. Bulk-push all imported notes (latest version from IndexedDB, with tags).
-  for (const noteId of importedNoteIds) {
-    const note = await noteStore.get(noteId);
-    if (note) pushNote(note);
-  }
+  // 7b. Trigger one ordered bulk push (folders → tags → notes). All items in
+  //     this import were saved with sync_status='pending' (skipSync on every
+  //     create call), so pushPendingItems() picks them up and orders pushes
+  //     correctly. Without this ordering, notes would POST before their parent
+  //     folders, causing the server's folder_id FK check to return 404 and
+  //     forcing the client into 1-2s retry backoff per note.
+  void pushPendingItems();
 
   // 8. Rebuild in-memory title index so imports are visible immediately.
   try {

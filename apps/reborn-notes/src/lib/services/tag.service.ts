@@ -98,8 +98,18 @@ export async function getAllTags(): Promise<TagDecrypted[]> {
   return decrypted.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Create a new tag. Returns the new tag ID. */
-export async function createTag(name: string, color?: string): Promise<string> {
+/**
+ * Create a new tag. Returns the new tag ID.
+ *
+ * `options.skipSync` defers the network push to the caller — used by batch
+ * importers that bulk-push everything via `pushPendingItems()` at the end so
+ * folders/tags land before any note that references them.
+ */
+export async function createTag(
+  name: string,
+  color?: string,
+  options?: { skipSync?: boolean }
+): Promise<string> {
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
   const tag = {
@@ -114,12 +124,14 @@ export async function createTag(name: string, color?: string): Promise<string> {
     updated_at: now
   };
   await tagOperations.saveTag(tag);
-  pushTag({
-    id,
-    name_encrypted: tag.name_encrypted,
-    color_encrypted: tag.color_encrypted,
-    created_at: now
-  });
+  if (!options?.skipSync) {
+    pushTag({
+      id,
+      name_encrypted: tag.name_encrypted,
+      color_encrypted: tag.color_encrypted,
+      created_at: now
+    });
+  }
   return id;
 }
 
