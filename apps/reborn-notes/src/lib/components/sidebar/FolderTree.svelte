@@ -89,6 +89,13 @@
     editingId = null;
   }
 
+  function handleRowSelect(folder: FolderWithChildren) {
+    if ((folder.children?.length ?? 0) > 0) {
+      expandedIds.add(folder.id);
+    }
+    onselect(folder.id);
+  }
+
   // ── Context menu (kebab) ────────────────────────────────────────
   const isMobileQuery = useIsMobile();
   let menuOpenId = $state<string | null>(null);
@@ -292,8 +299,8 @@
         style="padding-left: {depth * 0.75 + 0.5}rem"
         role="button"
         tabindex="0"
-        onclick={() => onselect(folder.id)}
-        onkeydown={(e) => e.key === 'Enter' && onselect(folder.id)}
+        onclick={() => handleRowSelect(folder)}
+        onkeydown={(e) => e.key === 'Enter' && handleRowSelect(folder)}
         aria-label={$t('folders.folder_label', { values: { name: folder.name } })}
       >
         <!-- Folder icon -->
@@ -329,7 +336,7 @@
               if (isExpanded) expandedIds.delete(folder.id);
               else expandedIds.add(folder.id);
             }}
-            class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+            class="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
             aria-label={isExpanded ? $t('folders.collapse') : $t('folders.expand')}
             tabindex="-1"
           >
