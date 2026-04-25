@@ -1,3 +1,14 @@
+## 0.4.1 (2026-04-25)
+
+### 🩹 Fixes
+
+- **notes:** switch to all-notes view when creating from trash + use existing delete_permanently i18n key ([#43](https://github.com/fundacja-reborn/reapps/pull/43))
+- **notes:** order folder/tag pushes before notes during folder import ([#44](https://github.com/fundacja-reborn/reapps/pull/44), [#1](https://github.com/fundacja-reborn/reapps/issues/1))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.4.0 (2026-04-25)
 
 ### 🚀 Features
