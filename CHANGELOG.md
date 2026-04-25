@@ -1,3 +1,13 @@
+## 0.5.0 (2026-04-25)
+
+### 🚀 Features
+
+- **notes:** show subfolders in folder view ([#45](https://github.com/fundacja-reborn/reapps/pull/45))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.4.1 (2026-04-25)
 
 ### 🩹 Fixes
