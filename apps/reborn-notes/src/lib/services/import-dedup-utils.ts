@@ -1,0 +1,96 @@
+/**
+ * Pure helpers for deduplicating notes during folder/file import.
+ *
+ * No side effects, no IndexedDB access. The folder import callsite passes in
+ * a snapshot of `(folder_id, lowercase title)` pairs (built from `noteIndex`)
+ * and mutates the lookup as the batch progresses, so files within the same
+ * import respect each other (e.g. a vault containing two `Notes.md` in the
+ * same directory will produce `Notes.md` and `Notes (2).md`).
+ */
+
+export type DuplicateStrategy = 'skip' | 'overwrite' | 'rename';
+
+/**
+ * Filename length cap for sanitized titles (mirrors `sanitizeFilename` in
+ * export-import.service.ts). The rename suffix `" (N)"` must fit within this
+ * cap, so the base title is trimmed to leave room before appending the suffix.
+ */
+export const MAX_TITLE_LENGTH = 100;
+
+/** Sentinel key for the unfiled root (notes with no `folder_id`). */
+export const ROOT_FOLDER_KEY = '__root__';
+
+/** Build a lookup key from a folder id (or undefined for the root level). */
+export function folderKey(folderId: string | undefined | null): string {
+  return folderId ?? ROOT_FOLDER_KEY;
+}
+
+/**
+ * Per-folder lookup of taken note titles for duplicate detection.
+ *
+ * Map<folderKey, Map<lowerTitle, noteId>>. Lowercase keys ensure case-insensitive
+ * matching ("Notes.md" collides with "notes.md", consistent with how folders
+ * and tags are deduplicated elsewhere in the importer).
+ */
+export type TitleLookup = Map<string, Map<string, string>>;
+
+/** Insert / overwrite an entry in the title lookup. */
+export function rememberTitle(
+  lookup: TitleLookup,
+  folderId: string | undefined,
+  title: string,
+  noteId: string
+): void {
+  const key = folderKey(folderId);
+  let bucket = lookup.get(key);
+  if (!bucket) {
+    bucket = new Map();
+    lookup.set(key, bucket);
+  }
+  bucket.set(title.toLowerCase(), noteId);
+}
+
+/** Look up an existing note id by (folder, title). */
+export function findExisting(
+  lookup: TitleLookup,
+  folderId: string | undefined,
+  title: string
+): string | undefined {
+  return lookup.get(folderKey(folderId))?.get(title.toLowerCase());
+}
+
+/**
+ * Compute a non-colliding renamed title by appending ` (N)` until the slot
+ * is free. Trims the base title so that the longest possible suffix
+ * (` (999)` ≈ 6 chars; bounded at 9999 here for safety) still fits within
+ * {@link MAX_TITLE_LENGTH}.
+ *
+ * The `taken` parameter accepts pre-lowercased titles (matches the lookup
+ * convention). We bound the loop at 9999 to avoid pathological infinite
+ * loops on a fully-saturated namespace; practically unreachable.
+ */
+export function computeRenamedTitle(
+  baseTitle: string,
+  taken: ReadonlySet<string>
+): string {
+  const trimmedBase = baseTitle.trim() || 'Untitled';
+
+  // Reserve room for the suffix. Max suffix is " (9999)" = 7 chars.
+  const SUFFIX_RESERVE = 7;
+  const truncatedBase =
+    trimmedBase.length > MAX_TITLE_LENGTH - SUFFIX_RESERVE
+      ? trimmedBase.slice(0, MAX_TITLE_LENGTH - SUFFIX_RESERVE).trimEnd()
+      : trimmedBase;
+
+  // Bounded counter — practically unreachable, but defends against pathological
+  // inputs (e.g. a namespace deliberately filled with collisions).
+  for (let n = 2; n <= 9999; n++) {
+    const candidate = `${truncatedBase} (${n})`;
+    if (!taken.has(candidate.toLowerCase())) {
+      return candidate;
+    }
+  }
+  // Fallback: the practically-impossible saturated case — append a short
+  // random suffix to escape the collision space.
+  return `${truncatedBase} (${Math.random().toString(36).slice(2, 8)})`;
+}

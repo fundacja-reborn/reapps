@@ -31,8 +31,10 @@
     importFolder,
     importJsonBackup,
     isEncryptedBackup,
-    type ImportFolderResult
+    type ImportFolderResult,
+    type ImportMarkdownResult
   } from '$lib/services/export-import.service';
+  import type { DuplicateStrategy } from '$lib/services/import-dedup-utils';
   import { notesStore } from '$lib/stores/notes.store';
   import { createLogger } from '@reborn/utils';
 
@@ -49,14 +51,23 @@
 
   // ── Import state ─────────────────────────────────────────────────
   let importing = $state(false);
-  let importResult = $state<{ imported: number; errors: string[]; strippedCount?: number } | null>(null);
+  let importResult = $state<ImportMarkdownResult | null>(null);
   let importInputEl = $state<HTMLInputElement | null>(null);
   let backupImportInputEl = $state<HTMLInputElement | null>(null);
+
+  // Pending file selection awaiting a duplicate-strategy choice.
+  // Same shape for both single-file and folder imports — UI shows a strategy
+  // picker with file count, then runs the import with the chosen strategy.
+  let pendingMdFiles = $state<File[] | null>(null);
+  let pendingMdStrategy = $state<DuplicateStrategy>('rename');
 
   // Import folder (Obsidian-style vault)
   let importingFolder = $state(false);
   let folderImportResult = $state<ImportFolderResult | null>(null);
   let folderImportInputEl = $state<HTMLInputElement | null>(null);
+  let pendingFolderFiles = $state<File[] | null>(null);
+  let pendingFolderStrategy = $state<DuplicateStrategy>('rename');
+  let pendingFolderMdCount = $state(0);
 
   // Import JSON backup
   let importingBackup = $state(false);
@@ -123,27 +134,46 @@
 
   function triggerImport() {
     importResult = null;
+    pendingMdFiles = null;
+    pendingMdStrategy = 'rename';
     importInputEl?.click();
   }
 
-  async function handleImportFiles(e: Event) {
+  function handleImportFilesSelected(e: Event) {
     const files = Array.from((e.target as HTMLInputElement).files ?? []);
+    if (importInputEl) importInputEl.value = '';
     if (files.length === 0) return;
+    // Show strategy picker before kicking off the import.
+    pendingMdFiles = files;
+  }
+
+  function cancelMdImport() {
+    pendingMdFiles = null;
+  }
+
+  async function runMdImport() {
+    if (!pendingMdFiles) return;
+    const files = pendingMdFiles;
+    const strategy = pendingMdStrategy;
+    pendingMdFiles = null;
 
     importing = true;
     importResult = null;
     try {
-      const result = await importMarkdownFiles(files);
+      const result = await importMarkdownFiles(files, undefined, strategy);
       importResult = result;
       await Promise.all([notesStore.refresh(), foldersStore.refresh()]);
     } catch (err: unknown) {
       importResult = {
         imported: 0,
+        duplicatesSkipped: 0,
+        duplicatesOverwritten: 0,
+        duplicatesRenamed: 0,
+        strippedCount: 0,
         errors: [err instanceof Error ? err.message : 'Import failed']
       };
     } finally {
       importing = false;
-      if (importInputEl) importInputEl.value = '';
     }
   }
 
@@ -151,17 +181,60 @@
 
   function triggerFolderImport() {
     folderImportResult = null;
+    pendingFolderFiles = null;
+    pendingFolderStrategy = 'rename';
+    pendingFolderMdCount = 0;
     folderImportInputEl?.click();
   }
 
-  async function handleImportFolder(e: Event) {
+  /**
+   * Mirror the importer's pre-filter logic to give the user an honest
+   * "X notatek do importu" preview before they commit to a strategy.
+   */
+  function countImportableMarkdownFiles(files: File[]): number {
+    let count = 0;
+    for (const f of files) {
+      const path = (f as File & { webkitRelativePath?: string }).webkitRelativePath ?? '';
+      // Skip hidden segments (`.obsidian/`, `.trash/`, etc.) — match service logic.
+      const parts = path.split('/').filter(Boolean);
+      let hidden = false;
+      for (let i = 1; i < parts.length; i++) {
+        if (parts[i].startsWith('.')) {
+          hidden = true;
+          break;
+        }
+      }
+      if (hidden) continue;
+      if (!f.name.toLowerCase().endsWith('.md')) continue;
+      count++;
+    }
+    return count;
+  }
+
+  function handleFolderFilesSelected(e: Event) {
     const files = Array.from((e.target as HTMLInputElement).files ?? []);
+    if (folderImportInputEl) folderImportInputEl.value = '';
     if (files.length === 0) return;
+    pendingFolderFiles = files;
+    pendingFolderMdCount = countImportableMarkdownFiles(files);
+  }
+
+  function cancelFolderImport() {
+    pendingFolderFiles = null;
+    pendingFolderMdCount = 0;
+  }
+
+  async function runFolderImport() {
+    if (!pendingFolderFiles) return;
+    const files = pendingFolderFiles;
+    const strategy = pendingFolderStrategy;
+    pendingFolderFiles = null;
+    pendingFolderMdCount = 0;
 
     importingFolder = true;
     folderImportResult = null;
     try {
-      const result = await importFolder(files);
+      const result = await importFolder(files, strategy);
       folderImportResult = result;
       await Promise.all([
         notesStore.refresh(),
@@ -176,12 +249,14 @@
         skippedNonMarkdown: 0,
         skippedTooLarge: 0,
         skippedHidden: 0,
+        duplicatesSkipped: 0,
+        duplicatesOverwritten: 0,
+        duplicatesRenamed: 0,
         strippedCount: 0,
         errors: [err instanceof Error ? err.message : 'Import failed']
       };
     } finally {
       importingFolder = false;
-      if (folderImportInputEl) folderImportInputEl.value = '';
     }
   }
 
@@ -444,7 +519,7 @@
             <button
               type="button"
               onclick={triggerImport}
-              disabled={importing}
+              disabled={importing || pendingMdFiles !== null}
               class="flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
             >
               <Upload class="h-3.5 w-3.5" />
@@ -454,9 +529,62 @@
             </button>
           </div>
 
+          {#if pendingMdFiles}
+            <div class="mt-3 space-y-3 rounded-md border border-primary/40 bg-background p-3">
+              <p class="text-xs font-medium">
+                {$t('settings_page.export_import.dedup_files_found', {
+                  values: { count: pendingMdFiles.length }
+                })}
+              </p>
+              <p class="text-xs text-muted-foreground">
+                {$t('settings_page.export_import.dedup_prompt')}
+              </p>
+              <div class="space-y-2">
+                {#each ['rename', 'skip', 'overwrite'] as opt (opt)}
+                  <label class="flex items-start gap-2 text-xs cursor-pointer">
+                    <input
+                      type="radio"
+                      name="md-strategy"
+                      value={opt}
+                      bind:group={pendingMdStrategy}
+                      class="mt-0.5"
+                    />
+                    <span>
+                      <span class="font-medium">
+                        {$t(`settings_page.export_import.dedup_${opt}`)}
+                      </span>
+                      <span class="block text-muted-foreground">
+                        {$t(`settings_page.export_import.dedup_${opt}_desc`)}
+                      </span>
+                    </span>
+                  </label>
+                {/each}
+              </div>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  onclick={runMdImport}
+                  disabled={importing}
+                  class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                >
+                  <Upload class="h-3.5 w-3.5" />
+                  {$t('settings_page.export_import.dedup_start')}
+                </button>
+                <button
+                  type="button"
+                  onclick={cancelMdImport}
+                  disabled={importing}
+                  class="rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  {$t('settings_page.export_import.cancel')}
+                </button>
+              </div>
+            </div>
+          {/if}
+
           {#if importResult}
             <div
-              class="mt-3 rounded-md px-3 py-2 text-xs
+              class="mt-3 rounded-md px-3 py-2 text-xs space-y-1
               {importResult.errors.length === 0
                 ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400'
                 : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'}"
@@ -465,6 +593,27 @@
                 <p>
                   {$t('settings_page.export_import.imported_count', {
                     values: { count: importResult.imported }
+                  })}
+                </p>
+              {/if}
+              {#if importResult.duplicatesOverwritten > 0}
+                <p class="text-muted-foreground">
+                  {$t('settings_page.export_import.dedup_count_overwritten', {
+                    values: { count: importResult.duplicatesOverwritten }
+                  })}
+                </p>
+              {/if}
+              {#if importResult.duplicatesRenamed > 0}
+                <p class="text-muted-foreground">
+                  {$t('settings_page.export_import.dedup_count_renamed', {
+                    values: { count: importResult.duplicatesRenamed }
+                  })}
+                </p>
+              {/if}
+              {#if importResult.duplicatesSkipped > 0}
+                <p class="text-muted-foreground">
+                  {$t('settings_page.export_import.dedup_count_skipped', {
+                    values: { count: importResult.duplicatesSkipped }
                   })}
                 </p>
               {/if}
@@ -499,7 +648,7 @@
             <button
               type="button"
               onclick={triggerFolderImport}
-              disabled={importingFolder}
+              disabled={importingFolder || pendingFolderFiles !== null}
               class="flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
             >
               <FolderInput class="h-3.5 w-3.5" />
@@ -508,6 +657,59 @@
                 : $t('settings_page.export_import.import_folder_btn')}
             </button>
           </div>
+
+          {#if pendingFolderFiles}
+            <div class="mt-3 space-y-3 rounded-md border border-primary/40 bg-background p-3">
+              <p class="text-xs font-medium">
+                {$t('settings_page.export_import.dedup_files_found', {
+                  values: { count: pendingFolderMdCount }
+                })}
+              </p>
+              <p class="text-xs text-muted-foreground">
+                {$t('settings_page.export_import.dedup_prompt')}
+              </p>
+              <div class="space-y-2">
+                {#each ['rename', 'skip', 'overwrite'] as opt (opt)}
+                  <label class="flex items-start gap-2 text-xs cursor-pointer">
+                    <input
+                      type="radio"
+                      name="folder-strategy"
+                      value={opt}
+                      bind:group={pendingFolderStrategy}
+                      class="mt-0.5"
+                    />
+                    <span>
+                      <span class="font-medium">
+                        {$t(`settings_page.export_import.dedup_${opt}`)}
+                      </span>
+                      <span class="block text-muted-foreground">
+                        {$t(`settings_page.export_import.dedup_${opt}_desc`)}
+                      </span>
+                    </span>
+                  </label>
+                {/each}
+              </div>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  onclick={runFolderImport}
+                  disabled={importingFolder || pendingFolderMdCount === 0}
+                  class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                >
+                  <FolderInput class="h-3.5 w-3.5" />
+                  {$t('settings_page.export_import.dedup_start')}
+                </button>
+                <button
+                  type="button"
+                  onclick={cancelFolderImport}
+                  disabled={importingFolder}
+                  class="rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  {$t('settings_page.export_import.cancel')}
+                </button>
+              </div>
+            </div>
+          {/if}
 
           {#if folderImportResult}
             <div
@@ -545,6 +747,27 @@
                 <p class="text-muted-foreground">
                   {$t('settings_page.export_import.folder_import_skipped_too_large', {
                     values: { count: folderImportResult.skippedTooLarge }
+                  })}
+                </p>
+              {/if}
+              {#if folderImportResult.duplicatesOverwritten > 0}
+                <p class="text-muted-foreground">
+                  {$t('settings_page.export_import.dedup_count_overwritten', {
+                    values: { count: folderImportResult.duplicatesOverwritten }
+                  })}
+                </p>
+              {/if}
+              {#if folderImportResult.duplicatesRenamed > 0}
+                <p class="text-muted-foreground">
+                  {$t('settings_page.export_import.dedup_count_renamed', {
+                    values: { count: folderImportResult.duplicatesRenamed }
+                  })}
+                </p>
+              {/if}
+              {#if folderImportResult.duplicatesSkipped > 0}
+                <p class="text-muted-foreground">
+                  {$t('settings_page.export_import.dedup_count_skipped', {
+                    values: { count: folderImportResult.duplicatesSkipped }
                   })}
                 </p>
               {/if}
@@ -688,7 +911,7 @@
       accept=".md,text/markdown,text/plain"
       multiple
       class="hidden"
-      onchange={handleImportFiles}
+      onchange={handleImportFilesSelected}
       aria-hidden="true"
     />
     <input
@@ -697,7 +920,7 @@
       webkitdirectory
       multiple
       class="hidden"
-      onchange={handleImportFolder}
+      onchange={handleFolderFilesSelected}
       aria-hidden="true"
     />
     <input

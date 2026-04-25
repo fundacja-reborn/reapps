@@ -50,6 +50,14 @@ import {
   containsHiddenSegment,
   normalizeFrontmatterDate
 } from './markdown-import-utils';
+import {
+  computeRenamedTitle,
+  findExisting,
+  rememberTitle,
+  folderKey,
+  type DuplicateStrategy,
+  type TitleLookup
+} from './import-dedup-utils';
 import { sanitizeMarkdownContent, sanitizeTags } from '$lib/utils/markdown-sanitizer';
 
 const logger = createLogger('ExportImport');
@@ -664,35 +672,191 @@ function stripUnknownNoteShadowIndexes(raw: unknown): unknown {
 
 // ── Import ───────────────────────────────────────────────────────────────────
 
-/** Import notes from an array of .md File objects. Returns { imported, errors, strippedCount }. */
+/**
+ * Build a per-folder lookup of taken note titles from the in-memory NoteIndex.
+ *
+ * Triggers a rebuild if the index appears empty despite notes existing on disk
+ * (defensive — the importer must not silently skip dedup against existing
+ * notes when the index is stale at import time).
+ */
+async function buildTitleLookupFromIndex(): Promise<TitleLookup> {
+  if (noteIndex.count === 0) {
+    const stored = await noteStore.getAll();
+    if (stored.length > 0) {
+      try {
+        await noteIndex.build();
+      } catch (e: unknown) {
+        logger.warn('Failed to build note index for import dedup; proceeding without it', e);
+      }
+    }
+  }
+  const lookup: TitleLookup = new Map();
+  for (const entry of noteIndex.entries()) {
+    rememberTitle(lookup, entry.folderId, entry.title, entry.id);
+  }
+  return lookup;
+}
+
+export type ImportMarkdownResult = {
+  imported: number;
+  duplicatesSkipped: number;
+  duplicatesOverwritten: number;
+  duplicatesRenamed: number;
+  errors: string[];
+  strippedCount: number;
+};
+
+/**
+ * Import notes from an array of .md File objects.
+ *
+ * `duplicateStrategy` controls behavior when a note with the same title
+ * already exists in `folderId` (case-insensitive):
+ *   - `skip`      — leave the existing note untouched
+ *   - `overwrite` — replace title/content; preserve the existing note's id
+ *                   and `created_at` (so backlinks survive)
+ *   - `rename`    — append " (N)" to the imported title until free
+ */
 export async function importMarkdownFiles(
   files: File[],
-  folderId?: string
-): Promise<{ imported: number; errors: string[]; strippedCount: number }> {
+  folderId?: string,
+  duplicateStrategy: DuplicateStrategy = 'rename'
+): Promise<ImportMarkdownResult> {
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
   if (totalSize > MAX_IMPORT_FILE_SIZE) {
     throw new Error(`Łączny rozmiar plików (${Math.round(totalSize / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)} MB.`);
   }
 
-  let imported = 0;
-  let strippedCount = 0;
-  const errors: string[] = [];
+  const result: ImportMarkdownResult = {
+    imported: 0,
+    duplicatesSkipped: 0,
+    duplicatesOverwritten: 0,
+    duplicatesRenamed: 0,
+    errors: [],
+    strippedCount: 0
+  };
+
+  const lookup = await buildTitleLookupFromIndex();
 
   for (const file of files) {
     try {
       const raw = await file.text();
       const { title, content } = parseMarkdownFile(raw);
       const { sanitized, stripped } = sanitizeMarkdownContent(content);
-      strippedCount += stripped.length;
-      const noteTitle = title ?? (file.name.replace(/\.md$/i, '') || 'Untitled');
-      await NoteService.createNote(noteTitle, sanitized, folderId);
-      imported++;
+      result.strippedCount += stripped.length;
+      const baseTitle = title ?? (file.name.replace(/\.md$/i, '') || 'Untitled');
+      const { outcome, noteId } = await applyDuplicateStrategy({
+        baseTitle,
+        content: sanitized,
+        folderId,
+        tagIds: [],
+        modifiedAt: undefined,
+        createdAt: undefined,
+        lookup,
+        strategy: duplicateStrategy
+      });
+      if (outcome === 'skipped') {
+        result.duplicatesSkipped++;
+      } else {
+        if (outcome === 'overwritten') result.duplicatesOverwritten++;
+        else if (outcome === 'renamed') result.duplicatesRenamed++;
+        result.imported++;
+        // Push the freshly-saved note (skipSync was true on the storage write).
+        const note = await noteStore.get(noteId);
+        if (note) pushNote(note);
+      }
     } catch (e: unknown) {
-      errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      result.errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
   }
 
-  return { imported, errors, strippedCount };
+  // Rebuild the title index so any in-place overwrites / new notes are
+  // visible immediately without requiring a reload.
+  try {
+    await noteIndex.rebuild();
+  } catch (e: unknown) {
+    logger.warn('Failed to rebuild note index after markdown import', e);
+  }
+
+  return result;
+}
+
+/**
+ * Per-file outcome reported by {@link applyDuplicateStrategy}.
+ *
+ * `skipped` does not bump the imported counter (existing note left alone);
+ * the others all produce a persisted note. `noteId` is `undefined` for
+ * `skipped` only — callers that bulk-push on completion should iterate
+ * over the populated ids.
+ */
+type DuplicateOutcomeResult =
+  | { outcome: 'created' | 'overwritten' | 'renamed'; noteId: string }
+  | { outcome: 'skipped'; noteId: undefined };
+
+/**
+ * Apply the selected duplicate-handling strategy for a single file.
+ *
+ * Mutates `lookup` so subsequent files in the same batch see the just-created
+ * / just-renamed entry and don't double-collide with it.
+ *
+ * `tagIds` is the list of tag ids resolved from frontmatter (already
+ * find-or-created by the caller). For `overwrite`, this REPLACES the
+ * existing note's tag set — frontmatter is treated as the source of truth.
+ */
+async function applyDuplicateStrategy(args: {
+  baseTitle: string;
+  content: string;
+  folderId: string | undefined;
+  tagIds: string[];
+  createdAt: string | undefined;
+  modifiedAt: string | undefined;
+  lookup: TitleLookup;
+  strategy: DuplicateStrategy;
+}): Promise<DuplicateOutcomeResult> {
+  const { baseTitle, content, folderId, tagIds, createdAt, modifiedAt, lookup, strategy } = args;
+  const existingId = findExisting(lookup, folderId, baseTitle);
+
+  if (!existingId) {
+    const newId = await NoteService.createNote(baseTitle, content, folderId, {
+      createdAt,
+      updatedAt: modifiedAt ?? createdAt,
+      skipSync: true
+    });
+    if (tagIds.length > 0) {
+      await TagService.setTagsForNote(newId, tagIds, { skipSync: true });
+    }
+    rememberTitle(lookup, folderId, baseTitle, newId);
+    return { outcome: 'created', noteId: newId };
+  }
+
+  if (strategy === 'skip') {
+    return { outcome: 'skipped', noteId: undefined };
+  }
+
+  if (strategy === 'overwrite') {
+    await NoteService.updateNote(existingId, baseTitle, content, {
+      updatedAt: modifiedAt ?? new Date().toISOString(),
+      skipSync: true
+    });
+    // Replace tag set with frontmatter tags (source of truth on overwrite).
+    await TagService.setTagsForNote(existingId, tagIds, { skipSync: true });
+    return { outcome: 'overwritten', noteId: existingId };
+  }
+
+  // strategy === 'rename'
+  const takenLower = new Set<string>();
+  const bucket = lookup.get(folderKey(folderId));
+  if (bucket) for (const k of bucket.keys()) takenLower.add(k);
+  const renamedTitle = computeRenamedTitle(baseTitle, takenLower);
+  const newId = await NoteService.createNote(renamedTitle, content, folderId, {
+    createdAt,
+    updatedAt: modifiedAt ?? createdAt,
+    skipSync: true
+  });
+  if (tagIds.length > 0) {
+    await TagService.setTagsForNote(newId, tagIds, { skipSync: true });
+  }
+  rememberTitle(lookup, folderId, renamedTitle, newId);
+  return { outcome: 'renamed', noteId: newId };
 }
 
 // ── Folder Import (Obsidian-style vault) ────────────────────────────────────
@@ -769,6 +933,9 @@ export type ImportFolderResult = {
   skippedNonMarkdown: number;
   skippedTooLarge: number;
   skippedHidden: number;
+  duplicatesSkipped: number;
+  duplicatesOverwritten: number;
+  duplicatesRenamed: number;
   strippedCount: number;
   errors: string[];
 };
@@ -786,12 +953,17 @@ export type ImportFolderResult = {
  * the import against an existing structure reuses folders instead of
  * duplicating them.
  *
- * TODO(duplication): notes are currently NOT deduplicated — re-importing the
- * same vault creates a second copy of each note. A future improvement could
- * skip creation when a note with the same title already exists in the target
- * folder (requires decrypting NoteIndex entries for each candidate folder).
+ * `duplicateStrategy` controls per-note behavior when an importable note
+ * collides with an existing one (same lowercase title in the same target
+ * folder). See {@link applyDuplicateStrategy} for semantics. The lookup
+ * mutates as the batch progresses, so two files in the source vault sharing
+ * a name within the same directory will also be deduplicated against each
+ * other (e.g. `Notes.md` + `notes.md` → `Notes.md` + `Notes (2).md`).
  */
-export async function importFolder(files: File[]): Promise<ImportFolderResult> {
+export async function importFolder(
+  files: File[],
+  duplicateStrategy: DuplicateStrategy = 'rename'
+): Promise<ImportFolderResult> {
   const result: ImportFolderResult = {
     imported: 0,
     foldersCreated: 0,
@@ -799,6 +971,9 @@ export async function importFolder(files: File[]): Promise<ImportFolderResult> {
     skippedNonMarkdown: 0,
     skippedTooLarge: 0,
     skippedHidden: 0,
+    duplicatesSkipped: 0,
+    duplicatesOverwritten: 0,
+    duplicatesRenamed: 0,
     strippedCount: 0,
     errors: []
   };
@@ -855,6 +1030,12 @@ export async function importFolder(files: File[]): Promise<ImportFolderResult> {
   const foldersCounter = { count: 0 };
   const tagsCounter = { count: 0 };
 
+  // 5b. Build a per-folder note-title lookup for duplicate detection.
+  //     Mirrors the folder/tag find-or-create pattern: snapshot of existing
+  //     state, mutated as the batch progresses so files within this import
+  //     also dedupe against each other.
+  const titleLookup = await buildTitleLookupFromIndex();
+
   // 6. Resolve every unique directory path to a folder id up-front.
   const pathToFolderId = new Map<string, string | undefined>();
   for (const file of sizedFiles) {
@@ -871,7 +1052,7 @@ export async function importFolder(files: File[]): Promise<ImportFolderResult> {
   }
   result.foldersCreated = foldersCounter.count;
 
-  // 7. Import each note, attach tags, preserve frontmatter timestamps.
+  // 7. Import each note via the duplicate strategy helper.
   //    skipSync: true — avoid per-note pushNote/pushNoteUpdate race condition.
   //    Bulk push happens after the loop (step 7b).
   const importedNoteIds: string[] = [];
@@ -891,16 +1072,11 @@ export async function importFolder(files: File[]): Promise<ImportFolderResult> {
       const createdAt = normalizeFrontmatterDate(parsed.created);
       const modifiedAt = normalizeFrontmatterDate(parsed.modified);
 
-      const noteId = await NoteService.createNote(title, sanitizedContent, folderId, {
-        createdAt: createdAt ?? undefined,
-        updatedAt: modifiedAt ?? createdAt ?? undefined,
-        skipSync: true
-      });
-      importedNoteIds.push(noteId);
-
+      // Resolve frontmatter tags up-front — tags are global, so find-or-create
+      // is independent of the per-note duplicate strategy.
+      const tagIds: string[] = [];
       if (parsed.tags.length > 0) {
         const { sanitized: safeTags } = sanitizeTags(parsed.tags);
-        const tagIds: string[] = [];
         for (const tagName of safeTags) {
           try {
             const tagId = await findOrCreateTagByName(tagName, tagLookup, tagsCounter);
@@ -909,12 +1085,27 @@ export async function importFolder(files: File[]): Promise<ImportFolderResult> {
             result.errors.push(`Tag "${tagName}": ${e instanceof Error ? e.message : 'błąd'}`);
           }
         }
-        if (tagIds.length > 0) {
-          await TagService.setTagsForNote(noteId, tagIds, { skipSync: true });
-        }
       }
 
-      result.imported++;
+      const { outcome, noteId } = await applyDuplicateStrategy({
+        baseTitle: title,
+        content: sanitizedContent,
+        folderId,
+        tagIds,
+        createdAt: createdAt ?? undefined,
+        modifiedAt: modifiedAt ?? undefined,
+        lookup: titleLookup,
+        strategy: duplicateStrategy
+      });
+
+      if (outcome === 'skipped') {
+        result.duplicatesSkipped++;
+      } else {
+        if (outcome === 'overwritten') result.duplicatesOverwritten++;
+        else if (outcome === 'renamed') result.duplicatesRenamed++;
+        result.imported++;
+        importedNoteIds.push(noteId);
+      }
     } catch (e: unknown) {
       result.errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
