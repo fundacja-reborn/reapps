@@ -132,6 +132,12 @@
       "confirm_cascade": "Usuń folder i notatki",
       "cancel": "Anuluj"
     },
+    "import_markdown": {
+      "action": "Importuj .md tutaj",
+      "dialog_title": "Importuj .md do „{name}”",
+      "dialog_description": "Wybrane pliki Markdown zostaną zaimportowane do tego folderu.",
+      "dialog_close": "Zamknij"
+    },
     "errors": {
       "create_failed": "Nie udało się utworzyć folderu",
       "update_failed": "Nie udało się zaktualizować folderu",
@@ -531,7 +537,8 @@
       "folder_import_skipped_too_large": "Pominięto {count} plików przekraczających 500 KB",
       "folder_import_skipped_hidden": "Pominięto {count} plików z ukrytych folderów (.obsidian, .trash itp.)",
       "dedup_files_found": "Znaleziono {count} notatek do importu",
-      "dedup_prompt": "Co zrobić, gdy notatka o tej samej nazwie już istnieje w tym samym folderze?",
+      "dedup_prompt_root": "Co zrobić, gdy notatka o tej samej nazwie już istnieje w „Wszystkich notatkach”?",
+      "dedup_prompt_folder": "Co zrobić, gdy notatka o tej samej nazwie już istnieje w tym samym folderze?",
       "dedup_rename": "Zachowaj obie kopie",
       "dedup_rename_desc": "Importuj jako nową notatkę z sufiksem (np. „Notatka (2)\")",
       "dedup_skip": "Pomiń duplikat",

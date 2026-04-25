@@ -13,7 +13,8 @@
     MoreHorizontal,
     FolderPlus,
     Pencil,
-    Trash2
+    Trash2,
+    Upload
   } from '@lucide/svelte';
   import {
     Button,
@@ -34,6 +35,7 @@
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import type { DeleteFolderMode } from '$lib/services/folder.service';
   import DeleteFolderDialog from './DeleteFolderDialog.svelte';
+  import ImportMarkdownToFolderDialog from '$lib/components/import/ImportMarkdownToFolderDialog.svelte';
   import FolderTree from './FolderTree.svelte';
 
   let {
@@ -141,6 +143,42 @@
     }
     folderToDelete = null;
   }
+
+  // ── Import .md to folder ────────────────────────────────────────
+  let importDialogOpen = $state(false);
+  let importTargetFolder = $state<FolderWithChildren | null>(null);
+  let importPendingFiles = $state<File[] | null>(null);
+  let importFileInputEl = $state<HTMLInputElement | null>(null);
+
+  function handleImportHere(folder: FolderWithChildren, e?: Event) {
+    e?.stopPropagation();
+    menuOpenId = null;
+    folderActionSheetOpen = false;
+    importTargetFolder = folder;
+    // Reset value so re-selecting the same files re-fires `change`.
+    if (importFileInputEl) importFileInputEl.value = '';
+    importFileInputEl?.click();
+  }
+
+  function handleImportFilesSelected(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    if (files.length === 0 || !importTargetFolder) {
+      importTargetFolder = null;
+      return;
+    }
+    importPendingFiles = files;
+    importDialogOpen = true;
+  }
+
+  $effect(() => {
+    // When dialog closes, drop the file/folder context (parent of source of truth).
+    if (!importDialogOpen) {
+      importPendingFiles = null;
+      importTargetFolder = null;
+    }
+  });
 
   // ── Drag & Drop ─────────────────────────────────────────────────
   let dragOverId = $state<string | null>(null);
@@ -338,6 +376,10 @@
                   <Pencil class="h-3.5 w-3.5" />
                   {$t('folders.rename')}
                 </DropdownMenuItem>
+                <DropdownMenuItem onclick={(e) => handleImportHere(folder, e)}>
+                  <Upload class="h-3.5 w-3.5" />
+                  {$t('folders.import_markdown.action')}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   class="text-destructive focus:text-destructive"
@@ -396,6 +438,14 @@
       </Button>
       <Button
         variant="ghost"
+        class="w-full justify-start"
+        onclick={() => activeMenuFolder && handleImportHere(activeMenuFolder)}
+      >
+        <Upload class="mr-2 h-4 w-4" />
+        {$t('folders.import_markdown.action')}
+      </Button>
+      <Button
+        variant="ghost"
         class="w-full justify-start text-destructive hover:text-destructive"
         onclick={() => activeMenuFolder && handleDelete(activeMenuFolder)}
       >
@@ -411,4 +461,21 @@
   folderId={folderToDelete?.id ?? null}
   folderName={folderToDelete?.name ?? ''}
   onConfirm={confirmDeleteFolder}
+/>
+
+<!-- Hidden file input for "Import .md tutaj" — triggered from the menu -->
+<input
+  bind:this={importFileInputEl}
+  type="file"
+  accept=".md,text/markdown"
+  multiple
+  class="hidden"
+  onchange={handleImportFilesSelected}
+/>
+
+<ImportMarkdownToFolderDialog
+  bind:open={importDialogOpen}
+  files={importPendingFiles}
+  folderId={importTargetFolder?.id ?? null}
+  folderName={importTargetFolder?.name ?? ''}
 />

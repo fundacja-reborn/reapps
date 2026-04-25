@@ -132,6 +132,12 @@
       "confirm_cascade": "Ordner und Notizen löschen",
       "cancel": "Abbrechen"
     },
+    "import_markdown": {
+      "action": ".md hierher importieren",
+      "dialog_title": ".md in „{name}“ importieren",
+      "dialog_description": "Die ausgewählten Markdown-Dateien werden in diesen Ordner importiert.",
+      "dialog_close": "Schließen"
+    },
     "errors": {
       "create_failed": "Ordner konnte nicht erstellt werden",
       "update_failed": "Ordner konnte nicht aktualisiert werden",
@@ -531,7 +537,8 @@
       "folder_import_skipped_too_large": "{count} Datei(en) größer als 500 KB übersprungen",
       "folder_import_skipped_hidden": "{count} Datei(en) in versteckten Ordnern übersprungen (.obsidian, .trash usw.)",
       "dedup_files_found": "{count} Notiz(en) zum Importieren gefunden",
-      "dedup_prompt": "Was soll passieren, wenn eine Notiz mit demselben Namen bereits im selben Ordner existiert?",
+      "dedup_prompt_root": "Was soll passieren, wenn eine Notiz mit demselben Namen bereits in „Alle Notizen“ existiert?",
+      "dedup_prompt_folder": "Was soll passieren, wenn eine Notiz mit demselben Namen bereits im selben Ordner existiert?",
       "dedup_rename": "Beide Kopien behalten",
       "dedup_rename_desc": "Als neue Notiz mit Suffix importieren (z. B. „Notiz (2)\")",
       "dedup_skip": "Duplikate überspringen",

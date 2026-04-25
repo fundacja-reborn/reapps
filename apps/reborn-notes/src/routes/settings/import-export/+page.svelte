@@ -36,6 +36,7 @@
   } from '$lib/services/export-import.service';
   import type { DuplicateStrategy } from '$lib/services/import-dedup-utils';
   import { notesStore } from '$lib/stores/notes.store';
+  import MarkdownImportStrategyPicker from '$lib/components/import/MarkdownImportStrategyPicker.svelte';
   import { createLogger } from '@reborn/utils';
 
   const logger = createLogger('notes:import-export');
@@ -531,35 +532,12 @@
 
           {#if pendingMdFiles}
             <div class="mt-3 space-y-3 rounded-md border border-primary/40 bg-background p-3">
-              <p class="text-xs font-medium">
-                {$t('settings_page.export_import.dedup_files_found', {
-                  values: { count: pendingMdFiles.length }
-                })}
-              </p>
-              <p class="text-xs text-muted-foreground">
-                {$t('settings_page.export_import.dedup_prompt')}
-              </p>
-              <div class="space-y-2">
-                {#each ['rename', 'skip', 'overwrite'] as opt (opt)}
-                  <label class="flex items-start gap-2 text-xs cursor-pointer">
-                    <input
-                      type="radio"
-                      name="md-strategy"
-                      value={opt}
-                      bind:group={pendingMdStrategy}
-                      class="mt-0.5"
-                    />
-                    <span>
-                      <span class="font-medium">
-                        {$t(`settings_page.export_import.dedup_${opt}`)}
-                      </span>
-                      <span class="block text-muted-foreground">
-                        {$t(`settings_page.export_import.dedup_${opt}_desc`)}
-                      </span>
-                    </span>
-                  </label>
-                {/each}
-              </div>
+              <MarkdownImportStrategyPicker
+                count={pendingMdFiles.length}
+                bind:strategy={pendingMdStrategy}
+                promptVariant="root"
+                radioGroupName="md-strategy"
+              />
               <div class="flex gap-2">
                 <button
                   type="button"
@@ -660,35 +638,12 @@
 
           {#if pendingFolderFiles}
             <div class="mt-3 space-y-3 rounded-md border border-primary/40 bg-background p-3">
-              <p class="text-xs font-medium">
-                {$t('settings_page.export_import.dedup_files_found', {
-                  values: { count: pendingFolderMdCount }
-                })}
-              </p>
-              <p class="text-xs text-muted-foreground">
-                {$t('settings_page.export_import.dedup_prompt')}
-              </p>
-              <div class="space-y-2">
-                {#each ['rename', 'skip', 'overwrite'] as opt (opt)}
-                  <label class="flex items-start gap-2 text-xs cursor-pointer">
-                    <input
-                      type="radio"
-                      name="folder-strategy"
-                      value={opt}
-                      bind:group={pendingFolderStrategy}
-                      class="mt-0.5"
-                    />
-                    <span>
-                      <span class="font-medium">
-                        {$t(`settings_page.export_import.dedup_${opt}`)}
-                      </span>
-                      <span class="block text-muted-foreground">
-                        {$t(`settings_page.export_import.dedup_${opt}_desc`)}
-                      </span>
-                    </span>
-                  </label>
-                {/each}
-              </div>
+              <MarkdownImportStrategyPicker
+                count={pendingFolderMdCount}
+                bind:strategy={pendingFolderStrategy}
+                promptVariant="folder"
+                radioGroupName="folder-strategy"
+              />
               <div class="flex gap-2">
                 <button
                   type="button"
