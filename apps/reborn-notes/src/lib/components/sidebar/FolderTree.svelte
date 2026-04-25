@@ -32,7 +32,8 @@
   import { notesStore } from '$lib/stores/notes.store';
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
-  import ConfirmDialog from '../shared/ConfirmDialog.svelte';
+  import type { DeleteFolderMode } from '$lib/services/folder.service';
+  import DeleteFolderDialog from './DeleteFolderDialog.svelte';
   import FolderTree from './FolderTree.svelte';
 
   let {
@@ -92,13 +93,6 @@
   let folderActionSheetOpen = $state(false);
   let deleteFolderDialogOpen = $state(false);
   let folderToDelete = $state<FolderWithChildren | null>(null);
-  const deleteFolderMessage = $derived(
-    folderToDelete
-      ? (folderToDelete.children?.length ?? 0) > 0
-        ? $t('folders.delete_confirm', { values: { name: folderToDelete.name } })
-        : $t('folders.delete_confirm_leaf', { values: { name: folderToDelete.name } })
-      : ''
-  );
 
   const activeMenuFolder = $derived(
     menuOpenId ? (nodes.find((n) => n.id === menuOpenId) ?? null) : null
@@ -138,8 +132,13 @@
     deleteFolderDialogOpen = true;
   }
 
-  async function confirmDeleteFolder() {
-    if (folderToDelete) await foldersStore.remove(folderToDelete.id);
+  async function confirmDeleteFolder(mode: DeleteFolderMode) {
+    if (folderToDelete) {
+      await foldersStore.remove(folderToDelete.id, mode);
+      // Cascade soft-deletes notes — refresh the visible note list so they
+      // disappear from the current folder/All-notes view immediately.
+      if (mode === 'cascade') notesStore.refresh();
+    }
     folderToDelete = null;
   }
 
@@ -407,11 +406,9 @@
   </SheetContent>
 </Sheet>
 
-<ConfirmDialog
+<DeleteFolderDialog
   bind:open={deleteFolderDialogOpen}
-  title={$t('folders.delete_folder_title')}
-  description={deleteFolderMessage}
-  confirmText={$t('notes.delete_permanently')}
-  destructive
+  folderId={folderToDelete?.id ?? null}
+  folderName={folderToDelete?.name ?? ''}
   onConfirm={confirmDeleteFolder}
 />

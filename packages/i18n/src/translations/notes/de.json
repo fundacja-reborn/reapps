@@ -120,6 +120,21 @@
     "delete_tag_title": "Tag löschen",
     "delete_tag_desc": "Dieses Tag wird von allen Notizen entfernt.",
     "delete_folder_title": "Ordner löschen",
+    "delete_dialog": {
+      "title": "Ordner \"{name}\" löschen",
+      "loading": "Elemente werden gezählt…",
+      "summary_empty": "Dieser Ordner ist leer.",
+      "summary_notes_only": "Dieser Ordner enthält {notes} Notiz(en).",
+      "summary_subfolders_only": "Dieser Ordner enthält {subfolders} Unterordner.",
+      "summary_both": "Dieser Ordner enthält {notes} Notiz(en) und {subfolders} Unterordner.",
+      "mode_detach_label": "Notizen in „Alle Notizen“ verschieben",
+      "mode_detach_hint": "Empfohlen. Notizen bleiben erhalten und sind weiterhin unter „Alle Notizen“ zugänglich.",
+      "mode_cascade_label": "Notizen in den Papierkorb verschieben",
+      "mode_cascade_hint": "Notizen (auch aus Unterordnern) werden in den Papierkorb verschoben und können von dort wiederhergestellt werden.",
+      "confirm_detach": "Ordner löschen",
+      "confirm_cascade": "Ordner und Notizen löschen",
+      "cancel": "Abbrechen"
+    },
     "errors": {
       "create_failed": "Ordner konnte nicht erstellt werden",
       "update_failed": "Ordner konnte nicht aktualisiert werden",

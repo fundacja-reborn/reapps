@@ -120,6 +120,21 @@
     "delete_tag_title": "Usuń tag",
     "delete_tag_desc": "Ten tag zostanie usunięty ze wszystkich notatek.",
     "delete_folder_title": "Usuń folder",
+    "delete_dialog": {
+      "title": "Usuń folder „{name}”",
+      "loading": "Liczenie elementów…",
+      "summary_empty": "Ten folder jest pusty.",
+      "summary_notes_only": "Ten folder zawiera {notes} notatek/notatki.",
+      "summary_subfolders_only": "Ten folder zawiera {subfolders} podfolder(ów).",
+      "summary_both": "Ten folder zawiera {notes} notatek/notatki i {subfolders} podfolder(ów).",
+      "mode_detach_label": "Przenieś notatki do „Wszystkie notatki”",
+      "mode_detach_hint": "Zalecane. Notatki nie zostaną usunięte i pozostaną dostępne w widoku „Wszystkie notatki”.",
+      "mode_cascade_label": "Przenieś notatki do kosza",
+      "mode_cascade_hint": "Notatki (również z podfolderów) trafią do kosza i będzie można je stamtąd przywrócić.",
+      "confirm_detach": "Usuń folder",
+      "confirm_cascade": "Usuń folder i notatki",
+      "cancel": "Anuluj"
+    },
     "errors": {
       "create_failed": "Nie udało się utworzyć folderu",
       "update_failed": "Nie udało się zaktualizować folderu",

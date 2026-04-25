@@ -21,7 +21,8 @@ import {
   pushFolder,
   pushFolderUpdate,
   pushFolderDelete,
-  pushNoteUpdate
+  pushNoteUpdate,
+  pushNoteDelete
 } from './notes-sync.service';
 import { noteIndex } from '$lib/services/note-index.svelte';
 
@@ -117,25 +118,73 @@ export async function renameFolder(id: string, name: string): Promise<void> {
   pushFolderUpdate(id, { name_encrypted });
 }
 
+export type DeleteFolderMode = 'detach' | 'cascade';
+
+export interface FolderDeleteSummary {
+  /** Number of subfolders that will be deleted (any depth, excludes the folder itself). */
+  subfolderCount: number;
+  /** Number of active (non-trashed) notes that live inside the folder or its descendants. */
+  noteCount: number;
+}
+
 /**
- * Delete a folder. Notes inside (and inside its descendants) are detached:
- * `folder_id` is cleared locally and pushed to the server. The server side
- * does the same via Prisma's `onDelete: SetNull` on `Note.folder`, so this
- * keeps the client in sync without relying on the next pull to reconcile
- * dangling FKs.
+ * Count what would be affected by deleting a folder, so the UI can render an
+ * informed confirmation dialog (radio choice between detach and cascade).
  */
-export async function deleteFolder(id: string): Promise<void> {
+export async function getFolderDeleteSummary(id: string): Promise<FolderDeleteSummary> {
+  const descendantIds = await folderOperations.getDescendantIds(id);
+  const allIds = [id, ...descendantIds];
+  let noteCount = 0;
+  for (const fid of allIds) {
+    const notes = await noteQueries.byFolder(fid);
+    noteCount += notes.length;
+  }
+  return { subfolderCount: descendantIds.length, noteCount };
+}
+
+/**
+ * Delete a folder, with control over what happens to the notes inside.
+ *
+ * - `detach` (default): notes (in this folder and any descendant) keep
+ *   existing but get `folder_id = null`, ending up in "All Notes". Mirrors
+ *   Prisma's `onDelete: SetNull`.
+ * - `cascade`: notes are soft-deleted (moved to Trash) following the same
+ *   path as `deleteNote`. They remain restorable from the trash for the
+ *   normal retention window.
+ */
+export async function deleteFolder(
+  id: string,
+  mode: DeleteFolderMode = 'detach'
+): Promise<void> {
   const folderIds = [id, ...(await folderOperations.getDescendantIds(id))];
 
-  // Detach notes that live in any of those folders, locally + on the server.
   for (const fid of folderIds) {
     const notes = await noteQueries.byFolder(fid);
     for (const note of notes) {
-      await noteOperations.moveToFolder(note.id, null);
-      const current = await noteStore.get(note.id);
-      if (current) await noteStore.save({ ...current, sync_status: 'pending' });
-      noteIndex.patch(note.id, { folderId: undefined });
-      pushNoteUpdate(note.id, { folder_id: null });
+      if (mode === 'cascade') {
+        // Soft-delete: same path as deleteNote() — archive locally, push DELETE.
+        await noteOperations.archive(note.id);
+        const archived = await noteStore.get(note.id);
+        const wasSynced = note.sync_status !== 'pending';
+        if (archived) {
+          await noteStore.save({
+            ...archived,
+            sync_status: wasSynced ? 'pending' : 'synced'
+          });
+        }
+        noteIndex.patch(note.id, {
+          isArchived: true,
+          updatedAt: new Date().toISOString()
+        });
+        if (wasSynced) pushNoteDelete(note.id);
+      } else {
+        // Detach: clear folder_id locally + on the server.
+        await noteOperations.moveToFolder(note.id, null);
+        const current = await noteStore.get(note.id);
+        if (current) await noteStore.save({ ...current, sync_status: 'pending' });
+        noteIndex.patch(note.id, { folderId: undefined });
+        pushNoteUpdate(note.id, { folder_id: null });
+      }
     }
   }
 

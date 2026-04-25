@@ -120,6 +120,21 @@
     "delete_tag_title": "Delete tag",
     "delete_tag_desc": "This tag will be removed from all notes.",
     "delete_folder_title": "Delete folder",
+    "delete_dialog": {
+      "title": "Delete folder \"{name}\"",
+      "loading": "Counting items…",
+      "summary_empty": "This folder is empty.",
+      "summary_notes_only": "This folder contains {notes} note(s).",
+      "summary_subfolders_only": "This folder contains {subfolders} subfolder(s).",
+      "summary_both": "This folder contains {notes} note(s) and {subfolders} subfolder(s).",
+      "mode_detach_label": "Move notes to All Notes",
+      "mode_detach_hint": "Recommended. Notes are kept and stay accessible from All Notes.",
+      "mode_cascade_label": "Move notes to Trash",
+      "mode_cascade_hint": "Notes (including those in subfolders) will be moved to Trash and can be restored from there.",
+      "confirm_detach": "Delete folder",
+      "confirm_cascade": "Delete folder and notes",
+      "cancel": "Cancel"
+    },
     "errors": {
       "create_failed": "Failed to create folder",
       "update_failed": "Failed to update folder",
