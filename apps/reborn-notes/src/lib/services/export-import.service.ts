@@ -309,8 +309,24 @@ export function exportNoteAsPdf(note: NoteDecrypted): void {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
   iframe.setAttribute('title', filename);
-  iframe.style.cssText =
-    'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+  // Full viewport size, but invisible to the user. Two reasons:
+  // - Android Brave PWA: a 0×0 iframe paginated to a single page (only the
+  //   start of long notes printed). With real dimensions the print framework
+  //   computes paged layout from actual content height.
+  // - iOS Safari: refuses to print iframes that aren't laid out. `opacity: 0`
+  //   keeps the iframe in the layout tree (unlike `display: none` /
+  //   `visibility: hidden` which can cause iOS to print blank pages).
+  iframe.style.cssText = [
+    'position:fixed',
+    'top:0',
+    'left:0',
+    'width:100%',
+    'height:100%',
+    'border:0',
+    'opacity:0',
+    'pointer-events:none',
+    'z-index:-1'
+  ].join(';');
 
   // Desktop Chromium uses the PARENT document's title for the print job's
   // suggested filename — even when printing an iframe with its own <title>.
@@ -328,28 +344,70 @@ export function exportNoteAsPdf(note: NoteDecrypted): void {
     iframe.remove();
   };
 
-  iframe.addEventListener('load', () => {
-    const win = iframe.contentWindow;
-    if (!win) {
-      cleanup();
-      return;
-    }
-    win.addEventListener('afterprint', cleanup);
-    // Tiny delay to let images decode before the print snapshot is captured.
-    setTimeout(() => {
-      try {
-        win.focus();
-        win.print();
-      } catch {
-        cleanup();
-      }
-    }, 100);
-  });
-
   document.body.appendChild(iframe);
-  // `srcdoc` is allowed under the app's CSP (`style-src 'self' 'unsafe-inline'`
-  // permits the inline <style> block we wrote into the document).
-  iframe.srcdoc = docHtml;
+
+  // Use document.open()/write()/close() instead of `srcdoc`. iOS Safari has a
+  // long-standing bug where `iframe.contentWindow.print()` on a srcdoc-loaded
+  // iframe ends up printing the *parent* page (or blank pages with the
+  // browser's default header/footer chrome) instead of the iframe content.
+  // The classic write() path produces a real `about:blank` document that
+  // iOS prints reliably.
+  const doc = iframe.contentDocument;
+  if (!doc) {
+    cleanup();
+    return;
+  }
+  doc.open();
+  doc.write(docHtml);
+  doc.close();
+
+  const win = iframe.contentWindow;
+  if (!win) {
+    cleanup();
+    return;
+  }
+  win.addEventListener('afterprint', cleanup);
+
+  // Wait for images inside the iframe to finish decoding, otherwise mobile
+  // print engines snapshot before they render and clip content. Falls back to
+  // a 1.5s timeout so the print is never blocked indefinitely by a stuck img.
+  const triggerPrint = () => {
+    try {
+      win.focus();
+      win.print();
+    } catch {
+      cleanup();
+    }
+  };
+
+  const images = Array.from(doc.images);
+  if (images.length === 0) {
+    setTimeout(triggerPrint, 100);
+  } else {
+    let pending = images.length;
+    let timedOut = false;
+    const onOneImageDone = () => {
+      pending -= 1;
+      if (pending <= 0 && !timedOut) {
+        // One extra frame for layout to settle after the last decode.
+        setTimeout(triggerPrint, 50);
+      }
+    };
+    for (const img of images) {
+      if (img.complete) {
+        onOneImageDone();
+      } else {
+        img.addEventListener('load', onOneImageDone, { once: true });
+        img.addEventListener('error', onOneImageDone, { once: true });
+      }
+    }
+    setTimeout(() => {
+      if (pending > 0) {
+        timedOut = true;
+        triggerPrint();
+      }
+    }, 1500);
+  }
 
   // Hard fallback — Brave/Safari sometimes never fire afterprint when the
   // user dismisses the print sheet on mobile.
