@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy, untrack } from 'svelte';
+  import { onMount, onDestroy, tick, untrack } from 'svelte';
   import { beforeNavigate } from '$app/navigation';
   import { base } from '$app/paths';
   import { SvelteSet } from 'svelte/reactivity';
@@ -458,6 +458,16 @@
 
   // ── New note ─────────────────────────────────────────────────────
   async function handleNewNote() {
+    // Trash/starred/tags filter out a freshly created note (no deletion / star /
+    // tag yet), so the user would create a note and see nothing. Switch to "All
+    // notes" first and await tick so the section $effect drives the store filter
+    // before we call create() + refresh().
+    if (activeSection === 'trash' || activeSection === 'starred' || activeSection === 'tags') {
+      activeSection = 'all';
+      activeFolderId = undefined;
+      activeTagId = null;
+      await tick();
+    }
     const date = new Date().toISOString().slice(0, 10);
     const settings = await getSettings();
     const prefix = settings?.language === 'pl' ? 'Notatka' : 'Note';
