@@ -83,6 +83,7 @@ reborn-apps.code-workspace
 # Production/staging config — deployed via SCP, not in repo
 docker-compose.prod.yml
 docker-compose.staging.yml
+docker-compose.localprod.yml
 nginx/prod.conf
 
 # Dev Container (Claude Code specific mounts)
