@@ -13,3 +13,47 @@ logs
 .env
 .env.*
 !.env.example
+
+# Cache pnpm/npm/yarn (gdy store-dir jest lokalny — potrafi mieć ~1 GB)
+.pnpm-store
+.npm
+.yarn
+
+# Lokalne dane (na wypadek bind-mountów na hoście)
+.postgres
+
+# Dev / IDE / CI
+.github
+.githooks
+.vscode
+.idea
+.claude
+.editorconfig
+.htmlhintrc
+.htmlvalidate.json
+.prettierrc
+.prettierignore
+eslint.config.mjs
+knip.json
+
+# Dokumentacja i meta — nieużywane w runtime
+docs
+CHANGELOG.md
+README.md
+LICENSE
+SECURITY.md
+CLAUDE.md
+
+# Infrastruktura buildu — kontekst nie potrzebuje siebie samego
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Backupy / archiwa
+*.log
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.sql
+*.dump
