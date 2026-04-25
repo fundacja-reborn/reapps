@@ -1,3 +1,13 @@
+## 0.6.0 (2026-04-25)
+
+### 🚀 Features
+
+- **notes:** add PDF export via native print dialog ([#46](https://github.com/fundacja-reborn/reapps/pull/46))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.5.0 (2026-04-25)
 
 ### 🚀 Features
