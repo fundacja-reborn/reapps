@@ -53,7 +53,11 @@
   import { noteIndex } from '$lib/services/note-index.svelte';
   import { tagManager } from '$lib/services/tag-manager.svelte';
   import { toastStore } from '@reborn/ui';
-  import { flattenFolderTree, getAncestorIds } from '$lib/utils/folder-helpers';
+  import {
+    flattenFolderTree,
+    getAncestorIds,
+    findChildrenOfParent
+  } from '$lib/utils/folder-helpers';
   import { goto } from '$lib/utils/navigation';
   import { createScrollSync } from '$lib/utils/scroll-sync';
 
@@ -65,6 +69,16 @@
   let activeTagId = $state<string | null>(null);
   const activeStarred = $derived(activeSection === 'starred');
   const activeTrash = $derived(activeSection === 'trash');
+  const activeFolderSubfolders = $derived(
+    activeSection === 'folders' && activeFolderId
+      ? findChildrenOfParent($foldersStore, activeFolderId)
+      : []
+  );
+  const activeFolderParentId = $derived(
+    activeSection === 'folders' && activeFolderId
+      ? (getAncestorIds(activeFolderId, $foldersStore)[0] ?? null)
+      : null
+  );
 
   // ── Tag: mobile new tag input focus ────────────────────────────
   let mobileNewTagInput = $state<HTMLInputElement | null>(null);
@@ -511,11 +525,21 @@
     await noteDetailService.flushAndSnapshot();
     activeFolderId = id;
     activeNoteId.set(null);
+    if (id) {
+      getAncestorIds(id, $foldersStore).forEach((ancestorId) => expandedIds.add(ancestorId));
+      expandedIds.add(id);
+    }
     if (isMobile) {
       mobileView = 'list';
       pushMobileHistory();
     } else {
       closeSidebarSignal++;
+    }
+  }
+
+  function handleFolderBack() {
+    if (activeFolderParentId) {
+      void handleFolderSelect(activeFolderParentId);
     }
   }
 
@@ -891,6 +915,8 @@
                 {activeFolderName}
                 {activeSection}
                 isTrash={activeTrash}
+                subfolders={activeFolderSubfolders}
+                onSubfolderSelect={handleFolderSelect}
                 autoFocusSearch={activeSection === 'search'}
                 searchOnly={activeSection === 'search'}
                 prominentHeader={activeStarred ||
@@ -1281,6 +1307,9 @@
             {activeSection}
             isTrash={false}
             showSidebarTrigger
+            subfolders={activeFolderSubfolders}
+            onSubfolderSelect={handleFolderSelect}
+            onback={activeFolderParentId ? handleFolderBack : undefined}
             oncreate={handleNewNote}
           />
         </div>

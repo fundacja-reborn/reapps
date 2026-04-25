@@ -18,6 +18,8 @@
   import NoteListSearchBar from './notes/NoteListSearchBar.svelte';
   import NoteListSortMenu from './notes/NoteListSortMenu.svelte';
   import MoveToFolderMenu from './notes/MoveToFolderMenu.svelte';
+  import SubfolderList from './SubfolderList.svelte';
+  import type { FolderWithChildren } from '@reborn/types';
 
   // ── Infinite scroll ────────────────────────────────────────────
   const PAGE_SIZE = 50;
@@ -66,8 +68,10 @@
     prominentHeader = false,
     autoFocusSearch = false,
     searchOnly = false,
+    subfolders = [],
     onback,
-    oncreate
+    oncreate,
+    onSubfolderSelect
   }: {
     activeFolderName?: string;
     activeSection?: string;
@@ -76,8 +80,10 @@
     prominentHeader?: boolean;
     autoFocusSearch?: boolean;
     searchOnly?: boolean;
+    subfolders?: FolderWithChildren[];
     onback?: () => void;
     oncreate?: () => void | Promise<void>;
+    onSubfolderSelect?: (id: string) => void;
   } = $props();
 
   const isMobileQuery = useIsMobile();
@@ -316,39 +322,44 @@
 
   <!-- Notes list -->
   <div class="flex-1 overflow-y-auto px-3">
+    {#if subfolders.length > 0 && !searchInput && !searchOnly}
+      <SubfolderList {subfolders} onselect={(id) => onSubfolderSelect?.(id)} />
+    {/if}
     {#if searchOnly && !searchInput}
       <div class="px-4 py-12 text-center">
         <Search class="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
         <p class="text-sm text-muted-foreground">{$t('notes.search_hint')}</p>
       </div>
     {:else if $notesStore.length === 0}
-      <div class="px-4 py-8 text-center">
-        {#if searchInput}
-          <p class="text-sm text-muted-foreground">
-            {$t('notes.no_match', { values: { query: searchInput } })}
-          </p>
-          <button
-            type="button"
-            onclick={clearSearch}
-            class="mt-2 text-xs text-primary underline-offset-4 hover:underline"
-          >
-            {$t('notes.clear_search')}
-          </button>
-        {:else if isTrash}
-          <p class="text-sm text-muted-foreground">{$t('trash.empty_short')}</p>
-        {:else if $sessionExpired}
-          <p class="text-sm text-muted-foreground">{$t('auth.session.empty_no_data')}</p>
-        {:else}
-          <p class="text-sm text-muted-foreground">{$t('notes.no_notes_short')}</p>
-          <button
-            type="button"
-            onclick={handleCreate}
-            class="mt-2 text-xs text-primary underline-offset-4 hover:underline"
-          >
-            {$t('notes.create_one')}
-          </button>
-        {/if}
-      </div>
+      {#if subfolders.length === 0 || searchInput}
+        <div class="px-4 py-8 text-center">
+          {#if searchInput}
+            <p class="text-sm text-muted-foreground">
+              {$t('notes.no_match', { values: { query: searchInput } })}
+            </p>
+            <button
+              type="button"
+              onclick={clearSearch}
+              class="mt-2 text-xs text-primary underline-offset-4 hover:underline"
+            >
+              {$t('notes.clear_search')}
+            </button>
+          {:else if isTrash}
+            <p class="text-sm text-muted-foreground">{$t('trash.empty_short')}</p>
+          {:else if $sessionExpired}
+            <p class="text-sm text-muted-foreground">{$t('auth.session.empty_no_data')}</p>
+          {:else}
+            <p class="text-sm text-muted-foreground">{$t('notes.no_notes_short')}</p>
+            <button
+              type="button"
+              onclick={handleCreate}
+              class="mt-2 text-xs text-primary underline-offset-4 hover:underline"
+            >
+              {$t('notes.create_one')}
+            </button>
+          {/if}
+        </div>
+      {/if}
     {:else}
       <ul class="flex flex-col gap-2 py-1">
         {#each visibleNotes as note (note.id)}
