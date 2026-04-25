@@ -179,58 +179,181 @@ export function exportNoteAsMarkdown(note: NoteDecrypted, tagNames: string[] = [
 }
 
 /**
+ * Print stylesheet inlined into the iframe document below. Kept in this
+ * module (not in app.css) because the iframe is a separate document and
+ * cannot inherit the parent's `<style>` blocks. `@page { margin: 0 }` plus
+ * body padding suppresses the browser's default header (URL/date) and
+ * footer (page number). All sizes target paper, not screen.
+ */
+const PRINT_STYLES = `
+@page { margin: 0; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html, body { margin: 0; padding: 0; }
+body {
+  padding: 1.5cm;
+  color: #000;
+  background: #fff;
+  font-family: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+  font-size: 11pt;
+  line-height: 1.55;
+}
+h1, h2, h3, h4, h5, h6 {
+  break-after: avoid;
+  page-break-after: avoid;
+  line-height: 1.25;
+  font-weight: 600;
+}
+.reborn-print-title {
+  margin: 0 0 0.75em;
+  padding-bottom: 0.4em;
+  border-bottom: 1px solid #ccc;
+  font-size: 1.75rem;
+}
+.reborn-print-body h1 { font-size: 1.5rem;  margin: 1em 0 0.4em; }
+.reborn-print-body h2 { font-size: 1.3rem;  margin: 1em 0 0.4em; }
+.reborn-print-body h3 { font-size: 1.15rem; margin: 0.8em 0 0.3em; }
+.reborn-print-body h4 { font-size: 1rem;    margin: 0.8em 0 0.3em; }
+p { margin: 0 0 0.75em; }
+a { color: #1d4ed8; text-decoration: underline; word-break: break-word; }
+ul, ol { margin: 0 0 0.75em 1.5em; padding: 0; }
+li + li { margin-top: 0.2em; }
+blockquote {
+  margin: 0 0 0.75em;
+  padding: 0.4em 0.9em;
+  border-left: 3px solid #999;
+  color: #444;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+  background: #f3f3f3;
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+pre {
+  margin: 0 0 0.75em;
+  padding: 0.75em;
+  background: #f3f3f3;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; padding: 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.75em;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+th, td { border: 1px solid #ccc; padding: 0.4em 0.6em; text-align: left; }
+th { background: #f3f3f3; font-weight: 600; }
+img { max-width: 100%; height: auto; break-inside: avoid; page-break-inside: avoid; }
+hr { margin: 1em 0; border: none; border-top: 1px solid #ccc; }
+`.trim();
+
+function escapeHtml(s: string): string {
+  return s.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c
+  );
+}
+
+/**
  * Export a single note as PDF via the browser's native print dialog
  * ("Save as PDF" target). Zero Knowledge: the rendered HTML is built and
  * printed entirely client-side — plaintext never leaves the browser. No
  * external library is loaded; we reuse `marked` + DOMPurify already in deps.
  *
- * Renders into a dedicated off-screen container (`.reborn-print-target`)
- * appended to `document.body`. Global `@media print` rules in `app.css`
- * hide every other body child during printing so the dialog only sees the
- * clean note content. The container is removed after the `afterprint` event
- * (or on a defensive timeout fallback for browsers that fire it unreliably).
+ * Renders into a hidden iframe with its own document. Crucial for PWA mode
+ * on Android: appending to the main document and relying on `@media print`
+ * to hide the rest produced a blank PDF — Brave/Chrome on Android render a
+ * "viewport snapshot" for print in standalone PWAs, and the appended node
+ * sat below the fold. The iframe is an isolated document, so the print
+ * engine sees only its content regardless of host PWA layout/viewport.
+ *
+ * As a side effect, the iframe's `<title>` becomes the suggested filename
+ * (Android Brave/Chrome use the printed document's title, not the host
+ * page's `document.title` — that's why pre-iframe versions named the file
+ * after the PWA's manifest title).
  */
 export function exportNoteAsPdf(note: NoteDecrypted): void {
-  // Fresh Marked instance so we don't pick up the custom image renderer
-  // configured in MarkdownPreview (which would emit placeholders instead
-  // of native <img> tags — we want real images embedded in the PDF).
+  // Fresh Marked instance so we don't inherit MarkdownPreview's custom image
+  // renderer (which emits placeholders instead of native <img> — we want
+  // real images embedded in the PDF).
   const printMarked = new Marked({ gfm: true, breaks: true });
   const rawHtml = printMarked.parse(note.content ?? '', { async: false }) as string;
-  const safeHtml = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+  const safeBodyHtml = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
 
-  const container = document.createElement('div');
-  container.className = 'reborn-print-target';
+  const filename = sanitizeFilename(note.title);
+  const safeTitle = escapeHtml(note.title || 'Untitled');
 
-  const heading = document.createElement('h1');
-  heading.textContent = note.title || 'Untitled';
-  container.appendChild(heading);
+  const docHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>${escapeHtml(filename)}</title>
+<style>${PRINT_STYLES}</style>
+</head>
+<body>
+<h1 class="reborn-print-title">${safeTitle}</h1>
+<div class="reborn-print-body">${safeBodyHtml}</div>
+</body>
+</html>`;
 
-  const body = document.createElement('div');
-  body.className = 'reborn-print-target__body';
-  body.innerHTML = safeHtml;
-  container.appendChild(body);
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.setAttribute('title', filename);
+  iframe.style.cssText =
+    'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
 
-  document.body.appendChild(container);
-
-  // Browsers use document.title as the suggested filename in "Save as PDF".
+  // Desktop Chromium uses the PARENT document's title for the print job's
+  // suggested filename — even when printing an iframe with its own <title>.
+  // Android Chrome/Brave, conversely, prefers the PWA manifest name and
+  // ignores `document.title` swaps but DOES honor the iframe document's
+  // <title>. Setting both covers all platforms.
   const previousTitle = document.title;
-  document.title = sanitizeFilename(note.title);
+  document.title = filename;
 
   let cleanedUp = false;
   const cleanup = () => {
     if (cleanedUp) return;
     cleanedUp = true;
     document.title = previousTitle;
-    container.remove();
-    window.removeEventListener('afterprint', cleanup);
+    iframe.remove();
   };
 
-  window.addEventListener('afterprint', cleanup);
-  // Defensive fallback — Safari/iOS fire `afterprint` inconsistently when the
-  // user dismisses the print sheet without printing.
-  setTimeout(cleanup, 60_000);
+  iframe.addEventListener('load', () => {
+    const win = iframe.contentWindow;
+    if (!win) {
+      cleanup();
+      return;
+    }
+    win.addEventListener('afterprint', cleanup);
+    // Tiny delay to let images decode before the print snapshot is captured.
+    setTimeout(() => {
+      try {
+        win.focus();
+        win.print();
+      } catch {
+        cleanup();
+      }
+    }, 100);
+  });
 
-  window.print();
+  document.body.appendChild(iframe);
+  // `srcdoc` is allowed under the app's CSP (`style-src 'self' 'unsafe-inline'`
+  // permits the inline <style> block we wrote into the document).
+  iframe.srcdoc = docHtml;
+
+  // Hard fallback — Brave/Safari sometimes never fire afterprint when the
+  // user dismisses the print sheet on mobile.
+  setTimeout(cleanup, 60_000);
 }
 
 /** Export multiple notes as a .zip archive (JSZip, dynamically imported). */
