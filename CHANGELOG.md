@@ -1,3 +1,13 @@
+## 0.6.1 (2026-04-25)
+
+### 🩹 Fixes
+
+- **notes:** render PDF export in isolated iframe for PWA + filename ([#47](https://github.com/fundacja-reborn/reapps/pull/47))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.6.0 (2026-04-25)
 
 ### 🚀 Features
