@@ -132,6 +132,12 @@
       "confirm_cascade": "Eliminar carpeta y notas",
       "cancel": "Cancelar"
     },
+    "import_markdown": {
+      "action": "Importar .md aquí",
+      "dialog_title": "Importar .md en «{name}»",
+      "dialog_description": "Los archivos Markdown seleccionados se importarán a esta carpeta.",
+      "dialog_close": "Cerrar"
+    },
     "errors": {
       "create_failed": "Error al crear la carpeta",
       "update_failed": "Error al actualizar la carpeta",
@@ -531,7 +537,8 @@
       "folder_import_skipped_too_large": "{count} archivo(s) de más de 500 KB omitido(s)",
       "folder_import_skipped_hidden": "{count} archivo(s) en carpetas ocultas omitido(s) (.obsidian, .trash, etc.)",
       "dedup_files_found": "{count} nota(s) listas para importar",
-      "dedup_prompt": "¿Qué hacer cuando ya existe una nota con el mismo nombre en la misma carpeta?",
+      "dedup_prompt_root": "¿Qué hacer cuando ya existe una nota con el mismo nombre en «Todas las notas»?",
+      "dedup_prompt_folder": "¿Qué hacer cuando ya existe una nota con el mismo nombre en la misma carpeta?",
       "dedup_rename": "Conservar ambas copias",
       "dedup_rename_desc": "Importar como nueva nota con sufijo (p. ej. «Nota (2)»)",
       "dedup_skip": "Omitir duplicados",

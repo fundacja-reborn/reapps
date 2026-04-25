@@ -132,6 +132,12 @@
       "confirm_cascade": "Delete folder and notes",
       "cancel": "Cancel"
     },
+    "import_markdown": {
+      "action": "Import .md here",
+      "dialog_title": "Import .md into \"{name}\"",
+      "dialog_description": "The selected Markdown files will be imported into this folder.",
+      "dialog_close": "Close"
+    },
     "errors": {
       "create_failed": "Failed to create folder",
       "update_failed": "Failed to update folder",
@@ -531,7 +537,8 @@
       "folder_import_skipped_too_large": "Skipped {count} file(s) larger than 500 KB",
       "folder_import_skipped_hidden": "Skipped {count} file(s) in hidden folders (.obsidian, .trash, etc.)",
       "dedup_files_found": "{count} note(s) ready to import",
-      "dedup_prompt": "What should happen when a note with the same name already exists in the same folder?",
+      "dedup_prompt_root": "What should happen when a note with the same name already exists in \"All Notes\"?",
+      "dedup_prompt_folder": "What should happen when a note with the same name already exists in the same folder?",
       "dedup_rename": "Keep both copies",
       "dedup_rename_desc": "Import as a new note with a suffix (e.g. \"Note (2)\")",
       "dedup_skip": "Skip duplicates",
