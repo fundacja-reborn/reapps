@@ -1,3 +1,13 @@
+## 0.4.0 (2026-04-25)
+
+### 🚀 Features
+
+- **notes:** add per-folder markdown import + clarify root prompt ([#42](https://github.com/fundacja-reborn/reapps/pull/42))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.3.0 (2026-04-25)
 
 ### 🚀 Features
