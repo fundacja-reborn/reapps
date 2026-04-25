@@ -43,7 +43,7 @@
   // Stores / services
   import { notesStore, activeNoteId, type NoteListItem } from '$lib/stores/notes.store';
   import * as NoteService from '$lib/services/note.service';
-  import { exportNoteAsMarkdown } from '$lib/services/export-import.service';
+  import { exportNoteAsMarkdown, exportNoteAsPdf } from '$lib/services/export-import.service';
   import { foldersStore } from '$lib/stores/folders.store';
   import { tagsStore } from '$lib/stores/tags.store';
   import { getSettings } from '$lib/utils/app-settings';
@@ -150,6 +150,18 @@
     }
     const tagNames = $tagsStore.filter((tg) => target.tags?.includes(tg.id)).map((tg) => tg.name);
     exportNoteAsMarkdown(fullNote, tagNames);
+  }
+
+  async function handleDetailExportPdf(noteArg?: NoteListItem) {
+    detailActionSheetOpen = false;
+    const target = noteArg ?? detailMenuNote;
+    if (!target) return;
+    const fullNote = await NoteService.getNote(target.id);
+    if (!fullNote) {
+      toastStore.error($t('notes.export_failed'));
+      return;
+    }
+    exportNoteAsPdf(fullNote);
   }
 
   async function handleDetailCopyLink(noteArg?: NoteListItem) {
@@ -1042,6 +1054,7 @@
                   onstar={handleDetailStar}
                   onmove={handleDetailMoveDesktop}
                   onexport={() => handleDetailExport()}
+                  onexportpdf={() => handleDetailExportPdf()}
                   oncopylink={() => handleDetailCopyLink()}
                   onshowxray={() => { showEncryptionXRay = true; }}
                   ondelete={handleDetailDelete}
@@ -1254,6 +1267,7 @@
                 onstar={handleDetailStar}
                 onmove={handleDetailMoveDesktop}
                 onexport={() => handleDetailExport()}
+                onexportpdf={() => handleDetailExportPdf()}
                 oncopylink={() => handleDetailCopyLink()}
                 onshowxray={() => { showEncryptionXRay = true; }}
                 ondelete={handleDetailDelete}
@@ -1436,6 +1450,7 @@
   onstar={() => handleDetailStar()}
   onmove={() => handleDetailOpenMoveMobile()}
   onexport={(note) => handleDetailExport(note)}
+  onexportpdf={(note) => handleDetailExportPdf(note)}
   oncopylink={(note) => handleDetailCopyLink(note)}
   ondelete={() => handleDetailDelete()}
   onhistory={handleDetailHistory}

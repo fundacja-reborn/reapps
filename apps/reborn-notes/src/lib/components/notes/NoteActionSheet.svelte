@@ -6,6 +6,7 @@
     StarOff,
     FolderInput,
     Download,
+    FileText,
     Link2,
     ScanEye,
     Trash2,
@@ -25,6 +26,7 @@
     onstar,
     onmove,
     onexport,
+    onexportpdf,
     oncopylink,
     ondelete,
     onrestore,
@@ -39,6 +41,8 @@
     onstar: (id: string) => void;
     onmove: (id: string) => void;
     onexport: (note: NoteListItem) => void;
+    /** Optional — only shown in the open-note context (NoteList omits it). */
+    onexportpdf?: (note: NoteListItem) => void;
     oncopylink: (note: NoteListItem) => void;
     ondelete: (id: string) => void;
     onrestore: (id: string) => void;
@@ -116,6 +120,16 @@
           <Download class="mr-2 h-4 w-4" />
           {$t('notes.export_markdown')}
         </Button>
+        {#if onexportpdf}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => note && onexportpdf?.(note)}
+          >
+            <FileText class="mr-2 h-4 w-4" />
+            {$t('notes.export_pdf')}
+          </Button>
+        {/if}
         <Button
           variant="ghost"
           class="w-full justify-start"

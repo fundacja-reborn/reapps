@@ -55,6 +55,7 @@
     "folder_no_results": "Aucun dossier correspondant",
     "folder_no_subfolders": "Aucun sous-dossier",
     "export_markdown": "Exporter en Markdown",
+    "export_pdf": "Exporter en PDF",
     "export_failed": "Échec de l'exportation de la note",
     "copy_note_link": "Copier le lien de la note",
     "note_link_copied": "Lien de la note copié dans le presse-papiers",

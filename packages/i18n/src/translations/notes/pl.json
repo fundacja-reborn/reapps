@@ -55,6 +55,7 @@
     "folder_no_results": "Brak pasujących folderów",
     "folder_no_subfolders": "Brak podfolderów",
     "export_markdown": "Eksportuj jako Markdown",
+    "export_pdf": "Eksportuj jako PDF",
     "export_failed": "Nie udało się wyeksportować notatki",
     "copy_note_link": "Kopiuj link do notatki",
     "note_link_copied": "Link do notatki skopiowany do schowka",

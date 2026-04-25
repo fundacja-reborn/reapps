@@ -55,6 +55,7 @@
     "folder_no_results": "No matching folders",
     "folder_no_subfolders": "No subfolders",
     "export_markdown": "Export as Markdown",
+    "export_pdf": "Export as PDF",
     "export_failed": "Failed to export note",
     "copy_note_link": "Copy note link",
     "note_link_copied": "Note link copied to clipboard",

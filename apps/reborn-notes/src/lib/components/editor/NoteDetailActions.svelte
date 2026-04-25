@@ -7,6 +7,7 @@
     StarOff,
     FolderInput,
     Download,
+    FileText,
     Link2,
     ScanEye,
     Trash2
@@ -30,6 +31,7 @@
     onstar,
     onmove,
     onexport,
+    onexportpdf,
     oncopylink,
     onshowxray,
     ondelete
@@ -41,6 +43,7 @@
     onstar: () => void;
     onmove: (folderId: string | null, e?: Event) => void;
     onexport: () => void;
+    onexportpdf: () => void;
     oncopylink: () => void;
     onshowxray: () => void;
     ondelete: () => void;
@@ -121,6 +124,10 @@
           <DropdownMenuItem onclick={onexport}>
             <Download class="h-3.5 w-3.5" />
             {$t('notes.export_markdown')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onclick={onexportpdf}>
+            <FileText class="h-3.5 w-3.5" />
+            {$t('notes.export_pdf')}
           </DropdownMenuItem>
           <DropdownMenuItem onclick={oncopylink}>
             <Link2 class="h-3.5 w-3.5" />
