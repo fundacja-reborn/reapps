@@ -115,11 +115,8 @@
     "folder_actions": "Ordner-Aktionen",
     "collapse": "Einklappen",
     "expand": "Ausklappen",
-    "delete_confirm": "\"{name}\" und alle Unterordner löschen?",
-    "delete_confirm_leaf": "Ordner \"{name}\" löschen?",
     "delete_tag_title": "Tag löschen",
     "delete_tag_desc": "Dieses Tag wird von allen Notizen entfernt.",
-    "delete_folder_title": "Ordner löschen",
     "delete_dialog": {
       "title": "Ordner \"{name}\" löschen",
       "loading": "Elemente werden gezählt…",
@@ -139,9 +136,7 @@
       "create_failed": "Ordner konnte nicht erstellt werden",
       "update_failed": "Ordner konnte nicht aktualisiert werden",
       "delete_failed": "Ordner konnte nicht gelöscht werden",
-      "name_required": "Ordnername ist erforderlich",
-      "has_notes": "Ordner mit Notizen kann nicht gelöscht werden",
-      "has_subfolders": "Ordner mit Unterordnern kann nicht gelöscht werden"
+      "name_required": "Ordnername ist erforderlich"
     },
     "success": {
       "created": "Ordner erfolgreich erstellt",

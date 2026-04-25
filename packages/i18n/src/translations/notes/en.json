@@ -115,11 +115,8 @@
     "folder_actions": "Folder actions",
     "collapse": "Collapse",
     "expand": "Expand",
-    "delete_confirm": "Delete \"{name}\" and all its subfolders?",
-    "delete_confirm_leaf": "Delete folder \"{name}\"?",
     "delete_tag_title": "Delete tag",
     "delete_tag_desc": "This tag will be removed from all notes.",
-    "delete_folder_title": "Delete folder",
     "delete_dialog": {
       "title": "Delete folder \"{name}\"",
       "loading": "Counting items…",
@@ -139,9 +136,7 @@
       "create_failed": "Failed to create folder",
       "update_failed": "Failed to update folder",
       "delete_failed": "Failed to delete folder",
-      "name_required": "Folder name is required",
-      "has_notes": "Cannot delete folder with notes",
-      "has_subfolders": "Cannot delete folder with subfolders"
+      "name_required": "Folder name is required"
     },
     "success": {
       "created": "Folder created successfully",

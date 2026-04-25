@@ -115,11 +115,8 @@
     "folder_actions": "Actions sur le dossier",
     "collapse": "Réduire",
     "expand": "Développer",
-    "delete_confirm": "Supprimer \"{name}\" et tous ses sous-dossiers ?",
-    "delete_confirm_leaf": "Supprimer le dossier \"{name}\" ?",
     "delete_tag_title": "Supprimer le tag",
     "delete_tag_desc": "Ce tag sera retiré de toutes les notes.",
-    "delete_folder_title": "Supprimer le dossier",
     "delete_dialog": {
       "title": "Supprimer le dossier \"{name}\"",
       "loading": "Comptage des éléments…",
@@ -139,9 +136,7 @@
       "create_failed": "Échec de la création du dossier",
       "update_failed": "Échec de la mise à jour du dossier",
       "delete_failed": "Échec de la suppression du dossier",
-      "name_required": "Le nom du dossier est obligatoire",
-      "has_notes": "Impossible de supprimer un dossier contenant des notes",
-      "has_subfolders": "Impossible de supprimer un dossier contenant des sous-dossiers"
+      "name_required": "Le nom du dossier est obligatoire"
     },
     "success": {
       "created": "Dossier créé avec succès",

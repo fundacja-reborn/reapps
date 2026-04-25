@@ -115,11 +115,8 @@
     "folder_actions": "Akcje folderu",
     "collapse": "Zwiń",
     "expand": "Rozwiń",
-    "delete_confirm": "Usunąć „{name}” i wszystkie podfoldery?",
-    "delete_confirm_leaf": "Usunąć folder „{name}”?",
     "delete_tag_title": "Usuń tag",
     "delete_tag_desc": "Ten tag zostanie usunięty ze wszystkich notatek.",
-    "delete_folder_title": "Usuń folder",
     "delete_dialog": {
       "title": "Usuń folder „{name}”",
       "loading": "Liczenie elementów…",
@@ -139,9 +136,7 @@
       "create_failed": "Nie udało się utworzyć folderu",
       "update_failed": "Nie udało się zaktualizować folderu",
       "delete_failed": "Nie udało się usunąć folderu",
-      "name_required": "Nazwa folderu jest wymagana",
-      "has_notes": "Nie można usunąć folderu zawierającego notatki",
-      "has_subfolders": "Nie można usunąć folderu zawierającego podfoldery"
+      "name_required": "Nazwa folderu jest wymagana"
     },
     "success": {
       "created": "Folder utworzony pomyślnie",

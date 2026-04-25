@@ -115,11 +115,8 @@
     "folder_actions": "Acciones de carpeta",
     "collapse": "Contraer",
     "expand": "Expandir",
-    "delete_confirm": "¿Eliminar \"{name}\" y todas sus subcarpetas?",
-    "delete_confirm_leaf": "¿Eliminar la carpeta \"{name}\"?",
     "delete_tag_title": "Eliminar etiqueta",
     "delete_tag_desc": "Esta etiqueta se eliminará de todas las notas.",
-    "delete_folder_title": "Eliminar carpeta",
     "delete_dialog": {
       "title": "Eliminar carpeta \"{name}\"",
       "loading": "Contando elementos…",
@@ -139,9 +136,7 @@
       "create_failed": "Error al crear la carpeta",
       "update_failed": "Error al actualizar la carpeta",
       "delete_failed": "Error al eliminar la carpeta",
-      "name_required": "El nombre de la carpeta es obligatorio",
-      "has_notes": "No se puede eliminar una carpeta con notas",
-      "has_subfolders": "No se puede eliminar una carpeta con subcarpetas"
+      "name_required": "El nombre de la carpeta es obligatorio"
     },
     "success": {
       "created": "Carpeta creada con éxito",
