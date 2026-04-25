@@ -4,13 +4,26 @@
  * Wraps @reborn/storage folder operations with E2E encryption via CryptoManager.
  * Folder names are always encrypted with the user's master key — E2E must be unlocked before use.
  */
-import { folderOperations, folderQueries, folderStore } from '@reborn/storage';
+import {
+  folderOperations,
+  folderQueries,
+  folderStore,
+  noteOperations,
+  noteQueries,
+  noteStore
+} from '@reborn/storage';
 import type { FolderEncrypted } from '@reborn/types';
 import type { FolderWithChildren } from '@reborn/types';
 import { cryptoManager } from '@reborn/crypto';
 import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
-import { pushFolder, pushFolderUpdate, pushFolderDelete } from './notes-sync.service';
+import {
+  pushFolder,
+  pushFolderUpdate,
+  pushFolderDelete,
+  pushNoteUpdate
+} from './notes-sync.service';
+import { noteIndex } from '$lib/services/note-index.svelte';
 
 // ── User identity ─────────────────────────────────────────────────
 
@@ -104,12 +117,32 @@ export async function renameFolder(id: string, name: string): Promise<void> {
   pushFolderUpdate(id, { name_encrypted });
 }
 
+/**
+ * Delete a folder. Notes inside (and inside its descendants) are detached:
+ * `folder_id` is cleared locally and pushed to the server. The server side
+ * does the same via Prisma's `onDelete: SetNull` on `Note.folder`, so this
+ * keeps the client in sync without relying on the next pull to reconcile
+ * dangling FKs.
+ */
 export async function deleteFolder(id: string): Promise<void> {
-  // Recursively delete all descendants first
-  const descendants = await folderOperations.getDescendantIds(id);
-  for (const descId of descendants) {
-    await folderOperations.deleteFolder(descId);
-    pushFolderDelete(descId);
+  const folderIds = [id, ...(await folderOperations.getDescendantIds(id))];
+
+  // Detach notes that live in any of those folders, locally + on the server.
+  for (const fid of folderIds) {
+    const notes = await noteQueries.byFolder(fid);
+    for (const note of notes) {
+      await noteOperations.moveToFolder(note.id, null);
+      const current = await noteStore.get(note.id);
+      if (current) await noteStore.save({ ...current, sync_status: 'pending' });
+      noteIndex.patch(note.id, { folderId: undefined });
+      pushNoteUpdate(note.id, { folder_id: null });
+    }
+  }
+
+  // Then delete folders bottom-up (descendants first, root last).
+  for (const fid of folderIds.slice(1).reverse()) {
+    await folderOperations.deleteFolder(fid);
+    pushFolderDelete(fid);
   }
   await folderOperations.deleteFolder(id);
   pushFolderDelete(id);

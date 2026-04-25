@@ -750,12 +750,15 @@ export function pushNote(note: NoteEncrypted | NoteStoredLocal): void {
 
 export function pushNoteUpdate(
   id: string,
-  fields: Partial<
-    Pick<
-      NoteEncrypted,
-      'title_encrypted' | 'content_encrypted' | 'folder_id' | 'metadata_encrypted'
-    >
-  >
+  fields: {
+    title_encrypted?: string;
+    content_encrypted?: string;
+    // `null` explicitly detaches the note from its folder. We cannot rely on
+    // `undefined` here because JSON.stringify drops undefined values, so the
+    // server-side `'folder_id' in data` check would never see the field.
+    folder_id?: string | null;
+    metadata_encrypted?: string;
+  }
 ): void {
   void serializePerEntity('note', id, () =>
     pushSilently(async (idempotencyKey) => {
