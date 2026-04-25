@@ -55,6 +55,7 @@
     "folder_no_results": "Keine passenden Ordner",
     "folder_no_subfolders": "Keine Unterordner",
     "export_markdown": "Als Markdown exportieren",
+    "export_pdf": "Als PDF exportieren",
     "export_failed": "Export der Notiz fehlgeschlagen",
     "copy_note_link": "Notiz-Link kopieren",
     "note_link_copied": "Notiz-Link in die Zwischenablage kopiert",

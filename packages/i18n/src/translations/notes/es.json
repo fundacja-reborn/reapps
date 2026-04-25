@@ -55,6 +55,7 @@
     "folder_no_results": "No hay carpetas coincidentes",
     "folder_no_subfolders": "Sin subcarpetas",
     "export_markdown": "Exportar como Markdown",
+    "export_pdf": "Exportar como PDF",
     "export_failed": "Error al exportar la nota",
     "copy_note_link": "Copiar enlace de nota",
     "note_link_copied": "Enlace de nota copiado al portapapeles",

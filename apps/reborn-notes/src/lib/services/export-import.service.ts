@@ -27,6 +27,8 @@ import {
   noteTagQueries,
   type NoteTag
 } from '@reborn/storage';
+import { Marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
 import {
@@ -174,6 +176,61 @@ export function exportNoteAsMarkdown(note: NoteDecrypted, tagNames: string[] = [
   const content = buildMarkdownContent(note, tagNames);
   const blob = new Blob([content], { type: 'text/markdown; charset=utf-8' });
   downloadBlob(blob, `${sanitizeFilename(note.title)}.md`);
+}
+
+/**
+ * Export a single note as PDF via the browser's native print dialog
+ * ("Save as PDF" target). Zero Knowledge: the rendered HTML is built and
+ * printed entirely client-side — plaintext never leaves the browser. No
+ * external library is loaded; we reuse `marked` + DOMPurify already in deps.
+ *
+ * Renders into a dedicated off-screen container (`.reborn-print-target`)
+ * appended to `document.body`. Global `@media print` rules in `app.css`
+ * hide every other body child during printing so the dialog only sees the
+ * clean note content. The container is removed after the `afterprint` event
+ * (or on a defensive timeout fallback for browsers that fire it unreliably).
+ */
+export function exportNoteAsPdf(note: NoteDecrypted): void {
+  // Fresh Marked instance so we don't pick up the custom image renderer
+  // configured in MarkdownPreview (which would emit placeholders instead
+  // of native <img> tags — we want real images embedded in the PDF).
+  const printMarked = new Marked({ gfm: true, breaks: true });
+  const rawHtml = printMarked.parse(note.content ?? '', { async: false }) as string;
+  const safeHtml = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+
+  const container = document.createElement('div');
+  container.className = 'reborn-print-target';
+
+  const heading = document.createElement('h1');
+  heading.textContent = note.title || 'Untitled';
+  container.appendChild(heading);
+
+  const body = document.createElement('div');
+  body.className = 'reborn-print-target__body';
+  body.innerHTML = safeHtml;
+  container.appendChild(body);
+
+  document.body.appendChild(container);
+
+  // Browsers use document.title as the suggested filename in "Save as PDF".
+  const previousTitle = document.title;
+  document.title = sanitizeFilename(note.title);
+
+  let cleanedUp = false;
+  const cleanup = () => {
+    if (cleanedUp) return;
+    cleanedUp = true;
+    document.title = previousTitle;
+    container.remove();
+    window.removeEventListener('afterprint', cleanup);
+  };
+
+  window.addEventListener('afterprint', cleanup);
+  // Defensive fallback — Safari/iOS fire `afterprint` inconsistently when the
+  // user dismisses the print sheet without printing.
+  setTimeout(cleanup, 60_000);
+
+  window.print();
 }
 
 /** Export multiple notes as a .zip archive (JSZip, dynamically imported). */
