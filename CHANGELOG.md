@@ -1,3 +1,13 @@
+## 0.8.0 (2026-04-26)
+
+### 🚀 Features
+
+- **task:** show initial-sync state in main view on fresh login ([#55](https://github.com/fundacja-reborn/reapps/pull/55))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.7.0 (2026-04-26)
 
 ### 🚀 Features
