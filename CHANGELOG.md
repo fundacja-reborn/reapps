@@ -1,3 +1,9 @@
+## 0.6.3 (2026-04-26)
+
+### 🩹 Fixes
+
+- **deps:** update dependency postcss to v8.5.10 [security] ([#50](https://github.com/fundacja-reborn/reapps/pull/50))
+
 ## 0.6.2 (2026-04-25)
 
 ### 🩹 Fixes
