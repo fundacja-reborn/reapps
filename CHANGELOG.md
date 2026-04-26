@@ -1,3 +1,13 @@
+## 0.8.4 (2026-04-26)
+
+### 🩹 Fixes
+
+- **notes:** drill-up folder navigation on mobile back gesture ([#61](https://github.com/fundacja-reborn/reapps/pull/61))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.8.3 (2026-04-26)
 
 This was a version bump only, there were no code changes.
