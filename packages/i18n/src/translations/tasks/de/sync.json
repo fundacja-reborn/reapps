@@ -58,5 +58,9 @@
     "conflict_message": "Neuere Daten wurden auf dem Server erkannt. Aktualisierte Daten wurden heruntergeladen.",
     "conflict_action": "Aktualisieren",
     "session_expired": "Sitzung abgelaufen"
+  },
+  "initial": {
+    "title": "Aufgaben werden synchronisiert",
+    "message": "Das Herunterladen Ihrer verschlüsselten Daten vom Server kann einen Moment dauern."
   }
 }

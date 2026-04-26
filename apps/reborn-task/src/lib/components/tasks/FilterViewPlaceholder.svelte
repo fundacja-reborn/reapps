@@ -8,7 +8,9 @@
 	import { Lock } from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { tasks as allDecryptedTasks } from '$lib/stores/decrypted-tasks.store';
+	import { isInitialSync } from '$lib/stores/sync-status.store';
 	import QuickAddTask from './QuickAddTask.svelte';
+	import InitialSyncState from '$lib/components/sync/InitialSyncState.svelte';
 	import type { Section } from '$lib/components/layout/IconNav.svelte';
 
 	let {
@@ -28,34 +30,38 @@
 	}
 </script>
 
-<div class="flex flex-1 flex-col items-center justify-center h-full text-center px-6 gap-8">
-	{#if showQuickAdd}
-		<div class="w-full max-w-md">
-			<QuickAddTask
-				bind:this={quickAddRef}
-				showListSelect
-				section={filterSection}
-			/>
-		</div>
-	{/if}
-
-	<div class="flex flex-col items-center gap-1">
-		{#if showQuickAdd && hasTasks}
-			<p class="text-xs text-muted-foreground/60">
-				{$t('task.select_from_list_or')}
-			</p>
-		{:else if hasTasks}
-			<p class="text-sm text-muted-foreground">
-				{$t('task.select_from_list')}
-			</p>
-		{:else}
-			<p class="text-sm text-muted-foreground">
-				{$t('task.no_tasks_yet_hint')}
-			</p>
+{#if !hasTasks && $isInitialSync}
+	<InitialSyncState />
+{:else}
+	<div class="flex flex-1 flex-col items-center justify-center h-full text-center px-6 gap-8">
+		{#if showQuickAdd}
+			<div class="w-full max-w-md">
+				<QuickAddTask
+					bind:this={quickAddRef}
+					showListSelect
+					section={filterSection}
+				/>
+			</div>
 		{/if}
-		<p class="inline-flex items-center gap-1.5 text-xs text-muted-foreground/60">
-			<Lock class="h-3 w-3" />
-			{$t('e2e.badge_tooltip')}
-		</p>
+
+		<div class="flex flex-col items-center gap-1">
+			{#if showQuickAdd && hasTasks}
+				<p class="text-xs text-muted-foreground/60">
+					{$t('task.select_from_list_or')}
+				</p>
+			{:else if hasTasks}
+				<p class="text-sm text-muted-foreground">
+					{$t('task.select_from_list')}
+				</p>
+			{:else}
+				<p class="text-sm text-muted-foreground">
+					{$t('task.no_tasks_yet_hint')}
+				</p>
+			{/if}
+			<p class="inline-flex items-center gap-1.5 text-xs text-muted-foreground/60">
+				<Lock class="h-3 w-3" />
+				{$t('e2e.badge_tooltip')}
+			</p>
+		</div>
 	</div>
-</div>
+{/if}

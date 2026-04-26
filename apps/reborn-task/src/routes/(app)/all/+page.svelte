@@ -7,9 +7,11 @@
 	import { goto } from '$lib/utils/navigation';
 	import { tasks as allDecryptedTasks } from '$lib/stores/decrypted-tasks.store';
 	import { decryptedLists } from '$lib/stores/decrypted-lists.store';
+	import { isInitialSync } from '$lib/stores/sync-status.store';
 	import { taskOperationsService } from '$lib/services/task-operations.service';
 	import type { TaskListItem } from '$lib/services/task-title-index.svelte';
 	import { TaskItem } from '$lib/components/tasks';
+	import InitialSyncState from '$lib/components/sync/InitialSyncState.svelte';
 
 	let allTasks = $derived($allDecryptedTasks ?? []);
 	let activeTasks = $derived(allTasks.filter((task: TaskListItem) => !task.is_completed));
@@ -48,10 +50,14 @@
 <div class="container mx-auto p-6 max-w-4xl">
 	<div class="mt-6">
 		{#if activeTasks.length === 0 && completedTasks.length === 0}
-			<div class="flex flex-col items-center justify-center py-12 text-center">
-				<ListTodo class="h-12 w-12 text-muted-foreground mb-4" />
-				<p class="text-lg font-medium mb-2">{$t('task.empty_state', { default: 'Brak zadań' })}</p>
-			</div>
+			{#if $isInitialSync}
+				<InitialSyncState compact />
+			{:else}
+				<div class="flex flex-col items-center justify-center py-12 text-center">
+					<ListTodo class="h-12 w-12 text-muted-foreground mb-4" />
+					<p class="text-lg font-medium mb-2">{$t('task.empty_state', { default: 'Brak zadań' })}</p>
+				</div>
+			{/if}
 		{:else}
 			<div class="space-y-2">
 				{#each activeTasks as task (task.id)}

@@ -1,8 +1,10 @@
 import { derived } from 'svelte/store';
 import { isOnline } from './network.store';
-import { syncProgress } from '$lib/services/sync.service';
+import { syncProgress, lastSyncedAt } from '$lib/services/sync.service';
 import { pendingOperations, failedOperations } from './offline-operations.store';
 import { sessionExpired } from './session-expired.store';
+
+export { lastSyncedAt };
 
 export type SyncStatusType = 'synced' | 'syncing' | 'offline' | 'error' | 'pending' | 'auth-error';
 
@@ -12,6 +14,7 @@ export interface SyncStatusState {
 	failedCount: number;
 	message: string;
 	progress: number;
+	lastSyncedAt: string | null;
 }
 
 /**
@@ -19,8 +22,15 @@ export interface SyncStatusState {
  * Priority: auth-error > offline > syncing > error > pending > synced
  */
 export const syncStatus = derived(
-	[isOnline, syncProgress, pendingOperations, failedOperations, sessionExpired],
-	([$isOnline, $syncProgress, $pendingOps, $failedOps, $sessionExpired]): SyncStatusState => {
+	[isOnline, syncProgress, pendingOperations, failedOperations, sessionExpired, lastSyncedAt],
+	([
+		$isOnline,
+		$syncProgress,
+		$pendingOps,
+		$failedOps,
+		$sessionExpired,
+		$lastSyncedAt
+	]): SyncStatusState => {
 		const pendingCount = $pendingOps.length;
 		const failedCount = $failedOps.length;
 
@@ -30,7 +40,8 @@ export const syncStatus = derived(
 				pendingCount,
 				failedCount,
 				message: '',
-				progress: 0
+				progress: 0,
+				lastSyncedAt: $lastSyncedAt
 			};
 		}
 
@@ -40,7 +51,8 @@ export const syncStatus = derived(
 				pendingCount,
 				failedCount,
 				message: '',
-				progress: 0
+				progress: 0,
+				lastSyncedAt: $lastSyncedAt
 			};
 		}
 
@@ -50,7 +62,8 @@ export const syncStatus = derived(
 				pendingCount,
 				failedCount,
 				message: $syncProgress.message,
-				progress: $syncProgress.progress
+				progress: $syncProgress.progress,
+				lastSyncedAt: $lastSyncedAt
 			};
 		}
 
@@ -60,7 +73,8 @@ export const syncStatus = derived(
 				pendingCount,
 				failedCount,
 				message: '',
-				progress: 0
+				progress: 0,
+				lastSyncedAt: $lastSyncedAt
 			};
 		}
 
@@ -70,7 +84,8 @@ export const syncStatus = derived(
 				pendingCount,
 				failedCount,
 				message: '',
-				progress: 0
+				progress: 0,
+				lastSyncedAt: $lastSyncedAt
 			};
 		}
 
@@ -79,7 +94,16 @@ export const syncStatus = derived(
 			pendingCount: 0,
 			failedCount: 0,
 			message: '',
-			progress: 0
+			progress: 0,
+			lastSyncedAt: $lastSyncedAt
 		};
 	}
+);
+
+// True only during the very first sync after a fresh login (IndexedDB empty,
+// `lastSyncedAt` not yet written). Used to swap empty-list placeholders for a
+// reassuring loading state so users don't think their tasks were lost.
+export const isInitialSync = derived(
+	[syncProgress, lastSyncedAt],
+	([$syncProgress, $lastSyncedAt]) => $syncProgress.isInProgress && $lastSyncedAt === null
 );

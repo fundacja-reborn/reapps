@@ -264,6 +264,8 @@ class SyncService {
 				message: 'Sync complete'
 			});
 
+			lastSyncedAt.set(new Date().toISOString());
+
 			// Notify about server-side changes (conflict detection)
 			const totalServerUpdates = listUpdates + taskUpdates;
 			if (totalServerUpdates > 0) {
@@ -348,6 +350,8 @@ class SyncService {
 			// Refresh task counts and title index
 			taskCounts.refresh();
 			await taskTitleIndex.rebuild();
+
+			lastSyncedAt.set(new Date().toISOString());
 
 			// Notify about server-side changes
 			const totalServerUpdates = listUpdates + taskUpdates;
@@ -551,6 +555,11 @@ export const syncProgress = writable<SyncProgress>({
 	progress: 0,
 	message: ''
 });
+
+// Timestamp of the last successful sync. Stays `null` until the very first
+// sync of the current session completes — used by `isInitialSync` in
+// sync-status.store to distinguish "fresh login, syncing" from "no data".
+export const lastSyncedAt = writable<string | null>(null);
 
 // Store for conflict notifications (number of server-updated entities, 0 = no conflict)
 export const syncConflict = writable<number>(0);

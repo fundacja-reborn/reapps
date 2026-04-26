@@ -58,5 +58,9 @@
     "conflict_message": "Newer data was detected on the server. Updated data has been downloaded.",
     "conflict_action": "Refresh",
     "session_expired": "Session expired"
+  },
+  "initial": {
+    "title": "Syncing your tasks",
+    "message": "Downloading your encrypted data from the server may take a moment."
   }
 }

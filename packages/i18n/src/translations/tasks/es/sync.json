@@ -58,5 +58,9 @@
     "conflict_message": "Se detectaron datos más recientes en el servidor. Los datos actualizados han sido descargados.",
     "conflict_action": "Actualizar",
     "session_expired": "Sesión expirada"
+  },
+  "initial": {
+    "title": "Sincronizando tus tareas",
+    "message": "La descarga de tus datos cifrados desde el servidor puede tardar un momento."
   }
 }
