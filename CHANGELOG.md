@@ -1,3 +1,7 @@
+## 0.8.3 (2026-04-26)
+
+This was a version bump only, there were no code changes.
+
 ## 0.8.2 (2026-04-26)
 
 ### 🩹 Fixes
