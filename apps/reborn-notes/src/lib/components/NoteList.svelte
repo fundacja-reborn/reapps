@@ -20,6 +20,8 @@
   import MoveToFolderMenu from './notes/MoveToFolderMenu.svelte';
   import SubfolderList from './SubfolderList.svelte';
   import type { FolderWithChildren } from '@reborn/types';
+  import { foldersStore } from '$lib/stores/folders.store';
+  import { buildBreadcrumb } from '$lib/utils/folder-helpers';
 
   // ── Infinite scroll ────────────────────────────────────────────
   const PAGE_SIZE = 50;
@@ -63,6 +65,7 @@
   let {
     activeFolderName = '',
     activeSection = 'all',
+    activeFolderId = null,
     isTrash = false,
     showSidebarTrigger = false,
     prominentHeader = false,
@@ -75,6 +78,8 @@
   }: {
     activeFolderName?: string;
     activeSection?: string;
+    /** Current folder ID — used to render a breadcrumb under search results from subfolders. */
+    activeFolderId?: string | null;
     isTrash?: boolean;
     showSidebarTrigger?: boolean;
     prominentHeader?: boolean;
@@ -99,6 +104,26 @@
       notesStore.setSearch('');
       notesStore.setSearchInContent(false);
     });
+  });
+
+  // Mobile: returning from a note panel to the list should reset search.
+  // The list panel stays mounted behind the note (CSS translate), so without
+  // this the previous query lingers. Desktop keeps the list visible alongside
+  // the note, so there is no "return" event there.
+  let prevActiveNoteId: string | null = null;
+  $effect(() => {
+    const current = $activeNoteId;
+    const prev = prevActiveNoteId;
+    prevActiveNoteId = current;
+    if (isMobileQuery.value && prev !== null && current === null) {
+      untrack(() => {
+        if (!searchInput && !searchInContent) return;
+        searchInput = '';
+        searchInContent = false;
+        notesStore.setSearch('');
+        notesStore.setSearchInContent(false);
+      });
+    }
   });
 
   $effect(() => {
@@ -246,6 +271,23 @@
     noteToPermanentDelete = null;
   }
 
+  /**
+   * Build a breadcrumb for a note relative to the active folder. Used when search
+   * is active in a folder view to show notes from subfolders with their location.
+   * Empty string when the note is in the active folder itself or breadcrumb does
+   * not apply (no active folder, or note has no folder).
+   */
+  function getRelativeBreadcrumb(noteFolderId: string | undefined): string {
+    if (!searchInput) return '';
+    if (activeFolderId === null || activeFolderId === undefined) return '';
+    if (!noteFolderId || noteFolderId === activeFolderId) return '';
+    const fullPath = buildBreadcrumb($foldersStore, noteFolderId);
+    if (fullPath.length === 0) return '';
+    const rootIdx = fullPath.findIndex((c) => c.id === activeFolderId);
+    const relative = rootIdx === -1 ? fullPath : fullPath.slice(rootIdx + 1);
+    return relative.map((c) => c.name).join(' / ');
+  }
+
   const activeMenuNote = $derived(
     menuOpenId ? ($notesStore.find((n) => n.id === menuOpenId) ?? null) : null
   );
@@ -335,7 +377,13 @@
         <div class="px-4 py-8 text-center">
           {#if searchInput}
             <p class="text-sm text-muted-foreground">
-              {$t('notes.no_match', { values: { query: searchInput } })}
+              {#if activeFolderId && activeFolderName}
+                {$t('notes.no_match_in_folder', {
+                  values: { query: searchInput, folder: activeFolderName }
+                })}
+              {:else}
+                {$t('notes.no_match', { values: { query: searchInput } })}
+              {/if}
             </p>
             <button
               type="button"
@@ -368,6 +416,7 @@
           <NoteListItemComponent
             {note}
             {isTrash}
+            breadcrumb={getRelativeBreadcrumb(note.folder_id)}
             bind:movingNoteId
             onmenuopen={handleMenuOpen}
             onpin={handleTogglePin}

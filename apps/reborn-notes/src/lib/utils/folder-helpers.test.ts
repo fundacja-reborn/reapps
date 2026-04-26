@@ -4,6 +4,7 @@ import {
   buildBreadcrumb,
   buildPathString,
   getAncestorIds,
+  getDescendantFolderIds,
   flattenFolderTree,
   flattenFoldersWithDepth
 } from './folder-helpers';
@@ -96,6 +97,38 @@ describe('buildPathString', () => {
 
   it('respects custom separator', () => {
     expect(buildPathString(tree, 'arch', ' › ')).toBe('Dev › Reapps');
+  });
+});
+
+describe('getDescendantFolderIds', () => {
+  it('returns root + all descendants for a folder with subtree', () => {
+    const ids = getDescendantFolderIds(tree, 'dev');
+    expect(ids.sort()).toEqual(['arch', 'dev', 'devsub', 'guide', 'reapps'].sort());
+  });
+
+  it('returns just the folder id for a leaf', () => {
+    expect(getDescendantFolderIds(tree, 'arch')).toEqual(['arch']);
+  });
+
+  it('returns just the folder id for a top-level folder with no children', () => {
+    expect(getDescendantFolderIds(tree, 'people')).toEqual(['people']);
+  });
+
+  it('returns empty array for a non-existent folder id', () => {
+    expect(getDescendantFolderIds(tree, 'nope')).toEqual([]);
+  });
+
+  it('returns empty array for an empty tree', () => {
+    expect(getDescendantFolderIds([], 'anything')).toEqual([]);
+  });
+
+  it('places the root id first', () => {
+    const ids = getDescendantFolderIds(tree, 'reapps');
+    expect(ids[0]).toBe('reapps');
+    expect(ids).toContain('arch');
+    expect(ids).toContain('devsub');
+    expect(ids).toContain('guide');
+    expect(ids).toHaveLength(4);
   });
 });
 

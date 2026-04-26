@@ -85,6 +85,28 @@ export const noteQueries = {
   },
 
   /**
+   * Get active notes belonging to any of the given folders. Empty array → no matches.
+   * De-duplicates by note id (the same note never lives in two folders, but the
+   * store guarantees nothing about overlapping IDs across query() calls).
+   */
+  byFolders: async (folderIds: string[]): Promise<NoteStoredLocal[]> => {
+    if (folderIds.length === 0) return [];
+    const results = await Promise.all(
+      folderIds.map(id => noteStore.query('folder_id', id))
+    );
+    const seen = new Set<string>();
+    const merged: NoteStoredLocal[] = [];
+    for (const batch of results) {
+      for (const note of batch) {
+        if (note.is_archived || seen.has(note.id)) continue;
+        seen.add(note.id);
+        merged.push(note);
+      }
+    }
+    return merged;
+  },
+
+  /**
    * Get pinned notes
    */
   getPinned: async (): Promise<NoteStoredLocal[]> => {

@@ -166,6 +166,17 @@ export async function getNotesByFolder(
   return attachTagIds(sortByUpdated(decrypted));
 }
 
+/**
+ * Active notes belonging to any of the given folders (subtree search).
+ * Empty array → empty result.
+ */
+export async function getNotesByFolders(folderIds: string[]): Promise<NoteDecrypted[]> {
+  if (folderIds.length === 0) return [];
+  const notes = await noteQueries.byFolders(folderIds);
+  const decrypted = await Promise.all(notes.map(toDecrypted));
+  return attachTagIds(sortByUpdated(decrypted));
+}
+
 /** Notes that have a specific tag, sorted by last updated. */
 export async function getNotesByTag(tagId: string): Promise<NoteDecrypted[]> {
   const noteIds = await noteTagQueries.getNotesForTag(tagId);

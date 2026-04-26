@@ -971,6 +971,7 @@
               <NoteList
                 {activeFolderName}
                 {activeSection}
+                activeFolderId={activeFolderId ?? null}
                 isTrash={activeTrash}
                 subfolders={activeFolderSubfolders}
                 onSubfolderSelect={handleFolderSelect}
@@ -1364,6 +1365,7 @@
           <NoteList
             {activeFolderName}
             {activeSection}
+            activeFolderId={activeFolderId ?? null}
             isTrash={false}
             showSidebarTrigger
             subfolders={activeFolderSubfolders}

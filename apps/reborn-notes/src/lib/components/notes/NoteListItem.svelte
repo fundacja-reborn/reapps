@@ -6,6 +6,7 @@
     Star,
     StarOff,
     FolderInput,
+    Folder,
     Download,
     Link2,
     Trash2,
@@ -31,6 +32,7 @@
   let {
     note,
     isTrash = false,
+    breadcrumb = '',
     movingNoteId = $bindable<string | null>(null),
     onmenuopen,
     onpin,
@@ -44,6 +46,8 @@
   }: {
     note: NoteListItem;
     isTrash?: boolean;
+    /** Folder path to show under the title — used for search results from subfolders. */
+    breadcrumb?: string;
     movingNoteId: string | null;
     onmenuopen: (noteId: string) => void;
     onpin: (noteId: string, e?: Event) => void;
@@ -91,6 +95,15 @@
           <Star class="mt-1.5 h-3.5 w-3.5 md:mt-1 md:h-3 md:w-3 shrink-0 fill-amber-400 text-amber-400" />
         {/if}
       </div>
+      {#if breadcrumb}
+        <p
+          class="mt-0.5 flex min-w-0 items-center gap-1 text-[12px] md:text-[11px] text-muted-foreground"
+          title={breadcrumb}
+        >
+          <Folder class="h-3 w-3 shrink-0" />
+          <span class="truncate" dir="rtl">{breadcrumb}</span>
+        </p>
+      {/if}
       {#if noteTags.length > 0}
         <div class="mt-1 flex flex-wrap gap-1">
           {#each noteTags as tag (tag.id)}

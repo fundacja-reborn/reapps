@@ -41,6 +41,7 @@
     "search_hint": "Saisissez pour rechercher dans vos notes",
     "search_in_content": "Rechercher dans le contenu",
     "no_match": "Aucune note ne correspond à \"{query}\".",
+    "no_match_in_folder": "Aucune note ne correspond à \"{query}\" dans \"{folder}\" ou ses sous-dossiers.",
     "pin_to_top": "Épingler en haut",
     "unpin": "Désépingler",
     "star": "Marquer comme favori",
