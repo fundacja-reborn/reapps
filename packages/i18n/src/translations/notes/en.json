@@ -429,7 +429,11 @@
     "not_synced": "Not synced yet",
     "click_to_sync": "Click to sync",
     "session_expired": "Session expired",
-    "re_login": "Log in again"
+    "re_login": "Log in again",
+    "initial": {
+      "title": "Syncing your notes",
+      "message": "Downloading your encrypted data from the server may take a moment."
+    }
   },
   "view_mode": {
     "edit": "Edit",

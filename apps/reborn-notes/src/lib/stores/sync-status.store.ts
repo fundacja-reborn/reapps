@@ -121,3 +121,11 @@ export const syncStatus = derived(
     return { status, pendingCount: $pendingCount, lastSyncedAt: $lastSyncedAt };
   }
 );
+
+// True only during the very first pull after a fresh login (IndexedDB empty,
+// `lastSyncedAt` not yet written). Used to swap empty-list placeholders for a
+// reassuring loading state so users don't think their notes were lost.
+export const isInitialSync = derived(
+  [isSyncing, lastSyncedAt],
+  ([$isSyncing, $lastSyncedAt]) => $isSyncing && $lastSyncedAt === null
+);

@@ -429,7 +429,11 @@
     "not_synced": "Jeszcze nie zsynchronizowane",
     "click_to_sync": "Kliknij, aby zsynchronizować",
     "session_expired": "Sesja wygasła",
-    "re_login": "Zaloguj ponownie"
+    "re_login": "Zaloguj ponownie",
+    "initial": {
+      "title": "Synchronizujemy Twoje notatki",
+      "message": "Pobieranie zaszyfrowanych danych z serwera może chwilę potrwać."
+    }
   },
   "view_mode": {
     "edit": "Edycja",

@@ -9,6 +9,8 @@
   import IconNav, { type Section } from '$lib/components/layout/IconNav.svelte';
   import SidebarAutoClose from '$lib/components/layout/SidebarAutoClose.svelte';
   import SyncStatusFooter from '$lib/components/sync/SyncStatusFooter.svelte';
+  import InitialSyncState from '$lib/components/sync/InitialSyncState.svelte';
+  import { isInitialSync } from '$lib/stores/sync-status.store';
   import {
     SidebarProvider,
     Sidebar,
@@ -1105,6 +1107,8 @@
               />
             </div>
           {/if}
+        {:else if $isInitialSync}
+          <InitialSyncState compact />
         {:else}
           <div class="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
             <p class="text-sm">{$t('notes.select_or_create')}</p>
@@ -1348,12 +1352,16 @@
             >
           </span>
         </header>
-        <div class="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
-          <div class="flex flex-col items-center gap-1 text-center">
-            <p class="text-sm">{$t('notes.select_or_create')}</p>
-            <p class="text-xs opacity-60">{$t('notes.e2e_info')}</p>
+        {#if $isInitialSync}
+          <InitialSyncState />
+        {:else}
+          <div class="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+            <div class="flex flex-col items-center gap-1 text-center">
+              <p class="text-sm">{$t('notes.select_or_create')}</p>
+              <p class="text-xs opacity-60">{$t('notes.e2e_info')}</p>
+            </div>
           </div>
-        </div>
+        {/if}
       {/if}
     </SidebarInset>
   </SidebarProvider>
