@@ -563,6 +563,8 @@
       "decrypting": "Odszyfrowywanie…",
       "decrypt_import": "Odszyfruj i importuj",
       "imported_summary": "Zaimportowano: {notes} notatek, {folders} folderów, {tags} tagów",
+      "restored_from_trash": "Przywrócono {count} elementów z lokalnego kosza (kopia zapasowa miała je jako aktywne).",
+      "relinked_to_folder": "Przywrócono {count} notatek do folderów z kopii zapasowej (lokalne edycje treści zachowane).",
       "import_status_starting": "Przygotowywanie importu…",
       "import_status_reading": "Importowanie notatki {current} z {total}…",
       "import_status_indexing": "Aktualizacja indeksu wyszukiwania…",
