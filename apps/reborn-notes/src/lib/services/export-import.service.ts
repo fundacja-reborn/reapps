@@ -61,7 +61,7 @@ import {
   type TitleLookup
 } from './import-dedup-utils';
 import { sanitizeMarkdownContent, sanitizeTags } from '$lib/utils/markdown-sanitizer';
-import { shouldRestoreFromTrash } from './export-import-trash-utils';
+import { shouldRestoreFromTrash, shouldRelinkToBackupFolder } from './export-import-trash-utils';
 
 const logger = createLogger('ExportImport');
 
@@ -666,6 +666,16 @@ export type ImportBackupResult = {
    */
   restoredFromTrash: number;
   /**
+   * Number of notes whose local `folder_id` was re-linked back to the
+   * backup's folder while preserving the local title/content/metadata
+   * (the local note was newer by timestamp because `deleteFolder`
+   * rewrites `folder_id = null` on every child, bumping `updated_at`,
+   * but the user's actual content edits — if any — outrank the backup's
+   * stale snapshot). NOT a subset of `notes`: a relinked note isn't a
+   * full backup import, just a structural fix on the local copy.
+   */
+  relinkedToFolder: number;
+  /**
    * Total number of unsafe markdown elements removed from imported notes
    * (base64 data URIs, dangerous HTML tags, javascript:/data:text/html links).
    * Mirrors the counter from {@link importMarkdownFiles} / {@link importFolder}
@@ -739,8 +749,15 @@ export async function importJsonBackup(
 
   const now = new Date().toISOString();
   const result: ImportBackupResult = {
-    notes: 0, folders: 0, tags: 0, noteTags: 0, skipped: 0, restoredFromTrash: 0, strippedCount: 0, errors: []
+    notes: 0, folders: 0, tags: 0, noteTags: 0, skipped: 0,
+    restoredFromTrash: 0, relinkedToFolder: 0, strippedCount: 0, errors: []
   };
+
+  // Folders that were either restored from local trash or freshly created
+  // by this import. The note loop uses this to decide whether a backup's
+  // `folder_id` for a note can safely override the local `folder_id`
+  // without overwriting a deliberate user move. See {@link shouldRelinkToBackupFolder}.
+  const restoredOrCreatedFolderIds = new Set<string>();
 
   // Import folders first (notes reference them)
   for (const folder of backupData.folders ?? []) {
@@ -778,6 +795,7 @@ export async function importJsonBackup(
       await folderStore.save(toSave);
       pushFolder(toSave);
       result.folders++;
+      restoredOrCreatedFolderIds.add(validated.id);
       if (restoring) result.restoredFromTrash++;
     } catch (e: unknown) {
       result.errors.push(`Folder ${folder.id}: ${e instanceof Error ? e.message : 'błąd'}`);
@@ -858,8 +876,38 @@ export async function importJsonBackup(
       // and restore it. updated_at is set to now below so the restoration
       // propagates to other devices.
       const restoring = shouldRestoreFromTrash(existing, validated);
-      if (existing && existing.updated_at >= validated.updated_at && !restoring) {
+      // Relink-to-backup-folder: local note is "newer" only because
+      // deleteFolder rewrote folder_id=null, but the backup remembers the
+      // original folder which is being restored/created in this same
+      // import. Preserve local content edits, just put the note back where
+      // the backup says it belongs.
+      const relinking =
+        !restoring &&
+        shouldRelinkToBackupFolder(existing, validated, restoredOrCreatedFolderIds);
+      if (
+        existing &&
+        existing.updated_at >= validated.updated_at &&
+        !restoring &&
+        !relinking
+      ) {
         result.skipped++;
+        continue;
+      }
+
+      if (relinking && existing) {
+        // Keep local title/content/metadata/shadow indexes as-is; only
+        // override folder_id and bump sync metadata so the move propagates.
+        const toSave: NoteStoredLocal = {
+          ...existing,
+          folder_id: validated.folder_id,
+          sync_status: 'pending',
+          sync_version: 0,
+          updated_at: now
+        };
+        await noteStore.save(toSave);
+        const wireForPush = stripNoteShadowIndexes(toSave);
+        pushNote(wireForPush);
+        result.relinkedToFolder++;
         continue;
       }
 
@@ -999,6 +1047,7 @@ export async function importJsonBackup(
     noteTags: result.noteTags,
     skipped: result.skipped,
     restoredFromTrash: result.restoredFromTrash,
+    relinkedToFolder: result.relinkedToFolder,
     errors: result.errors.length
   });
 
