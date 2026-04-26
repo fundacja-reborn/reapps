@@ -1,3 +1,13 @@
+## 0.9.0 (2026-04-26)
+
+### 🚀 Features
+
+- **notes:** include subfolders in folder-view search ([#62](https://github.com/fundacja-reborn/reapps/pull/62))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.8.4 (2026-04-26)
 
 ### 🩹 Fixes
