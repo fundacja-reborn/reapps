@@ -562,7 +562,14 @@
       "backup_password": "Contraseña de la copia de seguridad",
       "decrypting": "Descifrando…",
       "decrypt_import": "Descifrar e importar",
-      "imported_summary": "Importado: {notes} notas, {folders} carpetas, {tags} etiquetas"
+      "imported_summary": "Importado: {notes} notas, {folders} carpetas, {tags} etiquetas",
+      "import_status_starting": "Preparando importación…",
+      "import_status_reading": "Importando nota {current} de {total}…",
+      "import_status_indexing": "Actualizando índice de búsqueda…",
+      "import_backup_status": "Importando copia de seguridad, espere…",
+      "export_status_zip": "Creando archivo ZIP…",
+      "export_status_backup": "Creando archivo de copia de seguridad…",
+      "export_status_encrypted": "Cifrando copia de seguridad…"
     },
     "about": {
       "title": "Acerca de",

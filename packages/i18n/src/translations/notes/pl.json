@@ -562,7 +562,14 @@
       "backup_password": "Hasło kopii zapasowej",
       "decrypting": "Odszyfrowywanie…",
       "decrypt_import": "Odszyfruj i importuj",
-      "imported_summary": "Zaimportowano: {notes} notatek, {folders} folderów, {tags} tagów"
+      "imported_summary": "Zaimportowano: {notes} notatek, {folders} folderów, {tags} tagów",
+      "import_status_starting": "Przygotowywanie importu…",
+      "import_status_reading": "Importowanie notatki {current} z {total}…",
+      "import_status_indexing": "Aktualizacja indeksu wyszukiwania…",
+      "import_backup_status": "Trwa import kopii zapasowej, proszę czekać…",
+      "export_status_zip": "Tworzenie archiwum ZIP…",
+      "export_status_backup": "Tworzenie pliku kopii zapasowej…",
+      "export_status_encrypted": "Szyfrowanie kopii zapasowej…"
     },
     "about": {
       "title": "O aplikacji",

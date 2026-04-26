@@ -562,7 +562,14 @@
       "backup_password": "Sicherungspasswort",
       "decrypting": "Entschlüsseln…",
       "decrypt_import": "Entschlüsseln & importieren",
-      "imported_summary": "Importiert: {notes} Notizen, {folders} Ordner, {tags} Tags"
+      "imported_summary": "Importiert: {notes} Notizen, {folders} Ordner, {tags} Tags",
+      "import_status_starting": "Import wird vorbereitet…",
+      "import_status_reading": "Importiere Notiz {current} von {total}…",
+      "import_status_indexing": "Suchindex wird aktualisiert…",
+      "import_backup_status": "Sicherung wird importiert, bitte warten…",
+      "export_status_zip": "ZIP-Archiv wird erstellt…",
+      "export_status_backup": "Sicherungsdatei wird erstellt…",
+      "export_status_encrypted": "Sicherung wird verschlüsselt…"
     },
     "about": {
       "title": "Über",

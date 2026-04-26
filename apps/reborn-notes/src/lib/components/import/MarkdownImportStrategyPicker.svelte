@@ -21,9 +21,25 @@
       ? 'settings_page.export_import.dedup_prompt_folder'
       : 'settings_page.export_import.dedup_prompt_root'
   );
+
+  let containerEl: HTMLDivElement | null = $state(null);
+
+  // The picker is rendered conditionally by the parent right after the user
+  // closes the OS file/folder picker. Long settings pages can leave the radio
+  // options below the viewport, so we scroll the picker into view and move
+  // focus to the first (currently-selected) radio. `preventScroll: true` on
+  // focus avoids fighting the scrollIntoView animation.
+  $effect(() => {
+    if (!containerEl) return;
+    containerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    requestAnimationFrame(() => {
+      const firstRadio = containerEl?.querySelector<HTMLInputElement>('input[type="radio"]');
+      firstRadio?.focus({ preventScroll: true });
+    });
+  });
 </script>
 
-<div class="space-y-3">
+<div bind:this={containerEl} class="space-y-3">
   <p class="text-xs font-medium">
     {$t('settings_page.export_import.dedup_files_found', { values: { count } })}
   </p>

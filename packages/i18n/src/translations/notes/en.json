@@ -562,7 +562,14 @@
       "backup_password": "Backup password",
       "decrypting": "Decrypting…",
       "decrypt_import": "Decrypt & import",
-      "imported_summary": "Imported: {notes} notes, {folders} folders, {tags} tags"
+      "imported_summary": "Imported: {notes} notes, {folders} folders, {tags} tags",
+      "import_status_starting": "Preparing import…",
+      "import_status_reading": "Importing note {current} of {total}…",
+      "import_status_indexing": "Updating search index…",
+      "import_backup_status": "Importing backup, please wait…",
+      "export_status_zip": "Building ZIP archive…",
+      "export_status_backup": "Building backup file…",
+      "export_status_encrypted": "Encrypting backup…"
     },
     "about": {
       "title": "About",

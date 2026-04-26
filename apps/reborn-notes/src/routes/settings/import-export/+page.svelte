@@ -5,7 +5,9 @@
     CardContent,
     CardHeader,
     CardTitle,
-    CardDescription
+    CardDescription,
+    LoadingSpinner,
+    Progress
   } from '@reborn/ui';
   import {
     Download,
@@ -32,7 +34,8 @@
     importJsonBackup,
     isEncryptedBackup,
     type ImportFolderResult,
-    type ImportMarkdownResult
+    type ImportMarkdownResult,
+    type ImportProgress
   } from '$lib/services/export-import.service';
   import type { DuplicateStrategy } from '$lib/services/import-dedup-utils';
   import { notesStore } from '$lib/stores/notes.store';
@@ -42,7 +45,12 @@
   const logger = createLogger('notes:import-export');
 
   // ── Export state ─────────────────────────────────────────────────
-  let exporting = $state(false);
+  // Tracks which export is currently running so we can show a spinner under
+  // the matching section (instead of a single boolean that would either show
+  // three spinners or none of them).
+  type ExportKind = 'zip' | 'backup' | 'encrypted';
+  let exportingKind = $state<ExportKind | null>(null);
+  const exporting = $derived(exportingKind !== null);
 
   // Export encrypted backup
   let showExportPasswordForm = $state(false);
@@ -61,6 +69,9 @@
   // picker with file count, then runs the import with the chosen strategy.
   let pendingMdFiles = $state<File[] | null>(null);
   let pendingMdStrategy = $state<DuplicateStrategy>('rename');
+  // Live progress reported by the importer service. Mirrors `pendingMdFiles`
+  // lifecycle: set when the import starts, cleared when it finishes.
+  let mdProgress = $state<ImportProgress | null>(null);
 
   // Import folder (Obsidian-style vault)
   let importingFolder = $state(false);
@@ -69,6 +80,7 @@
   let pendingFolderFiles = $state<File[] | null>(null);
   let pendingFolderStrategy = $state<DuplicateStrategy>('rename');
   let pendingFolderMdCount = $state(0);
+  let folderProgress = $state<ImportProgress | null>(null);
 
   // Import JSON backup
   let importingBackup = $state(false);
@@ -77,6 +89,7 @@
     folders: number;
     tags: number;
     skipped: number;
+    strippedCount: number;
     errors: string[];
   } | null>(null);
   let backupFileContent = $state<string | null>(null);
@@ -85,29 +98,30 @@
   let backupPassword = $state('');
   let backupPasswordVisible = $state(false);
   let backupError = $state<string | null>(null);
+  let backupProgress = $state<ImportProgress | null>(null);
 
   // ── Export handlers ──────────────────────────────────────────────
 
   async function handleExportAllZip() {
-    exporting = true;
+    exportingKind = 'zip';
     try {
       const allNotes = await getAllNotes();
       await exportNotesAsZip(allNotes, $foldersStore, 'reborn-notes-export');
     } catch (e: unknown) {
       logger.error('Export failed:', e);
     } finally {
-      exporting = false;
+      exportingKind = null;
     }
   }
 
   async function handleExportBackup() {
-    exporting = true;
+    exportingKind = 'backup';
     try {
       await exportJsonBackup();
     } catch (e: unknown) {
       logger.error('Backup export failed:', e);
     } finally {
-      exporting = false;
+      exportingKind = null;
     }
   }
 
@@ -118,7 +132,7 @@
       exportError = $t('settings_page.export_import.password_too_short') || 'Hasło musi mieć minimum 8 znaków.';
       return;
     }
-    exporting = true;
+    exportingKind = 'encrypted';
     exportError = null;
     try {
       await exportEncryptedBackup(exportPassword);
@@ -127,7 +141,7 @@
     } catch (err: unknown) {
       exportError = err instanceof Error ? err.message : 'Export failed';
     } finally {
-      exporting = false;
+      exportingKind = null;
     }
   }
 
@@ -160,8 +174,11 @@
 
     importing = true;
     importResult = null;
+    mdProgress = { phase: 'reading', current: 0, total: files.length };
     try {
-      const result = await importMarkdownFiles(files, undefined, strategy);
+      const result = await importMarkdownFiles(files, undefined, strategy, (p) => {
+        mdProgress = p;
+      });
       importResult = result;
       await Promise.all([notesStore.refresh(), foldersStore.refresh()]);
     } catch (err: unknown) {
@@ -175,6 +192,7 @@
       };
     } finally {
       importing = false;
+      mdProgress = null;
     }
   }
 
@@ -229,13 +247,19 @@
     if (!pendingFolderFiles) return;
     const files = pendingFolderFiles;
     const strategy = pendingFolderStrategy;
+    const initialMdCount = pendingFolderMdCount;
     pendingFolderFiles = null;
     pendingFolderMdCount = 0;
 
     importingFolder = true;
     folderImportResult = null;
+    // Seed with the pre-filter count so the progress bar appears immediately;
+    // the importer re-applies its own filters and reports `total` precisely.
+    folderProgress = { phase: 'reading', current: 0, total: initialMdCount };
     try {
-      const result = await importFolder(files, strategy);
+      const result = await importFolder(files, strategy, (p) => {
+        folderProgress = p;
+      });
       folderImportResult = result;
       await Promise.all([
         notesStore.refresh(),
@@ -258,6 +282,7 @@
       };
     } finally {
       importingFolder = false;
+      folderProgress = null;
     }
   }
 
@@ -305,8 +330,11 @@
     importingBackup = true;
     backupError = null;
     backupImportResult = null;
+    backupProgress = null;
     try {
-      const result = await importJsonBackup(raw, password);
+      const result = await importJsonBackup(raw, password, (p) => {
+        backupProgress = p;
+      });
       backupImportResult = result;
       backupNeedsPassword = false;
       backupFileContent = null;
@@ -320,6 +348,7 @@
       backupError = err instanceof Error ? err.message : 'Import failed';
     } finally {
       importingBackup = false;
+      backupProgress = null;
     }
   }
 
@@ -347,29 +376,39 @@
       </CardHeader>
       <CardContent class="space-y-4">
         <!-- Export all notes as ZIP -->
-        <div
-          class="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg border bg-muted/30"
-        >
-          <div class="flex items-center gap-3 flex-1 min-w-0">
-            <FolderArchive class="h-4 w-4 shrink-0 text-muted-foreground" />
-            <div>
-              <p class="text-sm font-medium">{$t('settings_page.export_import.export_all')}</p>
-              <p class="text-xs text-muted-foreground">
-                {$t('settings_page.export_import.export_all_desc')}
-              </p>
+        <div class="p-4 rounded-lg border bg-muted/30">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <FolderArchive class="h-4 w-4 shrink-0 text-muted-foreground" />
+              <div>
+                <p class="text-sm font-medium">{$t('settings_page.export_import.export_all')}</p>
+                <p class="text-xs text-muted-foreground">
+                  {$t('settings_page.export_import.export_all_desc')}
+                </p>
+              </div>
             </div>
+            <button
+              type="button"
+              onclick={handleExportAllZip}
+              disabled={exporting}
+              class="flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
+            >
+              <Download class="h-3.5 w-3.5" />
+              {exportingKind === 'zip'
+                ? $t('settings_page.export_import.exporting')
+                : $t('settings_page.export_import.export_zip')}
+            </button>
           </div>
-          <button
-            type="button"
-            onclick={handleExportAllZip}
-            disabled={exporting}
-            class="flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
-          >
-            <Download class="h-3.5 w-3.5" />
-            {exporting
-              ? $t('settings_page.export_import.exporting')
-              : $t('settings_page.export_import.export_zip')}
-          </button>
+          {#if exportingKind === 'zip'}
+            <div
+              class="mt-3 flex items-center gap-2 rounded-md border bg-background px-3 py-2.5 text-xs text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              <LoadingSpinner size="sm" />
+              <span>{$t('settings_page.export_import.export_status_zip')}</span>
+            </div>
+          {/if}
         </div>
 
         <!-- Export backup (account-encrypted JSON) -->
@@ -391,7 +430,7 @@
               class="flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
             >
               <Download class="h-3.5 w-3.5" />
-              {exporting
+              {exportingKind === 'backup'
                 ? $t('settings_page.export_import.exporting')
                 : $t('settings_page.export_import.export_json')}
             </button>
@@ -402,6 +441,16 @@
               {$t('settings_page.export_import.export_backup_warning')}
             </p>
           </div>
+          {#if exportingKind === 'backup'}
+            <div
+              class="flex items-center gap-2 rounded-md border bg-background px-3 py-2.5 text-xs text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              <LoadingSpinner size="sm" />
+              <span>{$t('settings_page.export_import.export_status_backup')}</span>
+            </div>
+          {/if}
         </div>
 
         <!-- Export encrypted backup (password-protected, portable) -->
@@ -472,7 +521,7 @@
                   class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   <Download class="h-3.5 w-3.5" />
-                  {exporting
+                  {exportingKind === 'encrypted'
                     ? $t('settings_page.export_import.encrypting')
                     : $t('settings_page.export_import.export_encrypted_btn')}
                 </button>
@@ -489,6 +538,16 @@
                 </button>
               </div>
             </form>
+            {#if exportingKind === 'encrypted'}
+              <div
+                class="flex items-center gap-2 rounded-md border bg-background px-3 py-2.5 text-xs text-muted-foreground"
+                role="status"
+                aria-live="polite"
+              >
+                <LoadingSpinner size="sm" />
+                <span>{$t('settings_page.export_import.export_status_encrypted')}</span>
+              </div>
+            {/if}
           {/if}
         </div>
       </CardContent>
@@ -557,6 +616,32 @@
                   {$t('settings_page.export_import.cancel')}
                 </button>
               </div>
+            </div>
+          {/if}
+
+          {#if importing}
+            <div
+              class="mt-3 rounded-md border bg-muted/40 px-3 py-2.5 text-xs space-y-2"
+              role="status"
+              aria-live="polite"
+            >
+              <div class="flex items-center gap-2 text-muted-foreground">
+                <LoadingSpinner size="sm" />
+                <span>
+                  {#if mdProgress?.phase === 'indexing'}
+                    {$t('settings_page.export_import.import_status_indexing')}
+                  {:else if mdProgress && mdProgress.total > 0}
+                    {$t('settings_page.export_import.import_status_reading', {
+                      values: { current: mdProgress.current, total: mdProgress.total }
+                    })}
+                  {:else}
+                    {$t('settings_page.export_import.import_status_starting')}
+                  {/if}
+                </span>
+              </div>
+              {#if mdProgress?.phase === 'reading' && mdProgress.total > 1}
+                <Progress value={mdProgress.current} max={mdProgress.total} class="h-1.5" />
+              {/if}
             </div>
           {/if}
 
@@ -663,6 +748,32 @@
                   {$t('settings_page.export_import.cancel')}
                 </button>
               </div>
+            </div>
+          {/if}
+
+          {#if importingFolder}
+            <div
+              class="mt-3 rounded-md border bg-muted/40 px-3 py-2.5 text-xs space-y-2"
+              role="status"
+              aria-live="polite"
+            >
+              <div class="flex items-center gap-2 text-muted-foreground">
+                <LoadingSpinner size="sm" />
+                <span>
+                  {#if folderProgress?.phase === 'indexing'}
+                    {$t('settings_page.export_import.import_status_indexing')}
+                  {:else if folderProgress && folderProgress.total > 0}
+                    {$t('settings_page.export_import.import_status_reading', {
+                      values: { current: folderProgress.current, total: folderProgress.total }
+                    })}
+                  {:else}
+                    {$t('settings_page.export_import.import_status_starting')}
+                  {/if}
+                </span>
+              </div>
+              {#if folderProgress?.phase === 'reading' && folderProgress.total > 1}
+                <Progress value={folderProgress.current} max={folderProgress.total} class="h-1.5" />
+              {/if}
             </div>
           {/if}
 
@@ -827,6 +938,32 @@
             </div>
           {/if}
 
+          {#if importingBackup}
+            <div
+              class="mt-3 rounded-md border bg-muted/40 px-3 py-2.5 text-xs space-y-2"
+              role="status"
+              aria-live="polite"
+            >
+              <div class="flex items-center gap-2 text-muted-foreground">
+                <LoadingSpinner size="sm" />
+                <span>
+                  {#if backupProgress?.phase === 'indexing'}
+                    {$t('settings_page.export_import.import_status_indexing')}
+                  {:else if backupProgress && backupProgress.total > 0}
+                    {$t('settings_page.export_import.import_status_reading', {
+                      values: { current: backupProgress.current, total: backupProgress.total }
+                    })}
+                  {:else}
+                    {$t('settings_page.export_import.import_backup_status')}
+                  {/if}
+                </span>
+              </div>
+              {#if backupProgress?.phase === 'reading' && backupProgress.total > 1}
+                <Progress value={backupProgress.current} max={backupProgress.total} class="h-1.5" />
+              {/if}
+            </div>
+          {/if}
+
           {#if backupImportResult}
             <div
               class="mt-3 rounded-md px-3 py-2 text-xs
@@ -848,6 +985,13 @@
               {#if backupImportResult.skipped > 0}
                 <p class="text-muted-foreground">
                   Pominięto {backupImportResult.skipped} elementów (nowsze lokalne wersje).
+                </p>
+              {/if}
+              {#if backupImportResult.strippedCount > 0}
+                <p>
+                  {$t('settings_page.export_import.unsafe_content_stripped', {
+                    values: { count: backupImportResult.strippedCount }
+                  })}
                 </p>
               {/if}
               {#each backupImportResult.errors as err}

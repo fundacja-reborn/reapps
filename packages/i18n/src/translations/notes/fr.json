@@ -562,7 +562,14 @@
       "backup_password": "Mot de passe de la sauvegarde",
       "decrypting": "Déchiffrement…",
       "decrypt_import": "Déchiffrer et importer",
-      "imported_summary": "Importé : {notes} notes, {folders} dossiers, {tags} tags"
+      "imported_summary": "Importé : {notes} notes, {folders} dossiers, {tags} tags",
+      "import_status_starting": "Préparation de l'import…",
+      "import_status_reading": "Import de la note {current} sur {total}…",
+      "import_status_indexing": "Mise à jour de l'index de recherche…",
+      "import_backup_status": "Import de la sauvegarde, veuillez patienter…",
+      "export_status_zip": "Création de l'archive ZIP…",
+      "export_status_backup": "Création du fichier de sauvegarde…",
+      "export_status_encrypted": "Chiffrement de la sauvegarde…"
     },
     "about": {
       "title": "À propos",
