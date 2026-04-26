@@ -15,7 +15,7 @@
  * without it are rejected by Zod before reaching this helper.
  */
 export function shouldRestoreFromTrash(
-  existing: { is_archived?: boolean | null } | undefined,
+  existing: { is_archived?: boolean | null } | null | undefined,
   incoming: { is_archived?: boolean | null }
 ): boolean {
   if (!existing) return false;

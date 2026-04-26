@@ -43,4 +43,8 @@ describe('shouldRestoreFromTrash', () => {
   it('returns false when existing is undefined (new import, nothing to restore)', () => {
     expect(shouldRestoreFromTrash(undefined, { is_archived: false })).toBe(false);
   });
+
+  it('returns false when existing is null (IndexedDB get() miss)', () => {
+    expect(shouldRestoreFromTrash(null, { is_archived: false })).toBe(false);
+  });
 });

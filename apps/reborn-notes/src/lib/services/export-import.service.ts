@@ -61,6 +61,7 @@ import {
   type TitleLookup
 } from './import-dedup-utils';
 import { sanitizeMarkdownContent, sanitizeTags } from '$lib/utils/markdown-sanitizer';
+import { shouldRestoreFromTrash } from './export-import-trash-utils';
 
 const logger = createLogger('ExportImport');
 
@@ -656,6 +657,15 @@ export type ImportBackupResult = {
   noteTags: number;
   skipped: number;
   /**
+   * Number of folders/notes whose local copy was archived (in trash) but
+   * the backup version was active — the timestamp guard was overridden so
+   * the backup wins. Subset of `folders` + `notes`: each restored item is
+   * also counted in its main bucket (the import did happen). UI surfaces
+   * this separately so the user knows the backup just resurrected items
+   * they had moved to trash.
+   */
+  restoredFromTrash: number;
+  /**
    * Total number of unsafe markdown elements removed from imported notes
    * (base64 data URIs, dangerous HTML tags, javascript:/data:text/html links).
    * Mirrors the counter from {@link importMarkdownFiles} / {@link importFolder}
@@ -729,7 +739,7 @@ export async function importJsonBackup(
 
   const now = new Date().toISOString();
   const result: ImportBackupResult = {
-    notes: 0, folders: 0, tags: 0, noteTags: 0, skipped: 0, strippedCount: 0, errors: []
+    notes: 0, folders: 0, tags: 0, noteTags: 0, skipped: 0, restoredFromTrash: 0, strippedCount: 0, errors: []
   };
 
   // Import folders first (notes reference them)
@@ -749,7 +759,12 @@ export async function importJsonBackup(
       }
       const validated = parsed.data;
       const existing = await folderStore.get(validated.id);
-      if (existing && existing.updated_at >= validated.updated_at) {
+      // Backup is authoritative for `is_archived`: if the folder is in the
+      // local trash but the backup has it active, override the timestamp
+      // guard and restore it (updated_at = now, so other devices pick up
+      // the restoration on next sync).
+      const restoring = shouldRestoreFromTrash(existing, validated);
+      if (existing && existing.updated_at >= validated.updated_at && !restoring) {
         result.skipped++;
         continue;
       }
@@ -763,6 +778,7 @@ export async function importJsonBackup(
       await folderStore.save(toSave);
       pushFolder(toSave);
       result.folders++;
+      if (restoring) result.restoredFromTrash++;
     } catch (e: unknown) {
       result.errors.push(`Folder ${folder.id}: ${e instanceof Error ? e.message : 'błąd'}`);
     }
@@ -836,7 +852,13 @@ export async function importJsonBackup(
       }
       const validated = parsed.data;
       const existing = await noteStore.get(validated.id);
-      if (existing && existing.updated_at >= validated.updated_at) {
+      // Backup is authoritative for `is_archived`: if the note is in the
+      // local trash but the backup has it active (or omits the field —
+      // the schema treats it as optional), override the timestamp guard
+      // and restore it. updated_at is set to now below so the restoration
+      // propagates to other devices.
+      const restoring = shouldRestoreFromTrash(existing, validated);
+      if (existing && existing.updated_at >= validated.updated_at && !restoring) {
         result.skipped++;
         continue;
       }
@@ -924,6 +946,7 @@ export async function importJsonBackup(
 
       pushNote(wire);
       result.notes++;
+      if (restoring) result.restoredFromTrash++;
     } catch (e: unknown) {
       result.errors.push(`Note ${(note as { id?: string }).id ?? '?'}: ${e instanceof Error ? e.message : 'błąd'}`);
     }
@@ -975,6 +998,7 @@ export async function importJsonBackup(
     notes: result.notes,
     noteTags: result.noteTags,
     skipped: result.skipped,
+    restoredFromTrash: result.restoredFromTrash,
     errors: result.errors.length
   });
 
