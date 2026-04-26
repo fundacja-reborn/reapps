@@ -33,6 +33,7 @@
     importFolder,
     importJsonBackup,
     isEncryptedBackup,
+    type ImportBackupResult,
     type ImportFolderResult,
     type ImportMarkdownResult,
     type ImportProgress
@@ -84,14 +85,7 @@
 
   // Import JSON backup
   let importingBackup = $state(false);
-  let backupImportResult = $state<{
-    notes: number;
-    folders: number;
-    tags: number;
-    skipped: number;
-    strippedCount: number;
-    errors: string[];
-  } | null>(null);
+  let backupImportResult = $state<ImportBackupResult | null>(null);
   let backupFileContent = $state<string | null>(null);
   let backupFileName = $state('');
   let backupNeedsPassword = $state(false);
@@ -979,6 +973,13 @@
                       folders: backupImportResult.folders,
                       tags: backupImportResult.tags
                     }
+                  })}
+                </p>
+              {/if}
+              {#if backupImportResult.restoredFromTrash > 0}
+                <p>
+                  {$t('settings_page.export_import.restored_from_trash', {
+                    values: { count: backupImportResult.restoredFromTrash }
                   })}
                 </p>
               {/if}

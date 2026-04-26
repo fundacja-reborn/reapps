@@ -563,6 +563,7 @@
       "decrypting": "Decrypting…",
       "decrypt_import": "Decrypt & import",
       "imported_summary": "Imported: {notes} notes, {folders} folders, {tags} tags",
+      "restored_from_trash": "Restored {count} items from local trash (backup had them as active).",
       "import_status_starting": "Preparing import…",
       "import_status_reading": "Importing note {current} of {total}…",
       "import_status_indexing": "Updating search index…",

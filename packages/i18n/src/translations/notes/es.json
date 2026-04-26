@@ -563,6 +563,7 @@
       "decrypting": "Descifrando…",
       "decrypt_import": "Descifrar e importar",
       "imported_summary": "Importado: {notes} notas, {folders} carpetas, {tags} etiquetas",
+      "restored_from_trash": "Se restauraron {count} elementos de la papelera local (la copia los contenía como activos).",
       "import_status_starting": "Preparando importación…",
       "import_status_reading": "Importando nota {current} de {total}…",
       "import_status_indexing": "Actualizando índice de búsqueda…",
