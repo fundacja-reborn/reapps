@@ -88,7 +88,7 @@
     "@types/node": "24.12.2",
     "autoprefixer": "10.4.27",
     "eslint": "9.39.4",
-    "postcss": "8.5.8",
+    "postcss": "8.5.10",
     "storybook": "9.1.20",
     "svelte": "5.55.1",
     "svelte-check": "4.4.6",
