@@ -66,4 +66,10 @@ jobs:
 
       # Run affected check (svelte-check), tests and build
       # Note: removed 'lint' as it's not configured in the project
-      - run: pnpm nx affected -t check test build
+      # Targets are run in separate steps (not `-t check test build`) so that
+      # check/test/build for the same project don't run in parallel — all three
+      # invoke `svelte-kit sync` (directly or via the Vite plugin) and writing
+      # to `.svelte-kit/types/` concurrently caused intermittent ENOENT races.
+      - run: pnpm nx affected -t check
+      - run: pnpm nx affected -t test
+      - run: pnpm nx affected -t build
