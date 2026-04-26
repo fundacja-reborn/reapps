@@ -1,3 +1,9 @@
+## 0.6.4 (2026-04-26)
+
+### 🩹 Fixes
+
+- **deps:** update dependency jspdf to v4 [security] ([#51](https://github.com/fundacja-reborn/reapps/pull/51))
+
 ## 0.6.3 (2026-04-26)
 
 ### 🩹 Fixes
