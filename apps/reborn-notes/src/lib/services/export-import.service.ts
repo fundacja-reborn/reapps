@@ -196,17 +196,24 @@ const PDF_STYLES = `
   font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 11pt;
   line-height: 1.55;
+  word-spacing: normal;
+  letter-spacing: normal;
 }
 .reborn-pdf-root h1, .reborn-pdf-root h2, .reborn-pdf-root h3,
 .reborn-pdf-root h4, .reborn-pdf-root h5, .reborn-pdf-root h6 {
   line-height: 1.25;
   font-weight: 600;
+  overflow-wrap: break-word;
 }
-.reborn-pdf-root .reborn-pdf-body h1 { font-size: 1.5rem;  margin: 0.5em 0 0.4em; }
+/* Sizes use em (relative to body 11pt), not rem (which resolves against
+   the host page's <html> font-size — typically 16px — and would push
+   headings past the off-screen container's wrapping boundary, triggering
+   html2canvas-pro's multi-line text-renderer bug). */
+.reborn-pdf-root .reborn-pdf-body h1 { font-size: 1.5em;  margin: 0.5em 0 0.4em; }
 .reborn-pdf-root .reborn-pdf-body h1:first-child { margin-top: 0; }
-.reborn-pdf-root .reborn-pdf-body h2 { font-size: 1.3rem;  margin: 1em 0 0.4em; }
-.reborn-pdf-root .reborn-pdf-body h3 { font-size: 1.15rem; margin: 0.8em 0 0.3em; }
-.reborn-pdf-root .reborn-pdf-body h4 { font-size: 1rem;    margin: 0.8em 0 0.3em; }
+.reborn-pdf-root .reborn-pdf-body h2 { font-size: 1.3em;  margin: 1em 0 0.4em; }
+.reborn-pdf-root .reborn-pdf-body h3 { font-size: 1.15em; margin: 0.8em 0 0.3em; }
+.reborn-pdf-root .reborn-pdf-body h4 { font-size: 1em;    margin: 0.8em 0 0.3em; }
 .reborn-pdf-root p { margin: 0 0 0.75em; }
 .reborn-pdf-root a { color: #1d4ed8; text-decoration: underline; word-break: break-word; }
 .reborn-pdf-root ul, .reborn-pdf-root ol { margin: 0 0 0.75em 1.5em; padding: 0; }
