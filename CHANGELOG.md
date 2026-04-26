@@ -1,3 +1,13 @@
+## 0.8.1 (2026-04-26)
+
+### 🩹 Fixes
+
+- **task,notes:** cache-bust app icons via ?v query string ([#57](https://github.com/fundacja-reborn/reapps/pull/57))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.8.0 (2026-04-26)
 
 ### 🚀 Features
