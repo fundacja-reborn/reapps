@@ -429,7 +429,11 @@
     "not_synced": "Noch nicht synchronisiert",
     "click_to_sync": "Zum Synchronisieren klicken",
     "session_expired": "Sitzung abgelaufen",
-    "re_login": "Erneut anmelden"
+    "re_login": "Erneut anmelden",
+    "initial": {
+      "title": "Notizen werden synchronisiert",
+      "message": "Das Herunterladen Ihrer verschlüsselten Daten vom Server kann einen Moment dauern."
+    }
   },
   "view_mode": {
     "edit": "Bearbeiten",

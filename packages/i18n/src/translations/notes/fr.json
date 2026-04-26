@@ -429,7 +429,11 @@
     "not_synced": "Pas encore synchronisé",
     "click_to_sync": "Cliquez pour synchroniser",
     "session_expired": "Session expirée",
-    "re_login": "Se reconnecter"
+    "re_login": "Se reconnecter",
+    "initial": {
+      "title": "Synchronisation de vos notes",
+      "message": "Le téléchargement de vos données chiffrées depuis le serveur peut prendre un instant."
+    }
   },
   "view_mode": {
     "edit": "Modifier",
