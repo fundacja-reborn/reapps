@@ -10,7 +10,12 @@
  *   2. When the new worker reaches `installed` state AND there was already a
  *      controller (i.e. this is NOT the first install), prompt the user to
  *      reload via a toast with an "Odśwież" action.
- *   3. Poll `registration.update()` every hour to catch updates in long-lived
+ *   3. Eagerly call `registration.update()` once on init and again whenever
+ *      the document becomes visible (throttled). Important on iOS PWAs where
+ *      the service worker is paused aggressively between app resumes — without
+ *      this, the update toast can take many minutes to appear after a cold
+ *      start. On Android/desktop the cost is one extra HEAD-equivalent request.
+ *   4. Poll `registration.update()` every hour to catch updates in long-lived
  *      tabs (otherwise the browser only checks on navigation).
  *
  * We intentionally do NOT auto-reload — a forced reload would interrupt
@@ -25,9 +30,11 @@ import { createLogger } from '@reborn/utils';
 const logger = createLogger('SwUpdateService');
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+const VISIBILITY_UPDATE_THROTTLE_MS = 60 * 1000; // min 1 min between visibility-triggered checks
 
 let started = false;
 let alreadyPrompted = false;
+let lastUpdateCheckAt = 0;
 
 export function startSwUpdateWatcher(): void {
 	if (!browser || started) return;
@@ -51,16 +58,46 @@ async function init(): Promise<void> {
 			if (newWorker) trackInstalling(newWorker);
 		});
 
+		// Eager check — on iOS PWAs the SW is paused between resumes; without
+		// this the toast can lag minutes after a cold start.
+		void triggerUpdate(registration, 'init');
+
+		// Re-check whenever the user returns to the tab (covers iPad app-switcher
+		// resume, desktop tab focus, Android task-switch). Throttled.
+		document.addEventListener('visibilitychange', () => {
+			if (document.visibilityState !== 'visible') return;
+			void triggerUpdate(registration, 'visibilitychange');
+		});
+
 		// Periodic check — catches updates in tabs that stay open for hours.
 		setInterval(() => {
-			registration.update().catch((err) => {
-				logger.debug('Periodic SW update check failed', err);
-			});
+			void triggerUpdate(registration, 'interval');
 		}, UPDATE_CHECK_INTERVAL_MS);
 
 		logger.info('SW update watcher started');
 	} catch (error: unknown) {
 		logger.error('Failed to start SW update watcher', error);
+	}
+}
+
+async function triggerUpdate(
+	registration: ServiceWorkerRegistration,
+	source: 'init' | 'visibilitychange' | 'interval'
+): Promise<void> {
+	// Throttle visibility-triggered checks — `visibilitychange` can fire many
+	// times in quick succession (e.g. tab switching). Init/interval bypass.
+	if (source === 'visibilitychange') {
+		const now = Date.now();
+		if (now - lastUpdateCheckAt < VISIBILITY_UPDATE_THROTTLE_MS) return;
+		lastUpdateCheckAt = now;
+	} else {
+		lastUpdateCheckAt = Date.now();
+	}
+
+	try {
+		await registration.update();
+	} catch (err) {
+		logger.debug(`SW update check failed (${source})`, err);
 	}
 }
 
