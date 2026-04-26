@@ -22,7 +22,15 @@ export default defineConfig({
       '@reborn/types': resolve('../../packages/types/src/index.ts'),
       '@reborn/utils': resolve('../../packages/utils/src/index.ts'),
       '@reborn/storage': resolve('../../packages/storage/src/index.ts'),
-      '@reborn/i18n': resolve('../../packages/i18n/src/index.ts')
+      '@reborn/i18n': resolve('../../packages/i18n/src/index.ts'),
+      // jsPDF's `html()` does `await import("html2canvas")` internally. The
+      // upstream package (1.4.1, last released 2022) cannot parse modern CSS
+      // color functions like `oklch()` — Tailwind v4 emits oklch in :root
+      // variables, and html2canvas reads computed styles across the whole
+      // ancestor chain, so it fails on the very first parse. `html2canvas-pro`
+      // is the maintained fork that adds oklch / lab / lch support; aliasing
+      // here makes jsPDF resolve to it without modifying jsPDF source.
+      html2canvas: 'html2canvas-pro'
     }
   },
   server: {
