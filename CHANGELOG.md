@@ -1,3 +1,13 @@
+## 0.6.5 (2026-04-26)
+
+### 🩹 Fixes
+
+- **notes:** heading wraps correctly in PDF export ([#52](https://github.com/fundacja-reborn/reapps/pull/52), [#2696](https://github.com/fundacja-reborn/reapps/issues/2696), [#3205](https://github.com/fundacja-reborn/reapps/issues/3205), [#1497](https://github.com/fundacja-reborn/reapps/issues/1497), [#51](https://github.com/fundacja-reborn/reapps/issues/51))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.6.4 (2026-04-26)
 
 ### 🩹 Fixes
