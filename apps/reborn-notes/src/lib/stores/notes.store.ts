@@ -4,6 +4,8 @@ import { browser } from '$app/environment';
 import type { NoteDecrypted } from '@reborn/types';
 import * as NoteService from '$lib/services/note.service';
 import { noteIndex, type NoteListItem, type SortBy } from '$lib/services/note-index.svelte';
+import { foldersStore } from '$lib/stores/folders.store';
+import { getDescendantFolderIds } from '$lib/utils/folder-helpers';
 
 export type { SortBy, NoteListItem };
 
@@ -65,12 +67,30 @@ function createNotesStore() {
     }
   );
 
+  /**
+   * When in folder view AND a non-empty search query is active, expand the scope
+   * to include the folder + all its descendant subfolders. Returns the descendant
+   * folder IDs, or `null` when subtree mode is not active (caller falls back to
+   * `currentFolderId`). Toggling `searchInContent` alone (without a query) does
+   * not expand the scope.
+   */
+  function getSearchSubtreeFolderIds(): string[] | null {
+    if (currentTrash || currentStarred || currentTagId) return null;
+    if (typeof currentFolderId !== 'string') return null;
+    if (!get(searchQuery).trim()) return null;
+    const tree = get(foldersStore);
+    const ids = getDescendantFolderIds(tree, currentFolderId);
+    return ids.length > 0 ? ids : null;
+  }
+
   /** Build filter options from current store state. */
   function buildFilterOptions() {
     if (currentTrash) return { archived: true as const };
     const base = { archived: false as const };
     if (currentStarred) return { ...base, starred: true as const };
     if (currentTagId) return { ...base, tagId: currentTagId };
+    const subtreeIds = getSearchSubtreeFolderIds();
+    if (subtreeIds) return { ...base, folderIds: subtreeIds };
     return { ...base, folderId: currentFolderId };
   }
 
@@ -122,6 +142,13 @@ function createNotesStore() {
         data = all.filter((n) => n.is_starred);
       } else if (currentTagId) {
         data = await NoteService.getNotesByTag(currentTagId);
+      } else if (typeof currentFolderId === 'string') {
+        // Subtree search: include the folder + all its descendants
+        const subtreeIds = getDescendantFolderIds(get(foldersStore), currentFolderId);
+        data =
+          subtreeIds.length > 0
+            ? await NoteService.getNotesByFolders(subtreeIds)
+            : await NoteService.getNotesByFolder(currentFolderId);
       } else {
         data = await NoteService.getNotesByFolder(currentFolderId);
       }
@@ -173,7 +200,15 @@ function createNotesStore() {
   }
 
   function setSearch(query: string) {
+    const prev = get(searchQuery);
     searchQuery.set(query);
+    // If we toggled between empty and non-empty in folder view, the filter scope
+    // changes (folder ↔ subtree) — re-run the index query.
+    const prevEmpty = !prev.trim();
+    const nextEmpty = !query.trim();
+    if (prevEmpty !== nextEmpty && typeof currentFolderId === 'string') {
+      refresh();
+    }
     // If content search is active, trigger full-decrypt search
     if (get(searchInContent) && query.trim()) {
       triggerContentSearch(query);

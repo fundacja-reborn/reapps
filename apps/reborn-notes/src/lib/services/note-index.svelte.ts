@@ -34,6 +34,11 @@ export type SortBy = 'updated_at' | 'created_at' | 'title';
 
 export interface FilterOptions {
   folderId?: string | null;
+  /**
+   * Restrict to a set of folder IDs (e.g. a folder + all its descendants).
+   * Takes precedence over `folderId` when both are provided. Empty array → no matches.
+   */
+  folderIds?: string[];
   tagId?: string;
   starred?: boolean;
   archived?: boolean;
@@ -215,6 +220,7 @@ class NoteIndex {
 
     const {
       folderId,
+      folderIds,
       tagId,
       starred,
       archived = false,
@@ -230,8 +236,12 @@ class NoteIndex {
     // archived filter
     entries = entries.filter(([, e]) => e.isArchived === archived);
 
-    // folder filter (null = root/no folder, undefined = all)
-    if (folderId !== undefined) {
+    // folder filter — folderIds (set) takes precedence over folderId (single)
+    if (folderIds !== undefined) {
+      const set = new Set(folderIds);
+      entries = entries.filter(([, e]) => e.folderId !== undefined && set.has(e.folderId));
+    } else if (folderId !== undefined) {
+      // null = root/no folder, undefined = all
       if (folderId === null) {
         entries = entries.filter(([, e]) => !e.folderId);
       } else {

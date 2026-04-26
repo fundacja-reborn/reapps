@@ -41,6 +41,7 @@
     "search_hint": "Type to search your notes",
     "search_in_content": "Search in content",
     "no_match": "No notes match \"{query}\".",
+    "no_match_in_folder": "No notes match \"{query}\" in \"{folder}\" or its subfolders.",
     "pin_to_top": "Pin to top",
     "unpin": "Unpin",
     "star": "Star",

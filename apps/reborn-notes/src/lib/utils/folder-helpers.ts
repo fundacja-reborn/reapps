@@ -75,6 +75,36 @@ export function buildPathString(
     .join(separator);
 }
 
+/**
+ * Return the folder ID set of the subtree rooted at `rootId` (rootId + all descendants).
+ * Returns an empty array if `rootId` is not found in `tree`.
+ */
+export function getDescendantFolderIds(
+  tree: FolderWithChildren[],
+  rootId: string
+): string[] {
+  function findRoot(nodes: FolderWithChildren[]): FolderWithChildren | null {
+    for (const n of nodes) {
+      if (n.id === rootId) return n;
+      const sub = findRoot(n.children ?? []);
+      if (sub) return sub;
+    }
+    return null;
+  }
+  const root = findRoot(tree);
+  if (!root) return [];
+  const ids: string[] = [];
+  const visited = new Set<string>();
+  function walk(n: FolderWithChildren): void {
+    if (visited.has(n.id)) return;
+    visited.add(n.id);
+    ids.push(n.id);
+    for (const c of n.children ?? []) walk(c);
+  }
+  walk(root);
+  return ids;
+}
+
 /** Return IDs of all ancestors (parent → root) so the tree can be expanded to show `folderId`. */
 export function getAncestorIds(folderId: string, tree: FolderWithChildren[]): string[] {
   const parentMap = new Map<string, string>();

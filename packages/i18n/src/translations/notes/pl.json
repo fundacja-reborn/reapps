@@ -41,6 +41,7 @@
     "search_hint": "Wpisz frazę, aby wyszukać notatki",
     "search_in_content": "Szukaj w treści",
     "no_match": "Brak notatek pasujących do „{query}”.",
+    "no_match_in_folder": "Brak notatek pasujących do „{query}” w folderze „{folder}” i podfolderach.",
     "pin_to_top": "Przypnij na górze",
     "unpin": "Odepnij",
     "star": "Oznacz gwiazdką",

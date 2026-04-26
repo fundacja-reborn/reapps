@@ -41,6 +41,7 @@
     "search_hint": "Tippen Sie, um Ihre Notizen zu durchsuchen",
     "search_in_content": "Im Inhalt suchen",
     "no_match": "Keine Notizen für \"{query}\" gefunden.",
+    "no_match_in_folder": "Keine Notizen für \"{query}\" in \"{folder}\" oder Unterordnern gefunden.",
     "pin_to_top": "Oben anheften",
     "unpin": "Lösen",
     "star": "Markieren",
