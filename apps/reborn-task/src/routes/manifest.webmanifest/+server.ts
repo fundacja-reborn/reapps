@@ -11,8 +11,13 @@ import type { RequestHandler } from '@sveltejs/kit';
  *   dev  (port 4200): PUBLIC_BASE_PATH=""  → start_url: "/"
  *   prod (same-origin): PUBLIC_BASE_PATH="/task" → start_url: "/task"
  */
+// Bump when icon files change to bypass browser HTTP cache and Android
+// adaptive-icon cache. Keep in sync with the value in `src/app.html`.
+const ICON_VERSION = '2026-04-26';
+
 export const GET: RequestHandler = () => {
 	const base = env.PUBLIC_BASE_PATH ?? '';
+	const v = `?v=${ICON_VERSION}`;
 
 	const manifest = {
 		name: 're/task',
@@ -27,25 +32,25 @@ export const GET: RequestHandler = () => {
 		lang: 'pl',
 		icons: [
 			{
-				src: `${base}/icons/icon-192.png`,
+				src: `${base}/icons/icon-192.png${v}`,
 				sizes: '192x192',
 				type: 'image/png',
 				purpose: 'any'
 			},
 			{
-				src: `${base}/icons/icon-512.png`,
+				src: `${base}/icons/icon-512.png${v}`,
 				sizes: '512x512',
 				type: 'image/png',
 				purpose: 'any'
 			},
 			{
-				src: `${base}/icons/icon-512-maskable.png`,
+				src: `${base}/icons/icon-512-maskable.png${v}`,
 				sizes: '512x512',
 				type: 'image/png',
 				purpose: 'maskable'
 			},
 			{
-				src: `${base}/favicon.svg`,
+				src: `${base}/favicon.svg${v}`,
 				sizes: 'any',
 				type: 'image/svg+xml'
 			}
