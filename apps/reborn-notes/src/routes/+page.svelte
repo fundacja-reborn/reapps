@@ -161,7 +161,11 @@
       toastStore.error($t('notes.export_failed'));
       return;
     }
-    exportNoteAsPdf(fullNote);
+    try {
+      await exportNoteAsPdf(fullNote);
+    } catch {
+      toastStore.error($t('notes.export_failed'));
+    }
   }
 
   async function handleDetailCopyLink(noteArg?: NoteListItem) {

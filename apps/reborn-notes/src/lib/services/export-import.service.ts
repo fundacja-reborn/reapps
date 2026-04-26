@@ -179,239 +179,263 @@ export function exportNoteAsMarkdown(note: NoteDecrypted, tagNames: string[] = [
 }
 
 /**
- * Print stylesheet inlined into the iframe document below. Kept in this
- * module (not in app.css) because the iframe is a separate document and
- * cannot inherit the parent's `<style>` blocks. `@page { margin: 0 }` plus
- * body padding suppresses the browser's default header (URL/date) and
- * footer (page number). All sizes target paper, not screen.
+ * Style block injected into the off-screen container that jsPDF rasterizes.
+ * html2canvas reads computed styles from a real DOM element, so the rules
+ * below define the visual output. No `@page` — page geometry is set on the
+ * jsPDF instance (`format: 'a4'`, `margin: [40,40,40,40]`).
+ *
+ * Fonts are kept to system stacks. Web fonts that haven't been used elsewhere
+ * on the page may not be loaded by the time html2canvas snapshots, which
+ * silently substitutes them and can shift line widths.
  */
-const PRINT_STYLES = `
-@page { margin: 0; }
-* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-html, body { margin: 0; padding: 0; }
-body {
-  padding: 1.5cm;
+const PDF_STYLES = `
+.reborn-pdf-root, .reborn-pdf-root * { box-sizing: border-box; }
+.reborn-pdf-root {
   color: #000;
   background: #fff;
-  font-family: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 11pt;
   line-height: 1.55;
 }
-h1, h2, h3, h4, h5, h6 {
-  break-after: avoid;
-  page-break-after: avoid;
+.reborn-pdf-root h1, .reborn-pdf-root h2, .reborn-pdf-root h3,
+.reborn-pdf-root h4, .reborn-pdf-root h5, .reborn-pdf-root h6 {
   line-height: 1.25;
   font-weight: 600;
 }
-.reborn-print-title {
-  margin: 0 0 0.75em;
-  padding-bottom: 0.4em;
-  border-bottom: 1px solid #ccc;
-  font-size: 1.75rem;
-}
-.reborn-print-body h1 { font-size: 1.5rem;  margin: 1em 0 0.4em; }
-.reborn-print-body h2 { font-size: 1.3rem;  margin: 1em 0 0.4em; }
-.reborn-print-body h3 { font-size: 1.15rem; margin: 0.8em 0 0.3em; }
-.reborn-print-body h4 { font-size: 1rem;    margin: 0.8em 0 0.3em; }
-p { margin: 0 0 0.75em; }
-a { color: #1d4ed8; text-decoration: underline; word-break: break-word; }
-ul, ol { margin: 0 0 0.75em 1.5em; padding: 0; }
-li + li { margin-top: 0.2em; }
-blockquote {
+.reborn-pdf-root .reborn-pdf-body h1 { font-size: 1.5rem;  margin: 0.5em 0 0.4em; }
+.reborn-pdf-root .reborn-pdf-body h1:first-child { margin-top: 0; }
+.reborn-pdf-root .reborn-pdf-body h2 { font-size: 1.3rem;  margin: 1em 0 0.4em; }
+.reborn-pdf-root .reborn-pdf-body h3 { font-size: 1.15rem; margin: 0.8em 0 0.3em; }
+.reborn-pdf-root .reborn-pdf-body h4 { font-size: 1rem;    margin: 0.8em 0 0.3em; }
+.reborn-pdf-root p { margin: 0 0 0.75em; }
+.reborn-pdf-root a { color: #1d4ed8; text-decoration: underline; word-break: break-word; }
+.reborn-pdf-root ul, .reborn-pdf-root ol { margin: 0 0 0.75em 1.5em; padding: 0; }
+.reborn-pdf-root li + li { margin-top: 0.2em; }
+.reborn-pdf-root blockquote {
   margin: 0 0 0.75em;
   padding: 0.4em 0.9em;
   border-left: 3px solid #999;
   color: #444;
-  break-inside: avoid;
-  page-break-inside: avoid;
 }
-code {
+.reborn-pdf-root code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.875em;
   background: #f3f3f3;
   padding: 0.1em 0.35em;
   border-radius: 3px;
 }
-pre {
+.reborn-pdf-root pre {
   margin: 0 0 0.75em;
   padding: 0.75em;
   background: #f3f3f3;
   border-radius: 4px;
   white-space: pre-wrap;
   word-wrap: break-word;
-  break-inside: avoid;
-  page-break-inside: avoid;
 }
-pre code { background: transparent; padding: 0; }
-table {
+.reborn-pdf-root pre code { background: transparent; padding: 0; }
+.reborn-pdf-root table {
   width: 100%;
   border-collapse: collapse;
   margin: 0 0 0.75em;
-  break-inside: avoid;
-  page-break-inside: avoid;
 }
-th, td { border: 1px solid #ccc; padding: 0.4em 0.6em; text-align: left; }
-th { background: #f3f3f3; font-weight: 600; }
-img { max-width: 100%; height: auto; break-inside: avoid; page-break-inside: avoid; }
-hr { margin: 1em 0; border: none; border-top: 1px solid #ccc; }
+.reborn-pdf-root th, .reborn-pdf-root td {
+  border: 1px solid #ccc;
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+.reborn-pdf-root th { background: #f3f3f3; font-weight: 600; }
+.reborn-pdf-root img { max-width: 100%; height: auto; }
+.reborn-pdf-root hr { margin: 1em 0; border: none; border-top: 1px solid #ccc; }
 `.trim();
 
-function escapeHtml(s: string): string {
-  return s.replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c
-  );
-}
-
 /**
- * Export a single note as PDF via the browser's native print dialog
- * ("Save as PDF" target). Zero Knowledge: the rendered HTML is built and
- * printed entirely client-side — plaintext never leaves the browser. No
- * external library is loaded; we reuse `marked` + DOMPurify already in deps.
+ * Export a single note as PDF, generated entirely client-side.
  *
- * Renders into a hidden iframe with its own document. Crucial for PWA mode
- * on Android: appending to the main document and relying on `@media print`
- * to hide the rest produced a blank PDF — Brave/Chrome on Android render a
- * "viewport snapshot" for print in standalone PWAs, and the appended node
- * sat below the fold. The iframe is an isolated document, so the print
- * engine sees only its content regardless of host PWA layout/viewport.
+ * Pipeline: marked → DOMPurify → off-screen DOM → html2canvas-pro (raster) →
+ * jsPDF (manual slice pagination via addImage). Plaintext never leaves the
+ * device.
  *
- * As a side effect, the iframe's `<title>` becomes the suggested filename
- * (Android Brave/Chrome use the printed document's title, not the host
- * page's `document.title` — that's why pre-iframe versions named the file
- * after the PWA's manifest title).
+ * Why direct html2canvas-pro + addImage instead of `jsPDF.html()`:
+ * `pdf.html()` routes through `pdf.context2d` which renders text as native
+ * PDF text using Helvetica (Latin-1 only). Polish characters and any non-
+ * Latin-1 UTF-8 come out garbled (multi-byte sequences misread as separate
+ * Latin-1 codepoints). Embedding a Unicode TrueType font would solve it but
+ * requires shipping a ~150 KB font asset. Manual raster pagination keeps the
+ * pipeline simple and renders any character correctly because everything is
+ * pixels — at the cost of selectable text in the output.
+ *
+ * Replaces the previous native-print approach (3 iterations) which never
+ * worked on Android PWA — the platform print framework treated the iframe as
+ * a viewport snapshot and ignored multi-page pagination.
  */
-export function exportNoteAsPdf(note: NoteDecrypted): void {
-  // Fresh Marked instance so we don't inherit MarkdownPreview's custom image
-  // renderer (which emits placeholders instead of native <img> — we want
-  // real images embedded in the PDF).
+export async function exportNoteAsPdf(note: NoteDecrypted): Promise<void> {
+  // Fresh Marked instance — don't inherit MarkdownPreview's custom image
+  // renderer (which emits placeholders); we want real <img> in the PDF.
   const printMarked = new Marked({ gfm: true, breaks: true });
   const rawHtml = printMarked.parse(note.content ?? '', { async: false }) as string;
   const safeBodyHtml = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
 
   const filename = sanitizeFilename(note.title);
-  const safeTitle = escapeHtml(note.title || 'Untitled');
 
-  const docHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>${escapeHtml(filename)}</title>
-<style>${PRINT_STYLES}</style>
-</head>
-<body>
-<h1 class="reborn-print-title">${safeTitle}</h1>
-<div class="reborn-print-body">${safeBodyHtml}</div>
-</body>
-</html>`;
-
-  const iframe = document.createElement('iframe');
-  iframe.setAttribute('aria-hidden', 'true');
-  iframe.setAttribute('title', filename);
-  // Full viewport size, but invisible to the user. Two reasons:
-  // - Android Brave PWA: a 0×0 iframe paginated to a single page (only the
-  //   start of long notes printed). With real dimensions the print framework
-  //   computes paged layout from actual content height.
-  // - iOS Safari: refuses to print iframes that aren't laid out. `opacity: 0`
-  //   keeps the iframe in the layout tree (unlike `display: none` /
-  //   `visibility: hidden` which can cause iOS to print blank pages).
-  iframe.style.cssText = [
-    'position:fixed',
+  // html2canvas-pro reads layout from a real, laid-out element. Off-screen via
+  // `left: -10000px; top: 0` rather than huge negative top — the latter put
+  // the element 100000px below the viewport's natural origin and confused
+  // pagination. `top: 0` keeps the element at the document top in absolute
+  // coordinates, just shifted horizontally out of view.
+  const container = document.createElement('div');
+  container.className = 'reborn-pdf-root';
+  container.setAttribute('aria-hidden', 'true');
+  container.style.cssText = [
+    'position:absolute',
+    'left:-10000px',
     'top:0',
-    'left:0',
-    'width:100%',
-    'height:100%',
-    'border:0',
-    'opacity:0',
+    'width:800px',
     'pointer-events:none',
     'z-index:-1'
   ].join(';');
 
-  // Desktop Chromium uses the PARENT document's title for the print job's
-  // suggested filename — even when printing an iframe with its own <title>.
-  // Android Chrome/Brave, conversely, prefers the PWA manifest name and
-  // ignores `document.title` swaps but DOES honor the iframe document's
-  // <title>. Setting both covers all platforms.
-  const previousTitle = document.title;
-  document.title = filename;
+  const styleEl = document.createElement('style');
+  styleEl.textContent = PDF_STYLES;
+  container.appendChild(styleEl);
 
-  let cleanedUp = false;
-  const cleanup = () => {
-    if (cleanedUp) return;
-    cleanedUp = true;
-    document.title = previousTitle;
-    iframe.remove();
-  };
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'reborn-pdf-body';
+  bodyEl.innerHTML = safeBodyHtml;
+  container.appendChild(bodyEl);
 
-  document.body.appendChild(iframe);
+  document.body.appendChild(container);
 
-  // Use document.open()/write()/close() instead of `srcdoc`. iOS Safari has a
-  // long-standing bug where `iframe.contentWindow.print()` on a srcdoc-loaded
-  // iframe ends up printing the *parent* page (or blank pages with the
-  // browser's default header/footer chrome) instead of the iframe content.
-  // The classic write() path produces a real `about:blank` document that
-  // iOS prints reliably.
-  const doc = iframe.contentDocument;
-  if (!doc) {
-    cleanup();
-    return;
-  }
-  doc.open();
-  doc.write(docHtml);
-  doc.close();
-
-  const win = iframe.contentWindow;
-  if (!win) {
-    cleanup();
-    return;
-  }
-  win.addEventListener('afterprint', cleanup);
-
-  // Wait for images inside the iframe to finish decoding, otherwise mobile
-  // print engines snapshot before they render and clip content. Falls back to
-  // a 1.5s timeout so the print is never blocked indefinitely by a stuck img.
-  const triggerPrint = () => {
-    try {
-      win.focus();
-      win.print();
-    } catch {
-      cleanup();
-    }
-  };
-
-  const images = Array.from(doc.images);
-  if (images.length === 0) {
-    setTimeout(triggerPrint, 100);
-  } else {
-    let pending = images.length;
-    let timedOut = false;
-    const onOneImageDone = () => {
-      pending -= 1;
-      if (pending <= 0 && !timedOut) {
-        // One extra frame for layout to settle after the last decode.
-        setTimeout(triggerPrint, 50);
-      }
+  try {
+    // Collect candidate page-break boundaries in container-local CSS pixels.
+    // Measured BEFORE html2canvas runs because html2canvas removes its
+    // overlay clone after rendering — the source container is unaffected.
+    const renderScale = 2;
+    const containerTop = container.getBoundingClientRect().top;
+    const breakBoundariesCss: number[] = [];
+    const collect = (el: Element) => {
+      const bottom = el.getBoundingClientRect().bottom - containerTop;
+      if (bottom > 0) breakBoundariesCss.push(bottom);
     };
-    for (const img of images) {
-      if (img.complete) {
-        onOneImageDone();
-      } else {
-        img.addEventListener('load', onOneImageDone, { once: true });
-        img.addEventListener('error', onOneImageDone, { once: true });
+    // Top-level body blocks (h1-h6, p, ul, ol, table, pre, blockquote, hr,
+    // figure, …). Each is a natural break point.
+    for (const child of Array.from(bodyEl.children)) {
+      collect(child);
+      // Descend one level for lists — breaking between <li> on the same page
+      // is much friendlier than slicing through a single bullet.
+      if (child.tagName === 'UL' || child.tagName === 'OL') {
+        for (const li of Array.from(child.children)) collect(li);
       }
     }
-    setTimeout(() => {
-      if (pending > 0) {
-        timedOut = true;
-        triggerPrint();
-      }
-    }, 1500);
-  }
+    breakBoundariesCss.sort((a, b) => a - b);
 
-  // Hard fallback — Brave/Safari sometimes never fire afterprint when the
-  // user dismisses the print sheet on mobile.
-  setTimeout(cleanup, 60_000);
+    const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+      import('jspdf'),
+      import('html2canvas-pro')
+    ]);
+
+    const fullCanvas = await html2canvas(container, {
+      scale: renderScale,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    });
+
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+    const pageWidthPt = pdf.internal.pageSize.getWidth(); // 595
+    const pageHeightPt = pdf.internal.pageSize.getHeight(); // 842
+    const marginPt = 40;
+    const contentWidthPt = pageWidthPt - 2 * marginPt; // 515
+    const contentHeightPt = pageHeightPt - 2 * marginPt; // 762
+
+    // Source canvas: `fullCanvas.width × fullCanvas.height` pixels. We map it
+    // onto the PDF so its width spans `contentWidthPt`. `pxPerPt` is how many
+    // source-pixel rows correspond to one PDF point.
+    const pxPerPt = fullCanvas.width / contentWidthPt;
+    const idealSliceHeightPx = Math.floor(contentHeightPt * pxPerPt);
+    // Convert CSS-pixel boundaries to canvas-pixel coordinates.
+    const boundariesPx = breakBoundariesCss.map((b) =>
+      Math.round(b * renderScale)
+    );
+
+    // Compute page slices by walking boundaries: for each page, prefer the
+    // largest block-bottom boundary that fits within the ideal slice; if none
+    // is available (e.g., a single block taller than a page), fall back to the
+    // hard pixel cut so we don't loop forever.
+    const slices: { startY: number; endY: number }[] = [];
+    let pageStartY = 0;
+    while (pageStartY < fullCanvas.height) {
+      const idealEnd = Math.min(
+        pageStartY + idealSliceHeightPx,
+        fullCanvas.height
+      );
+      if (idealEnd === fullCanvas.height) {
+        slices.push({ startY: pageStartY, endY: fullCanvas.height });
+        break;
+      }
+      // Largest boundary in (pageStartY, idealEnd]
+      let chosen = -1;
+      for (const b of boundariesPx) {
+        if (b > pageStartY && b <= idealEnd && b > chosen) chosen = b;
+        else if (b > idealEnd) break; // sorted ascending
+      }
+      const endY = chosen > pageStartY ? chosen : idealEnd;
+      slices.push({ startY: pageStartY, endY });
+      pageStartY = endY;
+    }
+
+    const sliceCanvas = document.createElement('canvas');
+    const sliceCtx = sliceCanvas.getContext('2d');
+    if (!sliceCtx) throw new Error('Failed to acquire 2d context for PDF slice');
+
+    for (let i = 0; i < slices.length; i++) {
+      if (i > 0) pdf.addPage();
+      const { startY, endY } = slices[i];
+      const sliceHeightPx = endY - startY;
+      const sliceHeightPt = sliceHeightPx / pxPerPt;
+
+      sliceCanvas.width = fullCanvas.width;
+      sliceCanvas.height = sliceHeightPx;
+      // White background — JPEG has no alpha; transparent pixels would
+      // otherwise encode as black.
+      sliceCtx.fillStyle = '#ffffff';
+      sliceCtx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      sliceCtx.drawImage(
+        fullCanvas,
+        0,
+        startY,
+        fullCanvas.width,
+        sliceHeightPx,
+        0,
+        0,
+        fullCanvas.width,
+        sliceHeightPx
+      );
+
+      const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+      pdf.addImage(
+        sliceData,
+        'JPEG',
+        marginPt,
+        marginPt,
+        contentWidthPt,
+        sliceHeightPt
+      );
+    }
+
+    pdf.save(`${filename}.pdf`);
+  } catch (e) {
+    logger.error('PDF export failed', e);
+    throw e;
+  } finally {
+    container.remove();
+    // html2canvas-pro appends `<iframe class="html2canvas-container">` to body
+    // for its DOM clone. On success it cleans up; on a thrown error mid-render
+    // the iframe can be left behind — drop it so the page isn't holding a
+    // hidden, off-screen frame in memory.
+    document
+      .querySelectorAll('iframe.html2canvas-container')
+      .forEach((el) => el.remove());
+  }
 }
 
 /** Export multiple notes as a .zip archive (JSZip, dynamically imported). */
