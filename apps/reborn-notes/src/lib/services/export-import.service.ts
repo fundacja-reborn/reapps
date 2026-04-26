@@ -655,6 +655,15 @@ export type ImportBackupResult = {
   tags: number;
   noteTags: number;
   skipped: number;
+  /**
+   * Total number of unsafe markdown elements removed from imported notes
+   * (base64 data URIs, dangerous HTML tags, javascript:/data:text/html links).
+   * Mirrors the counter from {@link importMarkdownFiles} / {@link importFolder}
+   * so older backups created before content sanitization existed are scrubbed
+   * on import — defense in depth, even though account-key-encrypted content
+   * is only readable on the originating account.
+   */
+  strippedCount: number;
   errors: string[];
 };
 
@@ -679,7 +688,8 @@ export function isEncryptedBackup(raw: string): boolean {
  */
 export async function importJsonBackup(
   raw: string,
-  password?: string
+  password?: string,
+  onProgress?: ImportProgressCallback
 ): Promise<ImportBackupResult> {
   // raw is already in memory (file.text() in UI), but guard against absurd sizes
   if (raw.length > MAX_IMPORT_FILE_SIZE) {
@@ -719,7 +729,7 @@ export async function importJsonBackup(
 
   const now = new Date().toISOString();
   const result: ImportBackupResult = {
-    notes: 0, folders: 0, tags: 0, noteTags: 0, skipped: 0, errors: []
+    notes: 0, folders: 0, tags: 0, noteTags: 0, skipped: 0, strippedCount: 0, errors: []
   };
 
   // Import folders first (notes reference them)
@@ -797,7 +807,16 @@ export async function importJsonBackup(
   // Import notes — strip any shadow indexes a legacy file may have, then
   // rebuild them locally from `metadata_encrypted` (Zero Knowledge: shadow
   // indexes are NEVER trusted from a file).
-  for (const note of backupData.notes ?? []) {
+  // Notes dominate import time (decrypt + sanitize + re-encrypt per note),
+  // so progress is reported only for this loop. Folders/tags above are
+  // typically a handful of items and complete in under a frame.
+  const notes = backupData.notes ?? [];
+  const totalNotes = notes.length;
+  onProgress?.({ phase: 'reading', current: 0, total: totalNotes });
+  let lastEmit = 0;
+
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
     try {
       // Strip shadow indexes from raw input before validation. Zod's safeParse
       // strips unknowns, so this is mostly defensive — it makes the intent
@@ -842,8 +861,35 @@ export async function importJsonBackup(
         );
       }
 
+      // Defense in depth: scrub unsafe markdown (base64 data URIs, <script>,
+      // javascript: links) from older backups. Mirrors the .md / folder import
+      // path. Decrypts with the current account key, sanitizes plaintext, and
+      // re-encrypts only when something was stripped — preserving Zero
+      // Knowledge: ciphertext leaves the browser, plaintext never does. If
+      // the content is encrypted with a different key (cross-account import)
+      // decryption fails and we leave the ciphertext untouched.
+      let sanitizedContentEncrypted: string | undefined;
+      if (validated.content_encrypted && cryptoManager.isInitialized()) {
+        try {
+          const plaintext = await cryptoManager.decryptText(validated.content_encrypted);
+          const { sanitized, stripped } = sanitizeMarkdownContent(plaintext);
+          if (stripped.length > 0) {
+            sanitizedContentEncrypted = await cryptoManager.encryptText(sanitized);
+            result.strippedCount += stripped.length;
+          }
+        } catch (sanitizeErr) {
+          logger.warn(
+            `Could not sanitize content for imported note ${validated.id} — keeping ciphertext as-is`,
+            sanitizeErr
+          );
+        }
+      }
+
       const wire: NoteEncrypted = {
         ...validated,
+        ...(sanitizedContentEncrypted !== undefined
+          ? { content_encrypted: sanitizedContentEncrypted }
+          : {}),
         user_id: userId,
         sync_status: 'pending',
         sync_version: 0,
@@ -881,6 +927,13 @@ export async function importJsonBackup(
     } catch (e: unknown) {
       result.errors.push(`Note ${(note as { id?: string }).id ?? '?'}: ${e instanceof Error ? e.message : 'błąd'}`);
     }
+
+    const current = i + 1;
+    const nowMs = Date.now();
+    if (current === totalNotes || nowMs - lastEmit >= 50) {
+      onProgress?.({ phase: 'reading', current, total: totalNotes });
+      lastEmit = nowMs;
+    }
   }
 
   // Backwards compat: legacy v1 backups contained an explicit `noteTags`
@@ -905,11 +958,13 @@ export async function importJsonBackup(
 
   // Rebuild in-memory note title index so imported notes are visible
   // immediately without requiring a reload.
+  onProgress?.({ phase: 'indexing', current: 0, total: 1 });
   try {
     await noteIndex.rebuild();
   } catch (e: unknown) {
     logger.warn('Failed to rebuild note index after import', e);
   }
+  onProgress?.({ phase: 'indexing', current: 1, total: 1 });
 
   // Trigger background sync for any items that didn't get pushed inline
   void pushPendingItems();
@@ -976,6 +1031,22 @@ export type ImportMarkdownResult = {
 };
 
 /**
+ * Progress phase reported by the importer to a UI callback.
+ *
+ * - `reading`  — iterating files (read text + decrypt + dedup + write).
+ *                `current`/`total` count files in the import batch.
+ * - `indexing` — rebuilding the in-memory title index after all writes.
+ *                Single-step phase; `current === total === 1`.
+ */
+export type ImportProgress = {
+  phase: 'reading' | 'indexing';
+  current: number;
+  total: number;
+};
+
+export type ImportProgressCallback = (p: ImportProgress) => void;
+
+/**
  * Import notes from an array of .md File objects.
  *
  * `duplicateStrategy` controls behavior when a note with the same title
@@ -988,7 +1059,8 @@ export type ImportMarkdownResult = {
 export async function importMarkdownFiles(
   files: File[],
   folderId?: string,
-  duplicateStrategy: DuplicateStrategy = 'rename'
+  duplicateStrategy: DuplicateStrategy = 'rename',
+  onProgress?: ImportProgressCallback
 ): Promise<ImportMarkdownResult> {
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
   if (totalSize > MAX_IMPORT_FILE_SIZE) {
@@ -1006,7 +1078,14 @@ export async function importMarkdownFiles(
 
   const lookup = await buildTitleLookupFromIndex();
 
-  for (const file of files) {
+  const total = files.length;
+  onProgress?.({ phase: 'reading', current: 0, total });
+  // Throttle progress events to one per ~50ms so a 1000-file import doesn't
+  // flood the renderer; always report the final count regardless.
+  let lastEmit = 0;
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
     try {
       const raw = await file.text();
       const { title, content } = parseMarkdownFile(raw);
@@ -1036,15 +1115,24 @@ export async function importMarkdownFiles(
     } catch (e: unknown) {
       result.errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
+
+    const current = i + 1;
+    const now = Date.now();
+    if (current === total || now - lastEmit >= 50) {
+      onProgress?.({ phase: 'reading', current, total });
+      lastEmit = now;
+    }
   }
 
   // Rebuild the title index so any in-place overwrites / new notes are
   // visible immediately without requiring a reload.
+  onProgress?.({ phase: 'indexing', current: 0, total: 1 });
   try {
     await noteIndex.rebuild();
   } catch (e: unknown) {
     logger.warn('Failed to rebuild note index after markdown import', e);
   }
+  onProgress?.({ phase: 'indexing', current: 1, total: 1 });
 
   return result;
 }
@@ -1235,7 +1323,8 @@ export type ImportFolderResult = {
  */
 export async function importFolder(
   files: File[],
-  duplicateStrategy: DuplicateStrategy = 'rename'
+  duplicateStrategy: DuplicateStrategy = 'rename',
+  onProgress?: ImportProgressCallback
 ): Promise<ImportFolderResult> {
   const result: ImportFolderResult = {
     imported: 0,
@@ -1328,7 +1417,14 @@ export async function importFolder(
   // 7. Import each note via the duplicate strategy helper.
   //    skipSync: true — avoid per-note pushNote/pushNoteUpdate race condition.
   //    Bulk push happens after the loop (step 7b).
-  for (const file of sizedFiles) {
+  const total = sizedFiles.length;
+  onProgress?.({ phase: 'reading', current: 0, total });
+  // Throttle progress events to one per ~50ms so a 1000-file vault doesn't
+  // flood the renderer; always report the final count regardless.
+  let lastEmit = 0;
+
+  for (let i = 0; i < sizedFiles.length; i++) {
+    const file = sizedFiles[i];
     try {
       const raw = await file.text();
       const parsed = parseMarkdownFile(raw);
@@ -1380,6 +1476,13 @@ export async function importFolder(
     } catch (e: unknown) {
       result.errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
+
+    const current = i + 1;
+    const now = Date.now();
+    if (current === total || now - lastEmit >= 50) {
+      onProgress?.({ phase: 'reading', current, total });
+      lastEmit = now;
+    }
   }
   result.tagsCreated = tagsCounter.count;
 
@@ -1392,11 +1495,13 @@ export async function importFolder(
   void pushPendingItems();
 
   // 8. Rebuild in-memory title index so imports are visible immediately.
+  onProgress?.({ phase: 'indexing', current: 0, total: 1 });
   try {
     await noteIndex.rebuild();
   } catch (e: unknown) {
     logger.warn('Failed to rebuild note index after folder import', e);
   }
+  onProgress?.({ phase: 'indexing', current: 1, total: 1 });
 
   logger.info('Folder import complete', result);
   return result;
