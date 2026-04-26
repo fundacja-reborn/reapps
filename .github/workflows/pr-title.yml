@@ -1,0 +1,54 @@
+name: Validate PR Title
+
+# Squash-merge takes the PR title as the commit message on `main`.
+# release.mjs auto-detects the version bump by parsing those commit
+# messages with /^(?<type>[a-z]+)(?:\([^)]+\))?(?<breaking>!)?:\s/ —
+# i.e. strict Conventional Commits. A non-conforming PR title (e.g. the
+# default branch-name title GitHub fills in: "Fix/notes-…") produces a
+# commit the script silently ignores, and the next `pnpm release:dry`
+# reports "nothing to release" until someone runs `pnpm release:patch`
+# manually. This check fails the PR before merge so the title gets
+# fixed up front.
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    # Skip for forks — close-external-prs.yml closes them anyway, no need
+    # to also surface a title-validation failure on top.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Check Conventional Commits format
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Keep this list in sync with the bump rules in scripts/release.mjs:
+          #   feat                → minor
+          #   fix, perf           → patch
+          #   chore/docs/refactor/test/ci/style/build → no bump
+          types: |
+            feat
+            fix
+            perf
+            chore
+            docs
+            refactor
+            test
+            ci
+            style
+            build
+          requireScope: false
+          # Conventional Commits says the description starts lowercase
+          # (after the colon). Enforce so squash-merge commits look uniform
+          # in `git log` and changelog generators don't have to normalize.
+          subjectPattern: ^[a-z].+$
+          subjectPatternError: |
+            The subject "{subject}" must start with a lowercase letter.
+            Example: "fix(notes): restore archived items from JSON backup import"
