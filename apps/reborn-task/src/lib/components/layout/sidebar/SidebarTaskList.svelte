@@ -31,6 +31,7 @@
 	import { trashManagementService } from '$lib/services/trash-management.service';
 	import { t } from '$lib/stores/i18n.store';
 	import { sessionExpired } from '$lib/stores/session-expired.store';
+	import { isInitialSync } from '$lib/stores/sync-status.store';
 	import { createLogger } from '@reborn/utils';
 	import { TaskItem, TaskSortButton } from '$lib/components/tasks';
 	import { DeleteTaskDialog } from '$lib/components/tasks/dialogs';
@@ -416,6 +417,10 @@
 				{:else if $sessionExpired}
 					<p class="text-sm text-muted-foreground">
 						{$t('auth.session.empty_no_data')}
+					</p>
+				{:else if $isInitialSync}
+					<p class="text-sm text-muted-foreground">
+						{$t('sync.initial.title')}
 					</p>
 				{:else}
 					<p class="text-sm text-muted-foreground">

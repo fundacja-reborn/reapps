@@ -58,5 +58,9 @@
     "conflict_message": "Wykryto nowsze dane na serwerze. Pobrano zaktualizowane dane.",
     "conflict_action": "Odśwież",
     "session_expired": "Sesja wygasła"
+  },
+  "initial": {
+    "title": "Synchronizujemy Twoje zadania",
+    "message": "Pobieranie zaszyfrowanych danych z serwera może chwilę potrwać."
   }
 }

@@ -58,5 +58,9 @@
     "conflict_message": "Des donn\u00e9es plus r\u00e9centes ont \u00e9t\u00e9 d\u00e9tect\u00e9es sur le serveur. Les donn\u00e9es mises \u00e0 jour ont \u00e9t\u00e9 t\u00e9l\u00e9charg\u00e9es.",
     "conflict_action": "Actualiser",
     "session_expired": "Session expir\u00e9e"
+  },
+  "initial": {
+    "title": "Synchronisation de vos t\u00e2ches",
+    "message": "Le t\u00e9l\u00e9chargement de vos donn\u00e9es chiffr\u00e9es depuis le serveur peut prendre un instant."
   }
 }
