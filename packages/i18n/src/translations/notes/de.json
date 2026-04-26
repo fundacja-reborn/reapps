@@ -564,6 +564,7 @@
       "decrypt_import": "Entschlüsseln & importieren",
       "imported_summary": "Importiert: {notes} Notizen, {folders} Ordner, {tags} Tags",
       "restored_from_trash": "{count} Element(e) aus dem lokalen Papierkorb wiederhergestellt (Backup enthielt sie als aktiv).",
+      "relinked_to_folder": "{count} Notiz(en) zurück in die Ordner aus dem Backup verschoben (lokale Inhaltsänderungen beibehalten).",
       "import_status_starting": "Import wird vorbereitet…",
       "import_status_reading": "Importiere Notiz {current} von {total}…",
       "import_status_indexing": "Suchindex wird aktualisiert…",

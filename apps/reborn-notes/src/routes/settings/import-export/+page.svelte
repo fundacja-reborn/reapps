@@ -983,6 +983,13 @@
                   })}
                 </p>
               {/if}
+              {#if backupImportResult.relinkedToFolder > 0}
+                <p>
+                  {$t('settings_page.export_import.relinked_to_folder', {
+                    values: { count: backupImportResult.relinkedToFolder }
+                  })}
+                </p>
+              {/if}
               {#if backupImportResult.skipped > 0}
                 <p class="text-muted-foreground">
                   Pominięto {backupImportResult.skipped} elementów (nowsze lokalne wersje).
