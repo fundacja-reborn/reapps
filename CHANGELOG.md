@@ -1,3 +1,13 @@
+## 0.8.2 (2026-04-26)
+
+### 🩹 Fixes
+
+- **notes:** add progress feedback and content sanitization to imports ([#58](https://github.com/fundacja-reborn/reapps/pull/58))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.8.1 (2026-04-26)
 
 ### 🩹 Fixes
