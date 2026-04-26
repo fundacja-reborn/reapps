@@ -44,7 +44,7 @@
     "diff": "8.0.4",
     "dompurify": "3.4.0",
     "html2canvas-pro": "1.6.7",
-    "jspdf": "2.5.2",
+    "jspdf": "4.2.1",
     "jszip": "3.10.1",
     "marked": "14.1.4",
     "otpauth": "9.5.0"
