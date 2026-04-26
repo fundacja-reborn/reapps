@@ -285,6 +285,7 @@
       {/if}
 
       <div
+        data-folder-id={folder.id}
         draggable="true"
         ondragstart={(e) => onDragStart(folder, e)}
         ondragover={(e) => onDragOver(folder, e)}

@@ -69,6 +69,9 @@
   let activeSection = $state<Section>('all');
   let activeFolderId = $state<string | null | undefined>(undefined);
   let activeTagId = $state<string | null>(null);
+  // Last folder the user visited — used to scroll the folder tree back to that
+  // node after exiting all the way up to the tree root, so deep trees keep context.
+  let lastVisitedFolderId = $state<string | null>(null);
   const activeStarred = $derived(activeSection === 'starred');
   const activeTrash = $derived(activeSection === 'trash');
   const activeFolderSubfolders = $derived(
@@ -287,9 +290,7 @@
       noteDetailService.flushAndSnapshot();
       activeNoteId.set(null);
     } else if (mobileView === 'list' && activeSection === 'folders' && activeFolderId !== undefined) {
-      activeFolderId = undefined;
-      activeNoteId.set(null);
-      mobileView = 'folder-tree';
+      void exitCurrentFolder();
     } else if (mobileView === 'list' && activeSection === 'tags' && activeTagId !== null) {
       activeTagId = null;
       activeNoteId.set(null);
@@ -300,8 +301,16 @@
     }
   }
 
+  // Sync mobileView when the user switches sections via IconNav.
+  // Track previous value so this only fires on real section changes — drilling
+  // into a folder/tag updates mobileView from its own handler and we must not
+  // overwrite that here. (isMobile flipping on resize would otherwise wipe the
+  // user's drill-down state.)
+  let prevSectionForView: Section | null = null;
   $effect(() => {
     const section = activeSection;
+    if (section === prevSectionForView) return;
+    prevSectionForView = section;
     if (!isMobile) return;
     if (section === 'folders') {
       mobileView = 'folder-tree';
@@ -310,6 +319,22 @@
     } else {
       mobileView = 'list';
     }
+  });
+
+  // Scroll the folder tree to the last visited folder when we land on the
+  // tree view (e.g., after backing out of a deep branch). Otherwise large trees
+  // always reset to top and lose context.
+  let prevMobileView: MobileView = 'list';
+  $effect(() => {
+    const view = mobileView;
+    const target = lastVisitedFolderId;
+    if (view !== prevMobileView && view === 'folder-tree' && isMobile && target) {
+      tick().then(() => {
+        const el = document.querySelector(`[data-folder-id="${CSS.escape(target)}"]`);
+        el?.scrollIntoView({ block: 'center', behavior: 'auto' });
+      });
+    }
+    prevMobileView = view;
   });
 
   // Reset panelReady only when panel visibility changes (null ↔ non-null).
@@ -539,14 +564,21 @@
     }
   }
 
-  async function handleFolderSelect(id: string | null) {
+  /** State-only part of selecting a folder. Does NOT push history — caller decides. */
+  async function applyFolderSelection(id: string | null | undefined) {
     await noteDetailService.flushAndSnapshot();
     activeFolderId = id;
     activeNoteId.set(null);
     if (id) {
+      lastVisitedFolderId = id;
       getAncestorIds(id, $foldersStore).forEach((ancestorId) => expandedIds.add(ancestorId));
       expandedIds.add(id);
     }
+  }
+
+  /** User taps a folder (in tree or as a subfolder card) — drill down. */
+  async function handleFolderSelect(id: string | null) {
+    await applyFolderSelection(id);
     if (isMobile) {
       mobileView = 'list';
       pushMobileHistory();
@@ -555,10 +587,19 @@
     }
   }
 
-  function handleFolderBack() {
+  /** Drill up by one level: sub-folder → its parent, top-level folder → tree root. */
+  async function exitCurrentFolder() {
     if (activeFolderParentId) {
-      void handleFolderSelect(activeFolderParentId);
+      await applyFolderSelection(activeFolderParentId);
+      if (isMobile) mobileView = 'list';
+    } else {
+      await applyFolderSelection(undefined);
+      if (isMobile) mobileView = 'folder-tree';
     }
+  }
+
+  function handleFolderBack() {
+    void exitCurrentFolder();
   }
 
   async function handleTagSelect(tagId: string) {
@@ -855,9 +896,7 @@
                     if (mobileHistoryDepth > 0) {
                       history.back();
                     } else {
-                      activeFolderId = undefined;
-                      activeNoteId.set(null);
-                      mobileView = 'folder-tree';
+                      void exitCurrentFolder();
                     }
                   }}
                   class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sidebar-foreground
@@ -946,9 +985,7 @@
                       if (isMobile && mobileHistoryDepth > 0) {
                         history.back();
                       } else {
-                        activeFolderId = undefined;
-                        activeNoteId.set(null);
-                        mobileView = 'folder-tree';
+                        void exitCurrentFolder();
                       }
                     }
                   : activeSection === 'tags' && activeTagId !== null
