@@ -1,3 +1,14 @@
+## 0.9.4 (2026-04-27)
+
+### 🩹 Fixes
+
+- **auth:** single-flight 401 refresh and retry across sync paths ([#97](https://github.com/fundacja-reborn/reapps/pull/97))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.9.3 (2026-04-27)
 
 ### 🩹 Fixes
