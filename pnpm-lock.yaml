@@ -163,8 +163,8 @@ importers:
         specifier: 6.41.1
         version: 6.41.1
       '@lucide/svelte':
-        specifier: 0.515.0
-        version: 0.515.0(svelte@5.55.5(@typescript-eslint/types@8.58.2))
+        specifier: 1.11.0
+        version: 1.11.0(svelte@5.55.5(@typescript-eslint/types@8.58.2))
       '@reborn/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -248,8 +248,8 @@ importers:
   apps/reborn-task:
     dependencies:
       '@lucide/svelte':
-        specifier: 0.515.0
-        version: 0.515.0(svelte@5.55.5(@typescript-eslint/types@8.58.2))
+        specifier: 1.11.0
+        version: 1.11.0(svelte@5.55.5(@typescript-eslint/types@8.58.2))
       '@reborn/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -592,8 +592,8 @@ importers:
         specifier: 3.12.1
         version: 3.12.1
       '@lucide/svelte':
-        specifier: 0.515.0
-        version: 0.515.0(svelte@5.55.5(@typescript-eslint/types@8.58.2))
+        specifier: 1.11.0
+        version: 1.11.0(svelte@5.55.5(@typescript-eslint/types@8.58.2))
       '@reborn/i18n':
         specifier: workspace:*
         version: link:../i18n
@@ -1991,8 +1991,8 @@ packages:
   '@lezer/markdown@1.6.3':
     resolution: {integrity: sha512-jpGm5Ps+XErS+xA4urw7ogEGkeZOahVQF21Z6oECF0sj+2liwZopd2+I8uH5I/vZsRuuze3OxBREIANLf6KKUw==}
 
-  '@lucide/svelte@0.515.0':
-    resolution: {integrity: sha512-CEAyqcZmNBfYzVgaRmK2RFJP5tnbXxekRyDk0XX/eZQRfsJmkDvmQwXNX8C869BgNeryzmrRyjHhUL6g9ZOHNA==}
+  '@lucide/svelte@1.11.0':
+    resolution: {integrity: sha512-4I9b+RuxIf8OkGG883bIYDIXjqVOH0ClgrB0j+jI6CrzEziroEwxiubQwW2xKT3esdJcRVTtW9RtCQM9D+r+ew==}
     peerDependencies:
       svelte: ^5
 
@@ -7987,7 +7987,7 @@ snapshots:
       '@lezer/common': 1.5.1
       '@lezer/highlight': 1.2.3
 
-  '@lucide/svelte@0.515.0(svelte@5.55.5(@typescript-eslint/types@8.58.2))':
+  '@lucide/svelte@1.11.0(svelte@5.55.5(@typescript-eslint/types@8.58.2))':
     dependencies:
       svelte: 5.55.5(@typescript-eslint/types@8.58.2)
 

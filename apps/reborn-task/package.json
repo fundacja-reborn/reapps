@@ -46,7 +46,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@lucide/svelte": "0.515.0",
+    "@lucide/svelte": "1.11.0",
     "@reborn/api-client": "workspace:*",
     "@reborn/auth": "workspace:*",
     "@reborn/crypto": "workspace:*",

@@ -21,13 +21,12 @@
     Scale,
     User,
     HardDrive,
-    Github,
     ShieldAlert
   } from '@lucide/svelte';
   import { goto } from '$lib/utils/navigation';
   import { t } from '$lib/stores/i18n.store';
   import { locale } from '$lib/stores/i18n.store';
-  import { cn } from '@reborn/ui';
+  import { cn, GithubMark } from '@reborn/ui';
   import { authStore } from '$lib/stores/auth.store';
   import { onMount } from 'svelte';
   import {
@@ -394,7 +393,7 @@
             rel="noopener noreferrer"
             class={itemClasses}
           >
-            <Github class="h-5 w-5 text-muted-foreground shrink-0" />
+            <GithubMark class="h-5 w-5 text-muted-foreground shrink-0" />
             <div class="flex-1 min-w-0">
               <div class="font-medium">{$t('settings_page.links.github.title')}</div>
               <div class="text-sm text-muted-foreground">

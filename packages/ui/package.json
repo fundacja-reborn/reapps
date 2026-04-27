@@ -64,7 +64,7 @@
   },
   "dependencies": {
     "@internationalized/date": "3.12.1",
-    "@lucide/svelte": "0.515.0",
+    "@lucide/svelte": "1.11.0",
     "@reborn/i18n": "workspace:*",
     "bits-ui": "2.16.5",
     "class-variance-authority": "0.7.1",
