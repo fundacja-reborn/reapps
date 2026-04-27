@@ -28,7 +28,7 @@ jobs:
           fetch-depth: 0
 
       # Setup pnpm
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.2
           run_install: false
@@ -62,7 +62,7 @@ jobs:
           cd ../../apps/reborn-notes && npx svelte-kit sync
 
       # Setup Nx SHAs for affected commands
-      - uses: nrwl/nx-set-shas@v4
+      - uses: nrwl/nx-set-shas@v5
 
       # Run affected check (svelte-check), tests and build
       # Note: removed 'lint' as it's not configured in the project
