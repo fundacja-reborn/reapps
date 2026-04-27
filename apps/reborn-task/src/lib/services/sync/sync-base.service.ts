@@ -2,6 +2,7 @@ import { ApiClient } from '@reborn/api-client';
 import { PUBLIC_BASE_PATH } from '$env/static/public';
 import { createLogger } from '@reborn/utils';
 import type { Logger } from '@reborn/utils';
+import { authFetch } from '$lib/utils/auth-fetch';
 
 /**
  * Base class for sync services with common functionality
@@ -17,12 +18,16 @@ export abstract class SyncBaseService {
 		const baseUrl = `${PUBLIC_BASE_PATH}/api`;
 		this.logger.debug('Initializing sync service with base URL:', baseUrl);
 
-		// Create API client - AuthInterceptor will handle auth headers.
-		// Shorter timeout so a VPN black hole (navigator.onLine=true but no
-		// upstream) doesn't hang a sync for the default 30 s.
+		// Create API client. AuthInterceptor adds the Bearer header on each
+		// request; `onUnauthorized` plugs into the shared `authFetch.refresh()`
+		// so a 401 here transparently triggers a single-flight refresh + retry
+		// (cross-tab serialized via Web Locks API). Shorter timeout so a VPN
+		// black hole (navigator.onLine=true but no upstream) doesn't hang a
+		// sync for the default 30 s.
 		this.apiClient = new ApiClient({
 			baseUrl,
-			timeout: 15_000
+			timeout: 15_000,
+			onUnauthorized: async () => (await authFetch.refresh()) !== null
 		});
 	}
 
@@ -83,8 +88,12 @@ export abstract class SyncBaseService {
 		if (!response.success) {
 			const errorMessage = response.error || response.message;
 			if (this.isAuthError(errorMessage) || response.status === 401 || response.status === 403) {
-				this.logger.warn(
-					`Authentication error during ${entityType} sync. Session-expired flag is managed by auth bootstrap/refresh flow.`
+				// ApiClient already attempted a refresh + retry via `onUnauthorized`,
+				// and `authFetch` flipped `sessionExpired` on failure. If we still see
+				// a 401/403 here, the user must re-authenticate — give up the entity
+				// pull silently so the SessionExpiredBanner is the only signal.
+				this.logger.info(
+					`${entityType} sync skipped — session refresh failed, awaiting re-authentication.`
 				);
 				return;
 			}

@@ -4,9 +4,9 @@ import type {
 	RegisterResult,
 	TwoFactorVerificationResult
 } from '@reborn/auth';
-import { withRefreshLock } from '@reborn/auth';
 import { createLogger } from '@reborn/utils';
 import { syncService } from '$lib/services/sync.service';
+import { authFetch } from '$lib/utils/auth-fetch';
 
 const logger = createLogger('AuthApiAdapter');
 
@@ -186,81 +186,30 @@ export class AuthApiAdapter implements IAuthApiClient {
 	}
 
 	async refreshToken(_refreshToken?: string): Promise<LoginResult> {
-		// Serialize refresh across every tab/app on this origin so concurrent
-		// calls from reborn-task + reborn-notes cannot both hit /api/auth/refresh
-		// with the same refresh-token cookie (which would trip the server's
-		// token-reuse detector and invalidate the entire family). Inside the
-		// lock, first check whether another tab already produced a fresh token
-		// so we can skip the redundant fetch.
-		const tokenBeforeLock =
-			typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
+		// Delegate to the app's shared authFetch.refresh() — it owns the
+		// in-tab single-flight promise and the cross-tab Web Locks coordination,
+		// so this caller (bootstrap checkSession + 10-min background interval)
+		// shares one refresh path with sync's onUnauthorized handler. The
+		// _refreshToken parameter is kept for interface compatibility but
+		// ignored: the refresh token rides exclusively on the httpOnly cookie.
+		void _refreshToken;
 
-		return withRefreshLock(async () => {
-			const current =
-				typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
-			if (current && current !== tokenBeforeLock) {
-				// Another tab refreshed for us while we were queued — use that token,
-				// don't call the server again.
-				syncService.setAuthToken(current);
-				return { success: true, accessToken: current };
+		try {
+			const accessToken = await authFetch.refresh();
+			if (!accessToken) {
+				return { success: false, message: 'Token refresh failed' };
 			}
 
-			try {
-				// Refresh token is sent automatically via httpOnly cookie.
-				// The _refreshToken parameter is kept for interface compatibility but ignored.
-				const response = await fetch(`${this.apiUrl}/auth/refresh`, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({})
-				});
+			syncService.setAuthToken(accessToken);
+			logger.debug('Auth token refreshed via shared authFetch');
 
-				const data = await response.json();
-
-				if (!response.ok || !data.success) {
-					// DIAGNOSTIC (temporary): surface server-side refresh failure reason so we can
-					// distinguish "Token reuse detected" vs "Invalid or expired" vs "No refresh token".
-					// Remove once the session-expiry root cause is identified.
-					logger.warn('/api/auth/refresh failed', {
-						status: response.status,
-						body: data,
-						hasDocumentCookie: typeof document !== 'undefined' && document.cookie.length > 0,
-						time: new Date().toISOString()
-					});
-					return {
-						success: false,
-						message: data.error || 'Token refresh failed'
-					};
-				}
-
-				const result: LoginResult = {
-					success: true,
-					user: data.data.user,
-					accessToken: data.data.access_token,
-					// refresh_token is managed exclusively via httpOnly cookie (set by server)
-					encryptedMasterKey: data.data.encryptedMasterKey,
-					masterKeySalt: data.data.masterKeySalt
-				};
-
-				// Set token in sync service immediately
-				if (result.accessToken) {
-					// Save to localStorage
-					localStorage.setItem('access_token', result.accessToken);
-					// Note: refresh_token is managed exclusively via httpOnly cookie (set by server)
-					// Then set in sync service
-					syncService.setAuthToken(result.accessToken);
-					logger.debug('Auth token set in sync service immediately after refresh API call');
-				}
-
-				return result;
-			} catch (error: unknown) {
-				logger.error('Token refresh API error:', error);
-				return {
-					success: false,
-					message: error instanceof Error ? error.message : 'Network error'
-				};
-			}
-		});
+			return { success: true, accessToken };
+		} catch (error: unknown) {
+			logger.error('Token refresh error:', error);
+			return {
+				success: false,
+				message: error instanceof Error ? error.message : 'Network error'
+			};
+		}
 	}
 }
