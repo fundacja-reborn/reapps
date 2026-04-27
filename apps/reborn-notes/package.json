@@ -46,7 +46,7 @@
     "html2canvas-pro": "2.0.2",
     "jspdf": "4.2.1",
     "jszip": "3.10.1",
-    "marked": "14.1.4",
+    "marked": "18.0.2",
     "otpauth": "9.5.1"
   }
 }
