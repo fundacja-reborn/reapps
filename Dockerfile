@@ -13,7 +13,7 @@
 # Used by docker-compose.prod.yml via `build.target`.
 
 # ─── Base: shared Node + pnpm layer ────────────────────────────
-FROM node:20-alpine AS base
+FROM node:20.20.2-alpine AS base
 WORKDIR /app
 RUN npm install -g pnpm@10 --quiet
 
