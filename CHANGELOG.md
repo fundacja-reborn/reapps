@@ -1,3 +1,21 @@
+## 0.9.3 (2026-04-27)
+
+### 🩹 Fixes
+
+- **deps:** update dependency marked to v18 ([#92](https://github.com/fundacja-reborn/reapps/pull/92))
+- **deps:** update dependency dotenv to v17 ([#91](https://github.com/fundacja-reborn/reapps/pull/91))
+- **deps:** update dependency diff to v9 ([#90](https://github.com/fundacja-reborn/reapps/pull/90))
+- **deps:** update dependency zod to v4 ([#93](https://github.com/fundacja-reborn/reapps/pull/93))
+- **deps:** update dependency @lucide/svelte to v1 ([#89](https://github.com/fundacja-reborn/reapps/pull/89))
+- **deps:** update minor-updates ([#67](https://github.com/fundacja-reborn/reapps/pull/67))
+- **types:** use ZodError.issues instead of deprecated .errors ([#95](https://github.com/fundacja-reborn/reapps/pull/95), [#93](https://github.com/fundacja-reborn/reapps/issues/93))
+- **types:** pass explicit key schema to z.record() ([#96](https://github.com/fundacja-reborn/reapps/pull/96), [#93](https://github.com/fundacja-reborn/reapps/issues/93))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.9.2 (2026-04-27)
 
 ### 🩹 Fixes
