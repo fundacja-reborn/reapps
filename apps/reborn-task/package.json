@@ -16,7 +16,7 @@
     "clean": "rm -rf .svelte-kit node_modules dist build"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.4",
+    "@eslint/js": "10.0.1",
     "@sveltejs/adapter-auto": "7.0.1",
     "@sveltejs/kit": "2.58.0",
     "@sveltejs/vite-plugin-svelte": "7.0.0",
@@ -25,7 +25,7 @@
     "@types/qrcode": "1.5.6",
     "@types/web-push": "3.6.4",
     "autoprefixer": "10.4.27",
-    "eslint": "9.39.4",
+    "eslint": "10.2.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-svelte": "3.17.1",
     "globals": "17.5.0",
@@ -46,7 +46,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@lucide/svelte": "0.515.0",
+    "@lucide/svelte": "1.11.0",
     "@reborn/api-client": "workspace:*",
     "@reborn/auth": "workspace:*",
     "@reborn/crypto": "workspace:*",

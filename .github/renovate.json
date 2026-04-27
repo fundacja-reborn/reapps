@@ -53,6 +53,13 @@
       "matchManagers": ["github-actions"],
       "automerge": false,
       "labels": ["dependencies", "ci"]
+    },
+    {
+      "description": "Postgres major bumps break the storage layout (v18+ require new mount path + pg_upgrade) — disable to prevent accidental merge. Re-enable temporarily and plan dump/restore across local/staging/prod when ready to upgrade.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["postgres"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ],
   "vulnerabilityAlerts": {

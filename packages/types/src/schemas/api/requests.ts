@@ -5,7 +5,7 @@ import { z } from 'zod';
  */
 export const ApiRequestSchema = z.object({
   data: z.unknown(),
-  headers: z.record(z.string()).optional()
+  headers: z.record(z.string(), z.string()).optional()
 });
 
 /**

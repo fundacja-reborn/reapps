@@ -21,12 +21,11 @@
 		User,
 		LogOut,
 		StickyNote,
-		Github,
 		ShieldAlert
 	} from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { locale } from '$lib/stores/i18n.store';
-	import { cn, SettingsLayout } from '@reborn/ui';
+	import { cn, SettingsLayout, GithubMark } from '@reborn/ui';
 	import { user } from '$lib/stores/auth.store';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { resolve } from '$app/paths';
@@ -154,7 +153,7 @@
 			href: siteUrl('/terms')
 		},
 		{
-			icon: Github,
+			icon: GithubMark,
 			title: $t('settings.links.github.title'),
 			description: $t('settings.links.github.description'),
 			href: 'https://github.com/fundacja-reborn/reapps'
