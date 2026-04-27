@@ -1,3 +1,10 @@
+## 0.9.2 (2026-04-27)
+
+### 🩹 Fixes
+
+- **deps:** update svelte ([#69](https://github.com/fundacja-reborn/reapps/pull/69))
+- **deps:** update prisma to v7.8.0 ([#68](https://github.com/fundacja-reborn/reapps/pull/68))
+
 ## 0.9.1 (2026-04-27)
 
 ### 🩹 Fixes
