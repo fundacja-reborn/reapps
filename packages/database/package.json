@@ -1,6 +1,6 @@
 {
   "name": "@reborn/database",
-  "version": "0.9.0",
+  "version": "0.9.2",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -23,9 +23,9 @@
     "db:seed": "dotenv -e ../../.env -- tsx src/seed.ts"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "7.6.0",
-    "@prisma/client": "7.7.0",
-    "dotenv": "16.6.1",
+    "@prisma/adapter-pg": "7.8.0",
+    "@prisma/client": "7.8.0",
+    "dotenv": "17.4.2",
     "pg": "8.20.0"
   },
   "devDependencies": {
@@ -33,11 +33,11 @@
     "@reborn/types": "workspace:*",
     "@reborn/utils": "workspace:*",
     "@types/pg": "8.20.0",
-    "dotenv-cli": "8.0.0",
-    "prisma": "7.7.0",
+    "dotenv-cli": "11.0.0",
+    "prisma": "7.8.0",
     "tsup": "8.5.1",
     "tsx": "4.21.0",
-    "typescript": "5.9.3",
+    "typescript": "6.0.3",
     "vitest": "4.1.5"
   }
 }

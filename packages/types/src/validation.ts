@@ -18,7 +18,7 @@ export function validateBody<T>(schema: z.ZodType<T>, body: unknown): Validation
     return {
       success: false,
       error: 'Invalid request data',
-      details: result.error.errors
+      details: result.error.issues
     };
   }
   return { success: true, data: result.data };

@@ -22,21 +22,21 @@ jobs:
       PUBLIC_BASE_PATH: ''
       PUBLIC_SITE_URL: 'http://localhost:4300'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           filter: tree:0
           fetch-depth: 0
 
       # Setup pnpm
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.2
           run_install: false
 
       # Setup Node.js with pnpm cache
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20.20.2
+          node-version: 24.15.0
           cache: 'pnpm'
 
       # Install dependencies
@@ -62,7 +62,7 @@ jobs:
           cd ../../apps/reborn-notes && npx svelte-kit sync
 
       # Setup Nx SHAs for affected commands
-      - uses: nrwl/nx-set-shas@v4
+      - uses: nrwl/nx-set-shas@v5
 
       # Run affected check (svelte-check), tests and build
       # Note: removed 'lint' as it's not configured in the project
