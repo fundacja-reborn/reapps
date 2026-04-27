@@ -34,7 +34,7 @@ jobs:
           run_install: false
 
       # Setup Node.js with pnpm cache
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20.20.2
           cache: 'pnpm'
@@ -62,7 +62,7 @@ jobs:
           cd ../../apps/reborn-notes && npx svelte-kit sync
 
       # Setup Nx SHAs for affected commands
-      - uses: nrwl/nx-set-shas@v4
+      - uses: nrwl/nx-set-shas@v5
 
       # Run affected check (svelte-check), tests and build
       # Note: removed 'lint' as it's not configured in the project
