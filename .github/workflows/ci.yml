@@ -36,7 +36,7 @@ jobs:
       # Setup Node.js with pnpm cache
       - uses: actions/setup-node@v6
         with:
-          node-version: 20.20.2
+          node-version: 24.15.0
           cache: 'pnpm'
 
       # Install dependencies
