@@ -22,7 +22,7 @@ jobs:
       PUBLIC_BASE_PATH: ''
       PUBLIC_SITE_URL: 'http://localhost:4300'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           filter: tree:0
           fetch-depth: 0
