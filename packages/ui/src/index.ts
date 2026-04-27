@@ -35,6 +35,9 @@ export { LoadingSpinner } from './components/loading-spinner';
 // Auth components
 export * from './components/auth';
 
+// Icon components
+export * from './components/icons';
+
 // New shadcn-svelte components - export only named exports to avoid conflicts
 export {
   // Alert
