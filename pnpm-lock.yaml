@@ -205,8 +205,8 @@ importers:
         specifier: 3.10.1
         version: 3.10.1
       marked:
-        specifier: 14.1.4
-        version: 14.1.4
+        specifier: 18.0.2
+        version: 18.0.2
       otpauth:
         specifier: 9.5.1
         version: 9.5.1
@@ -5158,9 +5158,9 @@ packages:
   map-or-similar@1.5.0:
     resolution: {integrity: sha512-0aF7ZmVon1igznGI4VS30yugpduQW3y3GkcgGJOp7d8x8QrizhigUxjI/m2UojsXXto+jLAH3KSz+xOJTiORjg==}
 
-  marked@14.1.4:
-    resolution: {integrity: sha512-vkVZ8ONmUdPnjCKc5uTRvmkRbx4EAi2OkTOXmfTDhZz3OFqMNBM1oTTWwTr4HY4uAEojhzPf+Fy8F1DWa3Sndg==}
-    engines: {node: '>= 18'}
+  marked@18.0.2:
+    resolution: {integrity: sha512-NsmlUYBS/Zg57rgDWMYdnre6OTj4e+qq/JS2ot3KrYLSoHLw+sDu0Nm1ZGpRgYAq6c+b1ekaY5NzVchMCQnzcg==}
+    engines: {node: '>= 20'}
     hasBin: true
 
   math-intrinsics@1.1.0:
@@ -11504,7 +11504,7 @@ snapshots:
 
   map-or-similar@1.5.0: {}
 
-  marked@14.1.4: {}
+  marked@18.0.2: {}
 
   math-intrinsics@1.1.0: {}
 
