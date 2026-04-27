@@ -23,8 +23,8 @@
     "db:seed": "dotenv -e ../../.env -- tsx src/seed.ts"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "7.6.0",
-    "@prisma/client": "7.7.0",
+    "@prisma/adapter-pg": "7.8.0",
+    "@prisma/client": "7.8.0",
     "dotenv": "16.6.1",
     "pg": "8.20.0"
   },
@@ -34,7 +34,7 @@
     "@reborn/utils": "workspace:*",
     "@types/pg": "8.15.4",
     "dotenv-cli": "8.0.0",
-    "prisma": "7.7.0",
+    "prisma": "7.8.0",
     "tsup": "8.5.1",
     "tsx": "4.21.0",
     "typescript": "5.9.3",
