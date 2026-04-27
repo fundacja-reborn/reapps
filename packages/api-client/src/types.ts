@@ -66,6 +66,14 @@ export interface ApiClientConfig {
   onRequest?: (config: RequestConfig) => RequestConfig | Promise<RequestConfig>;
   onResponse?: <T>(response: ApiResponse<T>) => ApiResponse<T> | Promise<ApiResponse<T>>;
   onError?: (error: ApiError) => void | Promise<void>;
+  /**
+   * Called when a non-auth endpoint returns 401. Implementations should
+   * single-flight refresh the access token (typically `authFetch.refresh()`)
+   * and return `true` if a new token is now available — the client will
+   * re-run request interceptors and retry the original request once. Return
+   * `false` (or throw) to surface the original 401 to the caller.
+   */
+  onUnauthorized?: () => Promise<boolean>;
 }
 
 /**

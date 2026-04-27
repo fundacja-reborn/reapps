@@ -487,7 +487,13 @@ export class AuthOperationsService {
 	}
 
 	/**
-	 * Check if session is valid and restore it
+	 * Check if session is valid and restore it.
+	 *
+	 * Always performs a refresh on the access token when one is present in
+	 * localStorage — even if `sessionManager.isAuthenticated()` is already true
+	 * after restoring persisted credentials. The previously-stored token may
+	 * have expired (15 min TTL) while the user was away; without a proactive
+	 * refresh, the first sync after a cold start would 401 and silently fail.
 	 */
 	async checkSession(): Promise<boolean> {
 		if (!browser) return false;
@@ -502,14 +508,8 @@ export class AuthOperationsService {
 				return false;
 			}
 
-			// Check if we already have a valid session
 			const sessionManager = this.getSessionManager();
-			if (sessionManager.isAuthenticated()) {
-				logger.debug('Already authenticated');
-				return true;
-			}
-
-			logger.debug('Attempting to refresh token...');
+			logger.debug('Refreshing access token on bootstrap...');
 
 			// Create a promise that resolves after timeout
 			const timeoutPromise = new Promise<never>((_, reject) =>

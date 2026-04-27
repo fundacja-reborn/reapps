@@ -38,6 +38,10 @@ export type { PowChallengeData } from './utils/pow-solver';
 // Cross-tab/cross-app refresh-token coordination
 export { withRefreshLock } from './utils/refresh-lock';
 
+// Authenticated fetch wrapper with single-flight 401 refresh + retry
+export { createAuthFetch } from './utils/auth-fetch';
+export type { AuthFetch, AuthFetchConfig, AuthFetchTokenStorage } from './utils/auth-fetch';
+
 // Export guards
 export {
   createAuthGuard,

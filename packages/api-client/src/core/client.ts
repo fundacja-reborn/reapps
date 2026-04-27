@@ -44,7 +44,8 @@ export class ApiClient {
       headers: config.headers || {},
       onRequest: config.onRequest || ((c) => c),
       onResponse: config.onResponse || ((r) => r),
-      onError: config.onError || (() => {})
+      onError: config.onError || (() => {}),
+      onUnauthorized: config.onUnauthorized || (async () => false)
     };
 
     // Initialize utilities
@@ -109,17 +110,7 @@ export class ApiClient {
       };
     }
 
-    // Merge configs
-    let requestConfig: RequestConfig = {
-      ...config,
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.config.headers,
-        ...config.headers
-      }
-    };
-
-    // Set URL for interceptors
+    // Set URL for interceptors (stable for both initial and retry attempts)
     if (this.authInterceptor) {
       this.authInterceptor.setCurrentUrl(fullUrl);
     }
@@ -127,13 +118,27 @@ export class ApiClient {
       this.encryptionInterceptor.setCurrentUrl(fullUrl);
     }
 
-    // Apply request interceptors
-    for (const interceptor of this.requestInterceptors) {
-      requestConfig = await interceptor.onRequest(requestConfig);
-    }
+    // Build the final RequestInit through the interceptor pipeline. Re-runs on
+    // refresh-retry so AuthInterceptor picks up the new access token from
+    // localStorage on the second attempt.
+    const buildRequestConfig = async (): Promise<RequestConfig> => {
+      let requestConfig: RequestConfig = {
+        ...config,
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.config.headers,
+          ...config.headers
+        }
+      };
 
-    // Apply global onRequest hook
-    requestConfig = await this.config.onRequest(requestConfig);
+      for (const interceptor of this.requestInterceptors) {
+        requestConfig = await interceptor.onRequest(requestConfig);
+      }
+      requestConfig = await this.config.onRequest(requestConfig);
+      return requestConfig;
+    };
+
+    let requestConfig = await buildRequestConfig();
 
     // Handle offline mode
     if (!navigator.onLine && this.shouldQueueOffline(requestConfig)) {
@@ -146,11 +151,32 @@ export class ApiClient {
       const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
       // Make the request
-      const response = await fetch(fullUrl, {
+      let response = await fetch(fullUrl, {
         ...requestConfig,
         signal: controller.signal,
         credentials: 'include' // Important: include cookies in requests
       });
+
+      // Refresh-on-401: if a non-auth endpoint returns 401, give the caller a
+      // chance to refresh the access token, then retry the request once with
+      // the new token. The retry rebuilds the request config so AuthInterceptor
+      // re-reads the rotated token. Auth endpoints are skipped to avoid
+      // infinite recursion (the refresh endpoint itself can return 401).
+      if (
+        response.status === 401 &&
+        !this.isAuthEndpoint(fullUrl) &&
+        !requestConfig.skipAuth
+      ) {
+        const refreshed = await this.config.onUnauthorized();
+        if (refreshed) {
+          requestConfig = await buildRequestConfig();
+          response = await fetch(fullUrl, {
+            ...requestConfig,
+            signal: controller.signal,
+            credentials: 'include'
+          });
+        }
+      }
 
       clearTimeout(timeoutId);
 
@@ -370,6 +396,19 @@ export class ApiClient {
         status: response.status
       };
     }
+  }
+
+  private isAuthEndpoint(fullUrl: string): boolean {
+    // Mirror AuthInterceptor's auth-endpoint list — these must never trigger
+    // the refresh-on-401 path (the refresh endpoint itself returning 401 would
+    // otherwise loop).
+    return (
+      fullUrl.includes('/auth/login') ||
+      fullUrl.includes('/auth/register') ||
+      fullUrl.includes('/auth/logout') ||
+      fullUrl.includes('/auth/verify') ||
+      fullUrl.includes('/auth/refresh')
+    );
   }
 
   private shouldQueueOffline(config: RequestConfig): boolean {

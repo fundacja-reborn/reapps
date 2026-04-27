@@ -80,54 +80,23 @@ const logger = createLogger('hooks.server');
 // Authentication middleware
 const authHandle: Handle = async ({ event, resolve }) => {
 	try {
-		// Debug JWT_SECRET status
-		logger.debug('JWT_SECRET status:', {
-			isSet: !!process.env.JWT_SECRET
-		});
-
-		// Get token from cookies OR Authorization header
+		// Read access token from cookie (legacy path) or Authorization header
+		// (the canonical path used by api-client / authFetch).
 		let token = event.cookies.get('reborn_task_token');
-
-		// If no cookie, check Authorization header (for API requests)
 		if (!token) {
 			const authHeader = event.request.headers.get('authorization');
 			if (authHeader?.startsWith('Bearer ')) {
 				token = authHeader.slice(7);
-				logger.debug('Token found in Authorization header');
 			}
 		}
 
-		logger.debug('Token verification attempt:', {
-			tokenExists: !!token,
-			url: event.url.pathname,
-			source: event.cookies.get('reborn_task_token') ? 'cookie' : 'header'
-		});
-
 		if (token) {
-			// Verify token and extract userId
 			const tokenData = await verifyToken(token, 'access');
-
-			logger.debug('Token verification result:', {
-				success: !!tokenData,
-				userId: tokenData?.userId
-			});
-
 			if (tokenData) {
-				// Set userId in locals for use in server-side code
 				event.locals.userId = tokenData.userId;
-				logger.debug('User authenticated and locals set:', {
-					userId: tokenData.userId,
-					localsUserId: event.locals.userId
-				});
-			} else {
-				logger.debug('Invalid token - verification failed');
-				// Only clear cookie if token came from cookie, not header
-				if (event.cookies.get('reborn_task_token')) {
-					event.cookies.delete('reborn_task_token', { path: '/' });
-				}
+			} else if (event.cookies.get('reborn_task_token')) {
+				event.cookies.delete('reborn_task_token', { path: '/' });
 			}
-		} else {
-			logger.debug('No token found in cookies');
 		}
 	} catch (error: unknown) {
 		logger.error('Auth middleware error:', error);
