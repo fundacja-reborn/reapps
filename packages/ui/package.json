@@ -87,7 +87,7 @@
     "@tailwindcss/postcss": "4.2.4",
     "@types/node": "24.12.2",
     "autoprefixer": "10.4.27",
-    "eslint": "9.39.4",
+    "eslint": "10.2.1",
     "postcss": "8.5.12",
     "storybook": "10.3.5",
     "svelte": "5.55.5",
