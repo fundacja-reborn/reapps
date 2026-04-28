@@ -54,9 +54,9 @@
   } = $props();
 
   // Split view always uses independent scrolls per pane — sticky+100dvh inside a
-  // flex container caused reflow loops on iOS Safari. Only single-pane edit
-  // honors parentScroll (parent grows with content, toolbar sticks to parent).
-  const isParentScrollActive = $derived(parentScroll && effectiveViewMode === 'edit');
+  // flex container caused reflow loops on iOS Safari. Edit and preview both let
+  // the parent scroll (parent grows with content, sticky toolbar/header work).
+  const isParentScrollActive = $derived(parentScroll && effectiveViewMode !== 'split');
 </script>
 
 <div class="relative {isParentScrollActive ? '' : 'flex min-h-0 flex-1 overflow-hidden'}">

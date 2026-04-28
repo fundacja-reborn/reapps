@@ -46,7 +46,8 @@
   </title>
 </svelte:head>
 
-<div class="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
+<div class="h-dvh overflow-y-auto bg-background text-foreground">
+<div class="min-h-dvh flex items-center justify-center px-4 py-8">
   <div class="max-w-md w-full text-center space-y-6">
     {#if showOffline}
       <!-- Offline error view -->
@@ -123,4 +124,5 @@
       </div>
     {/if}
   </div>
+</div>
 </div>
