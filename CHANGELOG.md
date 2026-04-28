@@ -1,3 +1,14 @@
+## 0.10.2 (2026-04-28)
+
+### 🩹 Fixes
+
+- **notes:** make Live Preview italic visible, enable strikethrough, match Preview styling ([#103](https://github.com/fundacja-reborn/reapps/pull/103))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.10.1 (2026-04-28)
 
 ### 🩹 Fixes

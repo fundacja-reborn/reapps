@@ -1,6 +1,6 @@
 {
   "name": "@reborn-apps/source",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "clean": "chmod +x ./scripts/clean-all.sh && ./scripts/clean-all.sh",
