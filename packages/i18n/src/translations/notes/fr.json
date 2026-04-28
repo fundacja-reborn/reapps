@@ -491,7 +491,13 @@
       "image_loading_always": "Toujours charger automatiquement",
       "image_loading_never": "Ne jamais charger les images externes",
       "image_loading_updated": "Paramètre de chargement des images mis à jour",
-      "image_loading_warning": "Le chargement automatique des images peut révéler votre adresse IP à des serveurs externes"
+      "image_loading_warning": "Le chargement automatique des images peut révéler votre adresse IP à des serveurs externes",
+      "editor_mode": "Mode d'édition",
+      "editor_mode_desc": "Comment le Markdown est affiché pendant l'édition d'une note",
+      "editor_mode_markdown": "Markdown (afficher toute la syntaxe)",
+      "editor_mode_live": "Aperçu en direct (masquer la syntaxe hors du curseur)",
+      "editor_mode_updated": "Mode d'édition mis à jour",
+      "editor_mode_live_note": "Bêta — fonctionne mieux sur ordinateur. Les tableaux et blocs de code restent en Markdown brut."
     },
     "security": {
       "title": "Sécurité",

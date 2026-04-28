@@ -90,6 +90,7 @@
           onchange={oncontentchange}
           {onscrollerinit}
           {onnotelinkrequest}
+          onnotelinkclick={onnotelink}
           availableNotes={autocompleteNotes}
           currentNoteId={noteId}
           parentScroll={parentScroll}

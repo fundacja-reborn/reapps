@@ -8,6 +8,8 @@
   import { oneDark } from '@codemirror/theme-one-dark';
   import { noteLinkAutocomplete, type NoteLinkItem } from '$lib/editor/note-link-autocomplete';
   import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
+  import { createLivePreviewExtension } from '$lib/editor/live-preview';
+  import { editorMode } from '$lib/stores/app-settings.store';
   import { isDataUri } from '$lib/utils/markdown-sanitizer';
   import { toastStore } from '@reborn/ui';
   import {
@@ -41,6 +43,7 @@
     onchange,
     onscrollerinit,
     onnotelinkrequest,
+    onnotelinkclick,
     availableNotes = [],
     currentNoteId = null,
     externalDialogOpen = false
@@ -61,6 +64,8 @@
     onscrollerinit?: (el: HTMLElement) => void;
     /** Called when user requests to insert a note link (toolbar button or Ctrl+Shift+K) */
     onnotelinkrequest?: () => void;
+    /** Called when a rendered note-link widget is clicked (Live Preview mode) */
+    onnotelinkclick?: (noteId: string) => void;
     /** Notes available for [[ autocomplete */
     availableNotes?: NoteLinkItem[];
     /** Current note id (excluded from autocomplete suggestions) */
@@ -76,6 +81,7 @@
   const themeCompartment = new Compartment();
   const readonlyCompartment = new Compartment();
   const autocompleteCompartment = new Compartment();
+  const livePreviewCompartment = new Compartment();
 
   function isDark(): boolean {
     return document.documentElement.classList.contains('dark');
@@ -308,8 +314,20 @@
         readonlyCompartment.of(EditorState.readOnly.of(readonly)),
         placeholderExt(placeholder),
         autocompleteCompartment.of(noteLinkAutocomplete(() => availableNotes, currentNoteId)),
+        livePreviewCompartment.of($editorMode === 'live' ? createLivePreviewExtension() : []),
         noteLinkDecoration,
         EditorView.domEventHandlers({
+          click(e) {
+            const target = e.target as HTMLElement | null;
+            const noteEl = target?.closest('[data-note-link="true"]') as HTMLElement | null;
+            if (noteEl) {
+              const noteId = noteEl.dataset.noteId;
+              if (noteId) {
+                e.preventDefault();
+                onnotelinkclick?.(noteId);
+              }
+            }
+          },
           paste(e) {
             const files = e.clipboardData?.files;
             if (files && files.length > 0) {
@@ -394,6 +412,16 @@
     const noteId = currentNoteId;
     view?.dispatch({
       effects: autocompleteCompartment.reconfigure(noteLinkAutocomplete(() => notes, noteId))
+    });
+  });
+
+  // Sync editor mode (markdown ↔ live preview)
+  $effect(() => {
+    const mode = $editorMode;
+    view?.dispatch({
+      effects: livePreviewCompartment.reconfigure(
+        mode === 'live' ? createLivePreviewExtension() : []
+      )
     });
   });
 
