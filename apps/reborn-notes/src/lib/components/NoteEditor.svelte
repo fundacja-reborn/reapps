@@ -315,7 +315,7 @@
         readonlyCompartment.of(EditorState.readOnly.of(readonly)),
         placeholderExt(placeholder),
         autocompleteCompartment.of(noteLinkAutocomplete(() => availableNotes, currentNoteId)),
-        livePreviewCompartment.of($editorMode === 'live' ? createLivePreviewExtension() : []),
+        livePreviewCompartment.of($editorMode === 'live' && !splitView ? createLivePreviewExtension() : []),
         noteLinkDecoration,
         EditorView.domEventHandlers({
           click(e) {
@@ -416,12 +416,15 @@
     });
   });
 
-  // Sync editor mode (markdown ↔ live preview)
+  // Sync editor mode (markdown ↔ live preview).
+  // In split view the right pane already renders the rendered preview,
+  // so the editor pane always shows raw Markdown regardless of editorMode.
   $effect(() => {
     const mode = $editorMode;
+    const live = mode === 'live' && !splitView;
     view?.dispatch({
       effects: livePreviewCompartment.reconfigure(
-        mode === 'live' ? createLivePreviewExtension() : []
+        live ? createLivePreviewExtension() : []
       )
     });
   });
