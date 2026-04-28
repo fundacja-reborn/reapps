@@ -1,3 +1,14 @@
+## 0.10.4 (2026-04-28)
+
+### 🩹 Fixes
+
+- **notes:** stabilize editor header, split view, and toolbar on iPadOS Safari ([#105](https://github.com/fundacja-reborn/reapps/pull/105))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.10.3 (2026-04-28)
 
 ### 🩹 Fixes
