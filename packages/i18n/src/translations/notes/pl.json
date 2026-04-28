@@ -192,6 +192,7 @@
   },
   "editor": {
     "placeholder": "Zacznij pisać...",
+    "placeholder_markdown": "Zacznij pisać w Markdown…",
     "undo": "Cofnij",
     "redo": "Ponów",
     "undo_shortcut": "Cofnij (Ctrl+Z)",

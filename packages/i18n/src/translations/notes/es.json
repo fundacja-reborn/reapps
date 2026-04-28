@@ -192,6 +192,7 @@
   },
   "editor": {
     "placeholder": "Comience a escribir...",
+    "placeholder_markdown": "Comience a escribir en Markdown…",
     "undo": "Deshacer",
     "redo": "Rehacer",
     "undo_shortcut": "Deshacer (Ctrl+Z)",

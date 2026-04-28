@@ -192,6 +192,7 @@
   },
   "editor": {
     "placeholder": "Commencez à écrire...",
+    "placeholder_markdown": "Commencez à écrire en Markdown…",
     "undo": "Annuler",
     "redo": "Rétablir",
     "undo_shortcut": "Annuler (Ctrl+Z)",

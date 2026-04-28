@@ -129,11 +129,17 @@
     const text = line.text;
 
     if (text.startsWith(prefix)) {
-      view.dispatch({ changes: { from: line.from, to: line.from + prefix.length, insert: '' } });
+      view.dispatch({
+        changes: { from: line.from, to: line.from + prefix.length, insert: '' },
+        selection: { anchor: line.from }
+      });
     } else {
       // Remove other common prefixes first
       const stripped = text.replace(/^(#{1,6} |> |- |\d+\. )/, '');
-      view.dispatch({ changes: { from: line.from, to: line.to, insert: `${prefix}${stripped}` } });
+      view.dispatch({
+        changes: { from: line.from, to: line.to, insert: `${prefix}${stripped}` },
+        selection: { anchor: line.from + prefix.length }
+      });
     }
     view.focus();
     return true;
