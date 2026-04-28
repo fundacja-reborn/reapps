@@ -85,6 +85,7 @@ docker-compose.prod.yml
 docker-compose.staging.yml
 docker-compose.localprod.yml
 nginx/prod.conf
+nginx/staging.conf
 
 # Dev Container (Claude Code specific mounts)
 .devcontainer/
