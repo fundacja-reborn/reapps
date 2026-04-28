@@ -1,3 +1,14 @@
+## 0.10.3 (2026-04-28)
+
+### 🩹 Fixes
+
+- **notes:** force raw markdown in split view editor pane ([#104](https://github.com/fundacja-reborn/reapps/pull/104))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.10.2 (2026-04-28)
 
 ### 🩹 Fixes
