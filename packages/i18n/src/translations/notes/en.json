@@ -442,6 +442,13 @@
     "preview": "Preview",
     "label": "View mode"
   },
+  "editor_mode": {
+    "label": "Editor mode",
+    "markdown": "Markdown source",
+    "live": "Live preview",
+    "beta": "Beta",
+    "open_menu": "Choose editor mode"
+  },
   "save_status": {
     "unsaved": "Unsaved changes",
     "saving": "Saving…",
@@ -491,7 +498,13 @@
       "image_loading_always": "Always load automatically",
       "image_loading_never": "Never load external images",
       "image_loading_updated": "Image loading setting updated",
-      "image_loading_warning": "Loading images automatically may reveal your IP address to external servers"
+      "image_loading_warning": "Loading images automatically may reveal your IP address to external servers",
+      "editor_mode": "Editor mode",
+      "editor_mode_desc": "How Markdown is shown while you edit a note",
+      "editor_mode_markdown": "Markdown (show all syntax)",
+      "editor_mode_live": "Live preview (hide syntax outside cursor)",
+      "editor_mode_updated": "Editor mode updated",
+      "editor_mode_live_note": "Beta — works best on desktop. Tables and code blocks still show raw Markdown."
     },
     "security": {
       "title": "Security",

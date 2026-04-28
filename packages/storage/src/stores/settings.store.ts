@@ -7,6 +7,7 @@ const logger = createLogger('SettingsStore');
  * Application settings type (device-specific, not synced)
  */
 export type ImageLoadMode = 'ask' | 'always' | 'never';
+export type EditorMode = 'markdown' | 'live';
 
 export interface AppSettings {
   id: string;
@@ -20,6 +21,7 @@ export interface AppSettings {
   auto_sync_enabled: boolean;
   sync_interval_minutes: number;
   imageLoadMode: ImageLoadMode;
+  editorMode: EditorMode;
   created_at: string;
   updated_at: string;
 }
@@ -95,6 +97,7 @@ export const settingsOperations = {
           auto_sync_enabled: true,
           sync_interval_minutes: 5,
           imageLoadMode: 'ask',
+          editorMode: 'markdown',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };

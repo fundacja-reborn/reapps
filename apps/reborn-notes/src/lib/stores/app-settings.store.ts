@@ -203,6 +203,8 @@ export const firstDayOfWeek = derived(appSettings, ($settings) => $settings?.fir
 
 export const imageLoadMode = derived(appSettings, ($settings) => $settings?.imageLoadMode ?? 'ask');
 
+export const editorMode = derived(appSettings, ($settings) => $settings?.editorMode ?? 'markdown');
+
 if (browser) {
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 

@@ -442,6 +442,13 @@
     "preview": "Vorschau",
     "label": "Ansichtsmodus"
   },
+  "editor_mode": {
+    "label": "Editor-Modus",
+    "markdown": "Markdown-Quelle",
+    "live": "Live-Vorschau",
+    "beta": "Beta",
+    "open_menu": "Editor-Modus wählen"
+  },
   "save_status": {
     "unsaved": "Nicht gespeicherte Änderungen",
     "saving": "Speichern…",
@@ -491,7 +498,13 @@
       "image_loading_always": "Immer automatisch laden",
       "image_loading_never": "Externe Bilder niemals laden",
       "image_loading_updated": "Einstellung zum Laden von Bildern aktualisiert",
-      "image_loading_warning": "Das automatische Laden von Bildern kann Ihre IP-Adresse gegenüber externen Servern offenlegen"
+      "image_loading_warning": "Das automatische Laden von Bildern kann Ihre IP-Adresse gegenüber externen Servern offenlegen",
+      "editor_mode": "Bearbeitungsmodus",
+      "editor_mode_desc": "Wie Markdown beim Bearbeiten einer Notiz angezeigt wird",
+      "editor_mode_markdown": "Markdown (gesamte Syntax anzeigen)",
+      "editor_mode_live": "Live-Vorschau (Syntax außerhalb des Cursors ausblenden)",
+      "editor_mode_updated": "Bearbeitungsmodus aktualisiert",
+      "editor_mode_live_note": "Beta — funktioniert am besten am Desktop. Tabellen und Codeblöcke bleiben in rohem Markdown."
     },
     "security": {
       "title": "Sicherheit",

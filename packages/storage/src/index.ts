@@ -33,7 +33,7 @@ export {
 export * from './stores';
 
 // Export AppSettings type for app usage
-export type { AppSettings, ImageLoadMode } from './stores/settings.store';
+export type { AppSettings, ImageLoadMode, EditorMode } from './stores/settings.store';
 
 // Re-export types from @reborn/types for convenience
 export type {

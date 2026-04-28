@@ -15,6 +15,7 @@
   } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
+  import EditorModeButton from './EditorModeButton.svelte';
   import type { Snippet } from 'svelte';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -172,25 +173,36 @@
       {#each VIEW_MODES as { mode, label, icon: Icon } (mode)}
         {#if !isMobile || mode !== 'split'}
           {@const isActive = effectiveViewMode === mode}
-          <button
-            type="button"
-            onclick={() => {
-              viewMode = mode;
-            }}
-            title={label}
-            aria-label={label}
-            aria-pressed={isActive}
-            class="flex h-8 md:h-7 items-center gap-1.5 rounded px-2 text-xs transition-colors
-              {isActive
-              ? 'bg-accent font-medium text-accent-foreground'
-              : 'text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground'}
-              {!isMobile && mode === 'split' ? 'hidden sm:flex' : 'flex'}"
-          >
-            <Icon class="h-4 w-4 md:h-3.5 md:w-3.5" />
-            {#if !isMobile}
-              <span class="hidden sm:inline">{label}</span>
-            {/if}
-          </button>
+          {#if mode === 'edit'}
+            <EditorModeButton
+              {isActive}
+              {isMobile}
+              {label}
+              onActivate={() => {
+                viewMode = 'edit';
+              }}
+            />
+          {:else}
+            <button
+              type="button"
+              onclick={() => {
+                viewMode = mode;
+              }}
+              title={label}
+              aria-label={label}
+              aria-pressed={isActive}
+              class="flex h-8 md:h-7 items-center gap-1.5 rounded px-2 text-xs transition-colors
+                {isActive
+                ? 'bg-accent font-medium text-accent-foreground'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground'}
+                {!isMobile && mode === 'split' ? 'hidden sm:flex' : 'flex'}"
+            >
+              <Icon class="h-4 w-4 md:h-3.5 md:w-3.5" />
+              {#if !isMobile}
+                <span class="hidden sm:inline">{label}</span>
+              {/if}
+            </button>
+          {/if}
         {/if}
       {/each}
     </div>

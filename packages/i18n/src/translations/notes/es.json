@@ -442,6 +442,13 @@
     "preview": "Vista previa",
     "label": "Modo de vista"
   },
+  "editor_mode": {
+    "label": "Modo de editor",
+    "markdown": "Fuente Markdown",
+    "live": "Vista previa en vivo",
+    "beta": "Beta",
+    "open_menu": "Elegir modo de editor"
+  },
   "save_status": {
     "unsaved": "Cambios sin guardar",
     "saving": "Guardando…",
@@ -491,7 +498,13 @@
       "image_loading_always": "Cargar siempre automáticamente",
       "image_loading_never": "Nunca cargar imágenes externas",
       "image_loading_updated": "Configuración de carga de imágenes actualizada",
-      "image_loading_warning": "Cargar imágenes automáticamente puede revelar su dirección IP a servidores externos"
+      "image_loading_warning": "Cargar imágenes automáticamente puede revelar su dirección IP a servidores externos",
+      "editor_mode": "Modo de edición",
+      "editor_mode_desc": "Cómo se muestra Markdown mientras editas una nota",
+      "editor_mode_markdown": "Markdown (mostrar toda la sintaxis)",
+      "editor_mode_live": "Vista previa en vivo (ocultar sintaxis fuera del cursor)",
+      "editor_mode_updated": "Modo de edición actualizado",
+      "editor_mode_live_note": "Beta — funciona mejor en escritorio. Las tablas y bloques de código permanecen en Markdown sin procesar."
     },
     "security": {
       "title": "Seguridad",
