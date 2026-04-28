@@ -259,8 +259,6 @@
   let isMobile = $state(false);
   let closeSidebarSignal = $state(0);
   const effectiveViewMode = $derived(isMobile && viewMode === 'split' ? 'edit' : viewMode);
-  /** True after the editor panel slide-in transition completes (prevents broken position:fixed during transform). */
-  let mobilePanelReady = $state(false);
 
   // Mobile drill-down navigation state
   type MobileView = 'list' | 'folder-tree' | 'tag-list';
@@ -336,30 +334,6 @@
     }
     prevMobileView = view;
   });
-
-  // Reset panelReady only when panel visibility changes (null ↔ non-null).
-  // Switching between two notes doesn't trigger a slide — skip reset.
-  let prevNoteIdForPanel: string | null | undefined;
-  $effect(() => {
-    const currentId = $activeNoteId;
-    const hadNote = prevNoteIdForPanel != null;
-    const hasNote = currentId != null;
-    prevNoteIdForPanel = currentId;
-    if (hadNote !== hasNote) {
-      mobilePanelReady = false;
-    }
-  });
-
-  function handleMobilePanelTransitionEnd(e: TransitionEvent) {
-    // Tailwind v4 uses individual `translate` property (not composed `transform`).
-    // Ignore bubbled events from children — only react to this element's transition.
-    if (
-      (e.propertyName === 'translate' || e.propertyName === 'transform') &&
-      e.target === e.currentTarget
-    ) {
-      mobilePanelReady = !!$activeNoteId;
-    }
-  }
 
   function handleMobileBack() {
     if (isMobile && mobileHistoryDepth > 0) {
@@ -687,14 +661,6 @@
     return () => previewScrollEl?.removeEventListener('scroll', scrollSync.syncPreviewToEditor);
   });
 
-  // When in split view with parentScroll, use the parent scroll container instead of .cm-scroller
-  $effect(() => {
-    if (effectiveViewMode === 'split' && desktopEditorScrollContainer) {
-      scrollSync.setScrollContainer(desktopEditorScrollContainer);
-      return () => scrollSync.setScrollContainer(null);
-    }
-  });
-
   // ── Folder breadcrumb navigation ──────────────────────────────────
   function navigateToNoteFolder() {
     activeSection = 'folders';
@@ -1015,7 +981,6 @@
         class:translate-x-full={!$activeNoteId}
         ontouchstart={handleSwipeStart}
         ontouchend={handleSwipeEnd}
-        ontransitionend={handleMobilePanelTransitionEnd}
         role="region"
         aria-label="Note editor"
       >
@@ -1062,7 +1027,6 @@
               imageLoadMode={$imageLoadMode}
             />
           {:else}
-            <!-- Sticky header stays above scroll -->
             <NoteEditorHeader
               {isMobile}
               {activeTrash}
@@ -1133,7 +1097,6 @@
                 bind:previewScrollEl
                 {autocompleteNotes}
                 {isMobile}
-                panelReady={mobilePanelReady}
                 parentScroll={true}
                 oncontentchange={handleContentChange}
                 onscrollerinit={scrollSync.initEditorScroller}
@@ -1141,7 +1104,6 @@
                 onnotelink={handleNoteLink}
                 {resolveNoteTitle}
                 imageLoadMode={$imageLoadMode}
-                externalDialogOpen={notePickerOpen}
               />
             </div>
           {/if}

@@ -39,25 +39,21 @@
     readonly = false,
     parentScroll = false,
     isMobile = false,
-    panelReady = true,
     splitView = false,
     onchange,
     onscrollerinit,
     onnotelinkrequest,
     onnotelinkclick,
     availableNotes = [],
-    currentNoteId = null,
-    externalDialogOpen = false
+    currentNoteId = null
   }: {
     content?: string;
     placeholder?: string;
     readonly?: boolean;
     /** When true, the editor grows to content height (no own scroll) and toolbar becomes sticky + centered. */
     parentScroll?: boolean;
-    /** When true, enables mobile-specific toolbar behavior (sticky over virtual keyboard). */
+    /** When true, the editor renders the mobile toolbar (sticky on top of editor). */
     isMobile?: boolean;
-    /** When true, the parent panel transition has completed (safe for position:fixed). Defaults to true for non-mobile contexts. */
-    panelReady?: boolean;
     /** When true, indicates editor is in split view context (toolbar full-width, no max-w centering). */
     splitView?: boolean;
     onchange?: (content: string) => void;
@@ -71,8 +67,6 @@
     availableNotes?: NoteLinkItem[];
     /** Current note id (excluded from autocomplete suggestions) */
     currentNoteId?: string | null;
-    /** When true, an external dialog (e.g. NotePicker) is open — hides mobile toolbar. */
-    externalDialogOpen?: boolean;
   } = $props();
 
   let editorRootEl: HTMLDivElement;
@@ -239,9 +233,6 @@
   let showTableDialog = $state(false);
   let tableCols = $state(3);
   let tableRows = $state(2);
-
-  /** When any popup dialog is open, hide the mobile toolbar to avoid z-index conflicts. */
-  const anyDialogOpen = $derived(showImageDialog || showTableDialog || externalDialogOpen);
 
   function openTableDialog() {
     if (isMobile) view?.contentDOM.blur();
@@ -432,112 +423,6 @@
   onDestroy(() => {
     view?.destroy();
   });
-
-  // ── Mobile virtual keyboard tracking ────────────────────────────
-  let mobileKeyboardOpen = $state(false);
-  let toolbarBottomPx = $state(0);
-  const KEYBOARD_THRESHOLD = 0.85;
-  const KEYBOARD_MIN_DIFF_PX = 150;
-
-  $effect(() => {
-    if (!isMobile) return;
-    if (typeof window === 'undefined') return;
-
-    const vv = window.visualViewport ?? null;
-    let layoutHeight = window.innerHeight;
-    let vvDetected = false;
-    let focusDetected = false;
-    let focusTimer: ReturnType<typeof setTimeout> | undefined;
-
-    function recalcLayout() {
-      // Update layoutHeight only when keyboard is likely closed
-      const currentHeight = vv ? vv.height : window.innerHeight;
-      if (currentHeight / window.innerHeight > 0.9) {
-        layoutHeight = window.innerHeight;
-      }
-    }
-
-    function applyState() {
-      mobileKeyboardOpen = vvDetected || focusDetected;
-      if (!mobileKeyboardOpen) toolbarBottomPx = 0;
-    }
-
-    // ── Strategy 1: visualViewport (primary) ──
-    function onVVResize() {
-      if (!vv) return;
-      const visibleHeight = vv.height;
-      vvDetected =
-        visibleHeight < layoutHeight * KEYBOARD_THRESHOLD &&
-        layoutHeight - visibleHeight > KEYBOARD_MIN_DIFF_PX;
-      // Without interactive-widget=resizes-content the layout viewport stays
-      // full-size when the keyboard opens (default resizes-visual behaviour).
-      // position:fixed bottom:0 would land behind the keyboard, so we compute
-      // the real offset from the visualViewport API.
-      if (vvDetected) {
-        toolbarBottomPx = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      } else {
-        toolbarBottomPx = 0;
-        recalcLayout();
-      }
-      applyState();
-    }
-
-    // ── Strategy 2: focus-based fallback ──
-    // Scoped to editorRootEl so toolbar button clicks don't trigger focusout→hide.
-    function onFocusIn(e: FocusEvent) {
-      const target = e.target;
-      if (!(target instanceof HTMLElement)) return;
-      const isEditable =
-        target.isContentEditable ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'INPUT';
-      if (!isEditable) return;
-
-      clearTimeout(focusTimer);
-      // Delay to let visualViewport fire first
-      focusTimer = setTimeout(() => {
-        if (!vvDetected) {
-          focusDetected = true;
-          applyState();
-        }
-      }, 300);
-    }
-
-    function onFocusOut(e: FocusEvent) {
-      clearTimeout(focusTimer);
-      // If focus moves to another element inside this component (e.g. toolbar button),
-      // keep focusDetected — the keyboard is still open.
-      const related = e.relatedTarget as Node | null;
-      if (related && editorRootEl?.contains(related)) return;
-      focusTimer = setTimeout(() => {
-        focusDetected = false;
-        if (!vvDetected) applyState();
-      }, 200);
-    }
-
-    // ── Bind events ──
-    const rootEl = editorRootEl;
-    if (vv) {
-      vv.addEventListener('resize', onVVResize);
-      vv.addEventListener('scroll', onVVResize);
-    }
-    rootEl?.addEventListener('focusin', onFocusIn);
-    rootEl?.addEventListener('focusout', onFocusOut);
-    window.addEventListener('orientationchange', recalcLayout);
-
-    return () => {
-      if (vv) {
-        vv.removeEventListener('resize', onVVResize);
-        vv.removeEventListener('scroll', onVVResize);
-      }
-      rootEl?.removeEventListener('focusin', onFocusIn);
-      rootEl?.removeEventListener('focusout', onFocusOut);
-      window.removeEventListener('orientationchange', recalcLayout);
-      clearTimeout(focusTimer);
-      mobileKeyboardOpen = false;
-      toolbarBottomPx = 0;
-    };
-  });
 </script>
 
 <div bind:this={editorRootEl} class="flex flex-col" class:h-full={!parentScroll}>
@@ -716,18 +601,15 @@
       </button>
     {/snippet}
 
-    {#if isMobile && mobileKeyboardOpen && panelReady && !anyDialogOpen}
-      <!-- Mobile: fixed toolbar above virtual keyboard with slide-up animation -->
-      <div
-        class="mobile-keyboard-toolbar"
-        style:bottom="{toolbarBottomPx}px"
-      >
-        <div class="flex items-center gap-0.5 px-2 py-1.5">
+    {#if isMobile}
+      <!-- Mobile: sticky toolbar at top of editor.
+           Position is deterministic — independent of virtual keyboard state
+           and Stage Manager edge-cases on iPad. -->
+      <div class="mobile-toolbar sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b">
+        <div class="flex flex-nowrap items-center gap-0.5 overflow-x-auto px-2 py-1.5">
           {@render toolbarButtons()}
         </div>
       </div>
-    {:else if isMobile}
-      <!-- Mobile: toolbar hidden when keyboard is closed (no-op) -->
     {:else if parentScroll && !splitView}
       <div class="sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-5">
         <div class="mx-auto max-w-3xl">
@@ -859,11 +741,6 @@
     class:cm-parent-scroll={parentScroll}
     aria-label={$t('editor.note_editor')}
   ></div>
-
-  {#if isMobile && mobileKeyboardOpen && panelReady && !anyDialogOpen}
-    <!-- Spacer so content isn't hidden behind the fixed toolbar -->
-    <div class="h-13 shrink-0"></div>
-  {/if}
 </div>
 
 <style>
@@ -948,35 +825,8 @@
     color: var(--accent-foreground);
   }
 
-  /* ── Mobile keyboard toolbar ─────────────────────────────── */
-  .mobile-keyboard-toolbar {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 100vw;
-    z-index: 9999;
-    background-color: var(--background);
-    border-top: 1px solid var(--border);
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    white-space: nowrap;
-    animation: toolbar-slide-up 0.2s ease-out;
-  }
-
-  @keyframes toolbar-slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(1rem);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .mobile-keyboard-toolbar .toolbar-btn {
+  /* ── Mobile toolbar (sticky at top of editor) ────────────── */
+  .mobile-toolbar .toolbar-btn {
     flex-shrink: 0;
     min-width: 2.5rem;
     height: 2.5rem;
@@ -984,13 +834,13 @@
   }
 
   /* Enlarge icons inside mobile toolbar for better touch targets */
-  .mobile-keyboard-toolbar .toolbar-btn :global(svg) {
+  .mobile-toolbar .toolbar-btn :global(svg) {
     width: 1.25rem;
     height: 1.25rem;
   }
 
-  /* Hide separators inside the fixed mobile toolbar to save space */
-  .mobile-keyboard-toolbar [role='separator'] {
+  /* Hide separators inside the mobile toolbar to save horizontal space */
+  .mobile-toolbar [role='separator'] {
     display: none;
   }
 </style>

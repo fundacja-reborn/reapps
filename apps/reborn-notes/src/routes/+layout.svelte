@@ -206,6 +206,25 @@
     }
   });
 
+  // iOS Safari safety net: app.css locks <html>/<body> with position:fixed, but
+  // if Safari ever ends up with non-zero scrollTop on the document element
+  // (race during font load, focus before stylesheet apply, …), the app header
+  // would slide off-screen. Reset the document scroll on every window scroll
+  // and visualViewport resize.
+  $effect(() => {
+    if (!browser) return;
+    const reset = () => {
+      if (document.documentElement.scrollTop !== 0) document.documentElement.scrollTop = 0;
+      if (document.body.scrollTop !== 0) document.body.scrollTop = 0;
+    };
+    window.addEventListener('scroll', reset, { passive: true });
+    window.visualViewport?.addEventListener('resize', reset);
+    return () => {
+      window.removeEventListener('scroll', reset);
+      window.visualViewport?.removeEventListener('resize', reset);
+    };
+  });
+
   function applyTheme(theme: 'light' | 'dark' | 'system') {
     const root = document.documentElement;
     if (theme === 'system') {
