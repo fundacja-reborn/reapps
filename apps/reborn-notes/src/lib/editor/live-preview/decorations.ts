@@ -16,10 +16,13 @@ import type { Text } from '@codemirror/state';
 import { CodeBlockWidget, LinkWidget } from './widgets';
 
 /**
- * Effect that forces `livePreviewField` to re-run `buildDecorations`
- * without a doc/selection change. Used after a CodeBlockWidget's lazy
- * language load resolves, so the rendered <pre><code> can be rebuilt
- * with proper highlighting in place of the plaintext fallback.
+ * Effect that forces `livePreviewField` to re-run `buildDecorations` outside
+ * of doc/selection changes. Two callers:
+ *  1. `CodeBlockWidget` — after a lazy language chunk resolves, so the
+ *     plaintext fallback can be replaced by the highlighted <pre><code>.
+ *  2. `livePreviewSyncListener` (see below) — when `@codemirror/lang-markdown`
+ *     finishes an incremental parse step in a transaction with no doc/sel
+ *     change, so newly-discovered nodes (e.g. FencedCode) get decorated.
  */
 export const rebuildLivePreview = StateEffect.define<null>();
 
@@ -287,6 +290,17 @@ export function buildDecorations(state: EditorState): DecorationSet {
   return Decoration.set(ranges, true);
 }
 
+/**
+ * State field owning the live-preview decoration set. Must be a `StateField`
+ * (not a `ViewPlugin`) because the FencedCode widget uses
+ * `Decoration.replace({ block: true })` and CM6 requires block decorations
+ * to come from a state-derived source — they affect the height map.
+ *
+ * Rebuild on `tr.docChanged`, `tr.selection`, or a `rebuildLivePreview` effect.
+ * Tree-progress detection lives in a sibling `updateListener`
+ * (`livePreviewSyncListener`) which dispatches the effect when the parser
+ * finishes a step between transactions.
+ */
 export const livePreviewField = StateField.define<DecorationSet>({
   create(state) {
     return buildDecorations(state);
@@ -299,4 +313,33 @@ export const livePreviewField = StateField.define<DecorationSet>({
     return value;
   },
   provide: (f) => EditorView.decorations.from(f)
+});
+
+/**
+ * Detects incremental parser progress between transactions and dispatches
+ * `rebuildLivePreview` so `livePreviewField` rebuilds against the new tree.
+ *
+ * Why this is needed: `@codemirror/lang-markdown` parses incrementally. The
+ * very first paint after mount typically sees a partial tree (no FencedCode
+ * yet) — without this listener, no widget gets emitted until the user types
+ * or clicks. The late block-replace widget would then shift the height map
+ * and the cursor would land on the wrong line (regression v0.10.6).
+ *
+ * The dispatch is queued via `Promise.resolve().then(...)` because dispatching
+ * synchronously inside an updateListener triggers a CM6 reentrancy assertion.
+ */
+export const livePreviewSyncListener = EditorView.updateListener.of((update) => {
+  if (syntaxTree(update.state) === syntaxTree(update.startState)) return;
+  // Skip if a rebuild is already requested / will run anyway.
+  if (
+    update.docChanged ||
+    update.selectionSet ||
+    update.transactions.some((tr) => tr.effects.some((e) => e.is(rebuildLivePreview)))
+  ) {
+    return;
+  }
+  const view = update.view;
+  Promise.resolve().then(() => {
+    view.dispatch({ effects: rebuildLivePreview.of(null) });
+  });
 });

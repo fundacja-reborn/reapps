@@ -38,7 +38,9 @@ describe('matchLanguage', () => {
     ['shell', 'shell'],
     ['sh', 'shell'],
     ['bash', 'shell'],
-    ['zsh', 'shell']
+    ['zsh', 'shell'],
+    ['svelte', 'svelte'],
+    ['Svelte', 'svelte']
   ])('matches %s → %s', (info, expected) => {
     expect(matchLanguage(info)?.name).toBe(expected);
   });

@@ -3,7 +3,11 @@
   import { EditorView, keymap, placeholder as placeholderExt } from '@codemirror/view';
   import { EditorState, Compartment } from '@codemirror/state';
   import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-  import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+  import {
+    syntaxHighlighting,
+    defaultHighlightStyle,
+    ensureSyntaxTree
+  } from '@codemirror/language';
   import { oneDark } from '@codemirror/theme-one-dark';
   import { noteLinkAutocomplete, type NoteLinkItem } from '$lib/editor/note-link-autocomplete';
   import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
@@ -370,6 +374,15 @@
     });
 
     view = new EditorView({ state, parent: editorContainer });
+
+    // Force the markdown parser to fully parse the initial doc before the
+    // view plugin reads `syntaxTree(state)`. Without this, on a freshly-
+    // mounted editor with `editorMode === 'live'` and content that contains
+    // fenced code, the first paint sees a partial tree → no FencedCode
+    // nodes → no widget → user sees raw markdown until the next click. The
+    // 50ms budget is generous; for normal notes the parser finishes in <1ms.
+    ensureSyntaxTree(view.state, view.state.doc.length, 50);
+    view.dispatch({ effects: rebuildLivePreview.of(null) });
 
     // Allow CodeBlockWidget to force a live-preview rebuild after a lazy
     // language chunk finishes loading (so plaintext placeholder is replaced

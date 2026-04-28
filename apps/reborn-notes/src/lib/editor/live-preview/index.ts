@@ -12,12 +12,12 @@
 import type { Extension } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { Strikethrough } from '@lezer/markdown';
-import { livePreviewField } from './decorations';
+import { livePreviewField, livePreviewSyncListener } from './decorations';
 import { livePreviewTheme } from './theme';
 import { codeLanguages } from './code-languages';
 
 export function createLivePreviewExtension(): Extension {
-  return [livePreviewField, livePreviewTheme];
+  return [livePreviewField, livePreviewSyncListener, livePreviewTheme];
 }
 
 /**
@@ -32,6 +32,8 @@ export function getMarkdownExtension(): Extension {
 export {
   buildDecorations,
   isAnySelectionInRange,
+  livePreviewField,
+  livePreviewSyncListener,
   rebuildLivePreview
 } from './decorations';
 export {
@@ -42,4 +44,9 @@ export {
   sanitizeInfoClass,
   sanitizeLinkUrl
 } from './widgets';
+export {
+  highlightCodeToHtml,
+  triggerLanguageLoad,
+  escapeHtml
+} from './highlight-html';
 export { codeLanguages, matchLanguage, getLoadedLanguage } from './code-languages';

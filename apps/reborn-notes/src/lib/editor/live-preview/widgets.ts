@@ -10,12 +10,22 @@
  * language parsers we ship for the editor (zero external requests). Languages
  * are loaded lazily — until ready, the widget renders plaintext and triggers
  * a re-render via `onLanguageReady` once the chunk resolves.
+ *
+ * The shared highlight pipeline lives in `highlight-html.ts` so the editor
+ * widget and the rendered Markdown preview produce visually identical output.
  */
 import type { EditorView } from '@codemirror/view';
 import { WidgetType } from '@codemirror/view';
-import type { LanguageSupport } from '@codemirror/language';
-import { highlightCode, classHighlighter } from '@lezer/highlight';
 import { matchLanguage, getLoadedLanguage } from './code-languages';
+import {
+  renderHighlightedDom,
+  sanitizeInfoClass,
+  triggerLanguageLoad
+} from './highlight-html';
+
+export { sanitizeInfoClass } from './highlight-html';
+/** Backwards-compat alias for previous DOM helper name. */
+export { renderHighlightedDom as renderHighlighted } from './highlight-html';
 
 const NOTE_URL_RE =
   /^note:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -79,50 +89,6 @@ export class LinkWidget extends WidgetType {
 }
 
 /**
- * Whitelist for the rendered `class="lang-X"` on the <code> element.
- * Restricts info string to a safe subset before it ever reaches the DOM.
- */
-const INFO_CLASS_RE = /^[a-z0-9_+#-]{1,32}$/i;
-
-export function sanitizeInfoClass(info: string): string | null {
-  const trimmed = info.trim().toLowerCase();
-  if (!trimmed) return null;
-  return INFO_CLASS_RE.test(trimmed) ? trimmed : null;
-}
-
-/**
- * Renders syntax-highlighted text into `target`. Uses `@lezer/highlight`'s
- * stable `classHighlighter` (emits `tok-keyword`, `tok-string`, ...). Matching
- * CSS rules live in `theme.ts` so the rendered widget mirrors the editor's
- * raw-mode highlighting closely.
- */
-export function renderHighlighted(
-  target: HTMLElement,
-  code: string,
-  lang: LanguageSupport
-): void {
-  const tree = lang.language.parser.parse(code);
-  highlightCode(
-    code,
-    tree,
-    classHighlighter,
-    (text, classes) => {
-      if (classes) {
-        const span = document.createElement('span');
-        span.className = classes;
-        span.textContent = text;
-        target.appendChild(span);
-      } else {
-        target.appendChild(document.createTextNode(text));
-      }
-    },
-    () => {
-      target.appendChild(document.createTextNode('\n'));
-    }
-  );
-}
-
-/**
  * Triggered by widgets when an awaited language finally finishes loading,
  * so the editor can re-run `buildDecorations` and replace the plaintext
  * pre with a highlighted one. Wired by `NoteEditor.svelte` at mount time.
@@ -144,21 +110,10 @@ export function registerCodeBlockView(
   };
 }
 
-const pendingLoads = new Set<string>();
-
 function ensureLanguageLoaded(info: string): void {
-  const desc = matchLanguage(info);
-  if (!desc || desc.support || pendingLoads.has(desc.name)) return;
-  pendingLoads.add(desc.name);
-  desc
-    .load()
-    .then(() => {
-      if (activeView && onLanguageReady) onLanguageReady(activeView);
-    })
-    .catch(() => {
-      // Swallow — widget already rendered plaintext fallback. Allow retry next render.
-      pendingLoads.delete(desc.name);
-    });
+  void triggerLanguageLoad(info).then((loaded) => {
+    if (loaded && activeView && onLanguageReady) onLanguageReady(activeView);
+  });
 }
 
 export class CodeBlockWidget extends WidgetType {
@@ -187,7 +142,7 @@ export class CodeBlockWidget extends WidgetType {
 
     const lang = this.info ? getLoadedLanguage(this.info) : null;
     if (lang) {
-      renderHighlighted(codeEl, this.code, lang);
+      renderHighlightedDom(codeEl, this.code, lang);
     } else {
       codeEl.textContent = this.code;
       if (this.info && matchLanguage(this.info)) {

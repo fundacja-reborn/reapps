@@ -19,6 +19,9 @@ import {
 } from '@codemirror/language';
 
 export const codeLanguages: LanguageDescription[] = [
+  // JavaScript + TypeScript share a single CM6 parser (`@codemirror/lang-javascript`
+  // with `typescript: true`). Aliases let info strings ` ```ts ` / ` ```typescript `
+  // resolve to this descriptor without a second chunk.
   LanguageDescription.of({
     name: 'javascript',
     alias: ['js', 'jsx', 'ts', 'tsx', 'typescript'],
@@ -26,6 +29,15 @@ export const codeLanguages: LanguageDescription[] = [
     load: async () => {
       const { javascript } = await import('@codemirror/lang-javascript');
       return javascript({ jsx: true, typescript: true });
+    }
+  }),
+  LanguageDescription.of({
+    name: 'svelte',
+    alias: [],
+    extensions: ['svelte'],
+    load: async () => {
+      const { svelte } = await import('@replit/codemirror-lang-svelte');
+      return svelte();
     }
   }),
   LanguageDescription.of({
