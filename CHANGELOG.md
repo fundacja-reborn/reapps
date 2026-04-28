@@ -1,3 +1,14 @@
+## 0.10.1 (2026-04-28)
+
+### 🩹 Fixes
+
+- **notes:** activate edit view when picking editor mode from toolbar ([#102](https://github.com/fundacja-reborn/reapps/pull/102))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.10.0 (2026-04-28)
 
 ### 🚀 Features
