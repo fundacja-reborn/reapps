@@ -175,7 +175,7 @@
           {@const isActive = effectiveViewMode === mode}
           {#if mode === 'edit'}
             <EditorModeButton
-              {isActive}
+              viewMode={effectiveViewMode}
               {isMobile}
               {label}
               onActivate={() => {

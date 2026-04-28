@@ -18,12 +18,12 @@
   import { appSettings, editorMode } from '$lib/stores/app-settings.store';
 
   let {
-    isActive,
+    viewMode,
     isMobile,
     label,
     onActivate
   }: {
-    isActive: boolean;
+    viewMode: 'edit' | 'split' | 'preview';
     isMobile: boolean;
     label: string;
     onActivate: () => void;
@@ -31,12 +31,15 @@
 
   let sheetOpen = $state(false);
 
+  const isActive = $derived(viewMode === 'edit');
   const FaceIcon = $derived($editorMode === 'live' ? PencilLine : Pencil);
 
   async function setEditorMode(value: 'markdown' | 'live') {
     sheetOpen = false;
-    if ($editorMode === value) return;
-    await appSettings.update('editorMode', value);
+    if ($editorMode !== value) {
+      await appSettings.update('editorMode', value);
+    }
+    onActivate();
   }
 </script>
 
