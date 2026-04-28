@@ -1,3 +1,14 @@
+## 0.9.5 (2026-04-28)
+
+### 🩹 Fixes
+
+- **crypto:** clear waitForRestore timer when restore wins the race ([#98](https://github.com/fundacja-reborn/reapps/pull/98))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.9.4 (2026-04-27)
 
 ### 🩹 Fixes
