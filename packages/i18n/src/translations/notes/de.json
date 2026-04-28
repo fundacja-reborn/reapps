@@ -192,6 +192,7 @@
   },
   "editor": {
     "placeholder": "Beginnen Sie zu schreiben...",
+    "placeholder_markdown": "Beginnen Sie in Markdown zu schreiben…",
     "undo": "Rückgängig",
     "redo": "Wiederherstellen",
     "undo_shortcut": "Rückgängig (Strg+Z)",

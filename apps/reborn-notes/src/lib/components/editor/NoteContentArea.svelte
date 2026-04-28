@@ -85,7 +85,7 @@
         <NoteEditor
           bind:this={editorRef}
           content={noteDetailService.content}
-          placeholder="Start writing in Markdown\u2026"
+          placeholder={$t('editor.placeholder_markdown')}
           onchange={oncontentchange}
           {onscrollerinit}
           {onnotelinkrequest}
@@ -103,7 +103,7 @@
             <NoteEditor
               bind:this={editorRef}
               content={noteDetailService.content}
-              placeholder="Start writing in Markdown…"
+              placeholder={$t('editor.placeholder_markdown')}
               onchange={oncontentchange}
               {onscrollerinit}
               {onnotelinkrequest}
