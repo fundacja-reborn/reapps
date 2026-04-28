@@ -1,3 +1,9 @@
+## 0.9.6 (2026-04-28)
+
+### 🩹 Fixes
+
+- **deps:** update patch-updates ([#100](https://github.com/fundacja-reborn/reapps/pull/100))
+
 ## 0.9.5 (2026-04-28)
 
 ### 🩹 Fixes
