@@ -1,3 +1,14 @@
+## 0.10.0 (2026-04-28)
+
+### 🚀 Features
+
+- **notes:** add Live Preview editor mode with toolbar toggle ([#101](https://github.com/fundacja-reborn/reapps/pull/101))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.9.6 (2026-04-28)
 
 ### 🩹 Fixes
