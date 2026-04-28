@@ -217,18 +217,27 @@ export class CryptoManager {
    */
   public async waitForRestore(): Promise<boolean> {
     if (!this.restorePromise) return false;
+
+    // Clear the timer the moment the restore promise wins the race — otherwise
+    // the setTimeout callback still fires (with its `resolve(false)` ignored)
+    // and emits a spurious "timed out" warning even when restore finished in
+    // milliseconds. waitForRestore is called from multiple places per cold
+    // start, so an unguarded timer produces one bogus warning per caller.
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       return await Promise.race([
         this.restorePromise,
-        new Promise<boolean>((resolve) =>
-          setTimeout(() => {
+        new Promise<boolean>((resolve) => {
+          timer = setTimeout(() => {
             logger.warn('waitForRestore timed out — proceeding without key');
             resolve(false);
-          }, this.RESTORE_TIMEOUT_MS)
-        )
+          }, this.RESTORE_TIMEOUT_MS);
+        })
       ]);
     } catch {
       return false;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
     }
   }
 

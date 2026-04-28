@@ -433,6 +433,31 @@ describe('CryptoManager', () => {
 
       expect(result1).toBe(result2);
     });
+
+    it('does not emit a spurious timeout warning after restore resolves', async () => {
+      // Restore resolves fast (no key stored → returns false in <100ms). The
+      // setTimeout used by waitForRestore must be cleared so the warning
+      // callback never runs after the race has been won. The logger emits
+      // through console.log, so spy there and filter for the warning text.
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const newManager = new (CryptoManager as any)();
+      const result = await newManager.waitForRestore();
+      expect(result).toBe(false);
+
+      // Wait past the 5s RESTORE_TIMEOUT_MS in real time. If the timer were
+      // still scheduled the warning would land in this window. 5.5 s real
+      // sleep is acceptable for one regression test — the race is timing-
+      // sensitive enough that fake timers can't reliably reproduce it.
+      await new Promise((resolve) => setTimeout(resolve, 5_500));
+
+      const timeoutWarnings = consoleSpy.mock.calls.filter((args) =>
+        args.some((a) => typeof a === 'string' && a.includes('timed out'))
+      );
+      expect(timeoutWarnings).toHaveLength(0);
+
+      consoleSpy.mockRestore();
+    }, 10_000);
   });
 
   describe('error handling', () => {
