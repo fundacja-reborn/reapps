@@ -1,3 +1,14 @@
+## 0.10.6 (2026-04-28)
+
+### 🩹 Fixes
+
+- **notes:** editor placeholder and caret ([#107](https://github.com/fundacja-reborn/reapps/pull/107))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.10.5 (2026-04-28)
 
 ### 🩹 Fixes
