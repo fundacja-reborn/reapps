@@ -1,3 +1,14 @@
+## 0.10.5 (2026-04-28)
+
+### 🩹 Fixes
+
+- **notes:** restore scrolling in preview, settings, auth, and error pages ([#106](https://github.com/fundacja-reborn/reapps/pull/106), [#105](https://github.com/fundacja-reborn/reapps/issues/105))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.10.4 (2026-04-28)
 
 ### 🩹 Fixes
