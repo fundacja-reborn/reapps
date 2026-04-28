@@ -442,6 +442,13 @@
     "preview": "Podgląd",
     "label": "Tryb widoku"
   },
+  "editor_mode": {
+    "label": "Tryb edytora",
+    "markdown": "Markdown (źródło)",
+    "live": "Podgląd na żywo",
+    "beta": "Beta",
+    "open_menu": "Wybierz tryb edytora"
+  },
   "save_status": {
     "unsaved": "Niezapisane zmiany",
     "saving": "Zapisywanie…",

@@ -442,6 +442,13 @@
     "preview": "Preview",
     "label": "View mode"
   },
+  "editor_mode": {
+    "label": "Editor mode",
+    "markdown": "Markdown source",
+    "live": "Live preview",
+    "beta": "Beta",
+    "open_menu": "Choose editor mode"
+  },
   "save_status": {
     "unsaved": "Unsaved changes",
     "saving": "Saving…",

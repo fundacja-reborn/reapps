@@ -442,6 +442,13 @@
     "preview": "Aperçu",
     "label": "Mode d'affichage"
   },
+  "editor_mode": {
+    "label": "Mode d'éditeur",
+    "markdown": "Source Markdown",
+    "live": "Aperçu en direct",
+    "beta": "Bêta",
+    "open_menu": "Choisir le mode d'éditeur"
+  },
   "save_status": {
     "unsaved": "Modifications non enregistrées",
     "saving": "Enregistrement…",

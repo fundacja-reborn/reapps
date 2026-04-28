@@ -442,6 +442,13 @@
     "preview": "Vista previa",
     "label": "Modo de vista"
   },
+  "editor_mode": {
+    "label": "Modo de editor",
+    "markdown": "Fuente Markdown",
+    "live": "Vista previa en vivo",
+    "beta": "Beta",
+    "open_menu": "Elegir modo de editor"
+  },
   "save_status": {
     "unsaved": "Cambios sin guardar",
     "saving": "Guardando…",
