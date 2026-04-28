@@ -6,47 +6,50 @@ import { EditorView } from '@codemirror/view';
 
 export const livePreviewTheme = EditorView.theme({
   // Headings — applied via Decoration.line on the heading line element.
+  // NOTE: use padding (not margin) — CM6 measures `.cm-line` via
+  // getBoundingClientRect() which excludes margins; vertical margins on lines
+  // de-sync the height map and break posAtCoords (clicks land off-target).
   '.cm-lp-h1-line': {
     fontSize: '2rem',
     fontWeight: '600',
     lineHeight: '1.3',
-    marginTop: '1.5em',
-    marginBottom: '0.5em'
+    paddingTop: '1.5em',
+    paddingBottom: '0.5em'
   },
   '.cm-lp-h2-line': {
     fontSize: '1.625rem',
     fontWeight: '600',
     lineHeight: '1.3',
-    marginTop: '1.5em',
-    marginBottom: '0.5em'
+    paddingTop: '1.5em',
+    paddingBottom: '0.5em'
   },
   '.cm-lp-h3-line': {
     fontSize: '1.375rem',
     fontWeight: '600',
     lineHeight: '1.3',
-    marginTop: '1.5em',
-    marginBottom: '0.5em'
+    paddingTop: '1.5em',
+    paddingBottom: '0.5em'
   },
   '.cm-lp-h4-line': {
     fontSize: '1.125rem',
     fontWeight: '600',
     lineHeight: '1.3',
-    marginTop: '1.5em',
-    marginBottom: '0.5em'
+    paddingTop: '1.5em',
+    paddingBottom: '0.5em'
   },
   '.cm-lp-h5-line': {
     fontSize: '1rem',
     fontWeight: '600',
     lineHeight: '1.3',
-    marginTop: '1.5em',
-    marginBottom: '0.5em'
+    paddingTop: '1.5em',
+    paddingBottom: '0.5em'
   },
   '.cm-lp-h6-line': {
     fontSize: '0.9375rem',
     fontWeight: '600',
     lineHeight: '1.3',
-    marginTop: '1.5em',
-    marginBottom: '0.5em',
+    paddingTop: '1.5em',
+    paddingBottom: '0.5em',
     color: 'var(--muted-foreground)'
   },
 
