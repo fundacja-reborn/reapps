@@ -22,7 +22,7 @@
     "@reborn/crypto": "workspace:*",
     "@reborn/types": "workspace:*",
     "@reborn/utils": "workspace:*",
-    "jose": "6.2.2",
+    "jose": "6.2.3",
     "uuid": "14.0.0"
   },
   "devDependencies": {
