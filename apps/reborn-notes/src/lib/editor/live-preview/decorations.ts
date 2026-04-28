@@ -27,6 +27,7 @@ const HEADING_LINE: Record<number, Decoration> = {
 };
 const STRONG_MARK = Decoration.mark({ class: 'cm-lp-strong' });
 const EM_MARK = Decoration.mark({ class: 'cm-lp-em' });
+const STRIKE_MARK = Decoration.mark({ class: 'cm-lp-strike' });
 const INLINE_CODE_MARK = Decoration.mark({ class: 'cm-lp-code' });
 const BLOCKQUOTE_LINE = Decoration.line({ class: 'cm-lp-blockquote-line' });
 const BULLET_LINE = Decoration.line({ class: 'cm-lp-bullet-line' });
@@ -132,6 +133,17 @@ export function buildDecorations(state: EditorState): DecorationSet {
         ranges.push(EM_MARK.range(from, to));
         if (!isAnySelectionInRange(state, from, to)) {
           forEachChild(nodeRef.node, 'EmphasisMark', (mark) => {
+            ranges.push(HIDDEN.range(mark.from, mark.to));
+          });
+        }
+        return;
+      }
+
+      // ─── Strikethrough (~~text~~) — GFM ──────────────────────────
+      if (name === 'Strikethrough') {
+        ranges.push(STRIKE_MARK.range(from, to));
+        if (!isAnySelectionInRange(state, from, to)) {
+          forEachChild(nodeRef.node, 'StrikethroughMark', (mark) => {
             ranges.push(HIDDEN.range(mark.from, mark.to));
           });
         }

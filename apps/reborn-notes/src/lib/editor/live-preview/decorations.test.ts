@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
+import { Strikethrough } from '@lezer/markdown';
 import type { DecorationSet } from '@codemirror/view';
 import { buildDecorations, isAnySelectionInRange } from './decorations';
 
@@ -20,7 +21,7 @@ interface DecoRange {
 function makeState(doc: string, cursorPos = 0) {
   return EditorState.create({
     doc,
-    extensions: [markdown()],
+    extensions: [markdown({ extensions: [Strikethrough] })],
     selection: { anchor: cursorPos, head: cursorPos }
   });
 }
@@ -133,6 +134,42 @@ describe('buildDecorations — strong/emphasis/inline code', () => {
     expect(classAt(ranges, 0, 6)).toBe('cm-lp-code');
     expect(hasHiddenRange(ranges, 0, 1)).toBe(true);
     expect(hasHiddenRange(ranges, 5, 6)).toBe(true);
+  });
+
+  it('applies cm-lp-em on a single-character emphasis (regression: typing fresh)', () => {
+    // Reproduces the user-typed flow: toolbar inserts `__`, user types `a`,
+    // ending up with `_a_`. Cursor sits inside, so markers stay visible —
+    // but the EM mark must still wrap the range so italic renders.
+    const state = makeState('_a_', 2);
+    const ranges = asRanges(buildDecorations(state));
+    expect(classAt(ranges, 0, 3)).toBe('cm-lp-em');
+    // Markers visible (cursor in range) — no HIDDEN ranges over them
+    expect(hasHiddenRange(ranges, 0, 1)).toBe(false);
+    expect(hasHiddenRange(ranges, 2, 3)).toBe(false);
+  });
+
+  it('hides ~~ markers around strikethrough when cursor is outside', () => {
+    const state = makeState('~~strike~~ here', 14); // cursor in "here"
+    const ranges = asRanges(buildDecorations(state));
+
+    expect(classAt(ranges, 0, 10)).toBe('cm-lp-strike');
+    expect(hasHiddenRange(ranges, 0, 2)).toBe(true);
+    expect(hasHiddenRange(ranges, 8, 10)).toBe(true);
+  });
+
+  it('keeps ~~ visible when cursor is inside the strikethrough range', () => {
+    const state = makeState('~~strike~~ here', 5); // cursor inside "strike"
+    const ranges = asRanges(buildDecorations(state));
+
+    expect(classAt(ranges, 0, 10)).toBe('cm-lp-strike');
+    expect(hasHiddenRange(ranges, 0, 2)).toBe(false);
+    expect(hasHiddenRange(ranges, 8, 10)).toBe(false);
+  });
+
+  it('applies cm-lp-strike on a single-character strikethrough (regression: typing fresh)', () => {
+    const state = makeState('~~a~~', 3);
+    const ranges = asRanges(buildDecorations(state));
+    expect(classAt(ranges, 0, 5)).toBe('cm-lp-strike');
   });
 });
 
