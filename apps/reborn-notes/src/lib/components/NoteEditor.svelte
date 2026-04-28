@@ -3,6 +3,7 @@
   import { EditorView, keymap, placeholder as placeholderExt } from '@codemirror/view';
   import { EditorState, Compartment } from '@codemirror/state';
   import { markdown } from '@codemirror/lang-markdown';
+  import { Strikethrough as MarkdownStrikethrough } from '@lezer/markdown';
   import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
   import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
   import { oneDark } from '@codemirror/theme-one-dark';
@@ -306,7 +307,7 @@
       doc: content,
       extensions: [
         history(),
-        markdown(),
+        markdown({ extensions: [MarkdownStrikethrough] }),
         syntaxHighlighting(defaultHighlightStyle),
         EditorView.lineWrapping,
         customKeymap,
