@@ -41,6 +41,23 @@
 @source "./routes/**/*.{svelte,js,ts}";
 @source "../../../packages/ui/src/**/*.{svelte,js,ts}";
 
+/* iOS Safari body scroll-lock — prevents Safari from scrolling the window when
+ * a contenteditable (CodeMirror) gains focus and the virtual keyboard opens.
+ * Without this, Safari scrolls <html>/<body> to keep the caret visible, which
+ * pushes the app header off-screen. position:fixed neutralizes window-level
+ * scrolling so the app's own overflow containers stay in control. */
+@layer base {
+  html,
+  body {
+    overflow: hidden;
+    overscroll-behavior: none;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
 /* Dark mode scrollbar */
 @layer base {
   .dark * {

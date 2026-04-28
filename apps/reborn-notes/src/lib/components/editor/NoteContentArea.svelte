@@ -23,13 +23,11 @@
     imageLoadMode = 'ask' as ImageLoadMode,
     parentScroll = false,
     isMobile = false,
-    panelReady = true,
     oncontentchange,
     onscrollerinit,
     onnotelinkrequest,
     onnotelink,
-    resolveNoteTitle,
-    externalDialogOpen = false
+    resolveNoteTitle
   }: {
     noteId: string;
     effectiveViewMode: ViewMode;
@@ -42,22 +40,23 @@
     previewScrollEl: HTMLElement | null;
     autocompleteNotes: { id: string; title: string }[];
     imageLoadMode?: ImageLoadMode;
-    /** When true (desktop edit mode), the parent scrolls and editor grows to content. */
+    /** When true (desktop edit mode), the parent scrolls and editor grows to content.
+     *  Effective only in single-pane edit mode — split view always uses independent
+     *  scrolls per pane. */
     parentScroll?: boolean;
-    /** When true, enables mobile-specific toolbar behavior (sticky over virtual keyboard). */
+    /** When true, the editor renders the mobile toolbar (sticky on top of editor). */
     isMobile?: boolean;
-    /** When true, the panel slide-in transition has completed (safe for position:fixed toolbar). */
-    panelReady?: boolean;
     oncontentchange: (content: string) => void;
     onscrollerinit: (el: HTMLElement) => void;
     onnotelinkrequest: () => void;
     onnotelink: (noteId: string) => void;
     resolveNoteTitle: (noteId: string) => string | undefined;
-    /** When true, an external dialog (e.g. NotePicker) is open — hides mobile toolbar. */
-    externalDialogOpen?: boolean;
   } = $props();
 
-  const isParentScrollActive = $derived(parentScroll);
+  // Split view always uses independent scrolls per pane — sticky+100dvh inside a
+  // flex container caused reflow loops on iOS Safari. Only single-pane edit
+  // honors parentScroll (parent grows with content, toolbar sticks to parent).
+  const isParentScrollActive = $derived(parentScroll && effectiveViewMode === 'edit');
 </script>
 
 <div class="relative {isParentScrollActive ? '' : 'flex min-h-0 flex-1 overflow-hidden'}">
@@ -95,13 +94,12 @@
           currentNoteId={noteId}
           parentScroll={parentScroll}
           {isMobile}
-          {panelReady}
-          {externalDialogOpen}
         />
       {:else if effectiveViewMode === 'split'}
-        <!-- Split: parent scroll drives left column; right column is sticky with own scroll -->
-        <div class="flex divide-x divide-border">
-          <div class="min-w-0 flex-1">
+        <!-- Split: each pane owns its scroll; sync handled by scroll-sync.ts.
+             Avoids sticky+100dvh reflow loop that caused auto-scroll-to-top on iOS. -->
+        <div class="flex divide-x divide-border h-full min-h-0">
+          <div class="min-w-0 flex-1 overflow-hidden">
             <NoteEditor
               bind:this={editorRef}
               content={noteDetailService.content}
@@ -111,11 +109,13 @@
               {onnotelinkrequest}
               availableNotes={autocompleteNotes}
               currentNoteId={noteId}
-              parentScroll={parentScroll}
-              splitView              {externalDialogOpen}            />
+              parentScroll={false}
+              splitView
+              {isMobile}
+            />
           </div>
-          <div class="sticky -top-px flex min-w-0 flex-1 flex-col" style="height: calc(100dvh - 4rem + 1px);">
-            <div class="flex shrink-0 items-center border-t border-b bg-background/95 backdrop-blur-sm px-4 py-1.5">
+          <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <div class="flex shrink-0 items-center border-b bg-background/95 backdrop-blur-sm px-4 py-1.5">
               <span class="flex h-7 items-center text-xs font-medium text-muted-foreground">{$t('editor.preview')}</span>
             </div>
             <MarkdownPreview
