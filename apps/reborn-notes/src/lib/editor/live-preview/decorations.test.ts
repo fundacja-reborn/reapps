@@ -244,6 +244,77 @@ describe('buildDecorations — blockquote and lists', () => {
   });
 });
 
+describe('buildDecorations — fenced code blocks', () => {
+  it('replaces a fenced block with a widget when cursor is outside', () => {
+    const doc = '```js\nconst x = 1;\n```\n\nbody';
+    const cursor = doc.length - 1; // cursor in "body"
+    const state = makeState(doc, cursor);
+    const ranges = asRanges(buildDecorations(state));
+
+    const widgetRanges = ranges.filter((r) => r.hasWidget);
+    expect(widgetRanges).toHaveLength(1);
+
+    // Widget spans from line-start of opening fence to line-end of closing fence
+    const fenceStart = 0;
+    const fenceEnd = doc.indexOf('```\n\nbody') + 3; // end of closing ```
+    expect(widgetRanges[0].from).toBe(fenceStart);
+    expect(widgetRanges[0].to).toBe(fenceEnd);
+  });
+
+  it('renders raw with cm-lp-code-line decorations when cursor is inside the block', () => {
+    const doc = '```js\nconst x = 1;\n```';
+    const state = makeState(doc, 10); // cursor in "const"
+    const ranges = asRanges(buildDecorations(state));
+
+    // No widget when cursor inside
+    expect(ranges.filter((r) => r.hasWidget)).toHaveLength(0);
+
+    // Three lines: opening fence, body, closing fence — all decorated
+    const lineDecos = ranges.filter((r) => r.spec.class?.includes('cm-lp-code-line'));
+    expect(lineDecos.length).toBe(3);
+    expect(lineDecos[0].spec.class).toContain('cm-lp-code-line-first');
+    expect(lineDecos[2].spec.class).toContain('cm-lp-code-line-last');
+  });
+
+  it('handles a fenced block with no info string', () => {
+    const doc = '```\nplain code\n```\n\nbody';
+    const state = makeState(doc, doc.length - 1); // cursor in "body"
+    const ranges = asRanges(buildDecorations(state));
+
+    const widgets = ranges.filter((r) => r.hasWidget);
+    expect(widgets).toHaveLength(1);
+  });
+
+  it('handles a single-line fenced block (no body)', () => {
+    const doc = '```js\n```\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+
+    expect(ranges.filter((r) => r.hasWidget)).toHaveLength(1);
+  });
+
+  it('does NOT descend into the block — no inline marks emitted inside', () => {
+    // Bold-looking syntax inside a code block should NOT generate cm-lp-strong
+    const doc = '```\n**not bold**\n```\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+
+    const strongRanges = ranges.filter((r) => r.spec.class === 'cm-lp-strong');
+    expect(strongRanges).toHaveLength(0);
+  });
+
+  it('coexists with other block decorations on the surrounding document', () => {
+    const doc = '# Title\n\n```js\nx = 1;\n```\n\nmore';
+    const state = makeState(doc, doc.length - 1); // cursor in "more"
+    const ranges = asRanges(buildDecorations(state));
+
+    // Heading line decoration still applied
+    expect(classAt(ranges, 0, 0)).toBe('cm-lp-h1-line');
+    // Fenced code widget present
+    expect(ranges.filter((r) => r.hasWidget)).toHaveLength(1);
+  });
+});
+
 describe('buildDecorations — empty / no markdown', () => {
   it('returns no decorations for an empty document', () => {
     const state = makeState('', 0);

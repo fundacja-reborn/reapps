@@ -10,12 +10,23 @@
  */
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
-import { type EditorState, type Range, StateField } from '@codemirror/state';
+import { type EditorState, type Range, StateEffect, StateField } from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 import type { Text } from '@codemirror/state';
-import { LinkWidget } from './widgets';
+import { CodeBlockWidget, LinkWidget } from './widgets';
+
+/**
+ * Effect that forces `livePreviewField` to re-run `buildDecorations`
+ * without a doc/selection change. Used after a CodeBlockWidget's lazy
+ * language load resolves, so the rendered <pre><code> can be rebuilt
+ * with proper highlighting in place of the plaintext fallback.
+ */
+export const rebuildLivePreview = StateEffect.define<null>();
 
 const HIDDEN = Decoration.replace({});
+const CODE_LINE = Decoration.line({ class: 'cm-lp-code-line' });
+const CODE_LINE_FIRST = Decoration.line({ class: 'cm-lp-code-line cm-lp-code-line-first' });
+const CODE_LINE_LAST = Decoration.line({ class: 'cm-lp-code-line cm-lp-code-line-last' });
 
 const HEADING_LINE: Record<number, Decoration> = {
   1: Decoration.line({ class: 'cm-lp-h1-line' }),
@@ -61,6 +72,31 @@ function forEachChild(
   }
 }
 
+function extractCodeInfo(node: SyntaxNode, doc: Text): string | null {
+  const child = findFirstChild(node, 'CodeInfo');
+  if (!child) return null;
+  const info = doc.sliceString(child.from, child.to).trim();
+  return info || null;
+}
+
+function extractCodeText(node: SyntaxNode, doc: Text): string {
+  // Concatenate all CodeText children. The Lezer markdown parser splits
+  // multi-line content into one CodeText per line plus newline separators —
+  // we slice from the first to the last to preserve internal line breaks.
+  let first = -1;
+  let last = -1;
+  let child = node.firstChild;
+  while (child) {
+    if (child.type.name === 'CodeText') {
+      if (first === -1) first = child.from;
+      last = child.to;
+    }
+    child = child.nextSibling;
+  }
+  if (first === -1 || last === -1) return '';
+  return doc.sliceString(first, last);
+}
+
 function extractLinkParts(node: SyntaxNode, doc: Text): { text: string; url: string } | null {
   // @lezer/markdown Link layout: LinkMark "[" ... LinkMark "]" LinkMark "(" URL LinkMark ")"
   let openBracket = -1;
@@ -94,6 +130,40 @@ export function buildDecorations(state: EditorState): DecorationSet {
       const name = nodeRef.type.name;
       const from = nodeRef.from;
       const to = nodeRef.to;
+
+      // ─── Fenced code block (```lang … ```) ───────────────────────
+      if (name === 'FencedCode') {
+        const startLine = doc.lineAt(from);
+        const endLine = doc.lineAt(to);
+        const cursorInside = isAnySelectionInRange(state, from, to);
+
+        if (!cursorInside) {
+          // Replace the whole block (fences + body) with a rendered widget.
+          // `block: true` is required for replace decorations spanning whole lines.
+          const info = extractCodeInfo(nodeRef.node, doc);
+          const code = extractCodeText(nodeRef.node, doc);
+          ranges.push(
+            Decoration.replace({
+              widget: new CodeBlockWidget(code, info),
+              block: true
+            }).range(startLine.from, endLine.to)
+          );
+          return false;
+        }
+
+        // Cursor inside: show raw markdown but style the lines as a code block
+        // (background, monospace). The nested CM6 parser registered through
+        // `markdown({ codeLanguages })` handles syntax colouring of body lines.
+        const lineCount = endLine.number - startLine.number;
+        for (let n = startLine.number; n <= endLine.number; n++) {
+          const ln = doc.line(n);
+          let deco: Decoration = CODE_LINE;
+          if (n === startLine.number) deco = CODE_LINE_FIRST;
+          else if (n === endLine.number && lineCount > 0) deco = CODE_LINE_LAST;
+          ranges.push(deco.range(ln.from));
+        }
+        return false;
+      }
 
       // ─── ATX Headings (# Heading) ────────────────────────────────
       const headingMatch = /^ATXHeading([1-6])$/.exec(name);
@@ -222,7 +292,8 @@ export const livePreviewField = StateField.define<DecorationSet>({
     return buildDecorations(state);
   },
   update(value, tr) {
-    if (tr.docChanged || tr.selection) {
+    const forced = tr.effects.some((e) => e.is(rebuildLivePreview));
+    if (tr.docChanged || tr.selection || forced) {
       return buildDecorations(tr.state);
     }
     return value;

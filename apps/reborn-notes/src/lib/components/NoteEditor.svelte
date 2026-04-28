@@ -2,14 +2,17 @@
   import { onMount, onDestroy } from 'svelte';
   import { EditorView, keymap, placeholder as placeholderExt } from '@codemirror/view';
   import { EditorState, Compartment } from '@codemirror/state';
-  import { markdown } from '@codemirror/lang-markdown';
-  import { Strikethrough as MarkdownStrikethrough } from '@lezer/markdown';
   import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
   import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
   import { oneDark } from '@codemirror/theme-one-dark';
   import { noteLinkAutocomplete, type NoteLinkItem } from '$lib/editor/note-link-autocomplete';
   import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
-  import { createLivePreviewExtension } from '$lib/editor/live-preview';
+  import {
+    createLivePreviewExtension,
+    getMarkdownExtension,
+    rebuildLivePreview,
+    registerCodeBlockView
+  } from '$lib/editor/live-preview';
   import { editorMode } from '$lib/stores/app-settings.store';
   import { isDataUri } from '$lib/utils/markdown-sanitizer';
   import { toastStore } from '@reborn/ui';
@@ -304,7 +307,7 @@
       doc: content,
       extensions: [
         history(),
-        markdown({ extensions: [MarkdownStrikethrough] }),
+        getMarkdownExtension(),
         syntaxHighlighting(defaultHighlightStyle),
         EditorView.lineWrapping,
         customKeymap,
@@ -368,6 +371,13 @@
 
     view = new EditorView({ state, parent: editorContainer });
 
+    // Allow CodeBlockWidget to force a live-preview rebuild after a lazy
+    // language chunk finishes loading (so plaintext placeholder is replaced
+    // by the highlighted version on the next frame).
+    const unregisterCodeBlock = registerCodeBlockView(view, (v) => {
+      v.dispatch({ effects: rebuildLivePreview.of(null) });
+    });
+
     // Expose the CM6 scroller element for parent scroll-sync
     const scroller = editorContainer.querySelector('.cm-scroller') as HTMLElement | null;
     if (scroller) onscrollerinit?.(scroller);
@@ -380,7 +390,10 @@
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      unregisterCodeBlock();
+    };
   });
 
   // Sync content prop → editor when changed externally (without triggering onchange)
@@ -801,6 +814,48 @@
   /* Light mode */
   :global(.cm-host .cm-editor:not(.cm-dark-theme) .cm-content) {
     caret-color: currentColor;
+  }
+
+  /* Live Preview — code block token colors in dark mode.
+     Light-mode palette ships in editor/live-preview/theme.ts; CM6 themes
+     can't reach .dark on <html>, so dark overrides go here. */
+  :global(.dark .cm-host .cm-lp-codeblock .tok-keyword),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-controlKeyword),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-moduleKeyword),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-operatorKeyword),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-definitionKeyword) {
+    color: #c792ea;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-atom),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-bool),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-number) {
+    color: #f78c6c;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-string),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-special.tok-string),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-regexp),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-escape) {
+    color: #c3e88d;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-comment),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-lineComment),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-blockComment) {
+    color: #7c8a99;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-variableName),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-propertyName),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-attributeName) {
+    color: #82aaff;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-typeName),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-className),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-namespace),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-macroName) {
+    color: #7fdbca;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-tagName),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-labelName) {
+    color: #f07178;
   }
 
   /* Note link decoration */
