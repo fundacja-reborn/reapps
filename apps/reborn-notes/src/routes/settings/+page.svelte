@@ -107,7 +107,7 @@
   <title>{$t('settings_page.title')} — re/notes</title>
 </svelte:head>
 
-<div class="min-h-screen bg-background">
+<div class="h-dvh overflow-y-auto bg-background">
   <div class="sticky top-0 z-10 bg-background border-b">
     <div class="container mx-auto max-w-4xl px-4 sm:px-6">
       <div class="flex items-center gap-2 h-14">

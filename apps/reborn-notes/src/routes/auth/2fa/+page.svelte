@@ -112,7 +112,8 @@
 	<title>{$t('auth.two_factor.title')} — re/notes</title>
 </svelte:head>
 
-<div class="flex min-h-screen items-center justify-center px-4 py-12">
+<div class="h-dvh overflow-y-auto">
+<div class="flex min-h-dvh items-center justify-center px-4 py-12">
 	<div class="w-full max-w-md space-y-6">
 		<!-- Header -->
 		<div class="text-center space-y-2">
@@ -242,4 +243,5 @@
 			</a>
 		</div>
 	</div>
+</div>
 </div>

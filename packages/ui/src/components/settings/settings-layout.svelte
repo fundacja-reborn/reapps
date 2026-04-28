@@ -26,7 +26,7 @@
   );
 </script>
 
-<div class={cn('min-h-screen bg-background', className)}>
+<div class={cn('h-dvh overflow-y-auto bg-background', className)}>
   <div class="sticky top-0 z-10 bg-background border-b">
     <div class="container mx-auto max-w-4xl px-4 sm:px-6">
       <div class="flex items-center gap-2 h-14">
