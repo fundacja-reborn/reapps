@@ -49,6 +49,8 @@
     splitView = false,
     onchange,
     onscrollerinit,
+    onviewinit,
+    onviewdestroy,
     onnotelinkrequest,
     onnotelinkclick,
     availableNotes = [],
@@ -66,6 +68,13 @@
     onchange?: (content: string) => void;
     /** Called once after CM6 mounts — passes the scrollable .cm-scroller element */
     onscrollerinit?: (el: HTMLElement) => void;
+    /**
+     * Called once after CM6 mounts — passes the EditorView. Used by
+     * scroll-sync to build a line-based adapter; safe to ignore.
+     */
+    onviewinit?: (view: EditorView) => void;
+    /** Called once before the EditorView is destroyed (for adapter cleanup). */
+    onviewdestroy?: () => void;
     /** Called when user requests to insert a note link (toolbar button or Ctrl+Shift+K) */
     onnotelinkrequest?: () => void;
     /** Called when a rendered note-link widget is clicked (Live Preview mode) */
@@ -374,6 +383,7 @@
     });
 
     view = new EditorView({ state, parent: editorContainer });
+    onviewinit?.(view);
 
     // Force the markdown parser to fully parse the initial doc before the
     // view plugin reads `syntaxTree(state)`. Without this, on a freshly-
@@ -383,6 +393,20 @@
     // 50ms budget is generous; for normal notes the parser finishes in <1ms.
     ensureSyntaxTree(view.state, view.state.doc.length, 50);
     view.dispatch({ effects: rebuildLivePreview.of(null) });
+
+    // Larger notes can hit the 50ms budget above with a partial parse tree,
+    // leaving some FencedCode blocks as raw markdown until the next user
+    // transaction. Schedule a follow-up rebuild during idle time with a
+    // generous 500ms parse budget to finish the tree off-thread of paint.
+    const runIdleRebuild = () => {
+      if (!view) return;
+      ensureSyntaxTree(view.state, view.state.doc.length, 500);
+      view.dispatch({ effects: rebuildLivePreview.of(null) });
+    };
+    const hasIdleCallback = typeof requestIdleCallback === 'function';
+    const idleId: number = hasIdleCallback
+      ? requestIdleCallback(runIdleRebuild, { timeout: 1000 })
+      : (setTimeout(runIdleRebuild, 250) as unknown as number);
 
     // Allow CodeBlockWidget to force a live-preview rebuild after a lazy
     // language chunk finishes loading (so plaintext placeholder is replaced
@@ -404,6 +428,8 @@
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
     return () => {
+      if (hasIdleCallback && typeof cancelIdleCallback === 'function') cancelIdleCallback(idleId);
+      else clearTimeout(idleId);
       observer.disconnect();
       unregisterCodeBlock();
     };
@@ -453,6 +479,7 @@
   });
 
   onDestroy(() => {
+    onviewdestroy?.();
     view?.destroy();
   });
 </script>

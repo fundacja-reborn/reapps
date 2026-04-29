@@ -9,6 +9,10 @@
     highlightCodeToHtml,
     triggerLanguageLoad
   } from '$lib/editor/live-preview';
+  import {
+    annotateTopLevelLines,
+    applySourceLineAttrs
+  } from '$lib/utils/source-line';
 
   const NOTE_LINK_RE = /^note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 
@@ -32,16 +36,31 @@
     content = '',
     class: className = '',
     scrollEl = $bindable<HTMLElement | null>(null),
+    contentEl = $bindable<HTMLElement | null>(null),
     imageLoadMode = 'ask' as ImageLoadMode,
     onNoteLink,
+    onrender,
     resolveNoteTitle
   }: {
     content: string;
     class?: string;
     scrollEl?: HTMLElement | null;
+    /**
+     * The element that holds the rendered HTML and the `data-source-line`
+     * markers. Same as `scrollEl` when this component owns its scroll
+     * (split view); different when the parent scrolls (desktop single-pane
+     * with `parentScroll=true`).
+     */
+    contentEl?: HTMLElement | null;
     imageLoadMode?: ImageLoadMode;
     /** Called when user clicks a note:UUID link */
     onNoteLink?: (noteId: string) => void;
+    /**
+     * Fired after the rendered HTML is committed to the DOM (and
+     * `data-source-line` attrs are stamped). The parent uses this to
+     * rebuild line-anchor caches in the scroll-sync.
+     */
+    onrender?: () => void;
     /** Resolves current title for a note UUID (for auto-update display text) */
     resolveNoteTitle?: (noteId: string) => string | undefined;
   } = $props();
@@ -56,6 +75,14 @@
 
   onMount(() => {
     scrollEl = containerEl;
+    contentEl = containerEl;
+    // Clear bindings on unmount so the parent's preview adapter detaches —
+    // otherwise a toggle to edit-only would leave a stale (detached)
+    // adapter live, eating editor scroll events via `syncing`.
+    return () => {
+      scrollEl = null;
+      contentEl = null;
+    };
   });
 
   // Configure marked renderer
@@ -106,12 +133,22 @@
 
   marked.use({ renderer, gfm: true, breaks: true });
 
+  // Tokens of the latest render — kept so we can stamp `data-source-line`
+  // on the matching DOM children after `{@html}` commits the new HTML.
+  let lastTokens: import('marked').Token[] = [];
+
   const html = $derived.by(() => {
     // Reactive dep: re-run when a fenced-code language chunk has loaded so
     // we can replace the plaintext fallback with highlighted spans.
     void langLoadTick;
-    if (!content) return '';
-    const raw = sanitize(marked.parse(content) as string);
+    if (!content) {
+      lastTokens = [];
+      return '';
+    }
+    const tokens = marked.lexer(content);
+    annotateTopLevelLines(tokens);
+    lastTokens = tokens;
+    const raw = sanitize(marked.parser(tokens) as string);
     if (!resolveNoteTitle) return raw;
     return raw.replace(
       /<a ([^>]*?)href="note:([0-9a-f-]{36})"([^>]*?)>([^<]*)<\/a>/gi,
@@ -121,6 +158,25 @@
         return `<a ${pre}href="note:${noteId}"${post}>${displayText}</a>`;
       }
     );
+  });
+
+  // After {@html html} commits to the DOM, stamp top-level children with
+  // `data-source-line="N"` and let the parent rebuild scroll-sync anchors.
+  // We also re-fire `onrender` once any lazily-loading <img> finishes —
+  // image heights only show up post-load, and the parent's anchor cache
+  // would otherwise be stale by tens of pixels for the rest of the doc.
+  $effect(() => {
+    void html;
+    if (!containerEl) return;
+    applySourceLineAttrs(containerEl, lastTokens);
+    onrender?.();
+
+    const images = containerEl.querySelectorAll('img');
+    const onLoad = () => onrender?.();
+    images.forEach((img) => {
+      if (!img.complete) img.addEventListener('load', onLoad, { once: true });
+    });
+    return () => images.forEach((img) => img.removeEventListener('load', onLoad));
   });
 
   function loadImage(placeholder: HTMLElement) {
