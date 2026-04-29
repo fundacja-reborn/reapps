@@ -1,3 +1,14 @@
+## 0.12.2 (2026-04-29)
+
+### 🩹 Fixes
+
+- **notes:** also size desktop layout to visual viewport for iPad keyboard ([#111](https://github.com/fundacja-reborn/reapps/pull/111))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.12.1 (2026-04-29)
 
 ### 🩹 Fixes
