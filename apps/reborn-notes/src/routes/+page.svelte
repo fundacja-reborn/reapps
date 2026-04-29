@@ -902,7 +902,16 @@
      MOBILE: Master-Detail with two full-screen panels
      ══════════════════════════════════════════════════════════════════ -->
   <Tooltip.Provider delayDuration={0}>
-    <div class="relative h-[100dvh] overflow-hidden bg-sidebar">
+    <!-- Mobile root sized to the *visual* viewport (height shrinks when the soft
+         keyboard opens), and counter-translated by visualViewport.offsetTop to
+         neutralise iOS Safari "page-shift" — so the editor header stays anchored
+         to the top of the visible area regardless of caret position. CSS vars are
+         emitted in +layout.svelte; fallback `100dvh` covers SSR + browsers
+         without visualViewport. -->
+    <div
+      class="relative overflow-hidden bg-sidebar"
+      style="height: var(--rn-vv-height, 100dvh); transform: translateY(var(--rn-vv-offset-top, 0px));"
+    >
       <!-- ── Panel 1: Icon Rail + List ──────────────────────────────── -->
       <div
         class="absolute inset-0 flex transition-transform duration-300 ease-in-out"
