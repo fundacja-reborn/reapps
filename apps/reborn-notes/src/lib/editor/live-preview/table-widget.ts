@@ -94,7 +94,7 @@ function readCellText(el: Element): string {
     }
   });
   return out
-    .replace(/ /g, ' ')
+    .replace(/\u00A0/g, ' ')
     .replace(/^[ \t]+|[ \t]+$/g, '')
     .replace(/^\n+|\n+$/g, '');
 }

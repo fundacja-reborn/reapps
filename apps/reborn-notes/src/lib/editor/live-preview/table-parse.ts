@@ -34,9 +34,14 @@ export interface ParsedTable {
   alignments: CellAlign[];
 }
 
-/** GFM allows escaping `|` inside cells with `\|`. Decode for display. */
+/**
+ * Reverse of `escapeCell`: `\\` → `\` and `\|` → `|`. Done in a single pass so
+ * a sequence like `\\|` (escaped backslash followed by literal pipe in the
+ * source — produced by serializing a cell containing `\|`) is decoded as `\|`,
+ * not as `\` + escaped-pipe.
+ */
 export function unescapePipes(text: string): string {
-  return text.replace(/\\\|/g, '|');
+  return text.replace(/\\([\\|])/g, '$1');
 }
 
 /**
@@ -57,11 +62,17 @@ export function decodeCellText(raw: string): string {
 
 /**
  * Escape cell text for serialization:
- *  1. literal `|` → `\|`
- *  2. embedded newlines → `<br>` (GFM tables can't contain literal `\n`).
+ *  1. literal `\` → `\\` (must come first — otherwise `\|` from the next pass
+ *     would be ambiguous with a user-typed `\|` and could split the row when
+ *     re-parsed).
+ *  2. literal `|` → `\|`
+ *  3. embedded newlines → `<br>` (GFM tables can't contain literal `\n`).
  */
 export function escapeCell(text: string): string {
-  return text.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, '<br>');
 }
 
 function readCell(state: EditorState, cellNode: SyntaxNode): ParsedCell {

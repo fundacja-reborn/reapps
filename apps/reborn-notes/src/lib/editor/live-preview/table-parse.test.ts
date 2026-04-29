@@ -50,6 +50,14 @@ describe('unescapePipes / escapeCell', () => {
     expect(escapeCell('line1\r\nline2')).toBe('line1<br>line2');
     expect(escapeCell('a\n\nb')).toBe('a<br><br>b');
   });
+  it('escapes literal backslashes so `\\|` round-trips without splitting rows', () => {
+    // Without escaping the backslash, `\|` would serialize as `\\|` and the
+    // GFM parser would read the trailing `|` as an unescaped column boundary.
+    expect(escapeCell('\\|')).toBe('\\\\\\|');
+    expect(escapeCell('\\')).toBe('\\\\');
+    expect(unescapePipes(escapeCell('\\|'))).toBe('\\|');
+    expect(unescapePipes(escapeCell('a\\b'))).toBe('a\\b');
+  });
 });
 
 describe('decodeCellText', () => {
