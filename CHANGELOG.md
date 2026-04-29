@@ -1,3 +1,14 @@
+## 0.12.1 (2026-04-29)
+
+### 🩹 Fixes
+
+- **notes:** keep editor panel sized to visual viewport on mobile keyboard ([#110](https://github.com/fundacja-reborn/reapps/pull/110))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.12.0 (2026-04-29)
 
 ### 🚀 Features
