@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
-import { Strikethrough } from '@lezer/markdown';
+import { Strikethrough, Table } from '@lezer/markdown';
 import type { DecorationSet } from '@codemirror/view';
 import { buildDecorations, isAnySelectionInRange } from './decorations';
+import { TableWidget } from './table-widget';
 
 interface DecoSpec {
   class?: string;
@@ -21,7 +22,7 @@ interface DecoRange {
 function makeState(doc: string, cursorPos = 0) {
   return EditorState.create({
     doc,
-    extensions: [markdown({ extensions: [Strikethrough] })],
+    extensions: [markdown({ extensions: [Strikethrough, Table] })],
     selection: { anchor: cursorPos, head: cursorPos }
   });
 }
@@ -326,5 +327,75 @@ describe('buildDecorations — empty / no markdown', () => {
     const state = makeState('just plain text without any markup', 5);
     const ranges = asRanges(buildDecorations(state));
     expect(ranges).toHaveLength(0);
+  });
+});
+
+describe('buildDecorations — tables', () => {
+  const TABLE_DOC = '| A | B |\n| --- | --- |\n| 1 | 2 |\n';
+
+  it('emits a single block-replace TableWidget covering the table', () => {
+    // Cursor outside the table — but cursor position should not matter.
+    const state = makeState(TABLE_DOC + '\nafter', TABLE_DOC.length + 3);
+    const ranges = asRanges(buildDecorations(state));
+    const tableRanges = ranges.filter(
+      (r) => r.hasWidget && r.spec.widget instanceof TableWidget
+    );
+    expect(tableRanges).toHaveLength(1);
+    // Should span at least to the end of the last body row line.
+    expect(tableRanges[0].from).toBe(0);
+    expect(tableRanges[0].to).toBeGreaterThanOrEqual(
+      TABLE_DOC.lastIndexOf('| 1 | 2 |') + '| 1 | 2 |'.length
+    );
+  });
+
+  it('emits the table widget regardless of cursor position (always rendered)', () => {
+    // Cursor placed *inside* the body row — for tables, this MUST still emit
+    // the widget (Obsidian-style: rendered always, raw never).
+    const cursorIn = TABLE_DOC.indexOf('1');
+    const state = makeState(TABLE_DOC, cursorIn);
+    const ranges = asRanges(buildDecorations(state));
+    const tableRanges = ranges.filter(
+      (r) => r.hasWidget && r.spec.widget instanceof TableWidget
+    );
+    expect(tableRanges).toHaveLength(1);
+  });
+
+  it('does not emit inline marks (strong/em) for content inside table cells', () => {
+    // Cells contain `**bold**` / `*it*` — the widget owns rendering, so we
+    // must not also emit cm-lp-strong / cm-lp-em decorations that would
+    // overlap and corrupt the block-replace range.
+    const doc = '| **bold** | *it* |\n| --- | --- |\n| x | y |\n';
+    const state = makeState(doc, 0);
+    const ranges = asRanges(buildDecorations(state));
+    expect(ranges.filter((r) => r.spec.class === 'cm-lp-strong')).toHaveLength(0);
+    expect(ranges.filter((r) => r.spec.class === 'cm-lp-em')).toHaveLength(0);
+    const tableRanges = ranges.filter(
+      (r) => r.hasWidget && r.spec.widget instanceof TableWidget
+    );
+    expect(tableRanges).toHaveLength(1);
+  });
+
+  it('coexists with other constructs above/below the table', () => {
+    const doc = '# Heading\n\n' + TABLE_DOC + '\n**after**\n';
+    const state = makeState(doc, doc.length - 2);
+    const ranges = asRanges(buildDecorations(state));
+    // Heading line decoration present.
+    expect(classAt(ranges, 0, 0)).toBe('cm-lp-h1-line');
+    // TableWidget present.
+    expect(
+      ranges.filter((r) => r.hasWidget && r.spec.widget instanceof TableWidget)
+    ).toHaveLength(1);
+  });
+
+  it('falls through gracefully if a Table node has no header (defensive)', () => {
+    // Hard to construct — @lezer/markdown only emits Table with a delimiter
+    // line. The fall-through path in buildDecorations is a guard for
+    // mid-edit malformed states. We just verify the test setup itself
+    // produces no widget for a non-table row.
+    const state = makeState('| pipe but no delim |\nplain text\n', 0);
+    const ranges = asRanges(buildDecorations(state));
+    expect(
+      ranges.filter((r) => r.hasWidget && r.spec.widget instanceof TableWidget)
+    ).toHaveLength(0);
   });
 });
