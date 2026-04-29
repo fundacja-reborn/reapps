@@ -447,8 +447,18 @@
     "label": "Mode d'éditeur",
     "markdown": "Source Markdown",
     "live": "Aperçu en direct",
-    "beta": "Bêta",
     "open_menu": "Choisir le mode d'éditeur"
+  },
+  "editor_mode_intro": {
+    "title": "Comment souhaitez-vous éditer vos notes ?",
+    "description": "Choisissez un mode d'éditeur. Vous pouvez le changer à tout moment.",
+    "option_live_label": "Aperçu en direct",
+    "option_live_description": "Le Markdown est formaté pendant que vous tapez — la note ressemble au résultat final. Recommandé si vous ne connaissez pas Markdown.",
+    "option_markdown_label": "Source Markdown",
+    "option_markdown_description": "Les marqueurs bruts comme ** # [texte](lien) restent visibles. Pour les utilisateurs qui préfèrent un contrôle total sur la syntaxe.",
+    "recommended": "Recommandé",
+    "hint_switch_later": "Vous pouvez changer de mode à tout moment via le bouton ✏️ dans l'en-tête de la note ou dans Paramètres → Apparence.",
+    "continue_button": "Commencer"
   },
   "save_status": {
     "unsaved": "Modifications non enregistrées",
@@ -504,8 +514,7 @@
       "editor_mode_desc": "Comment le Markdown est affiché pendant l'édition d'une note",
       "editor_mode_markdown": "Markdown (afficher toute la syntaxe)",
       "editor_mode_live": "Aperçu en direct (masquer la syntaxe hors du curseur)",
-      "editor_mode_updated": "Mode d'édition mis à jour",
-      "editor_mode_live_note": "Bêta — fonctionne mieux sur ordinateur. Les tableaux et blocs de code restent en Markdown brut."
+      "editor_mode_updated": "Mode d'édition mis à jour"
     },
     "security": {
       "title": "Sécurité",

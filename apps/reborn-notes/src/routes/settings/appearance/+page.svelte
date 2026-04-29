@@ -332,11 +332,6 @@
             <SelectItem value="live">{$t('settings_page.appearance.editor_mode_live')}</SelectItem>
           </SelectContent>
         </Select>
-        {#if editorModeValue === 'live'}
-          <p class="text-xs text-muted-foreground">
-            {$t('settings_page.appearance.editor_mode_live_note')}
-          </p>
-        {/if}
       </CardContent>
     </Card>
 

@@ -447,8 +447,18 @@
     "label": "Editor mode",
     "markdown": "Markdown source",
     "live": "Live preview",
-    "beta": "Beta",
     "open_menu": "Choose editor mode"
+  },
+  "editor_mode_intro": {
+    "title": "How would you like to edit your notes?",
+    "description": "Pick an editor mode. You can change it any time.",
+    "option_live_label": "Live preview",
+    "option_live_description": "Markdown is rendered as you type — your note looks like the finished result. Recommended if you don't know Markdown.",
+    "option_markdown_label": "Markdown source",
+    "option_markdown_description": "Raw markers like ** # [text](link) stay visible. For users who prefer full control over the syntax.",
+    "recommended": "Recommended",
+    "hint_switch_later": "You can switch modes any time using the ✏️ button in the note header or in Settings → Appearance.",
+    "continue_button": "Get started"
   },
   "save_status": {
     "unsaved": "Unsaved changes",
@@ -504,8 +514,7 @@
       "editor_mode_desc": "How Markdown is shown while you edit a note",
       "editor_mode_markdown": "Markdown (show all syntax)",
       "editor_mode_live": "Live preview (hide syntax outside cursor)",
-      "editor_mode_updated": "Editor mode updated",
-      "editor_mode_live_note": "Beta — works best on desktop. Tables and code blocks still show raw Markdown."
+      "editor_mode_updated": "Editor mode updated"
     },
     "security": {
       "title": "Security",

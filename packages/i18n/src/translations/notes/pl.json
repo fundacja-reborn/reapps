@@ -447,8 +447,18 @@
     "label": "Tryb edytora",
     "markdown": "Markdown (źródło)",
     "live": "Podgląd na żywo",
-    "beta": "Beta",
     "open_menu": "Wybierz tryb edytora"
+  },
+  "editor_mode_intro": {
+    "title": "Jak chcesz edytować notatki?",
+    "description": "Wybierz tryb edytora. Zawsze możesz to zmienić.",
+    "option_live_label": "Podgląd na żywo",
+    "option_live_description": "Markdown formatuje się w trakcie pisania — notatka wygląda jak gotowa. Polecane, jeśli nie znasz Markdown.",
+    "option_markdown_label": "Markdown (źródło)",
+    "option_markdown_description": "Surowe znaczniki ** # [tekst](link) pozostają widoczne. Dla osób, które wolą pełną kontrolę nad składnią.",
+    "recommended": "Polecane",
+    "hint_switch_later": "Tryb przełączysz w każdej chwili przyciskiem ✏️ w nagłówku notatki lub w Ustawieniach → Wygląd.",
+    "continue_button": "Zaczynaj"
   },
   "save_status": {
     "unsaved": "Niezapisane zmiany",
@@ -504,8 +514,7 @@
       "editor_mode_desc": "Jak Markdown jest wyświetlany podczas edycji notatki",
       "editor_mode_markdown": "Markdown (pokaż całą składnię)",
       "editor_mode_live": "Podgląd na żywo (ukryj składnię poza kursorem)",
-      "editor_mode_updated": "Tryb edycji zaktualizowany",
-      "editor_mode_live_note": "Beta — działa najlepiej na komputerze. Tabele i bloki kodu pozostają w surowym Markdown."
+      "editor_mode_updated": "Tryb edycji zaktualizowany"
     },
     "security": {
       "title": "Bezpieczeństwo",

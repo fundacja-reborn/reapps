@@ -109,12 +109,7 @@
             {$t('editor_mode.markdown')}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="live">
-            <span>{$t('editor_mode.live')}</span>
-            <span
-              class="ml-auto inline-flex items-center rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
-            >
-              {$t('editor_mode.beta')}
-            </span>
+            {$t('editor_mode.live')}
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
@@ -138,15 +133,10 @@
         </Button>
         <Button
           variant={$editorMode === 'live' ? 'secondary' : 'ghost'}
-          class="w-full justify-start gap-2"
+          class="w-full justify-start"
           onclick={() => setEditorMode('live')}
         >
-          <span>{$t('editor_mode.live')}</span>
-          <span
-            class="inline-flex items-center rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
-          >
-            {$t('editor_mode.beta')}
-          </span>
+          {$t('editor_mode.live')}
         </Button>
       </div>
     </SheetContent>
