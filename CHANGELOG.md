@@ -1,3 +1,14 @@
+## 0.11.0 (2026-04-29)
+
+### 🚀 Features
+
+- **live:** preview code blocks ([#108](https://github.com/fundacja-reborn/reapps/pull/108))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.10.6 (2026-04-28)
 
 ### 🩹 Fixes
