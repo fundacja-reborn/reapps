@@ -1,3 +1,14 @@
+## 0.12.3 (2026-04-29)
+
+### 🩹 Fixes
+
+- **notes:** position dialogs in visual viewport so iPad keyboard does not cover them ([#112](https://github.com/fundacja-reborn/reapps/pull/112))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.12.2 (2026-04-29)
 
 ### 🩹 Fixes
