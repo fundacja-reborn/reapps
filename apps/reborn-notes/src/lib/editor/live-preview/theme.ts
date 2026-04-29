@@ -219,7 +219,44 @@ export const livePreviewTheme = EditorView.theme({
     textDecoration: 'line-through'
   },
   '.cm-lp-codeblock .tok-inserted': { color: '#164' },
-  '.cm-lp-codeblock .tok-invalid': { color: '#f00' }
+  '.cm-lp-codeblock .tok-invalid': { color: '#f00' },
+
+  // ─── GFM Tables (always editable, Obsidian-style) ─────────────
+  // Block-replace widget. Margin must stay 0 — same height-map rule
+  // as fenced code blocks. Padding lives on the wrapper instead.
+  '.cm-lp-table-wrap': {
+    margin: '0',
+    padding: '0.25em 0',
+    overflowX: 'auto'
+  },
+  '.cm-lp-table': {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '0.9375rem',
+    tableLayout: 'auto'
+  },
+  '.cm-lp-table th, .cm-lp-table td': {
+    padding: '0.5em 0.75em',
+    border: '1px solid var(--border)',
+    textAlign: 'left',
+    verticalAlign: 'top',
+    minWidth: '4em',
+    outline: 'none',
+    // Render Shift+Enter line breaks (`<br>` inside the cell) as visible
+    // newlines without collapsing whitespace.
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word'
+  },
+  '.cm-lp-table th': {
+    backgroundColor: 'var(--muted)',
+    fontWeight: '600'
+  },
+  // Focus highlight on the active cell. Inset ring so it doesn't shift the
+  // table layout when entering/leaving cells.
+  '.cm-lp-table th:focus, .cm-lp-table td:focus': {
+    boxShadow: 'inset 0 0 0 2px var(--ring, var(--primary))',
+    backgroundColor: 'color-mix(in srgb, var(--primary) 8%, transparent)'
+  }
 
   // Dark-mode token overrides live in NoteEditor.svelte's `<style>`
   // (`:global(.dark .cm-lp-codeblock .tok-*)`). They need a `.dark`

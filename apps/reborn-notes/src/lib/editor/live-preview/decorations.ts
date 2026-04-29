@@ -10,10 +10,12 @@
  */
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
-import { type EditorState, type Range, StateEffect, StateField } from '@codemirror/state';
+import { type EditorState, type Range, RangeSetBuilder, StateEffect, StateField } from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 import type { Text } from '@codemirror/state';
 import { CodeBlockWidget, LinkWidget } from './widgets';
+import { TableWidget } from './table-widget';
+import { parseTable } from './table-parse';
 
 /**
  * Effect that forces `livePreviewField` to re-run `buildDecorations` outside
@@ -133,6 +135,27 @@ export function buildDecorations(state: EditorState): DecorationSet {
       const name = nodeRef.type.name;
       const from = nodeRef.from;
       const to = nodeRef.to;
+
+      // ─── GFM Table — always rendered as an editable widget ────────
+      // Unlike other live-preview elements, tables do NOT switch to raw
+      // markdown when the cursor is "inside" their range. The widget owns
+      // editing through contenteditable cells, so cursor-in-range checks
+      // are intentionally absent here. CM6 atomic ranges (see
+      // `livePreviewAtomicRanges` below) prevent the cursor from landing
+      // mid-table in the markdown source.
+      if (name === 'Table') {
+        const parsed = parseTable(state, nodeRef.node);
+        if (parsed) {
+          ranges.push(
+            Decoration.replace({
+              widget: new TableWidget(parsed),
+              block: true
+            }).range(parsed.from, parsed.to)
+          );
+          return false;
+        }
+        // Malformed table — fall through and let other handlers run.
+      }
 
       // ─── Fenced code block (```lang … ```) ───────────────────────
       if (name === 'FencedCode') {
@@ -342,4 +365,28 @@ export const livePreviewSyncListener = EditorView.updateListener.of((update) => 
   Promise.resolve().then(() => {
     view.dispatch({ effects: rebuildLivePreview.of(null) });
   });
+});
+
+/**
+ * Treat each `Table` block as a single atomic range so CM6 selection cannot
+ * land mid-table in the markdown source. Without this, pressing arrow keys
+ * or End/PageDown could place the caret between `|` characters, causing the
+ * decorated widget to flicker and stealing focus from contenteditable cells.
+ *
+ * Tables are the only Live Preview construct that need this treatment —
+ * other widgets (links, code blocks) toggle to raw markdown when the cursor
+ * enters them, but tables stay rendered always.
+ */
+export const livePreviewAtomicRanges = EditorView.atomicRanges.of((view) => {
+  const builder = new RangeSetBuilder<Decoration>();
+  const tree = syntaxTree(view.state);
+  tree.iterate({
+    enter(nodeRef) {
+      if (nodeRef.type.name === 'Table') {
+        builder.add(nodeRef.from, nodeRef.to, Decoration.mark({}));
+        return false;
+      }
+    }
+  });
+  return builder.finish();
 });
