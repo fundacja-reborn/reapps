@@ -1241,7 +1241,11 @@
   <!-- ══════════════════════════════════════════════════════════════════
      DESKTOP: Original 3-column layout
      ══════════════════════════════════════════════════════════════════ -->
-  <SidebarProvider style="height: 100vh; min-height: 0; overflow: hidden; --sidebar-width: 24rem;">
+  <!-- height tracks visualViewport so the soft keyboard (iPad PWA Safari etc.)
+       shrinks the desktop scroll container instead of leaving the bottom of
+       the note hidden behind the keyboard. CSS var emitted in +layout.svelte;
+       fallback `100vh` covers SSR + browsers without visualViewport. -->
+  <SidebarProvider style="height: var(--rn-vv-height, 100vh); min-height: 0; overflow: hidden; --sidebar-width: 24rem;">
     <Sidebar
       variant="inset"
       collapsible="offcanvas"
