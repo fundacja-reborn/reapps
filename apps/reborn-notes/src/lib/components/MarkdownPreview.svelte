@@ -5,6 +5,14 @@
 
   import { t } from '$lib/stores/i18n.store';
   import type { ImageLoadMode } from '@reborn/storage';
+  import {
+    highlightCodeToHtml,
+    triggerLanguageLoad
+  } from '$lib/editor/live-preview';
+  import {
+    annotateTopLevelLines,
+    applySourceLineAttrs
+  } from '$lib/utils/source-line';
 
   const NOTE_LINK_RE = /^note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 
@@ -28,24 +36,53 @@
     content = '',
     class: className = '',
     scrollEl = $bindable<HTMLElement | null>(null),
+    contentEl = $bindable<HTMLElement | null>(null),
     imageLoadMode = 'ask' as ImageLoadMode,
     onNoteLink,
+    onrender,
     resolveNoteTitle
   }: {
     content: string;
     class?: string;
     scrollEl?: HTMLElement | null;
+    /**
+     * The element that holds the rendered HTML and the `data-source-line`
+     * markers. Same as `scrollEl` when this component owns its scroll
+     * (split view); different when the parent scrolls (desktop single-pane
+     * with `parentScroll=true`).
+     */
+    contentEl?: HTMLElement | null;
     imageLoadMode?: ImageLoadMode;
     /** Called when user clicks a note:UUID link */
     onNoteLink?: (noteId: string) => void;
+    /**
+     * Fired after the rendered HTML is committed to the DOM (and
+     * `data-source-line` attrs are stamped). The parent uses this to
+     * rebuild line-anchor caches in the scroll-sync.
+     */
+    onrender?: () => void;
     /** Resolves current title for a note UUID (for auto-update display text) */
     resolveNoteTitle?: (noteId: string) => string | undefined;
   } = $props();
 
   let containerEl: HTMLElement;
 
+  // Async-load tick — bumped each time a fenced-code language chunk finishes
+  // loading, so the `$derived html` recomputes and replaces the plaintext
+  // fallback with a syntax-highlighted version. Mirrors the editor's
+  // `rebuildLivePreview` effect, but on the Svelte side.
+  let langLoadTick = $state(0);
+
   onMount(() => {
     scrollEl = containerEl;
+    contentEl = containerEl;
+    // Clear bindings on unmount so the parent's preview adapter detaches —
+    // otherwise a toggle to edit-only would leave a stale (detached)
+    // adapter live, eating editor scroll events via `syncing`.
+    return () => {
+      scrollEl = null;
+      contentEl = null;
+    };
   });
 
   // Configure marked renderer
@@ -77,11 +114,41 @@
     </div>`;
   };
 
+  // Fenced code blocks — share the highlight pipeline with Live Preview's
+  // CodeBlockWidget (`highlightCodeToHtml`). Output is escaped text + safe
+  // `<span class="tok-...">` wrappers — DOMPurify passes these through
+  // (`USE_PROFILES.html` allows `class` on `<span>`).
+  // If the language chunk hasn't loaded yet, the helper renders plaintext
+  // and we kick off the async load — once it resolves we bump `langLoadTick`
+  // so the `$derived html` re-runs with the highlighted version.
+  renderer.code = ({ text, lang }: Tokens.Code) => {
+    const info = (lang ?? '').trim();
+    if (info) {
+      void triggerLanguageLoad(info).then((loaded) => {
+        if (loaded) langLoadTick++;
+      });
+    }
+    return highlightCodeToHtml(text, info);
+  };
+
   marked.use({ renderer, gfm: true, breaks: true });
 
+  // Tokens of the latest render — kept so we can stamp `data-source-line`
+  // on the matching DOM children after `{@html}` commits the new HTML.
+  let lastTokens: import('marked').Token[] = [];
+
   const html = $derived.by(() => {
-    if (!content) return '';
-    const raw = sanitize(marked.parse(content) as string);
+    // Reactive dep: re-run when a fenced-code language chunk has loaded so
+    // we can replace the plaintext fallback with highlighted spans.
+    void langLoadTick;
+    if (!content) {
+      lastTokens = [];
+      return '';
+    }
+    const tokens = marked.lexer(content);
+    annotateTopLevelLines(tokens);
+    lastTokens = tokens;
+    const raw = sanitize(marked.parser(tokens) as string);
     if (!resolveNoteTitle) return raw;
     return raw.replace(
       /<a ([^>]*?)href="note:([0-9a-f-]{36})"([^>]*?)>([^<]*)<\/a>/gi,
@@ -91,6 +158,25 @@
         return `<a ${pre}href="note:${noteId}"${post}>${displayText}</a>`;
       }
     );
+  });
+
+  // After {@html html} commits to the DOM, stamp top-level children with
+  // `data-source-line="N"` and let the parent rebuild scroll-sync anchors.
+  // We also re-fire `onrender` once any lazily-loading <img> finishes —
+  // image heights only show up post-load, and the parent's anchor cache
+  // would otherwise be stale by tens of pixels for the rest of the doc.
+  $effect(() => {
+    void html;
+    if (!containerEl) return;
+    applySourceLineAttrs(containerEl, lastTokens);
+    onrender?.();
+
+    const images = containerEl.querySelectorAll('img');
+    const onLoad = () => onrender?.();
+    images.forEach((img) => {
+      if (!img.complete) img.addEventListener('load', onLoad, { once: true });
+    });
+    return () => images.forEach((img) => img.removeEventListener('load', onLoad));
   });
 
   function loadImage(placeholder: HTMLElement) {
@@ -295,7 +381,8 @@
     color: var(--foreground);
   }
 
-  .preview :global(pre) {
+  .preview :global(pre),
+  .preview :global(pre.cm-lp-codeblock) {
     margin: 0 0 1em;
     padding: 1em;
     border-radius: 0.5em;
@@ -307,6 +394,121 @@
     padding: 0;
     background: transparent;
     font-size: 0.875rem;
+  }
+
+  /* Syntax highlight tokens — palette mirrors editor/live-preview/theme.ts.
+     Kept here (not in a global stylesheet) so Preview and Live Preview share
+     the visual output without coupling MarkdownPreview to CM6 internals. */
+  .preview :global(pre code .tok-keyword),
+  .preview :global(pre code .tok-controlKeyword),
+  .preview :global(pre code .tok-moduleKeyword),
+  .preview :global(pre code .tok-operatorKeyword),
+  .preview :global(pre code .tok-definitionKeyword) {
+    color: #708;
+  }
+  .preview :global(pre code .tok-atom),
+  .preview :global(pre code .tok-bool) {
+    color: #219;
+  }
+  .preview :global(pre code .tok-number) {
+    color: #164;
+  }
+  .preview :global(pre code .tok-string) {
+    color: #a11;
+  }
+  .preview :global(pre code .tok-special.tok-string),
+  .preview :global(pre code .tok-regexp),
+  .preview :global(pre code .tok-escape) {
+    color: #e40;
+  }
+  .preview :global(pre code .tok-comment),
+  .preview :global(pre code .tok-lineComment),
+  .preview :global(pre code .tok-blockComment) {
+    color: #940;
+    font-style: italic;
+  }
+  .preview :global(pre code .tok-meta) {
+    color: #555;
+  }
+  .preview :global(pre code .tok-variableName) {
+    color: #00f;
+  }
+  .preview :global(pre code .tok-typeName),
+  .preview :global(pre code .tok-macroName) {
+    color: #085;
+  }
+  .preview :global(pre code .tok-className),
+  .preview :global(pre code .tok-namespace) {
+    color: #167;
+  }
+  .preview :global(pre code .tok-propertyName),
+  .preview :global(pre code .tok-attributeName) {
+    color: #00c;
+  }
+  .preview :global(pre code .tok-tagName),
+  .preview :global(pre code .tok-labelName) {
+    color: #170;
+  }
+  .preview :global(pre code .tok-link) {
+    color: #219;
+    text-decoration: underline;
+  }
+  .preview :global(pre code .tok-heading),
+  .preview :global(pre code .tok-strong) {
+    font-weight: 700;
+  }
+  .preview :global(pre code .tok-emphasis) {
+    font-style: italic;
+  }
+  .preview :global(pre code .tok-deleted) {
+    color: #a11;
+    text-decoration: line-through;
+  }
+  .preview :global(pre code .tok-inserted) {
+    color: #164;
+  }
+  .preview :global(pre code .tok-invalid) {
+    color: #f00;
+  }
+
+  /* Dark-mode token palette — mirrors NoteEditor.svelte's `.dark .cm-lp-codeblock .tok-*`. */
+  :global(.dark) .preview :global(pre code .tok-keyword),
+  :global(.dark) .preview :global(pre code .tok-controlKeyword),
+  :global(.dark) .preview :global(pre code .tok-moduleKeyword),
+  :global(.dark) .preview :global(pre code .tok-operatorKeyword),
+  :global(.dark) .preview :global(pre code .tok-definitionKeyword) {
+    color: #c792ea;
+  }
+  :global(.dark) .preview :global(pre code .tok-atom),
+  :global(.dark) .preview :global(pre code .tok-bool),
+  :global(.dark) .preview :global(pre code .tok-number) {
+    color: #f78c6c;
+  }
+  :global(.dark) .preview :global(pre code .tok-string),
+  :global(.dark) .preview :global(pre code .tok-special.tok-string),
+  :global(.dark) .preview :global(pre code .tok-regexp),
+  :global(.dark) .preview :global(pre code .tok-escape) {
+    color: #c3e88d;
+  }
+  :global(.dark) .preview :global(pre code .tok-comment),
+  :global(.dark) .preview :global(pre code .tok-lineComment),
+  :global(.dark) .preview :global(pre code .tok-blockComment) {
+    color: #7c8a99;
+  }
+  :global(.dark) .preview :global(pre code .tok-variableName),
+  :global(.dark) .preview :global(pre code .tok-propertyName),
+  :global(.dark) .preview :global(pre code .tok-attributeName) {
+    color: #82aaff;
+  }
+  :global(.dark) .preview :global(pre code .tok-typeName),
+  :global(.dark) .preview :global(pre code .tok-className),
+  :global(.dark) .preview :global(pre code .tok-namespace),
+  :global(.dark) .preview :global(pre code .tok-macroName) {
+    color: #7fdbca;
+  }
+  :global(.dark) .preview :global(pre code .tok-tagName),
+  :global(.dark) .preview :global(pre code .tok-labelName) {
+    color: #f07178;
   }
 
   .preview :global(hr) {

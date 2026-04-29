@@ -132,5 +132,97 @@ export const livePreviewTheme = EditorView.theme({
   // Ordered list line — keep marker visible, just indent slightly
   '.cm-lp-ordered-line': {
     paddingLeft: '0.5em'
-  }
+  },
+
+  // ─── Fenced code blocks ──────────────────────────────────────
+  // Cursor outside: replaced with <pre class="cm-lp-codeblock">.
+  // Margin must stay 0 so the block sits flush — same height-map rule
+  // as line decorations.
+  '.cm-lp-codeblock': {
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    fontSize: '0.875em',
+    lineHeight: '1.5',
+    backgroundColor: 'var(--muted)',
+    color: 'var(--foreground)',
+    padding: '0.75em 1em',
+    margin: '0',
+    borderRadius: '0.5em',
+    overflowX: 'auto',
+    whiteSpace: 'pre'
+  },
+  '.cm-lp-codeblock code': {
+    fontFamily: 'inherit',
+    background: 'transparent',
+    padding: '0',
+    fontSize: 'inherit'
+  },
+
+  // Cursor inside: per-line decoration so the raw fences and body share
+  // a continuous code-block look. Padding-only (no margin) — see header
+  // note about CM6 height map.
+  '.cm-lp-code-line': {
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    fontSize: '0.875em',
+    backgroundColor: 'var(--muted)',
+    paddingLeft: '1em',
+    paddingRight: '1em'
+  },
+  '.cm-lp-code-line-first': {
+    paddingTop: '0.5em',
+    borderTopLeftRadius: '0.5em',
+    borderTopRightRadius: '0.5em'
+  },
+  '.cm-lp-code-line-last': {
+    paddingBottom: '0.5em',
+    borderBottomLeftRadius: '0.5em',
+    borderBottomRightRadius: '0.5em'
+  },
+
+  // ─── Syntax highlight tokens (for CodeBlockWidget) ───────────
+  // Stable class names from `@lezer/highlight#classHighlighter`.
+  // Palette is intentionally muted; mirrors @codemirror/language's
+  // defaultHighlightStyle so the rendered widget and the raw
+  // (cursor-inside) view stay visually close.
+  '.cm-lp-codeblock .tok-keyword': { color: '#708' },
+  '.cm-lp-codeblock .tok-controlKeyword': { color: '#708' },
+  '.cm-lp-codeblock .tok-moduleKeyword': { color: '#708' },
+  '.cm-lp-codeblock .tok-operatorKeyword': { color: '#708' },
+  '.cm-lp-codeblock .tok-definitionKeyword': { color: '#708' },
+  '.cm-lp-codeblock .tok-atom': { color: '#219' },
+  '.cm-lp-codeblock .tok-bool': { color: '#219' },
+  '.cm-lp-codeblock .tok-number': { color: '#164' },
+  '.cm-lp-codeblock .tok-string': { color: '#a11' },
+  '.cm-lp-codeblock .tok-special.tok-string': { color: '#e40' },
+  '.cm-lp-codeblock .tok-regexp': { color: '#e40' },
+  '.cm-lp-codeblock .tok-escape': { color: '#e40' },
+  '.cm-lp-codeblock .tok-comment': { color: '#940', fontStyle: 'italic' },
+  '.cm-lp-codeblock .tok-lineComment': { color: '#940', fontStyle: 'italic' },
+  '.cm-lp-codeblock .tok-blockComment': { color: '#940', fontStyle: 'italic' },
+  '.cm-lp-codeblock .tok-meta': { color: '#555' },
+  '.cm-lp-codeblock .tok-name': { color: 'inherit' },
+  '.cm-lp-codeblock .tok-variableName': { color: '#00f' },
+  '.cm-lp-codeblock .tok-typeName': { color: '#085' },
+  '.cm-lp-codeblock .tok-className': { color: '#167' },
+  '.cm-lp-codeblock .tok-propertyName': { color: '#00c' },
+  '.cm-lp-codeblock .tok-attributeName': { color: '#00c' },
+  '.cm-lp-codeblock .tok-tagName': { color: '#170' },
+  '.cm-lp-codeblock .tok-labelName': { color: '#170' },
+  '.cm-lp-codeblock .tok-namespace': { color: '#167' },
+  '.cm-lp-codeblock .tok-macroName': { color: '#085' },
+  '.cm-lp-codeblock .tok-function': { color: 'inherit' },
+  '.cm-lp-codeblock .tok-link': { color: '#219', textDecoration: 'underline' },
+  '.cm-lp-codeblock .tok-heading': { fontWeight: '700' },
+  '.cm-lp-codeblock .tok-emphasis': { fontStyle: 'italic' },
+  '.cm-lp-codeblock .tok-strong': { fontWeight: '700' },
+  '.cm-lp-codeblock .tok-deleted': {
+    color: '#a11',
+    textDecoration: 'line-through'
+  },
+  '.cm-lp-codeblock .tok-inserted': { color: '#164' },
+  '.cm-lp-codeblock .tok-invalid': { color: '#f00' }
+
+  // Dark-mode token overrides live in NoteEditor.svelte's `<style>`
+  // (`:global(.dark .cm-lp-codeblock .tok-*)`). They need a `.dark`
+  // ancestor selector, which CM6 themes can't express — themes scope
+  // every key under the editor root via a generated class.
 });

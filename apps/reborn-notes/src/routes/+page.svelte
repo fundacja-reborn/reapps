@@ -62,6 +62,8 @@
   } from '$lib/utils/folder-helpers';
   import { goto } from '$lib/utils/navigation';
   import { createScrollSync } from '$lib/utils/scroll-sync';
+  import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
+  import type { EditorView } from '@codemirror/view';
 
   type ViewMode = 'edit' | 'split' | 'preview';
 
@@ -649,17 +651,120 @@
     editorRef?.insertNoteLink(noteId, title);
   }
 
-  // ── Scroll sync (split view) ──────────────────────────────────────
+  // ── Scroll sync (line-anchored) ───────────────────────────────────
+  // One mechanism, three jobs:
+  //   • toggle preservation (Edit ↔ Preview ↔ Live) keeps the same source
+  //     line at the top of the viewport across remounts
+  //   • Live ↔ Markdown editor-mode toggle (the editor remounts internally
+  //     via Compartment, so its viewport is preserved by CM6 itself — but
+  //     the anchor is still maintained for the next view-mode toggle)
+  //   • split view continuously syncs editor and preview to each other
+  //
+  // Adapters are line-based (line N at top → line N at top), which is the
+  // only model that survives height asymmetry between the panes (images,
+  // code blocks, headings).
   const scrollSync = createScrollSync();
   let previewScrollEl = $state<HTMLElement | null>(null);
+  let previewContentEl = $state<HTMLElement | null>(null);
+  let editorView = $state<EditorView | null>(null);
   let desktopEditorScrollContainer = $state<HTMLElement | null>(null);
+  let mobileScrollContainer = $state<HTMLElement | null>(null);
 
-  $effect(() => {
-    if (!previewScrollEl) return;
-    scrollSync.previewScrollEl = previewScrollEl;
-    previewScrollEl.addEventListener('scroll', scrollSync.syncPreviewToEditor, { passive: true });
-    return () => previewScrollEl?.removeEventListener('scroll', scrollSync.syncPreviewToEditor);
+  /**
+   * Pick the actual scroll source for the editor pane:
+   *   - split view: each pane owns its scroll, so it's the cm-scroller
+   *   - single-pane parentScroll: the outer flex container scrolls
+   * Reading via $derived so the effect below re-runs when split toggles
+   * or the user rotates between mobile/desktop.
+   */
+  const editorScrollEl = $derived.by<HTMLElement | null>(() => {
+    if (!editorView) return null;
+    if (effectiveViewMode === 'split') return editorView.scrollDOM;
+    return isMobile ? mobileScrollContainer : desktopEditorScrollContainer;
   });
+
+  /**
+   * Same idea for the preview pane. In split view its container scrolls
+   * itself; in single-pane mode the parent does.
+   */
+  const previewSyncScrollEl = $derived.by<HTMLElement | null>(() => {
+    if (!previewContentEl) return null;
+    if (effectiveViewMode === 'split') return previewScrollEl;
+    return isMobile ? mobileScrollContainer : desktopEditorScrollContainer;
+  });
+
+  // Reset both the abstract anchor AND the parent scroll container's
+  // scrollTop whenever we open a different note. NoteEditor/MarkdownPreview
+  // are not remounted on note change (they just receive a new content prop),
+  // so the shared scroll container retains its scrollTop from the previous
+  // note — without this reset, Note B would open at Note A's scroll position.
+  //
+  // The container/view refs are read inside `untrack` so the effect depends
+  // ONLY on `$activeNoteId`. Otherwise toggling Edit ↔ Preview within the
+  // same note (which flips `editorView` / `previewContentEl` references as
+  // panes mount/unmount) would re-fire this effect, calling setAnchor(1)
+  // and zeroing scrollTop — defeating toggle preservation.
+  $effect(() => {
+    void $activeNoteId;
+    untrack(() => {
+      scrollSync.setAnchor(1);
+      if (desktopEditorScrollContainer) desktopEditorScrollContainer.scrollTop = 0;
+      if (mobileScrollContainer) mobileScrollContainer.scrollTop = 0;
+      if (previewScrollEl) previewScrollEl.scrollTop = 0;
+      if (editorView) editorView.scrollDOM.scrollTop = 0;
+    });
+  });
+
+  // Editor adapter lifecycle. Re-runs when `editorView` is (re)created or
+  // when `editorScrollEl` changes (e.g. split ↔ single switches the source).
+  $effect(() => {
+    if (!editorView || !editorScrollEl) {
+      scrollSync.setEditor(null);
+      return;
+    }
+    const view = editorView;
+    const adapter = createEditorAdapter(view, editorScrollEl);
+    scrollSync.setEditor(adapter);
+    // Restore via CM6's measure cycle: `lineBlockAt(...)` reads from
+    // CM6's height cache, which is only populated on the rAF-scheduled
+    // measure pass. A microtask fires *before* that pass, so on first
+    // mount (Preview → Edit toggle) we'd be reading height-oracle
+    // estimates and landing several lines off — the more wrapping or
+    // widgets in the doc, the bigger the drift. `requestMeasure({write})`
+    // runs after the measure cycle so heights are real.
+    view.requestMeasure({
+      read: () => null,
+      write: () => scrollSync.restoreTo('editor')
+    });
+    return () => scrollSync.setEditor(null);
+  });
+
+  // Preview adapter lifecycle.
+  $effect(() => {
+    if (!previewContentEl || !previewSyncScrollEl) {
+      scrollSync.setPreview(null);
+      return;
+    }
+    const adapter = createPreviewAdapter(previewContentEl, previewSyncScrollEl);
+    scrollSync.setPreview(adapter);
+    queueMicrotask(() => scrollSync.restoreTo('preview'));
+    return () => scrollSync.setPreview(null);
+  });
+
+  // After every preview render, refresh anchor cache (positions of each
+  // `data-source-line` marker). `MarkdownPreview` also fires this once
+  // images finish loading, since heights only stabilise post-load.
+  function handlePreviewRender() {
+    scrollSync.refresh();
+  }
+
+  function handleEditorViewInit(view: EditorView) {
+    editorView = view;
+  }
+
+  function handleEditorViewDestroy() {
+    editorView = null;
+  }
 
   // ── Folder breadcrumb navigation ──────────────────────────────────
   function navigateToNoteFolder() {
@@ -1018,9 +1123,12 @@
               {previousVersion}
               bind:editorRef
               bind:previewScrollEl
+              bind:previewContentEl
               {autocompleteNotes}
               oncontentchange={handleContentChange}
-              onscrollerinit={scrollSync.initEditorScroller}
+              onviewinit={handleEditorViewInit}
+              onviewdestroy={handleEditorViewDestroy}
+              onpreviewrender={handlePreviewRender}
               onnotelinkrequest={openNotePicker}
               onnotelink={handleNoteLink}
               {resolveNoteTitle}
@@ -1071,7 +1179,7 @@
             </NoteEditorHeader>
 
             <!-- Scrollable: metadata + content scroll away -->
-            <div class="flex flex-1 flex-col overflow-y-auto">
+            <div bind:this={mobileScrollContainer} class="flex flex-1 flex-col overflow-y-auto">
               <div bind:this={mobileTitleSentinel} class="h-0 w-0 shrink-0"></div>
 
               <NoteMetadataBar
@@ -1095,11 +1203,14 @@
                 {previousVersion}
                 bind:editorRef
                 bind:previewScrollEl
+                bind:previewContentEl
                 {autocompleteNotes}
                 {isMobile}
                 parentScroll={true}
                 oncontentchange={handleContentChange}
-                onscrollerinit={scrollSync.initEditorScroller}
+                onviewinit={handleEditorViewInit}
+                onviewdestroy={handleEditorViewDestroy}
+                onpreviewrender={handlePreviewRender}
                 onnotelinkrequest={openNotePicker}
                 onnotelink={handleNoteLink}
                 {resolveNoteTitle}
@@ -1238,9 +1349,12 @@
             {previousVersion}
             bind:editorRef
             bind:previewScrollEl
+            bind:previewContentEl
             {autocompleteNotes}
             oncontentchange={handleContentChange}
-            onscrollerinit={scrollSync.initEditorScroller}
+            onviewinit={handleEditorViewInit}
+            onviewdestroy={handleEditorViewDestroy}
+            onpreviewrender={handlePreviewRender}
             onnotelinkrequest={openNotePicker}
             onnotelink={handleNoteLink}
             {resolveNoteTitle}
@@ -1312,10 +1426,13 @@
               {previousVersion}
               bind:editorRef
               bind:previewScrollEl
+              bind:previewContentEl
               {autocompleteNotes}
               parentScroll={true}
               oncontentchange={handleContentChange}
-              onscrollerinit={scrollSync.initEditorScroller}
+              onviewinit={handleEditorViewInit}
+              onviewdestroy={handleEditorViewDestroy}
+              onpreviewrender={handlePreviewRender}
               onnotelinkrequest={openNotePicker}
               onnotelink={handleNoteLink}
               {resolveNoteTitle}

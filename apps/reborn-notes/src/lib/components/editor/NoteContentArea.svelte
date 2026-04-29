@@ -19,12 +19,15 @@
     previousVersion,
     editorRef = $bindable(null),
     previewScrollEl = $bindable(null),
+    previewContentEl = $bindable(null),
     autocompleteNotes,
     imageLoadMode = 'ask' as ImageLoadMode,
     parentScroll = false,
     isMobile = false,
     oncontentchange,
-    onscrollerinit,
+    onviewinit,
+    onviewdestroy,
+    onpreviewrender,
     onnotelinkrequest,
     onnotelink,
     resolveNoteTitle
@@ -38,6 +41,7 @@
     previousVersion: import('@reborn/types').NoteHistoryDecrypted | null;
     editorRef: NoteEditor | null;
     previewScrollEl: HTMLElement | null;
+    previewContentEl?: HTMLElement | null;
     autocompleteNotes: { id: string; title: string }[];
     imageLoadMode?: ImageLoadMode;
     /** When true (desktop edit mode), the parent scrolls and editor grows to content.
@@ -47,7 +51,12 @@
     /** When true, the editor renders the mobile toolbar (sticky on top of editor). */
     isMobile?: boolean;
     oncontentchange: (content: string) => void;
-    onscrollerinit: (el: HTMLElement) => void;
+    /** Forwarded from NoteEditor — fires when CM6 EditorView is created. */
+    onviewinit?: (view: import('@codemirror/view').EditorView) => void;
+    /** Forwarded from NoteEditor — fires before the EditorView is destroyed. */
+    onviewdestroy?: () => void;
+    /** Forwarded from MarkdownPreview — fires after each render commit. */
+    onpreviewrender?: () => void;
     onnotelinkrequest: () => void;
     onnotelink: (noteId: string) => void;
     resolveNoteTitle: (noteId: string) => string | undefined;
@@ -87,7 +96,8 @@
           content={noteDetailService.content}
           placeholder={$t('editor.placeholder_markdown')}
           onchange={oncontentchange}
-          {onscrollerinit}
+          {onviewinit}
+          {onviewdestroy}
           {onnotelinkrequest}
           onnotelinkclick={onnotelink}
           availableNotes={autocompleteNotes}
@@ -105,7 +115,8 @@
               content={noteDetailService.content}
               placeholder={$t('editor.placeholder_markdown')}
               onchange={oncontentchange}
-              {onscrollerinit}
+              {onviewinit}
+              {onviewdestroy}
               {onnotelinkrequest}
               availableNotes={autocompleteNotes}
               currentNoteId={noteId}
@@ -122,6 +133,8 @@
               content={noteDetailService.content}
               class="flex-1 overflow-y-auto px-5"
               bind:scrollEl={previewScrollEl}
+              bind:contentEl={previewContentEl}
+              onrender={onpreviewrender}
               onNoteLink={onnotelink}
               {resolveNoteTitle}
               {imageLoadMode}
@@ -134,6 +147,8 @@
           <MarkdownPreview
             content={noteDetailService.content}
             bind:scrollEl={previewScrollEl}
+            bind:contentEl={previewContentEl}
+            onrender={onpreviewrender}
             onNoteLink={onnotelink}
             {resolveNoteTitle}
             {imageLoadMode}

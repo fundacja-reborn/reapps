@@ -2,14 +2,21 @@
   import { onMount, onDestroy } from 'svelte';
   import { EditorView, keymap, placeholder as placeholderExt } from '@codemirror/view';
   import { EditorState, Compartment } from '@codemirror/state';
-  import { markdown } from '@codemirror/lang-markdown';
-  import { Strikethrough as MarkdownStrikethrough } from '@lezer/markdown';
   import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-  import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+  import {
+    syntaxHighlighting,
+    defaultHighlightStyle,
+    ensureSyntaxTree
+  } from '@codemirror/language';
   import { oneDark } from '@codemirror/theme-one-dark';
   import { noteLinkAutocomplete, type NoteLinkItem } from '$lib/editor/note-link-autocomplete';
   import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
-  import { createLivePreviewExtension } from '$lib/editor/live-preview';
+  import {
+    createLivePreviewExtension,
+    getMarkdownExtension,
+    rebuildLivePreview,
+    registerCodeBlockView
+  } from '$lib/editor/live-preview';
   import { editorMode } from '$lib/stores/app-settings.store';
   import { isDataUri } from '$lib/utils/markdown-sanitizer';
   import { toastStore } from '@reborn/ui';
@@ -42,6 +49,8 @@
     splitView = false,
     onchange,
     onscrollerinit,
+    onviewinit,
+    onviewdestroy,
     onnotelinkrequest,
     onnotelinkclick,
     availableNotes = [],
@@ -59,6 +68,13 @@
     onchange?: (content: string) => void;
     /** Called once after CM6 mounts — passes the scrollable .cm-scroller element */
     onscrollerinit?: (el: HTMLElement) => void;
+    /**
+     * Called once after CM6 mounts — passes the EditorView. Used by
+     * scroll-sync to build a line-based adapter; safe to ignore.
+     */
+    onviewinit?: (view: EditorView) => void;
+    /** Called once before the EditorView is destroyed (for adapter cleanup). */
+    onviewdestroy?: () => void;
     /** Called when user requests to insert a note link (toolbar button or Ctrl+Shift+K) */
     onnotelinkrequest?: () => void;
     /** Called when a rendered note-link widget is clicked (Live Preview mode) */
@@ -304,7 +320,7 @@
       doc: content,
       extensions: [
         history(),
-        markdown({ extensions: [MarkdownStrikethrough] }),
+        getMarkdownExtension(),
         syntaxHighlighting(defaultHighlightStyle),
         EditorView.lineWrapping,
         customKeymap,
@@ -367,6 +383,37 @@
     });
 
     view = new EditorView({ state, parent: editorContainer });
+    onviewinit?.(view);
+
+    // Force the markdown parser to fully parse the initial doc before the
+    // view plugin reads `syntaxTree(state)`. Without this, on a freshly-
+    // mounted editor with `editorMode === 'live'` and content that contains
+    // fenced code, the first paint sees a partial tree → no FencedCode
+    // nodes → no widget → user sees raw markdown until the next click. The
+    // 50ms budget is generous; for normal notes the parser finishes in <1ms.
+    ensureSyntaxTree(view.state, view.state.doc.length, 50);
+    view.dispatch({ effects: rebuildLivePreview.of(null) });
+
+    // Larger notes can hit the 50ms budget above with a partial parse tree,
+    // leaving some FencedCode blocks as raw markdown until the next user
+    // transaction. Schedule a follow-up rebuild during idle time with a
+    // generous 500ms parse budget to finish the tree off-thread of paint.
+    const runIdleRebuild = () => {
+      if (!view) return;
+      ensureSyntaxTree(view.state, view.state.doc.length, 500);
+      view.dispatch({ effects: rebuildLivePreview.of(null) });
+    };
+    const hasIdleCallback = typeof requestIdleCallback === 'function';
+    const idleId: number = hasIdleCallback
+      ? requestIdleCallback(runIdleRebuild, { timeout: 1000 })
+      : (setTimeout(runIdleRebuild, 250) as unknown as number);
+
+    // Allow CodeBlockWidget to force a live-preview rebuild after a lazy
+    // language chunk finishes loading (so plaintext placeholder is replaced
+    // by the highlighted version on the next frame).
+    const unregisterCodeBlock = registerCodeBlockView(view, (v) => {
+      v.dispatch({ effects: rebuildLivePreview.of(null) });
+    });
 
     // Expose the CM6 scroller element for parent scroll-sync
     const scroller = editorContainer.querySelector('.cm-scroller') as HTMLElement | null;
@@ -380,7 +427,12 @@
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-    return () => observer.disconnect();
+    return () => {
+      if (hasIdleCallback && typeof cancelIdleCallback === 'function') cancelIdleCallback(idleId);
+      else clearTimeout(idleId);
+      observer.disconnect();
+      unregisterCodeBlock();
+    };
   });
 
   // Sync content prop → editor when changed externally (without triggering onchange)
@@ -427,6 +479,7 @@
   });
 
   onDestroy(() => {
+    onviewdestroy?.();
     view?.destroy();
   });
 </script>
@@ -801,6 +854,48 @@
   /* Light mode */
   :global(.cm-host .cm-editor:not(.cm-dark-theme) .cm-content) {
     caret-color: currentColor;
+  }
+
+  /* Live Preview — code block token colors in dark mode.
+     Light-mode palette ships in editor/live-preview/theme.ts; CM6 themes
+     can't reach .dark on <html>, so dark overrides go here. */
+  :global(.dark .cm-host .cm-lp-codeblock .tok-keyword),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-controlKeyword),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-moduleKeyword),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-operatorKeyword),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-definitionKeyword) {
+    color: #c792ea;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-atom),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-bool),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-number) {
+    color: #f78c6c;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-string),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-special.tok-string),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-regexp),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-escape) {
+    color: #c3e88d;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-comment),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-lineComment),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-blockComment) {
+    color: #7c8a99;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-variableName),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-propertyName),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-attributeName) {
+    color: #82aaff;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-typeName),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-className),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-namespace),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-macroName) {
+    color: #7fdbca;
+  }
+  :global(.dark .cm-host .cm-lp-codeblock .tok-tagName),
+  :global(.dark .cm-host .cm-lp-codeblock .tok-labelName) {
+    color: #f07178;
   }
 
   /* Note link decoration */
