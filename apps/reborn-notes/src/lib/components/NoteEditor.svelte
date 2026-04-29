@@ -427,21 +427,23 @@
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-    // Mobile: when the soft keyboard opens (visualViewport shrinks), pull the
-    // caret into the visible area. The mobile root in +page.svelte is already
-    // sized to vv.height, so the parent scroll container's bounds match the
-    // visible viewport — this dispatch just nudges the scroll so the line under
-    // the caret is comfortably visible above the keyboard. Only fires when the
-    // editor has focus to avoid scrolling unfocused panes (split view RHS, etc.).
+    // When the soft keyboard opens (visualViewport shrinks significantly),
+    // pull the caret into the visible area. Both layouts size their scroll
+    // container to vv.height (mobile root in +page.svelte / SidebarProvider
+    // on desktop), so this dispatch nudges the scroll so the line under the
+    // caret lands comfortably above the keyboard. Threshold of 100px filters
+    // out incidental resizes (browser chrome show/hide, address bar) — only
+    // a soft keyboard moves vv.height by more than that. Only fires when the
+    // editor has focus, so split view's unfocused pane doesn't scroll.
     let prevVvHeight = window.visualViewport?.height ?? 0;
     const handleVvResize = () => {
-      if (!isMobile || !view) return;
+      if (!view) return;
       const vv = window.visualViewport;
       if (!vv) return;
       const next = vv.height;
-      const shrank = next + 1 < prevVvHeight; // tolerate 1px rounding jitter
+      const shrankByKeyboard = prevVvHeight - next > 100;
       prevVvHeight = next;
-      if (!shrank) return;
+      if (!shrankByKeyboard) return;
       if (!view.hasFocus) return;
       view.dispatch({
         effects: EditorView.scrollIntoView(view.state.selection.main.head, { y: 'center' })
