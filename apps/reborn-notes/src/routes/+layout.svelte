@@ -206,22 +206,49 @@
     }
   });
 
-  // iOS Safari safety net: app.css locks <html>/<body> with position:fixed, but
-  // if Safari ever ends up with non-zero scrollTop on the document element
-  // (race during font load, focus before stylesheet apply, …), the app header
-  // would slide off-screen. Reset the document scroll on every window scroll
-  // and visualViewport resize.
+  // iOS Safari safety net + visual-viewport tracker.
+  //
+  // Safety net: app.css locks <html>/<body> with position:fixed, but if Safari
+  // ever ends up with non-zero scrollTop on the document element (race during
+  // font load, focus before stylesheet apply, …), the app header would slide
+  // off-screen. Reset document scroll on every window scroll / vv resize.
+  //
+  // Visual-viewport tracker: when the soft keyboard opens on iOS Safari, the
+  // layout viewport doesn't shrink (100dvh stays full size) and Safari may
+  // "page-shift" the layout viewport upward to keep the focused contenteditable
+  // visible — pushing our sticky header above the visible area. Mirror the
+  // current visualViewport state into CSS vars so the mobile note panel can
+  // size itself to vv.height and counter-translate by vv.offsetTop, keeping
+  // the header anchored to the top of the visible area regardless of caret
+  // position. Used in apps/reborn-notes/src/routes/+page.svelte (mobile root).
   $effect(() => {
     if (!browser) return;
-    const reset = () => {
-      if (document.documentElement.scrollTop !== 0) document.documentElement.scrollTop = 0;
+    const root = document.documentElement;
+    const vv = window.visualViewport;
+
+    const update = () => {
+      if (root.scrollTop !== 0) root.scrollTop = 0;
       if (document.body.scrollTop !== 0) document.body.scrollTop = 0;
+
+      if (!vv) return;
+      // Round to integers — sub-pixel jitter from iOS during scroll causes
+      // useless reflows.
+      const h = Math.round(vv.height);
+      const offsetTop = Math.round(vv.offsetTop);
+      const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      root.style.setProperty('--rn-vv-height', `${h}px`);
+      root.style.setProperty('--rn-vv-offset-top', `${offsetTop}px`);
+      root.style.setProperty('--rn-keyboard-inset', `${inset}px`);
     };
-    window.addEventListener('scroll', reset, { passive: true });
-    window.visualViewport?.addEventListener('resize', reset);
+
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    vv?.addEventListener('resize', update);
+    vv?.addEventListener('scroll', update);
     return () => {
-      window.removeEventListener('scroll', reset);
-      window.visualViewport?.removeEventListener('resize', reset);
+      window.removeEventListener('scroll', update);
+      vv?.removeEventListener('resize', update);
+      vv?.removeEventListener('scroll', update);
     };
   });
 
