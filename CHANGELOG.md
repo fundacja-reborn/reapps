@@ -1,3 +1,14 @@
+## 0.13.0 (2026-04-29)
+
+### 🚀 Features
+
+- **notes:** make Live Preview the default editor mode with first-run intro ([#113](https://github.com/fundacja-reborn/reapps/pull/113))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.12.3 (2026-04-29)
 
 ### 🩹 Fixes
