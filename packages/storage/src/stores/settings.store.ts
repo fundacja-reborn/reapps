@@ -22,6 +22,7 @@ export interface AppSettings {
   sync_interval_minutes: number;
   imageLoadMode: ImageLoadMode;
   editorMode: EditorMode;
+  editorModeIntroSeen: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -97,7 +98,8 @@ export const settingsOperations = {
           auto_sync_enabled: true,
           sync_interval_minutes: 5,
           imageLoadMode: 'ask',
-          editorMode: 'markdown',
+          editorMode: 'live',
+          editorModeIntroSeen: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };

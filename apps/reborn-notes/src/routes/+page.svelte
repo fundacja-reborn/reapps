@@ -49,7 +49,9 @@
   import { foldersStore } from '$lib/stores/folders.store';
   import { tagsStore } from '$lib/stores/tags.store';
   import { getSettings } from '$lib/utils/app-settings';
-  import { imageLoadMode } from '$lib/stores/app-settings.store';
+  import { appSettings, imageLoadMode, editorModeIntroSeen } from '$lib/stores/app-settings.store';
+  import EditorModeIntroDialog from '$lib/components/editor/EditorModeIntroDialog.svelte';
+  import type { EditorMode } from '@reborn/storage';
   import { t } from '$lib/stores/i18n.store';
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import { noteIndex } from '$lib/services/note-index.svelte';
@@ -490,7 +492,14 @@
   });
 
   // ── New note ─────────────────────────────────────────────────────
+  let editorModeIntroOpen = $state(false);
+
   async function handleNewNote() {
+    if (!$editorModeIntroSeen) {
+      editorModeIntroOpen = true;
+      return;
+    }
+
     // Trash/starred/tags filter out a freshly created note (no deletion / star /
     // tag yet), so the user would create a note and see nothing. Switch to "All
     // notes" first and await tick so the section $effect drives the store filter
@@ -507,6 +516,15 @@
     const id = await notesStore.create(`${prefix} ${date}`, '');
     noteDetailService.setNewNote();
     activeNoteId.set(id);
+  }
+
+  async function handleEditorModeIntroClose(chosen: EditorMode | null) {
+    if (chosen) {
+      await appSettings.update('editorMode', chosen);
+    }
+    await appSettings.update('editorModeIntroSeen', true);
+    editorModeIntroOpen = false;
+    await handleNewNote();
   }
 
   // ── Folder management ────────────────────────────────────────────
@@ -1618,4 +1636,9 @@
   confirmText={$t('notes.delete_note')}
   destructive
   onConfirm={confirmDetailDelete}
+/>
+
+<EditorModeIntroDialog
+  bind:open={editorModeIntroOpen}
+  onclose={handleEditorModeIntroClose}
 />

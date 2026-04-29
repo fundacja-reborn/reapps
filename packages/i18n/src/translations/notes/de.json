@@ -447,8 +447,18 @@
     "label": "Editor-Modus",
     "markdown": "Markdown-Quelle",
     "live": "Live-Vorschau",
-    "beta": "Beta",
     "open_menu": "Editor-Modus wählen"
+  },
+  "editor_mode_intro": {
+    "title": "Wie möchtest du deine Notizen bearbeiten?",
+    "description": "Wähle einen Editor-Modus. Du kannst ihn jederzeit ändern.",
+    "option_live_label": "Live-Vorschau",
+    "option_live_description": "Markdown wird beim Tippen formatiert — die Notiz sieht aus wie das fertige Ergebnis. Empfohlen, wenn du Markdown nicht kennst.",
+    "option_markdown_label": "Markdown-Quelle",
+    "option_markdown_description": "Rohe Marker wie ** # [Text](Link) bleiben sichtbar. Für Nutzer, die volle Kontrolle über die Syntax wollen.",
+    "recommended": "Empfohlen",
+    "hint_switch_later": "Du kannst den Modus jederzeit über die ✏️-Schaltfläche in der Notiz-Kopfzeile oder in Einstellungen → Darstellung wechseln.",
+    "continue_button": "Loslegen"
   },
   "save_status": {
     "unsaved": "Nicht gespeicherte Änderungen",
@@ -504,8 +514,7 @@
       "editor_mode_desc": "Wie Markdown beim Bearbeiten einer Notiz angezeigt wird",
       "editor_mode_markdown": "Markdown (gesamte Syntax anzeigen)",
       "editor_mode_live": "Live-Vorschau (Syntax außerhalb des Cursors ausblenden)",
-      "editor_mode_updated": "Bearbeitungsmodus aktualisiert",
-      "editor_mode_live_note": "Beta — funktioniert am besten am Desktop. Tabellen und Codeblöcke bleiben in rohem Markdown."
+      "editor_mode_updated": "Bearbeitungsmodus aktualisiert"
     },
     "security": {
       "title": "Sicherheit",
