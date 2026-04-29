@@ -1,3 +1,15 @@
+## 0.12.0 (2026-04-29)
+
+### 🚀 Features
+
+- **notes:** editable tables in live preview (Obsidian-style) ([#109](https://github.com/fundacja-reborn/reapps/pull/109))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.11.0 (2026-04-29)
 
 ### 🚀 Features
