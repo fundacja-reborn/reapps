@@ -123,15 +123,17 @@ export const POST: RequestHandler = async ({ request, params }) => {
     });
 
     // Prune: keep only the most recent MAX_NOTE_VERSIONS
+    // user_id filter is defense-in-depth — current ownership model guarantees one
+    // user per note, but a future share/transfer feature must not delete other users' versions.
     const allVersions = await prisma.noteVersion.findMany({
-      where: { note_id: params.id },
+      where: { note_id: params.id, user_id: userId },
       orderBy: { created_at: 'desc' },
       select: { id: true }
     });
 
     if (allVersions.length > MAX_NOTE_VERSIONS) {
       const toDelete = allVersions.slice(MAX_NOTE_VERSIONS).map((v) => v.id);
-      await prisma.noteVersion.deleteMany({ where: { id: { in: toDelete } } });
+      await prisma.noteVersion.deleteMany({ where: { id: { in: toDelete }, user_id: userId } });
     }
 
     return json({ success: true });
