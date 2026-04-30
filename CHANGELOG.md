@@ -1,3 +1,14 @@
+## 0.14.0 (2026-04-30)
+
+### 🚀 Features
+
+- **notes:** render inline images in Live Preview with click-to-load ([#114](https://github.com/fundacja-reborn/reapps/pull/114))
+
+### ❤️ Thank You
+
+- Claude Opus 4.6
+- rerefu @rerefu
+
 ## 0.13.0 (2026-04-29)
 
 ### 🚀 Features
