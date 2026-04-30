@@ -133,6 +133,15 @@ export class CodeBlockWidget extends WidgetType {
   }
 
   toDOM(): HTMLElement {
+    // Outer wrapper is the horizontal scroll container.
+    // Without this, the <pre>'s `white-space: pre` propagates a min-content
+    // width up to `.cm-content`, expanding it past the viewport on mobile and
+    // forcing sibling lines (paragraphs, headings) to overflow the screen.
+    // The wrapper's `overflow-x: auto` (set in theme.ts) creates a new BFC
+    // that contains the intrinsic width of the code so only the code scrolls.
+    const wrap = document.createElement('div');
+    wrap.classList.add('cm-lp-codeblock-wrap');
+
     const pre = document.createElement('pre');
     pre.classList.add('cm-lp-codeblock');
 
@@ -151,7 +160,8 @@ export class CodeBlockWidget extends WidgetType {
     }
 
     pre.appendChild(codeEl);
-    return pre;
+    wrap.appendChild(pre);
+    return wrap;
   }
 
   ignoreEvent(): boolean {
