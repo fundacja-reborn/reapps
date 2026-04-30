@@ -135,9 +135,21 @@ export const livePreviewTheme = EditorView.theme({
   },
 
   // ─── Fenced code blocks ──────────────────────────────────────
-  // Cursor outside: replaced with <pre class="cm-lp-codeblock">.
-  // Margin must stay 0 so the block sits flush — same height-map rule
-  // as line decorations.
+  // Cursor outside: replaced with <div class="cm-lp-codeblock-wrap"><pre>.
+  // The wrapper is the horizontal scroll container; its `overflow-x: auto`
+  // creates a new BFC that prevents the <pre>'s `white-space: pre` intrinsic
+  // width from propagating up to `.cm-content` and overflowing the viewport
+  // on mobile (sibling paragraphs/headings would otherwise stretch with it).
+  // Margin must stay 0 — same height-map rule as line decorations.
+  '.cm-lp-codeblock-wrap': {
+    margin: '0',
+    maxWidth: '100%',
+    overflowX: 'auto',
+    borderRadius: '0.5em',
+    // Improves single-finger horizontal swipe on touch devices without
+    // hijacking vertical page scroll.
+    touchAction: 'pan-x pan-y'
+  },
   '.cm-lp-codeblock': {
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     fontSize: '0.875em',
@@ -147,8 +159,13 @@ export const livePreviewTheme = EditorView.theme({
     padding: '0.75em 1em',
     margin: '0',
     borderRadius: '0.5em',
-    overflowX: 'auto',
-    whiteSpace: 'pre'
+    whiteSpace: 'pre',
+    // `width: max-content` lets the <pre> grow to its longest line so the
+    // wrapper's `overflow-x: auto` actually engages. `min-width: 100%` keeps
+    // the muted background filling the wrapper width when code is short.
+    width: 'max-content',
+    minWidth: '100%',
+    boxSizing: 'border-box'
   },
   '.cm-lp-codeblock code': {
     fontFamily: 'inherit',
@@ -227,6 +244,11 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-table-wrap': {
     margin: '0',
     padding: '0.25em 0',
+    // `max-width: 100%` keeps the wrapper inside `.cm-content` on mobile —
+    // without it, a wide table's intrinsic min-content can push `.cm-content`
+    // past the viewport, dragging headings/paragraphs along (same failure
+    // mode as the code-block widget).
+    maxWidth: '100%',
     overflowX: 'auto'
   },
   '.cm-lp-table': {

@@ -881,10 +881,18 @@
   }
 
   :global(.cm-host .cm-content) {
+    width: 100%;
     max-width: 48rem; /* max-w-3xl */
     margin: 0 auto;
     font-size: 1rem; /* 16px — prevents iOS auto-zoom on focus */
     line-height: 1.7;
+    box-sizing: border-box;
+    /* Belt-and-braces: even if some descendant widget tries to push intrinsic
+       min-content (a wide <pre>/<table>), this lets `.cm-content` shrink to
+       its parent rather than overflow the viewport. The widgets themselves
+       carry their own scroll containers (`.cm-lp-codeblock-wrap`,
+       `.cm-lp-table-wrap`). */
+    min-width: 0;
   }
 
   @media (min-width: 768px) {
