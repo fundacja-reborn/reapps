@@ -256,6 +256,61 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-table th:focus, .cm-lp-table td:focus': {
     boxShadow: 'inset 0 0 0 2px var(--ring, var(--primary))',
     backgroundColor: 'color-mix(in srgb, var(--primary) 8%, transparent)'
+  },
+
+  // ─── Inline images & placeholders ─────────────────────────────
+  // Image widgets are emitted as inline replacements (no `block: true`),
+  // so they live inside `.cm-line` flow. Margin must stay 0 — same height-map
+  // rule as line/block decorations. Visual parity with `.image-placeholder`
+  // in MarkdownPreview.svelte is intentional, but the layout adapts to the
+  // inline context (inline-flex instead of block + text-align).
+  '.cm-lp-img': {
+    maxWidth: '100%',
+    height: 'auto',
+    borderRadius: '0.375em',
+    verticalAlign: 'middle'
+  },
+  '.cm-lp-img-placeholder': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5em',
+    padding: '0.4em 0.75em',
+    margin: '0',
+    border: '2px dashed var(--border)',
+    borderRadius: '0.5em',
+    background: 'var(--muted)',
+    fontSize: '0.875rem',
+    maxWidth: '100%',
+    verticalAlign: 'middle'
+  },
+  '.cm-lp-img-placeholder--blocked': {
+    borderColor: 'var(--destructive)',
+    background: 'color-mix(in srgb, var(--destructive) 8%, var(--muted))'
+  },
+  '.cm-lp-img-placeholder-icon': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    flex: '0 0 auto',
+    color: 'var(--muted-foreground)'
+  },
+  '.cm-lp-img-placeholder-url': {
+    color: 'var(--muted-foreground)',
+    wordBreak: 'break-all',
+    flex: '1 1 auto',
+    minWidth: '0'
+  },
+  '.cm-lp-img-placeholder-load': {
+    padding: '0.25em 0.75em',
+    borderRadius: '0.375em',
+    background: 'var(--primary)',
+    color: 'var(--primary-foreground)',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '0.8125rem',
+    flex: '0 0 auto'
+  },
+  '.cm-lp-img-placeholder-load:hover': {
+    opacity: '0.9'
   }
 
   // Dark-mode token overrides live in NoteEditor.svelte's `<style>`

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { marked, type Tokens } from 'marked';
+  import { Marked, type Tokens, type RendererObject } from 'marked';
   import DOMPurify from 'dompurify';
 
   import { t } from '$lib/stores/i18n.store';
@@ -29,7 +29,10 @@
   });
 
   function sanitize(html: string): string {
-    return DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, ALLOWED_URI_REGEXP: ALLOWED_URI });
+    return DOMPurify.sanitize(html, {
+      USE_PROFILES: { html: true, svg: true },
+      ALLOWED_URI_REGEXP: ALLOWED_URI
+    });
   }
 
   let {
@@ -85,8 +88,29 @@
     };
   });
 
-  // Configure marked renderer
-  const renderer = new marked.Renderer();
+  // Per-instance marked: avoids the global `marked.use` singleton being
+  // stomped when multiple MarkdownPreview components are mounted (e.g. mobile
+  // + desktop layouts, or version-history previews).
+  const md = new Marked({ gfm: true, breaks: true });
+  const renderer: RendererObject = {};
+
+  // "Pinned" snapshot of the prop, synced at the start of every $derived html
+  // recomputation. The renderer.image closure reads this regular variable
+  // instead of `imageLoadMode` directly because:
+  //   1. Reading a Svelte 5 prop at script init (outside any reactive scope)
+  //      captures only the *initial* value, not the reactive binding —
+  //      svelte-check explicitly warns about this. The renderer is set up at
+  //      script init, so a direct closure over `imageLoadMode` would freeze
+  //      to 'ask' forever (the bug fixed in this commit).
+  //   2. `marked.parser()` calls renderer.image from a third-party call stack
+  //      with no reactive context; there's nothing for Svelte to attach the
+  //      read to even if it happened lazily.
+  // Initial value is a literal placeholder; the real value is assigned inside
+  // the `$derived html` block before each parse.
+  let imageModeSnapshot: ImageLoadMode = 'ask';
+
+  const IMAGE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
+  const BLOCKED_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
 
   renderer.image = ({ href, title, text }: Tokens.Image) => {
     const isDataUri = href.startsWith('data:');
@@ -96,19 +120,18 @@
 
     if (isDataUri) {
       return `<div class="image-placeholder image-placeholder--blocked">
-      <div class="image-placeholder-icon">⚠️</div>
+      <div class="image-placeholder-icon">${BLOCKED_ICON_SVG}</div>
       <div class="image-placeholder-url">${$t('editor.image_base64_blocked')}</div>
     </div>`;
     }
 
-    // External URL — behavior depends on imageLoadMode
-    if (imageLoadMode === 'always') {
+    if (imageModeSnapshot === 'always') {
       return `<img src="${escapedHref}" alt="${escapedAlt}" title="${escapedTitle}" loading="lazy" />`;
     }
 
-    const showLoadBtn = imageLoadMode === 'ask';
+    const showLoadBtn = imageModeSnapshot === 'ask';
     return `<div class="image-placeholder" data-src="${escapedHref}" data-alt="${escapedAlt}" data-title="${escapedTitle}">
-      <div class="image-placeholder-icon">🖼️</div>
+      <div class="image-placeholder-icon">${IMAGE_ICON_SVG}</div>
       <div class="image-placeholder-url">${escapedHref}</div>
       ${showLoadBtn ? `<button class="image-placeholder-load" type="button">${$t('editor.image_load')}</button>` : ''}
     </div>`;
@@ -131,24 +154,33 @@
     return highlightCodeToHtml(text, info);
   };
 
-  marked.use({ renderer, gfm: true, breaks: true });
+  md.use({ renderer });
 
   // Tokens of the latest render — kept so we can stamp `data-source-line`
   // on the matching DOM children after `{@html}` commits the new HTML.
   let lastTokens: import('marked').Token[] = [];
 
   const html = $derived.by(() => {
-    // Reactive dep: re-run when a fenced-code language chunk has loaded so
-    // we can replace the plaintext fallback with highlighted spans.
+    // Reactive deps:
+    //  - `langLoadTick` re-runs the derivation when a fenced-code language
+    //    chunk has loaded so plaintext fallbacks get replaced with
+    //    highlighted spans.
+    //  - `imageLoadMode` is read explicitly via assignment. The assignment
+    //    can't be DCE'd (it has a side effect), guaranteeing the prop is
+    //    tracked as a dep even if the compiler ever optimises plain reads.
+    //    The snapshot is consumed by `renderer.image` via the regular
+    //    variable `imageModeSnapshot`, sidestepping any uncertainty about
+    //    whether Svelte tracks reads inside a closure invoked from marked.
     void langLoadTick;
+    imageModeSnapshot = imageLoadMode;
     if (!content) {
       lastTokens = [];
       return '';
     }
-    const tokens = marked.lexer(content);
+    const tokens = md.lexer(content);
     annotateTopLevelLines(tokens);
     lastTokens = tokens;
-    const raw = sanitize(marked.parser(tokens) as string);
+    const raw = sanitize(md.parser(tokens) as string);
     if (!resolveNoteTitle) return raw;
     return raw.replace(
       /<a ([^>]*?)href="note:([0-9a-f-]{36})"([^>]*?)>([^<]*)<\/a>/gi,
@@ -546,15 +578,22 @@
     accent-color: var(--primary);
   }
 
-  /* ── Image placeholders ───────────────────────────────────── */
+  /* ── Image placeholders ─────────────────────────────────────
+     Inline-flex layout shared with Live Preview (theme.ts) for visual
+     parity. URL wraps on long paths so the user can audit the full
+     destination before deciding to load. */
   .preview :global(.image-placeholder) {
-    margin: 1em 0;
-    padding: 1em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.4em 0.75em;
+    margin: 0.25em 0;
     border: 2px dashed var(--border);
     border-radius: 0.5em;
     background: var(--muted);
-    text-align: center;
     font-size: 0.875rem;
+    max-width: 100%;
+    vertical-align: middle;
   }
 
   .preview :global(.image-placeholder--blocked) {
@@ -563,27 +602,29 @@
   }
 
   .preview :global(.image-placeholder-icon) {
-    font-size: 2rem;
-    margin-bottom: 0.5em;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    color: var(--muted-foreground);
   }
 
   .preview :global(.image-placeholder-url) {
     color: var(--muted-foreground);
     word-break: break-all;
-    margin-bottom: 0.75em;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .preview :global(.image-placeholder-load) {
-    padding: 0.4em 1em;
+    padding: 0.25em 0.75em;
     border-radius: 0.375em;
     background: var(--primary);
     color: var(--primary-foreground);
     border: none;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   .preview :global(.image-placeholder-load:hover) {

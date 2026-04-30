@@ -18,6 +18,7 @@
     registerCodeBlockView
   } from '$lib/editor/live-preview';
   import { editorMode } from '$lib/stores/app-settings.store';
+  import type { ImageLoadMode } from '@reborn/storage';
   import { isDataUri } from '$lib/utils/markdown-sanitizer';
   import { toastStore } from '@reborn/ui';
   import {
@@ -54,7 +55,8 @@
     onnotelinkrequest,
     onnotelinkclick,
     availableNotes = [],
-    currentNoteId = null
+    currentNoteId = null,
+    imageLoadMode = 'ask' as ImageLoadMode
   }: {
     content?: string;
     placeholder?: string;
@@ -83,6 +85,8 @@
     availableNotes?: NoteLinkItem[];
     /** Current note id (excluded from autocomplete suggestions) */
     currentNoteId?: string | null;
+    /** User preference for external image loading — drives `ImageWidget` rendering. */
+    imageLoadMode?: ImageLoadMode;
   } = $props();
 
   let editorRootEl: HTMLDivElement;
@@ -96,6 +100,25 @@
 
   function isDark(): boolean {
     return document.documentElement.classList.contains('dark');
+  }
+
+  /**
+   * Builds the Live Preview options bag from an explicit mode argument + i18n.
+   *
+   * Mode is passed in (rather than read from the closure) so the `$effect`
+   * below can read `imageLoadMode` directly into a `const` — that read is the
+   * reactive dep, and an explicit assignment can't be silently DCE'd. The
+   * helper itself stays a plain function; calling it from inside or outside
+   * a reactive context is equally safe.
+   */
+  function livePreviewOptions(mode: ImageLoadMode) {
+    return {
+      imageLoadMode: mode,
+      imageLabels: {
+        load: $t('editor.image_load'),
+        base64Blocked: $t('editor.image_base64_blocked')
+      }
+    };
   }
 
   // ── Formatting helpers ──────────────────────────────────────────
@@ -328,7 +351,11 @@
         readonlyCompartment.of(EditorState.readOnly.of(readonly)),
         placeholderExt(placeholder),
         autocompleteCompartment.of(noteLinkAutocomplete(() => availableNotes, currentNoteId)),
-        livePreviewCompartment.of($editorMode === 'live' && !splitView ? createLivePreviewExtension() : []),
+        livePreviewCompartment.of(
+          $editorMode === 'live' && !splitView
+            ? createLivePreviewExtension(livePreviewOptions(imageLoadMode))
+            : []
+        ),
         noteLinkDecoration,
         EditorView.domEventHandlers({
           click(e) {
@@ -490,15 +517,21 @@
     });
   });
 
-  // Sync editor mode (markdown ↔ live preview).
-  // In split view the right pane already renders the rendered preview,
-  // so the editor pane always shows raw Markdown regardless of editorMode.
+  // Sync editor mode (markdown ↔ live preview) AND image-loading preference.
+  // Both `$editorMode` and `imageLoadMode` are read into local consts before
+  // the dispatch — explicit reads with side-effecting bindings can't be
+  // optimised out, guaranteeing Svelte tracks them as deps. Toggling either
+  // setting reconfigures the compartment and `ImageWidget` re-renders
+  // without a remount. In split view the right pane already renders the
+  // preview, so the editor pane always shows raw Markdown regardless of
+  // editorMode.
   $effect(() => {
     const mode = $editorMode;
+    const currentImageMode = imageLoadMode;
     const live = mode === 'live' && !splitView;
     view?.dispatch({
       effects: livePreviewCompartment.reconfigure(
-        live ? createLivePreviewExtension() : []
+        live ? createLivePreviewExtension(livePreviewOptions(currentImageMode)) : []
       )
     });
   });
