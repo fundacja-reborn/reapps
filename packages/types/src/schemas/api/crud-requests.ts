@@ -125,12 +125,6 @@ export const UpdateTagRequestSchema = z.object({
   color_encrypted: z.string().max(MAX_ENCRYPTED_TAG_COLOR_BYTES).optional().nullable()
 });
 
-// ─── reborn-notes: Note Tags ─────────────────────────────────────────
-
-export const SetNoteTagsRequestSchema = z.object({
-  tag_ids: z.array(z.string().uuid())
-});
-
 // ─── Inferred types ──────────────────────────────────────────────────
 
 export type CreateTaskRequest = z.infer<typeof CreateTaskRequestSchema>;
@@ -146,4 +140,3 @@ export type CreateFolderRequest = z.infer<typeof CreateFolderRequestSchema>;
 export type UpdateFolderRequest = z.infer<typeof UpdateFolderRequestSchema>;
 export type CreateTagRequest = z.infer<typeof CreateTagRequestSchema>;
 export type UpdateTagRequest = z.infer<typeof UpdateTagRequestSchema>;
-export type SetNoteTagsRequest = z.infer<typeof SetNoteTagsRequestSchema>;

@@ -6,6 +6,8 @@ import { prisma } from '@reborn/database';
 
 const logger = createLogger('SessionPatchCurrent');
 
+const MAX_DEVICE_INFO_ENCRYPTED_BYTES = 512;
+
 /**
  * PATCH /api/auth/sessions/current
  * Update the current session's device_info_encrypted field.
@@ -26,6 +28,9 @@ export const PATCH: RequestHandler = async ({ request, cookies }) => {
 		const deviceInfoEncrypted = body?.device_info_encrypted;
 		if (!deviceInfoEncrypted || typeof deviceInfoEncrypted !== 'string') {
 			return json({ success: false, error: 'Missing device_info_encrypted' }, { status: 400 });
+		}
+		if (deviceInfoEncrypted.length > MAX_DEVICE_INFO_ENCRYPTED_BYTES) {
+			return json({ success: false, error: 'device_info_encrypted too large' }, { status: 400 });
 		}
 
 		// Verify session belongs to user and is active
