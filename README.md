@@ -250,3 +250,5 @@ Reborn Apps is built by a non-profit foundation — no investors, no ads, no tra
 ---
 
 Built with privacy in mind by [Reborn Foundation](https://reborn.org.pl) (Poland).
+
+Follow us on the Fediverse: <a rel="me" href="https://mastodon.social/@reapps_eu">@reapps_eu@mastodon.social</a>
