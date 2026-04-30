@@ -1,3 +1,14 @@
+## 0.14.2 (2026-04-30)
+
+### 🩹 Fixes
+
+- **notes:** prevent wide code blocks/tables from stretching live preview on mobile ([#117](https://github.com/fundacja-reborn/reapps/pull/117))
+
+### ❤️ Thank You
+
+- Claude Sonnet 4.5
+- rerefu @rerefu
+
 ## 0.14.1 (2026-04-30)
 
 ### 🩹 Fixes
