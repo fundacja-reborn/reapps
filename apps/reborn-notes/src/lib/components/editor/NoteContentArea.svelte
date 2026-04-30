@@ -104,6 +104,7 @@
           currentNoteId={noteId}
           parentScroll={parentScroll}
           {isMobile}
+          {imageLoadMode}
         />
       {:else if effectiveViewMode === 'split'}
         <!-- Split: each pane owns its scroll; sync handled by scroll-sync.ts.
@@ -123,6 +124,7 @@
               parentScroll={false}
               splitView
               {isMobile}
+              {imageLoadMode}
             />
           </div>
           <div class="flex min-w-0 flex-1 flex-col overflow-hidden">

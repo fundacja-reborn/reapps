@@ -1389,6 +1389,7 @@
             onnotelinkrequest={openNotePicker}
             onnotelink={handleNoteLink}
             {resolveNoteTitle}
+            imageLoadMode={$imageLoadMode}
           />
         {:else}
           <NoteEditorHeader
@@ -1467,6 +1468,7 @@
               onnotelinkrequest={openNotePicker}
               onnotelink={handleNoteLink}
               {resolveNoteTitle}
+              imageLoadMode={$imageLoadMode}
             />
           </div>
         {/if}

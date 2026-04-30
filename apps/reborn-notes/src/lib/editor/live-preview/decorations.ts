@@ -13,9 +13,26 @@ import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
 import { type EditorState, type Range, RangeSetBuilder, StateEffect, StateField } from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 import type { Text } from '@codemirror/state';
+import type { ImageLoadMode } from '@reborn/storage';
 import { CodeBlockWidget, LinkWidget } from './widgets';
+import { ImageWidget, type ImageWidgetLabels, getLoadedImages } from './image-widget';
 import { TableWidget } from './table-widget';
 import { parseTable } from './table-parse';
+
+/**
+ * Options threaded into `buildDecorations` from `createLivePreviewExtension`.
+ * Currently only carries image-related preferences; structured as an object
+ * so future runtime-configurable knobs can join without churning the API.
+ */
+export interface BuildDecorationsOptions {
+  imageLoadMode: ImageLoadMode;
+  imageLabels: ImageWidgetLabels;
+}
+
+const DEFAULT_OPTIONS: BuildDecorationsOptions = {
+  imageLoadMode: 'ask',
+  imageLabels: { load: 'Load image', base64Blocked: 'Embedded images are not supported' }
+};
 
 /**
  * Effect that forces `livePreviewField` to re-run `buildDecorations` outside
@@ -125,10 +142,63 @@ function extractLinkParts(node: SyntaxNode, doc: Text): { text: string; url: str
   return { text, url };
 }
 
-export function buildDecorations(state: EditorState): DecorationSet {
+/**
+ * Pulls alt text + URL + optional title out of a Lezer `Image` node.
+ *
+ * Image layout from `@lezer/markdown`:
+ *   Image
+ *     ImageMark "!"
+ *     LinkMark  "["
+ *     (alt text inline content)
+ *     LinkMark  "]"
+ *     LinkMark  "("
+ *     URL
+ *     [LinkTitle]   ← optional, e.g. `"hover title"`
+ *     LinkMark  ")"
+ *
+ * Returns null for malformed nodes (parser still emits Image even if the
+ * source is incomplete during typing).
+ */
+function extractImageParts(
+  node: SyntaxNode,
+  doc: Text
+): { alt: string; url: string; title: string } | null {
+  let openBracket = -1;
+  let closeBracket = -1;
+  let url: string | null = null;
+  let title = '';
+  let child = node.firstChild;
+  while (child) {
+    const n = child.type.name;
+    if (n === 'LinkMark') {
+      // Image's opening LinkMark is "![" (two chars), not just "[" — match
+      // by suffix so we tolerate that without a separate ImageMark child.
+      const ch = doc.sliceString(child.from, child.to);
+      if (ch.endsWith('[') && openBracket === -1) openBracket = child.to;
+      else if (ch === ']' && closeBracket === -1) closeBracket = child.from;
+    } else if (n === 'URL') {
+      url = doc.sliceString(child.from, child.to);
+    } else if (n === 'LinkTitle') {
+      // Includes surrounding quotes — strip them to match the Markdown semantics.
+      const raw = doc.sliceString(child.from, child.to);
+      title = raw.replace(/^["'(]/, '').replace(/["')]$/, '');
+    }
+    child = child.nextSibling;
+  }
+  if (openBracket === -1 || closeBracket === -1 || closeBracket < openBracket) return null;
+  if (url === null) return null;
+  const alt = doc.sliceString(openBracket, closeBracket);
+  return { alt, url, title };
+}
+
+export function buildDecorations(
+  state: EditorState,
+  options: BuildDecorationsOptions = DEFAULT_OPTIONS
+): DecorationSet {
   const ranges: Range<Decoration>[] = [];
   const tree = syntaxTree(state);
   const doc = state.doc;
+  const loaded = getLoadedImages(state);
 
   tree.iterate({
     enter(nodeRef) {
@@ -257,6 +327,42 @@ export function buildDecorations(state: EditorState): DecorationSet {
         return false;
       }
 
+      // ─── Inline images ![alt](url) ───────────────────────────────
+      // Cursor outside the image range → render via ImageWidget.
+      // Cursor inside → fall through (no widget), CM6 shows raw markdown
+      // so the user can edit `![alt](url)` in place — same Live Preview
+      // pattern as links/headings.
+      //
+      // Images nested inside links (`[![alt](img)](url)`) keep raw markdown
+      // either way: emitting both a Link widget AND an Image widget would
+      // collide, and the nested case is rare enough that "edit as raw" is
+      // the simplest correct behaviour.
+      if (name === 'Image') {
+        const parent = nodeRef.node.parent;
+        if (parent && parent.type.name === 'Link') {
+          return false;
+        }
+        if (!isAnySelectionInRange(state, from, to)) {
+          const parts = extractImageParts(nodeRef.node, doc);
+          if (parts) {
+            const effectiveMode = loaded.has(parts.url) ? 'always' : options.imageLoadMode;
+            ranges.push(
+              Decoration.replace({
+                widget: new ImageWidget(
+                  parts.url,
+                  parts.alt,
+                  parts.title,
+                  effectiveMode,
+                  options.imageLabels
+                )
+              }).range(from, to)
+            );
+            return false;
+          }
+        }
+        return false;
+      }
+
       // ─── Links [text](url) ───────────────────────────────────────
       if (name === 'Link') {
         if (!isAnySelectionInRange(state, from, to)) {
@@ -314,29 +420,47 @@ export function buildDecorations(state: EditorState): DecorationSet {
 }
 
 /**
- * State field owning the live-preview decoration set. Must be a `StateField`
- * (not a `ViewPlugin`) because the FencedCode widget uses
- * `Decoration.replace({ block: true })` and CM6 requires block decorations
- * to come from a state-derived source — they affect the height map.
+ * Factory for the StateField owning the live-preview decoration set.
+ *
+ * A field-per-extension lets us close over per-instance options
+ * (`imageLoadMode`, i18n labels) without smuggling them through CM6
+ * facets. `createLivePreviewExtension` calls this once and the
+ * `Compartment` in NoteEditor reconfigures the whole extension whenever
+ * the options change, replacing the field as a side effect.
+ *
+ * Must be a `StateField` (not a `ViewPlugin`) because the FencedCode and
+ * Image widgets use `Decoration.replace({ block: true })` (or are emitted
+ * alongside block-replace ranges) and CM6 requires block decorations to
+ * come from a state-derived source — they affect the height map.
  *
  * Rebuild on `tr.docChanged`, `tr.selection`, or a `rebuildLivePreview` effect.
  * Tree-progress detection lives in a sibling `updateListener`
  * (`livePreviewSyncListener`) which dispatches the effect when the parser
  * finishes a step between transactions.
  */
-export const livePreviewField = StateField.define<DecorationSet>({
-  create(state) {
-    return buildDecorations(state);
-  },
-  update(value, tr) {
-    const forced = tr.effects.some((e) => e.is(rebuildLivePreview));
-    if (tr.docChanged || tr.selection || forced) {
-      return buildDecorations(tr.state);
-    }
-    return value;
-  },
-  provide: (f) => EditorView.decorations.from(f)
-});
+export function createLivePreviewField(
+  options: BuildDecorationsOptions = DEFAULT_OPTIONS
+): StateField<DecorationSet> {
+  return StateField.define<DecorationSet>({
+    create(state) {
+      return buildDecorations(state, options);
+    },
+    update(value, tr) {
+      const forced = tr.effects.some((e) => e.is(rebuildLivePreview));
+      if (tr.docChanged || tr.selection || forced) {
+        return buildDecorations(tr.state, options);
+      }
+      return value;
+    },
+    provide: (f) => EditorView.decorations.from(f)
+  });
+}
+
+/**
+ * Default field with sensible fallback options. Kept for tests and any
+ * legacy callers that don't need per-instance configuration.
+ */
+export const livePreviewField = createLivePreviewField();
 
 /**
  * Detects incremental parser progress between transactions and dispatches

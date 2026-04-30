@@ -5,6 +5,7 @@ import { Strikethrough, Table } from '@lezer/markdown';
 import type { DecorationSet } from '@codemirror/view';
 import { buildDecorations, isAnySelectionInRange } from './decorations';
 import { TableWidget } from './table-widget';
+import { ImageWidget } from './image-widget';
 
 interface DecoSpec {
   class?: string;
@@ -397,5 +398,107 @@ describe('buildDecorations — tables', () => {
     expect(
       ranges.filter((r) => r.hasWidget && r.spec.widget instanceof TableWidget)
     ).toHaveLength(0);
+  });
+});
+
+describe('buildDecorations — inline images', () => {
+  const LABELS = { load: 'Load image', base64Blocked: 'Embedded images blocked' };
+  const OPTS_ASK = { imageLoadMode: 'ask' as const, imageLabels: LABELS };
+  const OPTS_ALWAYS = { imageLoadMode: 'always' as const, imageLabels: LABELS };
+  const OPTS_NEVER = { imageLoadMode: 'never' as const, imageLabels: LABELS };
+
+  it('replaces an image with an ImageWidget when cursor is outside', () => {
+    const doc = 'before ![alt](https://example.com/img.png) after';
+    const cursor = doc.indexOf('after');
+    const state = makeState(doc, cursor);
+    const ranges = asRanges(buildDecorations(state, OPTS_ASK));
+
+    const widgets = ranges.filter(
+      (r) => r.hasWidget && r.spec.widget instanceof ImageWidget
+    );
+    expect(widgets).toHaveLength(1);
+    const widget = widgets[0].spec.widget as ImageWidget;
+    expect(widget.href).toBe('https://example.com/img.png');
+    expect(widget.alt).toBe('alt');
+    expect(widget.title).toBe('');
+    expect(widget.loadMode).toBe('ask');
+  });
+
+  it('keeps raw markdown (no widget) when cursor is inside the image range', () => {
+    const doc = 'before ![alt](https://example.com/img.png) after';
+    const cursor = doc.indexOf('alt');
+    const state = makeState(doc, cursor);
+    const ranges = asRanges(buildDecorations(state, OPTS_ASK));
+    expect(
+      ranges.filter((r) => r.hasWidget && r.spec.widget instanceof ImageWidget)
+    ).toHaveLength(0);
+  });
+
+  it('threads imageLoadMode through to the widget', () => {
+    const doc = '![a](https://example.com/x.png)\n\nbody';
+    const cursor = doc.length - 1;
+    const state = makeState(doc, cursor);
+
+    for (const [opts, expected] of [
+      [OPTS_ALWAYS, 'always'],
+      [OPTS_NEVER, 'never'],
+      [OPTS_ASK, 'ask']
+    ] as const) {
+      const ranges = asRanges(buildDecorations(state, opts));
+      const widget = ranges.find(
+        (r) => r.hasWidget && r.spec.widget instanceof ImageWidget
+      )?.spec.widget as ImageWidget | undefined;
+      expect(widget?.loadMode).toBe(expected);
+    }
+  });
+
+  it('extracts the optional title from `![alt](url "title")`', () => {
+    const doc = '![a](https://example.com/x.png "hover text")\n\nbody';
+    const cursor = doc.length - 1;
+    const state = makeState(doc, cursor);
+    const ranges = asRanges(buildDecorations(state, OPTS_ASK));
+    const widget = ranges.find(
+      (r) => r.hasWidget && r.spec.widget instanceof ImageWidget
+    )?.spec.widget as ImageWidget | undefined;
+    expect(widget?.title).toBe('hover text');
+  });
+
+  it('passes through data: URIs (widget itself decides how to render)', () => {
+    // The widget renders a blocked-warning placeholder for data: URIs, but
+    // buildDecorations must still emit a widget so the raw markdown stays
+    // hidden (consistent with all other image branches).
+    const doc = '![a](data:image/png;base64,abc)\n\nbody';
+    const cursor = doc.length - 1;
+    const state = makeState(doc, cursor);
+    const ranges = asRanges(buildDecorations(state, OPTS_ASK));
+    const widget = ranges.find(
+      (r) => r.hasWidget && r.spec.widget instanceof ImageWidget
+    )?.spec.widget as ImageWidget | undefined;
+    expect(widget?.href).toBe('data:image/png;base64,abc');
+  });
+
+  it('falls back to raw markdown when the image is nested inside a link', () => {
+    // `[![alt](img)](url)` — Lezer parses this as Link > Image. We don't
+    // want overlapping LinkWidget + ImageWidget on the same range, so the
+    // image case bails out and the link widget takes over.
+    const doc = '[![alt](https://example.com/x.png)](https://example.com/page)\n\nbody';
+    const cursor = doc.length - 1;
+    const state = makeState(doc, cursor);
+    const ranges = asRanges(buildDecorations(state, OPTS_ASK));
+    expect(
+      ranges.filter((r) => r.hasWidget && r.spec.widget instanceof ImageWidget)
+    ).toHaveLength(0);
+  });
+
+  it('uses fallback options when none are provided', () => {
+    // Backwards-compat path: callers (tests, future call sites) that don't
+    // pass options still get a working ImageWidget with sensible defaults.
+    const doc = '![a](https://example.com/x.png)\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+    const widget = ranges.find(
+      (r) => r.hasWidget && r.spec.widget instanceof ImageWidget
+    )?.spec.widget as ImageWidget | undefined;
+    expect(widget?.loadMode).toBe('ask');
   });
 });
