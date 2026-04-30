@@ -116,7 +116,9 @@
     </div>
 
     <p class="text-xs text-muted-foreground">
-      {$t('editor_mode_intro.hint_switch_later')}
+      {$t('editor_mode_intro.hint_switch_before_icon')}
+      <PencilLine class="inline-block h-3.5 w-3.5 align-text-bottom" />
+      {$t('editor_mode_intro.hint_switch_after_icon')}
     </p>
 
     <DialogFooter>

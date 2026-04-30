@@ -457,7 +457,8 @@
     "option_markdown_label": "Source Markdown",
     "option_markdown_description": "Les marqueurs bruts comme ** # [texte](lien) restent visibles. Pour les utilisateurs qui préfèrent un contrôle total sur la syntaxe.",
     "recommended": "Recommandé",
-    "hint_switch_later": "Vous pouvez changer de mode à tout moment via le bouton ✏️ dans l'en-tête de la note ou dans Paramètres → Apparence.",
+    "hint_switch_before_icon": "Vous pouvez changer de mode à tout moment via le bouton",
+    "hint_switch_after_icon": "dans l'en-tête de la note ou dans Paramètres → Apparence.",
     "continue_button": "Commencer"
   },
   "save_status": {
@@ -682,6 +683,7 @@
       "back_to_login": "Retour à la connexion"
     },
     "register": {
+      "title": "Créez votre compte re/notes",
       "subtitle": "Créez votre compte pour commencer",
       "already_have_account": "Vous avez déjà un compte ?",
       "sign_in": "Se connecter",

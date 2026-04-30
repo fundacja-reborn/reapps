@@ -457,7 +457,8 @@
     "option_markdown_label": "Markdown-Quelle",
     "option_markdown_description": "Rohe Marker wie ** # [Text](Link) bleiben sichtbar. Für Nutzer, die volle Kontrolle über die Syntax wollen.",
     "recommended": "Empfohlen",
-    "hint_switch_later": "Du kannst den Modus jederzeit über die ✏️-Schaltfläche in der Notiz-Kopfzeile oder in Einstellungen → Darstellung wechseln.",
+    "hint_switch_before_icon": "Du kannst den Modus jederzeit über die",
+    "hint_switch_after_icon": "Schaltfläche in der Notiz-Kopfzeile oder in Einstellungen → Darstellung wechseln.",
     "continue_button": "Loslegen"
   },
   "save_status": {
@@ -682,6 +683,7 @@
       "back_to_login": "Zurück zur Anmeldung"
     },
     "register": {
+      "title": "Erstellen Sie Ihr re/notes-Konto",
       "subtitle": "Erstellen Sie Ihr Konto, um loszulegen",
       "already_have_account": "Haben Sie bereits ein Konto?",
       "sign_in": "Anmelden",

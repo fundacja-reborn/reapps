@@ -457,7 +457,8 @@
     "option_markdown_label": "Markdown (źródło)",
     "option_markdown_description": "Surowe znaczniki ** # [tekst](link) pozostają widoczne. Dla osób, które wolą pełną kontrolę nad składnią.",
     "recommended": "Polecane",
-    "hint_switch_later": "Tryb przełączysz w każdej chwili przyciskiem ✏️ w nagłówku notatki lub w Ustawieniach → Wygląd.",
+    "hint_switch_before_icon": "Tryb przełączysz w każdej chwili przyciskiem",
+    "hint_switch_after_icon": "w nagłówku notatki lub w Ustawieniach → Wygląd.",
     "continue_button": "Zaczynaj"
   },
   "save_status": {
@@ -682,6 +683,7 @@
       "back_to_login": "Powrót do logowania"
     },
     "register": {
+      "title": "Utwórz konto re/notes",
       "subtitle": "Utwórz konto, aby rozpocząć",
       "already_have_account": "Masz już konto?",
       "sign_in": "Zaloguj się",
