@@ -1,3 +1,14 @@
+## 0.14.1 (2026-04-30)
+
+### 🩹 Fixes
+
+- **notes:** editor mode dialog icon, dark popover contrast, missing register title ([#115](https://github.com/fundacja-reborn/reapps/pull/115))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.14.0 (2026-04-30)
 
 ### 🚀 Features
