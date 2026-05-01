@@ -54,6 +54,22 @@ const TASK_OPTIONAL_FIELDS = [
 const SUBTASK_OPTIONAL_FIELDS = ['metadata_encrypted', 'device_id'] as const;
 
 /**
+ * The current account is authoritative for `user_id`; the value carried in the
+ * file is irrelevant (we overwrite it on save anyway). Setting it before
+ * `safeParse` lets legacy backups with null/missing/invalid user_id — produced
+ * by older client builds or by a sync pull racing auth restoration — pass
+ * Zod's `z.string().uuid()` check. Same behavior on cross-account imports:
+ * ownership transfers to the importing user. See guideline 44.
+ *
+ * Returns the input unchanged for non-record inputs; the subsequent
+ * `safeParse` will reject those with its own type error.
+ */
+function withUserId(raw: unknown, userId: string): unknown {
+	if (typeof raw !== 'object' || raw === null) return raw;
+	return { ...(raw as Record<string, unknown>), user_id: userId };
+}
+
+/**
  * Format a Zod safeParse failure into a single human-readable message.
  * `issues[0]?.message` on its own returns "Invalid input" with no field
  * context — useless for triage. Concatenating path + message per issue
@@ -153,9 +169,12 @@ export class DataImportService {
 
 		for (const list of exportData.data.lists) {
 			try {
-				const normalized = normalizeNullToUndefined(
-					list as unknown as Record<string, unknown>,
-					LIST_OPTIONAL_FIELDS
+				const normalized = withUserId(
+					normalizeNullToUndefined(
+						list as unknown as Record<string, unknown>,
+						LIST_OPTIONAL_FIELDS
+					),
+					userId
 				);
 				const parsed = schemas.ListEncryptedSchema.safeParse(normalized);
 				if (!parsed.success) {
@@ -192,7 +211,7 @@ export class DataImportService {
 				// Normalize legacy v1.0 fields (boolean is_template, shadow indexes)
 				// to wire-format before validation. Both stripped shadow indexes
 				// and is_template normalized to 0|1 for TaskEncryptedSchema.
-				const wireCandidate = this.normalizeTaskToWire(rawTask);
+				const wireCandidate = withUserId(this.normalizeTaskToWire(rawTask), userId);
 				const parsed = schemas.TaskEncryptedSchema.safeParse(wireCandidate);
 				if (!parsed.success) {
 					result.errors.push(
@@ -235,7 +254,7 @@ export class DataImportService {
 		for (const rawSubtask of exportData.data.subtasks) {
 			try {
 				// Strip legacy shadow index before validating against wire schema.
-				const wireCandidate = this.normalizeSubtaskToWire(rawSubtask);
+				const wireCandidate = withUserId(this.normalizeSubtaskToWire(rawSubtask), userId);
 				const parsed = schemas.SubtaskEncryptedSchema.safeParse(wireCandidate);
 				if (!parsed.success) {
 					result.errors.push(

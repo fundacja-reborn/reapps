@@ -191,6 +191,14 @@ export async function pullFromServer(): Promise<boolean> {
 }
 
 async function pullFolders(): Promise<void> {
+  // Capture userId once at the top. Without this guard, a logout (or auth
+  // store hydration race) mid-pull would let a non-null assertion on the
+  // store's userId evaluate to undefined further down — silently writing
+  // user_id=undefined to IDB, which then propagates to every fresh export
+  // and trips the import validator for that account. See guideline 44 +
+  // `idb-cleanup.service.ts`.
+  const userId = get(authStore).userId;
+  if (!userId) return;
   const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders`);
   if (!res.ok) throw new Error(`GET /api/folders: ${res.status}`);
   const { data } = await res.json();
@@ -234,7 +242,7 @@ async function pullFolders(): Promise<void> {
 
       const folder: FolderEncrypted = {
         id: f.id,
-        user_id: get(authStore).userId!,
+        user_id: userId,
         parent_id: f.parent_id ?? undefined,
         name_encrypted: f.name_encrypted,
         order_index: f.order_index,
@@ -262,6 +270,9 @@ async function pullFolders(): Promise<void> {
 }
 
 async function pullTags(): Promise<void> {
+  // See pullFolders() for rationale on the userId guard.
+  const userId = get(authStore).userId;
+  if (!userId) return;
   const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags`);
   if (!res.ok) throw new Error(`GET /api/tags: ${res.status}`);
   const { data } = await res.json();
@@ -301,7 +312,7 @@ async function pullTags(): Promise<void> {
 
       await tagStore.save({
         id: t.id,
-        user_id: get(authStore).userId!,
+        user_id: userId,
         name_encrypted: t.name_encrypted,
         color_encrypted: t.color_encrypted ?? undefined,
         usage_count: localTag?.usage_count ?? 0,
@@ -326,6 +337,9 @@ async function pullTags(): Promise<void> {
 }
 
 async function pullNotes(): Promise<void> {
+  // See pullFolders() for rationale on the userId guard.
+  const userId = get(authStore).userId;
+  if (!userId) return;
   const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes?include_archived=true`);
   if (!res.ok) throw new Error(`GET /api/notes: ${res.status}`);
   const { data } = await res.json();
@@ -415,7 +429,7 @@ async function pullNotes(): Promise<void> {
 
       const note: NoteStoredLocal = {
         id: n.id,
-        user_id: get(authStore).userId!,
+        user_id: userId,
         folder_id: n.folder_id ?? undefined,
         title_encrypted: n.title_encrypted,
         content_encrypted: n.content_encrypted,

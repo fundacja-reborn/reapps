@@ -108,3 +108,71 @@ describe('field lists stay in sync with schema expectations', () => {
     expect(TAG_OPTIONAL_FIELDS).toContain('color_encrypted');
   });
 });
+
+describe('user_id override sequence (regression — production import failure)', () => {
+  // Production exports surfaced records with `user_id: null` (sync race) or
+  // missing user_id (legacy IDB). The importer overrides user_id with the
+  // current account's id on save, so we set it BEFORE safeParse — value
+  // from the file is unused. These tests pin the contract that the schema
+  // accepts the prepared input regardless of what shape user_id had.
+  const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+  const VALID_UUID_2 = '11111111-2222-4333-8444-555555555555';
+  const NOTE_BASE = {
+    id: VALID_UUID_2,
+    title_encrypted: 'iv:cipher',
+    content_encrypted: 'iv:cipher',
+    sync_version: 0,
+    sync_status: 'synced' as const,
+    created_at: '2024-01-01T00:00:00.000Z',
+    updated_at: '2024-01-01T00:00:00.000Z'
+  };
+
+  function prepare(raw: Record<string, unknown>, userId: string): Record<string, unknown> {
+    // Mirrors the pre-validation pipeline used in export-import.service.ts:
+    //   normalizeNullToUndefined → set user_id → safeParse
+    const out = normalizeNullToUndefined(raw, NOTE_OPTIONAL_FIELDS);
+    out.user_id = userId;
+    return out;
+  }
+
+  it('accepts a backup record with user_id=null after the override', () => {
+    const prepared = prepare({ ...NOTE_BASE, user_id: null }, VALID_UUID);
+    const result = z
+      .object({
+        id: z.string().uuid(),
+        user_id: z.string().uuid()
+      })
+      .safeParse(prepared);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.user_id).toBe(VALID_UUID);
+  });
+
+  it('accepts a backup record with user_id missing after the override', () => {
+    const prepared = prepare({ ...NOTE_BASE }, VALID_UUID);
+    const result = z
+      .object({ user_id: z.string().uuid() })
+      .safeParse(prepared);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a backup record with non-UUID user_id (e.g. empty string) after the override', () => {
+    const prepared = prepare({ ...NOTE_BASE, user_id: '' }, VALID_UUID);
+    const result = z
+      .object({ user_id: z.string().uuid() })
+      .safeParse(prepared);
+    expect(result.success).toBe(true);
+  });
+
+  it('without the override, the schema still rejects user_id=null (pre-fix behavior)', () => {
+    // Sanity: confirm we are testing a real previously-broken case. If this
+    // ever flips to `success: true` it means someone relaxed the schema —
+    // the importer override should be the only thing accepting bad user_id,
+    // not the validator itself.
+    const onlyNormalized = normalizeNullToUndefined(
+      { ...NOTE_BASE, user_id: null },
+      NOTE_OPTIONAL_FIELDS
+    );
+    const result = z.object({ user_id: z.string().uuid() }).safeParse(onlyNormalized);
+    expect(result.success).toBe(false);
+  });
+});

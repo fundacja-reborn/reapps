@@ -1,6 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import { onMount, untrack } from 'svelte';
+  import { get } from 'svelte/store';
   import { Toaster } from '@reborn/ui';
   import { browser } from '$app/environment';
   import type { Snippet } from 'svelte';
@@ -117,15 +118,19 @@
         }
       }
 
-      // 2a. One-shot cleanup of legacy null FK fields in IDB. Idempotent and
-      //     gated by a localStorage flag — runs only once per browser profile,
-      //     no-op afterwards. Awaited so it completes before sync touches the
-      //     same records. Bounded by local IDB size (typically <1s).
-      await cleanupNullFkFields();
-
-      // 3. Initialize SSO auth state AFTER storage is ready
-      //    (reads shared localStorage from reborn-task if same origin)
+      // 2a. Initialize SSO auth state AFTER storage is ready and BEFORE the
+      //     cleanup migration — cleanup repairs malformed user_id in legacy
+      //     local records, which needs the current account's UUID.
+      //     (reads shared localStorage from reborn-task if same origin)
       authStore.initialize();
+
+      // 2b. One-shot cleanup of legacy null FK fields + malformed user_id in
+      //     IDB. Idempotent and gated by a versioned localStorage flag — runs
+      //     once per browser profile per migration version. Awaited so it
+      //     completes before sync touches the same records. Bounded by local
+      //     IDB size (typically <1s). Re-runs on next boot if user_id repair
+      //     was skipped because auth wasn't ready.
+      await cleanupNullFkFields(get(authStore).userId);
 
       // 4. Mark app as ready — unblocks auth guard $effect
       appReady = true;
