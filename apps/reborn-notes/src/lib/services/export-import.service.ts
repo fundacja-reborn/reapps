@@ -62,6 +62,13 @@ import {
 } from './import-dedup-utils';
 import { sanitizeMarkdownContent, sanitizeTags } from '$lib/utils/markdown-sanitizer';
 import { shouldRestoreFromTrash, shouldRelinkToBackupFolder } from './export-import-trash-utils';
+import {
+  normalizeNullToUndefined,
+  formatZodIssues,
+  FOLDER_OPTIONAL_FIELDS,
+  NOTE_OPTIONAL_FIELDS,
+  TAG_OPTIONAL_FIELDS
+} from './import-normalize-utils';
 
 const logger = createLogger('ExportImport');
 
@@ -121,6 +128,7 @@ function fixEntityUuids(
   }
   return { fixed, repairedFields };
 }
+
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -515,28 +523,43 @@ function stripNoteShadowIndexes(note: NoteStoredLocal): NoteEncrypted {
   return rest;
 }
 
-/** Normalize UUID fields in exported entities (fix corrupted IndexedDB data). */
+/**
+ * Sanitize records before serializing to a backup file:
+ *  1. Repair corrupted UUIDs (legacy IDB data with stripped leading zeros).
+ *  2. Convert `null` → `undefined` for optional-but-not-nullable fields so
+ *     `JSON.stringify` drops them. Without this step, legacy IDB records that
+ *     stored e.g. `folder_id: null` would emit `"folder_id": null` in the file,
+ *     and a later import (or a third-party importer) might reject the value
+ *     because the schema expects `string | undefined`. See guideline 44.
+ */
 function normalizeExportUuids<T extends { id: string }>(
   items: T[],
-  uuidFields: string[]
+  uuidFields: string[],
+  optionalFields: readonly string[] = []
 ): T[] {
   return items.map((item) => {
     let modified = false;
-    const copy = { ...item };
+    const copy = { ...item } as Record<string, unknown>;
     for (const field of uuidFields) {
-      const val = (copy as Record<string, unknown>)[field];
+      const val = copy[field];
       if (typeof val === 'string' && !UUID_RE.test(val)) {
         const repaired = tryFixUuid(val);
         if (repaired) {
-          (copy as Record<string, unknown>)[field] = repaired;
+          copy[field] = repaired;
           modified = true;
         }
       }
     }
-    if (modified) {
-      logger.warn(`Export: naprawiono UUID dla elementu ${copy.id}`);
+    for (const field of optionalFields) {
+      if (copy[field] === null) {
+        copy[field] = undefined;
+        modified = true;
+      }
     }
-    return copy;
+    if (modified) {
+      logger.warn(`Export: znormalizowano dane elementu ${copy.id as string}`);
+    }
+    return copy as T;
   });
 }
 
@@ -557,10 +580,15 @@ export async function exportJsonBackup(): Promise<void> {
 
   const sanitizedNotes: NoteEncrypted[] = normalizeExportUuids(
     notes.map(stripNoteShadowIndexes),
-    ['id', 'user_id', 'folder_id']
+    ['id', 'user_id', 'folder_id'],
+    NOTE_OPTIONAL_FIELDS
   );
-  const sanitizedFolders = normalizeExportUuids(folders, ['id', 'user_id', 'parent_id']);
-  const sanitizedTags = normalizeExportUuids(tags, ['id', 'user_id']);
+  const sanitizedFolders = normalizeExportUuids(
+    folders,
+    ['id', 'user_id', 'parent_id'],
+    FOLDER_OPTIONAL_FIELDS
+  );
+  const sanitizedTags = normalizeExportUuids(tags, ['id', 'user_id'], TAG_OPTIONAL_FIELDS);
 
   const backup = {
     version: 1,
@@ -594,10 +622,15 @@ export async function exportEncryptedBackup(password: string): Promise<void> {
 
   const sanitizedNotes: NoteEncrypted[] = normalizeExportUuids(
     notes.map(stripNoteShadowIndexes),
-    ['id', 'user_id', 'folder_id']
+    ['id', 'user_id', 'folder_id'],
+    NOTE_OPTIONAL_FIELDS
   );
-  const sanitizedFolders = normalizeExportUuids(folders, ['id', 'user_id', 'parent_id']);
-  const sanitizedTags = normalizeExportUuids(tags, ['id', 'user_id']);
+  const sanitizedFolders = normalizeExportUuids(
+    folders,
+    ['id', 'user_id', 'parent_id'],
+    FOLDER_OPTIONAL_FIELDS
+  );
+  const sanitizedTags = normalizeExportUuids(tags, ['id', 'user_id'], TAG_OPTIONAL_FIELDS);
 
   const backup = {
     exported_at: new Date().toISOString(),
@@ -762,8 +795,12 @@ export async function importJsonBackup(
   // Import folders first (notes reference them)
   for (const folder of backupData.folders ?? []) {
     try {
-      const { fixed: fixedFolder, repairedFields: repairedFolderFields } = fixEntityUuids(
+      const normalized = normalizeNullToUndefined(
         folder as Record<string, unknown>,
+        FOLDER_OPTIONAL_FIELDS
+      );
+      const { fixed: fixedFolder, repairedFields: repairedFolderFields } = fixEntityUuids(
+        normalized,
         ['id', 'user_id', 'parent_id']
       );
       if (repairedFolderFields.length > 0) {
@@ -771,7 +808,7 @@ export async function importJsonBackup(
       }
       const parsed = schemas.FolderEncryptedSchema.safeParse(fixedFolder);
       if (!parsed.success) {
-        result.errors.push(`Folder ${fixedFolder.id}: walidacja nie powiodła się — ${parsed.error.issues[0]?.message}`);
+        result.errors.push(`Folder ${fixedFolder.id}: walidacja nie powiodła się — ${formatZodIssues(parsed.error)}`);
         continue;
       }
       const validated = parsed.data;
@@ -805,8 +842,12 @@ export async function importJsonBackup(
   // Import tags
   for (const tag of backupData.tags ?? []) {
     try {
-      const { fixed: fixedTag, repairedFields: repairedTagFields } = fixEntityUuids(
+      const normalized = normalizeNullToUndefined(
         tag as Record<string, unknown>,
+        TAG_OPTIONAL_FIELDS
+      );
+      const { fixed: fixedTag, repairedFields: repairedTagFields } = fixEntityUuids(
+        normalized,
         ['id', 'user_id']
       );
       if (repairedTagFields.length > 0) {
@@ -814,7 +855,7 @@ export async function importJsonBackup(
       }
       const parsed = schemas.TagEncryptedSchema.safeParse(fixedTag);
       if (!parsed.success) {
-        result.errors.push(`Tag ${fixedTag.id}: walidacja nie powiodła się — ${parsed.error.issues[0]?.message}`);
+        result.errors.push(`Tag ${fixedTag.id}: walidacja nie powiodła się — ${formatZodIssues(parsed.error)}`);
         continue;
       }
       const validated = parsed.data;
@@ -856,8 +897,9 @@ export async function importJsonBackup(
       // strips unknowns, so this is mostly defensive — it makes the intent
       // explicit and tolerates legacy files.
       const wireCandidate = stripUnknownNoteShadowIndexes(note) as Record<string, unknown>;
+      const normalized = normalizeNullToUndefined(wireCandidate, NOTE_OPTIONAL_FIELDS);
       const { fixed: fixedNote, repairedFields: repairedNoteFields } = fixEntityUuids(
-        wireCandidate,
+        normalized,
         ['id', 'user_id', 'folder_id']
       );
       if (repairedNoteFields.length > 0) {
@@ -865,7 +907,7 @@ export async function importJsonBackup(
       }
       const parsed = schemas.NoteEncryptedSchema.safeParse(fixedNote);
       if (!parsed.success) {
-        result.errors.push(`Note ${(fixedNote as { id?: string }).id ?? '?'}: walidacja nie powiodła się — ${parsed.error.issues[0]?.message}`);
+        result.errors.push(`Note ${(fixedNote as { id?: string }).id ?? '?'}: walidacja nie powiodła się — ${formatZodIssues(parsed.error)}`);
         continue;
       }
       const validated = parsed.data;
@@ -1014,7 +1056,7 @@ export async function importJsonBackup(
     try {
       const parsed = schemas.NoteTagSchema.safeParse(rel);
       if (!parsed.success) {
-        result.errors.push(`NoteTag: walidacja nie powiodła się — ${parsed.error.issues[0]?.message}`);
+        result.errors.push(`NoteTag: walidacja nie powiodła się — ${formatZodIssues(parsed.error)}`);
         continue;
       }
       const rawId = (rel as Record<string, unknown>).id;

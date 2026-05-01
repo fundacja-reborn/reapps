@@ -22,6 +22,54 @@ const logger = createLogger('DataImportService');
 /** Max import file size: 100 MB (aligned with per-user storage quota). */
 const MAX_IMPORT_FILE_SIZE = 100 * 1024 * 1024;
 
+/**
+ * Normalize `null` → `undefined` for fields that are optional-but-not-nullable
+ * downstream. Server (Prisma) and legacy local IDB records may carry `null` for
+ * "no parent / no metadata"; the rest of the client code uses `undefined` as
+ * the canonical absence marker. Without this, Zod's optional() rejects null
+ * and otherwise-valid backups fail validation. Mirrors the helper of the same
+ * name in reborn-notes export-import.service.ts.
+ */
+function normalizeNullToUndefined(
+	raw: Record<string, unknown>,
+	fields: readonly string[]
+): Record<string, unknown> {
+	const out = { ...raw };
+	for (const field of fields) {
+		if (out[field] === null) {
+			out[field] = undefined;
+		}
+	}
+	return out;
+}
+
+/** Optional-but-not-nullable fields per entity type. */
+const LIST_OPTIONAL_FIELDS = ['metadata_encrypted', 'device_id'] as const;
+const TASK_OPTIONAL_FIELDS = [
+	'parent_task_id',
+	'description_encrypted',
+	'recurrence_rule_encrypted',
+	'device_id'
+] as const;
+const SUBTASK_OPTIONAL_FIELDS = ['metadata_encrypted', 'device_id'] as const;
+
+/**
+ * Format a Zod safeParse failure into a single human-readable message.
+ * `issues[0]?.message` on its own returns "Invalid input" with no field
+ * context — useless for triage. Concatenating path + message per issue
+ * makes the UI report actionable. Mirrors `formatZodIssues` in reborn-notes.
+ */
+function formatZodIssues(error: {
+	issues: Array<{ path: PropertyKey[]; message: string }>;
+}): string {
+	return error.issues
+		.map((i) => {
+			const path = i.path.join('.');
+			return path ? `${path}: ${i.message}` : i.message;
+		})
+		.join('; ');
+}
+
 export interface ImportResult {
 	listsImported: number;
 	tasksImported: number;
@@ -105,9 +153,13 @@ export class DataImportService {
 
 		for (const list of exportData.data.lists) {
 			try {
-				const parsed = schemas.ListEncryptedSchema.safeParse(list);
+				const normalized = normalizeNullToUndefined(
+					list as unknown as Record<string, unknown>,
+					LIST_OPTIONAL_FIELDS
+				);
+				const parsed = schemas.ListEncryptedSchema.safeParse(normalized);
 				if (!parsed.success) {
-					result.errors.push(`Lista ${list.id}: walidacja — ${parsed.error.issues[0]?.message}`);
+					result.errors.push(`Lista ${list.id}: walidacja — ${formatZodIssues(parsed.error)}`);
 					continue;
 				}
 				const existing = await listStore.get(parsed.data.id);
@@ -144,7 +196,7 @@ export class DataImportService {
 				const parsed = schemas.TaskEncryptedSchema.safeParse(wireCandidate);
 				if (!parsed.success) {
 					result.errors.push(
-						`Zadanie ${(rawTask as { id?: string }).id ?? '?'}: walidacja — ${parsed.error.issues[0]?.message}`
+						`Zadanie ${(rawTask as { id?: string }).id ?? '?'}: walidacja — ${formatZodIssues(parsed.error)}`
 					);
 					continue;
 				}
@@ -186,7 +238,7 @@ export class DataImportService {
 				const parsed = schemas.SubtaskEncryptedSchema.safeParse(wireCandidate);
 				if (!parsed.success) {
 					result.errors.push(
-						`Podzadanie ${(rawSubtask as { id?: string }).id ?? '?'}: walidacja — ${parsed.error.issues[0]?.message}`
+						`Podzadanie ${(rawSubtask as { id?: string }).id ?? '?'}: walidacja — ${formatZodIssues(parsed.error)}`
 					);
 					continue;
 				}
@@ -231,7 +283,7 @@ export class DataImportService {
 			try {
 				const parsed = schemas.ListDecryptedSchema.safeParse(list);
 				if (!parsed.success) {
-					result.errors.push(`Lista ${list.id}: walidacja — ${parsed.error.issues[0]?.message}`);
+					result.errors.push(`Lista ${list.id}: walidacja — ${formatZodIssues(parsed.error)}`);
 					continue;
 				}
 				const validList = parsed.data;
@@ -280,7 +332,7 @@ export class DataImportService {
 			try {
 				const parsed = schemas.TaskDecryptedSchema.safeParse(task);
 				if (!parsed.success) {
-					result.errors.push(`Zadanie ${task.id}: walidacja — ${parsed.error.issues[0]?.message}`);
+					result.errors.push(`Zadanie ${task.id}: walidacja — ${formatZodIssues(parsed.error)}`);
 					continue;
 				}
 				const validTask = parsed.data;
@@ -348,7 +400,7 @@ export class DataImportService {
 			try {
 				const parsed = schemas.SubtaskSchema.safeParse(subtask);
 				if (!parsed.success) {
-					result.errors.push(`Podzadanie ${subtask.id}: walidacja — ${parsed.error.issues[0]?.message}`);
+					result.errors.push(`Podzadanie ${subtask.id}: walidacja — ${formatZodIssues(parsed.error)}`);
 					continue;
 				}
 				const validSub = parsed.data;
@@ -406,7 +458,7 @@ export class DataImportService {
 		if (typeof out.is_template === 'boolean') {
 			out.is_template = out.is_template ? 1 : 0;
 		}
-		return out;
+		return normalizeNullToUndefined(out, TASK_OPTIONAL_FIELDS);
 	}
 
 	/**
@@ -418,7 +470,7 @@ export class DataImportService {
 		const r = raw as Record<string, unknown>;
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { is_completed, ...rest } = r;
-		return rest;
+		return normalizeNullToUndefined(rest, SUBTASK_OPTIONAL_FIELDS);
 	}
 
 	/**

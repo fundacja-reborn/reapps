@@ -51,7 +51,9 @@ export const TaskDecryptedSchema = z.object({
   is_starred: z.boolean(),
   is_recurring: z.boolean().optional(),
   recurrence_rule: z.string().optional(),
-  parent_task_id: z.string().uuid().optional(),
+  // Server (Prisma) returns `null` for top-level tasks; client code uses `undefined`.
+  // Both are valid wire representations of "no parent".
+  parent_task_id: z.string().uuid().nullable().optional(),
   is_template: z.boolean(),
   recurrence_base_date: z.string().nullable().optional(),
   completed_at: z.string().nullable().optional(),
@@ -75,7 +77,9 @@ export const TaskEncryptedSchema = SyncableEncryptedEntitySchema.extend({
   description_encrypted: z.string().optional(),
   metadata_encrypted: z.string(),  // Required — contains TaskSensitiveMetadata
   recurrence_rule_encrypted: z.string().optional(),
-  parent_task_id: z.string().uuid().optional(),
+  // Server (Prisma) returns `null` for top-level tasks; client code uses `undefined`.
+  // Both are valid wire representations of "no parent".
+  parent_task_id: z.string().uuid().nullable().optional(),
   is_template: BooleanIntSchema,
   position: z.number().min(0)
 });

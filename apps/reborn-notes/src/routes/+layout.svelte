@@ -17,6 +17,7 @@
   import { authStore } from '$lib/stores/auth.store';
   import { pullFromServer, pushPendingItems, refreshStoresAfterPull } from '$lib/services/notes-sync.service';
   import { noteIndex } from '$lib/services/note-index.svelte';
+  import { cleanupNullFkFields } from '$lib/services/idb-cleanup.service';
   import { refreshPendingCount, isOnline, sessionExpired } from '$lib/stores/sync-status.store';
   import { initI18n, setLocale, locale } from '$lib/stores/i18n.store';
   import { reAuthenticate, verifyTotpForReauth } from '$lib/services/notes-auth.service';
@@ -115,6 +116,12 @@
           logger.error('Failed to initialize storage:', e);
         }
       }
+
+      // 2a. One-shot cleanup of legacy null FK fields in IDB. Idempotent and
+      //     gated by a localStorage flag — runs only once per browser profile,
+      //     no-op afterwards. Awaited so it completes before sync touches the
+      //     same records. Bounded by local IDB size (typically <1s).
+      await cleanupNullFkFields();
 
       // 3. Initialize SSO auth state AFTER storage is ready
       //    (reads shared localStorage from reborn-task if same origin)

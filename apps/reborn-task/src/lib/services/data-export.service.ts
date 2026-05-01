@@ -17,6 +17,23 @@ import type {
 const logger = createLogger('DataExportService');
 
 /**
+ * Drop the listed fields if their value is exactly `null`, returning a new
+ * object. Used at export time so optional-but-not-nullable fields don't leak
+ * `null` into the backup file (where they'd persist through `JSON.stringify`
+ * and trip strict Zod schemas on a future import).
+ */
+function stripNullOptionalFields(
+	raw: Record<string, unknown>,
+	fields: readonly string[]
+): Record<string, unknown> {
+	const out = { ...raw };
+	for (const field of fields) {
+		if (out[field] === null) delete out[field];
+	}
+	return out;
+}
+
+/**
  * Encrypted export format version.
  *
  * - 1.0 (legacy): emitted local-only shadow indexes (is_completed, is_starred,
@@ -141,7 +158,9 @@ export class DataExportService {
 						is_starred: meta.is_starred ?? task.is_starred,
 						is_recurring: meta.is_recurring ?? task.is_recurring ?? false,
 						recurrence_rule,
-						parent_task_id: task.parent_task_id,
+						// Normalize null → undefined so it drops from the JSON file.
+						// Strict importers (TaskDecryptedSchema before relaxation) reject null.
+						parent_task_id: task.parent_task_id ?? undefined,
 						is_template: task.is_template,
 						recurrence_base_date: meta.recurrence_base_date,
 						completed_at: meta.completed_at,
@@ -225,7 +244,15 @@ export class DataExportService {
 			subtaskStore.getAll()
 		]);
 
-		const lists: ListEncrypted[] = allLists.filter((l) => !l.deleted_at);
+		const lists: ListEncrypted[] = allLists
+			.filter((l) => !l.deleted_at)
+			.map(
+				(l) =>
+					stripNullOptionalFields(l as unknown as Record<string, unknown>, [
+						'metadata_encrypted',
+						'device_id'
+					]) as unknown as ListEncrypted
+			);
 
 		const tasks: TaskEncrypted[] = allTasks
 			.filter((t) => !t.deleted_at)
@@ -255,12 +282,23 @@ export class DataExportService {
 	/**
 	 * Drop local-only shadow indexes from a task before persisting outside
 	 * the device. Mirrors the strip done before sending to the server.
+	 *
+	 * Also normalizes `null` → `undefined` for optional-but-not-nullable fields
+	 * so `JSON.stringify` drops them entirely. Without this, legacy IDB records
+	 * that hold e.g. `parent_task_id: null` would emit `"parent_task_id": null`
+	 * in the file and a strict importer would reject them. See guideline 44.
 	 */
 	private stripTaskShadowIndexes(task: TaskEncryptedBooleans): TaskEncrypted {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { is_completed, is_starred, is_recurring, due_date, ...rest } = task;
+		const out = stripNullOptionalFields(rest as unknown as Record<string, unknown>, [
+			'parent_task_id',
+			'description_encrypted',
+			'recurrence_rule_encrypted',
+			'device_id'
+		]);
 		return {
-			...rest,
+			...(out as unknown as Omit<TaskEncrypted, 'is_template'>),
 			is_template: (task.is_template ? 1 : 0) as 0 | 1
 		};
 	}
@@ -272,7 +310,10 @@ export class DataExportService {
 	private stripSubtaskShadowIndexes(subtask: SubtaskStoredLocal): SubtaskEncrypted {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { is_completed, ...rest } = subtask;
-		return rest;
+		return stripNullOptionalFields(rest as unknown as Record<string, unknown>, [
+			'metadata_encrypted',
+			'device_id'
+		]) as unknown as SubtaskEncrypted;
 	}
 
 	private triggerDownload(data: ExportData, filename: string): void {
