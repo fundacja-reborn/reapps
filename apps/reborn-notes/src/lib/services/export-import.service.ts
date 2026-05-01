@@ -44,7 +44,7 @@ import { createLogger } from '@reborn/utils';
 import * as NoteService from './note.service';
 import * as FolderService from './folder.service';
 import * as TagService from './tag.service';
-import { pushNote, pushFolder, pushTag, pushPendingItems } from './notes-sync.service';
+import { pushNote, pushPendingItems } from './notes-sync.service';
 import { noteIndex } from './note-index.svelte';
 import {
   parseMarkdownFile,
@@ -860,7 +860,14 @@ export async function importJsonBackup(
         updated_at: now
       };
       await folderStore.save(toSave);
-      pushFolder(toSave);
+      // Push is deferred to pushPendingItems() at the end of the import.
+      // Firing per-element pushes here would race against the parallel note
+      // pushes below — the server's POST /api/notes FK-checks folder_id
+      // and 404s when a note's parent folder hasn't landed yet. The end-of-
+      // import pushPendingItems() runs `Promise.allSettled([folders + tags])
+      // → Promise.allSettled(notes)` so the FK relationship is satisfied
+      // before any note POST fires. See guideline 44 + the regression test
+      // "importJsonBackup defers all pushes to pushPendingItems".
       result.folders++;
       restoredOrCreatedFolderIds.add(validated.id);
       if (restoring) result.restoredFromTrash++;
@@ -905,7 +912,7 @@ export async function importJsonBackup(
         updated_at: now
       };
       await tagStore.save(toSave);
-      pushTag(toSave);
+      // Push deferred to pushPendingItems() — see folder loop above.
       result.tags++;
     } catch (e: unknown) {
       result.errors.push(`Tag ${tag.id}: ${e instanceof Error ? e.message : 'błąd'}`);
@@ -983,8 +990,7 @@ export async function importJsonBackup(
           updated_at: now
         };
         await noteStore.save(toSave);
-        const wireForPush = stripNoteShadowIndexes(toSave);
-        pushNote(wireForPush);
+        // Push deferred to pushPendingItems() — see folder loop above.
         result.relinkedToFolder++;
         continue;
       }
@@ -1071,7 +1077,7 @@ export async function importJsonBackup(
         ]);
       }
 
-      pushNote(wire);
+      // Push deferred to pushPendingItems() — see folder loop above.
       result.notes++;
       if (restoring) result.restoredFromTrash++;
     } catch (e: unknown) {
@@ -1116,7 +1122,13 @@ export async function importJsonBackup(
   }
   onProgress?.({ phase: 'indexing', current: 1, total: 1 });
 
-  // Trigger background sync for any items that didn't get pushed inline
+  // Push every imported entity through one ordered batch. pushPendingItems()
+  // uses buildFolderLayers (BFS by parent depth) and runs
+  //   Promise.allSettled([folders + tags]) → Promise.allSettled(notes)
+  // so the server's POST /api/notes FK check on `folder_id` always sees the
+  // parent folder by the time a note POST fires. Per-loop fire-and-forget
+  // pushes raced against this — see fix(notes): import-push-ordering and
+  // guideline 44.
   void pushPendingItems();
 
   logger.info('Import complete', {

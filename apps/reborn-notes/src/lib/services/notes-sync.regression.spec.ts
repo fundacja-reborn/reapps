@@ -276,6 +276,32 @@ describe('notes-sync — regression (offline data loss)', () => {
     expect(between).toMatch(/await\s+Promise\.allSettled/);
   });
 
+  it('importJsonBackup defers all pushes to pushPendingItems (ordering)', () => {
+    // Production reproduction: backup with 7 folders + 85 notes triggered ~25
+    // simultaneous "POST /api/notes 404 Folder not found" errors during import
+    // because per-loop fire-and-forget pushFolder/pushNote raced — notes POST
+    // reached the server before their parent folder POST completed, the
+    // server's FK check missed the folder, and 404 came back. pushPendingItems
+    // already runs `Promise.allSettled([folders + tags]) → Promise.allSettled
+    // (notes)` so it's the safe single push path. Mirrors the importFolder
+    // fix below.
+    const src = readSource('./export-import.service.ts');
+
+    const importStart = src.indexOf('export async function importJsonBackup');
+    const importEnd = src.indexOf('\n/**', importStart);
+    expect(importStart).toBeGreaterThan(-1);
+    expect(importEnd).toBeGreaterThan(importStart);
+    const importBody = src.slice(importStart, importEnd);
+
+    // No per-element pushFolder/pushTag/pushNote in importJsonBackup — all
+    // imports save with sync_status='pending' and rely on pushPendingItems.
+    expect(importBody).not.toMatch(/\bpushFolder\s*\(/);
+    expect(importBody).not.toMatch(/\bpushTag\s*\(/);
+    expect(importBody).not.toMatch(/\bpushNote\s*\(/);
+    // pushPendingItems must still fire at the tail.
+    expect(importBody).toMatch(/pushPendingItems\s*\(/);
+  });
+
   it('importFolder bulk-pushes via pushPendingItems, not per-note pushNote', () => {
     // Without ordering, notes POST before their just-created folders land,
     // and the server's folder_id FK check returns 404. The fix routes every
