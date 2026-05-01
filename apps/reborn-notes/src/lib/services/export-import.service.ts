@@ -531,11 +531,17 @@ function stripNoteShadowIndexes(note: NoteStoredLocal): NoteEncrypted {
  *     stored e.g. `folder_id: null` would emit `"folder_id": null` in the file,
  *     and a later import (or a third-party importer) might reject the value
  *     because the schema expects `string | undefined`. See guideline 44.
+ *  3. Stamp the current account's UUID into `user_id` when the stored value
+ *     is null/missing/non-UUID. The local IDB cleanup migration repairs the
+ *     same pollution, but this is a belt-and-suspenders pass — without it,
+ *     a backup taken before the next boot's cleanup would still emit
+ *     `"user_id": null`.
  */
 function normalizeExportUuids<T extends { id: string }>(
   items: T[],
   uuidFields: string[],
-  optionalFields: readonly string[] = []
+  optionalFields: readonly string[] = [],
+  userIdReplacement?: string
 ): T[] {
   return items.map((item) => {
     let modified = false;
@@ -553,6 +559,13 @@ function normalizeExportUuids<T extends { id: string }>(
     for (const field of optionalFields) {
       if (copy[field] === null) {
         copy[field] = undefined;
+        modified = true;
+      }
+    }
+    if (userIdReplacement && UUID_RE.test(userIdReplacement)) {
+      const stored = copy.user_id;
+      if (typeof stored !== 'string' || !UUID_RE.test(stored)) {
+        copy.user_id = userIdReplacement;
         modified = true;
       }
     }
@@ -578,17 +591,21 @@ export async function exportJsonBackup(): Promise<void> {
     tagStore.getAll()
   ]);
 
+  const userId = get(authStore).userId ?? undefined;
+
   const sanitizedNotes: NoteEncrypted[] = normalizeExportUuids(
     notes.map(stripNoteShadowIndexes),
     ['id', 'user_id', 'folder_id'],
-    NOTE_OPTIONAL_FIELDS
+    NOTE_OPTIONAL_FIELDS,
+    userId
   );
   const sanitizedFolders = normalizeExportUuids(
     folders,
     ['id', 'user_id', 'parent_id'],
-    FOLDER_OPTIONAL_FIELDS
+    FOLDER_OPTIONAL_FIELDS,
+    userId
   );
-  const sanitizedTags = normalizeExportUuids(tags, ['id', 'user_id'], TAG_OPTIONAL_FIELDS);
+  const sanitizedTags = normalizeExportUuids(tags, ['id', 'user_id'], TAG_OPTIONAL_FIELDS, userId);
 
   const backup = {
     version: 1,
@@ -620,17 +637,21 @@ export async function exportEncryptedBackup(password: string): Promise<void> {
     tagStore.getAll()
   ]);
 
+  const userId = get(authStore).userId ?? undefined;
+
   const sanitizedNotes: NoteEncrypted[] = normalizeExportUuids(
     notes.map(stripNoteShadowIndexes),
     ['id', 'user_id', 'folder_id'],
-    NOTE_OPTIONAL_FIELDS
+    NOTE_OPTIONAL_FIELDS,
+    userId
   );
   const sanitizedFolders = normalizeExportUuids(
     folders,
     ['id', 'user_id', 'parent_id'],
-    FOLDER_OPTIONAL_FIELDS
+    FOLDER_OPTIONAL_FIELDS,
+    userId
   );
-  const sanitizedTags = normalizeExportUuids(tags, ['id', 'user_id'], TAG_OPTIONAL_FIELDS);
+  const sanitizedTags = normalizeExportUuids(tags, ['id', 'user_id'], TAG_OPTIONAL_FIELDS, userId);
 
   const backup = {
     exported_at: new Date().toISOString(),
@@ -799,6 +820,14 @@ export async function importJsonBackup(
         folder as Record<string, unknown>,
         FOLDER_OPTIONAL_FIELDS
       );
+      // The current account is authoritative for `user_id`; the value carried
+      // in the file is irrelevant (we overwrite it on save anyway). Set it
+      // before validation so legacy backups with null/missing/invalid user_id
+      // — produced by older client builds or by a sync pull racing auth
+      // restoration — don't fail Zod's `z.string().uuid()` check. Same
+      // behavior on cross-account imports: ownership transfers to the
+      // importing user. See guideline 44.
+      normalized.user_id = userId;
       const { fixed: fixedFolder, repairedFields: repairedFolderFields } = fixEntityUuids(
         normalized,
         ['id', 'user_id', 'parent_id']
@@ -847,6 +876,9 @@ export async function importJsonBackup(
         tag as Record<string, unknown>,
         TAG_OPTIONAL_FIELDS
       );
+      // user_id from file is ignored — set authoritative value before
+      // validation. See folder loop above for rationale.
+      normalized.user_id = userId;
       const { fixed: fixedTag, repairedFields: repairedTagFields } = fixEntityUuids(
         normalized,
         ['id', 'user_id']
@@ -899,6 +931,9 @@ export async function importJsonBackup(
       // explicit and tolerates legacy files.
       const wireCandidate = stripUnknownNoteShadowIndexes(note) as Record<string, unknown>;
       const normalized = normalizeNullToUndefined(wireCandidate, NOTE_OPTIONAL_FIELDS);
+      // user_id from file is ignored — set authoritative value before
+      // validation. See folder loop above for rationale.
+      normalized.user_id = userId;
       const { fixed: fixedNote, repairedFields: repairedNoteFields } = fixEntityUuids(
         normalized,
         ['id', 'user_id', 'folder_id']

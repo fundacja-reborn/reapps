@@ -306,4 +306,127 @@ describe('notes-sync — regression (offline data loss)', () => {
     expect(importFolder).not.toMatch(/\bpushTag\s*\(/);
     expect(importFolder).toMatch(/pushPendingItems\s*\(/);
   });
+
+  // ── user_id resilience (regression: production imports failing with
+  //    "user_id: Invalid input" because legacy IDB / sync race wrote null)
+  it('importJsonBackup overrides user_id BEFORE safeParse in folder/tag/note loops', () => {
+    // The schema requires user_id to be a UUID; the importer always
+    // overwrites it with the current account's userId on save. Setting it
+    // before validation (instead of after) makes legacy backups with
+    // null/missing/invalid user_id pass — the value from the file is dead
+    // weight we don't use. See guideline 44.
+    const src = readSource('./export-import.service.ts');
+
+    const folderLoopStart = src.indexOf("for (const folder of backupData.folders");
+    const folderSafeParseIdx = src.indexOf('FolderEncryptedSchema.safeParse', folderLoopStart);
+    expect(folderSafeParseIdx).toBeGreaterThan(folderLoopStart);
+    const folderPreValidate = src.slice(folderLoopStart, folderSafeParseIdx);
+    expect(folderPreValidate).toMatch(/normalized\.user_id\s*=\s*userId/);
+
+    const tagLoopStart = src.indexOf("for (const tag of backupData.tags");
+    const tagSafeParseIdx = src.indexOf('TagEncryptedSchema.safeParse', tagLoopStart);
+    expect(tagSafeParseIdx).toBeGreaterThan(tagLoopStart);
+    const tagPreValidate = src.slice(tagLoopStart, tagSafeParseIdx);
+    expect(tagPreValidate).toMatch(/normalized\.user_id\s*=\s*userId/);
+
+    const noteLoopStart = src.indexOf('for (let i = 0; i < notes.length; i++)');
+    const noteSafeParseIdx = src.indexOf('NoteEncryptedSchema.safeParse', noteLoopStart);
+    expect(noteSafeParseIdx).toBeGreaterThan(noteLoopStart);
+    const notePreValidate = src.slice(noteLoopStart, noteSafeParseIdx);
+    expect(notePreValidate).toMatch(/normalized\.user_id\s*=\s*userId/);
+  });
+
+  it('pull helpers capture userId once at the top instead of `userId!` in each save', () => {
+    // Non-null assertions on `get(authStore).userId` silently produced
+    // `undefined` when sync raced auth hydration / logout, polluting the
+    // local user_id. The guard returns early if userId isn't present and
+    // every save uses the captured value. See guideline 44.
+    const src = readSource('./notes-sync.service.ts');
+
+    for (const fnName of ['pullFolders', 'pullTags', 'pullNotes']) {
+      const start = src.indexOf(`async function ${fnName}`);
+      expect(start, `${fnName} not found`).toBeGreaterThan(-1);
+      // Bound the function body — stop at the next top-level `async function`
+      // or the push-helpers section header.
+      const after = src.slice(start);
+      const nextFnIdx = after.indexOf('\nasync function ', 1);
+      const sectionEndIdx = after.indexOf('// ── Push helpers');
+      const candidates = [nextFnIdx, sectionEndIdx].filter((i) => i > 0);
+      const end = candidates.length > 0 ? Math.min(...candidates) : after.length;
+      const body = after.slice(0, end);
+
+      // userId is captured at the top.
+      expect(body, `${fnName} must capture userId at top`).toMatch(
+        /const\s+userId\s*=\s*get\(authStore\)\.userId/
+      );
+      // Bail out when userId is absent.
+      expect(body, `${fnName} must early-return on missing userId`).toMatch(
+        /if\s*\(\s*!userId\s*\)\s*return\s*;/
+      );
+      // No more non-null assertions on authStore.userId inside the body.
+      expect(body, `${fnName} must not use \`get(authStore).userId!\``).not.toMatch(
+        /get\(authStore\)\.userId!/
+      );
+    }
+  });
+
+  it('cleanup migration is awaited before pull and receives the current userId', () => {
+    const src = readSource('../../routes/+layout.svelte');
+    expect(src).toMatch(/await\s+cleanupNullFkFields\s*\(\s*get\(authStore\)\.userId\s*\)/);
+    // The flag was bumped to v2 to re-run the cleanup with user_id repair
+    // included. Ensure we never silently re-use the v1 flag.
+    const cleanupSrc = readSource('./idb-cleanup.service.ts');
+    expect(cleanupSrc).toMatch(/idb-null-fk-cleanup-v2/);
+    expect(cleanupSrc).not.toMatch(/^const\s+FLAG_KEY\s*=\s*'reborn-notes:idb-null-fk-cleanup-v1'/m);
+  });
+
+  it('export sanitizer stamps current userId into records with invalid user_id', () => {
+    // normalizeExportUuids gets a userIdReplacement parameter; both
+    // exportJsonBackup and exportEncryptedBackup must pass the current
+    // account's userId so legacy IDB pollution (user_id: null/missing)
+    // doesn't propagate into freshly-emitted backup files.
+    const src = readSource('./export-import.service.ts');
+    expect(src).toMatch(
+      /function\s+normalizeExportUuids[\s\S]{0,300}?userIdReplacement\?:\s*string/
+    );
+
+    const fullExport = src.slice(
+      src.indexOf('export async function exportJsonBackup'),
+      src.indexOf('export async function exportEncryptedBackup')
+    );
+    expect(fullExport).toMatch(/get\(authStore\)\.userId/);
+    // All three normalize calls in this function must thread userId through.
+    expect(fullExport.match(/normalizeExportUuids\s*\(/g)?.length).toBe(3);
+    // Walk each call manually with paren-balancing so nested calls in the
+    // first argument (e.g. `notes.map(stripNoteShadowIndexes)`) don't fool
+    // a naive `slice(0, indexOf(')'))`.
+    function* eachCall(text: string, fnName: string): Generator<string> {
+      const re = new RegExp(`${fnName}\\s*\\(`, 'g');
+      let match: RegExpExecArray | null;
+      while ((match = re.exec(text)) !== null) {
+        let depth = 1;
+        let i = match.index + match[0].length;
+        while (i < text.length && depth > 0) {
+          const ch = text[i];
+          if (ch === '(') depth++;
+          else if (ch === ')') depth--;
+          i++;
+        }
+        yield text.slice(match.index + match[0].length, i - 1);
+      }
+    }
+    for (const argList of eachCall(fullExport, 'normalizeExportUuids')) {
+      expect(argList, `normalizeExportUuids call must thread userId: ${argList}`).toMatch(
+        /userId/
+      );
+    }
+
+    const encExport = src.slice(src.indexOf('export async function exportEncryptedBackup'));
+    expect(encExport).toMatch(/get\(authStore\)\.userId/);
+    for (const argList of eachCall(encExport, 'normalizeExportUuids')) {
+      expect(argList, `normalizeExportUuids call must thread userId: ${argList}`).toMatch(
+        /userId/
+      );
+    }
+  });
 });
