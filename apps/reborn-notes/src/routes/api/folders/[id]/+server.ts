@@ -66,14 +66,30 @@ export const PATCH: RequestHandler = async ({ request, params }) => {
   }
 };
 
-/** DELETE /api/folders/[id] — delete folder and cascade to children. */
+/**
+ * DELETE /api/folders/[id] — delete folder and cascade to children.
+ *
+ * Idempotent: if the folder does not exist (or belongs to another user) we
+ * return 200 with `success: true` instead of 404. The client treats folder
+ * deletes as fire-and-forget with a short 4-attempt retry window
+ * (see `pushFolderDelete` in `notes-sync.service.ts`). A 404 — e.g. when the
+ * folder was never synced because an earlier `pushFolder` was abandoned, or
+ * the row was already removed by an earlier successful DELETE the client did
+ * not record — would be retried 4× and then dropped permanently, even though
+ * the desired end state (folder absent server-side) already holds. Returning
+ * 200 on a missing row keeps the server view authoritative without leaking
+ * existence: an unauthorised caller cannot distinguish "folder absent" from
+ * "folder belongs to someone else".
+ */
 export const DELETE: RequestHandler = async ({ request, params }) => {
   try {
     const userId = await getUserFromToken(request.headers.get('authorization'));
     if (!userId) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
+    // Ownership-scoped lookup. If the row is missing OR owned by a different
+    // user, treat as a no-op success — same shape as DELETE /api/notes/[id].
     const existing = await prisma.folder.findFirst({ where: { id: params.id, user_id: userId } });
-    if (!existing) return json({ success: false, error: 'Not found' }, { status: 404 });
+    if (!existing) return json({ success: true });
 
     // Prisma cascade (onDelete: Cascade) handles child folders and notes
     await prisma.folder.delete({ where: { id: params.id } });
