@@ -1,3 +1,14 @@
+## 0.14.5 (2026-05-01)
+
+### 🩹 Fixes
+
+- **notes:** defer all imports to pushPendingItems to satisfy folder FK ([#122](https://github.com/fundacja-reborn/reapps/pull/122))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.14.4 (2026-05-01)
 
 ### 🩹 Fixes
