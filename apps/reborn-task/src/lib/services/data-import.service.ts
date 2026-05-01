@@ -210,6 +210,7 @@ export class DataImportService {
 				// shadow indexes are local-only and never trusted from a file).
 				const wire: TaskEncrypted = {
 					...parsed.data,
+					parent_task_id: parsed.data.parent_task_id ?? undefined,
 					user_id: userId,
 					sync_status: 'pending',
 					sync_version: 0,
@@ -373,7 +374,7 @@ export class DataImportService {
 					description_encrypted,
 					metadata_encrypted,
 					recurrence_rule_encrypted,
-					parent_task_id: validTask.parent_task_id,
+					parent_task_id: validTask.parent_task_id ?? undefined,
 					is_template: (validTask.is_template ? 1 : 0) as 0 | 1,
 					position: validTask.position,
 					created_at: validTask.created_at,

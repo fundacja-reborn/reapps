@@ -824,6 +824,7 @@ export async function importJsonBackup(
       }
       const toSave = {
         ...validated,
+        parent_id: validated.parent_id ?? undefined,
         user_id: userId,
         sync_status: 'pending' as const,
         sync_version: 0,
@@ -941,7 +942,7 @@ export async function importJsonBackup(
         // override folder_id and bump sync metadata so the move propagates.
         const toSave: NoteStoredLocal = {
           ...existing,
-          folder_id: validated.folder_id,
+          folder_id: validated.folder_id ?? undefined,
           sync_status: 'pending',
           sync_version: 0,
           updated_at: now
@@ -999,6 +1000,7 @@ export async function importJsonBackup(
 
       const wire: NoteEncrypted = {
         ...validated,
+        folder_id: validated.folder_id ?? undefined,
         ...(sanitizedContentEncrypted !== undefined
           ? { content_encrypted: sanitizedContentEncrypted }
           : {}),
