@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { NoteDecryptedSchema, NoteEncryptedSchema } from '../entities/note';
-import { FolderDecryptedSchema } from '../entities/folder';
+import { FolderDecryptedSchema, FolderEncryptedSchema } from '../entities/folder';
 import { TagDecryptedSchema } from '../entities/tag';
 
 describe('Note Schemas', () => {
@@ -93,6 +93,90 @@ describe('Note Schemas', () => {
       };
 
       const result = FolderDecryptedSchema.safeParse(invalidFolder);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('null tolerance for FK fields (regression)', () => {
+    // Server (Prisma) returns `null` for absent foreign keys; client code uses
+    // `undefined`. Both must be accepted so JSON backups round-trip cleanly
+    // regardless of which producer wrote the file. See guideline 44.
+    const baseEncryptedNote = {
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      user_id: '123e4567-e89b-12d3-a456-426614174001',
+      title_encrypted: 'iv:cipher',
+      content_encrypted: 'iv:cipher',
+      sync_version: 0,
+      sync_status: 'synced' as const,
+      created_at: '2024-01-01T00:00:00.000Z',
+      updated_at: '2024-01-01T00:00:00.000Z'
+    };
+
+    const baseEncryptedFolder = {
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      user_id: '123e4567-e89b-12d3-a456-426614174001',
+      name_encrypted: 'iv:cipher',
+      order_index: 0,
+      is_archived: false,
+      sync_version: 0,
+      sync_status: 'synced' as const,
+      created_at: '2024-01-01T00:00:00.000Z',
+      updated_at: '2024-01-01T00:00:00.000Z'
+    };
+
+    it('accepts NoteEncryptedSchema with folder_id=null (root note from server)', () => {
+      const result = NoteEncryptedSchema.safeParse({ ...baseEncryptedNote, folder_id: null });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts NoteEncryptedSchema with folder_id absent (client-created)', () => {
+      const result = NoteEncryptedSchema.safeParse(baseEncryptedNote);
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts NoteDecryptedSchema with folder_id=null', () => {
+      const result = NoteDecryptedSchema.safeParse({
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        title: 'Test',
+        content: 'Body',
+        folder_id: null,
+        created_at: '2024-01-01T00:00:00.000Z',
+        updated_at: '2024-01-01T00:00:00.000Z'
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts FolderEncryptedSchema with parent_id=null (root folder)', () => {
+      const result = FolderEncryptedSchema.safeParse({ ...baseEncryptedFolder, parent_id: null });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts FolderDecryptedSchema with parent_id=null', () => {
+      const result = FolderDecryptedSchema.safeParse({
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        parent_id: null,
+        name: 'Inbox',
+        order_index: 0,
+        is_archived: false,
+        created_at: '2024-01-01T00:00:00.000Z',
+        updated_at: '2024-01-01T00:00:00.000Z'
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('still rejects malformed UUID in folder_id', () => {
+      const result = NoteEncryptedSchema.safeParse({
+        ...baseEncryptedNote,
+        folder_id: 'not-a-uuid'
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('still rejects malformed UUID in parent_id', () => {
+      const result = FolderEncryptedSchema.safeParse({
+        ...baseEncryptedFolder,
+        parent_id: 'not-a-uuid'
+      });
       expect(result.success).toBe(false);
     });
   });

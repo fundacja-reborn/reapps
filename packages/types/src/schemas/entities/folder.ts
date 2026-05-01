@@ -3,7 +3,9 @@ import { SyncableEncryptedEntitySchema } from '../base';
 
 export const FolderDecryptedSchema = z.object({
   id: z.string().uuid(),
-  parent_id: z.string().uuid().optional(),
+  // Server (Prisma) returns `null` for root folders; client code uses `undefined`.
+  // Both are valid wire representations of "no parent".
+  parent_id: z.string().uuid().nullable().optional(),
   name: z.string().min(1).max(255),
   color: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
   icon: z.string().optional(),
@@ -15,7 +17,9 @@ export const FolderDecryptedSchema = z.object({
 });
 
 export const FolderEncryptedSchema = SyncableEncryptedEntitySchema.extend({
-  parent_id: z.string().uuid().optional(),
+  // Server (Prisma) returns `null` for root folders; client code uses `undefined`.
+  // Both are valid wire representations of "no parent".
+  parent_id: z.string().uuid().nullable().optional(),
   name_encrypted: z.string(),
   metadata_encrypted: z.string().optional(), // color, icon etc.
   order_index: z.number().int().min(0),

@@ -15,7 +15,9 @@ export const NoteSensitiveMetadataSchema = z.object({
  */
 export const NoteDecryptedSchema = z.object({
   id: z.string().uuid(),
-  folder_id: z.string().uuid().optional(),
+  // Server (Prisma) returns `null` for root-level notes; client code uses `undefined`.
+  // Both are valid wire representations of "no folder".
+  folder_id: z.string().uuid().nullable().optional(),
   title: z.string().min(1),
   content: z.string(),
   tags: z.array(z.string()).optional(),
@@ -31,7 +33,9 @@ export const NoteDecryptedSchema = z.object({
  * Schema for encrypted note (wire format — no plaintext sensitive data)
  */
 export const NoteEncryptedSchema = SyncableEncryptedEntitySchema.extend({
-  folder_id: z.string().uuid().optional(),
+  // Server (Prisma) returns `null` for root-level notes; client code uses `undefined`.
+  // Both are valid wire representations of "no folder".
+  folder_id: z.string().uuid().nullable().optional(),
   title_encrypted: z.string().min(1),
   content_encrypted: z.string(),
   metadata_encrypted: z.string().optional(), // Contains NoteSensitiveMetadata
