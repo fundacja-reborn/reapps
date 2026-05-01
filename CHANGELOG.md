@@ -1,3 +1,15 @@
+## 0.14.3 (2026-05-01)
+
+### 🩹 Fixes
+
+- **notes:** accept null in folder_id/parent_id when importing JSON backup ([#120](https://github.com/fundacja-reborn/reapps/pull/120))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.14.2 (2026-04-30)
 
 ### 🩹 Fixes
