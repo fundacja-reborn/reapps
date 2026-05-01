@@ -1,3 +1,14 @@
+## 0.14.6 (2026-05-01)
+
+### 🩹 Fixes
+
+- **notes:** make folder and tag DELETE endpoints idempotent ([#123](https://github.com/fundacja-reborn/reapps/pull/123))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.14.5 (2026-05-01)
 
 ### 🩹 Fixes

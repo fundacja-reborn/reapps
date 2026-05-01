@@ -1,6 +1,6 @@
 {
   "name": "reborn-task",
-  "version": "0.14.5",
+  "version": "0.14.6",
   "private": true,
   "scripts": {
     "dev": "vite dev",
