@@ -1,3 +1,14 @@
+## 0.14.4 (2026-05-01)
+
+### 🩹 Fixes
+
+- **notes:** make backup import resilient to legacy/null user_id ([#121](https://github.com/fundacja-reborn/reapps/pull/121), [#120](https://github.com/fundacja-reborn/reapps/issues/120))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.14.3 (2026-05-01)
 
 ### 🩹 Fixes
