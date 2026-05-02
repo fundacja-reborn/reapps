@@ -125,7 +125,24 @@
   "notification_error": {
     "unknown_error": "An unknown error occurred while changing notification settings."
   },
-  "notifications_info": "You will receive task reminders {hours} hours before the due time.",
+  "notification_lead": {
+    "label": "Remind me about tasks with a time",
+    "help": "When to fire a notification for a task that has a specific time set.",
+    "options": {
+      "at_due": "At the due time",
+      "15min": "15 minutes before",
+      "30min": "30 minutes before",
+      "1h": "1 hour before",
+      "2h": "2 hours before",
+      "6h": "6 hours before",
+      "12h": "12 hours before",
+      "24h": "24 hours before"
+    }
+  },
+  "notification_all_day_time": {
+    "label": "Reminder time for date-only tasks",
+    "help": "You'll get a notification at this time on the day a task without a specific time is due."
+  },
   "notifications_macos_info": "On macOS, also check System Settings → Notifications → your browser and make sure notifications are allowed.",
   "send_test_notification": "Send test notification",
   "test_notification_sent": "Test notification sent",

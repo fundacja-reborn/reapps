@@ -202,7 +202,24 @@
   "notification_error": {
     "unknown_error": "Wystąpił nieznany błąd podczas zmiany ustawień powiadomień."
   },
-  "notifications_info": "Otrzymasz przypomnienia o zadaniach {hours} godzin przed terminem.",
+  "notification_lead": {
+    "label": "Przypominaj zadania z czasem",
+    "help": "Kiedy wysłać powiadomienie dla zadania z konkretną godziną.",
+    "options": {
+      "at_due": "W momencie terminu",
+      "15min": "15 minut wcześniej",
+      "30min": "30 minut wcześniej",
+      "1h": "1 godzinę wcześniej",
+      "2h": "2 godziny wcześniej",
+      "6h": "6 godzin wcześniej",
+      "12h": "12 godzin wcześniej",
+      "24h": "24 godziny wcześniej"
+    }
+  },
+  "notification_all_day_time": {
+    "label": "Pora przypomnień dla zadań bez godziny",
+    "help": "O tej porze otrzymasz powiadomienie w dniu zadania, dla którego nie ustawiono konkretnej godziny."
+  },
   "notifications_macos_info": "Na macOS dodatkowo sprawdź Ustawienia systemowe → Powiadomienia → Twoja przeglądarka i upewnij się, że powiadomienia są dozwolone.",
   "send_test_notification": "Wyślij testowe powiadomienie",
   "test_notification_sent": "Testowe powiadomienie zostało wysłane",

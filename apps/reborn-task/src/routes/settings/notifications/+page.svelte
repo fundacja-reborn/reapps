@@ -10,11 +10,20 @@
 		Button,
 		Switch,
 		Label,
+		Select,
+		SelectContent,
+		SelectItem,
+		SelectTrigger,
 		toast
 	} from '@reborn/ui';
-	import { Bell, BellOff, AlertTriangle, Info, Send } from '@lucide/svelte';
+	import { Bell, BellOff, AlertTriangle, Info, Send, Clock } from '@lucide/svelte';
 	import { appSettings } from '$lib/stores/app-settings.store';
-	import { pushNotificationService, type PermissionState } from '$lib/services/push-notification.service';
+	import {
+		pushNotificationService,
+		type PermissionState,
+		DEFAULT_NOTIFICATION_LEAD_MINUTES,
+		DEFAULT_NOTIFICATION_ALL_DAY_TIME
+	} from '$lib/services/push-notification.service';
 	import { createLogger } from '@reborn/utils';
 	import { t } from '$lib/stores/i18n.store';
 
@@ -25,14 +34,37 @@
 	let permissionState = $state<PermissionState>('default');
 	let isSubscribed = $state(false);
 	let notificationsEnabled = $state($appSettings?.notifications_enabled ?? false);
+	let leadMinutes = $state<number>(
+		$appSettings?.notification_lead_minutes ?? DEFAULT_NOTIFICATION_LEAD_MINUTES
+	);
+	let allDayTime = $state<string>(
+		$appSettings?.notification_all_day_time ?? DEFAULT_NOTIFICATION_ALL_DAY_TIME
+	);
 	const isMacOS = $derived(
 		typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+	);
+
+	const leadOptions = $derived([
+		{ value: '0', label: $t('settings.notification_lead.options.at_due') },
+		{ value: '15', label: $t('settings.notification_lead.options.15min') },
+		{ value: '30', label: $t('settings.notification_lead.options.30min') },
+		{ value: '60', label: $t('settings.notification_lead.options.1h') },
+		{ value: '120', label: $t('settings.notification_lead.options.2h') },
+		{ value: '360', label: $t('settings.notification_lead.options.6h') },
+		{ value: '720', label: $t('settings.notification_lead.options.12h') },
+		{ value: '1440', label: $t('settings.notification_lead.options.24h') }
+	]);
+
+	const leadLabel = $derived(
+		leadOptions.find((o) => Number(o.value) === leadMinutes)?.label ?? leadOptions[3].label
 	);
 
 	onMount(() => {
 		// Sync enabled state from settings store
 		const unsub = appSettings.subscribe((settings) => {
 			notificationsEnabled = settings?.notifications_enabled ?? false;
+			leadMinutes = settings?.notification_lead_minutes ?? DEFAULT_NOTIFICATION_LEAD_MINUTES;
+			allDayTime = settings?.notification_all_day_time ?? DEFAULT_NOTIFICATION_ALL_DAY_TIME;
 		});
 
 		// Detect permission and subscription state
@@ -40,6 +72,28 @@
 
 		return unsub;
 	});
+
+	async function updateLeadMinutes(value: string) {
+		const minutes = Number(value);
+		if (!Number.isFinite(minutes) || minutes < 0) return;
+		try {
+			await appSettings.update('notification_lead_minutes', minutes);
+		} catch (err: unknown) {
+			logger.error('Failed to update notification_lead_minutes', err);
+			toast.error($t('settings.notification_error.unknown_error'));
+		}
+	}
+
+	async function updateAllDayTime(value: string) {
+		// Basic HH:MM validation; native input enforces format but be defensive.
+		if (!/^\d{1,2}:\d{2}$/.test(value)) return;
+		try {
+			await appSettings.update('notification_all_day_time', value);
+		} catch (err: unknown) {
+			logger.error('Failed to update notification_all_day_time', err);
+			toast.error($t('settings.notification_error.unknown_error'));
+		}
+	}
 
 	async function refreshState() {
 		permissionState = pushNotificationService.getPermission();
@@ -199,10 +253,49 @@
 					</div>
 
 					{#if notificationsEnabled}
-						<div class="flex items-start gap-2 rounded-md bg-muted/50 p-3">
-							<Info class="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+						<!-- Lead time for tasks with a specific time -->
+						<div class="space-y-2">
+							<Label for="notification-lead" class="flex items-center gap-2">
+								<Clock class="h-4 w-4 text-muted-foreground" />
+								{$t('settings.notification_lead.label')}
+							</Label>
+							<Select
+								type="single"
+								value={String(leadMinutes)}
+								onValueChange={(value) => updateLeadMinutes(value)}
+								disabled={isLoading}
+							>
+								<SelectTrigger id="notification-lead" class="w-full">
+									{leadLabel}
+								</SelectTrigger>
+								<SelectContent>
+									{#each leadOptions as option (option.value)}
+										<SelectItem value={option.value}>{option.label}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
 							<p class="text-xs text-muted-foreground">
-								{$t('settings.notifications_info', { values: { hours: '1' } })}
+								{$t('settings.notification_lead.help')}
+							</p>
+						</div>
+
+						<!-- All-day time for date-only tasks -->
+						<div class="space-y-2">
+							<Label for="notification-all-day-time" class="flex items-center gap-2">
+								<Clock class="h-4 w-4 text-muted-foreground" />
+								{$t('settings.notification_all_day_time.label')}
+							</Label>
+							<input
+								id="notification-all-day-time"
+								type="time"
+								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+								value={allDayTime}
+								disabled={isLoading}
+								onchange={(e) =>
+									updateAllDayTime((e.target as HTMLInputElement).value)}
+							/>
+							<p class="text-xs text-muted-foreground">
+								{$t('settings.notification_all_day_time.help')}
 							</p>
 						</div>
 

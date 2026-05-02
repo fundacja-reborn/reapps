@@ -139,22 +139,54 @@ initializeStorage('task')
 			try {
 				const { tasks } = await import('$lib/stores/decrypted-tasks.store');
 				const { getSetting } = await import('$lib/utils/app-settings');
+				const { appSettings } = await import('$lib/stores/app-settings.store');
 				const { get } = await import('svelte/store');
+				const {
+					DEFAULT_NOTIFICATION_LEAD_MINUTES,
+					DEFAULT_NOTIFICATION_ALL_DAY_TIME
+				} = await import('$lib/services/push-notification.service');
+
+				const readTimingOptions = async () => ({
+					leadMinutes:
+						(await getSetting('notification_lead_minutes')) ?? DEFAULT_NOTIFICATION_LEAD_MINUTES,
+					allDayTime:
+						(await getSetting('notification_all_day_time')) ?? DEFAULT_NOTIFICATION_ALL_DAY_TIME
+				});
 
 				const syncIfEnabled = async () => {
 					const enabled = await getSetting('notifications_enabled');
-					if (enabled) {
-						await pushNotificationService.syncScheduledNotifications(get(tasks));
-					}
+					if (!enabled) return;
+					const opts = await readTimingOptions();
+					await pushNotificationService.syncScheduledNotifications(get(tasks), opts);
 				};
 
 				tasks.subscribe(($tasks) => {
 					void (async () => {
 						const enabled = await getSetting('notifications_enabled');
-						if (enabled) {
-							await pushNotificationService.syncScheduledNotifications($tasks);
-						}
+						if (!enabled) return;
+						const opts = await readTimingOptions();
+						await pushNotificationService.syncScheduledNotifications($tasks, opts);
 					})();
+				});
+
+				// Re-sync when notification timing settings change so the user sees
+				// the new schedule immediately without waiting for the next trigger.
+				let lastLead: number | undefined;
+				let lastAllDay: string | undefined;
+				appSettings.subscribe(($settings) => {
+					if (!$settings) return;
+					const lead = $settings.notification_lead_minutes;
+					const allDay = $settings.notification_all_day_time;
+					if (lastLead === undefined && lastAllDay === undefined) {
+						lastLead = lead;
+						lastAllDay = allDay;
+						return;
+					}
+					if (lead !== lastLead || allDay !== lastAllDay) {
+						lastLead = lead;
+						lastAllDay = allDay;
+						void syncIfEnabled();
+					}
 				});
 
 				document.addEventListener('visibilitychange', () => {

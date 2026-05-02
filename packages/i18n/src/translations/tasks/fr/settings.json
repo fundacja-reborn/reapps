@@ -125,7 +125,24 @@
   "notification_error": {
     "unknown_error": "Une erreur inconnue s'est produite lors de la modification des param\u00e8tres de notification."
   },
-  "notifications_info": "Vous recevrez des rappels de t\u00e2ches {hours} heures avant l'heure d'\u00e9ch\u00e9ance.",
+  "notification_lead": {
+    "label": "Rappel pour les t\u00e2ches avec heure",
+    "help": "Quand d\u00e9clencher la notification pour une t\u00e2che dont l'heure pr\u00e9cise est d\u00e9finie.",
+    "options": {
+      "at_due": "\u00c0 l'heure d'\u00e9ch\u00e9ance",
+      "15min": "15 minutes avant",
+      "30min": "30 minutes avant",
+      "1h": "1 heure avant",
+      "2h": "2 heures avant",
+      "6h": "6 heures avant",
+      "12h": "12 heures avant",
+      "24h": "24 heures avant"
+    }
+  },
+  "notification_all_day_time": {
+    "label": "Heure de rappel pour les t\u00e2ches sans heure",
+    "help": "Vous recevrez une notification \u00e0 cette heure le jour d'\u00e9ch\u00e9ance d'une t\u00e2che sans heure pr\u00e9cise."
+  },
   "notifications_macos_info": "Sur macOS, v\u00e9rifiez \u00e9galement R\u00e9glages Syst\u00e8me \u2192 Notifications \u2192 votre navigateur et assurez-vous que les notifications sont autoris\u00e9es.",
   "send_test_notification": "Envoyer une notification de test",
   "test_notification_sent": "Notification de test envoy\u00e9e",

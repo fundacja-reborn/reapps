@@ -18,6 +18,10 @@ export interface AppSettings {
   timeFormat: '12h' | '24h';
   firstDayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
   notifications_enabled: boolean;
+  /** Minutes before due_date to fire a reminder (only for tasks with has_time === true). */
+  notification_lead_minutes: number;
+  /** Local 'HH:MM' clock time to fire reminders for date-only tasks (has_time === false). */
+  notification_all_day_time: string;
   auto_sync_enabled: boolean;
   sync_interval_minutes: number;
   imageLoadMode: ImageLoadMode;
@@ -95,6 +99,8 @@ export const settingsOperations = {
           timeFormat: '24h',
           firstDayOfWeek: 1, // Monday
           notifications_enabled: false,
+          notification_lead_minutes: 60,
+          notification_all_day_time: '09:00',
           auto_sync_enabled: true,
           sync_interval_minutes: 5,
           imageLoadMode: 'ask',
