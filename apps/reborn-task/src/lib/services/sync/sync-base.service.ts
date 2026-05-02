@@ -24,10 +24,23 @@ export abstract class SyncBaseService {
 		// (cross-tab serialized via Web Locks API). Shorter timeout so a VPN
 		// black hole (navigator.onLine=true but no upstream) doesn't hang a
 		// sync for the default 30 s.
+		//
+		// `authFetch.refresh()` throws `TransientRefreshError` when the server
+		// is briefly unreachable (e.g. 5xx from nginx during a Docker rebuild
+		// on the production VPS). Swallow it and return `false` so the caller
+		// gets the original 401 — sync will treat it as a transient sync error
+		// and retry on the next tick instead of falsely flagging the session
+		// as expired.
 		this.apiClient = new ApiClient({
 			baseUrl,
 			timeout: 15_000,
-			onUnauthorized: async () => (await authFetch.refresh()) !== null
+			onUnauthorized: async () => {
+				try {
+					return (await authFetch.refresh()) !== null;
+				} catch {
+					return false;
+				}
+			}
 		});
 	}
 

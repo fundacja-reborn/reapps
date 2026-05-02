@@ -42,8 +42,29 @@ export interface AuthFetchConfig {
 
 export interface AuthFetch {
   (input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
-  /** Force a refresh now, returning the new access token or null on failure. */
+  /**
+   * Force a refresh now. Resolves to the new access token, or `null` when the
+   * server reports a definitive expiry (401/403, or 200 with `success:false`).
+   * Throws {@link TransientRefreshError} for transient failures (5xx, network
+   * error, timeout) so the caller can distinguish "session is gone" from
+   * "server is briefly unreachable" (e.g. nginx returning 502 during a Docker
+   * rebuild on the production VPS).
+   */
   refresh: () => Promise<string | null>;
+}
+
+/**
+ * Thrown by {@link AuthFetch.refresh} when `/auth/refresh` failed for a reason
+ * that does *not* indicate the session has expired — typically 5xx from nginx
+ * during a deploy, a network error, or a timeout. Callers should treat this
+ * as a transient sync error (try again later) and **must not** surface the
+ * session-expired banner.
+ */
+export class TransientRefreshError extends Error {
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = 'TransientRefreshError';
+  }
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
@@ -72,18 +93,49 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
     const current = storage.getAccessToken();
     if (current && current !== tokenBeforeLock) return current;
 
-    const refreshRes = await fetchImpl(config.refreshUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    });
+    let refreshRes: Response;
+    try {
+      refreshRes = await fetchImpl(config.refreshUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+    } catch (err) {
+      // Network error / DNS / timeout — server is unreachable, not an expiry.
+      throw new TransientRefreshError(
+        err instanceof Error ? err.message : 'Refresh network error',
+        err
+      );
+    }
 
-    if (!refreshRes.ok) return null;
+    // 401/403 = definitive expiry (refresh token revoked, family invalidated,
+    // or expired beyond the 7-day sliding window). Caller should mark the
+    // session as expired and prompt for re-auth.
+    if (refreshRes.status === 401 || refreshRes.status === 403) {
+      return null;
+    }
 
-    const data = (await refreshRes.json()) as {
-      success?: boolean;
-      data?: { access_token?: string };
-    };
+    // Any other non-OK status (5xx from nginx during a rebuild, 429 rate
+    // limiting, 502/503/504 upstream unavailable) is transient — the refresh
+    // token is probably still valid, the server just can't service the
+    // request right now. Do NOT trigger the session-expired banner.
+    if (!refreshRes.ok) {
+      throw new TransientRefreshError(
+        `Refresh endpoint returned HTTP ${refreshRes.status}`
+      );
+    }
+
+    let data: { success?: boolean; data?: { access_token?: string } };
+    try {
+      data = (await refreshRes.json()) as typeof data;
+    } catch (err) {
+      // 200 OK but body is not JSON — almost certainly a misbehaving proxy
+      // serving a maintenance page. Treat as transient.
+      throw new TransientRefreshError('Refresh response was not valid JSON', err);
+    }
+
+    // 200 OK with `success:false` is a deliberate expiry signal from the
+    // server (e.g. invalid_grant). Treat as definitive.
     if (!data.success || !data.data?.access_token) return null;
 
     const newToken = data.data.access_token;
@@ -122,7 +174,19 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
 
     if (response.status !== 401) return response;
 
-    const newToken = await refresh();
+    let newToken: string | null;
+    try {
+      newToken = await refresh();
+    } catch (err) {
+      // Transient refresh failure (5xx from nginx during deploy, network
+      // hiccup, timeout). Return the original 401 so the caller can treat it
+      // as a regular sync error and retry later. Crucially: do NOT call
+      // onSessionExpired — the session is probably still valid, the server
+      // is just briefly unreachable.
+      if (err instanceof TransientRefreshError) return response;
+      throw err;
+    }
+
     if (!newToken) {
       config.onSessionExpired?.();
       return response;
