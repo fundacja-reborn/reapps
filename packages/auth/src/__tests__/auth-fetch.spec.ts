@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createAuthFetch, type AuthFetchTokenStorage } from '../utils/auth-fetch';
+import {
+  createAuthFetch,
+  TransientRefreshError,
+  type AuthFetchTokenStorage
+} from '../utils/auth-fetch';
 
 function makeStorage(initial: string | null = null): AuthFetchTokenStorage & { value: string | null } {
   const state = { value: initial };
@@ -207,5 +211,110 @@ describe('createAuthFetch', () => {
     expect(storage.getAccessToken()).toBe('old'); // unchanged
     // refresh() itself does NOT call onSessionExpired — that's the wrapper's job on 401-driven refresh.
     expect(onSessionExpired).not.toHaveBeenCalled();
+  });
+
+  // --- Transient vs definitive refresh failure ---
+  //
+  // Regression coverage for the production-deploy bug: nginx returns 5xx for
+  // a few seconds during `docker compose up -d --build`, which used to flip
+  // the session-expired banner on mobile (where the access token had expired
+  // in the background and the very first post-resume sync hit the deploy
+  // window). The session is still valid — the server is just briefly down.
+
+  it('does NOT call onSessionExpired when refresh hits a 5xx (transient)', async () => {
+    const storage = makeStorage('expired');
+    const onSessionExpired = vi.fn();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+      .mockResolvedValueOnce(new Response('Bad Gateway', { status: 502 }));
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      onSessionExpired
+    });
+
+    const response = await authFetch('/api/things');
+
+    // Original 401 surfaces to caller; sync layer treats as transient and retries.
+    expect(response.status).toBe(401);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+    expect(storage.getAccessToken()).toBe('expired');
+  });
+
+  it('does NOT call onSessionExpired when refresh fetch throws (network/timeout)', async () => {
+    const storage = makeStorage('expired');
+    const onSessionExpired = vi.fn();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      onSessionExpired
+    });
+
+    const response = await authFetch('/api/things');
+
+    expect(response.status).toBe(401);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+  });
+
+  it('still calls onSessionExpired on a definitive 401 from refresh', async () => {
+    // Regression guard: the transient-error change must not weaken the
+    // signal for an actually-expired refresh token (token reuse → entire
+    // family revoked → 401 from /auth/refresh).
+    const storage = makeStorage('expired');
+    const onSessionExpired = vi.fn();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+      .mockResolvedValueOnce(new Response('refresh denied', { status: 401 }));
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      onSessionExpired
+    });
+
+    const response = await authFetch('/api/things');
+
+    expect(response.status).toBe(401);
+    expect(onSessionExpired).toHaveBeenCalledOnce();
+  });
+
+  it('refresh() throws TransientRefreshError on 5xx', async () => {
+    const storage = makeStorage('old');
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response('Service Unavailable', { status: 503 }));
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl
+    });
+
+    await expect(authFetch.refresh()).rejects.toBeInstanceOf(TransientRefreshError);
+    expect(storage.getAccessToken()).toBe('old');
+  });
+
+  it('refresh() throws TransientRefreshError on network error', async () => {
+    const storage = makeStorage('old');
+    const fetchImpl = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl
+    });
+
+    await expect(authFetch.refresh()).rejects.toBeInstanceOf(TransientRefreshError);
   });
 });
