@@ -1,3 +1,14 @@
+## 0.15.1 (2026-05-02)
+
+### 🩹 Fixes
+
+- **auth:** treat transient refresh failures as retryable, not session expiry ([#126](https://github.com/fundacja-reborn/reapps/pull/126))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.15.0 (2026-05-02)
 
 ### 🚀 Features
