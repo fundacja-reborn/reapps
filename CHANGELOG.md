@@ -1,3 +1,14 @@
+## 0.15.0 (2026-05-02)
+
+### 🚀 Features
+
+- **task:** configurable notification lead time and date-only reminder hour ([#125](https://github.com/fundacja-reborn/reapps/pull/125))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.14.6 (2026-05-01)
 
 ### 🩹 Fixes
