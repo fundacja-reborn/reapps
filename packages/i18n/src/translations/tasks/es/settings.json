@@ -125,7 +125,24 @@
   "notification_error": {
     "unknown_error": "Se produjo un error desconocido al cambiar los ajustes de notificación."
   },
-  "notifications_info": "Recibirá recordatorios de tareas {hours} horas antes de la hora de vencimiento.",
+  "notification_lead": {
+    "label": "Recordatorio para tareas con hora",
+    "help": "Cuándo enviar la notificación de una tarea con hora específica.",
+    "options": {
+      "at_due": "A la hora de vencimiento",
+      "15min": "15 minutos antes",
+      "30min": "30 minutos antes",
+      "1h": "1 hora antes",
+      "2h": "2 horas antes",
+      "6h": "6 horas antes",
+      "12h": "12 horas antes",
+      "24h": "24 horas antes"
+    }
+  },
+  "notification_all_day_time": {
+    "label": "Hora de recordatorio para tareas sin hora",
+    "help": "Recibirás una notificación a esta hora el día en que vence una tarea sin hora específica."
+  },
   "notifications_macos_info": "En macOS, también verifique Ajustes del Sistema → Notificaciones → su navegador y asegúrese de que las notificaciones estén permitidas.",
   "send_test_notification": "Enviar notificación de prueba",
   "test_notification_sent": "Notificación de prueba enviada",

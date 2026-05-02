@@ -125,7 +125,24 @@
   "notification_error": {
     "unknown_error": "Ein unbekannter Fehler ist beim \u00c4ndern der Benachrichtigungseinstellungen aufgetreten."
   },
-  "notifications_info": "Sie erhalten Aufgabenerinnerungen {hours} Stunden vor der F\u00e4lligkeit.",
+  "notification_lead": {
+    "label": "Erinnerung f\u00fcr Aufgaben mit Uhrzeit",
+    "help": "Wann eine Benachrichtigung f\u00fcr eine Aufgabe mit konkreter Uhrzeit ausgel\u00f6st werden soll.",
+    "options": {
+      "at_due": "Zum F\u00e4lligkeitszeitpunkt",
+      "15min": "15 Minuten vorher",
+      "30min": "30 Minuten vorher",
+      "1h": "1 Stunde vorher",
+      "2h": "2 Stunden vorher",
+      "6h": "6 Stunden vorher",
+      "12h": "12 Stunden vorher",
+      "24h": "24 Stunden vorher"
+    }
+  },
+  "notification_all_day_time": {
+    "label": "Erinnerungszeit f\u00fcr Aufgaben ohne Uhrzeit",
+    "help": "Zu dieser Uhrzeit erhalten Sie am F\u00e4lligkeitstag eine Benachrichtigung f\u00fcr Aufgaben ohne konkrete Uhrzeit."
+  },
   "notifications_macos_info": "Unter macOS \u00fcberpr\u00fcfen Sie auch Systemeinstellungen \u2192 Mitteilungen \u2192 Ihr Browser und stellen Sie sicher, dass Benachrichtigungen erlaubt sind.",
   "send_test_notification": "Testbenachrichtigung senden",
   "test_notification_sent": "Testbenachrichtigung gesendet",

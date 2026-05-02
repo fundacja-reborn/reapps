@@ -16,8 +16,113 @@ import type { TaskListItem } from '$lib/services/task-title-index.svelte';
 
 const logger = createLogger('PushNotificationService');
 
-// How many minutes before due date to fire a reminder
-const REMINDER_MINUTES_BEFORE = 60;
+/** Default reminder lead time for tasks with `has_time === true` (minutes). */
+export const DEFAULT_NOTIFICATION_LEAD_MINUTES = 60;
+/** Default local clock time for date-only reminders (HH:MM). */
+export const DEFAULT_NOTIFICATION_ALL_DAY_TIME = '09:00';
+
+export interface ReminderTimingOptions {
+	/** Minutes before `due_date` for tasks with `has_time === true`. */
+	leadMinutes: number;
+	/** Local 'HH:MM' string used as the fire time for date-only tasks. */
+	allDayTime: string;
+}
+
+/** Pick of TaskListItem fields needed to compute reminder fire time. */
+type ReminderTask = Pick<TaskListItem, 'due_date' | 'has_time'>;
+
+/**
+ * Compute the absolute timestamp at which a task's reminder should fire.
+ *
+ * - For tasks with `has_time === true`: fire `leadMinutes` before `due_date`.
+ * - For date-only tasks (`has_time === false`): fire on the calendar day stored
+ *   in `due_date` (UTC midnight) at the user's local `allDayTime`.
+ *
+ * Exported as a pure function for unit testing.
+ */
+export function computeReminderFireAt(
+	task: ReminderTask,
+	options: ReminderTimingOptions
+): number | null {
+	if (!task.due_date) return null;
+
+	const due = new Date(task.due_date);
+	if (Number.isNaN(due.getTime())) return null;
+
+	if (task.has_time) {
+		return due.getTime() - options.leadMinutes * 60_000;
+	}
+
+	// Date-only: due_date is UTC midnight; treat its UTC date components as the
+	// user's local calendar day, then assemble a local Date at allDayTime.
+	const [hh, mm] = parseAllDayTime(options.allDayTime);
+	return new Date(
+		due.getUTCFullYear(),
+		due.getUTCMonth(),
+		due.getUTCDate(),
+		hh,
+		mm,
+		0,
+		0
+	).getTime();
+}
+
+/** Parse 'HH:MM' into [hour, minute]. Falls back to default on invalid input. */
+function parseAllDayTime(value: string): [number, number] {
+	const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+	if (!match) return parseAllDayTime(DEFAULT_NOTIFICATION_ALL_DAY_TIME);
+	const h = Number(match[1]);
+	const m = Number(match[2]);
+	if (h < 0 || h > 23 || m < 0 || m > 59) {
+		return parseAllDayTime(DEFAULT_NOTIFICATION_ALL_DAY_TIME);
+	}
+	return [h, m];
+}
+
+/**
+ * Build the notification body text using translated strings.
+ * - has_time: "scheduled for HH:MM" with the time formatted in user's locale.
+ * - date-only with calendar day == today: "scheduled for today".
+ * - date-only otherwise: "scheduled for {locale-formatted date}".
+ */
+type TranslateFn = (key: string, options?: { values?: Record<string, string | number> }) => string;
+
+function formatReminderBody(task: ReminderTask, translate: TranslateFn, locale: string): string {
+	if (!task.due_date) return translate('notifications.task_due.body_unknown');
+
+	const due = new Date(task.due_date);
+	if (Number.isNaN(due.getTime())) {
+		return translate('notifications.task_due.body_unknown');
+	}
+
+	const localeTag = locale === 'pl' ? 'pl-PL' : locale;
+
+	if (task.has_time) {
+		const time = due.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' });
+		return translate('notifications.task_due.body_time', { values: { time } });
+	}
+
+	// Date-only: compare UTC calendar day against today's local calendar day.
+	const taskYear = due.getUTCFullYear();
+	const taskMonth = due.getUTCMonth();
+	const taskDay = due.getUTCDate();
+	const today = new Date();
+	if (
+		taskYear === today.getFullYear() &&
+		taskMonth === today.getMonth() &&
+		taskDay === today.getDate()
+	) {
+		return translate('notifications.task_due.body_today');
+	}
+
+	const taskLocalDay = new Date(taskYear, taskMonth, taskDay);
+	const date = taskLocalDay.toLocaleDateString(localeTag, {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric'
+	});
+	return translate('notifications.task_due.body_date', { values: { date } });
+}
 
 export type PermissionState = 'granted' | 'denied' | 'default' | 'unsupported';
 
@@ -120,13 +225,32 @@ class PushNotificationService {
 	/**
 	 * Sync scheduled local notifications with current task list.
 	 * Cancels obsolete reminders and schedules upcoming ones.
+	 *
+	 * Timing options come from `AppSettings`:
+	 * - tasks with `has_time === true`: fire `leadMinutes` before `due_date`.
+	 * - date-only tasks: fire on the calendar day at the local `allDayTime`.
 	 */
-	async syncScheduledNotifications(tasks: TaskListItem[]): Promise<void> {
+	async syncScheduledNotifications(
+		tasks: TaskListItem[],
+		options: ReminderTimingOptions = {
+			leadMinutes: DEFAULT_NOTIFICATION_LEAD_MINUTES,
+			allDayTime: DEFAULT_NOTIFICATION_ALL_DAY_TIME
+		}
+	): Promise<void> {
 		if (!this.isSupported() || Notification.permission !== 'granted') return;
 
 		const sw = await navigator.serviceWorker.ready;
 		const now = Date.now();
 		const window24h = 24 * 60 * 60 * 1000;
+
+		// Lazy import to avoid pulling i18n into worker contexts.
+		const [{ get }, { t }, { currentLanguage }] = await Promise.all([
+			import('svelte/store'),
+			import('$lib/stores/i18n.store'),
+			import('$lib/stores/app-settings.store')
+		]);
+		const translate = get(t) as TranslateFn;
+		const locale = get(currentLanguage);
 
 		// Cancel all existing scheduled reminders first
 		sw.active?.postMessage({ type: 'CANCEL_ALL_NOTIFICATIONS' });
@@ -134,15 +258,13 @@ class PushNotificationService {
 		for (const task of tasks) {
 			if (task.is_completed || task.deleted_at || !task.due_date) continue;
 
-			const dueMs = new Date(task.due_date).getTime();
-			const fireAt = dueMs - REMINDER_MINUTES_BEFORE * 60 * 1000;
+			const fireAt = computeReminderFireAt(task, options);
+			if (fireAt === null) continue;
 
-			// Only schedule if in the future and within 24 hours
+			// Only schedule if in the future and within 24 hours (SW lifecycle limit)
 			if (fireAt <= now || fireAt > now + window24h) continue;
 
-			const body = task.has_time
-				? `Termin: ${new Date(dueMs).toLocaleTimeString('pl', { hour: '2-digit', minute: '2-digit' })}`
-				: 'Zbliża się termin zadania';
+			const body = formatReminderBody(task, translate, locale);
 
 			sw.active?.postMessage({
 				type: 'SCHEDULE_NOTIFICATION',
