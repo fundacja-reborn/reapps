@@ -1,0 +1,102 @@
+# docker-compose.localprod.yml.example — Local production-build smoke test
+#
+# This is an EXAMPLE file. Copy it to `docker-compose.localprod.yml`. The actual
+# `docker-compose.localprod.yml` is in .gitignore.
+#
+#   cp docker-compose.localprod.yml.example docker-compose.localprod.yml
+#
+# Purpose: run the **production** image (multi-stage Dockerfile, pre-compiled
+# SvelteKit server) on `http://localhost` so you can smoke-test the prod build
+# locally — without touching staging or prod. Catches bugs that only appear
+# in the production artifact (env_file precedence, missing build-time PUBLIC_*
+# vars, broken multi-stage layers) BEFORE you push.
+#
+# Differences vs docker-compose.prod.yml.example:
+#   - `ORIGIN` / `PUBLIC_SITE_URL` = http://localhost (not your production URL)
+#   - DB credentials default to `postgres:postgres` from the base compose
+#     (no `${DB_PASSWORD}` indirection — base compose is enough)
+#   - `restart: unless-stopped` (vs prod's `always`) — it's a local box
+#
+# Secrets (JWT_SECRET, SESSION_SECRET, REFRESH_TOKEN_SECRET, etc.) are loaded
+# from `.env` via the base compose's `env_file:` — DO NOT add `env_file: !reset
+# []` here, or login will fail with 401 even though healthchecks pass.
+#
+# Usage with reverse proxy (recommended — mirrors prod via shared origin):
+#   docker compose -f docker-compose.yml -f docker-compose.localprod.yml \
+#     -f docker-compose.proxy.yml --profile with-notes -p reborn-localprod \
+#     up -d --build --wait
+#   → http://localhost/task   (Reborn Task)
+#   → http://localhost/notes  (Reborn Notes)
+#
+# Direct access (no proxy, quick sanity checks only — CSRF flows may differ):
+#   docker compose -f docker-compose.yml -f docker-compose.localprod.yml \
+#     --profile with-notes -p reborn-localprod up -d --build --wait
+#   → http://localhost:4200/task/
+#   → http://localhost:4201/notes/
+#
+# Teardown:
+#   docker compose -f docker-compose.yml -f docker-compose.localprod.yml \
+#     -f docker-compose.proxy.yml --profile with-notes -p reborn-localprod down
+#
+# Pre-flight: stop the dev stack first
+#   The base + localprod compose share ports 5432, 4200, 4201, and 80 (proxy).
+#   If `docker compose ... up` for the dev stack is running, localprod will
+#   fail with `port is already allocated`. Stop dev first:
+#     docker compose -f docker-compose.yml -f docker-compose.proxy.yml \
+#       --profile with-notes down
+
+services:
+  app:
+    image: !reset null
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: reborn-task
+      args:
+        PUBLIC_SITE_URL: http://localhost
+    working_dir: !reset null
+    volumes: !reset []
+    environment:
+      NODE_ENV: production
+      PUBLIC_BASE_PATH: /task
+      PUBLIC_SITE_URL: http://localhost
+      PORT: '4200'
+      HOST: '0.0.0.0'
+      ORIGIN: http://localhost
+      DATABASE_URL: 'postgresql://postgres:postgres@db:5432/reborn?sslmode=disable'
+    command: !reset null
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:4200/task/']
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  notes:
+    image: !reset null
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: reborn-notes
+      args:
+        PUBLIC_SITE_URL: http://localhost
+    working_dir: !reset null
+    volumes: !reset []
+    environment:
+      NODE_ENV: production
+      PUBLIC_BASE_PATH: /notes
+      PUBLIC_SITE_URL: http://localhost
+      PUBLIC_TASK_URL: /task
+      PORT: '4201'
+      HOST: '0.0.0.0'
+      ORIGIN: http://localhost
+      DATABASE_URL: 'postgresql://postgres:postgres@db:5432/reborn?sslmode=disable'
+    command: !reset null
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:4201/notes/']
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
