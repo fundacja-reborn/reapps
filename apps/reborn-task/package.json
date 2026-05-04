@@ -30,7 +30,7 @@
     "eslint-plugin-svelte": "3.17.1",
     "globals": "17.6.0",
     "otpauth": "9.5.1",
-    "postcss": "8.5.12",
+    "postcss": "8.5.14",
     "postcss-import": "16.1.1",
     "prettier": "3.8.3",
     "prettier-plugin-svelte": "3.5.1",
