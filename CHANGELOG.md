@@ -1,3 +1,15 @@
+## 0.15.2 (2026-05-04)
+
+### 🩹 Fixes
+
+- **DateTimePicker:** update locale handling and date formatters for improved localization ([#134](https://github.com/fundacja-reborn/reapps/pull/134))
+- **deps:** update minor-updates ([#130](https://github.com/fundacja-reborn/reapps/pull/130))
+- **deps:** update patch-updates ([#128](https://github.com/fundacja-reborn/reapps/pull/128))
+
+### ❤️ Thank You
+
+- rerefu @rerefu
+
 ## 0.15.1 (2026-05-02)
 
 ### 🩹 Fixes
