@@ -73,20 +73,20 @@
 	
 	// Derived hourCycle from user settings
 	let hourCycle = $derived(($timeFormat === '12h' ? 12 : 24) as 12 | 24);
-	let locale = $derived($currentLanguage === 'pl' ? 'pl' : 'en');
-	
+	let locale = $derived($currentLanguage || 'en');
+
 	// Prevent parent blur when interacting with popover
 	let containerRef = $state<HTMLDivElement>();
-	
-	// Date formatter based on user's locale
-	const dateFormatter = new DateFormatter('pl-PL', {
+
+	// Date formatters reactive to user's locale
+	let dateFormatter = $derived(new DateFormatter(locale, {
 		dateStyle: 'medium'
-	});
-	
-	const dateTimeFormatter = new DateFormatter('pl-PL', {
+	}));
+
+	let dateTimeFormatter = $derived(new DateFormatter(locale, {
 		dateStyle: 'medium',
 		timeStyle: 'short'
-	});
+	}));
 
 	// Track previous value to avoid reactive loops
 	let previousValue = $state<string | undefined>();
