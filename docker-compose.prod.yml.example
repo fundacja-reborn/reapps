@@ -1,0 +1,118 @@
+# docker-compose.prod.yml.example — Production self-host template
+#
+# This is an EXAMPLE file. Copy it to `docker-compose.prod.yml` and adjust the
+# values for your deployment. The actual `docker-compose.prod.yml` is in
+# .gitignore so your local edits stay out of the repo.
+#
+#   cp docker-compose.prod.yml.example docker-compose.prod.yml
+#
+# How it differs from the base `docker-compose.yml`:
+#   - Builds the production image from the multi-stage `Dockerfile`
+#     (targets `reborn-task` and `reborn-notes`) instead of running `node:alpine`
+#     with a bind-mounted source tree.
+#   - No `pnpm install`, no Vite dev server, no HMR. Containers boot the
+#     pre-compiled SvelteKit server (`node apps/<app>/build`) in <15 s.
+#   - Database password is taken from `.env` instead of the dev default
+#     `postgres:postgres`.
+#   - Containers `restart: always` (vs base `unless-stopped`).
+#
+# Required `.env` variables (extend `.env.example`):
+#   DB_USER=postgres
+#   DB_PASSWORD=<strong-random-password>
+#   DB_NAME=reborn
+#   PUBLIC_SITE_URL=https://your-domain.example.com   # or http://your-server-ip
+#   JWT_SECRET=<32+ random bytes, base64>
+#   REFRESH_TOKEN_SECRET=<32+ random bytes, base64>
+#   SESSION_SECRET=<32+ random bytes, base64>
+#   RECOVERY_KEY_SECRET=<32+ random bytes, base64>
+#   VAPID_PUBLIC_KEY=<vapid public>
+#   VAPID_PRIVATE_KEY=<vapid private>
+#   VAPID_SUBJECT=mailto:admin@your-domain.example.com
+#
+# Build + start:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     --profile with-notes up -d --build --wait
+#
+# After startup the apps listen on:
+#   - reborn-task  :4200
+#   - reborn-notes :4201
+#
+# For SSO (shared origin → shared localStorage) put a reverse proxy in front
+# that maps:
+#   <PUBLIC_SITE_URL>/task/  → http://localhost:4200/task/
+#   <PUBLIC_SITE_URL>/notes/ → http://localhost:4201/notes/
+#
+# A reference nginx config lives in `nginx/dev.conf`. For a TLS-terminating
+# production proxy you can adapt it (add `listen 443 ssl;`, certificate paths,
+# HSTS, etc.) — or run any other reverse proxy (Caddy, Traefik, Cloudflare
+# Tunnel) that preserves the `/task` and `/notes` path prefixes.
+
+services:
+  db:
+    # Drop the dev port mapping (5432). The DB is reached over the internal
+    # Docker network only.
+    ports: !reset []
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  app:
+    image: !reset null
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: reborn-task
+      args:
+        # PUBLIC_* variables are baked into the SvelteKit bundle at build time,
+        # so they have to be passed as build args, not just env vars.
+        PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:?PUBLIC_SITE_URL must be set in .env (e.g., https://your-domain.example.com)}
+    working_dir: !reset null
+    volumes: !reset []
+    environment:
+      NODE_ENV: production
+      PUBLIC_BASE_PATH: /task
+      PORT: '4200'
+      HOST: '0.0.0.0'
+      # ORIGIN must match the public URL the browser uses, otherwise
+      # SvelteKit rejects same-site POSTs as CSRF.
+      ORIGIN: ${PUBLIC_SITE_URL}
+      DATABASE_URL: 'postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable'
+    command: !reset null
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:4200/task']
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: always
+
+  notes:
+    image: !reset null
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: reborn-notes
+      args:
+        PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:?PUBLIC_SITE_URL must be set in .env (e.g., https://your-domain.example.com)}
+    working_dir: !reset null
+    volumes: !reset []
+    environment:
+      NODE_ENV: production
+      PUBLIC_BASE_PATH: /notes
+      PUBLIC_TASK_URL: /task
+      PORT: '4201'
+      HOST: '0.0.0.0'
+      ORIGIN: ${PUBLIC_SITE_URL}
+      DATABASE_URL: 'postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable'
+    command: !reset null
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:4201/notes']
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: always

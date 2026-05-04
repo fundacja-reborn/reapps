@@ -1,3 +1,24 @@
+# docker-compose.yml — DEVELOPMENT stack (Vite dev-host + HMR)
+#
+# This compose file runs the apps in DEVELOPMENT mode:
+#   - Bind-mounts the project root (`.:/app`) into the container
+#   - Runs `pnpm install` and `pnpm nx dev-host` at startup
+#   - Hot-reloads on source changes
+#
+# It REQUIRES a cloned copy of the repository on the host. Pasting this file
+# into Portainer / a stack editor without the source tree will fail with
+# `ERR_PNPM_NO_PKG_MANIFEST` — the bind mount points at an empty directory.
+#
+# For self-hosting in production (no source on host, prebuilt image), use:
+#   docker-compose.prod.yml.example
+#
+# For a local production-build smoke test, use:
+#   docker-compose.localprod.yml.example
+#
+# Quick start (dev, with reverse proxy for SSO between task and notes):
+#   docker compose -f docker-compose.yml -f docker-compose.proxy.yml \
+#     --profile with-notes up
+
 name: reborn-apps
 
 services:

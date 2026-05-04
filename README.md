@@ -113,17 +113,26 @@ No email required. Create an account with just a username and password.
 
 You own your data — you can also run your own instance.
 
+There are two flows depending on what you want to do:
+
+| Flow | Source on host? | Image | Speed | Use case |
+|---|---|---|---|---|
+| [Development](#development-flow) | Required (cloned repo) | `node:alpine` + bind mount + `pnpm install` at boot | Slow first start, HMR after | Hacking on the code |
+| [Production](#production-flow) | Not required at runtime | Pre-built from multi-stage `Dockerfile` | <15 s boot, no install | Running your own instance |
+
+> **Why this matters:** the default `docker-compose.yml` is the **development** flow. If you paste it into a stack editor (Portainer, Coolify, …) without a cloned repo on the host, `pnpm install` fails with `ERR_PNPM_NO_PKG_MANIFEST` because the bind mount points at an empty directory. For self-hosting, use the production flow below.
+
 ### Requirements
 
 - [Docker](https://docs.docker.com/get-docker/) v25+ with Docker Compose
-- A `.env` file (copy from `.env.example`)
+- A `.env` file (copy from `.env.example`, generate strong secrets — see below)
 
-### Quick start (Docker Compose)
+### Development flow
 
 ```bash
 # Clone the repository
 git clone https://github.com/fundacja-reborn/reapps.git
-cd reborn-apps
+cd reapps
 
 # Copy environment config
 cp .env.example .env
@@ -143,7 +152,7 @@ Both apps share a single PostgreSQL database and a single user account (SSO via 
 
 > First startup takes a few minutes (downloading images + `pnpm install`). Subsequent starts are fast thanks to Docker volume caching.
 
-### Other configurations
+#### Other dev configurations
 
 ```bash
 # Only re/task (port 4200)
@@ -152,6 +161,65 @@ docker compose up
 # Both apps on separate ports (no SSO)
 docker compose --profile with-notes up
 ```
+
+### Production flow
+
+The production flow builds a multi-stage `Dockerfile` and runs the pre-compiled SvelteKit server — no `pnpm install` at boot, no bind mount, no source on the host required at runtime.
+
+```bash
+git clone https://github.com/fundacja-reborn/reapps.git
+cd reapps
+
+# Copy and edit the environment + production override.
+cp .env.example .env
+cp docker-compose.prod.yml.example docker-compose.prod.yml
+```
+
+Edit `.env` and set at least:
+
+```bash
+PUBLIC_SITE_URL=https://your-domain.example.com   # or http://your-server-ip
+DB_USER=postgres
+DB_PASSWORD=<strong-random-password>
+DB_NAME=reborn
+JWT_SECRET=<32+ random bytes, base64>
+REFRESH_TOKEN_SECRET=<32+ random bytes, base64>
+SESSION_SECRET=<32+ random bytes, base64>
+RECOVERY_KEY_SECRET=<32+ random bytes, base64>
+```
+
+Generate a secret with `openssl rand -base64 48`.
+
+Build and start:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+  --profile with-notes up -d --build --wait
+```
+
+The apps listen on `:4200` (task) and `:4201` (notes) on the Docker host. For SSO (shared origin → shared localStorage) put a TLS-terminating reverse proxy in front (nginx, Caddy, Traefik, Cloudflare Tunnel, …) that maps:
+
+- `<PUBLIC_SITE_URL>/task/`  → `http://127.0.0.1:4200/task/`
+- `<PUBLIC_SITE_URL>/notes/` → `http://127.0.0.1:4201/notes/`
+
+`nginx/dev.conf` is a reference proxy config — adapt it (add `listen 443 ssl;`, certificate paths, HSTS) for your environment.
+
+> **Portainer / Coolify / stack editors:** paste the contents of `docker-compose.yml` **and** `docker-compose.prod.yml.example` (combined or as a compose project that fetches both from git). The build context needs the repo source — point the stack at this Git URL, not at a raw paste.
+
+#### Smoke-testing the production image locally
+
+If you want to verify the production build works **before** pointing your real domain at it:
+
+```bash
+cp docker-compose.localprod.yml.example docker-compose.localprod.yml
+
+docker compose -f docker-compose.yml -f docker-compose.localprod.yml \
+  -f docker-compose.proxy.yml --profile with-notes -p reborn-localprod \
+  up -d --build --wait
+# → http://localhost/task and http://localhost/notes
+```
+
+This uses `http://localhost` as the origin and the dev DB credentials, so it composes cleanly without further configuration.
 
 ### Without Docker
 
@@ -172,8 +240,11 @@ pnpm nx dev reborn-notes
 ### Stopping & cleanup
 
 ```bash
-# Stop containers
+# Stop containers (dev)
 docker compose -f docker-compose.yml -f docker-compose.proxy.yml --profile with-notes down
+
+# Stop containers (production)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile with-notes down
 
 # Full reset (removes database and cached node_modules)
 docker compose -f docker-compose.yml -f docker-compose.proxy.yml --profile with-notes down -v
