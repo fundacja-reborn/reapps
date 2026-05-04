@@ -64,7 +64,7 @@
   },
   "dependencies": {
     "@internationalized/date": "3.12.1",
-    "@lucide/svelte": "1.11.0",
+    "@lucide/svelte": "1.14.0",
     "@reborn/i18n": "workspace:*",
     "bits-ui": "2.18.0",
     "class-variance-authority": "0.7.1",
@@ -87,7 +87,7 @@
     "@tailwindcss/postcss": "4.2.4",
     "@types/node": "24.12.2",
     "autoprefixer": "10.5.0",
-    "eslint": "10.2.1",
+    "eslint": "10.3.0",
     "postcss": "8.5.12",
     "storybook": "10.3.5",
     "svelte": "5.55.5",
