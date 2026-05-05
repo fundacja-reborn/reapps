@@ -379,7 +379,8 @@
     "restored": "Notatka przywrócona pomyślnie"
   },
   "metadata": {
-    "edited": "Edytowano"
+    "edited": "Edytowano",
+    "created": "Utworzono"
   },
   "history": {
     "title": "Historia wersji",

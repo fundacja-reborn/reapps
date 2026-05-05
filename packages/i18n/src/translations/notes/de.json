@@ -379,7 +379,8 @@
     "restored": "Notiz erfolgreich wiederhergestellt"
   },
   "metadata": {
-    "edited": "Bearbeitet"
+    "edited": "Bearbeitet",
+    "created": "Erstellt"
   },
   "history": {
     "title": "Versionsverlauf",

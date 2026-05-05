@@ -1216,6 +1216,7 @@
                 folderName={activeNoteFolderName}
                 noteId={$activeNoteId}
                 updatedAt={detailMenuNote?.updated_at ?? null}
+                createdAt={detailMenuNote?.created_at ?? null}
                 ontitleinput={handleTitleInput}
                 onfolderclick={navigateToNoteFolder}
               />
@@ -1443,6 +1444,7 @@
               folderName={activeNoteFolderName}
               noteId={$activeNoteId}
               updatedAt={detailMenuNote?.updated_at ?? null}
+              createdAt={detailMenuNote?.created_at ?? null}
               {effectiveViewMode}
               ontitleinput={handleTitleInput}
               onfolderclick={navigateToNoteFolder}
