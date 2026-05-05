@@ -13,6 +13,7 @@
     folderName = null,
     noteId,
     updatedAt = null,
+    createdAt = null,
     effectiveViewMode = 'edit' as ViewMode,
     ontitleinput,
     onfolderclick
@@ -23,6 +24,7 @@
     folderName: string | null;
     noteId: string;
     updatedAt: string | null;
+    createdAt: string | null;
     effectiveViewMode?: ViewMode;
     ontitleinput: (e: Event) => void;
     onfolderclick: () => void;
@@ -52,10 +54,10 @@
     }
   });
 
-  const formattedDate = $derived.by(() => {
-    if (!updatedAt) return null;
+  function formatDate(iso: string | null): string | null {
+    if (!iso) return null;
     try {
-      const date = new Date(updatedAt);
+      const date = new Date(iso);
       const currentLocale = $locale || 'en';
       return new Intl.DateTimeFormat(currentLocale, {
         dateStyle: 'medium',
@@ -64,7 +66,10 @@
     } catch {
       return null;
     }
-  });
+  }
+
+  const formattedUpdatedAt = $derived(formatDate(updatedAt));
+  const formattedCreatedAt = $derived(formatDate(createdAt));
 </script>
 
 <div
@@ -115,10 +120,17 @@
       </div>
     {/if}
 
-    {#if formattedDate}
+    {#if formattedCreatedAt}
       <div class="flex items-center gap-2">
         <Calendar class="h-3.5 w-3.5 shrink-0" />
-        <span class="text-xs">{$t('metadata.edited')} {formattedDate}</span>
+        <span class="text-xs">{$t('metadata.created')} {formattedCreatedAt}</span>
+      </div>
+    {/if}
+
+    {#if formattedUpdatedAt}
+      <div class="flex items-center gap-2">
+        <Calendar class="h-3.5 w-3.5 shrink-0" />
+        <span class="text-xs">{$t('metadata.edited')} {formattedUpdatedAt}</span>
       </div>
     {/if}
   </div>

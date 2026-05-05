@@ -379,7 +379,8 @@
     "restored": "Note restored successfully"
   },
   "metadata": {
-    "edited": "Edited"
+    "edited": "Edited",
+    "created": "Created"
   },
   "history": {
     "title": "Version history",

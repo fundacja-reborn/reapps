@@ -23,7 +23,7 @@
   import { t } from '$lib/stores/i18n.store';
   import { tagsStore } from '$lib/stores/tags.store';
   import { dateFormat } from '$lib/stores/app-settings.store';
-  import { activeNoteId, type NoteListItem } from '$lib/stores/notes.store';
+  import { activeNoteId, notesStore, type NoteListItem } from '$lib/stores/notes.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import { formatNoteDate } from '$lib/utils/date-format';
   import TagChip from '../TagChip.svelte';
@@ -61,8 +61,12 @@
   } = $props();
 
   const isMobileQuery = useIsMobile();
+  const sortByStore = notesStore.sortBy;
   const isActive = $derived($activeNoteId === note.id);
   const noteTags = $derived($tagsStore.filter((tag) => note.tags?.includes(tag.id)));
+  // Display the date matching the active sort key so the visible value matches the sort.
+  // For 'title' sort fall back to updated_at (most recent activity).
+  const displayDate = $derived($sortByStore === 'created_at' ? note.created_at : note.updated_at);
 </script>
 
 <li class="relative">
@@ -112,7 +116,7 @@
         </div>
       {/if}
       <p class="mt-0.5 text-[13px] md:text-xs text-muted-foreground line-clamp-2">
-        {formatNoteDate(note.updated_at, $dateFormat, $t)}
+        {formatNoteDate(displayDate, $dateFormat, $t)}
       </p>
     </div>
 
