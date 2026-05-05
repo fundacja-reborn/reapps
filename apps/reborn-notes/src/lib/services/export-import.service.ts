@@ -50,7 +50,7 @@ import {
   parseMarkdownFile,
   extractFolderSegments,
   containsHiddenSegment,
-  normalizeFrontmatterDate
+  pickImportTimestamps
 } from './markdown-import-utils';
 import {
   computeRenamedTitle,
@@ -1252,17 +1252,19 @@ export async function importMarkdownFiles(
     const file = files[i];
     try {
       const raw = await file.text();
-      const { title, content } = parseMarkdownFile(raw);
+      const parsed = parseMarkdownFile(raw);
+      const { title, content } = parsed;
       const { sanitized, stripped } = sanitizeMarkdownContent(content);
       result.strippedCount += stripped.length;
       const baseTitle = title ?? (file.name.replace(/\.md$/i, '') || 'Untitled');
+      const { createdAt, modifiedAt } = pickImportTimestamps(parsed, file.lastModified);
       const { outcome, noteId } = await applyDuplicateStrategy({
         baseTitle,
         content: sanitized,
         folderId,
         tagIds: [],
-        modifiedAt: undefined,
-        createdAt: undefined,
+        modifiedAt,
+        createdAt,
         lookup,
         strategy: duplicateStrategy
       });
@@ -1601,8 +1603,7 @@ export async function importFolder(
       const { sanitized: sanitizedContent, stripped } = sanitizeMarkdownContent(parsed.content);
       result.strippedCount += stripped.length;
 
-      const createdAt = normalizeFrontmatterDate(parsed.created);
-      const modifiedAt = normalizeFrontmatterDate(parsed.modified);
+      const { createdAt, modifiedAt } = pickImportTimestamps(parsed, file.lastModified);
 
       // Resolve frontmatter tags up-front — tags are global, so find-or-create
       // is independent of the per-note duplicate strategy.
@@ -1624,8 +1625,8 @@ export async function importFolder(
         content: sanitizedContent,
         folderId,
         tagIds,
-        createdAt: createdAt ?? undefined,
-        modifiedAt: modifiedAt ?? undefined,
+        createdAt,
+        modifiedAt,
         lookup: titleLookup,
         strategy: duplicateStrategy
       });

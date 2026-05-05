@@ -116,3 +116,34 @@ export function normalizeFrontmatterDate(value: string | null): string | null {
   if (isNaN(date.getTime())) return null;
   return date.toISOString();
 }
+
+/**
+ * Choose the best available created/modified timestamps for an imported file.
+ *
+ * Cascade:
+ *  1. Frontmatter `created` / `modified` (and aliases — see {@link parseMarkdownFile})
+ *  2. `file.lastModified` (filesystem mtime — only modification time, but
+ *     dramatically better than "all imported notes share the same `now`",
+ *     because the relative ordering between files is preserved)
+ *  3. `undefined` — caller falls back to current time
+ *
+ * `file.lastModified === 0` is treated as "no info" (some browsers return 0
+ * for files without metadata, e.g. clipboard-pasted content).
+ *
+ * Returns `undefined` for both fields when neither source yields a timestamp;
+ * the caller then lets {@link createNote} apply its `now` default.
+ */
+export function pickImportTimestamps(
+  parsed: { created: string | null; modified: string | null },
+  fileLastModifiedMs: number
+): { createdAt: string | undefined; modifiedAt: string | undefined } {
+  const fmCreated = normalizeFrontmatterDate(parsed.created);
+  const fmModified = normalizeFrontmatterDate(parsed.modified);
+  const mtimeFallback =
+    fileLastModifiedMs > 0 ? new Date(fileLastModifiedMs).toISOString() : undefined;
+
+  return {
+    createdAt: fmCreated ?? mtimeFallback,
+    modifiedAt: fmModified ?? mtimeFallback
+  };
+}

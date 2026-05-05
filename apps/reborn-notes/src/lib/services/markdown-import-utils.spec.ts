@@ -3,7 +3,8 @@ import {
   parseMarkdownFile,
   extractFolderSegments,
   containsHiddenSegment,
-  normalizeFrontmatterDate
+  normalizeFrontmatterDate,
+  pickImportTimestamps
 } from './markdown-import-utils';
 
 describe('parseMarkdownFile', () => {
@@ -164,5 +165,52 @@ describe('normalizeFrontmatterDate', () => {
 
   it('normalizes date-only strings to ISO midnight UTC', () => {
     expect(normalizeFrontmatterDate('2024-01-15')).toBe('2024-01-15T00:00:00.000Z');
+  });
+});
+
+describe('pickImportTimestamps', () => {
+  const noFrontmatter = { created: null, modified: null };
+  const fmCreated = '2024-01-10T08:00:00Z';
+  const fmModified = '2024-02-20T14:30:00Z';
+
+  it('uses frontmatter created/modified when present', () => {
+    const mtime = new Date('2025-06-01T00:00:00Z').getTime();
+    const result = pickImportTimestamps(
+      { created: fmCreated, modified: fmModified },
+      mtime
+    );
+    expect(result.createdAt).toBe('2024-01-10T08:00:00.000Z');
+    expect(result.modifiedAt).toBe('2024-02-20T14:30:00.000Z');
+  });
+
+  it('falls back to file.lastModified for both fields when frontmatter is absent', () => {
+    const mtime = new Date('2025-06-01T12:34:56Z').getTime();
+    const result = pickImportTimestamps(noFrontmatter, mtime);
+    expect(result.createdAt).toBe('2025-06-01T12:34:56.000Z');
+    expect(result.modifiedAt).toBe('2025-06-01T12:34:56.000Z');
+  });
+
+  it('falls back to lastModified per-field independently', () => {
+    const mtime = new Date('2025-06-01T00:00:00Z').getTime();
+    // Only `created` in frontmatter, no `modified`
+    const result = pickImportTimestamps({ created: fmCreated, modified: null }, mtime);
+    expect(result.createdAt).toBe('2024-01-10T08:00:00.000Z');
+    expect(result.modifiedAt).toBe('2025-06-01T00:00:00.000Z');
+  });
+
+  it('returns undefined for both when frontmatter is absent and lastModified is 0', () => {
+    const result = pickImportTimestamps(noFrontmatter, 0);
+    expect(result.createdAt).toBeUndefined();
+    expect(result.modifiedAt).toBeUndefined();
+  });
+
+  it('treats unparseable frontmatter dates as missing and falls back to mtime', () => {
+    const mtime = new Date('2025-06-01T00:00:00Z').getTime();
+    const result = pickImportTimestamps(
+      { created: 'not a date', modified: '' },
+      mtime
+    );
+    expect(result.createdAt).toBe('2025-06-01T00:00:00.000Z');
+    expect(result.modifiedAt).toBe('2025-06-01T00:00:00.000Z');
   });
 });
