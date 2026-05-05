@@ -1,3 +1,14 @@
+## 0.16.0 (2026-05-05)
+
+### 🚀 Features
+
+- **notes:** tasks show time in list ([#136](https://github.com/fundacja-reborn/reapps/pull/136), [#135](https://github.com/fundacja-reborn/reapps/issues/135))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.15.2 (2026-05-04)
 
 ### 🩹 Fixes
