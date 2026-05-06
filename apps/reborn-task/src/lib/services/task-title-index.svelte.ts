@@ -13,6 +13,7 @@
 import { taskStore } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
 import type { TaskEncryptedBooleans, TaskSensitiveMetadata } from '@reborn/types';
+import { evaluate, type QueryAST, type SearchContext, type SearchEntity } from '@reborn/utils';
 
 export interface TaskIndexEntry {
 	title: string;
@@ -70,6 +71,24 @@ export interface TaskFilterOptions {
 export interface TaskFilterResult {
 	items: TaskListItem[];
 	total: number;
+}
+
+/**
+ * AST-driven filter options. Reuses the pre-filter slice of TaskFilterOptions
+ * (listId/section/completed/starred/deleted/excludeTemplates) and adds an
+ * optional `bodyById` map populated by the content-search path so operators
+ * like `has:link` can match.
+ */
+export interface TaskFilterByAstOptions {
+	listId?: string;
+	section?: 'all' | 'today' | 'overdue' | 'upcoming' | 'no_date';
+	completed?: boolean;
+	starred?: boolean;
+	deleted?: boolean;
+	sortBy?: TaskSortField;
+	sortDirection?: 'asc' | 'desc';
+	excludeTemplates?: boolean;
+	bodyById?: Map<string, string>;
 }
 
 const BATCH_SIZE = 100;
@@ -412,6 +431,178 @@ class TaskIndex {
 
 		return { items, total };
 	}
+
+	/**
+	 * AST-driven filtering over the in-memory index.
+	 *
+	 * Pre-filter (deleted/excludeTemplates/listId/section/completed/starred) narrows
+	 * the candidate set, then each remaining entry is mapped to a SearchEntity and
+	 * evaluated against the AST. `bodyById` is optional — when present, it populates
+	 * `entity.body` so operators that require content (e.g. `has:link`, freetext
+	 * substring across description) can match. When absent, those operators evaluate
+	 * to false and the caller is expected to be on the title-only path.
+	 *
+	 * Operator → entity mapping for tasks:
+	 *   - `is:trashed`   → `entity.flags.trashed   = entry.isDeleted` (NOT `deleted_at`)
+	 *   - `is:starred`   → `entity.flags.starred   = entry.isStarred`
+	 *   - `is:completed` → `entity.flags.completed = entry.isCompleted`
+	 *   - `is:overdue`   → evaluator derives from `entity.dueAt < now && !completed && !trashed`
+	 *   - `is:pinned`    → undefined (tasks have no pin concept) → matches nothing
+	 *   - `tag:` / `folder:` → resolvers are empty → match nothing (graceful degradation)
+	 *   - `list:`        → `entity.listId === ctx.listIdByName.get(value)`
+	 *   - `due:`         → `entity.dueAt = entry.dueDate`
+	 */
+	getFilteredByAst(
+		ast: QueryAST,
+		ctx: SearchContext,
+		options: TaskFilterByAstOptions = {}
+	): TaskFilterResult {
+		void this._version;
+
+		const {
+			listId,
+			section,
+			completed,
+			starred,
+			deleted = false,
+			sortBy = 'position',
+			sortDirection = 'asc',
+			excludeTemplates = true,
+			bodyById
+		} = options;
+
+		// 1. Pre-filter (cheap shadow-index checks before AST evaluation)
+		let entries = Array.from(this._map.entries());
+
+		entries = entries.filter(([, e]) => e.isDeleted === deleted);
+
+		if (excludeTemplates) {
+			entries = entries.filter(([, e]) => !e.isTemplate);
+		}
+
+		if (listId) {
+			entries = entries.filter(([, e]) => e.listId === listId);
+		}
+
+		if (section) {
+			/* eslint-disable svelte/prefer-svelte-reactivity -- local date calculations, not reactive state */
+			const now = new Date();
+			const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			const tomorrowStart = new Date(todayStart);
+			tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+			/* eslint-enable svelte/prefer-svelte-reactivity */
+
+			switch (section) {
+				case 'today':
+					entries = entries.filter(([, e]) => {
+						if (!e.dueDate || e.isCompleted) return false;
+						const d = new Date(e.dueDate);
+						return d >= todayStart && d < tomorrowStart;
+					});
+					break;
+				case 'overdue':
+					entries = entries.filter(([, e]) => {
+						if (!e.dueDate || e.isCompleted) return false;
+						return new Date(e.dueDate) < todayStart;
+					});
+					break;
+				case 'upcoming':
+					entries = entries.filter(([, e]) => {
+						if (!e.dueDate || e.isCompleted) return false;
+						return new Date(e.dueDate) >= todayStart;
+					});
+					break;
+				case 'no_date':
+					entries = entries.filter(([, e]) => !e.dueDate && !e.isCompleted);
+					break;
+			}
+		}
+
+		if (completed !== undefined) {
+			entries = entries.filter(([, e]) => e.isCompleted === completed);
+		}
+
+		if (starred) {
+			entries = entries.filter(([, e]) => e.isStarred);
+		}
+
+		// 2. AST evaluation
+		entries = entries.filter(([id, e]) => evaluate(ast, toSearchEntity(id, e, bodyById), ctx));
+
+		// 3. Sort (same logic as getFiltered)
+		entries.sort((a, b) => {
+			const dir = sortDirection === 'asc' ? 1 : -1;
+
+			switch (sortBy) {
+				case 'alphabetical':
+					return dir * a[1].title.localeCompare(b[1].title, 'pl');
+
+				case 'due_date': {
+					if (a[1].isCompleted !== b[1].isCompleted) {
+						return a[1].isCompleted ? 1 : -1;
+					}
+					if (!a[1].dueDate && !b[1].dueDate) return a[1].position - b[1].position;
+					if (!a[1].dueDate) return 1;
+					if (!b[1].dueDate) return -1;
+					const dateA = new Date(a[1].dueDate).getTime();
+					const dateB = new Date(b[1].dueDate).getTime();
+					return dir * (dateA - dateB);
+				}
+
+				case 'created_date': {
+					const cA = new Date(a[1].createdAt).getTime();
+					const cB = new Date(b[1].createdAt).getTime();
+					return dir * (cA - cB);
+				}
+
+				case 'starred': {
+					if (a[1].isStarred === b[1].isStarred) {
+						return a[1].position - b[1].position;
+					}
+					return a[1].isStarred ? -1 : 1;
+				}
+
+				case 'position':
+				default: {
+					if (a[1].isCompleted !== b[1].isCompleted) {
+						return a[1].isCompleted ? 1 : -1;
+					}
+					if (!a[1].isCompleted && a[1].isStarred !== b[1].isStarred) {
+						return a[1].isStarred ? -1 : 1;
+					}
+					return a[1].position - b[1].position;
+				}
+			}
+		});
+
+		const total = entries.length;
+		const items: TaskListItem[] = entries.map(([id, e]) => toListItem(id, e));
+
+		return { items, total };
+	}
+}
+
+function toSearchEntity(
+	id: string,
+	entry: TaskIndexEntry,
+	bodyById: Map<string, string> | undefined
+): SearchEntity {
+	return {
+		id,
+		title: entry.title,
+		body: bodyById?.get(id),
+		tagIds: [],
+		folderId: null,
+		listId: entry.listId ?? null,
+		createdAt: new Date(entry.createdAt),
+		updatedAt: new Date(entry.updatedAt),
+		dueAt: entry.dueDate ? new Date(entry.dueDate) : null,
+		flags: {
+			starred: entry.isStarred,
+			completed: entry.isCompleted,
+			trashed: entry.isDeleted
+		}
+	};
 }
 
 export const taskIndex = new TaskIndex();
