@@ -15,6 +15,7 @@ import { noteStore, noteTagStore } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
 import { decryptTitleOnly } from './note.service';
 import type { NoteDecrypted } from '@reborn/types';
+import { evaluate, type QueryAST, type SearchContext, type SearchEntity } from '@reborn/utils';
 
 export interface NoteIndexEntry {
   title: string;
@@ -52,6 +53,23 @@ export interface FilterResult {
   items: NoteListItem[];
   total: number;
   hasMore: boolean;
+}
+
+/**
+ * AST-driven filter options. Reuses the pre-filter slice of FilterOptions
+ * (folder/tag/starred/archived) and adds an optional `bodyById` map populated
+ * by the content-search path so operators like `has:link` can match.
+ */
+export interface FilterByAstOptions {
+  folderId?: string | null;
+  folderIds?: string[];
+  tagId?: string;
+  starred?: boolean;
+  archived?: boolean;
+  sortBy?: SortBy;
+  page?: number;
+  pageSize?: number;
+  bodyById?: Map<string, string>;
 }
 
 const BATCH_SIZE = 100;
@@ -306,6 +324,122 @@ class NoteIndex {
       hasMore: start + pageSize < total
     };
   }
+
+  /**
+   * AST-driven filtering over the in-memory index.
+   *
+   * Pre-filter (folder/tag/starred/archived) narrows the candidate set, then
+   * each remaining entry is mapped to a SearchEntity and evaluated against the
+   * AST. `bodyById` is optional — when present, it populates `entity.body` so
+   * operators that require content (e.g. `has:link`) can match. When absent,
+   * those operators evaluate to false and the caller is expected to be on the
+   * title-only path.
+   *
+   * Operator → entity mapping for notes:
+   *   - `is:trashed`  → `entity.flags.trashed = entry.isArchived`
+   *   - `is:starred`  → `entity.flags.starred = entry.isStarred`
+   *   - `is:pinned`   → `entity.flags.pinned  = entry.isPinned`
+   *   - `is:completed`/`is:overdue`/`due:`     → always false (notes have no completion/due semantics)
+   *   - `list:`       → always false (notes have no lists)
+   */
+  getFilteredByAst(
+    ast: QueryAST,
+    ctx: SearchContext,
+    options: FilterByAstOptions = {}
+  ): FilterResult {
+    void this._version;
+
+    const {
+      folderId,
+      folderIds,
+      tagId,
+      starred,
+      archived = false,
+      sortBy = 'updated_at',
+      page = 1,
+      pageSize = 50,
+      bodyById
+    } = options;
+
+    let entries = Array.from(this._map.entries());
+
+    entries = entries.filter(([, e]) => e.isArchived === archived);
+
+    if (folderIds !== undefined) {
+      const set = new Set(folderIds);
+      entries = entries.filter(([, e]) => e.folderId !== undefined && set.has(e.folderId));
+    } else if (folderId !== undefined) {
+      if (folderId === null) {
+        entries = entries.filter(([, e]) => !e.folderId);
+      } else {
+        entries = entries.filter(([, e]) => e.folderId === folderId);
+      }
+    }
+
+    if (tagId) {
+      entries = entries.filter(([, e]) => e.tagIds.includes(tagId));
+    }
+
+    if (starred) {
+      entries = entries.filter(([, e]) => e.isStarred);
+    }
+
+    entries = entries.filter(([id, e]) => evaluate(ast, toSearchEntity(id, e, bodyById), ctx));
+
+    entries.sort((a, b) => {
+      if (!archived) {
+        if (a[1].isPinned && !b[1].isPinned) return -1;
+        if (!a[1].isPinned && b[1].isPinned) return 1;
+      }
+      if (sortBy === 'title') {
+        return a[1].title.localeCompare(b[1].title, undefined, { sensitivity: 'base' });
+      }
+      const aTime = sortBy === 'created_at' ? a[1].createdAt : a[1].updatedAt;
+      const bTime = sortBy === 'created_at' ? b[1].createdAt : b[1].updatedAt;
+      return bTime.localeCompare(aTime);
+    });
+
+    const total = entries.length;
+    const start = (page - 1) * pageSize;
+    const paged = entries.slice(start, start + pageSize);
+
+    const items: NoteListItem[] = paged.map(([id, e]) => ({
+      id,
+      title: e.title,
+      folder_id: e.folderId,
+      is_pinned: e.isPinned,
+      is_starred: e.isStarred,
+      is_archived: e.isArchived,
+      created_at: e.createdAt,
+      updated_at: e.updatedAt,
+      tags: e.tagIds
+    }));
+
+    return { items, total, hasMore: start + pageSize < total };
+  }
+}
+
+function toSearchEntity(
+  id: string,
+  entry: NoteIndexEntry,
+  bodyById: Map<string, string> | undefined
+): SearchEntity {
+  return {
+    id,
+    title: entry.title,
+    body: bodyById?.get(id),
+    tagIds: entry.tagIds,
+    folderId: entry.folderId ?? null,
+    listId: null,
+    createdAt: new Date(entry.createdAt),
+    updatedAt: new Date(entry.updatedAt),
+    dueAt: null,
+    flags: {
+      starred: entry.isStarred,
+      pinned: entry.isPinned,
+      trashed: entry.isArchived
+    }
+  };
 }
 
 export const noteIndex = new NoteIndex();
