@@ -56,9 +56,11 @@ export interface FilterResult {
 }
 
 /**
- * AST-driven filter options. Reuses the pre-filter slice of FilterOptions
- * (folder/tag/starred/archived) and adds an optional `bodyById` map populated
- * by the content-search path so operators like `has:link` can match.
+ * AST-driven filter options. Mirrors the pre-filter slice of FilterOptions
+ * (folder/tag/starred/archived) — body content is NOT handled here. Operators
+ * that need decrypted content (`has:link`, freetext-in-body) are evaluated by
+ * the content-search path in `notes.store.ts`, which streams one body at a
+ * time through the bare `evaluate()` + `toSearchEntity()` helpers.
  */
 export interface FilterByAstOptions {
   folderId?: string | null;
@@ -69,7 +71,6 @@ export interface FilterByAstOptions {
   sortBy?: SortBy;
   page?: number;
   pageSize?: number;
-  bodyById?: Map<string, string>;
 }
 
 const BATCH_SIZE = 100;
@@ -329,11 +330,10 @@ class NoteIndex {
    * AST-driven filtering over the in-memory index.
    *
    * Pre-filter (folder/tag/starred/archived) narrows the candidate set, then
-   * each remaining entry is mapped to a SearchEntity and evaluated against the
-   * AST. `bodyById` is optional — when present, it populates `entity.body` so
-   * operators that require content (e.g. `has:link`) can match. When absent,
-   * those operators evaluate to false and the caller is expected to be on the
-   * title-only path.
+   * each remaining entry is mapped to a SearchEntity (with `body = undefined`)
+   * and evaluated against the AST. Operators that require content
+   * (`has:link`, freetext-in-body) are NOT served here — the caller must take
+   * the body-aware path in `notes.store.ts → triggerContentSearch`.
    *
    * Operator → entity mapping for notes:
    *   - `is:trashed`  → `entity.flags.trashed = entry.isArchived`
@@ -357,8 +357,7 @@ class NoteIndex {
       archived = false,
       sortBy = 'updated_at',
       page = 1,
-      pageSize = 50,
-      bodyById
+      pageSize = 50
     } = options;
 
     let entries = Array.from(this._map.entries());
@@ -384,7 +383,7 @@ class NoteIndex {
       entries = entries.filter(([, e]) => e.isStarred);
     }
 
-    entries = entries.filter(([id, e]) => evaluate(ast, toSearchEntity(id, e, bodyById), ctx));
+    entries = entries.filter(([id, e]) => evaluate(ast, toSearchEntity(id, e), ctx));
 
     entries.sort((a, b) => {
       if (!archived) {
@@ -419,15 +418,21 @@ class NoteIndex {
   }
 }
 
-function toSearchEntity(
+/**
+ * Map a NoteIndexEntry to the SearchEntity shape consumed by `evaluate()`.
+ * Exported so the body-aware content-search path in `notes.store.ts` can
+ * stream-decrypt one note at a time and pass the decrypted content as `body`
+ * without round-tripping through a per-search `Map<id, string>` buffer.
+ */
+export function toSearchEntity(
   id: string,
   entry: NoteIndexEntry,
-  bodyById: Map<string, string> | undefined
+  body?: string
 ): SearchEntity {
   return {
     id,
     title: entry.title,
-    body: bodyById?.get(id),
+    body,
     tagIds: entry.tagIds,
     folderId: entry.folderId ?? null,
     listId: null,

@@ -3,13 +3,19 @@ import { untrack } from 'svelte';
 import { browser } from '$app/environment';
 import type { NoteDecrypted } from '@reborn/types';
 import {
+  evaluate,
   isEmpty as isAstEmpty,
   parseQuery,
   requiresContent,
   type QueryAST
 } from '@reborn/utils';
 import * as NoteService from '$lib/services/note.service';
-import { noteIndex, type NoteListItem, type SortBy } from '$lib/services/note-index.svelte';
+import {
+  noteIndex,
+  toSearchEntity,
+  type NoteListItem,
+  type SortBy
+} from '$lib/services/note-index.svelte';
 import { foldersStore } from '$lib/stores/folders.store';
 import { buildSearchContext } from '$lib/services/search-context';
 import { getDescendantFolderIds } from '$lib/utils/folder-helpers';
@@ -90,9 +96,10 @@ function createNotesStore() {
    * `noteIndex.getFiltered({ search })`. As soon as the parser recognizes any
    * operator (e.g. `tag:`, `created:`), we switch to AST evaluation against
    * the index. Operators that need note content (`has:link`, freetext-in-body
-   * when the user enabled "search in content") additionally schedule
-   * `triggerContentSearch()` which decrypts only the pre-filtered candidates
-   * and overwrites `_raw` with the body-aware result.
+   * when the user enabled "search in content") delegate entirely to
+   * `triggerContentSearch()` — the title-only intermediate is skipped to
+   * avoid flashing wrong results, and the previous `_raw` stays visible
+   * until the body-aware pass completes.
    */
   function refresh() {
     if (!browser) return;
@@ -102,17 +109,22 @@ function createNotesStore() {
     try {
       const ast = parseQuery(get(searchQuery));
       const filterOpts = buildFilterOptions();
+      const wantsContent = requiresContent(ast) || (get(searchInContent) && !isAstEmpty(ast));
+
+      if (wantsContent) {
+        // Body-aware path takes over fully. Don't pre-populate `_raw` from the
+        // title-only path — title-only would drop notes whose freetext only
+        // appears in body (the original "Search in content" regression).
+        triggerContentSearch(ast, filterOpts);
+        return;
+      }
+
+      // Cancel any in-flight content search — its result would now be stale.
+      contentSearchVersion++;
+
       const items = untrack(() => evaluateAgainstIndex(ast, filterOpts));
       if (myVersion !== refreshVersion) return;
       _raw.set(items);
-
-      const wantsContent = requiresContent(ast) || (get(searchInContent) && !isAstEmpty(ast));
-      if (wantsContent) {
-        triggerContentSearch(ast, filterOpts);
-      } else {
-        // Cancel any in-flight content search
-        contentSearchVersion++;
-      }
     } catch {
       // Index might not be built yet (e.g. before E2E unlock) — return empty
       if (myVersion !== refreshVersion) return;
@@ -143,12 +155,24 @@ function createNotesStore() {
   }
 
   /**
-   * Decrypt content of pre-filtered candidates and re-evaluate the AST with
-   * `entity.body` populated. Overwrites `_raw` with the body-aware result.
+   * Body-aware search. Streams through pre-filtered candidates one body at a
+   * time, evaluates the full AST per-note, and overwrites `_raw` with matches.
    *
-   * Pre-filter cost reduction: we run the AST against the index first (with
-   * `has:link` skipped via the lite-AST projection so it doesn't zero out the
-   * candidate set), so only the already-narrowed K candidates get decrypted.
+   * Memory: peak RAM ≈ 1 decrypted note (each iteration releases its `full`
+   * binding before the next `await` resolves). Matched results are stored as
+   * `NoteListItem` (metadata only, no content) so the result list is bounded
+   * by the index entry size, not by note body sizes.
+   *
+   * Pre-filter strategy:
+   *   - Drop freetext from `liteAst` — we re-check it against title+body
+   *     post-decryption. Keeping it would exclude notes whose freetext lives
+   *     only in body (the legacy "Search in content" regression).
+   *   - Drop `has:*` filters — they need decrypted body, can't pre-check.
+   *   - Keep structural operators (tag/folder/list/dates/is:*) so they narrow
+   *     the candidate set before we pay the decryption cost.
+   *
+   * Cancellation: `contentSearchVersion` ticks on every refresh; stale
+   * generations exit immediately on the next iteration boundary.
    */
   async function triggerContentSearch(
     ast: QueryAST,
@@ -158,9 +182,9 @@ function createNotesStore() {
     const myVersion = ++contentSearchVersion;
     loading.set(true);
     try {
-      // 1. Pre-filter candidates: drop body-requiring operators so they don't zero out matches.
+      // 1. Pre-filter: structural operators only.
       const liteAst: QueryAST = {
-        freetext: ast.freetext,
+        freetext: '',
         filters: ast.filters.filter((f) => f.kind !== 'has')
       };
       const ctx = buildSearchContext();
@@ -168,7 +192,7 @@ function createNotesStore() {
         liteAst.filters.length === 0
           ? noteIndex.getFiltered({
               ...filterOpts,
-              search: liteAst.freetext || undefined,
+              search: undefined,
               pageSize: Number.MAX_SAFE_INTEGER
             }).items
           : noteIndex.getFilteredByAst(liteAst, ctx, {
@@ -176,25 +200,34 @@ function createNotesStore() {
               pageSize: Number.MAX_SAFE_INTEGER
             }).items;
 
-      // 2. Decrypt content of candidates only. NoteService.getNote returns a fully-decrypted note.
-      const bodies = new Map<string, string>();
-      for (const item of candidates) {
+      // 2. Stream-decrypt: peak ≈ 1 body. `full` and the per-iteration entity
+      //    drop out of scope on each loop turn → eligible for GC. Only metadata
+      //    (NoteListItem) is retained in `matchedItems`.
+      const matchedItems: NoteListItem[] = [];
+      const YIELD_EVERY = 50;
+      for (let i = 0; i < candidates.length; i++) {
         if (myVersion !== contentSearchVersion) return;
+        const item = candidates[i];
         const full = currentTrash
           ? await NoteService.getNoteIncludingArchived(item.id)
           : await NoteService.getNote(item.id);
-        if (full?.content) bodies.set(item.id, full.content);
+        const entry = noteIndex.get(item.id);
+        if (
+          entry &&
+          full &&
+          evaluate(ast, toSearchEntity(item.id, entry, full.content), ctx)
+        ) {
+          matchedItems.push(item);
+        }
+
+        // Yield to the event loop every N iterations: lets the GC sweep
+        // released bodies and keeps the UI responsive on large vaults.
+        if ((i + 1) % YIELD_EVERY === 0) {
+          await new Promise((r) => setTimeout(r, 0));
+        }
       }
       if (myVersion !== contentSearchVersion) return;
-
-      // 3. Re-evaluate the full AST with bodies populated.
-      const { items } = noteIndex.getFilteredByAst(ast, ctx, {
-        ...filterOpts,
-        pageSize: Number.MAX_SAFE_INTEGER,
-        bodyById: bodies
-      });
-      if (myVersion !== contentSearchVersion) return;
-      _raw.set(items);
+      _raw.set(matchedItems);
     } finally {
       if (myVersion === contentSearchVersion) loading.set(false);
     }
