@@ -6,9 +6,11 @@
  *
  * Routing rules (`search(query)`):
  *   - Empty query                                 → clear results.
- *   - No operators AND no body needed             → instant title-substring path
+ *   - Single freetext word/phrase, no operators,
+ *     no exclude, no body needed                  → instant title-substring path
  *                                                   via `taskTitleIndex.search`.
- *   - Operators present AND no body needed        → AST-on-index path via
+ *   - Multi-word/phrase/exclude/operator AND no
+ *     body needed                                 → AST-on-index path via
  *                                                   `taskTitleIndex.getFilteredByAst`.
  *   - `requiresContent(ast)` OR (`searchInDescription` toggle on AND
  *      non-empty freetext)                        → body-aware path via
@@ -27,6 +29,7 @@ import { buildTaskSearchContext } from '$lib/services/task-search-context';
 import {
 	createLogger,
 	evaluate,
+	freetextIsEmpty,
 	parseQuery,
 	requiresContent,
 	type SearchEntity
@@ -90,14 +93,17 @@ function createSearchStore() {
 		const ctx = buildTaskSearchContext();
 		const currentState = get({ subscribe });
 		const wantsContent =
-			requiresContent(ast) || (currentState.searchInDescription && ast.freetext.length > 0);
+			requiresContent(ast) || (currentState.searchInDescription && !freetextIsEmpty(ast.freetext));
 
 		// Title-only path — no decryption required
 		if (!wantsContent) {
-			const titleMatches =
-				ast.filters.length === 0
-					? taskTitleIndex.search(query)
-					: taskTitleIndex.getFilteredByAst(ast, ctx, { excludeTemplates: true }).items;
+			const isSingleWordOnly =
+				ast.filters.length === 0 &&
+				ast.freetext.exclude.length === 0 &&
+				ast.freetext.include.length === 1;
+			const titleMatches = isSingleWordOnly
+				? taskTitleIndex.search(ast.freetext.include[0])
+				: taskTitleIndex.getFilteredByAst(ast, ctx, { excludeTemplates: true }).items;
 
 			const results: TaskListItem[] = titleMatches.slice(0, MAX_RESULTS);
 
@@ -129,7 +135,10 @@ function createSearchStore() {
 			const predicate = (task: TaskDecrypted) =>
 				evaluate(ast, mapTaskToSearchEntity(task), ctx);
 
-			for await (const task of searchService.searchTasksInBatches(ast.freetext, {
+			// Pass an empty query — the predicate (full AST evaluator) is
+			// authoritative for both freetext and operators. searchTasksInBatches
+			// recognizes the predicate-only mode and scans every active task.
+			for await (const task of searchService.searchTasksInBatches('', {
 				maxResults: MAX_RESULTS + 1, // Fetch one extra to detect hasMore
 				batchSize: 10,
 				searchInDescription: true,

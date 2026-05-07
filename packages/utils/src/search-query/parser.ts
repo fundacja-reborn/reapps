@@ -1,4 +1,4 @@
-import type { DateField, Filter, IsFlag, QueryAST } from './ast';
+import type { DateField, Filter, FreetextSpec, IsFlag, QueryAST } from './ast';
 import { parseDateExpression } from './date-parser';
 
 const IS_FLAGS: ReadonlySet<IsFlag> = new Set([
@@ -33,31 +33,37 @@ interface RawToken {
  * Tokenization rules:
  *   - Whitespace separates tokens; quoted segments (`"..."`) preserve internal whitespace.
  *   - A `:` that is inside quotes does not split key from value.
- *   - A token starting with `-` is tentatively negated; if the key:value combination
- *     is unknown or malformed, the `-` is kept as part of the freetext fallback.
+ *   - A token starting with `-` is tentatively negated:
+ *       - If the rest forms a recognized operator → negated operator filter.
+ *       - Otherwise → freetext exclude (Tier 1.5; the leading `-` is stripped).
  *   - Unknown operator keys, malformed dates, or `is:` flags outside the supported
  *     set degrade the entire token to freetext (no errors, no warnings — the user
  *     simply gets a substring search). This matters because users mid-typing should
  *     never see a hard failure.
+ *   - Multi-word phrases inside quotes stay as a single freetext item, so
+ *     `"meeting prep"` matches the literal substring with whitespace.
  */
 export function parseQuery(input: string): QueryAST {
   const tokens = tokenize(input);
   const filters: Filter[] = [];
-  const textTokens: string[] = [];
+  const include: string[] = [];
+  const exclude: string[] = [];
 
   for (const tok of tokens) {
     const classified = classify(tok);
-    if (classified.kind === 'text') {
-      textTokens.push(classified.value);
+    if (classified.kind === 'filter') {
+      filters.push(classified.filter);
+      continue;
+    }
+    if (classified.kind === 'exclude') {
+      exclude.push(classified.value);
     } else {
-      filters.push(classified);
+      include.push(classified.value);
     }
   }
 
-  return {
-    freetext: textTokens.join(' ').toLowerCase().trim(),
-    filters
-  };
+  const freetext: FreetextSpec = { include, exclude };
+  return { freetext, filters };
 }
 
 function tokenize(input: string): RawToken[] {
@@ -92,30 +98,37 @@ function tokenize(input: string): RawToken[] {
   return tokens;
 }
 
-type TextResult = { kind: 'text'; value: string };
+type ClassifyResult =
+  | { kind: 'filter'; filter: Filter }
+  | { kind: 'include'; value: string }
+  | { kind: 'exclude'; value: string };
 
-function classify(token: RawToken): Filter | TextResult {
+function classify(token: RawToken): ClassifyResult {
   const { text, unquotedColonIdx } = token;
   const negated = text.startsWith('-');
   const keyStart = negated ? 1 : 0;
 
-  // Need a non-empty key before the colon and a colon past `keyStart`.
-  if (unquotedColonIdx <= keyStart) {
-    return { kind: 'text', value: text };
+  // Try operator first (with or without `-` prefix). Need a non-empty key
+  // before the colon and a colon past `keyStart`.
+  if (unquotedColonIdx > keyStart) {
+    const key = text.slice(keyStart, unquotedColonIdx).toLowerCase();
+    if (KNOWN_KEYS.has(key)) {
+      const value = text.slice(unquotedColonIdx + 1);
+      if (value) {
+        const filter = parseOperator(key, value, negated);
+        if (filter) return { kind: 'filter', filter };
+      }
+    }
   }
 
-  const key = text.slice(keyStart, unquotedColonIdx).toLowerCase();
-  if (!KNOWN_KEYS.has(key)) {
-    return { kind: 'text', value: text };
+  // Not an operator — treat as freetext. A leading `-` on a non-operator token
+  // means "exclude this substring", but only when there's something after it
+  // (a bare `-` stays as include). Lowercase for case-insensitive matching;
+  // empty results are dropped by the caller.
+  if (negated && text.length > 1) {
+    return { kind: 'exclude', value: text.slice(1).toLowerCase() };
   }
-
-  const value = text.slice(unquotedColonIdx + 1);
-  if (!value) {
-    return { kind: 'text', value: text };
-  }
-
-  const filter = parseOperator(key, value, negated);
-  return filter ?? { kind: 'text', value: text };
+  return { kind: 'include', value: text.toLowerCase() };
 }
 
 function parseOperator(key: string, value: string, negated: boolean): Filter | null {

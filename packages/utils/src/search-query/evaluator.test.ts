@@ -67,6 +67,76 @@ describe('evaluate — freetext', () => {
   });
 });
 
+describe('evaluate — Tier 1.5 freetext phrases and excludes', () => {
+  it('quoted phrase requires the literal substring including whitespace', () => {
+    const ast = parseQuery('"meeting prep"');
+    expect(
+      evaluate(ast, makeEntity({ title: 'Q3 meeting prep agenda' }), makeCtx())
+    ).toBe(true);
+    expect(
+      evaluate(ast, makeEntity({ title: 'meeting agenda — prep notes' }), makeCtx())
+    ).toBe(false);
+  });
+
+  it('plain `-word` excludes entities containing word', () => {
+    const ast = parseQuery('cat -mouse');
+    expect(evaluate(ast, makeEntity({ title: 'a fat cat' }), makeCtx())).toBe(true);
+    expect(
+      evaluate(ast, makeEntity({ title: 'cat and mouse' }), makeCtx())
+    ).toBe(false);
+  });
+
+  it('exclude phrase ignores its substring even if individual words match', () => {
+    const ast = parseQuery('cat -"angry mouse"');
+    expect(evaluate(ast, makeEntity({ title: 'cat with angry mouse' }), makeCtx())).toBe(false);
+    expect(
+      evaluate(ast, makeEntity({ title: 'cat with angry dog and mouse' }), makeCtx())
+    ).toBe(true);
+  });
+
+  it('exclude also looks at body when populated', () => {
+    const ast = parseQuery('-secret');
+    expect(
+      evaluate(ast, makeEntity({ title: 'public', body: 'this is secret' }), makeCtx())
+    ).toBe(false);
+    expect(
+      evaluate(ast, makeEntity({ title: 'public', body: 'nothing here' }), makeCtx())
+    ).toBe(true);
+  });
+
+  it('only-exclude query (no include) matches everything except hits', () => {
+    const ast = parseQuery('-spam');
+    expect(evaluate(ast, makeEntity({ title: 'inbox' }), makeCtx())).toBe(true);
+    expect(evaluate(ast, makeEntity({ title: 'spam folder' }), makeCtx())).toBe(false);
+  });
+
+  it('include and exclude combine with operator filters (all AND)', () => {
+    const ctx = makeCtx({ tagIdByName: new Map([['work', 'tag-w']]) });
+    const ast = parseQuery('tag:work meeting -draft');
+    expect(
+      evaluate(
+        ast,
+        makeEntity({ tagIds: ['tag-w'], title: 'meeting agenda' }),
+        ctx
+      )
+    ).toBe(true);
+    expect(
+      evaluate(
+        ast,
+        makeEntity({ tagIds: ['tag-w'], title: 'meeting draft v2' }),
+        ctx
+      )
+    ).toBe(false);
+    expect(
+      evaluate(
+        ast,
+        makeEntity({ tagIds: ['tag-w'], title: 'lunch' }),
+        ctx
+      )
+    ).toBe(false);
+  });
+});
+
 describe('evaluate — tag filter', () => {
   it('matches when tag id resolves and entity has it', () => {
     const ctx = makeCtx({ tagIdByName: new Map([['work', 'tag-1']]) });
