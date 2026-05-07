@@ -1,4 +1,4 @@
-import type { DateField, Filter, FreetextSpec, IsFlag, QueryAST } from './ast';
+import type { DateField, Filter, IsFlag, Node, QueryAST } from './ast';
 import { parseDateExpression } from './date-parser';
 
 const IS_FLAGS: ReadonlySet<IsFlag> = new Set([
@@ -20,115 +20,195 @@ const KNOWN_KEYS = new Set([
   'is'
 ]);
 
-interface RawToken {
-  /** Token contents with surrounding quotes stripped, but `-` prefix preserved. */
-  text: string;
-  /** Index inside `text` of the first unquoted `:`, or -1 when none. */
-  unquotedColonIdx: number;
-}
+/**
+ * Token kinds produced by the tokenizer.
+ *
+ * `OR` is a structural token — recognized only when the input substring is
+ * exactly `OR` between whitespace (uppercase, no quotes around it). Any other
+ * casing (`or`, `Or`) becomes a regular WORD, matching Gmail/GitHub/Linear.
+ *
+ * `(` and `)` always terminate the current token outside quotes — `foo(bar)`
+ * tokenizes as WORD `foo`, LPAREN, WORD `bar`, RPAREN. Inside quotes they
+ * are preserved as plain characters.
+ */
+type Token =
+  | { kind: 'WORD'; text: string; unquotedColonIdx: number }
+  | { kind: 'OR' }
+  | { kind: 'LPAREN' }
+  | { kind: 'RPAREN' };
 
 /**
- * Parse a search box input string into a structured AST.
+ * Parse a search box input string into a structured tree AST.
  *
  * Tokenization rules:
- *   - Whitespace separates tokens; quoted segments (`"..."`) preserve internal whitespace.
+ *   - Whitespace separates tokens; quoted segments (`"..."`) preserve internal
+ *     whitespace, parentheses, and the literal token `OR`.
  *   - A `:` that is inside quotes does not split key from value.
- *   - A token starting with `-` is tentatively negated:
- *       - If the rest forms a recognized operator → negated operator filter.
- *       - Otherwise → freetext exclude (Tier 1.5; the leading `-` is stripped).
- *   - Unknown operator keys, malformed dates, or `is:` flags outside the supported
- *     set degrade the entire token to freetext (no errors, no warnings — the user
- *     simply gets a substring search). This matters because users mid-typing should
- *     never see a hard failure.
- *   - Multi-word phrases inside quotes stay as a single freetext item, so
- *     `"meeting prep"` matches the literal substring with whitespace.
+ *   - `(` / `)` outside quotes are structural tokens.
+ *   - A standalone uppercase `OR` between whitespace is the boolean operator.
+ *   - A token starting with `-` is tentatively negated (parser handles it):
+ *       - `-(` opens a negated group.
+ *       - `-key:value` (recognized operator) → negated filter leaf.
+ *       - `-word` / `-"phrase"` → negated text leaf.
+ *
+ * Grammar (recursive descent, AND binds tighter than OR):
+ *
+ *   expr     := or_expr
+ *   or_expr  := and_expr ('OR' and_expr)*
+ *   and_expr := primary primary*
+ *   primary  := '(' expr ')' | '-' '(' expr ')' | '-' atom | atom
+ *   atom     := KEY_VALUE | WORD
+ *
+ * Graceful degradation:
+ *   - Any structural error (unmatched paren, dangling `OR`, empty group in a
+ *     mandatory position) falls back to a flat parse where every token is
+ *     treated as freetext (parens / `OR` become plain words). The user never
+ *     sees a hard error mid-typing.
  */
 export function parseQuery(input: string): QueryAST {
   const tokens = tokenize(input);
-  const filters: Filter[] = [];
-  const include: string[] = [];
-  const exclude: string[] = [];
+  if (tokens.length === 0) return { root: null };
 
-  for (const tok of tokens) {
-    const classified = classify(tok);
-    if (classified.kind === 'filter') {
-      filters.push(classified.filter);
-      continue;
-    }
-    if (classified.kind === 'exclude') {
-      exclude.push(classified.value);
-    } else {
-      include.push(classified.value);
-    }
+  try {
+    const parser = new Parser(tokens);
+    const node = parser.parseExpr();
+    if (!parser.atEnd()) throw new ParseError('trailing tokens');
+    return { root: node };
+  } catch {
+    // Flat fallback: every token (including LPAREN/RPAREN/OR) becomes
+    // freetext, AND-combined. Mid-typing inputs always render something.
+    return flatFallback(tokens);
   }
-
-  const freetext: FreetextSpec = { include, exclude };
-  return { freetext, filters };
 }
 
-function tokenize(input: string): RawToken[] {
-  const tokens: RawToken[] = [];
-  let i = 0;
-  while (i < input.length) {
-    while (i < input.length && isWhitespace(input[i])) i++;
-    if (i >= input.length) break;
+class ParseError extends Error {}
 
-    let text = '';
-    let unquotedColonIdx = -1;
-    let inQuotes = false;
+class Parser {
+  private pos = 0;
+  constructor(private readonly tokens: Token[]) {}
 
-    while (i < input.length && (inQuotes || !isWhitespace(input[i]))) {
-      const ch = input[i];
-      if (ch === '"') {
-        inQuotes = !inQuotes;
-        i++;
-        continue;
-      }
-      if (ch === ':' && !inQuotes && unquotedColonIdx === -1) {
-        unquotedColonIdx = text.length;
-      }
-      text += ch;
-      i++;
-    }
-
-    if (text.length > 0) {
-      tokens.push({ text, unquotedColonIdx });
-    }
+  atEnd(): boolean {
+    return this.pos >= this.tokens.length;
   }
-  return tokens;
+
+  private peek(): Token | null {
+    return this.tokens[this.pos] ?? null;
+  }
+
+  private advance(): Token | null {
+    return this.tokens[this.pos++] ?? null;
+  }
+
+  /** expr := or_expr */
+  parseExpr(): Node {
+    return this.parseOr();
+  }
+
+  /** or_expr := and_expr ('OR' and_expr)* */
+  private parseOr(): Node {
+    const first = this.parseAnd();
+    const operands: Node[] = [first];
+    while (this.peek()?.kind === 'OR') {
+      this.advance();
+      const next = this.parseAnd();
+      operands.push(next);
+    }
+    if (operands.length === 1) return first;
+    return { kind: 'or', children: operands };
+  }
+
+  /**
+   * and_expr := primary primary*
+   *
+   * Rejects empty primary sequences — caller (parseOr) relies on this to
+   * detect dangling `OR` (`cat OR`, `OR cat`) and trigger flat fallback.
+   */
+  private parseAnd(): Node {
+    const first = this.parsePrimary();
+    const operands: Node[] = [first];
+    while (true) {
+      const t = this.peek();
+      if (t === null) break;
+      if (t.kind === 'OR' || t.kind === 'RPAREN') break;
+      operands.push(this.parsePrimary());
+    }
+    if (operands.length === 1) return first;
+    return { kind: 'and', children: operands };
+  }
+
+  /**
+   * primary := '(' expr ')' | '-' '(' expr ')' | '-' atom | atom
+   *
+   * A bare `-` followed by `(` becomes Not(group). A `-` followed by anything
+   * else is part of an atom (negation lives on the leaf), handled by parseAtom.
+   */
+  private parsePrimary(): Node {
+    const t = this.peek();
+    if (t === null) throw new ParseError('expected primary, got end of input');
+
+    if (t.kind === 'LPAREN') {
+      return this.parseGroup(false);
+    }
+    if (t.kind === 'WORD' && t.text === '-' && this.tokens[this.pos + 1]?.kind === 'LPAREN') {
+      this.advance(); // consume the `-`
+      return this.parseGroup(true);
+    }
+    if (t.kind === 'WORD') {
+      this.advance();
+      return parseAtom(t.text, t.unquotedColonIdx);
+    }
+    // OR / RPAREN here are structural errors (dangling OR, unmatched paren).
+    throw new ParseError(`unexpected token kind ${t.kind} in primary`);
+  }
+
+  /** Consume `(` expr `)` (or after `-` already consumed). */
+  private parseGroup(negated: boolean): Node {
+    const open = this.advance();
+    if (open?.kind !== 'LPAREN') throw new ParseError('expected `(`');
+
+    // Empty `()` would make parseAnd() throw; intercept it as a no-op group
+    // that drops out of its parent (handled by simplification at the caller).
+    if (this.peek()?.kind === 'RPAREN') {
+      this.advance();
+      const empty: Node = { kind: 'and', children: [] }; // TRUE sentinel
+      return negated ? { kind: 'not', child: empty } : empty;
+    }
+
+    const inner = this.parseExpr();
+    const close = this.advance();
+    if (close?.kind !== 'RPAREN') throw new ParseError('expected `)`');
+
+    return negated ? { kind: 'not', child: inner } : inner;
+  }
 }
 
-type ClassifyResult =
-  | { kind: 'filter'; filter: Filter }
-  | { kind: 'include'; value: string }
-  | { kind: 'exclude'; value: string };
-
-function classify(token: RawToken): ClassifyResult {
-  const { text, unquotedColonIdx } = token;
-  const negated = text.startsWith('-');
+/**
+ * Convert a WORD token (with optional unquoted-colon index) into a leaf node.
+ *
+ * Order: try operator first, otherwise fall through to leaf-text. A leading
+ * `-` on a non-operator word becomes `leaf-text` with `negated: true`. The
+ * single-character `-` is preserved as a literal `leaf-text` (so `cat - dog`
+ * doesn't lose the dash).
+ */
+function parseAtom(text: string, unquotedColonIdx: number): Node {
+  const negated = text.startsWith('-') && text.length > 1;
   const keyStart = negated ? 1 : 0;
 
-  // Try operator first (with or without `-` prefix). Need a non-empty key
-  // before the colon and a colon past `keyStart`.
   if (unquotedColonIdx > keyStart) {
     const key = text.slice(keyStart, unquotedColonIdx).toLowerCase();
     if (KNOWN_KEYS.has(key)) {
       const value = text.slice(unquotedColonIdx + 1);
       if (value) {
         const filter = parseOperator(key, value, negated);
-        if (filter) return { kind: 'filter', filter };
+        if (filter) return { kind: 'leaf-filter', filter };
       }
     }
   }
 
-  // Not an operator — treat as freetext. A leading `-` on a non-operator token
-  // means "exclude this substring", but only when there's something after it
-  // (a bare `-` stays as include). Lowercase for case-insensitive matching;
-  // empty results are dropped by the caller.
-  if (negated && text.length > 1) {
-    return { kind: 'exclude', value: text.slice(1).toLowerCase() };
+  if (negated) {
+    return { kind: 'leaf-text', value: text.slice(1).toLowerCase(), negated: true };
   }
-  return { kind: 'include', value: text.toLowerCase() };
+  return { kind: 'leaf-text', value: text.toLowerCase(), negated: false };
 }
 
 function parseOperator(key: string, value: string, negated: boolean): Filter | null {
@@ -176,6 +256,91 @@ function normalizeFolderPath(path: string): string {
     .map((s) => s.trim().toLowerCase())
     .filter((s) => s.length > 0)
     .join('/');
+}
+
+/**
+ * Reduce every token to a freetext leaf and AND-combine. Used when the
+ * recursive-descent parser fails on a structurally invalid input — the user
+ * sees a degraded but coherent search instead of an error state.
+ *
+ * Structural tokens (`(`, `)`, `OR`) become literal words so they can match
+ * by substring if the user actually has those characters in their data.
+ */
+function flatFallback(tokens: Token[]): QueryAST {
+  const children: Node[] = [];
+  for (const t of tokens) {
+    if (t.kind === 'WORD') {
+      children.push(parseAtom(t.text, t.unquotedColonIdx));
+    } else if (t.kind === 'OR') {
+      children.push({ kind: 'leaf-text', value: 'or', negated: false });
+    } else if (t.kind === 'LPAREN') {
+      children.push({ kind: 'leaf-text', value: '(', negated: false });
+    } else if (t.kind === 'RPAREN') {
+      children.push({ kind: 'leaf-text', value: ')', negated: false });
+    }
+  }
+  if (children.length === 0) return { root: null };
+  if (children.length === 1) return { root: children[0] };
+  return { root: { kind: 'and', children } };
+}
+
+function tokenize(input: string): Token[] {
+  const tokens: Token[] = [];
+  let i = 0;
+  while (i < input.length) {
+    while (i < input.length && isWhitespace(input[i])) i++;
+    if (i >= input.length) break;
+
+    const ch = input[i];
+
+    // Structural tokens — only outside quotes, which is the case here because
+    // the inner loop below stops as soon as it sees `(`/`)` outside quotes.
+    if (ch === '(') {
+      tokens.push({ kind: 'LPAREN' });
+      i++;
+      continue;
+    }
+    if (ch === ')') {
+      tokens.push({ kind: 'RPAREN' });
+      i++;
+      continue;
+    }
+
+    // Otherwise consume a WORD (possibly containing quotes / colons).
+    let text = '';
+    let unquotedColonIdx = -1;
+    let inQuotes = false;
+    let sawQuotes = false;
+
+    while (i < input.length) {
+      const c = input[i];
+      if (!inQuotes && (isWhitespace(c) || c === '(' || c === ')')) break;
+      if (c === '"') {
+        inQuotes = !inQuotes;
+        sawQuotes = true;
+        i++;
+        continue;
+      }
+      if (c === ':' && !inQuotes && unquotedColonIdx === -1) {
+        unquotedColonIdx = text.length;
+      }
+      text += c;
+      i++;
+    }
+
+    if (text.length === 0) continue;
+
+    // Standalone `OR` (uppercase) is the boolean operator. Quotation around
+    // `OR` makes it a literal — `"OR"` renders as a phrase WORD with text
+    // `OR` but `sawQuotes === true`, so this branch correctly skips it.
+    if (text === 'OR' && !sawQuotes) {
+      tokens.push({ kind: 'OR' });
+      continue;
+    }
+
+    tokens.push({ kind: 'WORD', text, unquotedColonIdx });
+  }
+  return tokens;
 }
 
 function isWhitespace(ch: string): boolean {

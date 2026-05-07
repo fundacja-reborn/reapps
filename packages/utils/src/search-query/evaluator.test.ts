@@ -393,6 +393,122 @@ describe('evaluate — combinations', () => {
   });
 });
 
+describe('evaluate — Tier 2 boolean OR', () => {
+  it('OR matches when either disjunct matches', () => {
+    const ast = parseQuery('cat OR dog');
+    expect(evaluate(ast, makeEntity({ title: 'My cat is fluffy' }), makeCtx())).toBe(true);
+    expect(evaluate(ast, makeEntity({ title: 'A dog at home' }), makeCtx())).toBe(true);
+    expect(evaluate(ast, makeEntity({ title: 'A horse on the hill' }), makeCtx())).toBe(false);
+  });
+
+  it('OR across operator filters', () => {
+    const ctx = makeCtx({
+      tagIdByName: new Map([
+        ['work', 'tag-w'],
+        ['personal', 'tag-p']
+      ])
+    });
+    const ast = parseQuery('tag:work OR tag:personal');
+    expect(evaluate(ast, makeEntity({ tagIds: ['tag-w'] }), ctx)).toBe(true);
+    expect(evaluate(ast, makeEntity({ tagIds: ['tag-p'] }), ctx)).toBe(true);
+    expect(evaluate(ast, makeEntity({ tagIds: [] }), ctx)).toBe(false);
+  });
+
+  it('AND binds tighter than OR — `cat dog OR mouse`', () => {
+    const ast = parseQuery('cat dog OR mouse');
+    // Matches when (cat AND dog) OR mouse holds.
+    expect(evaluate(ast, makeEntity({ title: 'cat and dog walk' }), makeCtx())).toBe(true);
+    expect(evaluate(ast, makeEntity({ title: 'a mouse alone' }), makeCtx())).toBe(true);
+    expect(evaluate(ast, makeEntity({ title: 'cat alone' }), makeCtx())).toBe(false);
+  });
+});
+
+describe('evaluate — Tier 2 grouping', () => {
+  it('group changes precedence', () => {
+    const ctx = makeCtx({
+      tagIdByName: new Map([['work', 'tag-w']])
+    });
+    const ast = parseQuery('tag:work AND (is:starred OR is:pinned)');
+    // `AND` is not a real keyword (we only have implicit AND); Gmail-like
+    // behaviour means literal lowercase "and" is plain text. So tokens here
+    // are tag:work, AND (a literal word), and a grouped OR. The literal
+    // "and" must appear in title for the AND-arm to match — adjust title.
+    expect(
+      evaluate(
+        ast,
+        makeEntity({ title: 'and item', tagIds: ['tag-w'], flags: { starred: true } }),
+        ctx
+      )
+    ).toBe(true);
+    expect(
+      evaluate(
+        ast,
+        makeEntity({ title: 'and item', tagIds: ['tag-w'], flags: { pinned: true } }),
+        ctx
+      )
+    ).toBe(true);
+    expect(
+      evaluate(
+        ast,
+        makeEntity({ title: 'and item', tagIds: ['tag-w'], flags: {} }),
+        ctx
+      )
+    ).toBe(false);
+  });
+
+  it('grouped OR with implicit AND outside', () => {
+    const ctx = makeCtx({
+      tagIdByName: new Map([['work', 'tag-w']])
+    });
+    const ast = parseQuery('tag:work (is:starred OR is:pinned)');
+    expect(
+      evaluate(
+        ast,
+        makeEntity({ tagIds: ['tag-w'], flags: { starred: true } }),
+        ctx
+      )
+    ).toBe(true);
+    expect(
+      evaluate(
+        ast,
+        makeEntity({ tagIds: ['tag-w'], flags: {} }),
+        ctx
+      )
+    ).toBe(false);
+    expect(
+      evaluate(
+        ast,
+        makeEntity({ tagIds: [], flags: { starred: true } }),
+        ctx
+      )
+    ).toBe(false);
+  });
+
+  it('negated group excludes any inner match', () => {
+    const ctx = makeCtx({
+      tagIdByName: new Map([['archived', 'tag-a']])
+    });
+    const ast = parseQuery('-(tag:archived OR is:trashed)');
+    // Matches entities that are neither tagged archived nor trashed.
+    expect(
+      evaluate(ast, makeEntity({ tagIds: [], flags: {} }), ctx)
+    ).toBe(true);
+    expect(
+      evaluate(ast, makeEntity({ tagIds: ['tag-a'], flags: {} }), ctx)
+    ).toBe(false);
+    expect(
+      evaluate(ast, makeEntity({ tagIds: [], flags: { trashed: true } }), ctx)
+    ).toBe(false);
+  });
+
+  it('negated group also excludes leaf-text matches inside', () => {
+    const ast = parseQuery('-(spam OR draft)');
+    expect(evaluate(ast, makeEntity({ title: 'inbox' }), makeCtx())).toBe(true);
+    expect(evaluate(ast, makeEntity({ title: 'spam folder' }), makeCtx())).toBe(false);
+    expect(evaluate(ast, makeEntity({ title: 'draft v2' }), makeCtx())).toBe(false);
+  });
+});
+
 describe('AST helpers', () => {
   it('isEmpty detects empty AST', () => {
     expect(isEmpty(parseQuery(''))).toBe(true);
@@ -405,5 +521,11 @@ describe('AST helpers', () => {
     expect(requiresContent(parseQuery('tag:work'))).toBe(false);
     expect(requiresContent(parseQuery('has:link'))).toBe(true);
     expect(requiresContent(parseQuery('tag:work has:link'))).toBe(true);
+  });
+
+  it('requiresContent walks through OR and NOT', () => {
+    expect(requiresContent(parseQuery('cat OR has:link'))).toBe(true);
+    expect(requiresContent(parseQuery('-(has:link)'))).toBe(true);
+    expect(requiresContent(parseQuery('cat OR dog'))).toBe(false);
   });
 });

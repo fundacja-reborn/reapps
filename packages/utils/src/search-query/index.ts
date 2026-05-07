@@ -3,12 +3,12 @@ export type {
   DateRef,
   DateExpression,
   Filter,
-  FreetextSpec,
   HasFlag,
   IsFlag,
+  Node,
   QueryAST
 } from './ast';
-export { freetextIsEmpty, isEmpty, requiresContent } from './ast';
+export { isEmpty, requiresContent } from './ast';
 export { parseDateExpression, resolveDateRef } from './date-parser';
 export { parseQuery } from './parser';
 export type { SearchContext, SearchEntity } from './evaluator';
