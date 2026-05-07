@@ -129,3 +129,9 @@ All matching happens on your device:
 5. Nothing is sent to the server.
 
 There is no server-side search endpoint, no inverted index, and no query telemetry — the full Zero-Knowledge architecture is preserved. For the deep dive, see [Zero Knowledge Architecture](architecture/zero-knowledge-architecture.md).
+
+---
+
+## Acknowledgments
+
+The operator vocabulary and tier-based rollout (essentials first, power-user features as fast-follows) were shaped by detailed feedback from [Travis Solin (@computrav)](https://github.com/computrav). See the project [Acknowledgments](../README.md#acknowledgments) for the full list of people who've helped shape Reborn Apps.

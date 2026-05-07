@@ -298,6 +298,14 @@ We welcome community involvement! Due to the security-sensitive nature of this p
 
 > **Note:** We do not accept external pull requests. Every code change undergoes internal security review to protect the integrity of the encryption layer. If you've found a bug and know the fix, please describe it in an Issue — we'll gladly credit you.
 
+## Acknowledgments
+
+Reborn Apps is shaped by feedback from people who try it, share ideas, and tell us what's missing. Special thanks to:
+
+- **[Travis Solin (@computrav)](https://github.com/computrav)** — for early feedback on the public release and detailed thinking on power-user search semantics that directly informed the operator-based search syntax.
+
+If you've contributed something that shaped this project — an idea, a substantive bug report, a translation — and you're not listed here, please [open an Issue](https://github.com/fundacja-reborn/reapps/issues). Smaller individual reports are credited per-release in commit messages and release notes.
+
 ## License
 
 [AGPL-3.0](LICENSE) — Copyright © 2025 Fundacja Reborn (Poland)
