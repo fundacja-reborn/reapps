@@ -22,6 +22,13 @@ export interface SearchOptions {
 	maxResults?: number;
 	signal?: AbortSignal;
 	searchInDescription?: boolean;
+	/**
+	 * Optional predicate evaluated against each decrypted task that already
+	 * passed the freetext filter (or all decrypted tasks when `query` is empty).
+	 * Tasks failing the predicate are skipped. Lets callers layer AST operator
+	 * filters on top of the freetext scan without reimplementing decryption.
+	 */
+	predicate?: (task: TaskDecrypted) => boolean;
 }
 
 export class SearchService {
@@ -47,10 +54,14 @@ export class SearchService {
 		const batchSize = options.batchSize || this.DEFAULT_BATCH_SIZE;
 		const maxResults = options.maxResults || this.DEFAULT_MAX_RESULTS;
 		const searchInDescription = options.searchInDescription ?? true;
+		const predicate = options.predicate;
 
 		// Normalize search query
 		const normalizedQuery = query.toLowerCase().trim();
-		if (!normalizedQuery) {
+		// Empty query is only valid when a predicate is provided — then we scan all
+		// active tasks and let the predicate (e.g. AST evaluator with `has:link` or
+		// other operator-only filters) decide which ones match.
+		if (!normalizedQuery && !predicate) {
 			logger.info('Empty search query, returning no results');
 			return;
 		}
@@ -59,7 +70,8 @@ export class SearchService {
 			query: normalizedQuery,
 			batchSize,
 			maxResults,
-			searchInDescription
+			searchInDescription,
+			hasPredicate: !!predicate
 		});
 
 		// Check if crypto is initialized
@@ -105,13 +117,18 @@ export class SearchService {
 						continue;
 					}
 
-					// Search in title and optionally in description
-					const titleMatch = decryptedTask.title.toLowerCase().includes(normalizedQuery);
-					const descriptionMatch =
-						searchInDescription &&
-						decryptedTask.description?.toLowerCase().includes(normalizedQuery);
+					// Freetext filter: skip when query is empty (predicate-only mode);
+					// otherwise require a substring hit in title or (optionally) description.
+					let freetextMatch = !normalizedQuery;
+					if (normalizedQuery) {
+						const titleMatch = decryptedTask.title.toLowerCase().includes(normalizedQuery);
+						const descriptionMatch =
+							searchInDescription &&
+							decryptedTask.description?.toLowerCase().includes(normalizedQuery);
+						freetextMatch = titleMatch || !!descriptionMatch;
+					}
 
-					if (titleMatch || descriptionMatch) {
+					if (freetextMatch && (!predicate || predicate(decryptedTask))) {
 						foundCount++;
 						yield decryptedTask;
 

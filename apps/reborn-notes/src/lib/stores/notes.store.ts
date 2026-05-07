@@ -2,9 +2,22 @@ import { writable, derived, get } from 'svelte/store';
 import { untrack } from 'svelte';
 import { browser } from '$app/environment';
 import type { NoteDecrypted } from '@reborn/types';
+import {
+  evaluate,
+  isEmpty as isAstEmpty,
+  parseQuery,
+  requiresContent,
+  type QueryAST
+} from '@reborn/utils';
 import * as NoteService from '$lib/services/note.service';
-import { noteIndex, type NoteListItem, type SortBy } from '$lib/services/note-index.svelte';
+import {
+  noteIndex,
+  toSearchEntity,
+  type NoteListItem,
+  type SortBy
+} from '$lib/services/note-index.svelte';
 import { foldersStore } from '$lib/stores/folders.store';
+import { buildSearchContext } from '$lib/services/search-context';
 import { getDescendantFolderIds } from '$lib/utils/folder-helpers';
 
 export type { SortBy, NoteListItem };
@@ -14,8 +27,6 @@ export const activeNoteId = writable<string | null>(null);
 
 function createNotesStore() {
   const _raw = writable<NoteListItem[]>([]);
-  /** IDs of notes whose content matches the search query (populated by async content search). */
-  const _contentMatchIds = writable<Set<string> | null>(null);
   const loading = writable(false);
   const error = writable<string | null>(null);
   const searchQuery = writable('');
@@ -45,26 +56,10 @@ function createNotesStore() {
     return [...sorted.filter((n) => n.is_pinned), ...sorted.filter((n) => !n.is_pinned)];
   }
 
-  // Derived visible list: title-filtered + content-search-augmented + sorted
-  const notes = derived(
-    [_raw, searchQuery, sortBy, searchInContent, _contentMatchIds],
-    ([$raw, $q, $sort, $inContent, $contentIds]) => {
-      let filtered = $raw;
-      if ($q.trim()) {
-        const q = $q.toLowerCase();
-        // Title matches (always computed — instant, no decryption)
-        const titleMatches = $raw.filter((n) => n.title.toLowerCase().includes(q));
-        if ($inContent && $contentIds) {
-          // Union: title matches + notes matched only by content
-          const titleIds = new Set(titleMatches.map((n) => n.id));
-          const contentOnly = $raw.filter((n) => !titleIds.has(n.id) && $contentIds.has(n.id));
-          filtered = [...titleMatches, ...contentOnly];
-        } else {
-          filtered = titleMatches;
-        }
-      }
-      return currentTrash ? filtered : sortItems(filtered, $sort);
-    }
+  // Derived visible list — _raw is already filtered (search query + AST + content) by refresh().
+  // Trash mode keeps the natural order; everything else gets pin-first re-sort by user's sortBy.
+  const notes = derived([_raw, sortBy], ([$raw, $sort]) =>
+    currentTrash ? $raw : sortItems($raw, $sort)
   );
 
   /**
@@ -96,23 +91,38 @@ function createNotesStore() {
 
   /**
    * Refresh the list from the in-memory NoteIndex.
-   * Synchronous — no IndexedDB hit, no decryption. Cost: <1ms for 10K notes.
+   *
+   * Pure freetext (no operators) takes the fast title-substring path via
+   * `noteIndex.getFiltered({ search })`. As soon as the parser recognizes any
+   * operator (e.g. `tag:`, `created:`), we switch to AST evaluation against
+   * the index. Operators that need note content (`has:link`, freetext-in-body
+   * when the user enabled "search in content") delegate entirely to
+   * `triggerContentSearch()` — the title-only intermediate is skipped to
+   * avoid flashing wrong results, and the previous `_raw` stays visible
+   * until the body-aware pass completes.
    */
   function refresh() {
     if (!browser) return;
     const myVersion = ++refreshVersion;
-    _contentMatchIds.set(null);
     error.set(null);
 
     try {
-      // untrack() prevents $effect callers from creating a reactive dependency
-      // on noteIndex._version — refresh() is called explicitly, not reactively.
-      const { items } = untrack(() =>
-        noteIndex.getFiltered({
-          ...buildFilterOptions(),
-          pageSize: Number.MAX_SAFE_INTEGER
-        })
-      );
+      const ast = parseQuery(get(searchQuery));
+      const filterOpts = buildFilterOptions();
+      const wantsContent = requiresContent(ast) || (get(searchInContent) && !isAstEmpty(ast));
+
+      if (wantsContent) {
+        // Body-aware path takes over fully. Don't pre-populate `_raw` from the
+        // title-only path — title-only would drop notes whose freetext only
+        // appears in body (the original "Search in content" regression).
+        triggerContentSearch(ast, filterOpts);
+        return;
+      }
+
+      // Cancel any in-flight content search — its result would now be stale.
+      contentSearchVersion++;
+
+      const items = untrack(() => evaluateAgainstIndex(ast, filterOpts));
       if (myVersion !== refreshVersion) return;
       _raw.set(items);
     } catch {
@@ -122,42 +132,102 @@ function createNotesStore() {
     }
   }
 
-  /**
-   * Full-decrypt search for content matching (expensive, separate from index path).
-   * Populates _contentMatchIds which the derived `notes` uses to augment title results.
-   */
-  async function triggerContentSearch(query: string) {
-    if (!query.trim()) {
-      _contentMatchIds.set(null);
-      return;
+  /** Synchronous AST/freetext evaluation against the in-memory NoteIndex (no body). */
+  function evaluateAgainstIndex(
+    ast: QueryAST,
+    filterOpts: ReturnType<typeof buildFilterOptions>
+  ): NoteListItem[] {
+    if (ast.filters.length === 0) {
+      // Fast path — pure freetext (or empty) goes through the legacy title-substring filter.
+      const { items } = noteIndex.getFiltered({
+        ...filterOpts,
+        search: ast.freetext || undefined,
+        pageSize: Number.MAX_SAFE_INTEGER
+      });
+      return items;
     }
+    const ctx = buildSearchContext();
+    const { items } = noteIndex.getFilteredByAst(ast, ctx, {
+      ...filterOpts,
+      pageSize: Number.MAX_SAFE_INTEGER
+    });
+    return items;
+  }
+
+  /**
+   * Body-aware search. Streams through pre-filtered candidates one body at a
+   * time, evaluates the full AST per-note, and overwrites `_raw` with matches.
+   *
+   * Memory: peak RAM ≈ 1 decrypted note (each iteration releases its `full`
+   * binding before the next `await` resolves). Matched results are stored as
+   * `NoteListItem` (metadata only, no content) so the result list is bounded
+   * by the index entry size, not by note body sizes.
+   *
+   * Pre-filter strategy:
+   *   - Drop freetext from `liteAst` — we re-check it against title+body
+   *     post-decryption. Keeping it would exclude notes whose freetext lives
+   *     only in body (the legacy "Search in content" regression).
+   *   - Drop `has:*` filters — they need decrypted body, can't pre-check.
+   *   - Keep structural operators (tag/folder/list/dates/is:*) so they narrow
+   *     the candidate set before we pay the decryption cost.
+   *
+   * Cancellation: `contentSearchVersion` ticks on every refresh; stale
+   * generations exit immediately on the next iteration boundary.
+   */
+  async function triggerContentSearch(
+    ast: QueryAST,
+    filterOpts: ReturnType<typeof buildFilterOptions>
+  ) {
+    if (isAstEmpty(ast)) return;
     const myVersion = ++contentSearchVersion;
     loading.set(true);
     try {
-      let data: NoteDecrypted[];
-      if (currentTrash) {
-        data = await NoteService.getArchivedNotes();
-      } else if (currentStarred) {
-        const all = await NoteService.getNotesByFolder(undefined);
-        data = all.filter((n) => n.is_starred);
-      } else if (currentTagId) {
-        data = await NoteService.getNotesByTag(currentTagId);
-      } else if (typeof currentFolderId === 'string') {
-        // Subtree search: include the folder + all its descendants
-        const subtreeIds = getDescendantFolderIds(get(foldersStore), currentFolderId);
-        data =
-          subtreeIds.length > 0
-            ? await NoteService.getNotesByFolders(subtreeIds)
-            : await NoteService.getNotesByFolder(currentFolderId);
-      } else {
-        data = await NoteService.getNotesByFolder(currentFolderId);
+      // 1. Pre-filter: structural operators only.
+      const liteAst: QueryAST = {
+        freetext: '',
+        filters: ast.filters.filter((f) => f.kind !== 'has')
+      };
+      const ctx = buildSearchContext();
+      const candidates =
+        liteAst.filters.length === 0
+          ? noteIndex.getFiltered({
+              ...filterOpts,
+              search: undefined,
+              pageSize: Number.MAX_SAFE_INTEGER
+            }).items
+          : noteIndex.getFilteredByAst(liteAst, ctx, {
+              ...filterOpts,
+              pageSize: Number.MAX_SAFE_INTEGER
+            }).items;
+
+      // 2. Stream-decrypt: peak ≈ 1 body. `full` and the per-iteration entity
+      //    drop out of scope on each loop turn → eligible for GC. Only metadata
+      //    (NoteListItem) is retained in `matchedItems`.
+      const matchedItems: NoteListItem[] = [];
+      const YIELD_EVERY = 50;
+      for (let i = 0; i < candidates.length; i++) {
+        if (myVersion !== contentSearchVersion) return;
+        const item = candidates[i];
+        const full = currentTrash
+          ? await NoteService.getNoteIncludingArchived(item.id)
+          : await NoteService.getNote(item.id);
+        const entry = noteIndex.get(item.id);
+        if (
+          entry &&
+          full &&
+          evaluate(ast, toSearchEntity(item.id, entry, full.content), ctx)
+        ) {
+          matchedItems.push(item);
+        }
+
+        // Yield to the event loop every N iterations: lets the GC sweep
+        // released bodies and keeps the UI responsive on large vaults.
+        if ((i + 1) % YIELD_EVERY === 0) {
+          await new Promise((r) => setTimeout(r, 0));
+        }
       }
       if (myVersion !== contentSearchVersion) return;
-      const q = query.toLowerCase();
-      const matchIds = new Set(
-        data.filter((n) => n.content.toLowerCase().includes(q)).map((n) => n.id)
-      );
-      _contentMatchIds.set(matchIds);
+      _raw.set(matchedItems);
     } finally {
       if (myVersion === contentSearchVersion) loading.set(false);
     }
@@ -200,31 +270,15 @@ function createNotesStore() {
   }
 
   function setSearch(query: string) {
-    const prev = get(searchQuery);
     searchQuery.set(query);
-    // If we toggled between empty and non-empty in folder view, the filter scope
-    // changes (folder ↔ subtree) — re-run the index query.
-    const prevEmpty = !prev.trim();
-    const nextEmpty = !query.trim();
-    if (prevEmpty !== nextEmpty && typeof currentFolderId === 'string') {
-      refresh();
-    }
-    // If content search is active, trigger full-decrypt search
-    if (get(searchInContent) && query.trim()) {
-      triggerContentSearch(query);
-    } else {
-      _contentMatchIds.set(null);
-    }
+    // refresh() handles every flavor: empty → all, freetext → fast path,
+    // operators → AST path, content-required (or content toggle) → async fork.
+    refresh();
   }
 
   function setSearchInContent(enabled: boolean) {
     searchInContent.set(enabled);
-    if (enabled) {
-      const q = get(searchQuery);
-      if (q.trim()) triggerContentSearch(q);
-    } else {
-      _contentMatchIds.set(null);
-    }
+    refresh();
   }
 
   function setSort(sort: SortBy) {

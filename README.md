@@ -41,7 +41,7 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 - **Starred & favorites** — focus on what matters
 - **Due dates & reminders** with optional push notifications
 - **Smart views** — Today, Upcoming, Overdue, Starred, Completed
-- **Full-text search** across all lists
+- **Full-text search** with operators — `list:Inbox`, `due:<7d`, `is:overdue`, `has:link`, … ([reference](docs/search-operators.md))
 - **Trash & recovery** — restore deleted tasks within 30 days
 - **Import & export** — JSON backup and restore
 
@@ -57,7 +57,7 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 - **Internal links** — link between notes with autocomplete to build a knowledge base
 - **Live preview** — edit Markdown on one side, see formatted output on the other
 - **Encryption X-Ray** — see exactly what the server sees (encrypted blobs)
-- **Full-text search** — search by title or content across all notes
+- **Full-text search** with operators — `tag:work`, `folder:projects/active`, `created:<7d`, `has:link`, `-tag:archived`, … ([reference](docs/search-operators.md))
 - **Trash & recovery** — safely delete and restore notes
 - **Import & export** — Markdown, JSON, or encrypted backup; import single `.md` files or entire folders with subfolders (e.g., an Obsidian vault) preserving directory structure
 
@@ -297,6 +297,14 @@ We welcome community involvement! Due to the security-sensitive nature of this p
 - **Improve translations** — suggest corrections or new languages via Issues
 
 > **Note:** We do not accept external pull requests. Every code change undergoes internal security review to protect the integrity of the encryption layer. If you've found a bug and know the fix, please describe it in an Issue — we'll gladly credit you.
+
+## Acknowledgments
+
+Reborn Apps is shaped by feedback from people who try it, share ideas, and tell us what's missing. Special thanks to:
+
+- **[Travis Solin (@computrav)](https://github.com/computrav)** — for early feedback on the public release and detailed thinking on power-user search semantics that directly informed the operator-based search syntax.
+
+If you've contributed something that shaped this project — an idea, a substantive bug report, a translation — and you're not listed here, please [open an Issue](https://github.com/fundacja-reborn/reapps/issues). Smaller individual reports are credited per-release in commit messages and release notes.
 
 ## License
 

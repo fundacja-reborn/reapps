@@ -13,6 +13,9 @@ export * from './constants';
 // User-Agent utilities
 export * from './user-agent';
 
+// Search query parser/evaluator (Tier 1 operator search)
+export * from './search-query';
+
 // Re-export commonly used functions for convenience
 export { createLogger, LoggerGlobal, LOG_LEVELS } from './logger';
 export {
