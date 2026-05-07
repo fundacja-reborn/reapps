@@ -29,6 +29,7 @@
   "starred_tasks_description": "Toutes vos t\u00e2ches importantes en un seul endroit",
   "go_to_lists": "Aller aux listes de t\u00e2ches",
   "no_search_results": "Aucune t\u00e2che trouv\u00e9e pour votre recherche",
+  "no_match": "Aucune t\u00e2che ne correspond \u00e0 \"{query}\".",
   "empty": "Aucune liste",
   "welcome": "Bienvenue !",
   "no_lists_yet": "Vous n'avez pas encore de listes de t\u00e2ches.",

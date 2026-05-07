@@ -29,6 +29,7 @@
   "starred_tasks_description": "Alle Ihre wichtigen Aufgaben an einem Ort",
   "go_to_lists": "Zu den Aufgabenlisten",
   "no_search_results": "Keine Aufgaben f\u00fcr Ihre Suche gefunden",
+  "no_match": "Keine Aufgaben passen zu \"{query}\".",
   "empty": "Keine Listen",
   "welcome": "Willkommen!",
   "no_lists_yet": "Sie haben noch keine Aufgabenlisten.",

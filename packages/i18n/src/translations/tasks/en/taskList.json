@@ -29,6 +29,7 @@
   "starred_tasks_description": "All your important tasks in one place",
   "go_to_lists": "Go to task lists",
   "no_search_results": "No tasks found for your search",
+  "no_match": "No tasks match \"{query}\".",
   "empty": "No lists",
   "welcome": "Welcome!",
   "no_lists_yet": "You don't have any task lists yet.",
