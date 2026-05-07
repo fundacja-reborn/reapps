@@ -29,6 +29,7 @@
   "starred_tasks_description": "Wszystkie Twoje ważne zadania w jednym miejscu",
   "go_to_lists": "Przejdź do list zadań",
   "no_search_results": "Nie znaleziono zadań dla twojego wyszukiwania",
+  "no_match": "Brak zadań pasujących do \"{query}\".",
   "empty": "Brak list",
   "welcome": "Witaj!",
   "no_lists_yet": "Nie masz jeszcze żadnych list zadań.",

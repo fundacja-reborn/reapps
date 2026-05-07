@@ -39,6 +39,8 @@
 	import SwipeableItem from '$lib/components/ui/SwipeableItem.svelte';
 	import QuickAddTask from '$lib/components/tasks/QuickAddTask.svelte';
 	import type { Section } from '../IconNav.svelte';
+	import { evaluate, parseQuery, type SearchEntity } from '@reborn/utils';
+	import { buildTaskSearchContext } from '$lib/services/task-search-context';
 
 	const logger = createLogger('SidebarTaskList');
 
@@ -124,10 +126,15 @@
 	const allFilteredTasks = $derived.by(() => {
 		let source = sectionSource;
 
-		// Search filter
-		if (searchInput) {
-			const q = searchInput.toLowerCase();
-			source = source.filter((task) => task.title.toLowerCase().includes(q));
+		// Search filter — runs the same operator-aware AST as the global /search box
+		// (parser → evaluator from @reborn/utils). Pure freetext degrades to a
+		// title substring match because TaskListItem doesn't carry description;
+		// `has:link` and description-aware freetext still need the global /search
+		// page (decryption pipeline lives in search.service).
+		if (searchInput.trim()) {
+			const ast = parseQuery(searchInput);
+			const ctx = buildTaskSearchContext();
+			source = source.filter((task) => evaluate(ast, taskListItemToSearchEntity(task), ctx));
 		}
 
 		// Apply sort preferences
@@ -139,6 +146,25 @@
 
 		return source;
 	});
+
+	function taskListItemToSearchEntity(task: TaskListItem): SearchEntity {
+		return {
+			id: task.id,
+			title: task.title,
+			body: undefined,
+			tagIds: [],
+			folderId: null,
+			listId: task.task_list_id ?? null,
+			createdAt: new Date(task.created_at),
+			updatedAt: new Date(task.updated_at),
+			dueAt: task.due_date ? new Date(task.due_date) : null,
+			flags: {
+				starred: task.is_starred,
+				completed: task.is_completed,
+				trashed: !!task.deleted_at
+			}
+		};
+	}
 
 	const activeTasks = $derived(allFilteredTasks.filter((t) => !t.is_completed));
 	const completedTasks = $derived(allFilteredTasks.filter((t) => t.is_completed));
@@ -405,7 +431,7 @@
 			<div class="px-4 py-8 text-center">
 				{#if searchInput}
 					<p class="text-sm text-muted-foreground">
-						{$t('common.no_results', { default: 'Brak wyników' })}
+						{$t('taskList.no_match', { values: { query: searchInput } })}
 					</p>
 					<button
 						type="button"

@@ -29,6 +29,7 @@
   "starred_tasks_description": "Todas sus tareas importantes en un solo lugar",
   "go_to_lists": "Ir a las listas de tareas",
   "no_search_results": "No se encontraron tareas para su búsqueda",
+  "no_match": "Ninguna tarea coincide con \"{query}\".",
   "empty": "Sin listas",
   "welcome": "¡Bienvenido!",
   "no_lists_yet": "Aún no tiene ninguna lista de tareas.",
