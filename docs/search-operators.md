@@ -26,17 +26,19 @@ All search runs **client-side** over already-decrypted data — the server never
 **Modifiers**
 
 - `-OPERATOR` — negate the operator. Example: `-tag:archived` (exclude tag), `-is:completed` (only incomplete).
-- `"quoted value"` — preserve whitespace and colons inside an operator value. Example: `tag:"in progress"`, `list:"Q2 planning"`.
+- `-WORD` — exclude items whose title (or body, in the description/content path) contains *WORD*. Example: `cat -mouse` matches items mentioning *cat* but never *mouse*.
+- `"quoted value"` — preserve whitespace and colons. Inside an operator: `tag:"in progress"`, `list:"Q2 planning"`. As plain text: `"meeting prep"` matches the literal phrase including whitespace, instead of *meeting* AND *prep* independently.
+- `-"quoted value"` — exclude a phrase. Example: `cat -"angry mouse"`.
 
 **Combining**
 
-All operators are AND-combined with each other and with any plain-text words. Example:
+All operators are AND-combined with each other and with any plain-text words. Plain-text excludes are AND-combined too — every excluded substring must be absent. Example:
 
 ```
-meeting tag:work -is:completed modified:<14d
+meeting tag:work -is:completed modified:<14d -draft
 ```
 
-…matches items containing the word *meeting*, tagged `work`, not yet completed, modified within the last 14 days.
+…matches items containing the word *meeting*, tagged `work`, not yet completed, modified within the last 14 days, and not containing *draft*.
 
 ---
 
@@ -88,9 +90,11 @@ Plain-text words (anything that's not an operator) match by substring against:
 
 Operators that need note/task body — currently only `has:link` — automatically force the body-aware path even when the toggle is off.
 
-Multiple plain-text words are AND-combined: `meeting prep` requires both *meeting* and *prep* to appear in the searched fields.
+Multiple plain-text words are AND-combined: `meeting prep` requires both *meeting* and *prep* to appear independently in the searched fields. To require the literal phrase including whitespace, wrap it in quotes: `"meeting prep"` matches only items where the two words appear next to each other in that order.
 
-To search for a phrase containing whitespace as a single substring, wrap operator values in quotes (`tag:"side projects"`). Plain-text quoting is not supported — `meeting prep` and `"meeting prep"` behave the same.
+To exclude a substring, prefix it with `-`: `cat -mouse` keeps items mentioning *cat* and drops any that also mention *mouse*. Excludes work on phrases too: `cat -"angry mouse"`.
+
+Quoting also works inside operator values: `tag:"side projects"`, `list:"Q2 planning"`.
 
 ---
 

@@ -1,4 +1,4 @@
-import type { DateExpression, Filter, QueryAST } from './ast';
+import type { DateExpression, Filter, FreetextSpec, QueryAST } from './ast';
 import { resolveDateRef } from './date-parser';
 
 /**
@@ -50,13 +50,18 @@ export function evaluate(ast: QueryAST, entity: SearchEntity, ctx: SearchContext
   return true;
 }
 
-function matchFreetext(needle: string, entity: SearchEntity): boolean {
-  if (!needle) return true;
+function matchFreetext(ft: FreetextSpec, entity: SearchEntity): boolean {
+  if (ft.include.length === 0 && ft.exclude.length === 0) return true;
   const haystack =
     entity.title.toLowerCase() +
     (entity.body !== undefined ? '\n' + entity.body.toLowerCase() : '');
-  const words = needle.split(/\s+/).filter((w) => w.length > 0);
-  return words.every((w) => haystack.includes(w));
+  for (const needle of ft.include) {
+    if (!haystack.includes(needle)) return false;
+  }
+  for (const needle of ft.exclude) {
+    if (haystack.includes(needle)) return false;
+  }
+  return true;
 }
 
 function checkFilter(filter: Filter, entity: SearchEntity, ctx: SearchContext): boolean {

@@ -4,6 +4,7 @@ import { browser } from '$app/environment';
 import type { NoteDecrypted } from '@reborn/types';
 import {
   evaluate,
+  freetextIsEmpty,
   isEmpty as isAstEmpty,
   parseQuery,
   requiresContent,
@@ -92,14 +93,14 @@ function createNotesStore() {
   /**
    * Refresh the list from the in-memory NoteIndex.
    *
-   * Pure freetext (no operators) takes the fast title-substring path via
-   * `noteIndex.getFiltered({ search })`. As soon as the parser recognizes any
-   * operator (e.g. `tag:`, `created:`), we switch to AST evaluation against
-   * the index. Operators that need note content (`has:link`, freetext-in-body
-   * when the user enabled "search in content") delegate entirely to
-   * `triggerContentSearch()` — the title-only intermediate is skipped to
-   * avoid flashing wrong results, and the previous `_raw` stays visible
-   * until the body-aware pass completes.
+   * Single-word freetext with no operators and no excludes takes the fast
+   * title-substring path via `noteIndex.getFiltered({ search })`. Anything
+   * else (multi-word AND, quoted phrase, `-exclude`, or any operator) goes
+   * through AST evaluation. Operators that need note content (`has:link`,
+   * freetext-in-body when the user enabled "search in content") delegate
+   * entirely to `triggerContentSearch()` — the title-only intermediate is
+   * skipped to avoid flashing wrong results, and the previous `_raw` stays
+   * visible until the body-aware pass completes.
    */
   function refresh() {
     if (!browser) return;
@@ -132,16 +133,36 @@ function createNotesStore() {
     }
   }
 
-  /** Synchronous AST/freetext evaluation against the in-memory NoteIndex (no body). */
+  /**
+   * Synchronous AST/freetext evaluation against the in-memory NoteIndex (no body).
+   *
+   * Three routing cases:
+   *   1. Empty AST (no filters, no freetext) — return the visible scope as-is.
+   *   2. Single-word freetext, no operators — fast title-substring path through
+   *      `getFiltered({ search })`. Bypasses building a SearchContext.
+   *   3. Anything else (multi-word, phrase, exclude, or operators) — full AST
+   *      evaluation via `getFilteredByAst`, which handles include/exclude
+   *      semantics consistently.
+   */
   function evaluateAgainstIndex(
     ast: QueryAST,
     filterOpts: ReturnType<typeof buildFilterOptions>
   ): NoteListItem[] {
-    if (ast.filters.length === 0) {
-      // Fast path — pure freetext (or empty) goes through the legacy title-substring filter.
+    if (ast.filters.length === 0 && freetextIsEmpty(ast.freetext)) {
       const { items } = noteIndex.getFiltered({
         ...filterOpts,
-        search: ast.freetext || undefined,
+        pageSize: Number.MAX_SAFE_INTEGER
+      });
+      return items;
+    }
+    if (
+      ast.filters.length === 0 &&
+      ast.freetext.exclude.length === 0 &&
+      ast.freetext.include.length === 1
+    ) {
+      const { items } = noteIndex.getFiltered({
+        ...filterOpts,
+        search: ast.freetext.include[0],
         pageSize: Number.MAX_SAFE_INTEGER
       });
       return items;
@@ -184,7 +205,7 @@ function createNotesStore() {
     try {
       // 1. Pre-filter: structural operators only.
       const liteAst: QueryAST = {
-        freetext: '',
+        freetext: { include: [], exclude: [] },
         filters: ast.filters.filter((f) => f.kind !== 'has')
       };
       const ctx = buildSearchContext();

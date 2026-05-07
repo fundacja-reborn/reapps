@@ -1,22 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { parseQuery } from './parser';
 
+const EMPTY_FT = { include: [], exclude: [] };
+
 describe('parseQuery — empty and freetext', () => {
   it('returns empty AST for empty input', () => {
-    expect(parseQuery('')).toEqual({ freetext: '', filters: [] });
-    expect(parseQuery('   ')).toEqual({ freetext: '', filters: [] });
+    expect(parseQuery('')).toEqual({ freetext: EMPTY_FT, filters: [] });
+    expect(parseQuery('   ')).toEqual({ freetext: EMPTY_FT, filters: [] });
   });
 
-  it('lowercases and joins plain freetext', () => {
+  it('lowercases and splits plain freetext into AND-words', () => {
     expect(parseQuery('Hello World')).toEqual({
-      freetext: 'hello world',
+      freetext: { include: ['hello', 'world'], exclude: [] },
       filters: []
     });
   });
 
-  it('preserves quoted whitespace in freetext', () => {
+  it('preserves quoted whitespace as a single phrase', () => {
     expect(parseQuery('"hello world" foo')).toEqual({
-      freetext: 'hello world foo',
+      freetext: { include: ['hello world', 'foo'], exclude: [] },
       filters: []
     });
   });
@@ -26,7 +28,7 @@ describe('parseQuery — operators', () => {
   it('parses tag operator', () => {
     const ast = parseQuery('tag:work');
     expect(ast.filters).toEqual([{ kind: 'tag', value: 'work', negated: false }]);
-    expect(ast.freetext).toBe('');
+    expect(ast.freetext).toEqual(EMPTY_FT);
   });
 
   it('parses negated tag', () => {
@@ -91,7 +93,7 @@ describe('parseQuery — operators', () => {
 
   it('combines operators with freetext', () => {
     const ast = parseQuery('tag:work meeting notes -is:trashed');
-    expect(ast.freetext).toBe('meeting notes');
+    expect(ast.freetext).toEqual({ include: ['meeting', 'notes'], exclude: [] });
     expect(ast.filters).toEqual([
       { kind: 'tag', value: 'work', negated: false },
       { kind: 'is', value: 'trashed', negated: true }
@@ -106,59 +108,112 @@ describe('parseQuery — quoted operator values', () => {
     ]);
   });
 
-  it('treats fully quoted token as freetext', () => {
+  it('treats fully quoted token as a freetext phrase, not as operator', () => {
     const ast = parseQuery('"tag:work"');
-    expect(ast.freetext).toBe('tag:work');
+    expect(ast.freetext).toEqual({ include: ['tag:work'], exclude: [] });
     expect(ast.filters).toEqual([]);
+  });
+});
+
+describe('parseQuery — Tier 1.5 freetext negation', () => {
+  it('plain dashed token becomes an exclude', () => {
+    expect(parseQuery('-broken')).toEqual({
+      freetext: { include: [], exclude: ['broken'] },
+      filters: []
+    });
+  });
+
+  it('mixes include words and excludes', () => {
+    expect(parseQuery('cat dog -mouse')).toEqual({
+      freetext: { include: ['cat', 'dog'], exclude: ['mouse'] },
+      filters: []
+    });
+  });
+
+  it('exclude works with quoted phrase', () => {
+    expect(parseQuery('cat -"angry mouse"')).toEqual({
+      freetext: { include: ['cat'], exclude: ['angry mouse'] },
+      filters: []
+    });
+  });
+
+  it('combines freetext exclude with operator filters', () => {
+    const ast = parseQuery('meeting tag:work -draft');
+    expect(ast.freetext).toEqual({ include: ['meeting'], exclude: ['draft'] });
+    expect(ast.filters).toEqual([{ kind: 'tag', value: 'work', negated: false }]);
+  });
+
+  it('lone dash stays as a freetext include item', () => {
+    expect(parseQuery('-')).toEqual({
+      freetext: { include: ['-'], exclude: [] },
+      filters: []
+    });
+  });
+
+  it('only the leading dash is a negator — extra dashes stay literal', () => {
+    expect(parseQuery('--foo')).toEqual({
+      freetext: { include: [], exclude: ['-foo'] },
+      filters: []
+    });
+  });
+
+  it('hyphenated word in the middle of a token stays as one substring', () => {
+    expect(parseQuery('multi-word-thing')).toEqual({
+      freetext: { include: ['multi-word-thing'], exclude: [] },
+      filters: []
+    });
+  });
+
+  it('lowercases excludes', () => {
+    expect(parseQuery('-FOO')).toEqual({
+      freetext: { include: [], exclude: ['foo'] },
+      filters: []
+    });
   });
 });
 
 describe('parseQuery — graceful degradation', () => {
   it('treats unknown operator as freetext', () => {
     const ast = parseQuery('foo:bar baz');
-    expect(ast.freetext).toBe('foo:bar baz');
+    expect(ast.freetext).toEqual({ include: ['foo:bar', 'baz'], exclude: [] });
     expect(ast.filters).toEqual([]);
   });
 
   it('treats malformed date as freetext', () => {
     const ast = parseQuery('created:tomorrow');
-    expect(ast.freetext).toBe('created:tomorrow');
+    expect(ast.freetext).toEqual({ include: ['created:tomorrow'], exclude: [] });
     expect(ast.filters).toEqual([]);
   });
 
   it('treats unknown is: flag as freetext', () => {
     const ast = parseQuery('is:fancy');
-    expect(ast.freetext).toBe('is:fancy');
+    expect(ast.freetext).toEqual({ include: ['is:fancy'], exclude: [] });
     expect(ast.filters).toEqual([]);
   });
 
   it('treats unknown has: value as freetext', () => {
     const ast = parseQuery('has:image');
-    expect(ast.freetext).toBe('has:image');
+    expect(ast.freetext).toEqual({ include: ['has:image'], exclude: [] });
     expect(ast.filters).toEqual([]);
   });
 
   it('treats empty operator value as freetext', () => {
     const ast = parseQuery('tag:');
-    expect(ast.freetext).toBe('tag:');
+    expect(ast.freetext).toEqual({ include: ['tag:'], exclude: [] });
     expect(ast.filters).toEqual([]);
   });
 
   it('treats colon-only token as freetext', () => {
     const ast = parseQuery(':foo');
-    expect(ast.freetext).toBe(':foo');
+    expect(ast.freetext).toEqual({ include: [':foo'], exclude: [] });
     expect(ast.filters).toEqual([]);
   });
 
-  it('keeps the dash when degraded freetext was negated', () => {
+  it('a `-key:value` with unknown key degrades into a freetext exclude', () => {
+    // The dash is a meaningful negator (Tier 1.5) when the body is not an
+    // operator — `-foo:bar` excludes the substring `foo:bar`.
     const ast = parseQuery('-foo:bar');
-    expect(ast.freetext).toBe('-foo:bar');
-    expect(ast.filters).toEqual([]);
-  });
-
-  it('plain dashed token stays as freetext (no Tier 1 freetext negation)', () => {
-    const ast = parseQuery('-broken');
-    expect(ast.freetext).toBe('-broken');
+    expect(ast.freetext).toEqual({ include: [], exclude: ['foo:bar'] });
     expect(ast.filters).toEqual([]);
   });
 });
@@ -168,7 +223,7 @@ describe('parseQuery — multiple filters', () => {
     const ast = parseQuery(
       'tag:reading -tag:archived folder:inbox created:>2026-01-01 has:link foo bar'
     );
-    expect(ast.freetext).toBe('foo bar');
+    expect(ast.freetext).toEqual({ include: ['foo', 'bar'], exclude: [] });
     expect(ast.filters).toHaveLength(5);
     expect(ast.filters[0]).toMatchObject({ kind: 'tag', value: 'reading', negated: false });
     expect(ast.filters[1]).toMatchObject({ kind: 'tag', value: 'archived', negated: true });
