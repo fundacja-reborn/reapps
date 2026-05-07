@@ -40,7 +40,25 @@ export interface SearchContext {
   now: Date;
 }
 
-const LINK_REGEX = /(https?:\/\/[^\s)]+|\[[^\]]*\]\([^)]+\))/i;
+// CodeQL js/polynomial-redos: previously `/(https?:\/\/[^\s)]+|\[[^\]]*\]\([^)]+\))/i`
+// where `[^\]]*` and `[^)]+` quantifiers backtracked O(n²) on adversarial body
+// (e.g. `[[[[…` with no closing). The Markdown branch is now a linear indexOf scan.
+const PLAIN_URL_REGEX = /https?:\/\//i;
+
+function bodyContainsLink(body: string): boolean {
+  if (PLAIN_URL_REGEX.test(body)) return true;
+  let i = 0;
+  while ((i = body.indexOf('[', i)) !== -1) {
+    const close = body.indexOf(']', i + 1);
+    if (close === -1) return false;
+    if (body.charCodeAt(close + 1) === 40 /* '(' */) {
+      const closeParen = body.indexOf(')', close + 2);
+      if (closeParen > close + 2) return true;
+    }
+    i = close + 1;
+  }
+  return false;
+}
 
 export function evaluate(ast: QueryAST, entity: SearchEntity, ctx: SearchContext): boolean {
   if (!matchFreetext(ast.freetext, entity)) return false;
@@ -103,7 +121,7 @@ function matchFilterPositive(
 
     case 'has': {
       if (filter.value === 'link') {
-        return entity.body !== undefined && LINK_REGEX.test(entity.body);
+        return entity.body !== undefined && bodyContainsLink(entity.body);
       }
       return false;
     }
