@@ -8,24 +8,17 @@
   Keyboard navigation: Arrow Up/Down to move between tasks.
   Swipe-to-delete on mobile (soft delete with undo for non-trash, permanent delete for trash).
   Trash section: no checkbox/star, flat list, "Empty trash" button.
+
+  Single rendering path (mirrors Notes' NoteList.svelte): the visible list always
+  comes from `taskListView` regardless of whether a search query is active. The
+  store routes empty/title-only/body-aware paths internally.
 -->
 <script lang="ts">
 	import { onMount, onDestroy, untrack } from 'svelte';
-	import { Search, X, ChevronRightIcon, CheckCircle2, Trash2 } from '@lucide/svelte';
+	import { ChevronRightIcon, Trash2 } from '@lucide/svelte';
 	import type { TaskListItem } from '$lib/services/task-title-index.svelte';
-	import { Accordion, AccordionItem, AccordionContent, toastStore, cn } from '@reborn/ui';
+	import { Accordion, AccordionItem, AccordionContent, toastStore } from '@reborn/ui';
 	import { Accordion as AccordionPrimitive } from 'bits-ui';
-	import {
-		tasks as allDecryptedTasks,
-		sortTasks,
-		starredTasks,
-		todayTasks,
-		overdueTasks,
-		upcomingTasks,
-		noDateTasks
-	} from '$lib/stores/decrypted-tasks.store';
-	import { taskSortStore } from '$lib/stores/task-sort.store';
-	import { decryptedTrashTasks } from '$lib/stores/decrypted-trash.store';
 	import { activeLists } from '$lib/stores/decrypted-lists.store';
 	import { taskOperationsService } from '$lib/services/task-operations.service';
 	import { trashManagementService } from '$lib/services/trash-management.service';
@@ -39,8 +32,8 @@
 	import SwipeableItem from '$lib/components/ui/SwipeableItem.svelte';
 	import QuickAddTask from '$lib/components/tasks/QuickAddTask.svelte';
 	import type { Section } from '../IconNav.svelte';
-	import { evaluate, parseQuery, type SearchEntity } from '@reborn/utils';
-	import { buildTaskSearchContext } from '$lib/services/task-search-context';
+	import { taskListView, type ListViewSection } from '$lib/stores/task-list-view.store';
+	import SidebarSearchBar from './SidebarSearchBar.svelte';
 
 	const logger = createLogger('SidebarTaskList');
 
@@ -70,9 +63,41 @@
 		onTaskSelect: (taskId: string) => void;
 	} = $props();
 
-	// ── Search ──────────────────────────────────────────────────────
+	// ── Search state ────────────────────────────────────────────────
+	// Local component state. Sync into the store via $effect — the store is the
+	// brain that decides title-only vs body-aware path.
 	let searchInput = $state('');
+	let searchInDescription = $state(false);
 	let searchInputEl = $state<HTMLInputElement | null>(null);
+
+	// Push the active section to the store on prop change. The store's
+	// `setSection` is idempotent — no-op when section is unchanged.
+	$effect(() => {
+		taskListView.setSection(section as ListViewSection);
+	});
+
+	// Reset search whenever the section changes — analogous to the equivalent
+	// effect in NoteList.svelte. Empty input + toggle off + refresh.
+	$effect(() => {
+		void section;
+		untrack(() => {
+			searchInput = '';
+			searchInDescription = false;
+			taskListView.setSearch('');
+			taskListView.setSearchInDescription(false);
+		});
+	});
+
+	// Sync local input into the store. The store routes empty / fast / AST /
+	// body-aware paths in `refresh()`; no local debounce needed (sync title-only
+	// is instant; body-aware fork cancels itself via contentSearchVersion).
+	$effect(() => {
+		taskListView.setSearch(searchInput);
+	});
+
+	$effect(() => {
+		taskListView.setSearchInDescription(searchInDescription);
+	});
 
 	$effect(() => {
 		if (autoFocusSearch && searchInputEl) {
@@ -80,98 +105,33 @@
 		}
 	});
 
+	// `/` keyboard shortcut (handled in (app)/+layout.svelte) → focus this input.
+	onMount(() => {
+		const handler = () => searchInputEl?.focus();
+		window.addEventListener('focus-search', handler);
+		return () => window.removeEventListener('focus-search', handler);
+	});
+
+	// ── Visible tasks (single source of truth) ──────────────────────
+	const visibleTasks = $derived($taskListView);
+
 	// ── Infinite scroll ─────────────────────────────────────────────
 	let visibleCount = $state(PAGE_SIZE);
 	let sentinelEl = $state<HTMLDivElement | null>(null);
 	let observer: IntersectionObserver | undefined;
 	let listContainer = $state<HTMLElement | null>(null);
 
-	// Reset search input when section changes
-	$effect(() => {
-		void section;
-		untrack(() => {
-			searchInput = '';
-		});
-	});
-
-	// Reset visible count when section or search changes
+	// Reset visible count when section or search changes.
 	$effect(() => {
 		void section;
 		void searchInput;
 		visibleCount = PAGE_SIZE;
 	});
 
-	// ── Filtered tasks ──────────────────────────────────────────────
-	// Use per-section stores from decrypted-tasks.store (backed by taskIndex)
-	// instead of re-filtering with matchesFilters (duplicate logic).
-	const sectionSource = $derived.by(() => {
-		switch (section) {
-			case 'trash':
-				return $decryptedTrashTasks ?? [];
-			case 'starred':
-				return $starredTasks ?? [];
-			case 'today':
-				return $todayTasks ?? [];
-			case 'overdue':
-				return $overdueTasks ?? [];
-			case 'upcoming':
-				return $upcomingTasks ?? [];
-			case 'no_date':
-				return $noDateTasks ?? [];
-			default:
-				return $allDecryptedTasks ?? [];
-		}
-	});
-
-	const allFilteredTasks = $derived.by(() => {
-		let source = sectionSource;
-
-		// Search filter — runs the same operator-aware AST as the global /search box
-		// (parser → evaluator from @reborn/utils). Pure freetext degrades to a
-		// title substring match because TaskListItem doesn't carry description;
-		// `has:link` and description-aware freetext still need the global /search
-		// page (decryption pipeline lives in search.service).
-		if (searchInput.trim()) {
-			const ast = parseQuery(searchInput);
-			const ctx = buildTaskSearchContext();
-			source = source.filter((task) => evaluate(ast, taskListItemToSearchEntity(task), ctx));
-		}
-
-		// Apply sort preferences
-		const { option, direction } = $taskSortStore[section] ?? {
-			option: 'due_date',
-			direction: 'asc'
-		};
-		source = sortTasks(source, option, direction);
-
-		return source;
-	});
-
-	function taskListItemToSearchEntity(task: TaskListItem): SearchEntity {
-		return {
-			id: task.id,
-			title: task.title,
-			body: undefined,
-			tagIds: [],
-			folderId: null,
-			listId: task.task_list_id ?? null,
-			createdAt: new Date(task.created_at),
-			updatedAt: new Date(task.updated_at),
-			dueAt: task.due_date ? new Date(task.due_date) : null,
-			flags: {
-				starred: task.is_starred,
-				completed: task.is_completed,
-				trashed: !!task.deleted_at
-			}
-		};
-	}
-
-	const activeTasks = $derived(allFilteredTasks.filter((t) => !t.is_completed));
-	const completedTasks = $derived(allFilteredTasks.filter((t) => t.is_completed));
-
+	const activeTasks = $derived(visibleTasks.filter((t) => !t.is_completed));
+	const completedTasks = $derived(visibleTasks.filter((t) => t.is_completed));
 	const visibleActiveTasks = $derived(activeTasks.slice(0, visibleCount));
 	const hasMore = $derived(visibleCount < activeTasks.length);
-
 	const showListName = $derived(MULTI_LIST_SECTIONS.includes(section));
 
 	function loadMore() {
@@ -226,13 +186,9 @@
 		}
 	}
 
-	function clearSearch() {
-		searchInput = '';
-	}
-
 	// ── Trash state ─────────────────────────────────────────────────
 	const isTrash = $derived(section === 'trash');
-	const trashTaskCount = $derived(allFilteredTasks.length);
+	const trashTaskCount = $derived(visibleTasks.length);
 
 	// Swipe delete dialog state (non-trash sections)
 	let deleteDialogOpen = $state(false);
@@ -387,39 +343,16 @@
 	</div>
 
 	<!-- Search bar -->
-	<div class="shrink-0 px-3 pb-2">
-		<div class="relative">
-			<Search class="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-			<input
-				bind:this={searchInputEl}
-				type="text"
-				placeholder={$t('common.search', { default: 'Szukaj...' })}
-				value={searchInput}
-				oninput={(e) => {
-					searchInput = (e.target as HTMLInputElement).value;
-				}}
-				class="w-full rounded-md border bg-background py-2 pl-7 pr-8 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-			/>
-			{#if searchInput}
-				<button
-					type="button"
-					onclick={clearSearch}
-					class="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center h-7 w-7 text-muted-foreground hover:text-foreground"
-				>
-					<X class="h-3.5 w-3.5" />
-				</button>
-			{/if}
-		</div>
-	</div>
+	<SidebarSearchBar bind:searchInput bind:searchInDescription bind:searchInputEl />
 
-	<!-- Quick add task (hidden in trash, overdue, and when hideQuickAdd is set) -->
-	{#if !isTrash && section !== 'overdue' && !hideQuickAdd}
+	<!-- Quick add task (hidden in trash, overdue, when hideQuickAdd is set, or when actively searching) -->
+	{#if !isTrash && section !== 'overdue' && !hideQuickAdd && !searchInput}
 		<div class="shrink-0 px-3 pb-2">
 			<QuickAddTask bind:this={quickAddRef} showListSelect {section} class="text-xs" />
 		</div>
 	{/if}
 
-	<!-- Task list -->
+	<!-- Task list (single rendering path — store decides what's visible) -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		class="flex-1 overflow-y-auto px-3"
@@ -427,7 +360,7 @@
 		onkeydown={handleListKeyDown}
 		role="list"
 	>
-		{#if (isTrash ? allFilteredTasks.length : activeTasks.length + completedTasks.length) === 0}
+		{#if (isTrash ? visibleTasks.length : activeTasks.length + completedTasks.length) === 0}
 			<div class="px-4 py-8 text-center">
 				{#if searchInput}
 					<p class="text-sm text-muted-foreground">
@@ -435,7 +368,10 @@
 					</p>
 					<button
 						type="button"
-						onclick={clearSearch}
+						onclick={() => {
+							searchInput = '';
+							searchInDescription = false;
+						}}
 						class="mt-2 text-xs text-primary underline-offset-4 hover:underline"
 					>
 						{$t('common.clear_search', { default: 'Wyczyść wyszukiwanie' })}
@@ -457,7 +393,7 @@
 		{:else if isTrash}
 			<!-- Trash: flat list, no checkbox/star, swipe = permanent delete -->
 			<div class="flex flex-col gap-2 py-1" role="listitem">
-				{#each allFilteredTasks as task (task.id)}
+				{#each visibleTasks as task (task.id)}
 					<SwipeableItem onDelete={() => handlePermanentSwipeDelete(task)} deleteButtonWidth={64}>
 						<TaskItem
 							{task}

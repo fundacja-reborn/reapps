@@ -1,12 +1,5 @@
 // Sidebar components
-export {
-	AppSidebar,
-	NavMain,
-	NavUser,
-	NavSettings,
-	SidebarTaskList,
-	TaskListsPanel
-} from './sidebar';
+export { SidebarTaskList, TaskListsPanel } from './sidebar';
 
 // Icon Rail
 export { default as IconNav } from './IconNav.svelte';
@@ -20,7 +13,6 @@ export {
 	StarredHeaderContent,
 	CompletedHeaderContent,
 	TrashHeader,
-	SearchHeaderContent,
 	FilterViewHeaderContent
 } from './header';
 

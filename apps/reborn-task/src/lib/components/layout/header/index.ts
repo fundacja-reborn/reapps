@@ -5,5 +5,4 @@ export { default as TaskDetailHeaderContent } from './TaskDetailHeaderContent.sv
 export { default as StarredHeaderContent } from './StarredHeaderContent.svelte';
 export { default as CompletedHeaderContent } from './CompletedHeaderContent.svelte';
 export { default as TrashHeader } from './TrashHeader.svelte';
-export { default as SearchHeaderContent } from './SearchHeaderContent.svelte';
 export { default as FilterViewHeaderContent } from './FilterViewHeaderContent.svelte';

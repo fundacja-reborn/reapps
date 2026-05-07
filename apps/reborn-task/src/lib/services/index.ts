@@ -5,7 +5,6 @@ export * from './list-operations.service';
 export * from './notification.service';
 export * from './sync.service';
 export * from './trash-management.service';
-export * from './search.service';
 export * from './recurrence.service';
 export * from './data-export.service';
 export * from './data-import.service';
