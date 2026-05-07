@@ -33,7 +33,6 @@
 		StarredHeaderContent,
 		CompletedHeaderContent,
 		TrashHeader,
-		SearchHeaderContent,
 		FilterViewHeaderContent
 	} from '$lib/components/layout';
 	import { CreateListSheet, DeleteListDialog, EditListNameModal, TaskListSheet } from '$lib/components/task-list';
@@ -59,7 +58,7 @@
 	import { taskOperationsService } from '$lib/services/task-operations.service';
 	import { syncConflict } from '$lib/services/sync.service';
 	import { layoutStore } from '$lib/stores/layout.store';
-	import { searchStore } from '$lib/stores/search-results.store';
+	import { taskListView } from '$lib/stores/task-list-view.store';
 	import { onDestroy } from 'svelte';
 	import type { ListDecrypted, TaskDecrypted } from '@reborn/types';
 	import type { TaskFilters } from '$lib/services/task-filtering.service';
@@ -246,7 +245,6 @@
 		const routeId = $page.route.id;
 		if (!routeId) return false;
 		if (routeId.includes('/tasks/')) return true;
-		if (routeId.includes('/search')) return true;
 		if (routeId.includes('/settings')) return true;
 		return false;
 	});
@@ -291,7 +289,6 @@
 	let headerComponent = $derived.by(() => {
 		const routeId = $page.route.id ?? '';
 		if (routeId.includes('/tasks/')) return TaskDetailHeaderContent;
-		if (routeId.includes('/search')) return SearchHeaderContent;
 		if (routeId.includes('/starred')) return StarredHeaderContent;
 		if (routeId.includes('/completed')) return CompletedHeaderContent;
 		if (routeId.includes('/trash')) return TrashHeader;
@@ -511,8 +508,12 @@
 				searchFocusRequested = true;
 			});
 		}
-		// Clear global search when switching sections
-		searchStore.clear();
+		// Clear sidebar search state when switching sections (mirrors NoteList's
+		// section-change effect — the sidebar list lives in the new
+		// `task-list-view` store and `setSection` triggers an internal refresh,
+		// but the search inputs are owned by SidebarTaskList so they reset there
+		// too via its own $effect on `section`).
+		taskListView.clear();
 	}
 
 	// Mobile back: navigate based on current activeSection.
@@ -843,7 +844,7 @@
 
 		if (e.key === '/') {
 			e.preventDefault();
-			goto('/search');
+			window.dispatchEvent(new CustomEvent('focus-search'));
 		}
 	}
 
@@ -1138,8 +1139,6 @@
 									? () => handleNavigateToList(currentList!.id)
 									: undefined}
 							/>
-						{:else if headerComponent === SearchHeaderContent}
-							<SearchHeaderContent />
 						{:else}
 							<DefaultHeader />
 						{/if}
@@ -1239,8 +1238,6 @@
 							/>
 						{:else if headerComponent === StarredHeaderContent}
 							<StarredHeaderContent />
-						{:else if headerComponent === SearchHeaderContent}
-							<SearchHeaderContent />
 						{:else if headerComponent === CompletedHeaderContent}
 							<CompletedHeaderContent />
 						{:else if headerComponent === TrashHeader}
