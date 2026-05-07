@@ -240,6 +240,60 @@ describe('parseQuery — Tier 2 boolean OR', () => {
   });
 });
 
+describe('parseQuery — explicit AND (no-op infix)', () => {
+  it('explicit `cat AND dog` parses identically to implicit `cat dog`', () => {
+    expect(parseQuery('cat AND dog')).toEqual(parseQuery('cat dog'));
+    expect(parseQuery('cat AND dog')).toEqual({ root: and(text('cat'), text('dog')) });
+  });
+
+  it('AND is consumed inside a group — `(ale AND jaki)` matches both words only', () => {
+    // Regression: before AND was a token, this AST was AND(ale, "and", jaki)
+    // which required the literal substring "and" in the searched fields.
+    expect(parseQuery('(ale AND jaki)')).toEqual({
+      root: and(text('ale'), text('jaki'))
+    });
+  });
+
+  it('chains multiple AND operands', () => {
+    expect(parseQuery('cat AND dog AND mouse')).toEqual({
+      root: and(text('cat'), text('dog'), text('mouse'))
+    });
+  });
+
+  it('lowercase `and` stays a plain word (Gmail/GitHub convention)', () => {
+    expect(parseQuery('cat and dog')).toEqual({
+      root: and(text('cat'), text('and'), text('dog'))
+    });
+  });
+
+  it('quoted `"AND"` is a literal word, not the operator', () => {
+    expect(parseQuery('"AND"')).toEqual({ root: text('and') });
+  });
+
+  it('AND inside a value (key:AND) stays in the value', () => {
+    expect(parseQuery('tag:AND')).toEqual({ root: tag('and') });
+  });
+
+  it('mixes AND and OR — AND still binds tighter than OR', () => {
+    // `cat AND dog OR mouse` ≡ `(cat AND dog) OR mouse`
+    expect(parseQuery('cat AND dog OR mouse')).toEqual({
+      root: or(and(text('cat'), text('dog')), text('mouse'))
+    });
+  });
+
+  it('trailing AND falls back to flat parse', () => {
+    expect(parseQuery('cat AND')).toEqual({
+      root: and(text('cat'), text('and'))
+    });
+  });
+
+  it('leading AND falls back to flat parse', () => {
+    expect(parseQuery('AND cat')).toEqual({
+      root: and(text('and'), text('cat'))
+    });
+  });
+});
+
 describe('parseQuery — Tier 2 grouping', () => {
   it('parses simple parenthesized group', () => {
     expect(parseQuery('(cat dog) OR chicken')).toEqual({

@@ -23,9 +23,16 @@ const KNOWN_KEYS = new Set([
 /**
  * Token kinds produced by the tokenizer.
  *
- * `OR` is a structural token — recognized only when the input substring is
- * exactly `OR` between whitespace (uppercase, no quotes around it). Any other
- * casing (`or`, `Or`) becomes a regular WORD, matching Gmail/GitHub/Linear.
+ * `OR` and `AND` are structural tokens — recognized only when the input
+ * substring is exactly `OR`/`AND` between whitespace (uppercase, no quotes
+ * around it). Any other casing (`or`, `And`) becomes a regular WORD, matching
+ * Gmail/GitHub/Linear.
+ *
+ * `AND` is semantically a no-op: AND is the implicit combinator between
+ * primaries, so `cat AND dog` parses identically to `cat dog`. The token
+ * exists only so that users who reach for explicit boolean syntax (natural
+ * after meeting `OR`) get the result they expect instead of searching for
+ * the literal word "and".
  *
  * `(` and `)` always terminate the current token outside quotes — `foo(bar)`
  * tokenizes as WORD `foo`, LPAREN, WORD `bar`, RPAREN. Inside quotes they
@@ -34,6 +41,7 @@ const KNOWN_KEYS = new Set([
 type Token =
   | { kind: 'WORD'; text: string; unquotedColonIdx: number }
   | { kind: 'OR' }
+  | { kind: 'AND' }
   | { kind: 'LPAREN' }
   | { kind: 'RPAREN' };
 
@@ -42,10 +50,13 @@ type Token =
  *
  * Tokenization rules:
  *   - Whitespace separates tokens; quoted segments (`"..."`) preserve internal
- *     whitespace, parentheses, and the literal token `OR`.
+ *     whitespace, parentheses, and the literal tokens `OR` / `AND`.
  *   - A `:` that is inside quotes does not split key from value.
  *   - `(` / `)` outside quotes are structural tokens.
  *   - A standalone uppercase `OR` between whitespace is the boolean operator.
+ *   - A standalone uppercase `AND` between whitespace is a no-op separator
+ *     (same precedence as the implicit AND between primaries) — it lets users
+ *     write `cat AND dog` symmetrically to `cat OR dog`.
  *   - A token starting with `-` is tentatively negated (parser handles it):
  *       - `-(` opens a negated group.
  *       - `-key:value` (recognized operator) → negated filter leaf.
@@ -55,7 +66,7 @@ type Token =
  *
  *   expr     := or_expr
  *   or_expr  := and_expr ('OR' and_expr)*
- *   and_expr := primary primary*
+ *   and_expr := primary ('AND'? primary)*
  *   primary  := '(' expr ')' | '-' '(' expr ')' | '-' atom | atom
  *   atom     := KEY_VALUE | WORD
  *
@@ -118,10 +129,14 @@ class Parser {
   }
 
   /**
-   * and_expr := primary primary*
+   * and_expr := primary ('AND'? primary)*
    *
-   * Rejects empty primary sequences — caller (parseOr) relies on this to
-   * detect dangling `OR` (`cat OR`, `OR cat`) and trigger flat fallback.
+   * `AND` between primaries is consumed and discarded — it has the same
+   * precedence as the implicit AND, so `cat AND dog` and `cat dog` produce
+   * identical ASTs. A dangling `AND` (no following primary) is a structural
+   * error: parsePrimary throws → flat fallback (mirrors how dangling `OR`
+   * behaves). Leading `AND` likewise throws because parseAnd starts with
+   * parsePrimary, which doesn't accept an AND token.
    */
   private parseAnd(): Node {
     const first = this.parsePrimary();
@@ -130,6 +145,7 @@ class Parser {
       const t = this.peek();
       if (t === null) break;
       if (t.kind === 'OR' || t.kind === 'RPAREN') break;
+      if (t.kind === 'AND') this.advance(); // optional infix AND
       operands.push(this.parsePrimary());
     }
     if (operands.length === 1) return first;
@@ -157,7 +173,8 @@ class Parser {
       this.advance();
       return parseAtom(t.text, t.unquotedColonIdx);
     }
-    // OR / RPAREN here are structural errors (dangling OR, unmatched paren).
+    // OR / AND / RPAREN here are structural errors (dangling boolean,
+    // unmatched paren).
     throw new ParseError(`unexpected token kind ${t.kind} in primary`);
   }
 
@@ -273,6 +290,8 @@ function flatFallback(tokens: Token[]): QueryAST {
       children.push(parseAtom(t.text, t.unquotedColonIdx));
     } else if (t.kind === 'OR') {
       children.push({ kind: 'leaf-text', value: 'or', negated: false });
+    } else if (t.kind === 'AND') {
+      children.push({ kind: 'leaf-text', value: 'and', negated: false });
     } else if (t.kind === 'LPAREN') {
       children.push({ kind: 'leaf-text', value: '(', negated: false });
     } else if (t.kind === 'RPAREN') {
@@ -330,11 +349,18 @@ function tokenize(input: string): Token[] {
 
     if (text.length === 0) continue;
 
-    // Standalone `OR` (uppercase) is the boolean operator. Quotation around
-    // `OR` makes it a literal — `"OR"` renders as a phrase WORD with text
-    // `OR` but `sawQuotes === true`, so this branch correctly skips it.
+    // Standalone `OR`/`AND` (uppercase) are the boolean operators. Quotation
+    // around them makes them literals — `"OR"` renders as a phrase WORD with
+    // text `OR` but `sawQuotes === true`, so these branches correctly skip
+    // it. AND is functionally a no-op (same precedence as implicit AND), the
+    // token exists so the parser can swallow it cleanly instead of treating
+    // it as a freetext word.
     if (text === 'OR' && !sawQuotes) {
       tokens.push({ kind: 'OR' });
+      continue;
+    }
+    if (text === 'AND' && !sawQuotes) {
+      tokens.push({ kind: 'AND' });
       continue;
     }
 

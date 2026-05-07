@@ -46,7 +46,7 @@ To express "either / or" relationships, use the `OR` operator described below.
 
 ## Boolean operators
 
-Beyond the implicit AND, the search box supports explicit `OR`, parenthesized groups, and group negation.
+Beyond the implicit AND, the search box supports explicit `OR`, parenthesized groups, and group negation. Explicit `AND` is also recognized as a redundant synonym for the implicit AND.
 
 ### `OR` — alternatives
 
@@ -65,6 +65,17 @@ cat dog OR mouse                # = (cat AND dog) OR mouse
 ```
 
 When in doubt, parenthesize.
+
+### `AND` — explicit (and redundant)
+
+A space between two clauses already means AND, so `cat dog` and `cat AND dog` produce the same results. The explicit form exists for symmetry with `OR` — useful inside groups where the boolean intent is clearer when written out:
+
+```
+(cat AND dog) OR mouse          # equivalent to (cat dog) OR mouse
+tag:work AND -is:completed      # equivalent to tag:work -is:completed
+```
+
+`AND` must be **uppercase** with surrounding whitespace, exactly like `OR`. Lowercase `and` and the quoted form `"AND"` are treated as the plain text word `and`. AND has the same precedence as the implicit space — i.e. tighter than OR — so `cat AND dog OR mouse` parses as `(cat AND dog) OR mouse`.
 
 ### Grouping with `(...)`
 
@@ -92,20 +103,22 @@ This is distinct from leaf-level negation (`-tag:archived`, `-mouse`), which neg
 
 ### Quoted boolean tokens
 
-Quotes always preserve characters literally — `OR`, `(`, and `)` inside quotes are treated as part of the value, not as boolean syntax:
+Quotes always preserve characters literally — `OR`, `AND`, `(`, and `)` inside quotes are treated as part of the value, not as boolean syntax:
 
 ```
 "cat OR dog"     # plain phrase including the literal text "OR"
+"cat AND dog"    # plain phrase including the literal text "AND"
 tag:"or another" # tag value containing the substring "or another"
 "(test)"         # plain phrase, parens are part of the title to search for
 ```
 
 ### Graceful fallback
 
-If the parser hits a structural problem (an unmatched parenthesis, a dangling `OR`), the whole query degrades to a flat plain-text parse — the offending characters become literal substring tokens. You'll never see a red error state mid-typing; the search just becomes less specific until the syntax is balanced again. Examples:
+If the parser hits a structural problem (an unmatched parenthesis, a dangling `OR` or `AND`), the whole query degrades to a flat plain-text parse — the offending characters become literal substring tokens. You'll never see a red error state mid-typing; the search just becomes less specific until the syntax is balanced again. Examples:
 
 - `(cat OR ` — unmatched `(`. Searches for items literally containing `(`, `cat`, and `or`.
 - `cat OR` — trailing `OR`. Searches for items literally containing `cat` and `or`.
+- `cat AND` — trailing `AND`. Searches for items literally containing `cat` and `and`.
 
 ---
 
