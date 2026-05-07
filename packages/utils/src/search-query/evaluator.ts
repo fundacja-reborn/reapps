@@ -1,4 +1,4 @@
-import type { DateExpression, Filter, FreetextSpec, QueryAST } from './ast';
+import type { DateExpression, Filter, Node, QueryAST } from './ast';
 import { resolveDateRef } from './date-parser';
 
 /**
@@ -60,26 +60,49 @@ function bodyContainsLink(body: string): boolean {
   return false;
 }
 
+/**
+ * Walks the tree AST and returns true iff the entity satisfies the query.
+ *
+ * Empty AST (`root === null`) matches everything — consumers lean on this so
+ * they don't need a special `isEmpty` early-return at every call site.
+ *
+ * The haystack (lowercased title + optional body) is computed once per
+ * `evaluate()` call and shared across every leaf-text node, so a query like
+ * `cat OR dog OR mouse` doesn't rebuild the same string three times.
+ */
 export function evaluate(ast: QueryAST, entity: SearchEntity, ctx: SearchContext): boolean {
-  if (!matchFreetext(ast.freetext, entity)) return false;
-  for (const filter of ast.filters) {
-    if (!checkFilter(filter, entity, ctx)) return false;
-  }
-  return true;
+  if (ast.root === null) return true;
+  const haystack = buildHaystack(entity);
+  return evalNode(ast.root, entity, ctx, haystack);
 }
 
-function matchFreetext(ft: FreetextSpec, entity: SearchEntity): boolean {
-  if (ft.include.length === 0 && ft.exclude.length === 0) return true;
-  const haystack =
+function evalNode(
+  node: Node,
+  entity: SearchEntity,
+  ctx: SearchContext,
+  haystack: string
+): boolean {
+  switch (node.kind) {
+    case 'and':
+      return node.children.every((c) => evalNode(c, entity, ctx, haystack));
+    case 'or':
+      return node.children.some((c) => evalNode(c, entity, ctx, haystack));
+    case 'not':
+      return !evalNode(node.child, entity, ctx, haystack);
+    case 'leaf-filter':
+      return checkFilter(node.filter, entity, ctx);
+    case 'leaf-text': {
+      const present = haystack.includes(node.value);
+      return node.negated ? !present : present;
+    }
+  }
+}
+
+function buildHaystack(entity: SearchEntity): string {
+  return (
     entity.title.toLowerCase() +
-    (entity.body !== undefined ? '\n' + entity.body.toLowerCase() : '');
-  for (const needle of ft.include) {
-    if (!haystack.includes(needle)) return false;
-  }
-  for (const needle of ft.exclude) {
-    if (haystack.includes(needle)) return false;
-  }
-  return true;
+    (entity.body !== undefined ? '\n' + entity.body.toLowerCase() : '')
+  );
 }
 
 function checkFilter(filter: Filter, entity: SearchEntity, ctx: SearchContext): boolean {

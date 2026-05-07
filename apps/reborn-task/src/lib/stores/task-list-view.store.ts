@@ -24,9 +24,9 @@ import { browser } from '$app/environment';
 import { taskStore } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
 import {
+	buildLiteAst,
 	createLogger,
 	evaluate,
-	freetextIsEmpty,
 	isEmpty as isAstEmpty,
 	parseQuery,
 	requiresContent,
@@ -166,27 +166,23 @@ function createTaskListViewStore() {
 	}
 
 	/**
-	 * Synchronous AST/freetext evaluation against the in-memory TaskIndex.
+	 * Synchronous AST evaluation against the in-memory TaskIndex.
 	 *
 	 * Three routing cases (mirrors Notes):
 	 *   1. Empty AST → return the visible scope as-is via `getFiltered`.
-	 *   2. Single-word freetext, no operators, no excludes → fast title-substring
-	 *      path through `getFiltered({ search })`. Bypasses building a SearchContext.
+	 *   2. Single positive leaf-text → fast title-substring path through
+	 *      `getFiltered({ search })`. Bypasses building a SearchContext.
 	 *   3. Anything else → full AST evaluation via `getFilteredByAst`.
 	 */
 	function evaluateAgainstIndex(
 		ast: QueryAST,
 		filterOpts: TaskFilterOptions & TaskFilterByAstOptions
 	): TaskListItem[] {
-		if (ast.filters.length === 0 && freetextIsEmpty(ast.freetext)) {
+		if (isAstEmpty(ast)) {
 			return taskIndex.getFiltered(filterOpts).items;
 		}
-		if (
-			ast.filters.length === 0 &&
-			ast.freetext.exclude.length === 0 &&
-			ast.freetext.include.length === 1
-		) {
-			return taskIndex.getFiltered({ ...filterOpts, search: ast.freetext.include[0] }).items;
+		if (ast.root !== null && ast.root.kind === 'leaf-text' && !ast.root.negated) {
+			return taskIndex.getFiltered({ ...filterOpts, search: ast.root.value }).items;
 		}
 		const ctx = buildTaskSearchContext();
 		return taskIndex.getFilteredByAst(ast, ctx, filterOpts).items;
@@ -218,16 +214,14 @@ function createTaskListViewStore() {
 		const myVersion = ++contentSearchVersion;
 		loading.set(true);
 		try {
-			// 1. Pre-filter: structural operators only.
-			const liteAst: QueryAST = {
-				freetext: { include: [], exclude: [] },
-				filters: ast.filters.filter((f) => f.kind !== 'has')
-			};
+			// 1. Pre-filter: lite-AST drops body-dependent leaves (leaf-text,
+			//    has:*) and is polarity-aware so NOT-of-leaf-text doesn't
+			//    collapse the candidate set.
+			const liteAst = buildLiteAst(ast);
 			const ctx = buildTaskSearchContext();
-			const candidates =
-				liteAst.filters.length === 0
-					? taskIndex.getFiltered(filterOpts).items
-					: taskIndex.getFilteredByAst(liteAst, ctx, filterOpts).items;
+			const candidates = isAstEmpty(liteAst)
+				? taskIndex.getFiltered(filterOpts).items
+				: taskIndex.getFilteredByAst(liteAst, ctx, filterOpts).items;
 
 			// Quick lookup of encrypted records for streaming decryption.
 			const encryptedById = new Map<string, TaskEncryptedBooleans>();

@@ -3,8 +3,8 @@ import { untrack } from 'svelte';
 import { browser } from '$app/environment';
 import type { NoteDecrypted } from '@reborn/types';
 import {
+  buildLiteAst,
   evaluate,
-  freetextIsEmpty,
   isEmpty as isAstEmpty,
   parseQuery,
   requiresContent,
@@ -134,21 +134,19 @@ function createNotesStore() {
   }
 
   /**
-   * Synchronous AST/freetext evaluation against the in-memory NoteIndex (no body).
+   * Synchronous AST evaluation against the in-memory NoteIndex (no body).
    *
    * Three routing cases:
-   *   1. Empty AST (no filters, no freetext) — return the visible scope as-is.
-   *   2. Single-word freetext, no operators — fast title-substring path through
+   *   1. Empty AST — return the visible scope as-is.
+   *   2. Single positive leaf-text — fast title-substring path through
    *      `getFiltered({ search })`. Bypasses building a SearchContext.
-   *   3. Anything else (multi-word, phrase, exclude, or operators) — full AST
-   *      evaluation via `getFilteredByAst`, which handles include/exclude
-   *      semantics consistently.
+   *   3. Anything else — full AST evaluation via `getFilteredByAst`.
    */
   function evaluateAgainstIndex(
     ast: QueryAST,
     filterOpts: ReturnType<typeof buildFilterOptions>
   ): NoteListItem[] {
-    if (ast.filters.length === 0 && freetextIsEmpty(ast.freetext)) {
+    if (isAstEmpty(ast)) {
       const { items } = noteIndex.getFiltered({
         ...filterOpts,
         pageSize: Number.MAX_SAFE_INTEGER
@@ -156,13 +154,13 @@ function createNotesStore() {
       return items;
     }
     if (
-      ast.filters.length === 0 &&
-      ast.freetext.exclude.length === 0 &&
-      ast.freetext.include.length === 1
+      ast.root !== null &&
+      ast.root.kind === 'leaf-text' &&
+      !ast.root.negated
     ) {
       const { items } = noteIndex.getFiltered({
         ...filterOpts,
-        search: ast.freetext.include[0],
+        search: ast.root.value,
         pageSize: Number.MAX_SAFE_INTEGER
       });
       return items;
@@ -203,23 +201,22 @@ function createNotesStore() {
     const myVersion = ++contentSearchVersion;
     loading.set(true);
     try {
-      // 1. Pre-filter: structural operators only.
-      const liteAst: QueryAST = {
-        freetext: { include: [], exclude: [] },
-        filters: ast.filters.filter((f) => f.kind !== 'has')
-      };
+      // 1. Pre-filter: lite-AST drops body-dependent leaves (leaf-text,
+      //    has:*) so the candidate set isn't pruned by predicates that need
+      //    the decrypted body. Polarity-aware — `-(cat) tag:work` keeps
+      //    tag:work, doesn't collapse to FALSE.
+      const liteAst = buildLiteAst(ast);
       const ctx = buildSearchContext();
-      const candidates =
-        liteAst.filters.length === 0
-          ? noteIndex.getFiltered({
-              ...filterOpts,
-              search: undefined,
-              pageSize: Number.MAX_SAFE_INTEGER
-            }).items
-          : noteIndex.getFilteredByAst(liteAst, ctx, {
-              ...filterOpts,
-              pageSize: Number.MAX_SAFE_INTEGER
-            }).items;
+      const candidates = isAstEmpty(liteAst)
+        ? noteIndex.getFiltered({
+            ...filterOpts,
+            search: undefined,
+            pageSize: Number.MAX_SAFE_INTEGER
+          }).items
+        : noteIndex.getFilteredByAst(liteAst, ctx, {
+            ...filterOpts,
+            pageSize: Number.MAX_SAFE_INTEGER
+          }).items;
 
       // 2. Stream-decrypt: peak ≈ 1 body. `full` and the per-iteration entity
       //    drop out of scope on each loop turn → eligible for GC. Only metadata

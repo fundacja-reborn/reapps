@@ -1,7 +1,7 @@
 /**
  * AST for the search query language used in reborn-task and reborn-notes search boxes.
  *
- * Supported operators (Tier 1 + 1.5):
+ * Supported operators (Tier 1 + 1.5 + 2):
  *   tag:work             — match by tag name
  *   folder:projects/active (notes only) / list:Inbox (task only)
  *   created:>2026-01-01  / created:<7d / created:2026-01-01..2026-02-01
@@ -12,12 +12,22 @@
  *   -OPERATOR            negation prefix on operators (-tag:archived, -is:completed)
  *   "quoted value"       allows whitespace and colons in operator values
  *
+ * Boolean operators (Tier 2):
+ *   foo bar              — implicit AND between consecutive primaries
+ *   foo OR bar           — explicit OR (uppercase only — lowercase `or` is plain text)
+ *   (foo bar) OR baz     — grouping; precedence is AND > OR
+ *   -(tag:work OR is:trashed) — negate a group
+ *
  * Freetext (Tier 1.5):
- *   foo bar              — AND-combined word substrings (each word must appear)
+ *   foo                  — substring match against title (and body when populated)
  *   "foo bar"            — phrase: single substring including the whitespace
- *   -mouse               — exclude: tokens prefixed with `-` whose body is not a
- *                          recognized operator are subtractive (must NOT appear)
+ *   -mouse               — exclude: leaf-text with negated:true
  *   -"foo bar"           — exclude phrase
+ *
+ * Graceful degradation (Tier 2):
+ *   Unmatched parens or dangling `OR` fall back to a flat parse where the
+ *   offending characters become plain freetext — the user never sees a
+ *   hard error mid-typing.
  */
 
 export type DateField = 'created' | 'modified' | 'due';
@@ -56,42 +66,54 @@ export type Filter =
   | { kind: 'is'; value: IsFlag; negated: boolean };
 
 /**
- * Plain-text portion of the query. Each item in `include` and `exclude` is a
- * pre-split, lowercased substring; phrases (`"foo bar"`) keep their internal
- * whitespace as one item, while bare words (`foo bar`) become two items.
+ * Tree-shaped AST node. AND / OR are n-ary so a flat sequence like
+ * `cat dog mouse` becomes a single `And([…])` instead of nesting binary ANDs.
  *
- * Evaluator semantics:
- *   - All `include` items must appear in the haystack (title, plus body when
- *     the body-aware path populates it). AND-combined.
- *   - No `exclude` item may appear in the haystack.
+ * Leaf-level `negated` is preserved on `Filter` (Tier 1.5 syntax `-tag:archived`)
+ * and on `leaf-text` (`-mouse`). `Not(child)` is reserved for explicit group
+ * negation (`-(group)`), which has no leaf-level equivalent.
+ *
+ * TRUE / FALSE sentinels used by the lite-AST builder are encoded as
+ * `{ kind: 'and', children: [] }` (TRUE — `every` over empty is true) and
+ * `{ kind: 'or', children: [] }` (FALSE — `some` over empty is false). This
+ * keeps the type closed without adding sentinel kinds.
  */
-export interface FreetextSpec {
-  include: string[];
-  exclude: string[];
-}
+export type Node =
+  | { kind: 'and'; children: Node[] }
+  | { kind: 'or'; children: Node[] }
+  | { kind: 'not'; child: Node }
+  | { kind: 'leaf-filter'; filter: Filter }
+  | { kind: 'leaf-text'; value: string; negated: boolean };
 
 export interface QueryAST {
-  freetext: FreetextSpec;
-  /** All recognized operators. AND-combined. */
-  filters: Filter[];
+  /** `null` represents an empty query (matches everything). */
+  root: Node | null;
 }
 
 /**
- * Returns true if any filter requires decrypting entity body (description/content).
- * Used by the search wrapper to decide between title-instant and content-async paths.
+ * Returns true if any leaf in the AST requires decrypting entity body —
+ * currently only `has:link`. Used by the search wrapper to decide between
+ * the title-instant path and the content-async path.
  */
 export function requiresContent(ast: QueryAST): boolean {
-  return ast.filters.some((f) => f.kind === 'has' && f.value === 'link');
+  return ast.root !== null && nodeRequiresContent(ast.root);
 }
 
-/** True when the freetext portion has no include and no exclude items. */
-export function freetextIsEmpty(ft: FreetextSpec): boolean {
-  return ft.include.length === 0 && ft.exclude.length === 0;
+function nodeRequiresContent(node: Node): boolean {
+  switch (node.kind) {
+    case 'and':
+    case 'or':
+      return node.children.some(nodeRequiresContent);
+    case 'not':
+      return nodeRequiresContent(node.child);
+    case 'leaf-filter':
+      return node.filter.kind === 'has';
+    case 'leaf-text':
+      return false;
+  }
 }
 
-/**
- * Returns true when the AST has neither operators nor freetext — i.e. an empty query.
- */
+/** True when the AST has no root — i.e. the query is empty. */
 export function isEmpty(ast: QueryAST): boolean {
-  return freetextIsEmpty(ast.freetext) && ast.filters.length === 0;
+  return ast.root === null;
 }
