@@ -46,7 +46,6 @@ const CRITICAL_ROUTES = [
 	`${base}/starred`,
 	`${base}/completed`,
 	`${base}/trash`,
-	`${base}/search`,
 	`${base}/lists`,
 	`${base}/profile`
 ];
