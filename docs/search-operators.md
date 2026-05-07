@@ -32,13 +32,80 @@ All search runs **client-side** over already-decrypted data — the server never
 
 **Combining**
 
-All operators are AND-combined with each other and with any plain-text words. Plain-text excludes are AND-combined too — every excluded substring must be absent. Example:
+By default everything is AND-combined: operators with each other, operators with plain-text words, and excludes too — every clause must hold simultaneously. Example:
 
 ```
 meeting tag:work -is:completed modified:<14d -draft
 ```
 
 …matches items containing the word *meeting*, tagged `work`, not yet completed, modified within the last 14 days, and not containing *draft*.
+
+To express "either / or" relationships, use the `OR` operator described below.
+
+---
+
+## Boolean operators
+
+Beyond the implicit AND, the search box supports explicit `OR`, parenthesized groups, and group negation.
+
+### `OR` — alternatives
+
+```
+cat OR mouse                    # title or body contains "cat" OR "mouse"
+tag:work OR tag:personal        # either tag matches
+is:completed OR is:overdue      # finished or past due
+```
+
+`OR` must be **uppercase** with surrounding whitespace. Lowercase `or` is treated as a plain text word — same convention as Gmail, GitHub, and Linear. To search for the literal substring `OR`, quote it: `"OR"`.
+
+**Precedence — AND binds tighter than OR.** That mirrors how the operator behaves in mainstream search boxes:
+
+```
+cat dog OR mouse                # = (cat AND dog) OR mouse
+```
+
+When in doubt, parenthesize.
+
+### Grouping with `(...)`
+
+Parentheses override precedence and let you compose richer queries:
+
+```
+tag:work (is:starred OR modified:<7d)         # work items, either starred OR recently touched
+(cat OR dog) -tag:archived                    # mentions cat or dog, not archived
+(tag:reading AND has:link) OR is:starred      # reading items with a link, or anything starred
+```
+
+Empty groups `()` are ignored. Redundant nesting like `((cat))` collapses naturally.
+
+### Negating a group with `-(...)`
+
+A leading `-` before a group negates the entire group:
+
+```
+-(tag:archived OR is:trashed)   # neither archived nor trashed
+tag:work -(is:completed AND -has:link)  # active work tasks that have either an
+                                        # incomplete state or a linked reference
+```
+
+This is distinct from leaf-level negation (`-tag:archived`, `-mouse`), which negates a single operator or word.
+
+### Quoted boolean tokens
+
+Quotes always preserve characters literally — `OR`, `(`, and `)` inside quotes are treated as part of the value, not as boolean syntax:
+
+```
+"cat OR dog"     # plain phrase including the literal text "OR"
+tag:"or another" # tag value containing the substring "or another"
+"(test)"         # plain phrase, parens are part of the title to search for
+```
+
+### Graceful fallback
+
+If the parser hits a structural problem (an unmatched parenthesis, a dangling `OR`), the whole query degrades to a flat plain-text parse — the offending characters become literal substring tokens. You'll never see a red error state mid-typing; the search just becomes less specific until the syntax is balanced again. Examples:
+
+- `(cat OR ` — unmatched `(`. Searches for items literally containing `(`, `cat`, and `or`.
+- `cat OR` — trailing `OR`. Searches for items literally containing `cat` and `or`.
 
 ---
 
