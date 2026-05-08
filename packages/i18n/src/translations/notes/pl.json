@@ -87,7 +87,38 @@
       "quota_exceeded": "Przekroczono limit storage. Usuń lub zmniejsz notatki aby kontynuować."
     },
     "size_indicator": "{used} / {max}",
-    "size_warning": "Rozmiar notatki zbliża się do limitu"
+    "size_warning": "Rozmiar notatki zbliża się do limitu",
+    "periodic": {
+      "daily": {
+        "folder": { "default": "Dziennik" },
+        "button": { "label": "Dziś", "tooltip": "Dzisiejsza notatka ({range})" },
+        "settings": { "section": "Dziennie" }
+      },
+      "weekly": {
+        "folder": { "default": "Notatki tygodniowe" },
+        "button": { "label": "Ten tydzień", "tooltip": "Notatka tygodnia ({range})" },
+        "settings": { "section": "Tygodniowo" },
+        "preview": { "range_hint": "← poniedziałek tygodnia {range}" }
+      },
+      "monthly": {
+        "folder": { "default": "Notatki miesięczne" },
+        "button": { "label": "Ten miesiąc", "tooltip": "Notatka miesięczna ({range})" },
+        "settings": { "section": "Miesięcznie" }
+      },
+      "settings": {
+        "title": "Notatki okresowe",
+        "description": "Notatki dzienne, tygodniowe i miesięczne (jak w Obsidian). Jeden klik otwiera lub tworzy notatkę dla bieżącego okresu.",
+        "show_button": "Pokaż przycisk w nawigacji",
+        "folder": "Folder",
+        "folder_root": "(katalog główny)",
+        "format": "Format nazwy pliku",
+        "format_custom": "Niestandardowy…",
+        "format_custom_label": "Format niestandardowy",
+        "format_preset_label": "Predefiniowany",
+        "preview": "Podgląd"
+      },
+      "errors": { "failed": "Nie udało się otworzyć notatki" }
+    }
   },
   "storage": {
     "title": "Wykorzystanie storage",
@@ -422,37 +453,6 @@
     "badge": "Szyfrowane end-to-end",
     "badge_short": "E2EE",
     "badge_tooltip": "Szyfrowane end-to-end — kliknij, aby zobaczyć"
-  },
-  "periodic": {
-    "daily": {
-      "folder": { "default": "Dziennik" },
-      "button": { "label": "Dziś", "tooltip": "Dzisiejsza notatka ({range})" },
-      "settings": { "section": "Dziennie" }
-    },
-    "weekly": {
-      "folder": { "default": "Notatki tygodniowe" },
-      "button": { "label": "Ten tydzień", "tooltip": "Notatka tygodnia ({range})" },
-      "settings": { "section": "Tygodniowo" },
-      "preview": { "range_hint": "← poniedziałek tygodnia {range}" }
-    },
-    "monthly": {
-      "folder": { "default": "Notatki miesięczne" },
-      "button": { "label": "Ten miesiąc", "tooltip": "Notatka miesięczna ({range})" },
-      "settings": { "section": "Miesięcznie" }
-    },
-    "settings": {
-      "title": "Notatki okresowe",
-      "description": "Notatki dzienne, tygodniowe i miesięczne (jak w Obsidian). Jeden klik otwiera lub tworzy notatkę dla bieżącego okresu.",
-      "show_button": "Pokaż przycisk w nawigacji",
-      "folder": "Folder",
-      "folder_root": "(katalog główny)",
-      "format": "Format nazwy pliku",
-      "format_custom": "Niestandardowy…",
-      "format_custom_label": "Format niestandardowy",
-      "format_preset_label": "Predefiniowany",
-      "preview": "Podgląd"
-    },
-    "errors": { "failed": "Nie udało się otworzyć notatki" }
   },
   "sync_status": {
     "synced": "Zsynchronizowane",

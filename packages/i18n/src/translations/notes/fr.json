@@ -87,7 +87,38 @@
       "quota_exceeded": "Quota de stockage dépassé. Supprimez ou réduisez des notes pour continuer."
     },
     "size_indicator": "{used} / {max}",
-    "size_warning": "La taille de la note approche de la limite"
+    "size_warning": "La taille de la note approche de la limite",
+    "periodic": {
+      "daily": {
+        "folder": { "default": "Journal" },
+        "button": { "label": "Aujourd'hui", "tooltip": "Note du jour ({range})" },
+        "settings": { "section": "Quotidien" }
+      },
+      "weekly": {
+        "folder": { "default": "Notes hebdomadaires" },
+        "button": { "label": "Cette semaine", "tooltip": "Note hebdomadaire ({range})" },
+        "settings": { "section": "Hebdomadaire" },
+        "preview": { "range_hint": "← lundi de la semaine {range}" }
+      },
+      "monthly": {
+        "folder": { "default": "Notes mensuelles" },
+        "button": { "label": "Ce mois", "tooltip": "Note mensuelle ({range})" },
+        "settings": { "section": "Mensuel" }
+      },
+      "settings": {
+        "title": "Notes périodiques",
+        "description": "Notes quotidiennes, hebdomadaires et mensuelles (style Obsidian). Un clic ouvre ou crée la note de la période courante.",
+        "show_button": "Afficher le bouton dans la navigation",
+        "folder": "Dossier",
+        "folder_root": "(racine)",
+        "format": "Format du nom de fichier",
+        "format_custom": "Personnalisé…",
+        "format_custom_label": "Format personnalisé",
+        "format_preset_label": "Préréglage",
+        "preview": "Aperçu"
+      },
+      "errors": { "failed": "Impossible d'ouvrir la note" }
+    }
   },
   "storage": {
     "title": "Utilisation du stockage",
@@ -422,37 +453,6 @@
     "badge": "Chiffré de bout en bout",
     "badge_short": "E2EE",
     "badge_tooltip": "Chiffré de bout en bout — cliquez pour voir"
-  },
-  "periodic": {
-    "daily": {
-      "folder": { "default": "Journal" },
-      "button": { "label": "Aujourd'hui", "tooltip": "Note du jour ({range})" },
-      "settings": { "section": "Quotidien" }
-    },
-    "weekly": {
-      "folder": { "default": "Notes hebdomadaires" },
-      "button": { "label": "Cette semaine", "tooltip": "Note hebdomadaire ({range})" },
-      "settings": { "section": "Hebdomadaire" },
-      "preview": { "range_hint": "← lundi de la semaine {range}" }
-    },
-    "monthly": {
-      "folder": { "default": "Notes mensuelles" },
-      "button": { "label": "Ce mois", "tooltip": "Note mensuelle ({range})" },
-      "settings": { "section": "Mensuel" }
-    },
-    "settings": {
-      "title": "Notes périodiques",
-      "description": "Notes quotidiennes, hebdomadaires et mensuelles (style Obsidian). Un clic ouvre ou crée la note de la période courante.",
-      "show_button": "Afficher le bouton dans la navigation",
-      "folder": "Dossier",
-      "folder_root": "(racine)",
-      "format": "Format du nom de fichier",
-      "format_custom": "Personnalisé…",
-      "format_custom_label": "Format personnalisé",
-      "format_preset_label": "Préréglage",
-      "preview": "Aperçu"
-    },
-    "errors": { "failed": "Impossible d'ouvrir la note" }
   },
   "sync_status": {
     "synced": "Synchronisé",

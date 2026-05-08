@@ -87,7 +87,38 @@
       "quota_exceeded": "Storage quota exceeded. Delete or reduce notes to continue."
     },
     "size_indicator": "{used} / {max}",
-    "size_warning": "Note size is approaching the limit"
+    "size_warning": "Note size is approaching the limit",
+    "periodic": {
+      "daily": {
+        "folder": { "default": "Daily Notes" },
+        "button": { "label": "Today", "tooltip": "Today's note ({range})" },
+        "settings": { "section": "Daily" }
+      },
+      "weekly": {
+        "folder": { "default": "Weekly Notes" },
+        "button": { "label": "This week", "tooltip": "Weekly note ({range})" },
+        "settings": { "section": "Weekly" },
+        "preview": { "range_hint": "← Monday of {range}" }
+      },
+      "monthly": {
+        "folder": { "default": "Monthly Notes" },
+        "button": { "label": "This month", "tooltip": "Monthly note ({range})" },
+        "settings": { "section": "Monthly" }
+      },
+      "settings": {
+        "title": "Periodic Notes",
+        "description": "Daily, weekly and monthly notes (Obsidian-style). One click opens or creates the note for the current period.",
+        "show_button": "Show button in navigation",
+        "folder": "Folder",
+        "folder_root": "(root)",
+        "format": "Filename format",
+        "format_custom": "Custom…",
+        "format_custom_label": "Custom format",
+        "format_preset_label": "Preset",
+        "preview": "Preview"
+      },
+      "errors": { "failed": "Failed to open the note" }
+    }
   },
   "storage": {
     "title": "Storage Usage",
@@ -422,37 +453,6 @@
     "badge": "Encrypted end-to-end",
     "badge_short": "E2EE",
     "badge_tooltip": "Encrypted end-to-end — click to see"
-  },
-  "periodic": {
-    "daily": {
-      "folder": { "default": "Daily Notes" },
-      "button": { "label": "Today", "tooltip": "Today's note ({range})" },
-      "settings": { "section": "Daily" }
-    },
-    "weekly": {
-      "folder": { "default": "Weekly Notes" },
-      "button": { "label": "This week", "tooltip": "Weekly note ({range})" },
-      "settings": { "section": "Weekly" },
-      "preview": { "range_hint": "← Monday of {range}" }
-    },
-    "monthly": {
-      "folder": { "default": "Monthly Notes" },
-      "button": { "label": "This month", "tooltip": "Monthly note ({range})" },
-      "settings": { "section": "Monthly" }
-    },
-    "settings": {
-      "title": "Periodic Notes",
-      "description": "Daily, weekly and monthly notes (Obsidian-style). One click opens or creates the note for the current period.",
-      "show_button": "Show button in navigation",
-      "folder": "Folder",
-      "folder_root": "(root)",
-      "format": "Filename format",
-      "format_custom": "Custom…",
-      "format_custom_label": "Custom format",
-      "format_preset_label": "Preset",
-      "preview": "Preview"
-    },
-    "errors": { "failed": "Failed to open the note" }
   },
   "sync_status": {
     "synced": "Synced",
