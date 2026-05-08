@@ -1,3 +1,24 @@
+## 0.17.0 (2026-05-08)
+
+### 🚀 Features
+
+- **search:** query parser ([#137](https://github.com/fundacja-reborn/reapps/pull/137))
+- **search:** query parser ([#138](https://github.com/fundacja-reborn/reapps/pull/138))
+- **search:** freetext negation and quoted phrases (Tier 1.5) ([#139](https://github.com/fundacja-reborn/reapps/pull/139))
+- **search:** tier 2 boolean or grouping ([#142](https://github.com/fundacja-reborn/reapps/pull/142))
+- **task:** search inline ([#141](https://github.com/fundacja-reborn/reapps/pull/141))
+
+### 🩹 Fixes
+
+- **task:** auto-expand completed accordion when active results are empty ([#144](https://github.com/fundacja-reborn/reapps/pull/144))
+- **utils:** avoid polynomial ReDoS in has:link evaluator ([#140](https://github.com/fundacja-reborn/reapps/pull/140), [#7](https://github.com/fundacja-reborn/reapps/issues/7))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.16.0 (2026-05-05)
 
 ### 🚀 Features
