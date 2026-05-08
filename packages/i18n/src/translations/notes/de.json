@@ -805,7 +805,9 @@
       "disable_error": "2FA konnte nicht deaktiviert werden",
       "invalid_password": "Ungültiges Passwort",
       "connection_error": "Serververbindungsfehler",
-      "password_required": "Passwort ist erforderlich"
+      "password_required": "Passwort ist erforderlich",
+      "enabled_toast": "Zwei-Faktor-Authentifizierung wurde aktiviert",
+      "disabled_toast": "Zwei-Faktor-Authentifizierung wurde deaktiviert"
     },
     "sessions": {
       "title": "Aktive Sitzungen",
@@ -855,7 +857,10 @@
       "file_warning": "Bewahren Sie diese Codes an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden.",
       "setup_title": "Speichern Sie Ihre Wiederherstellungscodes",
       "setup_description": "Diese Codes helfen Ihnen beim Zugriff auf Ihr Konto, falls Sie Ihr Authenticator-Gerät verlieren. Jeder Code kann nur einmal verwendet werden.",
-      "saved_continue": "Ich habe meine Codes gespeichert, weiter"
+      "saved_continue": "Ich habe meine Codes gespeichert, weiter",
+      "generate_failed_warning": "Wiederherstellungscodes konnten nicht generiert werden. Sie können sie später in den Einstellungen erstellen.",
+      "generated_success": "{count} Wiederherstellungscodes generiert",
+      "copied": "Wiederherstellungscodes in die Zwischenablage kopiert"
     },
     "delete_account": {
       "title": "Konto löschen",

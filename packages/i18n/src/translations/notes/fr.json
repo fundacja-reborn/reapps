@@ -805,7 +805,9 @@
       "disable_error": "Échec de la désactivation 2FA",
       "invalid_password": "Mot de passe invalide",
       "connection_error": "Erreur de connexion au serveur",
-      "password_required": "Le mot de passe est obligatoire"
+      "password_required": "Le mot de passe est obligatoire",
+      "enabled_toast": "L'authentification à deux facteurs a été activée",
+      "disabled_toast": "L'authentification à deux facteurs a été désactivée"
     },
     "sessions": {
       "title": "Sessions actives",
@@ -855,7 +857,10 @@
       "file_warning": "Conservez ces codes dans un endroit sûr. Chaque code ne peut être utilisé qu'une seule fois.",
       "setup_title": "Enregistrez vos codes de récupération",
       "setup_description": "Ces codes vous aideront à accéder à votre compte si vous perdez votre appareil d'authentification. Chaque code ne peut être utilisé qu'une seule fois.",
-      "saved_continue": "J'ai enregistré mes codes, continuer"
+      "saved_continue": "J'ai enregistré mes codes, continuer",
+      "generate_failed_warning": "Impossible de générer les codes de récupération. Vous pourrez les générer plus tard dans les paramètres.",
+      "generated_success": "{count} codes de récupération générés",
+      "copied": "Codes de récupération copiés dans le presse-papiers"
     },
     "delete_account": {
       "title": "Supprimer le compte",
