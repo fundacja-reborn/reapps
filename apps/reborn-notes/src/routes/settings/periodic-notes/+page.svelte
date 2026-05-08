@@ -26,8 +26,7 @@
     PERIODIC_NOTES_DEFAULT_FORMATS
   } from '@reborn/storage';
   import type { PeriodicKind, PeriodicNotesSettings, PeriodicKindSettings } from '@reborn/storage';
-  import { foldersStore } from '$lib/stores/folders.store';
-  import type { FolderWithChildren } from '@reborn/types';
+  import FolderTreePicker from '$lib/components/folders/FolderTreePicker.svelte';
   import { t } from '$lib/stores/i18n.store';
   import {
     formatRange,
@@ -40,14 +39,15 @@
   // Snapshot used for inputs / dropdowns; mirrors the derived store.
   let local = $state<PeriodicNotesSettings>(structuredClone(PERIODIC_NOTES_DEFAULTS));
 
-  // For format pickers we need to know whether the current format matches
-  // a preset (so the dropdown shows it) or it's a custom string (so we show
-  // the "Custom…" entry and a free-text input below).
   const PRESETS: Record<PeriodicKind, string[]> = {
     daily: ['YYYY-MM-DD dddd', 'YYYY-MM-DD ddd', 'YYYY-MM-DD', 'dddd, D MMMM YYYY'],
     weekly: ['YYYY-MM-DD [W]ww', 'YYYY-[W]ww', 'YYYY-MM-DD', '[Week] ww, YYYY'],
     monthly: ['YYYY-MM', 'MMMM YYYY', 'YYYY MMMM']
   };
+
+  function isCustomFormat(kind: PeriodicKind, format: string): boolean {
+    return !PRESETS[kind].includes(format);
+  }
 
   // Refresh the live preview every minute so it follows clock changes.
   let now = $state(new Date());
@@ -55,32 +55,6 @@
     const id = setInterval(() => (now = new Date()), 60_000);
     return () => clearInterval(id);
   });
-
-  // Flatten the folder tree to a list of `{id, label}` so the picker shows
-  // nesting via indented labels — same trick MoveToFolderMenu uses.
-  function flattenFolders(
-    nodes: FolderWithChildren[],
-    depth = 0,
-    out: Array<{ id: string; label: string }> = []
-  ): Array<{ id: string; label: string }> {
-    for (const n of nodes) {
-      out.push({ id: n.id, label: `${'  '.repeat(depth)}${n.name}` });
-      if (n.children?.length) flattenFolders(n.children, depth + 1, out);
-    }
-    return out;
-  }
-
-  const folderOptions = $derived(flattenFolders($foldersStore));
-
-  function folderLabelById(id: string | null): string {
-    if (!id) return $t('notes.periodic.settings.folder_root');
-    const match = folderOptions.find((o) => o.id === id);
-    return match?.label.trim() || $t('notes.periodic.settings.folder_root');
-  }
-
-  function isCustomFormat(kind: PeriodicKind, format: string): boolean {
-    return !PRESETS[kind].includes(format);
-  }
 
   async function persist(updates: Partial<PeriodicNotesSettings>) {
     const next: PeriodicNotesSettings = {
@@ -165,23 +139,13 @@
             <label for="folder-{kind}" class="text-sm font-medium">
               {$t('notes.periodic.settings.folder')}
             </label>
-            <Select
-              type="single"
-              value={local[kind].folderId ?? ''}
-              onValueChange={(value) =>
-                patchKind(kind, { folderId: value && value !== '' ? value : null })
-              }
-            >
-              <SelectTrigger id="folder-{kind}" class="w-full">
-                {folderLabelById(local[kind].folderId)}
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">{$t('notes.periodic.settings.folder_root')}</SelectItem>
-                {#each folderOptions as opt (opt.id)}
-                  <SelectItem value={opt.id}>{opt.label}</SelectItem>
-                {/each}
-              </SelectContent>
-            </Select>
+            <FolderTreePicker
+              id="folder-{kind}"
+              value={local[kind].folderId}
+              defaultFolderName={$t(`notes.periodic.${kind}.folder.default`)}
+              label={$t('notes.periodic.settings.folder_pick')}
+              onselect={(folderId) => patchKind(kind, { folderId })}
+            />
           </div>
 
           <!-- Format preset dropdown -->
