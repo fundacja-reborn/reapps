@@ -115,9 +115,6 @@
         "folder_will_create": "will be created on first use",
         "folder_select_this": "Select this folder",
         "format": "Filename format",
-        "format_custom": "Custom…",
-        "format_custom_label": "Custom format",
-        "format_preset_label": "Preset",
         "preview": "Preview"
       },
       "errors": { "failed": "Failed to open the note" }

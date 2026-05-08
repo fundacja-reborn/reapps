@@ -115,9 +115,6 @@
         "folder_will_create": "se creará al primer uso",
         "folder_select_this": "Seleccionar esta carpeta",
         "format": "Formato del nombre de archivo",
-        "format_custom": "Personalizado…",
-        "format_custom_label": "Formato personalizado",
-        "format_preset_label": "Preestablecido",
         "preview": "Vista previa"
       },
       "errors": { "failed": "No se pudo abrir la nota" }

@@ -12,7 +12,6 @@
     SelectItem,
     SelectTrigger,
     Switch,
-    Input,
     toastStore
   } from '@reborn/ui';
   import { CalendarDays, CalendarRange, CalendarClock } from '@lucide/svelte';
@@ -44,10 +43,6 @@
     weekly: ['YYYY-MM-DD [W]ww', 'YYYY-[W]ww', 'YYYY-MM-DD', '[Week] ww, YYYY'],
     monthly: ['YYYY-MM', 'MMMM YYYY', 'YYYY MMMM']
   };
-
-  function isCustomFormat(kind: PeriodicKind, format: string): boolean {
-    return !PRESETS[kind].includes(format);
-  }
 
   // Refresh the live preview every minute so it follows clock changes.
   let now = $state(new Date());
@@ -92,6 +87,13 @@
   onMount(() => {
     return periodicNotesSettings.subscribe((value) => {
       local = structuredClone(value);
+      // Heal legacy custom formats (set outside PRESETS, e.g. via direct
+      // IndexedDB edits) by reverting to the locale default.
+      for (const kind of ['daily', 'weekly', 'monthly'] as const) {
+        if (!PRESETS[kind].includes(local[kind].format)) {
+          patchKind(kind, { format: PERIODIC_NOTES_DEFAULT_FORMATS[kind] });
+        }
+      }
     });
   });
 
@@ -155,40 +157,20 @@
             </label>
             <Select
               type="single"
-              value={isCustomFormat(kind, local[kind].format) ? '__custom__' : local[kind].format}
+              value={local[kind].format}
               onValueChange={(value) => {
-                if (value === '__custom__') {
-                  // Switching to custom — keep current format but allow free editing.
-                  return;
-                }
                 if (value) patchKind(kind, { format: value });
               }}
             >
               <SelectTrigger id="format-{kind}" class="w-full">
-                {isCustomFormat(kind, local[kind].format)
-                  ? $t('notes.periodic.settings.format_custom')
-                  : local[kind].format}
+                {local[kind].format}
               </SelectTrigger>
               <SelectContent>
                 {#each PRESETS[kind] as preset (preset)}
                   <SelectItem value={preset}>{preset}</SelectItem>
                 {/each}
-                <SelectItem value="__custom__">
-                  {$t('notes.periodic.settings.format_custom')}
-                </SelectItem>
               </SelectContent>
             </Select>
-
-            {#if isCustomFormat(kind, local[kind].format)}
-              <Input
-                aria-label={$t('notes.periodic.settings.format_custom_label')}
-                value={local[kind].format}
-                oninput={(e) => {
-                  const target = e.currentTarget as HTMLInputElement;
-                  patchKind(kind, { format: target.value });
-                }}
-              />
-            {/if}
           </div>
 
           <!-- Live preview -->

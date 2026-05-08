@@ -115,9 +115,6 @@
         "folder_will_create": "wird beim ersten Aufruf erstellt",
         "folder_select_this": "Diesen Ordner auswählen",
         "format": "Dateinamenformat",
-        "format_custom": "Benutzerdefiniert…",
-        "format_custom_label": "Benutzerdefiniertes Format",
-        "format_preset_label": "Vorlage",
         "preview": "Vorschau"
       },
       "errors": { "failed": "Notiz konnte nicht geöffnet werden" }
