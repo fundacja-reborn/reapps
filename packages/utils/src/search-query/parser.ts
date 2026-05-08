@@ -5,8 +5,7 @@ const IS_FLAGS: ReadonlySet<IsFlag> = new Set([
   'starred',
   'pinned',
   'completed',
-  'overdue',
-  'trashed'
+  'overdue'
 ]);
 
 const KNOWN_KEYS = new Set([

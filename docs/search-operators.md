@@ -20,7 +20,6 @@ All search runs **client-side** over already-decrypted data — the server never
 | `is:pinned` | re/notes | `is:pinned` |
 | `is:completed` | re/task | `is:completed` |
 | `is:overdue` | re/task | `is:overdue` |
-| `is:trashed` | both | `is:trashed` (see [trash note](#searching-in-trash) below) |
 | `has:link` | both | `has:link` (matches notes/descriptions containing URLs or Markdown links) |
 
 **Modifiers**
@@ -94,7 +93,7 @@ Empty groups `()` are ignored. Redundant nesting like `((cat))` collapses natura
 A leading `-` before a group negates the entire group:
 
 ```
--(tag:archived OR is:trashed)   # neither archived nor trashed
+-(tag:archived OR tag:draft)    # neither archived nor draft
 tag:work -(is:completed AND -has:link)  # active work tasks that have either an
                                         # incomplete state or a linked reference
 ```
@@ -180,11 +179,9 @@ Quoting also works inside operator values: `tag:"side projects"`, `list:"Q2 plan
 
 ## Searching in trash
 
-In re/notes the trash has its own view; switching to it makes `is:trashed` redundant but useful to combine with other operators (e.g. `is:trashed tag:work`).
+Both apps have a dedicated trash view, and the search box always scans the current bucket only — active items in normal views, trashed items in the trash view. There is no operator to mix the two; to browse deleted items, switch to the trash view directly. Search there works with all the operators above (tag, folder, list, dates, …) over the trashed set.
 
-In re/task the search box only scans active tasks — `is:trashed` will return zero results from the global search. To browse deleted tasks, use the trash view directly.
-
-This is by design: searching across active and trashed items at the same time is rarely useful and would surface stale matches in everyday queries. Future versions may add an explicit "search in trash" mode.
+This is by design: cross-bucket search is rarely useful and would surface stale matches in everyday queries. A future version may introduce an explicit unified search mode.
 
 ---
 

@@ -157,8 +157,6 @@ function matchFilterPositive(
           return !!entity.flags.pinned;
         case 'completed':
           return !!entity.flags.completed;
-        case 'trashed':
-          return !!entity.flags.trashed;
         case 'overdue':
           return (
             entity.dueAt !== null &&

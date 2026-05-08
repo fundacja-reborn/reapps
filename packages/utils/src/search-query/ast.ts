@@ -8,7 +8,7 @@
  *   modified:<14d
  *   due:<7d              (task only)
  *   has:link             (forces content-search path)
- *   is:starred | pinned | completed | overdue | trashed
+ *   is:starred | pinned | completed | overdue
  *   -OPERATOR            negation prefix on operators (-tag:archived, -is:completed)
  *   "quoted value"       allows whitespace and colons in operator values
  *
@@ -16,7 +16,7 @@
  *   foo bar              — implicit AND between consecutive primaries
  *   foo OR bar           — explicit OR (uppercase only — lowercase `or` is plain text)
  *   (foo bar) OR baz     — grouping; precedence is AND > OR
- *   -(tag:work OR is:trashed) — negate a group
+ *   -(tag:work OR is:starred) — negate a group
  *
  * Freetext (Tier 1.5):
  *   foo                  — substring match against title (and body when populated)
@@ -53,7 +53,7 @@ export type DateExpression =
   | { op: 'on'; date: DateRef } // entity.date falls on the same calendar day
   | { op: 'between'; from: DateRef; to: DateRef }; // entity.date >= from-start-of-day && entity.date <= to-end-of-day
 
-export type IsFlag = 'starred' | 'pinned' | 'completed' | 'overdue' | 'trashed';
+export type IsFlag = 'starred' | 'pinned' | 'completed' | 'overdue';
 
 export type HasFlag = 'link';
 

@@ -443,7 +443,6 @@ class TaskIndex {
 	 * to false and the caller is expected to be on the title-only path.
 	 *
 	 * Operator → entity mapping for tasks:
-	 *   - `is:trashed`   → `entity.flags.trashed   = entry.isDeleted` (NOT `deleted_at`)
 	 *   - `is:starred`   → `entity.flags.starred   = entry.isStarred`
 	 *   - `is:completed` → `entity.flags.completed = entry.isCompleted`
 	 *   - `is:overdue`   → evaluator derives from `entity.dueAt < now && !completed && !trashed`
@@ -451,6 +450,10 @@ class TaskIndex {
 	 *   - `tag:` / `folder:` → resolvers are empty → match nothing (graceful degradation)
 	 *   - `list:`        → `entity.listId === ctx.listIdByName.get(value)`
 	 *   - `due:`         → `entity.dueAt = entry.dueDate`
+	 *
+	 * `entity.flags.trashed = entry.isDeleted` is plumbed for the `is:overdue`
+	 * derivation only — there is no public `is:trashed` operator (the active/trash
+	 * split is handled by the pre-filter above).
 	 */
 	getFilteredByAst(
 		ast: QueryAST,
