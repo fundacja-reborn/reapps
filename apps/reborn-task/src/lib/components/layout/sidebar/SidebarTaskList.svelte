@@ -134,6 +134,24 @@
 	const hasMore = $derived(visibleCount < activeTasks.length);
 	const showListName = $derived(MULTI_LIST_SECTIONS.includes(section));
 
+	// Auto-expand the "Completed" accordion when the search yields matches only
+	// in the completed bucket. Otherwise the user sees "(0)" in the active list
+	// header next to a collapsed accordion and assumes there are no results.
+	// Reset only on query changes so a manual collapse on the same query sticks.
+	let completedAccordionValue = $state('');
+	let lastAutoExpandQuery = '';
+	$effect(() => {
+		const currentSearch = searchInput;
+		if (currentSearch === lastAutoExpandQuery) return;
+		lastAutoExpandQuery = currentSearch;
+		untrack(() => {
+			completedAccordionValue =
+				currentSearch && activeTasks.length === 0 && completedTasks.length > 0
+					? 'completed'
+					: '';
+		});
+	});
+
 	function loadMore() {
 		if (visibleCount < activeTasks.length) {
 			visibleCount += PAGE_SIZE;
@@ -428,7 +446,7 @@
 			<!-- Completed tasks accordion -->
 			{#if completedTasks.length > 0}
 				<div class="mt-2 pb-2">
-					<Accordion type="single">
+					<Accordion type="single" bind:value={completedAccordionValue}>
 						<AccordionItem value="completed" class="group border-none">
 							<AccordionPrimitive.Header class="flex items-center">
 								<AccordionPrimitive.Trigger
