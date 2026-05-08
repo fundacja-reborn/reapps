@@ -22,7 +22,7 @@ const has = (value: 'link', negated = false): Node => ({
   filter: { kind: 'has', value, negated }
 });
 const is = (
-  value: 'starred' | 'pinned' | 'completed' | 'overdue' | 'trashed',
+  value: 'starred' | 'pinned' | 'completed' | 'overdue',
   negated = false
 ): Node => ({ kind: 'leaf-filter', filter: { kind: 'is', value, negated } });
 const and = (...children: Node[]): Node => ({ kind: 'and', children });
@@ -97,15 +97,24 @@ describe('parseQuery — operators', () => {
   });
 
   it('parses is: flags', () => {
-    const ast = parseQuery('is:starred is:pinned is:completed is:overdue is:trashed');
+    const ast = parseQuery('is:starred is:pinned is:completed is:overdue');
     expect(ast).toEqual({
-      root: and(is('starred'), is('pinned'), is('completed'), is('overdue'), is('trashed'))
+      root: and(is('starred'), is('pinned'), is('completed'), is('overdue'))
     });
   });
 
   it('combines operators with freetext (implicit AND)', () => {
-    expect(parseQuery('tag:work meeting notes -is:trashed')).toEqual({
-      root: and(tag('work'), text('meeting'), text('notes'), is('trashed', true))
+    expect(parseQuery('tag:work meeting notes -is:starred')).toEqual({
+      root: and(tag('work'), text('meeting'), text('notes'), is('starred', true))
+    });
+  });
+
+  it('unknown is: flag falls back to plain text (graceful degradation)', () => {
+    // is:trashed was retired — confirm the parser hands it back as a literal
+    // substring instead of crashing or silently matching nothing.
+    expect(parseQuery('is:trashed')).toEqual({ root: text('is:trashed') });
+    expect(parseQuery('-is:trashed')).toEqual({
+      root: text('is:trashed', true)
     });
   });
 });
@@ -331,8 +340,8 @@ describe('parseQuery — Tier 2 grouping', () => {
   });
 
   it('parses negated group', () => {
-    expect(parseQuery('-(tag:archived OR is:trashed)')).toEqual({
-      root: not(or(tag('archived'), is('trashed')))
+    expect(parseQuery('-(tag:archived OR is:starred)')).toEqual({
+      root: not(or(tag('archived'), is('starred')))
     });
   });
 

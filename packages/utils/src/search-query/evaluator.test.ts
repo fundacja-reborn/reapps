@@ -488,8 +488,8 @@ describe('evaluate — Tier 2 grouping', () => {
     const ctx = makeCtx({
       tagIdByName: new Map([['archived', 'tag-a']])
     });
-    const ast = parseQuery('-(tag:archived OR is:trashed)');
-    // Matches entities that are neither tagged archived nor trashed.
+    const ast = parseQuery('-(tag:archived OR is:starred)');
+    // Matches entities that are neither tagged archived nor starred.
     expect(
       evaluate(ast, makeEntity({ tagIds: [], flags: {} }), ctx)
     ).toBe(true);
@@ -497,7 +497,7 @@ describe('evaluate — Tier 2 grouping', () => {
       evaluate(ast, makeEntity({ tagIds: ['tag-a'], flags: {} }), ctx)
     ).toBe(false);
     expect(
-      evaluate(ast, makeEntity({ tagIds: [], flags: { trashed: true } }), ctx)
+      evaluate(ast, makeEntity({ tagIds: [], flags: { starred: true } }), ctx)
     ).toBe(false);
   });
 

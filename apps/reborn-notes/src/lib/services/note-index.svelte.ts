@@ -336,11 +336,13 @@ class NoteIndex {
    * the body-aware path in `notes.store.ts → triggerContentSearch`.
    *
    * Operator → entity mapping for notes:
-   *   - `is:trashed`  → `entity.flags.trashed = entry.isArchived`
    *   - `is:starred`  → `entity.flags.starred = entry.isStarred`
    *   - `is:pinned`   → `entity.flags.pinned  = entry.isPinned`
    *   - `is:completed`/`is:overdue`/`due:`     → always false (notes have no completion/due semantics)
    *   - `list:`       → always false (notes have no lists)
+   *
+   * The active/trash split is handled by the `archived` pre-filter above —
+   * there is no public `is:trashed` operator.
    */
   getFilteredByAst(
     ast: QueryAST,

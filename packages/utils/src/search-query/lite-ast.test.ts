@@ -10,7 +10,7 @@ const tag = (value: string, negated = false): Node => ({
   filter: { kind: 'tag', value, negated }
 });
 const is = (
-  value: 'starred' | 'pinned' | 'completed' | 'overdue' | 'trashed',
+  value: 'starred' | 'pinned' | 'completed' | 'overdue',
   negated = false
 ): Node => ({ kind: 'leaf-filter', filter: { kind: 'is', value, negated } });
 const and = (...children: Node[]): Node => ({ kind: 'and', children });
