@@ -13,7 +13,10 @@
     Trash2,
     Settings,
     LogOut,
-    Shield
+    Shield,
+    CalendarDays,
+    CalendarRange,
+    CalendarClock
   } from '@lucide/svelte';
   import * as Tooltip from '@reborn/ui/components/tooltip';
   import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
@@ -21,13 +24,17 @@
   import { authStore, getUserInitial } from '$lib/stores/auth.store';
   import { goto } from '$lib/utils/navigation';
   import { base } from '$app/paths';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale as i18nLocale } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
+  import { periodicNotesSettings } from '$lib/stores/app-settings.store';
+  import { formatRange } from '$lib/services/periodic-notes-format';
+  import type { PeriodicKind } from '@reborn/storage';
 
   let {
     activeSection = $bindable<Section>('all'),
     onNewNote,
     onsectionclick,
+    onPeriodic,
     horizontal = false,
     alwaysVisible = false
   }: {
@@ -35,6 +42,8 @@
     onNewNote?: () => void;
     /** Fires on every section click, even when clicking the already-active section */
     onsectionclick?: (section: Section) => void;
+    /** Open or create the daily/weekly/monthly note for the current period. */
+    onPeriodic?: (kind: PeriodicKind) => void;
     /** Horizontal mode for mobile sheet header */
     horizontal?: boolean;
     /** Show icon rail regardless of breakpoint (for mobile master-detail layout) */
@@ -45,9 +54,36 @@
   let loggingOut = $state(false);
   let userSheetOpen = $state(false);
 
+  // Refresh `now` every minute so tooltips stay accurate across midnight /
+  // week boundary / month boundary without forcing the user to reload.
+  let now = $state(new Date());
+  $effect(() => {
+    const id = setInterval(() => {
+      now = new Date();
+    }, 60_000);
+    return () => clearInterval(id);
+  });
+
   function handleLogout() {
     loggingOut = true;
     authStore.logout();
+  }
+
+  const PERIODIC_BUTTONS = $derived(
+    [
+      { kind: 'daily' as const, icon: CalendarDays },
+      { kind: 'weekly' as const, icon: CalendarRange },
+      { kind: 'monthly' as const, icon: CalendarClock }
+    ].filter((b) => $periodicNotesSettings[b.kind].enabled)
+  );
+
+  function periodicTooltip(kind: PeriodicKind): string {
+    const range = formatRange(kind, now, $i18nLocale || 'en');
+    return $t(`notes.periodic.${kind}.button.tooltip`, { values: { range } });
+  }
+
+  function periodicLabel(kind: PeriodicKind): string {
+    return $t(`notes.periodic.${kind}.button.label`);
   }
 
   const SECTIONS = $derived([
@@ -113,6 +149,20 @@
       <PenLine class="h-5 w-5" />
       <span class="text-[11px] leading-none">{$t('nav.new_short')}</span>
     </button>
+    <!-- Periodic notes (Daily / Weekly / Monthly) -->
+    {#each PERIODIC_BUTTONS as p (p.kind)}
+      <button
+        type="button"
+        onclick={() => onPeriodic?.(p.kind)}
+        class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs
+               text-muted-foreground hover:bg-sidebar-accent/60 transition-colors"
+        aria-label={periodicTooltip(p.kind)}
+        title={periodicTooltip(p.kind)}
+      >
+        <p.icon class="h-5 w-5" />
+        <span class="text-[11px] leading-none">{periodicLabel(p.kind)}</span>
+      </button>
+    {/each}
   </div>
 {:else}
   <!-- ── Vertical mode (desktop icon rail) ─────────────────────── -->
@@ -141,6 +191,27 @@
       </Tooltip.Trigger>
       <Tooltip.Content side="right" sideOffset={6}>{$t('nav.new_note')}</Tooltip.Content>
     </Tooltip.Root>
+
+    <!-- Periodic notes (Daily / Weekly / Monthly) -->
+    {#each PERIODIC_BUTTONS as p (p.kind)}
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          {#snippet child({ props })}
+            <button
+              {...props}
+              type="button"
+              onclick={() => onPeriodic?.(p.kind)}
+              class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg text-muted-foreground
+                     hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+              aria-label={periodicTooltip(p.kind)}
+            >
+              <p.icon class="h-6 w-6 md:h-5 md:w-5" />
+            </button>
+          {/snippet}
+        </Tooltip.Trigger>
+        <Tooltip.Content side="right" sideOffset={6}>{periodicTooltip(p.kind)}</Tooltip.Content>
+      </Tooltip.Root>
+    {/each}
 
     <!-- Search -->
     <Tooltip.Root>

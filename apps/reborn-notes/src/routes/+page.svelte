@@ -46,6 +46,8 @@
   import { notesStore, activeNoteId, type NoteListItem } from '$lib/stores/notes.store';
   import * as NoteService from '$lib/services/note.service';
   import { exportNoteAsMarkdown, exportNoteAsPdf } from '$lib/services/export-import.service';
+  import * as PeriodicNotesService from '$lib/services/periodic-notes.service';
+  import type { PeriodicKind } from '@reborn/storage';
   import { foldersStore } from '$lib/stores/folders.store';
   import { tagsStore } from '$lib/stores/tags.store';
   import { getSettings } from '$lib/utils/app-settings';
@@ -518,6 +520,28 @@
     activeNoteId.set(id);
   }
 
+  async function handlePeriodic(kind: PeriodicKind) {
+    // Same pre-flight as handleNewNote: filtered sections (trash/starred/tags)
+    // would hide the freshly created note, so jump back to "All" first.
+    if (activeSection === 'trash' || activeSection === 'starred' || activeSection === 'tags') {
+      activeSection = 'all';
+      activeFolderId = undefined;
+      activeTagId = null;
+      await tick();
+    }
+    try {
+      const { noteId, created } = await PeriodicNotesService.getOrCreateNote(kind);
+      if (created) {
+        noteDetailService.setNewNote();
+      }
+      activeNoteId.set(noteId);
+    } catch (err) {
+      const message = $t(`notes.periodic.errors.failed`);
+      toastStore.error(message);
+      console.error('[periodic-notes] failed to open', kind, err);
+    }
+  }
+
   async function handleEditorModeIntroClose(chosen: EditorMode | null) {
     if (chosen) {
       await appSettings.update('editorMode', chosen);
@@ -940,6 +964,7 @@
           bind:activeSection
           onNewNote={handleNewNote}
           onsectionclick={handleSectionClick}
+          onPeriodic={handlePeriodic}
           alwaysVisible
         />
 
@@ -1277,6 +1302,7 @@
         bind:activeSection
         onNewNote={handleNewNote}
         onsectionclick={handleSectionClick}
+        onPeriodic={handlePeriodic}
       />
 
       <!-- ── Content panel ───────────────────────────────────────── -->

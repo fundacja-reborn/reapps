@@ -7,7 +7,8 @@ import {
   initializeSettings,
   resetSettings as resetAppSettings
 } from '$lib/utils/app-settings';
-import type { AppSettings } from '@reborn/storage';
+import type { AppSettings, PeriodicNotesSettings } from '@reborn/storage';
+import { PERIODIC_NOTES_DEFAULTS } from '@reborn/storage';
 import { SUPPORTED_LOCALES } from '@reborn/i18n';
 import { createLogger } from '@reborn/utils';
 
@@ -208,6 +209,24 @@ export const editorMode = derived(appSettings, ($settings) => $settings?.editorM
 export const editorModeIntroSeen = derived(
   appSettings,
   ($settings) => $settings?.editorModeIntroSeen ?? false
+);
+
+/**
+ * Per-kind Periodic Notes settings (Daily / Weekly / Monthly).
+ * Falls back to defaults when settings haven't loaded yet so consumers can
+ * render eagerly without null checks; missing kinds (e.g. legacy settings
+ * pre-migration) inherit defaults too.
+ */
+export const periodicNotesSettings = derived<typeof appSettings, PeriodicNotesSettings>(
+  appSettings,
+  ($settings) => {
+    const stored = $settings?.periodicNotes;
+    return {
+      daily: { ...PERIODIC_NOTES_DEFAULTS.daily, ...stored?.daily },
+      weekly: { ...PERIODIC_NOTES_DEFAULTS.weekly, ...stored?.weekly },
+      monthly: { ...PERIODIC_NOTES_DEFAULTS.monthly, ...stored?.monthly }
+    };
+  }
 );
 
 if (browser) {
