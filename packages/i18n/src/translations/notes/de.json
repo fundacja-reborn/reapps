@@ -423,6 +423,37 @@
     "badge_short": "E2EE",
     "badge_tooltip": "Ende-zu-Ende-verschlüsselt — klicken zum Anzeigen"
   },
+  "periodic": {
+    "daily": {
+      "folder": { "default": "Tagebuch" },
+      "button": { "label": "Heute", "tooltip": "Heutige Notiz ({range})" },
+      "settings": { "section": "Täglich" }
+    },
+    "weekly": {
+      "folder": { "default": "Wochennotizen" },
+      "button": { "label": "Diese Woche", "tooltip": "Wochennotiz ({range})" },
+      "settings": { "section": "Wöchentlich" },
+      "preview": { "range_hint": "← Montag der Woche {range}" }
+    },
+    "monthly": {
+      "folder": { "default": "Monatsnotizen" },
+      "button": { "label": "Dieser Monat", "tooltip": "Monatsnotiz ({range})" },
+      "settings": { "section": "Monatlich" }
+    },
+    "settings": {
+      "title": "Periodische Notizen",
+      "description": "Tägliche, wöchentliche und monatliche Notizen (Obsidian-Stil). Ein Klick öffnet oder erstellt die Notiz für den aktuellen Zeitraum.",
+      "show_button": "Schaltfläche in der Navigation anzeigen",
+      "folder": "Ordner",
+      "folder_root": "(Hauptverzeichnis)",
+      "format": "Dateinamenformat",
+      "format_custom": "Benutzerdefiniert…",
+      "format_custom_label": "Benutzerdefiniertes Format",
+      "format_preset_label": "Vorlage",
+      "preview": "Vorschau"
+    },
+    "errors": { "failed": "Notiz konnte nicht geöffnet werden" }
+  },
   "sync_status": {
     "synced": "Synchronisiert",
     "syncing": "Synchronisierung…",
