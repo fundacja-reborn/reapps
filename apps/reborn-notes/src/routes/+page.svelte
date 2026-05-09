@@ -6,7 +6,7 @@
   import { FolderPlus, Plus, ArrowLeft, Lock } from '@lucide/svelte';
 
   // Layout
-  import IconNav, { type Section } from '$lib/components/layout/IconNav.svelte';
+  import IconNav, { type Section, isPeriodicSection } from '$lib/components/layout/IconNav.svelte';
   import SidebarAutoClose from '$lib/components/layout/SidebarAutoClose.svelte';
   import SyncStatusFooter from '$lib/components/sync/SyncStatusFooter.svelte';
   import InitialSyncState from '$lib/components/sync/InitialSyncState.svelte';
@@ -420,6 +420,17 @@
       (activeSection === 'tags' && activeTagId !== null)
   );
 
+  /** Mobile-only: sections where NoteList renders its own prominent (h-12) header,
+   *  so the master mobile wrapper header should be skipped. Includes drill-down
+   *  folder/tag selections and any flat-list view (starred, trash, periodic). */
+  const noteListOwnsMobileHeader = $derived(
+    activeSection === 'starred' ||
+      activeSection === 'trash' ||
+      isPeriodicSection(activeSection) ||
+      (activeSection === 'folders' && activeFolderId !== undefined) ||
+      (activeSection === 'tags' && activeTagId !== null)
+  );
+
   // ── Derived labels ───────────────────────────────────────────────
   const activeFolderName = $derived.by(() => {
     if (activeSection === 'search') return $t('nav.search');
@@ -429,6 +440,16 @@
     if (activeSection === 'tags') {
       const tag = $tagsStore.find((t) => t.id === activeTagId);
       return tag ? tag.name : $t('nav.tags');
+    }
+    if (isPeriodicSection(activeSection)) {
+      const kind = activeSection.replace('periodic-', '') as PeriodicKind;
+      // Prefer the actual folder name (user may have renamed it); fall back to the
+      // i18n default which matches what PeriodicNotesService creates lazily.
+      if (activeFolderId) {
+        const folder = flattenFolderTree($foldersStore).find((f) => f.id === activeFolderId);
+        if (folder) return folder.name;
+      }
+      return $t(`notes.periodic.${kind}.folder.default`);
     }
     if (activeFolderId === undefined) return $t('nav.all_notes');
     if (activeFolderId === null) return $t('nav.no_folder');
@@ -450,7 +471,8 @@
   let prevSection: Section | null = null;
   $effect(() => {
     const section = activeSection;
-    const folderId = activeSection === 'folders' ? activeFolderId : undefined;
+    const sectionUsesFolderId = section === 'folders' || isPeriodicSection(section);
+    const folderId = sectionUsesFolderId ? activeFolderId : undefined;
     const tagId = activeSection === 'tags' ? activeTagId : null;
 
     if (section !== prevSection) {
@@ -458,12 +480,20 @@
         // Reset mobile history stack when switching sections via IconNav
         if (isMobile) resetMobileHistory();
 
-        if (section !== 'folders') activeFolderId = undefined;
+        // Only periodic transitions arrive with an already-set activeFolderId
+        // (handlePeriodic sets it in the same batch). Clearing for everything else
+        // covers folders→folders is impossible (no transition), periodic→folders
+        // (must drop the periodic folder id), and any→all/starred/etc.
+        if (!isPeriodicSection(section)) activeFolderId = undefined;
         if (section !== 'tags') {
           activeTagId = null;
           tagManager.resetSection();
         }
-        noteDetailService.flushAndSnapshot().then(() => activeNoteId.set(null));
+        // Periodic sections own activeNoteId via handlePeriodic — don't clear it
+        // here or the freshly-opened periodic note would deselect on first paint.
+        if (!isPeriodicSection(section)) {
+          noteDetailService.flushAndSnapshot().then(() => activeNoteId.set(null));
+        }
 
         // Push history entry for drill-down sections (folders/tags)
         if (isMobile && (section === 'folders' || section === 'tags')) {
@@ -482,7 +512,7 @@
         notesStore.setStarred(true);
       } else if (section === 'tags' && tagId) {
         notesStore.setTag(tagId);
-      } else if (section === 'folders') {
+      } else if (sectionUsesFolderId) {
         notesStore.setFolder(folderId);
       } else {
         notesStore.setFolder(undefined);
@@ -547,16 +577,17 @@
   }
 
   async function handlePeriodic(kind: PeriodicKind) {
-    // Same pre-flight as handleNewNote: filtered sections (trash/starred/tags)
-    // would hide the freshly created note, so jump back to "All" first.
-    if (activeSection === 'trash' || activeSection === 'starred' || activeSection === 'tags') {
-      activeSection = 'all';
-      activeFolderId = undefined;
+    try {
+      // Service guarantees the folder exists and settings.folderId is populated
+      // after the await, so we can safely read it for the sidebar filter.
+      const { noteId, created } = await PeriodicNotesService.getOrCreateNote(kind);
+
+      const folderId = $periodicNotesSettings[kind].folderId ?? undefined;
+      activeSection = `periodic-${kind}` as Section;
+      activeFolderId = folderId;
       activeTagId = null;
       await tick();
-    }
-    try {
-      const { noteId, created } = await PeriodicNotesService.getOrCreateNote(kind);
+
       if (created) {
         noteDetailService.setNewNote();
       }
@@ -1013,7 +1044,7 @@
         <!-- Content area (list / folder tree / tag list) -->
         <div class="flex flex-1 flex-col min-w-0 overflow-hidden">
           <!-- Header (hidden when NoteList handles its own header) -->
-          {#if !(mobileView === 'list' && (activeSection === 'starred' || activeSection === 'trash' || (activeSection === 'folders' && activeFolderId !== undefined) || (activeSection === 'tags' && activeTagId !== null)))}
+          {#if !(mobileView === 'list' && noteListOwnsMobileHeader)}
             <div class="flex h-14 shrink-0 items-center gap-1 border-b border-sidebar-border px-3">
               {#if mobileView === 'folder-tree' || mobileView === 'tag-list'}
                 <button
@@ -1142,10 +1173,7 @@
                 onSubfolderSelect={handleFolderSelect}
                 autoFocusSearch={activeSection === 'search'}
                 searchOnly={activeSection === 'search'}
-                prominentHeader={activeStarred ||
-                  activeTrash ||
-                  (activeSection === 'folders' && activeFolderId !== undefined) ||
-                  (activeSection === 'tags' && activeTagId !== null)}
+                prominentHeader={noteListOwnsMobileHeader}
                 onback={activeSection === 'folders' && activeFolderId !== undefined
                   ? () => {
                       if (isMobile && mobileHistoryDepth > 0) {

@@ -1,5 +1,19 @@
 <script lang="ts" module>
-  export type Section = 'all' | 'starred' | 'folders' | 'tags' | 'trash' | 'search';
+  export type Section =
+    | 'all'
+    | 'starred'
+    | 'folders'
+    | 'tags'
+    | 'trash'
+    | 'search'
+    | 'periodic-daily'
+    | 'periodic-weekly'
+    | 'periodic-monthly';
+
+  export const PERIODIC_SECTIONS = ['periodic-daily', 'periodic-weekly', 'periodic-monthly'] as const;
+  export type PeriodicSection = (typeof PERIODIC_SECTIONS)[number];
+  export const isPeriodicSection = (s: string): s is PeriodicSection =>
+    (PERIODIC_SECTIONS as readonly string[]).includes(s);
 </script>
 
 <script lang="ts">
@@ -14,9 +28,9 @@
     Settings,
     LogOut,
     Shield,
-    CalendarDays,
+    CalendarCheck,
     CalendarRange,
-    CalendarClock
+    CalendarDays
   } from '@lucide/svelte';
   import * as Tooltip from '@reborn/ui/components/tooltip';
   import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
@@ -71,9 +85,9 @@
 
   const PERIODIC_BUTTONS = $derived(
     [
-      { kind: 'daily' as const, icon: CalendarDays },
+      { kind: 'daily' as const, icon: CalendarCheck },
       { kind: 'weekly' as const, icon: CalendarRange },
-      { kind: 'monthly' as const, icon: CalendarClock }
+      { kind: 'monthly' as const, icon: CalendarDays }
     ].filter((b) => $periodicNotesSettings[b.kind].enabled)
   );
 
@@ -86,41 +100,43 @@
     return $t(`notes.periodic.${kind}.button.label`);
   }
 
-  const SECTIONS = $derived([
+  const PRIMARY_SECTIONS = $derived([
     {
       id: 'all' as Section,
       label: $t('nav.all_notes'),
       short: $t('nav.all_notes'),
       icon: BookOpen
     },
-    { id: 'starred' as Section, label: $t('nav.starred'), short: $t('nav.starred'), icon: Star },
-    { id: 'folders' as Section, label: $t('nav.folders'), short: $t('nav.folders'), icon: Folder },
-    { id: 'tags' as Section, label: $t('nav.tags'), short: $t('nav.tags'), icon: Tag },
-    { id: 'trash' as Section, label: $t('nav.trash'), short: $t('nav.trash'), icon: Trash2 }
+    { id: 'starred' as Section, label: $t('nav.starred'), short: $t('nav.starred'), icon: Star }
   ]);
+
+  const ORGANIZE_SECTIONS = $derived([
+    { id: 'folders' as Section, label: $t('nav.folders'), short: $t('nav.folders'), icon: Folder },
+    { id: 'tags' as Section, label: $t('nav.tags'), short: $t('nav.tags'), icon: Tag }
+  ]);
+
+  const TRASH_SECTION = $derived({
+    id: 'trash' as Section,
+    label: $t('nav.trash'),
+    short: $t('nav.trash'),
+    icon: Trash2
+  });
 </script>
 
 {#if horizontal}
   <!-- ── Horizontal mode (mobile sheet header) ─────────────────── -->
   <div class="flex items-center gap-1 pb-1 pt-0.5">
-    {#each SECTIONS as s}
-      <button
-        type="button"
-        onclick={() => {
-          activeSection = s.id;
-          onsectionclick?.(s.id);
-        }}
-        class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
-          {activeSection === s.id
-          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-          : 'text-muted-foreground hover:bg-sidebar-accent/60'}"
-        aria-label={s.label}
-        aria-current={activeSection === s.id ? 'page' : undefined}
-      >
-        <s.icon class="h-5 w-5" />
-        <span class="text-[11px] leading-none">{s.short}</span>
-      </button>
-    {/each}
+    <!-- New note -->
+    <button
+      type="button"
+      onclick={onNewNote}
+      class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs
+             text-muted-foreground hover:bg-sidebar-accent/60 transition-colors"
+      aria-label={$t('nav.new_note')}
+    >
+      <PenLine class="h-5 w-5" />
+      <span class="text-[11px] leading-none">{$t('nav.new_short')}</span>
+    </button>
     <!-- Search -->
     <button
       type="button"
@@ -138,31 +154,80 @@
       <Search class="h-5 w-5" />
       <span class="text-[11px] leading-none">{$t('nav.search')}</span>
     </button>
-    <!-- New note button -->
-    <button
-      type="button"
-      onclick={onNewNote}
-      class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs
-             text-muted-foreground hover:bg-sidebar-accent/60 transition-colors"
-      aria-label={$t('nav.new_note')}
-    >
-      <PenLine class="h-5 w-5" />
-      <span class="text-[11px] leading-none">{$t('nav.new_short')}</span>
-    </button>
+    <!-- Primary views (All, Starred) -->
+    {#each PRIMARY_SECTIONS as s}
+      <button
+        type="button"
+        onclick={() => {
+          activeSection = s.id;
+          onsectionclick?.(s.id);
+        }}
+        class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
+          {activeSection === s.id
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+          : 'text-muted-foreground hover:bg-sidebar-accent/60'}"
+        aria-label={s.label}
+        aria-current={activeSection === s.id ? 'page' : undefined}
+      >
+        <s.icon class="h-5 w-5" />
+        <span class="text-[11px] leading-none">{s.short}</span>
+      </button>
+    {/each}
+    <!-- Organization (Folders, Tags) -->
+    {#each ORGANIZE_SECTIONS as s}
+      <button
+        type="button"
+        onclick={() => {
+          activeSection = s.id;
+          onsectionclick?.(s.id);
+        }}
+        class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
+          {activeSection === s.id
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+          : 'text-muted-foreground hover:bg-sidebar-accent/60'}"
+        aria-label={s.label}
+        aria-current={activeSection === s.id ? 'page' : undefined}
+      >
+        <s.icon class="h-5 w-5" />
+        <span class="text-[11px] leading-none">{s.short}</span>
+      </button>
+    {/each}
     <!-- Periodic notes (Daily / Weekly / Monthly) -->
     {#each PERIODIC_BUTTONS as p (p.kind)}
+      {@const sectionId = `periodic-${p.kind}` as const}
+      {@const isActive = activeSection === sectionId}
       <button
         type="button"
         onclick={() => onPeriodic?.(p.kind)}
-        class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs
-               text-muted-foreground hover:bg-sidebar-accent/60 transition-colors"
+        class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
+          {isActive
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+          : 'text-muted-foreground hover:bg-sidebar-accent/60'}"
         aria-label={periodicTooltip(p.kind)}
+        aria-current={isActive ? 'page' : undefined}
         title={periodicTooltip(p.kind)}
       >
         <p.icon class="h-5 w-5" />
         <span class="text-[11px] leading-none">{periodicLabel(p.kind)}</span>
       </button>
     {/each}
+    <!-- Trash -->
+    <button
+      type="button"
+      onclick={() => {
+        activeSection = TRASH_SECTION.id;
+        onsectionclick?.(TRASH_SECTION.id);
+      }}
+      class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
+        {activeSection === TRASH_SECTION.id
+        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+        : 'text-muted-foreground hover:bg-sidebar-accent/60'}"
+      aria-label={TRASH_SECTION.label}
+      aria-current={activeSection === TRASH_SECTION.id ? 'page' : undefined}
+    >
+      <TRASH_SECTION.icon class="h-5 w-5" />
+      <span class="text-[11px] leading-none">{TRASH_SECTION.short}</span>
+    </button>
   </div>
 {:else}
   <!-- ── Vertical mode (desktop icon rail) ─────────────────────── -->
@@ -192,27 +257,6 @@
       <Tooltip.Content side="right" sideOffset={6}>{$t('nav.new_note')}</Tooltip.Content>
     </Tooltip.Root>
 
-    <!-- Periodic notes (Daily / Weekly / Monthly) -->
-    {#each PERIODIC_BUTTONS as p (p.kind)}
-      <Tooltip.Root>
-        <Tooltip.Trigger>
-          {#snippet child({ props })}
-            <button
-              {...props}
-              type="button"
-              onclick={() => onPeriodic?.(p.kind)}
-              class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg text-muted-foreground
-                     hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-              aria-label={periodicTooltip(p.kind)}
-            >
-              <p.icon class="h-6 w-6 md:h-5 md:w-5" />
-            </button>
-          {/snippet}
-        </Tooltip.Trigger>
-        <Tooltip.Content side="right" sideOffset={6}>{periodicTooltip(p.kind)}</Tooltip.Content>
-      </Tooltip.Root>
-    {/each}
-
     <!-- Search -->
     <Tooltip.Root>
       <Tooltip.Trigger>
@@ -238,10 +282,8 @@
       <Tooltip.Content side="right" sideOffset={6}>{$t('nav.search')}</Tooltip.Content>
     </Tooltip.Root>
 
-    <div class="mx-2.5 border-t border-sidebar-border"></div>
-
-    <!-- Section icons -->
-    {#each SECTIONS as s}
+    <!-- Primary views (All, Starred) -->
+    {#each PRIMARY_SECTIONS as s}
       <Tooltip.Root>
         <Tooltip.Trigger>
           {#snippet child({ props })}
@@ -266,6 +308,84 @@
         <Tooltip.Content side="right" sideOffset={6}>{s.label}</Tooltip.Content>
       </Tooltip.Root>
     {/each}
+
+    <!-- Organization (Folders, Tags) -->
+    {#each ORGANIZE_SECTIONS as s}
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          {#snippet child({ props })}
+            <button
+              {...props}
+              type="button"
+              onclick={() => {
+                activeSection = s.id;
+                onsectionclick?.(s.id);
+              }}
+              class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg transition-colors
+                {activeSection === s.id
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
+              aria-label={s.label}
+              aria-current={activeSection === s.id ? 'page' : undefined}
+            >
+              <s.icon class="h-6 w-6 md:h-5 md:w-5" />
+            </button>
+          {/snippet}
+        </Tooltip.Trigger>
+        <Tooltip.Content side="right" sideOffset={6}>{s.label}</Tooltip.Content>
+      </Tooltip.Root>
+    {/each}
+
+    <!-- Periodic notes (Daily / Weekly / Monthly) -->
+    {#each PERIODIC_BUTTONS as p (p.kind)}
+      {@const sectionId = `periodic-${p.kind}` as const}
+      {@const isActive = activeSection === sectionId}
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          {#snippet child({ props })}
+            <button
+              {...props}
+              type="button"
+              onclick={() => onPeriodic?.(p.kind)}
+              class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg transition-colors
+                {isActive
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
+              aria-label={periodicTooltip(p.kind)}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <p.icon class="h-6 w-6 md:h-5 md:w-5" />
+            </button>
+          {/snippet}
+        </Tooltip.Trigger>
+        <Tooltip.Content side="right" sideOffset={6}>{periodicTooltip(p.kind)}</Tooltip.Content>
+      </Tooltip.Root>
+    {/each}
+
+    <!-- Trash -->
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <button
+            {...props}
+            type="button"
+            onclick={() => {
+              activeSection = TRASH_SECTION.id;
+              onsectionclick?.(TRASH_SECTION.id);
+            }}
+            class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg transition-colors
+              {activeSection === TRASH_SECTION.id
+              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+              : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
+            aria-label={TRASH_SECTION.label}
+            aria-current={activeSection === TRASH_SECTION.id ? 'page' : undefined}
+          >
+            <TRASH_SECTION.icon class="h-6 w-6 md:h-5 md:w-5" />
+          </button>
+        {/snippet}
+      </Tooltip.Trigger>
+      <Tooltip.Content side="right" sideOffset={6}>{TRASH_SECTION.label}</Tooltip.Content>
+    </Tooltip.Root>
 
     <div class="flex-1"></div>
 
