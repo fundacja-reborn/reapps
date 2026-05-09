@@ -225,7 +225,35 @@ const PDF_STYLES = `
 .reborn-pdf-root .reborn-pdf-body h4 { font-size: 1em;    margin: 0.8em 0 0.3em; }
 .reborn-pdf-root p { margin: 0 0 0.75em; }
 .reborn-pdf-root a { color: #1d4ed8; text-decoration: underline; word-break: break-word; }
-.reborn-pdf-root ul, .reborn-pdf-root ol { margin: 0 0 0.75em 1.5em; padding: 0; }
+/* List markers rendered via ::before + CSS counters rather than the native
+   ::marker pseudo. html2canvas-pro 2.0.2 paints the native marker by drawing
+   right-aligned text anchored at the <li>'s left edge (esm.js:9486–9495);
+   for our 800px off-screen container the glyph sometimes lands outside the
+   captured region or is suppressed entirely. Pseudo-element content with
+   counter() is rendered as ordinary positioned text and renders reliably. */
+.reborn-pdf-root ul, .reborn-pdf-root ol {
+  list-style: none;
+  margin: 0 0 0.75em 0;
+  padding-left: 1.5em;
+}
+.reborn-pdf-root ol { counter-reset: pdf-ol; }
+.reborn-pdf-root li { position: relative; }
+.reborn-pdf-root ul > li::before {
+  content: '•';
+  position: absolute;
+  left: -1em;
+  width: 1em;
+  text-align: left;
+}
+.reborn-pdf-root ol > li { counter-increment: pdf-ol; }
+.reborn-pdf-root ol > li::before {
+  content: counter(pdf-ol) '.';
+  position: absolute;
+  left: -1.5em;
+  width: 1.25em;
+  text-align: right;
+  padding-right: 0.25em;
+}
 .reborn-pdf-root li + li { margin-top: 0.2em; }
 .reborn-pdf-root blockquote {
   margin: 0 0 0.75em;
