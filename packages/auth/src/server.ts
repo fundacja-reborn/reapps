@@ -36,6 +36,21 @@ export type { ApiResponse, HandlerOptions } from './api/handlers';
 // E2E handlers
 export { handleE2ERegister } from './api/e2eHandlers';
 
+// E2E synced user settings handlers
+export {
+  handleGetSettings,
+  handleUpdateSettings,
+  SCOPE_SHARED
+} from './api/settings-handlers';
+export type {
+  AppScope,
+  SettingsScope,
+  SettingsBundleRow,
+  SettingsGetResponse,
+  SettingsDbClient,
+  SettingsHandlerResult
+} from './api/settings-handlers';
+
 // PoW (Proof-of-Work) — server-side (uses Node.js crypto.createHmac)
 export {
   generatePowChallenge,
