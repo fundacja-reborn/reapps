@@ -24,7 +24,8 @@ import { createNote } from './note.service';
 import { foldersStore } from '$lib/stores/folders.store';
 import { notesStore } from '$lib/stores/notes.store';
 import { noteIndex } from '$lib/services/note-index.svelte';
-import { getSetting, setSetting } from '$lib/utils/app-settings';
+import { getSetting } from '$lib/utils/app-settings';
+import { appSettings } from '$lib/stores/app-settings.store';
 import { t as i18nT, locale as i18nLocale } from '$lib/stores/i18n.store';
 import { buildPeriodicTitle } from './periodic-notes-format';
 
@@ -61,7 +62,13 @@ async function getStoredFolderId(kind: PeriodicKind): Promise<string | null> {
   return exists ? folderId : null;
 }
 
-/** Persist the resolved folder ID back into app settings. */
+/**
+ * Persist the resolved folder ID back into app settings. Routes through the
+ * `appSettings` svelte store (not raw `setSetting`) so the in-memory
+ * `periodicNotesSettings` derived store sees the change immediately — without
+ * this, kind detection in the editor placeholder stays stale until reload on
+ * a fresh account where ensureFolder() just created the folder.
+ */
 async function persistFolderId(kind: PeriodicKind, folderId: string): Promise<void> {
   const current = (await getSetting('periodicNotes')) ?? PERIODIC_NOTES_DEFAULTS;
   const next = {
@@ -71,7 +78,7 @@ async function persistFolderId(kind: PeriodicKind, folderId: string): Promise<vo
       folderId
     }
   };
-  await setSetting('periodicNotes', next);
+  await appSettings.update('periodicNotes', next);
 }
 
 /**
