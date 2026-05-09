@@ -18,7 +18,8 @@ import type { ImageLoadMode } from '@reborn/storage';
 import {
   createLivePreviewField,
   livePreviewSyncListener,
-  livePreviewAtomicRanges
+  livePreviewAtomicRanges,
+  livePreviewListClickForward
 } from './decorations';
 import { livePreviewTheme } from './theme';
 import { codeLanguages } from './code-languages';
@@ -45,7 +46,14 @@ export function createLivePreviewExtension(options: LivePreviewOptions = {}): Ex
     imageLoadMode: options.imageLoadMode ?? 'ask',
     imageLabels: options.imageLabels ?? DEFAULT_LABELS
   });
-  return [field, loadedImagesField, livePreviewSyncListener, livePreviewAtomicRanges, livePreviewTheme];
+  return [
+    field,
+    loadedImagesField,
+    livePreviewSyncListener,
+    livePreviewAtomicRanges,
+    livePreviewListClickForward,
+    livePreviewTheme
+  ];
 }
 
 /**
@@ -64,6 +72,7 @@ export {
   livePreviewField,
   livePreviewSyncListener,
   livePreviewAtomicRanges,
+  livePreviewListClickForward,
   rebuildLivePreview,
   type BuildDecorationsOptions
 } from './decorations';

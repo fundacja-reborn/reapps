@@ -63,14 +63,46 @@ const EM_MARK = Decoration.mark({ class: 'cm-lp-em' });
 const STRIKE_MARK = Decoration.mark({ class: 'cm-lp-strike' });
 const INLINE_CODE_MARK = Decoration.mark({ class: 'cm-lp-code' });
 const BLOCKQUOTE_LINE = Decoration.line({ class: 'cm-lp-blockquote-line' });
-const BULLET_LINE = Decoration.line({ class: 'cm-lp-bullet-line' });
-const ORDERED_LINE = Decoration.line({ class: 'cm-lp-ordered-line' });
+
+// Visual cap on list nesting. Past 6 levels the indent eats the viewport on
+// mobile and CommonMark realistically never goes deeper. Bumping this requires
+// matching `.cm-lp-bullet-d{N}` / `.cm-lp-ordered-d{N}` rules in theme.ts.
+const MAX_LIST_DEPTH = 6;
+
+const BULLET_LINE: Decoration[] = Array.from({ length: MAX_LIST_DEPTH }, (_, i) =>
+  Decoration.line({ class: `cm-lp-bullet-line cm-lp-bullet-d${i + 1}` })
+);
+const ORDERED_LINE: Decoration[] = Array.from({ length: MAX_LIST_DEPTH }, (_, i) =>
+  Decoration.line({ class: `cm-lp-ordered-line cm-lp-ordered-d${i + 1}` })
+);
 
 export function isAnySelectionInRange(state: EditorState, from: number, to: number): boolean {
   for (const r of state.selection.ranges) {
     if (r.from <= to && r.to >= from) return true;
   }
   return false;
+}
+
+/**
+ * Counts BulletList/OrderedList ancestors of a ListItem node — the ListItem's
+ * own list parent is depth 1, a list inside another list is depth 2, etc.
+ *
+ * Walking the parent chain is robust to mid-edit malformed trees (the
+ * incremental parser sometimes returns nodes with incomplete children, but
+ * parent linkage stays stable) and cheap (≤ MAX_LIST_DEPTH hops).
+ *
+ * Mixed bullet/ordered nesting counts both — depth follows the visual nesting
+ * the user sees in Preview's `<ul>`/`<ol>` tree.
+ */
+function getListDepth(node: SyntaxNode): number {
+  let depth = 0;
+  let p = node.parent;
+  while (p) {
+    const n = p.type.name;
+    if (n === 'BulletList' || n === 'OrderedList') depth++;
+    p = p.parent;
+  }
+  return Math.min(Math.max(depth, 1), MAX_LIST_DEPTH);
 }
 
 function findFirstChild(node: SyntaxNode, name: string): SyntaxNode | null {
@@ -402,14 +434,29 @@ export function buildDecorations(
         const listMark = findFirstChild(nodeRef.node, 'ListMark');
         const markText = listMark ? doc.sliceString(listMark.from, listMark.to) : '';
         const isOrdered = /^\d/.test(markText);
-        ranges.push((isOrdered ? ORDERED_LINE : BULLET_LINE).range(itemLine.from));
+        const depth = getListDepth(nodeRef.node);
+        const lineDecoSet = isOrdered ? ORDERED_LINE : BULLET_LINE;
+        ranges.push(lineDecoSet[depth - 1].range(itemLine.from));
 
-        // Bullets: hide "- " / "* " when cursor outside this line.
-        // Ordered: keep marker visible — the number is meaningful and recognizable.
-        if (!isOrdered && listMark && !isAnySelectionInRange(state, itemLine.from, itemLine.to)) {
-          const next = doc.sliceString(listMark.to, listMark.to + 1);
-          const hideTo = next === ' ' ? listMark.to + 1 : listMark.to;
-          ranges.push(HIDDEN.range(listMark.from, hideTo));
+        if (listMark) {
+          // Hide leading indentation whitespace ALWAYS (regardless of cursor
+          // position). Showing it on cursor-enter would shift the visible
+          // content rightward by the width of the source spaces, making the
+          // user think their edit is happening at a deeper indent than it
+          // actually is. The depth-class padding on the line already
+          // communicates nesting visually — the literal spaces are noise.
+          if (listMark.from > itemLine.from) {
+            ranges.push(HIDDEN.range(itemLine.from, listMark.from));
+          }
+
+          // Bullets: hide "- " / "* " when cursor outside this line.
+          // Ordered: keep marker visible — the number is meaningful content.
+          const cursorOnLine = isAnySelectionInRange(state, itemLine.from, itemLine.to);
+          if (!isOrdered && !cursorOnLine) {
+            const next = doc.sliceString(listMark.to, listMark.to + 1);
+            const hideTo = next === ' ' ? listMark.to + 1 : listMark.to;
+            ranges.push(HIDDEN.range(listMark.from, hideTo));
+          }
         }
         return; // descend so inline content inside item gets decorated
       }
@@ -492,25 +539,89 @@ export const livePreviewSyncListener = EditorView.updateListener.of((update) => 
 });
 
 /**
- * Treat each `Table` block as a single atomic range so CM6 selection cannot
- * land mid-table in the markdown source. Without this, pressing arrow keys
- * or End/PageDown could place the caret between `|` characters, causing the
- * decorated widget to flicker and stealing focus from contenteditable cells.
+ * Atomic ranges for two distinct cases:
  *
- * Tables are the only Live Preview construct that need this treatment —
- * other widgets (links, code blocks) toggle to raw markdown when the cursor
- * enters them, but tables stay rendered always.
+ *  1. **Whole `Table` blocks** — selection cannot land mid-table in the
+ *     markdown source. Without this, arrow keys / End / PageDown could place
+ *     the caret between `|` characters, causing the decorated widget to
+ *     flicker and stealing focus from contenteditable cells.
+ *
+ *  2. **Leading whitespace of nested `ListItem`s** (`[itemLine.from,
+ *     listMark.from]`). Pairs with the always-hidden HIDDEN replace
+ *     decoration on the same range emitted in `buildDecorations`. Without
+ *     this, Home / arrow-Left / posAtCoords could put the cursor in the
+ *     middle of zero-width replaced whitespace — invisible cursor, drag
+ *     selection of "padding", off-by-N edits.
+ *
+ *  Tables short-circuit (`return false`) so we don't emit list atomics for
+ *  list items that live inside a table cell — tables own their own editing.
  */
 export const livePreviewAtomicRanges = EditorView.atomicRanges.of((view) => {
   const builder = new RangeSetBuilder<Decoration>();
   const tree = syntaxTree(view.state);
+  const doc = view.state.doc;
   tree.iterate({
     enter(nodeRef) {
-      if (nodeRef.type.name === 'Table') {
+      const name = nodeRef.type.name;
+      if (name === 'Table') {
         builder.add(nodeRef.from, nodeRef.to, Decoration.mark({}));
         return false;
+      }
+      if (name === 'ListItem') {
+        const itemLine = doc.lineAt(nodeRef.from);
+        const listMark = findFirstChild(nodeRef.node, 'ListMark');
+        if (listMark && listMark.from > itemLine.from) {
+          builder.add(itemLine.from, listMark.from, Decoration.mark({}));
+        }
       }
     }
   });
   return builder.finish();
+});
+
+/**
+ * Forwards a click in the "padding zone" of a list-item line (the area left
+ * of the marker and over the rendered `::before` bullet) to the content start
+ * (position right after `- ` / `1. `). Without this, CM6's `posAtCoords` maps
+ * such clicks to `itemLine.from`, which then bumps to `listMark.from` via
+ * the atomic prefix — leaving the cursor BEFORE the marker, where the user
+ * has to manually arrow-right twice to start typing.
+ *
+ * Trigger condition: `event.target` is the `.cm-line` element itself (i.e.
+ * the click did NOT land on any text node / span inside the line). When the
+ * user clicks an actual character — including the marker once it's revealed
+ * (cursor on line) — `target` is a child span and we let CM6's default
+ * selection handling run, so the caret lands exactly where clicked.
+ */
+export const livePreviewListClickForward = EditorView.domEventHandlers({
+  mousedown(event, view) {
+    const target = event.target as HTMLElement | null;
+    if (!target || !target.classList) return false;
+    if (!target.classList.contains('cm-line')) return false;
+    if (
+      !target.classList.contains('cm-lp-bullet-line') &&
+      !target.classList.contains('cm-lp-ordered-line')
+    ) {
+      return false;
+    }
+
+    const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+    if (pos === null) return false;
+
+    const tree = syntaxTree(view.state);
+    let n: SyntaxNode | null = tree.resolveInner(pos, -1);
+    while (n && n.type.name !== 'ListItem') n = n.parent;
+    if (!n) return false;
+
+    const listMark = findFirstChild(n, 'ListMark');
+    if (!listMark) return false;
+
+    const next = view.state.doc.sliceString(listMark.to, listMark.to + 1);
+    const contentStart = next === ' ' ? listMark.to + 1 : listMark.to;
+
+    event.preventDefault();
+    view.dispatch({ selection: { anchor: contentStart } });
+    view.focus();
+    return true;
+  }
 });

@@ -230,7 +230,9 @@ describe('buildDecorations — blockquote and lists', () => {
     const state = makeState(doc, doc.length - 1);
     const ranges = asRanges(buildDecorations(state));
 
-    expect(classAt(ranges, 0, 0)).toBe('cm-lp-bullet-line');
+    const cls = classAt(ranges, 0, 0);
+    expect(cls).toContain('cm-lp-bullet-line');
+    expect(cls).toContain('cm-lp-bullet-d1');
     expect(hasHiddenRange(ranges, 0, 2)).toBe(true);
   });
 
@@ -239,10 +241,104 @@ describe('buildDecorations — blockquote and lists', () => {
     const state = makeState(doc, doc.length - 1);
     const ranges = asRanges(buildDecorations(state));
 
-    expect(classAt(ranges, 0, 0)).toBe('cm-lp-ordered-line');
+    const cls = classAt(ranges, 0, 0);
+    expect(cls).toContain('cm-lp-ordered-line');
+    expect(cls).toContain('cm-lp-ordered-d1');
     // No hidden range over the "1. " marker
     const hiddenAtMark = ranges.find((r) => r.from === 0 && r.isHidden);
     expect(hiddenAtMark).toBeUndefined();
+  });
+});
+
+describe('buildDecorations — nested list depth', () => {
+  it('applies cm-lp-bullet-d1 to top-level bullets', () => {
+    const doc = '- one\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+    expect(classAt(ranges, 0, 0)).toContain('cm-lp-bullet-d1');
+  });
+
+  it('applies cm-lp-bullet-d2 to nested bullets and hides leading whitespace', () => {
+    const doc = '- one\n- two\n    - 2.1\n\nbody';
+    const cursor = doc.length - 1; // cursor in "body"
+    const state = makeState(doc, cursor);
+    const ranges = asRanges(buildDecorations(state));
+
+    const nestedLineFrom = doc.indexOf('    - 2.1');
+    expect(classAt(ranges, nestedLineFrom, nestedLineFrom)).toContain('cm-lp-bullet-d2');
+
+    // Leading "    " (4 spaces) hidden when cursor outside the line
+    const listMarkPos = doc.indexOf('- 2.1');
+    expect(hasHiddenRange(ranges, nestedLineFrom, listMarkPos)).toBe(true);
+  });
+
+  it('applies cm-lp-bullet-d3 at depth 3', () => {
+    const doc = '- a\n  - b\n    - c\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+
+    const lineCFrom = doc.indexOf('    - c');
+    expect(classAt(ranges, lineCFrom, lineCFrom)).toContain('cm-lp-bullet-d3');
+  });
+
+  it('clamps deeper-than-MAX nesting to cm-lp-bullet-d6', () => {
+    // 7 levels deep — should still render with d6 (visual cap).
+    const doc =
+      [
+        '- 1',
+        '  - 2',
+        '    - 3',
+        '      - 4',
+        '        - 5',
+        '          - 6',
+        '            - 7'
+      ].join('\n') + '\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+
+    const line7From = doc.indexOf('            - 7');
+    expect(classAt(ranges, line7From, line7From)).toContain('cm-lp-bullet-d6');
+  });
+
+  it('keeps leading whitespace HIDDEN even when cursor is on the nested line (deterministic geometry)', () => {
+    // Showing the indent spaces on cursor-enter would shift the visible
+    // content rightward by ~1em per 4 spaces in proportional Roboto, making
+    // the user think they're editing at a deeper indent than they actually
+    // are. The depth-class padding already communicates nesting visually.
+    const doc = '- one\n  - two\n\nbody';
+    const cursor = doc.indexOf('two'); // cursor on the nested line
+    const state = makeState(doc, cursor);
+    const ranges = asRanges(buildDecorations(state));
+
+    const nestedLineFrom = doc.indexOf('  - two');
+    const listMarkPos = doc.indexOf('- two');
+    // Whitespace stays hidden
+    expect(hasHiddenRange(ranges, nestedLineFrom, listMarkPos)).toBe(true);
+    // But the marker `- ` IS revealed (cursor on line) — user can edit/delete it
+    expect(hasHiddenRange(ranges, listMarkPos, listMarkPos + 2)).toBe(false);
+  });
+
+  it('handles ordered lists with depth-aware padding', () => {
+    const doc = '1. a\n   1. b\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+
+    const nestedLineFrom = doc.indexOf('   1. b');
+    expect(classAt(ranges, nestedLineFrom, nestedLineFrom)).toContain('cm-lp-ordered-d2');
+
+    // Ordered marker stays visible (number is meaningful content)
+    const numberPos = doc.indexOf('1. b');
+    const hasMarkerHidden = ranges.some((r) => r.from === numberPos && r.isHidden);
+    expect(hasMarkerHidden).toBe(false);
+  });
+
+  it('handles mixed ordered → bullet nesting (depth counts both)', () => {
+    const doc = '1. a\n   - b\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+
+    const nestedLineFrom = doc.indexOf('   - b');
+    expect(classAt(ranges, nestedLineFrom, nestedLineFrom)).toContain('cm-lp-bullet-d2');
   });
 });
 
