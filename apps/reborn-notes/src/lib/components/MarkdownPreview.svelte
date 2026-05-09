@@ -222,9 +222,27 @@
     // incrementing aligns render order with source order: parent first, then
     // descendants.
     const idx = taskCounter++;
-    const inner = self.parser.parse(token.tokens, !!token.loose);
+    // Split the parent's own inline content (checkbox + text + inline
+    // formatting) from any nested list tokens. Inline gets wrapped in a span
+    // so the checked-state strikethrough scopes to the parent's own line
+    // only — `text-decoration: line-through` propagates through inline
+    // descendants of a line box, and `text-decoration: none` on a child
+    // block does NOT cancel the parent's drawn line (a documented CSS quirk;
+    // colour/opacity reset would still leave the strike visible on
+    // children). Anchoring the decoration to a sibling-of-list wrapper
+    // contains the line.
+    const inlineTokens = [];
+    const nestedTokens = [];
+    for (const t of token.tokens) {
+      if (t.type === 'list') nestedTokens.push(t);
+      else inlineTokens.push(t);
+    }
+    const inlineHtml = self.parser.parse(inlineTokens as Tokens.ListItem['tokens'], !!token.loose);
+    const nestedHtml = nestedTokens.length
+      ? self.parser.parse(nestedTokens as Tokens.ListItem['tokens'], !!token.loose)
+      : '';
     const cls = token.checked ? 'task-list-item task-list-item-checked' : 'task-list-item';
-    return `<li class="${cls}" data-task-index="${idx}">${inner}</li>\n`;
+    return `<li class="${cls}" data-task-index="${idx}"><span class="task-list-item-content">${inlineHtml}</span>${nestedHtml}</li>\n`;
   };
 
   // Drop `disabled` from the GFM checkbox so the user can click it; tag with
@@ -736,10 +754,18 @@
     margin-left: -1.5em;
     padding-left: 0;
   }
-  .preview :global(li.task-list-item-checked) {
+  /* Strikethrough + muted colour scoped to the parent's own inline-content
+     wrapper. Each GFM task is independent state, so a checked parent must
+     not visually mark its children as done. Putting the decoration on the
+     `<li>` itself made it propagate (text-decoration is "drawn through"
+     inline descendants of the line box, and `text-decoration: none` on a
+     descendant block does not cancel the parent's drawn line). The renderer
+     wraps the parent's inline content in `<span class="task-list-item-content">`
+     so any nested `<ul>`/`<ol>` is a *sibling* of this wrapper, not a
+     descendant — the line ends at the wrapper boundary. */
+  .preview :global(li.task-list-item-checked) > :global(.task-list-item-content) {
     text-decoration: line-through;
     color: var(--muted-foreground);
-    opacity: 0.7;
   }
   .preview :global(input[type='checkbox']) {
     margin-right: 0.4em;
