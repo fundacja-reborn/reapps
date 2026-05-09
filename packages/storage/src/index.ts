@@ -46,6 +46,29 @@ export {
   PERIODIC_NOTES_DEFAULT_FORMATS
 } from './stores/settings.store';
 
+// E2E synced user settings — pull/push service + bundle utilities
+export {
+  SyncedSettingsService,
+  createSyncedSettingsService
+} from './services/synced-settings.service';
+export type { SyncedSettingsAdapter } from './services/synced-settings.service';
+export {
+  SCOPE_SHARED,
+  SETTINGS_BUNDLE_SCHEMA_VERSION,
+  appScopeFor,
+  extractSharedBundle,
+  extractAppBundle,
+  applyBundlesToSettings,
+  migrateSharedBundle,
+  migrateAppBundle
+} from './utils/settings-bundle';
+export type {
+  AppName,
+  AppBundleScope,
+  SharedSettingsBundle,
+  AppSettingsBundle
+} from './utils/settings-bundle';
+
 // Re-export types from @reborn/types for convenience
 export type {
   BooleanInt,
