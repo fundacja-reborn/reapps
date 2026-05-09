@@ -281,23 +281,25 @@ describe('buildDecorations — nested list depth', () => {
     expect(classAt(ranges, lineCFrom, lineCFrom)).toContain('cm-lp-bullet-d3');
   });
 
-  it('clamps deeper-than-MAX nesting to cm-lp-bullet-d6', () => {
-    // 7 levels deep — should still render with d6 (visual cap).
-    const doc =
-      [
-        '- 1',
-        '  - 2',
-        '    - 3',
-        '      - 4',
-        '        - 5',
-        '          - 6',
-        '            - 7'
-      ].join('\n') + '\n\nbody';
+  it('renders deep nesting up to d12 and clamps anything past it', () => {
+    // 13 levels deep — d1..d12 should each get their own depth class, and
+    // the 13th should clamp to d12 (visual cap, see MAX_LIST_DEPTH).
+    const lines: string[] = [];
+    for (let i = 0; i < 13; i++) {
+      lines.push(' '.repeat(i * 2) + `- ${i + 1}`);
+    }
+    const doc = lines.join('\n') + '\n\nbody';
     const state = makeState(doc, doc.length - 1);
     const ranges = asRanges(buildDecorations(state));
 
-    const line7From = doc.indexOf('            - 7');
-    expect(classAt(ranges, line7From, line7From)).toContain('cm-lp-bullet-d6');
+    const line7From = doc.indexOf(' '.repeat(12) + '- 7');
+    expect(classAt(ranges, line7From, line7From)).toContain('cm-lp-bullet-d7');
+
+    const line12From = doc.indexOf(' '.repeat(22) + '- 12');
+    expect(classAt(ranges, line12From, line12From)).toContain('cm-lp-bullet-d12');
+
+    const line13From = doc.indexOf(' '.repeat(24) + '- 13');
+    expect(classAt(ranges, line13From, line13From)).toContain('cm-lp-bullet-d12');
   });
 
   it('keeps leading whitespace HIDDEN even when cursor is on the nested line (deterministic geometry)', () => {

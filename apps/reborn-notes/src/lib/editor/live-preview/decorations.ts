@@ -64,10 +64,12 @@ const STRIKE_MARK = Decoration.mark({ class: 'cm-lp-strike' });
 const INLINE_CODE_MARK = Decoration.mark({ class: 'cm-lp-code' });
 const BLOCKQUOTE_LINE = Decoration.line({ class: 'cm-lp-blockquote-line' });
 
-// Visual cap on list nesting. Past 6 levels the indent eats the viewport on
-// mobile and CommonMark realistically never goes deeper. Bumping this requires
-// matching `.cm-lp-bullet-d{N}` / `.cm-lp-ordered-d{N}` rules in theme.ts.
-const MAX_LIST_DEPTH = 6;
+// Visual cap on list nesting. Tapered ramp in `theme.ts` keeps even d12
+// (~14.5em ≈ 232px) usable on a 360px viewport; CommonMark realistically
+// never goes deeper. Bumping this requires extending `.cm-lp-bullet-d{N}`
+// / `.cm-lp-ordered-d{N}` rules in theme.ts and the matching
+// `.preview ul[data-d{N}]` / `ol[data-d{N}]` rules in MarkdownPreview.svelte.
+const MAX_LIST_DEPTH = 12;
 
 const BULLET_LINE: Decoration[] = Array.from({ length: MAX_LIST_DEPTH }, (_, i) =>
   Decoration.line({ class: `cm-lp-bullet-line cm-lp-bullet-d${i + 1}` })

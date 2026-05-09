@@ -118,10 +118,21 @@ export const livePreviewTheme = EditorView.theme({
   },
 
   // Bullet list — depth-aware padding + ::before bullet.
-  // Padding/left scale linearly with depth (1.5em per level). Each ListItem
-  // gets `cm-lp-bullet-line cm-lp-bullet-d{N}` from `decorations.ts`, where N
-  // counts BulletList/OrderedList ancestors (clamped to MAX_LIST_DEPTH = 6).
-  // Mirrors MarkdownPreview's `<ul><ul>` nesting (1.5em per level).
+  //
+  // Tapered ramp (mirrored in MarkdownPreview.svelte's `[data-d{N}]` rules):
+  //   d1 → 1.5em (preserves the historical first-level indent)
+  //   d2 → 4em   (krok +2.5em — a noticeable visual step so a nested item
+  //               doesn't sit in the same column as the parent's content)
+  //   d3..d6 → +1.5em per level (5.5, 7, 8.5, 10)
+  //   d7..d12 → +0.75em per level (10.75, 11.5, 12.25, 13, 13.75, 14.5)
+  //   clamp at d12 ≈ 14.5em (~232px on a 360px viewport — usable on mobile,
+  //   deeper trees are vanishingly rare in real notes)
+  //
+  // Each ListItem gets `cm-lp-bullet-line cm-lp-bullet-d{N}` from
+  // `decorations.ts` (N = BulletList/OrderedList ancestor count, clamped to
+  // MAX_LIST_DEPTH). The bullet `::before` sits 1em left of the content,
+  // giving every level the same marker-to-text relationship while the
+  // contents themselves shift right as nesting deepens.
   '.cm-lp-bullet-line': {
     position: 'relative'
   },
@@ -132,25 +143,43 @@ export const livePreviewTheme = EditorView.theme({
   },
   '.cm-lp-bullet-d1': { paddingLeft: '1.5em' },
   '.cm-lp-bullet-d1::before': { left: '0.5em' },
-  '.cm-lp-bullet-d2': { paddingLeft: '3em' },
-  '.cm-lp-bullet-d2::before': { left: '2em' },
-  '.cm-lp-bullet-d3': { paddingLeft: '4.5em' },
-  '.cm-lp-bullet-d3::before': { left: '3.5em' },
-  '.cm-lp-bullet-d4': { paddingLeft: '6em' },
-  '.cm-lp-bullet-d4::before': { left: '5em' },
-  '.cm-lp-bullet-d5': { paddingLeft: '7.5em' },
-  '.cm-lp-bullet-d5::before': { left: '6.5em' },
-  '.cm-lp-bullet-d6': { paddingLeft: '9em' },
-  '.cm-lp-bullet-d6::before': { left: '8em' },
+  '.cm-lp-bullet-d2': { paddingLeft: '4em' },
+  '.cm-lp-bullet-d2::before': { left: '3em' },
+  '.cm-lp-bullet-d3': { paddingLeft: '5.5em' },
+  '.cm-lp-bullet-d3::before': { left: '4.5em' },
+  '.cm-lp-bullet-d4': { paddingLeft: '7em' },
+  '.cm-lp-bullet-d4::before': { left: '6em' },
+  '.cm-lp-bullet-d5': { paddingLeft: '8.5em' },
+  '.cm-lp-bullet-d5::before': { left: '7.5em' },
+  '.cm-lp-bullet-d6': { paddingLeft: '10em' },
+  '.cm-lp-bullet-d6::before': { left: '9em' },
+  '.cm-lp-bullet-d7': { paddingLeft: '10.75em' },
+  '.cm-lp-bullet-d7::before': { left: '9.75em' },
+  '.cm-lp-bullet-d8': { paddingLeft: '11.5em' },
+  '.cm-lp-bullet-d8::before': { left: '10.5em' },
+  '.cm-lp-bullet-d9': { paddingLeft: '12.25em' },
+  '.cm-lp-bullet-d9::before': { left: '11.25em' },
+  '.cm-lp-bullet-d10': { paddingLeft: '13em' },
+  '.cm-lp-bullet-d10::before': { left: '12em' },
+  '.cm-lp-bullet-d11': { paddingLeft: '13.75em' },
+  '.cm-lp-bullet-d11::before': { left: '12.75em' },
+  '.cm-lp-bullet-d12': { paddingLeft: '14.5em' },
+  '.cm-lp-bullet-d12::before': { left: '13.5em' },
 
   // Ordered list — same indent rhythm but no ::before (number stays in source).
   '.cm-lp-ordered-line': {},
   '.cm-lp-ordered-d1': { paddingLeft: '1.5em' },
-  '.cm-lp-ordered-d2': { paddingLeft: '3em' },
-  '.cm-lp-ordered-d3': { paddingLeft: '4.5em' },
-  '.cm-lp-ordered-d4': { paddingLeft: '6em' },
-  '.cm-lp-ordered-d5': { paddingLeft: '7.5em' },
-  '.cm-lp-ordered-d6': { paddingLeft: '9em' },
+  '.cm-lp-ordered-d2': { paddingLeft: '4em' },
+  '.cm-lp-ordered-d3': { paddingLeft: '5.5em' },
+  '.cm-lp-ordered-d4': { paddingLeft: '7em' },
+  '.cm-lp-ordered-d5': { paddingLeft: '8.5em' },
+  '.cm-lp-ordered-d6': { paddingLeft: '10em' },
+  '.cm-lp-ordered-d7': { paddingLeft: '10.75em' },
+  '.cm-lp-ordered-d8': { paddingLeft: '11.5em' },
+  '.cm-lp-ordered-d9': { paddingLeft: '12.25em' },
+  '.cm-lp-ordered-d10': { paddingLeft: '13em' },
+  '.cm-lp-ordered-d11': { paddingLeft: '13.75em' },
+  '.cm-lp-ordered-d12': { paddingLeft: '14.5em' },
 
   // ─── Fenced code blocks ──────────────────────────────────────
   // Cursor outside: replaced with <div class="cm-lp-codeblock-wrap"><pre>.
