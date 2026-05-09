@@ -210,11 +210,19 @@
   // the markdown source.
   renderer.listitem = function listitemOverride(this: unknown, token: Tokens.ListItem) {
     const self = this as { parser: { parse: (t: Tokens.ListItem['tokens'], loose?: boolean) => string } };
-    const inner = self.parser.parse(token.tokens, !!token.loose);
     if (!token.task) {
+      const inner = self.parser.parse(token.tokens, !!token.loose);
       return `<li>${inner}</li>\n`;
     }
+    // Reserve this item's index *before* recursing into children. Inner
+    // parsing runs nested list items through this same override, and they'd
+    // otherwise grab lower indices than the parent — making the parent's
+    // `data-task-index` point past its own checkbox in the markdown source
+    // (where `toggleTaskAt` walks `[ ]`/`[x]` markers top-to-bottom). Pre-
+    // incrementing aligns render order with source order: parent first, then
+    // descendants.
     const idx = taskCounter++;
+    const inner = self.parser.parse(token.tokens, !!token.loose);
     const cls = token.checked ? 'task-list-item task-list-item-checked' : 'task-list-item';
     return `<li class="${cls}" data-task-index="${idx}">${inner}</li>\n`;
   };
