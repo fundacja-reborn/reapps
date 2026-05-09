@@ -163,23 +163,45 @@
     return true;
   }
 
-  function prefixLine(prefix: string): boolean {
+  function prefixLine(prefix: string, preserveIndent = true): boolean {
     if (!view) return false;
     const { state } = view;
     const line = state.doc.lineAt(state.selection.main.from);
     const text = line.text;
+    // Default preserves leading whitespace so toolbar actions on a nested
+    // list item (e.g. converting `   1. three` to bullet) yield `   * three`
+    // rather than placing the new marker in column 0. Headings opt out —
+    // a heading inside a list is a semantic anomaly, so we lift the line
+    // back to top level.
+    const leadingWs = (text.match(/^\s*/) ?? [''])[0];
+    const afterWs = text.slice(leadingWs.length);
+    const indent = preserveIndent ? leadingWs : '';
 
-    if (text.startsWith(prefix)) {
+    // Treat any bullet marker (`- `/`* `/`+ `) as the same type, and any
+    // ordered marker (`N. `/`N) `) as the same type, so a single click
+    // toggles off regardless of which char/number is in the source — and
+    // converting between bullet/ordered/blockquote replaces the existing
+    // marker rather than stacking on top.
+    const activeMarker = afterWs.match(/^([-+*] |\d+[.)] )/);
+    const isBulletPrefix = /^[-+*] $/.test(prefix);
+    const isOrderedPrefix = /^\d+[.)] $/.test(prefix);
+    const sameTypeActive =
+      activeMarker !== null &&
+      ((isBulletPrefix && /^[-+*] /.test(activeMarker[0])) ||
+        (isOrderedPrefix && /^\d+[.)] /.test(activeMarker[0])));
+
+    if (afterWs.startsWith(prefix) || sameTypeActive) {
+      const stripLen = activeMarker ? activeMarker[0].length : prefix.length;
+      const from = line.from + leadingWs.length;
       view.dispatch({
-        changes: { from: line.from, to: line.from + prefix.length, insert: '' },
-        selection: { anchor: line.from }
+        changes: { from: line.from, to: from + stripLen, insert: indent },
+        selection: { anchor: line.from + indent.length }
       });
     } else {
-      // Remove other common prefixes first
-      const stripped = text.replace(/^(#{1,6} |> |- |\d+\. )/, '');
+      const stripped = afterWs.replace(/^(#{1,6} |> |[-+*] |\d+[.)] )/, '');
       view.dispatch({
-        changes: { from: line.from, to: line.to, insert: `${prefix}${stripped}` },
-        selection: { anchor: line.from + prefix.length }
+        changes: { from: line.from, to: line.to, insert: `${indent}${prefix}${stripped}` },
+        selection: { anchor: line.from + indent.length + prefix.length }
       });
     }
     view.focus();
@@ -187,7 +209,7 @@
   }
 
   function insertHeading(level: number): boolean {
-    return prefixLine('#'.repeat(level) + ' ');
+    return prefixLine('#'.repeat(level) + ' ', /* preserveIndent */ false);
   }
 
   function insertLink(): boolean {
@@ -651,7 +673,7 @@
       <!-- Block elements -->
       <button
         type="button"
-        onclick={() => prefixLine('- ')}
+        onclick={() => prefixLine('* ')}
         title={$t('editor.formatting.bullet_list')}
         class="toolbar-btn"
         aria-label={$t('editor.formatting.bullet_list')}
