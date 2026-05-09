@@ -257,17 +257,21 @@ const PDF_STYLES = `
 }
 .reborn-pdf-root li + li { margin-top: 0.2em; }
 /* GFM task list items — drop the synthetic ::before bullet (the checkbox
-   takes its place) and pull the line back so the checkbox sits where the
-   bullet would. Mirrors MarkdownPreview's li.task-list-item styling.
+   takes its place). The checkbox itself is pulled into the bullet zone via
+   negative margin-left below; keeping the li's box untouched preserves the
+   parent ul's padding-left: 1.5em per nested level, so deeper task-list
+   nesting stays visibly indented. The previous approach (margin-left:
+   -1.5em on li.task-list-item) cancelled the per-level indent exactly,
+   collapsing every task item to column 0 in the PDF.
    Strikethrough scopes to the parent's own inline wrapper so a checked
    parent does not visually mark its nested children as done. */
-.reborn-pdf-root li.task-list-item { list-style: none; margin-left: -1.5em; padding-left: 0; }
+.reborn-pdf-root li.task-list-item { list-style: none; }
 .reborn-pdf-root li.task-list-item::before { content: none; }
 .reborn-pdf-root li.task-list-item-checked > .task-list-item-content {
   text-decoration: line-through;
   color: #555;
 }
-.reborn-pdf-root .task-list-item-checkbox { margin-right: 0.4em; vertical-align: middle; }
+.reborn-pdf-root .task-list-item-checkbox { margin-right: 0.4em; margin-left: -1.4em; vertical-align: middle; }
 .reborn-pdf-root blockquote {
   margin: 0 0 0.75em;
   padding: 0.4em 0.9em;

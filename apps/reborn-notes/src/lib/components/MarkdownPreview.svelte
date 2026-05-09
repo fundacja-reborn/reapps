@@ -668,13 +668,11 @@
   }
 
   /* Checklist items (GFM task lists). `task-list-item` drops the default
-     bullet and pulls the line back so the checkbox sits where the bullet
-     would. Mirrors GitHub's CSS. `task-list-item-checked` adds strikethrough
-     + muted color, matching Live Preview's `cm-lp-task-checked`. */
+     bullet; the checkbox itself is pulled back into the bullet space below.
+     Mirrors GitHub's CSS. `task-list-item-checked` adds strikethrough + muted
+     color, matching Live Preview's `cm-lp-task-checked`. */
   .preview :global(li.task-list-item) {
     list-style-type: none;
-    margin-left: -1.5em;
-    padding-left: 0;
   }
   /* Strikethrough + muted colour scoped to the parent's own inline-content
      wrapper. Each GFM task is independent state, so a checked parent must
@@ -693,9 +691,16 @@
     margin-right: 0.4em;
     accent-color: var(--primary);
   }
+  /* Pull the checkbox into the bullet zone (GitHub-style). Putting the
+     negative margin on the checkbox — not on the <li> — leaves the list-
+     item's box untouched, so each nested level still gets its full indent
+     from the parent ul's `[data-d='N']` margin ramp. The previous approach
+     (`li.task-list-item { margin-left: -1.5em }`) cancelled the d3+ ramp
+     exactly, collapsing every deeper level into the same column as d2. */
   .preview :global(.task-list-item-checkbox) {
     cursor: pointer;
     transform: translateY(-1px);
+    margin-left: -1.4em;
   }
 
   /* ── Image placeholders ─────────────────────────────────────
