@@ -19,9 +19,11 @@ model User {
   updated_at            DateTime       @updatedAt
   last_login_at         DateTime?
   
-  // User preferences (encrypted in settings_encrypted)
-  settings_encrypted    String?        // Contains theme, language, date format, etc.
-  
+  // Deprecated: replaced by UserSettings table (per-scope rows). Slated for
+  // removal in a follow-up cleanup PR once production has been on the new
+  // table for a full release cycle.
+  settings_encrypted    String?
+
   // Relations
   recoveryCodes         RecoveryCode[]
   taskLists             TaskList[]
@@ -30,7 +32,8 @@ model User {
   sessions              UserSession[]
   refreshTokens         RefreshToken[]
   webPushSubscriptions  UserWebPushSubscription[]
-  
+  userSettings          UserSettings[]
+
   // Notes-related relations
   notes                 Note[]
   folders               Folder[]
@@ -100,6 +103,27 @@ model TwoFactorAuth {
   updated_at       DateTime @updatedAt
 
   user             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+// E2E synced user preferences. One row per (user_id, scope). Scope is a free-form
+// string so adding a new app does not need a schema migration:
+//   'shared'           — cross-app preferences (language, dateFormat, …)
+//   'app:reborn-task'  — Task-only preferences (theme, notifications, …)
+//   'app:reborn-notes' — Notes-only preferences (theme, editor mode, periodic notes, …)
+// Server only ever sees ciphertext + scope + updated_at — values are decrypted client-side.
+model UserSettings {
+  id                 String   @id @default(uuid())
+  user_id            String
+  scope              String
+  settings_encrypted String
+  updated_at         DateTime @updatedAt
+  created_at         DateTime @default(now())
+
+  user               User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, scope])
+  @@index([user_id])
+  @@index([updated_at])
 }
 
 model UserWebPushSubscription {

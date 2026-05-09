@@ -112,3 +112,14 @@ export const WebPushSubscriptionSchema = z.object({
   device_info_encrypted: z.string().max(4096).optional()
 });
 export type WebPushSubscription = z.infer<typeof WebPushSubscriptionSchema>;
+
+/**
+ * E2E synced user settings bundle (PUT body for /api/settings/{shared|app}).
+ * `settings_encrypted` carries an AES-GCM ciphertext in `iv:ciphertext` base64
+ * format — strict format validation runs in the Encryption Guard layer.
+ */
+export const SettingsBundleBodySchema = z.object({
+  settings_encrypted: z.string().min(20).max(1_000_000),
+  updated_at: z.string().datetime()
+});
+export type SettingsBundleBody = z.infer<typeof SettingsBundleBodySchema>;

@@ -331,6 +331,21 @@ export class AuthOperationsService {
 			} catch (error: unknown) {
 				logger.warn('Could not flush pending operations before logout:', error);
 			}
+
+			// Flush any pending E2E synced settings push before the master key is
+			// cleared — otherwise the last sub-debounce-window setting change
+			// would be lost (server keeps stale, IDB gets wiped).
+			try {
+				const { syncedSettings } = await import('$lib/services/synced-settings.service');
+				await Promise.race([
+					syncedSettings.pushNow(),
+					new Promise<never>((_, reject) =>
+						setTimeout(() => reject(new Error('Settings push timeout on logout')), 2000)
+					)
+				]);
+			} catch (error: unknown) {
+				logger.warn('Could not flush synced settings before logout:', error);
+			}
 		}
 
 		try {

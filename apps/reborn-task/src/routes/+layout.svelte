@@ -17,6 +17,7 @@
 	import { cryptoManager } from '@reborn/crypto';
 	import { createLogger } from '@reborn/utils';
 	import { appSettings } from '$lib/stores/app-settings.store';
+	import { syncedSettings } from '$lib/services/synced-settings.service';
 	import { taskTitleIndex } from '$lib/services/task-title-index.svelte';
 	import { taskCounts } from '$lib/stores/task-counts.store';
 
@@ -66,6 +67,15 @@
 			await taskTitleIndex.rebuild();
 
 			if (navigator.onLine) {
+				// Pull E2E synced settings now that the master key is available.
+				// Re-init appSettings so theme/locale reflect the server state.
+				try {
+					const { applied } = await syncedSettings.pullAndMerge();
+					if (applied) await appSettings.refresh();
+				} catch (err: unknown) {
+					logger.warn('Synced settings pull on E2E unlock failed', err);
+				}
+
 				await syncService.initialSync();
 				// Refresh all stores after pull from server
 				const { taskListStore } = await import('$lib/stores/decrypted-lists.store');
@@ -208,6 +218,17 @@
 				await taskTitleIndex.build();
 				// E2E already active on mount → prevent $effect from duplicating sync
 				if (cryptoManager.isInitialized()) hasTriggeredInitialSync = true;
+			}
+
+			// Pull E2E synced settings BEFORE applying theme/locale — so the
+			// freshly logged-in / cross-device session sees the user's preferences
+			// rather than IDB defaults. Master key must already be unlocked.
+			if (cryptoManager.isInitialized()) {
+				try {
+					await syncedSettings.pullAndMerge();
+				} catch (error: unknown) {
+					logger.warn('Synced settings pull failed — falling back to local IDB', error);
+				}
 			}
 
 			// Initialize app settings (includes theme application)

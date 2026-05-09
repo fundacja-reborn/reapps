@@ -10,6 +10,7 @@ import {
 import type { AppSettings } from '@reborn/storage';
 import { SUPPORTED_LOCALES } from '@reborn/i18n';
 import { createLogger } from '@reborn/utils';
+import { syncedSettings } from '$lib/services/synced-settings.service';
 
 const logger = createLogger('app-settings-store');
 
@@ -40,6 +41,11 @@ function createAppSettingsStore() {
 			// After logout → login, IndexedDB settings are recreated with defaults.
 			// Adopt the locale preference from localStorage (set on auth pages or previous session)
 			// so the user's choice survives the clearAllUserData() during logout.
+			//
+			// This runs AFTER syncedSettings.pullAndMerge() in the layout, so when
+			// localStorage disagrees with the synced value the user is intentionally
+			// overriding (e.g. picked a different language on the login page) — push
+			// that choice up so other devices converge.
 			if (currentSettings) {
 				const savedLocale = localStorage.getItem('preferred_language') as AppSettings['language'] | null;
 				if (
@@ -49,6 +55,7 @@ function createAppSettingsStore() {
 				) {
 					currentSettings.language = savedLocale;
 					await setSetting('language', savedLocale);
+					syncedSettings.schedulePush();
 				}
 			}
 
@@ -88,6 +95,10 @@ function createAppSettingsStore() {
 			const updated = await getSettings();
 			settings.set(updated);
 
+			// Schedule debounced push to the server (E2E synced).
+			// Coalesces rapid successive updates into a single round-trip.
+			syncedSettings.schedulePush();
+
 			logger.info('Setting updated', { key, value });
 
 			// Apply side effects for specific settings
@@ -121,6 +132,9 @@ function createAppSettingsStore() {
 			const updated = await getSettings();
 			settings.set(updated);
 
+			// Schedule debounced push to the server (E2E synced).
+			syncedSettings.schedulePush();
+
 			logger.info('Settings updated', { updates });
 
 			// Apply side effects
@@ -148,6 +162,9 @@ function createAppSettingsStore() {
 			await resetAppSettings();
 			const defaults = await getSettings();
 			settings.set(defaults);
+
+			// Push the new defaults so other devices converge.
+			syncedSettings.schedulePush();
 
 			// Apply default theme
 			if (browser && defaults) {

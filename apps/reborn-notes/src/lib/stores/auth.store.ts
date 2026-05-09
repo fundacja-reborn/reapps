@@ -189,6 +189,15 @@ function createAuthStore() {
       logger.warn('Server logout call failed (non-critical):', err);
     });
 
+    // Flush any pending E2E synced settings push before the master key is
+    // cleared. Fire-and-forget — the hard redirect below races with this, but
+    // the most common case (no pending push) returns immediately.
+    if (navigator.onLine) {
+      import('$lib/services/synced-settings.service')
+        .then(({ syncedSettings }) => syncedSettings.pushNow())
+        .catch((err) => logger.warn('Could not flush synced settings before logout:', err));
+    }
+
     cryptoManager.clearMasterKey();
     localStorage.removeItem(CREDENTIALS_KEY);
     localStorage.removeItem(ACCESS_TOKEN_KEY);
