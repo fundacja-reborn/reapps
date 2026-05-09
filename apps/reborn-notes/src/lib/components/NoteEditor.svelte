@@ -11,6 +11,7 @@
   import { oneDark } from '@codemirror/theme-one-dark';
   import { noteLinkAutocomplete, type NoteLinkItem } from '$lib/editor/note-link-autocomplete';
   import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
+  import { listIndent, listOutdent } from '$lib/editor/list-keymap';
   import {
     createLivePreviewExtension,
     getMarkdownExtension,
@@ -335,6 +336,10 @@
           return true;
         }
       },
+      // List-aware Tab / Shift-Tab — must precede `indentWithTab`. Returns
+      // false outside list contexts so the default indent commands handle
+      // plain text, continuation lines, and multi-line selections.
+      { key: 'Tab', run: listIndent, shift: listOutdent },
       ...defaultKeymap,
       ...historyKeymap,
       indentWithTab
