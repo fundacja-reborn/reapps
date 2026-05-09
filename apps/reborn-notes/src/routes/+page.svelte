@@ -46,11 +46,19 @@
   import { notesStore, activeNoteId, type NoteListItem } from '$lib/stores/notes.store';
   import * as NoteService from '$lib/services/note.service';
   import { exportNoteAsMarkdown, exportNoteAsPdf } from '$lib/services/export-import.service';
+  import * as PeriodicNotesService from '$lib/services/periodic-notes.service';
+  import type { PeriodicKind } from '@reborn/storage';
   import { foldersStore } from '$lib/stores/folders.store';
   import { tagsStore } from '$lib/stores/tags.store';
   import { getSettings } from '$lib/utils/app-settings';
-  import { appSettings, imageLoadMode, editorModeIntroSeen } from '$lib/stores/app-settings.store';
+  import {
+    appSettings,
+    imageLoadMode,
+    editorModeIntroSeen,
+    periodicNotesSettings
+  } from '$lib/stores/app-settings.store';
   import EditorModeIntroDialog from '$lib/components/editor/EditorModeIntroDialog.svelte';
+  import PeriodicNoteOnboardingDialog from '$lib/components/editor/PeriodicNoteOnboardingDialog.svelte';
   import type { EditorMode } from '@reborn/storage';
   import { t } from '$lib/stores/i18n.store';
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
@@ -113,6 +121,26 @@
   const detailMenuNote = $derived(
     $activeNoteId ? ($notesStore.find((n) => n.id === $activeNoteId) ?? null) : null
   );
+
+  // Tag the open note with its periodic kind (if any) so the editor can swap
+  // its placeholder for kind-aware copy ("Zacznij pisać dzisiejszą notatkę…").
+  // Match by folder ID. Read from `detailMenuNote.folder_id` (the reactive
+  // notesStore lookup), NOT from `noteDetailService.folderId` — the service
+  // populates folderId asynchronously inside loadNote(), so on the first render
+  // after activeNoteId.set(...) it would still be the previous note's value
+  // and the editor would lock in the wrong placeholder.
+  const currentNoteKind = $derived.by((): PeriodicKind | null => {
+    const folderId = detailMenuNote?.folder_id;
+    if (!folderId) return null;
+    const settings = $periodicNotesSettings;
+    if (settings.daily.folderId === folderId) return 'daily';
+    if (settings.weekly.folderId === folderId) return 'weekly';
+    if (settings.monthly.folderId === folderId) return 'monthly';
+    return null;
+  });
+
+  // First-use onboarding modal — open with the kind that triggered it.
+  let periodicOnboardingKind = $state<PeriodicKind | null>(null);
 
   async function handleDetailPin() {
     detailActionSheetOpen = false;
@@ -516,6 +544,44 @@
     const id = await notesStore.create(`${prefix} ${date}`, '');
     noteDetailService.setNewNote();
     activeNoteId.set(id);
+  }
+
+  async function handlePeriodic(kind: PeriodicKind) {
+    // Same pre-flight as handleNewNote: filtered sections (trash/starred/tags)
+    // would hide the freshly created note, so jump back to "All" first.
+    if (activeSection === 'trash' || activeSection === 'starred' || activeSection === 'tags') {
+      activeSection = 'all';
+      activeFolderId = undefined;
+      activeTagId = null;
+      await tick();
+    }
+    try {
+      const { noteId, created } = await PeriodicNotesService.getOrCreateNote(kind);
+      if (created) {
+        noteDetailService.setNewNote();
+      }
+      activeNoteId.set(noteId);
+      // First-use onboarding: only on actual creation (not "open existing")
+      // and only if the user hasn't dismissed it on this device yet.
+      if (created && !$periodicNotesSettings[kind].onboardingDismissed) {
+        periodicOnboardingKind = kind;
+      }
+    } catch (err) {
+      const message = $t(`notes.periodic.errors.failed`);
+      toastStore.error(message);
+      console.error('[periodic-notes] failed to open', kind, err);
+    }
+  }
+
+  async function handlePeriodicOnboardingClose() {
+    const kind = periodicOnboardingKind;
+    periodicOnboardingKind = null;
+    if (!kind) return;
+    // Persist via the derived store's defensive merge so legacy stored
+    // settings without `onboardingDismissed` get the full shape written back.
+    const next = structuredClone($periodicNotesSettings);
+    next[kind].onboardingDismissed = true;
+    await appSettings.update('periodicNotes', next);
   }
 
   async function handleEditorModeIntroClose(chosen: EditorMode | null) {
@@ -940,6 +1006,7 @@
           bind:activeSection
           onNewNote={handleNewNote}
           onsectionclick={handleSectionClick}
+          onPeriodic={handlePeriodic}
           alwaysVisible
         />
 
@@ -1160,6 +1227,7 @@
               onnotelink={handleNoteLink}
               {resolveNoteTitle}
               imageLoadMode={$imageLoadMode}
+              noteKind={currentNoteKind}
             />
           {:else}
             <NoteEditorHeader
@@ -1243,6 +1311,7 @@
                 onnotelink={handleNoteLink}
                 {resolveNoteTitle}
                 imageLoadMode={$imageLoadMode}
+                noteKind={currentNoteKind}
               />
             </div>
           {/if}
@@ -1277,6 +1346,7 @@
         bind:activeSection
         onNewNote={handleNewNote}
         onsectionclick={handleSectionClick}
+        onPeriodic={handlePeriodic}
       />
 
       <!-- ── Content panel ───────────────────────────────────────── -->
@@ -1391,6 +1461,7 @@
             onnotelink={handleNoteLink}
             {resolveNoteTitle}
             imageLoadMode={$imageLoadMode}
+            noteKind={currentNoteKind}
           />
         {:else}
           <NoteEditorHeader
@@ -1471,6 +1542,7 @@
               onnotelink={handleNoteLink}
               {resolveNoteTitle}
               imageLoadMode={$imageLoadMode}
+              noteKind={currentNoteKind}
             />
           </div>
         {/if}
@@ -1645,4 +1717,9 @@
 <EditorModeIntroDialog
   bind:open={editorModeIntroOpen}
   onclose={handleEditorModeIntroClose}
+/>
+
+<PeriodicNoteOnboardingDialog
+  kind={periodicOnboardingKind}
+  onclose={handlePeriodicOnboardingClose}
 />

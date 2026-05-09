@@ -87,7 +87,60 @@
       "quota_exceeded": "Quota de stockage dépassé. Supprimez ou réduisez des notes pour continuer."
     },
     "size_indicator": "{used} / {max}",
-    "size_warning": "La taille de la note approche de la limite"
+    "size_warning": "La taille de la note approche de la limite",
+    "periodic": {
+      "daily": {
+        "folder": { "default": "Journal" },
+        "button": { "label": "Aujourd'hui", "tooltip": "Note du jour ({range})" },
+        "settings": { "section": "Quotidien" },
+        "placeholder": "Commencez à écrire la note du jour…",
+        "onboarding": {
+          "title": "Votre note du jour",
+          "body": "C'est votre note pour aujourd'hui. Chaque jour a sa propre note quotidienne — un clic sur « Aujourd'hui » vous ramène à la même note toute la journée. Demain, le clic en créera une nouvelle pour la nouvelle date.",
+          "tip": "Les notes hebdomadaires et mensuelles sont désactivées par défaut. Vous pouvez les activer dans les paramètres ci-dessous."
+        }
+      },
+      "weekly": {
+        "folder": { "default": "Notes hebdomadaires" },
+        "button": { "label": "Cette semaine", "tooltip": "Note hebdomadaire ({range})" },
+        "settings": { "section": "Hebdomadaire" },
+        "preview": { "range_hint": "← lundi de la semaine {range}" },
+        "placeholder": "Commencez à écrire la note de la semaine…",
+        "onboarding": {
+          "title": "Votre note de la semaine",
+          "body": "C'est une note partagée pour toute la semaine (lundi–dimanche). Quel que soit le jour où vous cliquez sur « Cette semaine », vous retrouvez la même note. La semaine prochaine, le clic en créera une nouvelle.",
+          "tip": "Le titre contient la date du lundi de cette semaine et le numéro de semaine ISO (par exemple 2026-05-04 W19)."
+        }
+      },
+      "monthly": {
+        "folder": { "default": "Notes mensuelles" },
+        "button": { "label": "Ce mois", "tooltip": "Note mensuelle ({range})" },
+        "settings": { "section": "Mensuel" },
+        "placeholder": "Commencez à écrire la note du mois…",
+        "onboarding": {
+          "title": "Votre note du mois",
+          "body": "C'est une note partagée pour tout le mois. Quel que soit le jour, un clic sur « Ce mois » ouvre la même note. Le mois prochain, le clic en créera une nouvelle.",
+          "tip": "Le titre contient l'année et le mois (par exemple 2026-05)."
+        }
+      },
+      "settings": {
+        "title": "Notes périodiques",
+        "description": "Notes quotidiennes, hebdomadaires et mensuelles (style Obsidian). Un clic ouvre ou crée la note de la période courante.",
+        "show_button": "Afficher le bouton dans la navigation",
+        "folder": "Dossier",
+        "folder_pick": "Choisir un dossier",
+        "folder_default_label": "Dossier par défaut ({name})",
+        "folder_will_create": "sera créé à la première utilisation",
+        "folder_select_this": "Sélectionner ce dossier",
+        "format": "Format du nom de fichier",
+        "preview": "Aperçu"
+      },
+      "onboarding": {
+        "open_settings": "Ouvrir les paramètres",
+        "got_it": "Compris"
+      },
+      "errors": { "failed": "Impossible d'ouvrir la note" }
+    }
   },
   "storage": {
     "title": "Utilisation du stockage",
@@ -191,8 +244,7 @@
     }
   },
   "editor": {
-    "placeholder": "Commencez à écrire...",
-    "placeholder_markdown": "Commencez à écrire en Markdown…",
+    "placeholder": "Commencez à écrire votre note…",
     "undo": "Annuler",
     "redo": "Rétablir",
     "undo_shortcut": "Annuler (Ctrl+Z)",
@@ -774,7 +826,9 @@
       "disable_error": "Échec de la désactivation 2FA",
       "invalid_password": "Mot de passe invalide",
       "connection_error": "Erreur de connexion au serveur",
-      "password_required": "Le mot de passe est obligatoire"
+      "password_required": "Le mot de passe est obligatoire",
+      "enabled_toast": "L'authentification à deux facteurs a été activée",
+      "disabled_toast": "L'authentification à deux facteurs a été désactivée"
     },
     "sessions": {
       "title": "Sessions actives",
@@ -824,7 +878,10 @@
       "file_warning": "Conservez ces codes dans un endroit sûr. Chaque code ne peut être utilisé qu'une seule fois.",
       "setup_title": "Enregistrez vos codes de récupération",
       "setup_description": "Ces codes vous aideront à accéder à votre compte si vous perdez votre appareil d'authentification. Chaque code ne peut être utilisé qu'une seule fois.",
-      "saved_continue": "J'ai enregistré mes codes, continuer"
+      "saved_continue": "J'ai enregistré mes codes, continuer",
+      "generate_failed_warning": "Impossible de générer les codes de récupération. Vous pourrez les générer plus tard dans les paramètres.",
+      "generated_success": "{count} codes de récupération générés",
+      "copied": "Codes de récupération copiés dans le presse-papiers"
     },
     "delete_account": {
       "title": "Supprimer le compte",

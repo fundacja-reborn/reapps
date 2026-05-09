@@ -87,7 +87,60 @@
       "quota_exceeded": "Przekroczono limit storage. Usuń lub zmniejsz notatki aby kontynuować."
     },
     "size_indicator": "{used} / {max}",
-    "size_warning": "Rozmiar notatki zbliża się do limitu"
+    "size_warning": "Rozmiar notatki zbliża się do limitu",
+    "periodic": {
+      "daily": {
+        "folder": { "default": "Dziennik" },
+        "button": { "label": "Dziś", "tooltip": "Dzisiejsza notatka ({range})" },
+        "settings": { "section": "Dziennie" },
+        "placeholder": "Zacznij pisać dzisiejszą notatkę…",
+        "onboarding": {
+          "title": "Twoja dzienna notatka",
+          "body": "To Twoja notatka na dziś. Każdy dzień ma własną notatkę dzienną — klikając „Dziś” wracasz do tej samej notatki przez cały dzień. Jutro klik utworzy nową notatkę dla nowej daty.",
+          "tip": "Notatki tygodniowe i miesięczne są domyślnie wyłączone. Możesz je włączyć w ustawieniach poniżej."
+        }
+      },
+      "weekly": {
+        "folder": { "default": "Notatki tygodniowe" },
+        "button": { "label": "Ten tydzień", "tooltip": "Notatka tygodnia ({range})" },
+        "settings": { "section": "Tygodniowo" },
+        "preview": { "range_hint": "← poniedziałek tygodnia {range}" },
+        "placeholder": "Zacznij pisać notatkę tego tygodnia…",
+        "onboarding": {
+          "title": "Twoja notatka tygodnia",
+          "body": "To wspólna notatka dla całego tygodnia (poniedziałek–niedziela). Niezależnie od dnia, w którym klikniesz „Ten tydzień”, wracasz do tej samej notatki. W przyszłym tygodniu klik utworzy nową.",
+          "tip": "Tytuł notatki zawiera datę poniedziałku tego tygodnia i numer tygodnia ISO (np. 2026-05-04 W19)."
+        }
+      },
+      "monthly": {
+        "folder": { "default": "Notatki miesięczne" },
+        "button": { "label": "Ten miesiąc", "tooltip": "Notatka miesięczna ({range})" },
+        "settings": { "section": "Miesięcznie" },
+        "placeholder": "Zacznij pisać notatkę tego miesiąca…",
+        "onboarding": {
+          "title": "Twoja notatka miesiąca",
+          "body": "To wspólna notatka dla całego miesiąca. Niezależnie od dnia, w którym klikniesz „Ten miesiąc”, otwierasz tę samą notatkę. W kolejnym miesiącu klik utworzy nową.",
+          "tip": "Tytuł notatki zawiera rok i miesiąc (np. 2026-05)."
+        }
+      },
+      "settings": {
+        "title": "Notatki okresowe",
+        "description": "Notatki dzienne, tygodniowe i miesięczne (jak w Obsidian). Jeden klik otwiera lub tworzy notatkę dla bieżącego okresu.",
+        "show_button": "Pokaż przycisk w nawigacji",
+        "folder": "Folder",
+        "folder_pick": "Wybierz folder",
+        "folder_default_label": "Domyślny folder ({name})",
+        "folder_will_create": "zostanie utworzony przy pierwszym użyciu",
+        "folder_select_this": "Wybierz ten folder",
+        "format": "Format nazwy pliku",
+        "preview": "Podgląd"
+      },
+      "onboarding": {
+        "open_settings": "Otwórz ustawienia",
+        "got_it": "Rozumiem"
+      },
+      "errors": { "failed": "Nie udało się otworzyć notatki" }
+    }
   },
   "storage": {
     "title": "Wykorzystanie storage",
@@ -191,8 +244,7 @@
     }
   },
   "editor": {
-    "placeholder": "Zacznij pisać...",
-    "placeholder_markdown": "Zacznij pisać w Markdown…",
+    "placeholder": "Zacznij pisać swoją notatkę…",
     "undo": "Cofnij",
     "redo": "Ponów",
     "undo_shortcut": "Cofnij (Ctrl+Z)",

@@ -33,7 +33,18 @@ export {
 export * from './stores';
 
 // Export AppSettings type for app usage
-export type { AppSettings, ImageLoadMode, EditorMode } from './stores/settings.store';
+export type {
+  AppSettings,
+  ImageLoadMode,
+  EditorMode,
+  PeriodicKind,
+  PeriodicKindSettings,
+  PeriodicNotesSettings
+} from './stores/settings.store';
+export {
+  PERIODIC_NOTES_DEFAULTS,
+  PERIODIC_NOTES_DEFAULT_FORMATS
+} from './stores/settings.store';
 
 // Re-export types from @reborn/types for convenience
 export type {

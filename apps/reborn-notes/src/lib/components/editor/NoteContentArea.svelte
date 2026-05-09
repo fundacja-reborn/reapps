@@ -5,7 +5,7 @@
   import EncryptionXRay from '$lib/components/EncryptionXRay.svelte';
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import { t } from '$lib/stores/i18n.store';
-  import type { ImageLoadMode } from '@reborn/storage';
+  import type { ImageLoadMode, PeriodicKind } from '@reborn/storage';
 
   type ViewMode = 'edit' | 'split' | 'preview';
 
@@ -22,6 +22,7 @@
     previewContentEl = $bindable(null),
     autocompleteNotes,
     imageLoadMode = 'ask' as ImageLoadMode,
+    noteKind = null,
     parentScroll = false,
     isMobile = false,
     oncontentchange,
@@ -44,6 +45,9 @@
     previewContentEl?: HTMLElement | null;
     autocompleteNotes: { id: string; title: string }[];
     imageLoadMode?: ImageLoadMode;
+    /** Periodic kind of the open note (daily/weekly/monthly), or null for a regular
+     *  note. Drives kind-aware editor placeholder copy. */
+    noteKind?: PeriodicKind | null;
     /** When true (desktop edit mode), the parent scrolls and editor grows to content.
      *  Effective only in single-pane edit mode — split view always uses independent
      *  scrolls per pane. */
@@ -66,6 +70,10 @@
   // flex container caused reflow loops on iOS Safari. Edit and preview both let
   // the parent scroll (parent grows with content, sticky toolbar/header work).
   const isParentScrollActive = $derived(parentScroll && effectiveViewMode !== 'split');
+
+  const placeholderText = $derived(
+    noteKind ? $t(`notes.periodic.${noteKind}.placeholder`) : $t('editor.placeholder')
+  );
 </script>
 
 <div class="relative {isParentScrollActive ? '' : 'flex min-h-0 flex-1 overflow-hidden'}">
@@ -94,7 +102,7 @@
         <NoteEditor
           bind:this={editorRef}
           content={noteDetailService.content}
-          placeholder={$t('editor.placeholder_markdown')}
+          placeholder={placeholderText}
           onchange={oncontentchange}
           {onviewinit}
           {onviewdestroy}
@@ -114,7 +122,7 @@
             <NoteEditor
               bind:this={editorRef}
               content={noteDetailService.content}
-              placeholder={$t('editor.placeholder_markdown')}
+              placeholder={placeholderText}
               onchange={oncontentchange}
               {onviewinit}
               {onviewdestroy}

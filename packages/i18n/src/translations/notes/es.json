@@ -87,7 +87,60 @@
       "quota_exceeded": "Cuota de almacenamiento excedida. Elimine o reduzca notas para continuar."
     },
     "size_indicator": "{used} / {max}",
-    "size_warning": "El tamaño de la nota se acerca al límite"
+    "size_warning": "El tamaño de la nota se acerca al límite",
+    "periodic": {
+      "daily": {
+        "folder": { "default": "Diario" },
+        "button": { "label": "Hoy", "tooltip": "Nota de hoy ({range})" },
+        "settings": { "section": "Diario" },
+        "placeholder": "Empiece a escribir la nota de hoy…",
+        "onboarding": {
+          "title": "Su nota de hoy",
+          "body": "Esta es su nota para hoy. Cada día tiene su propia nota diaria — al pulsar «Hoy» vuelve a la misma nota durante todo el día. Mañana el clic creará una nueva para la nueva fecha.",
+          "tip": "Las notas semanales y mensuales están desactivadas por defecto. Puede activarlas en los ajustes de abajo."
+        }
+      },
+      "weekly": {
+        "folder": { "default": "Notas semanales" },
+        "button": { "label": "Esta semana", "tooltip": "Nota semanal ({range})" },
+        "settings": { "section": "Semanal" },
+        "preview": { "range_hint": "← lunes de la semana {range}" },
+        "placeholder": "Empiece a escribir la nota de esta semana…",
+        "onboarding": {
+          "title": "Su nota semanal",
+          "body": "Es una nota compartida para toda la semana (lunes–domingo). Sea cual sea el día en que pulse «Esta semana», vuelve a la misma nota. La próxima semana el clic creará una nueva.",
+          "tip": "El título contiene la fecha del lunes de esta semana y el número de semana ISO (por ejemplo, 2026-05-04 W19)."
+        }
+      },
+      "monthly": {
+        "folder": { "default": "Notas mensuales" },
+        "button": { "label": "Este mes", "tooltip": "Nota mensual ({range})" },
+        "settings": { "section": "Mensual" },
+        "placeholder": "Empiece a escribir la nota de este mes…",
+        "onboarding": {
+          "title": "Su nota mensual",
+          "body": "Es una nota compartida para todo el mes. Sea cual sea el día, al pulsar «Este mes» abre la misma nota. El próximo mes el clic creará una nueva.",
+          "tip": "El título contiene el año y el mes (por ejemplo, 2026-05)."
+        }
+      },
+      "settings": {
+        "title": "Notas periódicas",
+        "description": "Notas diarias, semanales y mensuales (estilo Obsidian). Un clic abre o crea la nota del periodo actual.",
+        "show_button": "Mostrar botón en la navegación",
+        "folder": "Carpeta",
+        "folder_pick": "Elegir carpeta",
+        "folder_default_label": "Carpeta predeterminada ({name})",
+        "folder_will_create": "se creará al primer uso",
+        "folder_select_this": "Seleccionar esta carpeta",
+        "format": "Formato del nombre de archivo",
+        "preview": "Vista previa"
+      },
+      "onboarding": {
+        "open_settings": "Abrir ajustes",
+        "got_it": "Entendido"
+      },
+      "errors": { "failed": "No se pudo abrir la nota" }
+    }
   },
   "storage": {
     "title": "Uso del almacenamiento",
@@ -191,8 +244,7 @@
     }
   },
   "editor": {
-    "placeholder": "Comience a escribir...",
-    "placeholder_markdown": "Comience a escribir en Markdown…",
+    "placeholder": "Empiece a escribir su nota…",
     "undo": "Deshacer",
     "redo": "Rehacer",
     "undo_shortcut": "Deshacer (Ctrl+Z)",
@@ -774,7 +826,9 @@
       "disable_error": "Error al desactivar 2FA",
       "invalid_password": "Contraseña no válida",
       "connection_error": "Error de conexión con el servidor",
-      "password_required": "La contraseña es obligatoria"
+      "password_required": "La contraseña es obligatoria",
+      "enabled_toast": "La autenticación de dos factores ha sido activada",
+      "disabled_toast": "La autenticación de dos factores ha sido desactivada"
     },
     "sessions": {
       "title": "Sesiones activas",
@@ -824,7 +878,10 @@
       "file_warning": "Guarde estos códigos en un lugar seguro. Cada código solo puede usarse una vez.",
       "setup_title": "Guarde sus códigos de recuperación",
       "setup_description": "Estos códigos le ayudarán a acceder a su cuenta si pierde su dispositivo de autenticación. Cada código solo puede usarse una vez.",
-      "saved_continue": "He guardado mis códigos, continuar"
+      "saved_continue": "He guardado mis códigos, continuar",
+      "generate_failed_warning": "No se pudieron generar los códigos de recuperación. Puede generarlos más tarde en los ajustes.",
+      "generated_success": "Se generaron {count} códigos de recuperación",
+      "copied": "Códigos de recuperación copiados al portapapeles"
     },
     "delete_account": {
       "title": "Eliminar cuenta",

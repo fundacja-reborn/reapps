@@ -21,7 +21,8 @@
     Scale,
     User,
     HardDrive,
-    ShieldAlert
+    ShieldAlert,
+    CalendarDays
   } from '@lucide/svelte';
   import { goto } from '$lib/utils/navigation';
   import { t } from '$lib/stores/i18n.store';
@@ -169,6 +170,16 @@
               <div class="font-medium">{$t('settings_page.appearance.title')}</div>
               <div class="text-sm text-muted-foreground">
                 {$t('settings_page.appearance.hub_desc')}
+              </div>
+            </div>
+            <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
+          </a>
+          <a href={resolve('/settings/periodic-notes')} class={itemClasses}>
+            <CalendarDays class="h-5 w-5 text-muted-foreground shrink-0" />
+            <div class="flex-1 min-w-0">
+              <div class="font-medium">{$t('notes.periodic.settings.title')}</div>
+              <div class="text-sm text-muted-foreground">
+                {$t('notes.periodic.settings.description')}
               </div>
             </div>
             <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />

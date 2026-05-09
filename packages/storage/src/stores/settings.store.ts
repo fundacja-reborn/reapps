@@ -9,6 +9,33 @@ const logger = createLogger('SettingsStore');
 export type ImageLoadMode = 'ask' | 'always' | 'never';
 export type EditorMode = 'markdown' | 'live';
 
+export type PeriodicKind = 'daily' | 'weekly' | 'monthly';
+
+export interface PeriodicKindSettings {
+  /** Show the corresponding button in the Notes navigation rail. */
+  enabled: boolean;
+  /** Folder ID where notes of this kind live. Null = not yet created (lazy). */
+  folderId: string | null;
+  /**
+   * `Intl.DateTimeFormat` token string for the note title. Tokens supported:
+   * `YYYY`, `YY`, `MM`, `MMMM`, `MMM`, `DD`, `D`, `dddd`, `ddd`, `[W]ww`,
+   * `[W]w`, `ww`, `w`. Anything inside `[…]` is emitted literally.
+   */
+  format: string;
+  /**
+   * True after the user has dismissed the first-use onboarding modal for this
+   * kind. Local & device-specific (lives in `app-settings`, not synced) so each
+   * device gets its own onboarding the first time the kind is used there.
+   */
+  onboardingDismissed: boolean;
+}
+
+export interface PeriodicNotesSettings {
+  daily: PeriodicKindSettings;
+  weekly: PeriodicKindSettings;
+  monthly: PeriodicKindSettings;
+}
+
 export interface AppSettings {
   id: string;
   app_name: 'reborn-task' | 'reborn-notes'; // Identyfikator aplikacji
@@ -27,9 +54,44 @@ export interface AppSettings {
   imageLoadMode: ImageLoadMode;
   editorMode: EditorMode;
   editorModeIntroSeen: boolean;
+  /**
+   * Notes-only: per-kind settings for Daily / Weekly / Monthly Notes (Obsidian-style).
+   * Local & device-specific — not synced. Optional in the type so reborn-task settings
+   * don't carry the field. Defaults are written by `initializeDefaults` for the notes app.
+   */
+  periodicNotes?: PeriodicNotesSettings;
   created_at: string;
   updated_at: string;
 }
+
+/** Default formats per kind. See guideline 57. */
+export const PERIODIC_NOTES_DEFAULT_FORMATS: Record<PeriodicKind, string> = {
+  daily: 'YYYY-MM-DD dddd',
+  weekly: 'YYYY-MM-DD [W]ww',
+  monthly: 'YYYY-MM'
+};
+
+/** Default visibility per kind: only Daily on by default. */
+export const PERIODIC_NOTES_DEFAULTS: PeriodicNotesSettings = {
+  daily: {
+    enabled: true,
+    folderId: null,
+    format: PERIODIC_NOTES_DEFAULT_FORMATS.daily,
+    onboardingDismissed: false
+  },
+  weekly: {
+    enabled: false,
+    folderId: null,
+    format: PERIODIC_NOTES_DEFAULT_FORMATS.weekly,
+    onboardingDismissed: false
+  },
+  monthly: {
+    enabled: false,
+    folderId: null,
+    format: PERIODIC_NOTES_DEFAULT_FORMATS.monthly,
+    onboardingDismissed: false
+  }
+};
 
 /**
  * Application settings store (non-encrypted, device-specific settings)
@@ -106,6 +168,9 @@ export const settingsOperations = {
           imageLoadMode: 'ask',
           editorMode: 'live',
           editorModeIntroSeen: false,
+          ...(appName === 'reborn-notes'
+            ? { periodicNotes: structuredClone(PERIODIC_NOTES_DEFAULTS) }
+            : {}),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
