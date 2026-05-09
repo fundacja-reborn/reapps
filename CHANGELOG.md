@@ -1,3 +1,16 @@
+## 0.18.0 (2026-05-09)
+
+### 🚀 Features
+
+- **notes:** periodic notes ([#150](https://github.com/fundacja-reborn/reapps/pull/150))
+- **storage:** e2e settings sync ([#151](https://github.com/fundacja-reborn/reapps/pull/151))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.17.0 (2026-05-08)
 
 ### 🚀 Features
