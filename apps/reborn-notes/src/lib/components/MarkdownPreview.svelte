@@ -94,6 +94,15 @@
   const md = new Marked({ gfm: true, breaks: true });
   const renderer: RendererObject = {};
 
+  // Visual cap mirroring MAX_LIST_DEPTH in editor/live-preview/decorations.ts.
+  // Each list gets data-d="N" so the tapered margin-left ramp in the style
+  // block can position deep nestings the same way Live Preview does. Counter
+  // increments on enter and decrements on exit; the recursion through
+  // this.listitem (which re-enters renderer.list for nested lists in item
+  // content) keeps it in sync without explicit walk.
+  const PREVIEW_MAX_LIST_DEPTH = 12;
+  let listDepth = 0;
+
   // "Pinned" snapshot of the prop, synced at the start of every $derived html
   // recomputation. The renderer.image closure reads this regular variable
   // instead of `imageLoadMode` directly because:
@@ -154,6 +163,25 @@
     return highlightCodeToHtml(text, info);
   };
 
+  // Stateful depth-aware list renderer. `this` is bound to the renderer
+  // instance by marked's use({renderer}) wrapper, so we delegate item
+  // rendering to this.listitem (default impl) — items containing nested
+  // lists will recurse back through this same override.
+  renderer.list = function listOverride(token: Tokens.List) {
+    listDepth++;
+    const depth = Math.min(listDepth, PREVIEW_MAX_LIST_DEPTH);
+    const self = this as { listitem: (i: Tokens.ListItem) => string };
+    let body = '';
+    for (const item of token.items) {
+      body += self.listitem(item);
+    }
+    listDepth--;
+    const tag = token.ordered ? 'ol' : 'ul';
+    const startAttr =
+      token.ordered && token.start !== 1 && token.start !== '' ? ` start="${token.start}"` : '';
+    return `<${tag}${startAttr} data-d="${depth}">\n${body}</${tag}>\n`;
+  };
+
   md.use({ renderer });
 
   // Tokens of the latest render — kept so we can stamp `data-source-line`
@@ -173,6 +201,10 @@
     //    whether Svelte tracks reads inside a closure invoked from marked.
     void langLoadTick;
     imageModeSnapshot = imageLoadMode;
+    // Defensive reset — renderer.list decrements after each list, so under
+    // normal flow this is already 0; resetting guards against a thrown
+    // sanitize/parse leaving the counter stuck.
+    listDepth = 0;
     if (!content) {
       lastTokens = [];
       return '';
@@ -394,6 +426,48 @@
   }
   .preview :global(li + li) {
     margin-top: 0.25em;
+  }
+
+  /* Tapered indent ramp — mirrors the bullet/ordered depth rules in
+     editor/live-preview/theme.ts so Preview and Live Preview render nested
+     lists with the same geometry. The renderer in this component stamps
+     data-d="N" on every ul/ol (1..12, clamped). margin-left here is the
+     delta from the parent list's content edge — d2..d12 stack on top of the
+     d1 base (1.5em), giving cumulative offsets that match Live Preview's
+     absolute paddings. d2 has the larger 2.5em step so a nested item sits
+     visibly past the parent's content; d3..d6 keep the 1.5em rhythm; d7..d12
+     taper to 0.75em so deep trees stay usable on a 360px viewport. */
+  .preview :global(ul[data-d='1']),
+  .preview :global(ol[data-d='1']) {
+    margin-left: 1.5em;
+  }
+  .preview :global(ul[data-d='2']),
+  .preview :global(ol[data-d='2']) {
+    margin-left: 2.5em;
+  }
+  .preview :global(ul[data-d='3']),
+  .preview :global(ol[data-d='3']),
+  .preview :global(ul[data-d='4']),
+  .preview :global(ol[data-d='4']),
+  .preview :global(ul[data-d='5']),
+  .preview :global(ol[data-d='5']),
+  .preview :global(ul[data-d='6']),
+  .preview :global(ol[data-d='6']) {
+    margin-left: 1.5em;
+  }
+  .preview :global(ul[data-d='7']),
+  .preview :global(ol[data-d='7']),
+  .preview :global(ul[data-d='8']),
+  .preview :global(ol[data-d='8']),
+  .preview :global(ul[data-d='9']),
+  .preview :global(ol[data-d='9']),
+  .preview :global(ul[data-d='10']),
+  .preview :global(ol[data-d='10']),
+  .preview :global(ul[data-d='11']),
+  .preview :global(ol[data-d='11']),
+  .preview :global(ul[data-d='12']),
+  .preview :global(ol[data-d='12']) {
+    margin-left: 0.75em;
   }
 
   .preview :global(blockquote) {
