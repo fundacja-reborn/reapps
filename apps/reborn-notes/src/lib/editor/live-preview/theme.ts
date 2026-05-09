@@ -117,22 +117,40 @@ export const livePreviewTheme = EditorView.theme({
     fontStyle: 'italic'
   },
 
-  // Bullet list line — render a bullet via ::before
+  // Bullet list — depth-aware padding + ::before bullet.
+  // Padding/left scale linearly with depth (1.5em per level). Each ListItem
+  // gets `cm-lp-bullet-line cm-lp-bullet-d{N}` from `decorations.ts`, where N
+  // counts BulletList/OrderedList ancestors (clamped to MAX_LIST_DEPTH = 6).
+  // Mirrors MarkdownPreview's `<ul><ul>` nesting (1.5em per level).
   '.cm-lp-bullet-line': {
-    position: 'relative',
-    paddingLeft: '1.5em'
+    position: 'relative'
   },
   '.cm-lp-bullet-line::before': {
     content: '"•"',
     position: 'absolute',
-    left: '0.5em',
     color: 'var(--muted-foreground)'
   },
+  '.cm-lp-bullet-d1': { paddingLeft: '1.5em' },
+  '.cm-lp-bullet-d1::before': { left: '0.5em' },
+  '.cm-lp-bullet-d2': { paddingLeft: '3em' },
+  '.cm-lp-bullet-d2::before': { left: '2em' },
+  '.cm-lp-bullet-d3': { paddingLeft: '4.5em' },
+  '.cm-lp-bullet-d3::before': { left: '3.5em' },
+  '.cm-lp-bullet-d4': { paddingLeft: '6em' },
+  '.cm-lp-bullet-d4::before': { left: '5em' },
+  '.cm-lp-bullet-d5': { paddingLeft: '7.5em' },
+  '.cm-lp-bullet-d5::before': { left: '6.5em' },
+  '.cm-lp-bullet-d6': { paddingLeft: '9em' },
+  '.cm-lp-bullet-d6::before': { left: '8em' },
 
-  // Ordered list line — keep marker visible, just indent slightly
-  '.cm-lp-ordered-line': {
-    paddingLeft: '0.5em'
-  },
+  // Ordered list — same indent rhythm but no ::before (number stays in source).
+  '.cm-lp-ordered-line': {},
+  '.cm-lp-ordered-d1': { paddingLeft: '1.5em' },
+  '.cm-lp-ordered-d2': { paddingLeft: '3em' },
+  '.cm-lp-ordered-d3': { paddingLeft: '4.5em' },
+  '.cm-lp-ordered-d4': { paddingLeft: '6em' },
+  '.cm-lp-ordered-d5': { paddingLeft: '7.5em' },
+  '.cm-lp-ordered-d6': { paddingLeft: '9em' },
 
   // ─── Fenced code blocks ──────────────────────────────────────
   // Cursor outside: replaced with <div class="cm-lp-codeblock-wrap"><pre>.
