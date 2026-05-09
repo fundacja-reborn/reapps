@@ -6,20 +6,22 @@
  * NoteEditor.svelte based on the user's `editorMode` setting.
  *
  * Scope: ATX headings, **bold**, *italic*, `inline code`, links (incl. note:UUID),
- * blockquote, bullet/ordered lists, fenced code blocks (```lang ... ```),
- * GFM tables (always rendered as an editable widget — Obsidian-style),
- * and inline images (`![alt](url)` — placeholder/auto-load per user
- * preference, raw markdown when the cursor is inside the image range).
+ * blockquote, bullet/ordered lists, GFM task lists (`- [ ]` / `- [x]` with an
+ * interactive checkbox widget), fenced code blocks (```lang ... ```), GFM
+ * tables (always rendered as an editable widget — Obsidian-style), and inline
+ * images (`![alt](url)` — placeholder/auto-load per user preference, raw
+ * markdown when the cursor is inside the image range).
  */
 import type { Extension } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
-import { Strikethrough, Table } from '@lezer/markdown';
+import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import type { ImageLoadMode } from '@reborn/storage';
 import {
   createLivePreviewField,
   livePreviewSyncListener,
   livePreviewAtomicRanges,
-  livePreviewListClickForward
+  livePreviewListClickForward,
+  livePreviewTaskCheckboxToggle
 } from './decorations';
 import { livePreviewTheme } from './theme';
 import { codeLanguages } from './code-languages';
@@ -52,6 +54,7 @@ export function createLivePreviewExtension(options: LivePreviewOptions = {}): Ex
     livePreviewSyncListener,
     livePreviewAtomicRanges,
     livePreviewListClickForward,
+    livePreviewTaskCheckboxToggle,
     livePreviewTheme
   ];
 }
@@ -59,10 +62,11 @@ export function createLivePreviewExtension(options: LivePreviewOptions = {}): Ex
 /**
  * Markdown parser config shared by both editor modes. Extracted as a helper
  * because both raw and Live Preview need the same parser features (GFM
- * Strikethrough + Table + nested code-language descriptors). Used by NoteEditor.svelte.
+ * Strikethrough + Table + Task list + nested code-language descriptors).
+ * Used by NoteEditor.svelte.
  */
 export function getMarkdownExtension(): Extension {
-  return markdown({ extensions: [Strikethrough, Table], codeLanguages });
+  return markdown({ extensions: [Strikethrough, Table, TaskList], codeLanguages });
 }
 
 export {
@@ -73,6 +77,7 @@ export {
   livePreviewSyncListener,
   livePreviewAtomicRanges,
   livePreviewListClickForward,
+  livePreviewTaskCheckboxToggle,
   rebuildLivePreview,
   type BuildDecorationsOptions
 } from './decorations';

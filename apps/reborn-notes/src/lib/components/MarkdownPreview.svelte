@@ -13,6 +13,7 @@
     annotateTopLevelLines,
     applySourceLineAttrs
   } from '$lib/utils/source-line';
+  import { createMarkdownListRenderers } from '$lib/utils/markdown-to-html';
 
   const NOTE_LINK_RE = /^note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 
@@ -42,6 +43,7 @@
     contentEl = $bindable<HTMLElement | null>(null),
     imageLoadMode = 'ask' as ImageLoadMode,
     onNoteLink,
+    onTaskToggle,
     onrender,
     resolveNoteTitle
   }: {
@@ -58,6 +60,17 @@
     imageLoadMode?: ImageLoadMode;
     /** Called when user clicks a note:UUID link */
     onNoteLink?: (noteId: string) => void;
+    /**
+     * Called when the user clicks a checkbox in a GFM task list. The owner
+     * is responsible for toggling the matching `[ ]` / `[x]` in the
+     * markdown source — this component only emits the click, since the
+     * source string lives upstream (note store / editor doc).
+     *
+     * `taskIndex` is the zero-based ordinal of the task in render order
+     * (mirrored on the editor side by counting `[ ]`/`[x]` markers in the
+     * doc), `checked` is the new desired state.
+     */
+    onTaskToggle?: (taskIndex: number, checked: boolean) => void;
     /**
      * Fired after the rendered HTML is committed to the DOM (and
      * `data-source-line` attrs are stamped). The parent uses this to
@@ -92,16 +105,13 @@
   // stomped when multiple MarkdownPreview components are mounted (e.g. mobile
   // + desktop layouts, or version-history previews).
   const md = new Marked({ gfm: true, breaks: true });
-  const renderer: RendererObject = {};
 
-  // Visual cap mirroring MAX_LIST_DEPTH in editor/live-preview/decorations.ts.
-  // Each list gets data-d="N" so the tapered margin-left ramp in the style
-  // block can position deep nestings the same way Live Preview does. Counter
-  // increments on enter and decrements on exit; the recursion through
-  // this.listitem (which re-enters renderer.list for nested lists in item
-  // content) keeps it in sync without explicit walk.
-  const PREVIEW_MAX_LIST_DEPTH = 12;
-  let listDepth = 0;
+  // List / task-list renderers are shared with `exportNoteAsPdf` so the PDF
+  // pipeline emits the same `task-list-item` markup (no double bullet, scoped
+  // strikethrough). Image / code below stay Preview-specific.
+  const { renderer: listRenderers, reset: resetListCounters } =
+    createMarkdownListRenderers();
+  const renderer: RendererObject = { ...listRenderers };
 
   // "Pinned" snapshot of the prop, synced at the start of every $derived html
   // recomputation. The renderer.image closure reads this regular variable
@@ -163,25 +173,6 @@
     return highlightCodeToHtml(text, info);
   };
 
-  // Stateful depth-aware list renderer. `this` is bound to the renderer
-  // instance by marked's use({renderer}) wrapper, so we delegate item
-  // rendering to this.listitem (default impl) — items containing nested
-  // lists will recurse back through this same override.
-  renderer.list = function listOverride(token: Tokens.List) {
-    listDepth++;
-    const depth = Math.min(listDepth, PREVIEW_MAX_LIST_DEPTH);
-    const self = this as { listitem: (i: Tokens.ListItem) => string };
-    let body = '';
-    for (const item of token.items) {
-      body += self.listitem(item);
-    }
-    listDepth--;
-    const tag = token.ordered ? 'ol' : 'ul';
-    const startAttr =
-      token.ordered && token.start !== 1 && token.start !== '' ? ` start="${token.start}"` : '';
-    return `<${tag}${startAttr} data-d="${depth}">\n${body}</${tag}>\n`;
-  };
-
   md.use({ renderer });
 
   // Tokens of the latest render — kept so we can stamp `data-source-line`
@@ -202,9 +193,10 @@
     void langLoadTick;
     imageModeSnapshot = imageLoadMode;
     // Defensive reset — renderer.list decrements after each list, so under
-    // normal flow this is already 0; resetting guards against a thrown
-    // sanitize/parse leaving the counter stuck.
-    listDepth = 0;
+    // normal flow listDepth is already 0; resetting guards against a thrown
+    // sanitize/parse leaving the counters stuck, and starts taskCounter at 0
+    // so `data-task-index` aligns with the markdown source's marker order.
+    resetListCounters();
     if (!content) {
       lastTokens = [];
       return '';
@@ -260,6 +252,26 @@
   function handleClick(e: MouseEvent) {
     const target = e.target as HTMLElement;
 
+    // Task list checkbox toggle. The browser flips `checked` before the
+    // click handler runs; we read the flipped value as the desired state and
+    // ask the owner to persist it in the markdown source. The next render
+    // outputs a fresh checkbox with the correct `checked` attribute, so the
+    // visual stays in sync. If no callback is wired (read-only context), we
+    // `preventDefault` to revert the flip so the DOM doesn't drift from the
+    // source.
+    if (target.tagName === 'INPUT' && target.classList.contains('task-list-item-checkbox')) {
+      const li = target.closest('li.task-list-item') as HTMLElement | null;
+      const idxAttr = li?.dataset.taskIndex;
+      const idx = idxAttr != null ? parseInt(idxAttr, 10) : NaN;
+      if (!Number.isFinite(idx) || !onTaskToggle) {
+        e.preventDefault();
+        return;
+      }
+      const desired = (target as HTMLInputElement).checked;
+      onTaskToggle(idx, desired);
+      return;
+    }
+
     // Handle "Load image" button
     const loadBtn = target.closest('.image-placeholder-load');
     if (loadBtn) {
@@ -302,12 +314,21 @@
   );
 </script>
 
+<!-- `data-sveltekit-preload-*="off"` stops SvelteKit's hover/touch preload
+     for any <a> emitted by the rendered markdown. Preview links are user
+     content (relative paths, external URLs, `note:UUID`) — none of them are
+     real SvelteKit routes, so the preload chunks are always wasted. Without
+     this, every {@html} re-render (e.g. checkbox toggle, autosave reflow)
+     repreloads `/notes/_app/immutable/...` and the browser logs "preloaded
+     but not used" warnings. -->
 <div
   bind:this={containerEl}
   class="preview overflow-auto bg-background pt-4 pb-5 text-base md:text-sm leading-relaxed text-foreground {className}"
   aria-label={$t('editor.markdown_preview')}
   onclick={handleClick}
   role="presentation"
+  data-sveltekit-preload-data="off"
+  data-sveltekit-preload-code="off"
 >
   {#if hasImagePlaceholders}
     <button type="button" class="load-all-images-btn">
@@ -646,10 +667,40 @@
     border-radius: 0.375em;
   }
 
-  /* Checklist items (GFM task lists) */
+  /* Checklist items (GFM task lists). `task-list-item` drops the default
+     bullet; the checkbox itself is pulled back into the bullet space below.
+     Mirrors GitHub's CSS. `task-list-item-checked` adds strikethrough + muted
+     color, matching Live Preview's `cm-lp-task-checked`. */
+  .preview :global(li.task-list-item) {
+    list-style-type: none;
+  }
+  /* Strikethrough + muted colour scoped to the parent's own inline-content
+     wrapper. Each GFM task is independent state, so a checked parent must
+     not visually mark its children as done. Putting the decoration on the
+     `<li>` itself made it propagate (text-decoration is "drawn through"
+     inline descendants of the line box, and `text-decoration: none` on a
+     descendant block does not cancel the parent's drawn line). The renderer
+     wraps the parent's inline content in `<span class="task-list-item-content">`
+     so any nested `<ul>`/`<ol>` is a *sibling* of this wrapper, not a
+     descendant — the line ends at the wrapper boundary. */
+  .preview :global(li.task-list-item-checked) > :global(.task-list-item-content) {
+    text-decoration: line-through;
+    color: var(--muted-foreground);
+  }
   .preview :global(input[type='checkbox']) {
     margin-right: 0.4em;
     accent-color: var(--primary);
+  }
+  /* Pull the checkbox into the bullet zone (GitHub-style). Putting the
+     negative margin on the checkbox — not on the <li> — leaves the list-
+     item's box untouched, so each nested level still gets its full indent
+     from the parent ul's `[data-d='N']` margin ramp. The previous approach
+     (`li.task-list-item { margin-left: -1.5em }`) cancelled the d3+ ramp
+     exactly, collapsing every deeper level into the same column as d2. */
+  .preview :global(.task-list-item-checkbox) {
+    cursor: pointer;
+    transform: translateY(-1px);
+    margin-left: -1.4em;
   }
 
   /* ── Image placeholders ─────────────────────────────────────

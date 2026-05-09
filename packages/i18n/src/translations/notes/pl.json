@@ -264,6 +264,7 @@
       "heading3": "Nagłówek 3",
       "bullet_list": "Lista punktowana",
       "numbered_list": "Lista numerowana",
+      "task_list": "Lista zadań",
       "quote": "Cytat",
       "code_block": "Blok kodu",
       "horizontal_rule": "Linia pozioma",

@@ -264,6 +264,7 @@
       "heading3": "Titre 3",
       "bullet_list": "Liste à puces",
       "numbered_list": "Liste numérotée",
+      "task_list": "Liste de tâches",
       "quote": "Citation",
       "code_block": "Bloc de code",
       "horizontal_rule": "Ligne horizontale",

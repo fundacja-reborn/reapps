@@ -181,6 +181,39 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-ordered-d11': { paddingLeft: '13.75em' },
   '.cm-lp-ordered-d12': { paddingLeft: '14.5em' },
 
+  // ─── GFM task list (- [ ] / - [x]) ───────────────────────────
+  // Same depth ramp as bullets so mixed bullet/task siblings line up. No
+  // `::before` content — the `TaskCheckboxWidget` <input> sits in the marker
+  // zone instead. Completed lines (`[x]`) get an extra `cm-lp-task-checked`
+  // for strikethrough + muted color.
+  '.cm-lp-task-line': {
+    position: 'relative'
+  },
+  '.cm-lp-task-d1': { paddingLeft: '1.5em' },
+  '.cm-lp-task-d2': { paddingLeft: '4em' },
+  '.cm-lp-task-d3': { paddingLeft: '5.5em' },
+  '.cm-lp-task-d4': { paddingLeft: '7em' },
+  '.cm-lp-task-d5': { paddingLeft: '8.5em' },
+  '.cm-lp-task-d6': { paddingLeft: '10em' },
+  '.cm-lp-task-d7': { paddingLeft: '10.75em' },
+  '.cm-lp-task-d8': { paddingLeft: '11.5em' },
+  '.cm-lp-task-d9': { paddingLeft: '12.25em' },
+  '.cm-lp-task-d10': { paddingLeft: '13em' },
+  '.cm-lp-task-d11': { paddingLeft: '13.75em' },
+  '.cm-lp-task-d12': { paddingLeft: '14.5em' },
+  '.cm-lp-task-checked': {
+    textDecoration: 'line-through',
+    color: 'var(--muted-foreground)',
+    opacity: '0.7'
+  },
+  '.cm-lp-task-checkbox': {
+    marginRight: '0.4em',
+    cursor: 'pointer',
+    accentColor: 'var(--primary)',
+    verticalAlign: 'middle',
+    transform: 'translateY(-1px)'
+  },
+
   // ─── Fenced code blocks ──────────────────────────────────────
   // Cursor outside: replaced with <div class="cm-lp-codeblock-wrap"><pre>.
   // The wrapper is the horizontal scroll container; its `overflow-x: auto`

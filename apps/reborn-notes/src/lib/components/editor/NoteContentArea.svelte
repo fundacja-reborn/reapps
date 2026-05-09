@@ -74,6 +74,46 @@
   const placeholderText = $derived(
     noteKind ? $t(`notes.periodic.${noteKind}.placeholder`) : $t('editor.placeholder')
   );
+
+  // Matches a GFM task marker `- [ ]` / `- [x]` / `* [X]` / `+ [ ]` exactly
+  // where the parser would recognise one: at the start of a line (allowing
+  // any leading indent), bullet char + space, square-bracketed marker, then
+  // a single trailing space. The same pattern is used by the Live Preview
+  // toggle in `decorations.ts` — keep them in sync.
+  const TASK_MARKER_RE = /^([ \t]*[-+*] )(\[[ xX]\])( )/gm;
+
+  /**
+   * Toggle the Nth GFM task marker (zero-based) in `source` to `desired` and
+   * return the new string. Used to map a checkbox click in MarkdownPreview
+   * back to a markdown source edit. If the index doesn't resolve (parser/
+   * renderer disagreement, source out of sync), returns the source unchanged.
+   */
+  function toggleTaskAt(source: string, index: number, desired: boolean): string {
+    let i = 0;
+    let result: string | null = null;
+    source.replace(TASK_MARKER_RE, (match, prefix: string, marker: string, suffix: string, offset: number) => {
+      if (i === index && result === null) {
+        const newMarker = desired ? '[x]' : '[ ]';
+        if (marker !== newMarker) {
+          result =
+            source.slice(0, offset + prefix.length) +
+            newMarker +
+            source.slice(offset + prefix.length + marker.length);
+        } else {
+          result = source;
+        }
+      }
+      i++;
+      return match;
+    });
+    return result ?? source;
+  }
+
+  function handleTaskToggle(taskIndex: number, desired: boolean): void {
+    const next = toggleTaskAt(noteDetailService.content, taskIndex, desired);
+    if (next === noteDetailService.content) return;
+    oncontentchange(next);
+  }
 </script>
 
 <div class="relative {isParentScrollActive ? '' : 'flex min-h-0 flex-1 overflow-hidden'}">
@@ -146,6 +186,7 @@
               bind:contentEl={previewContentEl}
               onrender={onpreviewrender}
               onNoteLink={onnotelink}
+              onTaskToggle={handleTaskToggle}
               {resolveNoteTitle}
               {imageLoadMode}
             />
@@ -160,6 +201,7 @@
             bind:contentEl={previewContentEl}
             onrender={onpreviewrender}
             onNoteLink={onnotelink}
+            onTaskToggle={handleTaskToggle}
             {resolveNoteTitle}
             {imageLoadMode}
           />

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
-import { Strikethrough, Table } from '@lezer/markdown';
+import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { tryListIndent, tryListOutdent } from './list-keymap';
 
 function makeState(doc: string, cursor: number): EditorState {
   return EditorState.create({
     doc,
     selection: { anchor: cursor, head: cursor },
-    extensions: [markdown({ extensions: [Strikethrough, Table] })]
+    extensions: [markdown({ extensions: [Strikethrough, Table, TaskList] })]
   });
 }
 
@@ -131,5 +131,22 @@ describe('tryListIndent — adjacent lists of different types', () => {
   it('bullet list following an ordered list — Tab on first bullet is noop', () => {
     const doc = '1. one\n- two';
     expect(applyIndent(doc, doc.length)).toBe(doc);
+  });
+});
+
+describe('tryListIndent / tryListOutdent — GFM task list', () => {
+  it('indents `- [ ] two` after `- [ ] one` with 2 spaces', () => {
+    const doc = '- [ ] one\n- [ ] two';
+    expect(applyIndent(doc, doc.length)).toBe('- [ ] one\n  - [ ] two');
+  });
+
+  it('outdents nested `  - [ ] sub` back to top level', () => {
+    const doc = '- [ ] one\n  - [ ] sub';
+    expect(applyOutdent(doc, doc.length)).toBe('- [ ] one\n- [ ] sub');
+  });
+
+  it('first task in a list is a noop on Tab (nothing to nest under)', () => {
+    const doc = '- [ ] one\n- [ ] two';
+    expect(applyIndent(doc, '- [ ] one'.length - 4)).toBe(doc);
   });
 });

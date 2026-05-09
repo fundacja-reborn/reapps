@@ -168,3 +168,37 @@ export class CodeBlockWidget extends WidgetType {
     return false;
   }
 }
+
+/**
+ * Replaces the `- [ ]` / `- [x]` prefix of a GFM task list item with an
+ * interactive `<input type="checkbox">`. Click toggles the markdown source
+ * marker `[ ] ↔ [x]` in one CM6 transaction (handled by
+ * `livePreviewTaskCheckboxToggle` in decorations.ts). The widget itself is
+ * stateless — `checked` is derived from the parsed `TaskMarker` on each
+ * decoration build.
+ */
+export class TaskCheckboxWidget extends WidgetType {
+  constructor(readonly checked: boolean) {
+    super();
+  }
+
+  eq(other: WidgetType): boolean {
+    return other instanceof TaskCheckboxWidget && other.checked === this.checked;
+  }
+
+  toDOM(): HTMLElement {
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = this.checked;
+    input.className = 'cm-lp-task-checkbox';
+    // Stop CM6 from interpreting the click as a selection change so the
+    // change event reaches `livePreviewTaskCheckboxToggle` cleanly.
+    input.addEventListener('mousedown', (e) => e.preventDefault());
+    return input;
+  }
+
+  ignoreEvent(): boolean {
+    // Let `change` events bubble to the dom event handler.
+    return false;
+  }
+}
