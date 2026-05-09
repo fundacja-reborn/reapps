@@ -1,3 +1,19 @@
+## 0.18.1 (2026-05-09)
+
+### 🩹 Fixes
+
+- **notes:** render nested list indentation in live preview ([#153](https://github.com/fundacja-reborn/reapps/pull/153), [#146](https://github.com/fundacja-reborn/reapps/issues/146))
+- **notes:** create unfoldered note from periodic view ([#154](https://github.com/fundacja-reborn/reapps/pull/154))
+- **notes:** list tab keymap ([#155](https://github.com/fundacja-reborn/reapps/pull/155))
+- **notes:** toolbar empty sub-bullet renders as BulletList ([#156](https://github.com/fundacja-reborn/reapps/pull/156))
+- **notes:** render PDF export list markers via CSS counters ([#157](https://github.com/fundacja-reborn/reapps/pull/157))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.18.0 (2026-05-09)
 
 ### 🚀 Features
