@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
-import { Strikethrough, Table } from '@lezer/markdown';
+import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import type { DecorationSet } from '@codemirror/view';
 import { buildDecorations, isAnySelectionInRange } from './decorations';
 import { TableWidget } from './table-widget';
 import { ImageWidget } from './image-widget';
+import { TaskCheckboxWidget } from './widgets';
 
 interface DecoSpec {
   class?: string;
@@ -23,7 +24,7 @@ interface DecoRange {
 function makeState(doc: string, cursorPos = 0) {
   return EditorState.create({
     doc,
-    extensions: [markdown({ extensions: [Strikethrough, Table] })],
+    extensions: [markdown({ extensions: [Strikethrough, Table, TaskList] })],
     selection: { anchor: cursorPos, head: cursorPos }
   });
 }
@@ -598,5 +599,85 @@ describe('buildDecorations — inline images', () => {
       (r) => r.hasWidget && r.spec.widget instanceof ImageWidget
     )?.spec.widget as ImageWidget | undefined;
     expect(widget?.loadMode).toBe('ask');
+  });
+});
+
+describe('buildDecorations — GFM task list', () => {
+  it('applies cm-lp-task-line + cm-lp-task-d1 to a top-level task', () => {
+    const doc = '- [ ] one\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+    const cls = classAt(ranges, 0, 0);
+    expect(cls).toContain('cm-lp-task-line');
+    expect(cls).toContain('cm-lp-task-d1');
+    expect(cls).not.toContain('cm-lp-bullet-line');
+  });
+
+  it('adds cm-lp-task-checked when the marker is [x]', () => {
+    const doc = '- [x] done\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+    expect(classAt(ranges, 0, 0)).toContain('cm-lp-task-checked');
+  });
+
+  it('also accepts uppercase [X] as checked', () => {
+    const doc = '- [X] done\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+    expect(classAt(ranges, 0, 0)).toContain('cm-lp-task-checked');
+  });
+
+  it('replaces "- [ ] " with a TaskCheckboxWidget when cursor is off the line', () => {
+    const doc = '- [ ] one\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+    const widgetRange = ranges.find(
+      (r) => r.hasWidget && r.spec.widget instanceof TaskCheckboxWidget
+    );
+    expect(widgetRange).toBeDefined();
+    // "- [ ] " — listMark "-" (1) + " " (1) + TaskMarker "[ ]" (3) + " " (1) = 6
+    expect(widgetRange?.from).toBe(0);
+    expect(widgetRange?.to).toBe(6);
+    expect((widgetRange?.spec.widget as TaskCheckboxWidget).checked).toBe(false);
+  });
+
+  it('emits a checked TaskCheckboxWidget for "- [x] "', () => {
+    const doc = '- [x] done\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+    const widget = ranges.find(
+      (r) => r.hasWidget && r.spec.widget instanceof TaskCheckboxWidget
+    )?.spec.widget as TaskCheckboxWidget | undefined;
+    expect(widget?.checked).toBe(true);
+  });
+
+  it('shows raw "- [ ] " (no widget) when cursor is on the task line', () => {
+    const doc = '- [ ] one\n\nbody';
+    const state = makeState(doc, 5); // cursor inside the task line
+    const ranges = asRanges(buildDecorations(state));
+    const widget = ranges.find(
+      (r) => r.hasWidget && r.spec.widget instanceof TaskCheckboxWidget
+    );
+    expect(widget).toBeUndefined();
+  });
+
+  it('does NOT emit cm-lp-bullet-line on a task line (no double styling)', () => {
+    const doc = '- [ ] one\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+    const cls = classAt(ranges, 0, 0) ?? '';
+    expect(cls).not.toContain('cm-lp-bullet-d1');
+  });
+
+  it('applies cm-lp-task-d2 to nested tasks and hides leading whitespace', () => {
+    const doc = '- [ ] outer\n  - [ ] inner\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+
+    const nestedLineFrom = doc.indexOf('  - [ ] inner');
+    expect(classAt(ranges, nestedLineFrom, nestedLineFrom)).toContain('cm-lp-task-d2');
+
+    const listMarkPos = doc.indexOf('- [ ] inner');
+    expect(hasHiddenRange(ranges, nestedLineFrom, listMarkPos)).toBe(true);
   });
 });

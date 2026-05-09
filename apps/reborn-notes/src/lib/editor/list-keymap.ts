@@ -41,6 +41,9 @@ interface ListItemInfo {
 function resolveListItem(tree: ReturnType<typeof syntaxTree>, pos: number): SyntaxNode | null {
   for (const side of [-1, 1] as const) {
     let n: SyntaxNode | null = tree.resolveInner(pos, side);
+    // `@lezer/markdown`'s GFM `TaskList` adds a `Task` block node *inside* a
+    // ListItem (alongside ListMark) — so walking up from the cursor to find
+    // a list item is a plain ListItem walk, even on task lines.
     while (n && n.name !== 'ListItem') n = n.parent;
     if (n) return n;
   }

@@ -42,6 +42,7 @@
     contentEl = $bindable<HTMLElement | null>(null),
     imageLoadMode = 'ask' as ImageLoadMode,
     onNoteLink,
+    onTaskToggle,
     onrender,
     resolveNoteTitle
   }: {
@@ -58,6 +59,17 @@
     imageLoadMode?: ImageLoadMode;
     /** Called when user clicks a note:UUID link */
     onNoteLink?: (noteId: string) => void;
+    /**
+     * Called when the user clicks a checkbox in a GFM task list. The owner
+     * is responsible for toggling the matching `[ ]` / `[x]` in the
+     * markdown source — this component only emits the click, since the
+     * source string lives upstream (note store / editor doc).
+     *
+     * `taskIndex` is the zero-based ordinal of the task in render order
+     * (mirrored on the editor side by counting `[ ]`/`[x]` markers in the
+     * doc), `checked` is the new desired state.
+     */
+    onTaskToggle?: (taskIndex: number, checked: boolean) => void;
     /**
      * Fired after the rendered HTML is committed to the DOM (and
      * `data-source-line` attrs are stamped). The parent uses this to
@@ -102,6 +114,14 @@
   // content) keeps it in sync without explicit walk.
   const PREVIEW_MAX_LIST_DEPTH = 12;
   let listDepth = 0;
+
+  // Per-render counter for GFM task list items, in render order. Stamped on
+  // each <li class="task-list-item"> as `data-task-index`. The owner toggles
+  // the Nth `[ ]` / `[x]` in the markdown source when the user clicks the
+  // matching checkbox — index-based mapping is robust to mixed bullet/task
+  // lists and to the depth recursion (the counter is global, not per-list).
+  // Reset at the start of every render in `$derived html`.
+  let taskCounter = 0;
 
   // "Pinned" snapshot of the prop, synced at the start of every $derived html
   // recomputation. The renderer.image closure reads this regular variable
@@ -182,6 +202,29 @@
     return `<${tag}${startAttr} data-d="${depth}">\n${body}</${tag}>\n`;
   };
 
+  // GFM task list item — marked sets `task: true` on the token and prepends
+  // a `checkbox` token to `tokens`. The default renderer wraps each <li>
+  // without a class; we add `task-list-item` (+ `task-list-item-checked` for
+  // `[x]`) so CSS can drop the bullet and apply strikethrough. `data-task-index`
+  // lets the click handler tell the owner which `[ ]` / `[x]` to toggle in
+  // the markdown source.
+  renderer.listitem = function listitemOverride(this: unknown, token: Tokens.ListItem) {
+    const self = this as { parser: { parse: (t: Tokens.ListItem['tokens'], loose?: boolean) => string } };
+    const inner = self.parser.parse(token.tokens, !!token.loose);
+    if (!token.task) {
+      return `<li>${inner}</li>\n`;
+    }
+    const idx = taskCounter++;
+    const cls = token.checked ? 'task-list-item task-list-item-checked' : 'task-list-item';
+    return `<li class="${cls}" data-task-index="${idx}">${inner}</li>\n`;
+  };
+
+  // Drop `disabled` from the GFM checkbox so the user can click it; tag with
+  // a class so the click handler can spot it without walking up to the <li>.
+  renderer.checkbox = function checkboxOverride({ checked }: Tokens.Checkbox) {
+    return `<input type="checkbox" class="task-list-item-checkbox"${checked ? ' checked' : ''}> `;
+  };
+
   md.use({ renderer });
 
   // Tokens of the latest render — kept so we can stamp `data-source-line`
@@ -205,6 +248,7 @@
     // normal flow this is already 0; resetting guards against a thrown
     // sanitize/parse leaving the counter stuck.
     listDepth = 0;
+    taskCounter = 0;
     if (!content) {
       lastTokens = [];
       return '';
@@ -260,6 +304,26 @@
   function handleClick(e: MouseEvent) {
     const target = e.target as HTMLElement;
 
+    // Task list checkbox toggle. The browser flips `checked` before the
+    // click handler runs; we read the flipped value as the desired state and
+    // ask the owner to persist it in the markdown source. The next render
+    // outputs a fresh checkbox with the correct `checked` attribute, so the
+    // visual stays in sync. If no callback is wired (read-only context), we
+    // `preventDefault` to revert the flip so the DOM doesn't drift from the
+    // source.
+    if (target.tagName === 'INPUT' && target.classList.contains('task-list-item-checkbox')) {
+      const li = target.closest('li.task-list-item') as HTMLElement | null;
+      const idxAttr = li?.dataset.taskIndex;
+      const idx = idxAttr != null ? parseInt(idxAttr, 10) : NaN;
+      if (!Number.isFinite(idx) || !onTaskToggle) {
+        e.preventDefault();
+        return;
+      }
+      const desired = (target as HTMLInputElement).checked;
+      onTaskToggle(idx, desired);
+      return;
+    }
+
     // Handle "Load image" button
     const loadBtn = target.closest('.image-placeholder-load');
     if (loadBtn) {
@@ -302,12 +366,21 @@
   );
 </script>
 
+<!-- `data-sveltekit-preload-*="off"` stops SvelteKit's hover/touch preload
+     for any <a> emitted by the rendered markdown. Preview links are user
+     content (relative paths, external URLs, `note:UUID`) — none of them are
+     real SvelteKit routes, so the preload chunks are always wasted. Without
+     this, every {@html} re-render (e.g. checkbox toggle, autosave reflow)
+     repreloads `/notes/_app/immutable/...` and the browser logs "preloaded
+     but not used" warnings. -->
 <div
   bind:this={containerEl}
   class="preview overflow-auto bg-background pt-4 pb-5 text-base md:text-sm leading-relaxed text-foreground {className}"
   aria-label={$t('editor.markdown_preview')}
   onclick={handleClick}
   role="presentation"
+  data-sveltekit-preload-data="off"
+  data-sveltekit-preload-code="off"
 >
   {#if hasImagePlaceholders}
     <button type="button" class="load-all-images-btn">
@@ -646,10 +719,27 @@
     border-radius: 0.375em;
   }
 
-  /* Checklist items (GFM task lists) */
+  /* Checklist items (GFM task lists). `task-list-item` drops the default
+     bullet and pulls the line back so the checkbox sits where the bullet
+     would. Mirrors GitHub's CSS. `task-list-item-checked` adds strikethrough
+     + muted color, matching Live Preview's `cm-lp-task-checked`. */
+  .preview :global(li.task-list-item) {
+    list-style-type: none;
+    margin-left: -1.5em;
+    padding-left: 0;
+  }
+  .preview :global(li.task-list-item-checked) {
+    text-decoration: line-through;
+    color: var(--muted-foreground);
+    opacity: 0.7;
+  }
   .preview :global(input[type='checkbox']) {
     margin-right: 0.4em;
     accent-color: var(--primary);
+  }
+  .preview :global(.task-list-item-checkbox) {
+    cursor: pointer;
+    transform: translateY(-1px);
   }
 
   /* ── Image placeholders ─────────────────────────────────────

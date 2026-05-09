@@ -34,6 +34,7 @@
     Code,
     Link,
     List,
+    ListChecks,
     ListOrdered,
     Quote,
     SquareCode,
@@ -182,17 +183,24 @@
     const afterWs = text.slice(leadingWs.length);
     const indent = preserveIndent ? leadingWs : '';
 
-    // Treat any bullet marker (`- `/`* `/`+ `) as the same type, and any
-    // ordered marker (`N. `/`N) `) as the same type, so a single click
-    // toggles off regardless of which char/number is in the source — and
-    // converting between bullet/ordered/blockquote replaces the existing
-    // marker rather than stacking on top.
-    const activeMarker = afterWs.match(/^([-+*] |\d+[.)] )/);
+    // Treat any bullet marker (`- `/`* `/`+ `) — with or without a GFM task
+    // marker `[ ]` / `[x]` after it — as the same type; any ordered marker
+    // (`N. `/`N) `) as the same type. A single click toggles off regardless
+    // of which char/number is in the source, and converting between
+    // bullet/task/ordered replaces the existing marker rather than stacking.
+    const activeMarker = afterWs.match(/^([-+*] (?:\[[ xX]\] )?|\d+[.)] )/);
     const isBulletPrefix = /^[-+*] $/.test(prefix);
     const isOrderedPrefix = /^\d+[.)] $/.test(prefix);
+    const isTaskPrefix = /^[-+*] \[[ xX]\] $/.test(prefix);
+    const activeIsTask =
+      activeMarker !== null && /^[-+*] \[[ xX]\] /.test(activeMarker[0]);
+    // Bullet button on an existing task line: don't treat as same-type — let
+    // the rebuild branch run, which strips the task marker and inserts a
+    // plain bullet (so `- [ ] foo` → `- foo`, not toggle off).
     const sameTypeActive =
       activeMarker !== null &&
-      ((isBulletPrefix && /^[-+*] /.test(activeMarker[0])) ||
+      ((isBulletPrefix && !activeIsTask && /^[-+*] /.test(activeMarker[0])) ||
+        (isTaskPrefix && activeIsTask) ||
         (isOrderedPrefix && /^\d+[.)] /.test(activeMarker[0])));
 
     if (afterWs.startsWith(prefix) || sameTypeActive) {
@@ -203,7 +211,12 @@
         selection: { anchor: line.from + indent.length }
       });
     } else {
-      const stripped = afterWs.replace(/^(#{1,6} |> |[-+*] |\d+[.)] )/, '');
+      // Strip an existing block marker, then any GFM task marker that came
+      // after it (so `- [ ] foo` → `foo`), so the rebuild adds the new
+      // marker without doubling up.
+      const stripped = afterWs
+        .replace(/^(#{1,6} |> |[-+*] |\d+[.)] )/, '')
+        .replace(/^\[[ xX]\] /, '');
       const trailing = shouldInsertBulletAnchor(prefix, indent, stripped)
         ? BULLET_ANCHOR
         : stripped;
@@ -697,6 +710,15 @@
         aria-label={$t('editor.formatting.numbered_list')}
       >
         <ListOrdered class="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onclick={() => prefixLine('- [ ] ')}
+        title={$t('editor.formatting.task_list')}
+        class="toolbar-btn"
+        aria-label={$t('editor.formatting.task_list')}
+      >
+        <ListChecks class="h-4 w-4" />
       </button>
       <button
         type="button"

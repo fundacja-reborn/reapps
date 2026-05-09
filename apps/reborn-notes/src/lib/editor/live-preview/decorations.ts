@@ -14,7 +14,7 @@ import { type EditorState, type Range, RangeSetBuilder, StateEffect, StateField 
 import type { SyntaxNode } from '@lezer/common';
 import type { Text } from '@codemirror/state';
 import type { ImageLoadMode } from '@reborn/storage';
-import { CodeBlockWidget, LinkWidget } from './widgets';
+import { CodeBlockWidget, LinkWidget, TaskCheckboxWidget } from './widgets';
 import { ImageWidget, type ImageWidgetLabels, getLoadedImages } from './image-widget';
 import { TableWidget } from './table-widget';
 import { parseTable } from './table-parse';
@@ -76,6 +76,12 @@ const BULLET_LINE: Decoration[] = Array.from({ length: MAX_LIST_DEPTH }, (_, i) 
 );
 const ORDERED_LINE: Decoration[] = Array.from({ length: MAX_LIST_DEPTH }, (_, i) =>
   Decoration.line({ class: `cm-lp-ordered-line cm-lp-ordered-d${i + 1}` })
+);
+const TASK_LINE: Decoration[] = Array.from({ length: MAX_LIST_DEPTH }, (_, i) =>
+  Decoration.line({ class: `cm-lp-task-line cm-lp-task-d${i + 1}` })
+);
+const TASK_LINE_CHECKED: Decoration[] = Array.from({ length: MAX_LIST_DEPTH }, (_, i) =>
+  Decoration.line({ class: `cm-lp-task-line cm-lp-task-d${i + 1} cm-lp-task-checked` })
 );
 
 export function isAnySelectionInRange(state: EditorState, from: number, to: number): boolean {
@@ -430,14 +436,35 @@ export function buildDecorations(
         return; // descend into paragraph/inline content
       }
 
-      // ─── List items (bullet or ordered) ──────────────────────────
+      // ─── List items (bullet, ordered, or GFM task) ───────────────
+      // `@lezer/markdown`'s `TaskList` adds a `Task` block node *inside* the
+      // ListItem (alongside ListMark), not as a replacement. So a task item
+      // looks like `ListItem(ListMark, Task(TaskMarker, ...inline))`. We
+      // detect the Task child here and switch to task-line decorations
+      // instead of bullet — this is more reliable than handling `Task` in a
+      // separate branch, where the parent ListItem would have already emitted
+      // a bullet line class.
       if (name === 'ListItem') {
         const itemLine = doc.lineAt(from);
         const listMark = findFirstChild(nodeRef.node, 'ListMark');
+        const taskChild = findFirstChild(nodeRef.node, 'Task');
+        const taskMarker = taskChild ? findFirstChild(taskChild, 'TaskMarker') : null;
+        const isTask = taskChild !== null && taskMarker !== null;
         const markText = listMark ? doc.sliceString(listMark.from, listMark.to) : '';
-        const isOrdered = /^\d/.test(markText);
+        const isOrdered = !isTask && /^\d/.test(markText);
         const depth = getListDepth(nodeRef.node);
-        const lineDecoSet = isOrdered ? ORDERED_LINE : BULLET_LINE;
+
+        let lineDecoSet: Decoration[];
+        if (isTask) {
+          const checked = /\[[xX]\]/.test(
+            doc.sliceString(taskMarker!.from, taskMarker!.to)
+          );
+          lineDecoSet = checked ? TASK_LINE_CHECKED : TASK_LINE;
+        } else if (isOrdered) {
+          lineDecoSet = ORDERED_LINE;
+        } else {
+          lineDecoSet = BULLET_LINE;
+        }
         ranges.push(lineDecoSet[depth - 1].range(itemLine.from));
 
         if (listMark) {
@@ -451,10 +478,25 @@ export function buildDecorations(
             ranges.push(HIDDEN.range(itemLine.from, listMark.from));
           }
 
-          // Bullets: hide "- " / "* " when cursor outside this line.
-          // Ordered: keep marker visible — the number is meaningful content.
           const cursorOnLine = isAnySelectionInRange(state, itemLine.from, itemLine.to);
-          if (!isOrdered && !cursorOnLine) {
+
+          if (isTask && !cursorOnLine && taskMarker) {
+            // Replace `- [ ] ` (ListMark + space + TaskMarker + space) with
+            // the interactive checkbox widget. Toggle handler: `livePreviewTaskCheckboxToggle`.
+            const checked = /\[[xX]\]/.test(
+              doc.sliceString(taskMarker.from, taskMarker.to)
+            );
+            const next = doc.sliceString(taskMarker.to, taskMarker.to + 1);
+            const replaceTo = next === ' ' ? taskMarker.to + 1 : taskMarker.to;
+            ranges.push(
+              Decoration.replace({
+                widget: new TaskCheckboxWidget(checked)
+              }).range(listMark.from, replaceTo)
+            );
+          } else if (!isTask && !isOrdered && !cursorOnLine) {
+            // Plain bullet — hide "- " / "* " when cursor is off the line so
+            // the rendered ::before bullet takes over. Ordered lists keep
+            // their numeric marker (the number is meaningful content).
             const next = doc.sliceString(listMark.to, listMark.to + 1);
             const hideTo = next === ' ' ? listMark.to + 1 : listMark.to;
             ranges.push(HIDDEN.range(listMark.from, hideTo));
@@ -602,7 +644,8 @@ export const livePreviewListClickForward = EditorView.domEventHandlers({
     if (!target.classList.contains('cm-line')) return false;
     if (
       !target.classList.contains('cm-lp-bullet-line') &&
-      !target.classList.contains('cm-lp-ordered-line')
+      !target.classList.contains('cm-lp-ordered-line') &&
+      !target.classList.contains('cm-lp-task-line')
     ) {
       return false;
     }
@@ -615,6 +658,20 @@ export const livePreviewListClickForward = EditorView.domEventHandlers({
     while (n && n.type.name !== 'ListItem') n = n.parent;
     if (!n) return false;
 
+    // For task items, anchor the cursor after the task marker (`[ ] ` / `[x] `)
+    // — otherwise the user lands between `- ` and `[`, which collides with the
+    // checkbox widget replace range and feels off.
+    const taskChild = findFirstChild(n, 'Task');
+    const taskMarker = taskChild ? findFirstChild(taskChild, 'TaskMarker') : null;
+    if (taskMarker) {
+      const next = view.state.doc.sliceString(taskMarker.to, taskMarker.to + 1);
+      const contentStart = next === ' ' ? taskMarker.to + 1 : taskMarker.to;
+      event.preventDefault();
+      view.dispatch({ selection: { anchor: contentStart } });
+      view.focus();
+      return true;
+    }
+
     const listMark = findFirstChild(n, 'ListMark');
     if (!listMark) return false;
 
@@ -624,6 +681,35 @@ export const livePreviewListClickForward = EditorView.domEventHandlers({
     event.preventDefault();
     view.dispatch({ selection: { anchor: contentStart } });
     view.focus();
+    return true;
+  }
+});
+
+/**
+ * DOM event handler that wires the `TaskCheckboxWidget` `<input>` to a doc
+ * change. Click on the checkbox toggles the markdown source `[ ] ↔ [x]` in a
+ * single CM6 transaction (atomic undo). Native `change` event handles both
+ * mouse click and keyboard activation (Space when focused).
+ */
+export const livePreviewTaskCheckboxToggle = EditorView.domEventHandlers({
+  change(event, view) {
+    const target = event.target as HTMLElement | null;
+    if (!target || !(target instanceof HTMLInputElement)) return false;
+    if (!target.classList.contains('cm-lp-task-checkbox')) return false;
+
+    const pos = view.posAtDOM(target);
+    if (pos < 0) return false;
+    const line = view.state.doc.lineAt(pos);
+    const m = /^(\s*[-+*] )(\[[ xX]\])(\s+)/.exec(line.text);
+    if (!m) return false;
+
+    const markerFrom = line.from + m[1].length;
+    const markerTo = markerFrom + m[2].length;
+    const newMarker = target.checked ? '[x]' : '[ ]';
+    view.dispatch({
+      changes: { from: markerFrom, to: markerTo, insert: newMarker },
+      userEvent: 'input.task.toggle'
+    });
     return true;
   }
 });

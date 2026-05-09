@@ -264,6 +264,7 @@
       "heading3": "Encabezado 3",
       "bullet_list": "Lista con viñetas",
       "numbered_list": "Lista numerada",
+      "task_list": "Lista de tareas",
       "quote": "Cita",
       "code_block": "Bloque de código",
       "horizontal_rule": "Línea horizontal",
