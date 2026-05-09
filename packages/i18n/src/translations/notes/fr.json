@@ -92,18 +92,36 @@
       "daily": {
         "folder": { "default": "Journal" },
         "button": { "label": "Aujourd'hui", "tooltip": "Note du jour ({range})" },
-        "settings": { "section": "Quotidien" }
+        "settings": { "section": "Quotidien" },
+        "placeholder": "Commencez à écrire la note du jour…",
+        "onboarding": {
+          "title": "Votre note du jour",
+          "body": "C'est votre note pour aujourd'hui. Chaque jour a sa propre note quotidienne — un clic sur « Aujourd'hui » vous ramène à la même note toute la journée. Demain, le clic en créera une nouvelle pour la nouvelle date.",
+          "tip": "Les notes hebdomadaires et mensuelles sont désactivées par défaut. Vous pouvez les activer dans les paramètres ci-dessous."
+        }
       },
       "weekly": {
         "folder": { "default": "Notes hebdomadaires" },
         "button": { "label": "Cette semaine", "tooltip": "Note hebdomadaire ({range})" },
         "settings": { "section": "Hebdomadaire" },
-        "preview": { "range_hint": "← lundi de la semaine {range}" }
+        "preview": { "range_hint": "← lundi de la semaine {range}" },
+        "placeholder": "Commencez à écrire la note de la semaine…",
+        "onboarding": {
+          "title": "Votre note de la semaine",
+          "body": "C'est une note partagée pour toute la semaine (lundi–dimanche). Quel que soit le jour où vous cliquez sur « Cette semaine », vous retrouvez la même note. La semaine prochaine, le clic en créera une nouvelle.",
+          "tip": "Le titre contient la date du lundi de cette semaine et le numéro de semaine ISO (par exemple 2026-05-04 W19)."
+        }
       },
       "monthly": {
         "folder": { "default": "Notes mensuelles" },
         "button": { "label": "Ce mois", "tooltip": "Note mensuelle ({range})" },
-        "settings": { "section": "Mensuel" }
+        "settings": { "section": "Mensuel" },
+        "placeholder": "Commencez à écrire la note du mois…",
+        "onboarding": {
+          "title": "Votre note du mois",
+          "body": "C'est une note partagée pour tout le mois. Quel que soit le jour, un clic sur « Ce mois » ouvre la même note. Le mois prochain, le clic en créera une nouvelle.",
+          "tip": "Le titre contient l'année et le mois (par exemple 2026-05)."
+        }
       },
       "settings": {
         "title": "Notes périodiques",
@@ -116,6 +134,10 @@
         "folder_select_this": "Sélectionner ce dossier",
         "format": "Format du nom de fichier",
         "preview": "Aperçu"
+      },
+      "onboarding": {
+        "open_settings": "Ouvrir les paramètres",
+        "got_it": "Compris"
       },
       "errors": { "failed": "Impossible d'ouvrir la note" }
     }
@@ -222,8 +244,7 @@
     }
   },
   "editor": {
-    "placeholder": "Commencez à écrire...",
-    "placeholder_markdown": "Commencez à écrire en Markdown…",
+    "placeholder": "Commencez à écrire votre note…",
     "undo": "Annuler",
     "redo": "Rétablir",
     "undo_shortcut": "Annuler (Ctrl+Z)",

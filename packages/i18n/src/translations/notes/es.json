@@ -92,18 +92,36 @@
       "daily": {
         "folder": { "default": "Diario" },
         "button": { "label": "Hoy", "tooltip": "Nota de hoy ({range})" },
-        "settings": { "section": "Diario" }
+        "settings": { "section": "Diario" },
+        "placeholder": "Empiece a escribir la nota de hoy…",
+        "onboarding": {
+          "title": "Su nota de hoy",
+          "body": "Esta es su nota para hoy. Cada día tiene su propia nota diaria — al pulsar «Hoy» vuelve a la misma nota durante todo el día. Mañana el clic creará una nueva para la nueva fecha.",
+          "tip": "Las notas semanales y mensuales están desactivadas por defecto. Puede activarlas en los ajustes de abajo."
+        }
       },
       "weekly": {
         "folder": { "default": "Notas semanales" },
         "button": { "label": "Esta semana", "tooltip": "Nota semanal ({range})" },
         "settings": { "section": "Semanal" },
-        "preview": { "range_hint": "← lunes de la semana {range}" }
+        "preview": { "range_hint": "← lunes de la semana {range}" },
+        "placeholder": "Empiece a escribir la nota de esta semana…",
+        "onboarding": {
+          "title": "Su nota semanal",
+          "body": "Es una nota compartida para toda la semana (lunes–domingo). Sea cual sea el día en que pulse «Esta semana», vuelve a la misma nota. La próxima semana el clic creará una nueva.",
+          "tip": "El título contiene la fecha del lunes de esta semana y el número de semana ISO (por ejemplo, 2026-05-04 W19)."
+        }
       },
       "monthly": {
         "folder": { "default": "Notas mensuales" },
         "button": { "label": "Este mes", "tooltip": "Nota mensual ({range})" },
-        "settings": { "section": "Mensual" }
+        "settings": { "section": "Mensual" },
+        "placeholder": "Empiece a escribir la nota de este mes…",
+        "onboarding": {
+          "title": "Su nota mensual",
+          "body": "Es una nota compartida para todo el mes. Sea cual sea el día, al pulsar «Este mes» abre la misma nota. El próximo mes el clic creará una nueva.",
+          "tip": "El título contiene el año y el mes (por ejemplo, 2026-05)."
+        }
       },
       "settings": {
         "title": "Notas periódicas",
@@ -116,6 +134,10 @@
         "folder_select_this": "Seleccionar esta carpeta",
         "format": "Formato del nombre de archivo",
         "preview": "Vista previa"
+      },
+      "onboarding": {
+        "open_settings": "Abrir ajustes",
+        "got_it": "Entendido"
       },
       "errors": { "failed": "No se pudo abrir la nota" }
     }
@@ -222,8 +244,7 @@
     }
   },
   "editor": {
-    "placeholder": "Comience a escribir...",
-    "placeholder_markdown": "Comience a escribir en Markdown…",
+    "placeholder": "Empiece a escribir su nota…",
     "undo": "Deshacer",
     "redo": "Rehacer",
     "undo_shortcut": "Deshacer (Ctrl+Z)",

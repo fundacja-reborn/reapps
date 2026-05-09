@@ -92,18 +92,36 @@
       "daily": {
         "folder": { "default": "Daily Notes" },
         "button": { "label": "Today", "tooltip": "Today's note ({range})" },
-        "settings": { "section": "Daily" }
+        "settings": { "section": "Daily" },
+        "placeholder": "Start writing today's note…",
+        "onboarding": {
+          "title": "Your daily note",
+          "body": "This is your note for today. Each day has its own daily note — clicking “Today” returns you to the same note all day long. Tomorrow's click will create a new one for the new date.",
+          "tip": "Weekly and monthly notes are off by default. You can enable them in the settings below."
+        }
       },
       "weekly": {
         "folder": { "default": "Weekly Notes" },
         "button": { "label": "This week", "tooltip": "Weekly note ({range})" },
         "settings": { "section": "Weekly" },
-        "preview": { "range_hint": "← Monday of {range}" }
+        "preview": { "range_hint": "← Monday of {range}" },
+        "placeholder": "Start writing this week's note…",
+        "onboarding": {
+          "title": "Your weekly note",
+          "body": "This is a shared note for the entire week (Monday–Sunday). No matter which day you click “This week”, you return to the same note. Next week's click will create a new one.",
+          "tip": "The title contains the date of this week's Monday and the ISO week number (e.g. 2026-05-04 W19)."
+        }
       },
       "monthly": {
         "folder": { "default": "Monthly Notes" },
         "button": { "label": "This month", "tooltip": "Monthly note ({range})" },
-        "settings": { "section": "Monthly" }
+        "settings": { "section": "Monthly" },
+        "placeholder": "Start writing this month's note…",
+        "onboarding": {
+          "title": "Your monthly note",
+          "body": "This is a shared note for the whole month. Whichever day you click “This month”, you return to the same note. Next month's click will create a new one.",
+          "tip": "The title contains the year and month (e.g. 2026-05)."
+        }
       },
       "settings": {
         "title": "Periodic Notes",
@@ -116,6 +134,10 @@
         "folder_select_this": "Select this folder",
         "format": "Filename format",
         "preview": "Preview"
+      },
+      "onboarding": {
+        "open_settings": "Open settings",
+        "got_it": "Got it"
       },
       "errors": { "failed": "Failed to open the note" }
     }
@@ -222,8 +244,7 @@
     }
   },
   "editor": {
-    "placeholder": "Start writing...",
-    "placeholder_markdown": "Start writing in Markdown…",
+    "placeholder": "Start writing your note…",
     "undo": "Undo",
     "redo": "Redo",
     "undo_shortcut": "Undo (Ctrl+Z)",

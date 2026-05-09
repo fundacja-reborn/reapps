@@ -22,6 +22,12 @@ export interface PeriodicKindSettings {
    * `[W]w`, `ww`, `w`. Anything inside `[…]` is emitted literally.
    */
   format: string;
+  /**
+   * True after the user has dismissed the first-use onboarding modal for this
+   * kind. Local & device-specific (lives in `app-settings`, not synced) so each
+   * device gets its own onboarding the first time the kind is used there.
+   */
+  onboardingDismissed: boolean;
 }
 
 export interface PeriodicNotesSettings {
@@ -67,9 +73,24 @@ export const PERIODIC_NOTES_DEFAULT_FORMATS: Record<PeriodicKind, string> = {
 
 /** Default visibility per kind: only Daily on by default. */
 export const PERIODIC_NOTES_DEFAULTS: PeriodicNotesSettings = {
-  daily: { enabled: true, folderId: null, format: PERIODIC_NOTES_DEFAULT_FORMATS.daily },
-  weekly: { enabled: false, folderId: null, format: PERIODIC_NOTES_DEFAULT_FORMATS.weekly },
-  monthly: { enabled: false, folderId: null, format: PERIODIC_NOTES_DEFAULT_FORMATS.monthly }
+  daily: {
+    enabled: true,
+    folderId: null,
+    format: PERIODIC_NOTES_DEFAULT_FORMATS.daily,
+    onboardingDismissed: false
+  },
+  weekly: {
+    enabled: false,
+    folderId: null,
+    format: PERIODIC_NOTES_DEFAULT_FORMATS.weekly,
+    onboardingDismissed: false
+  },
+  monthly: {
+    enabled: false,
+    folderId: null,
+    format: PERIODIC_NOTES_DEFAULT_FORMATS.monthly,
+    onboardingDismissed: false
+  }
 };
 
 /**

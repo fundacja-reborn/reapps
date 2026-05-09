@@ -92,18 +92,36 @@
       "daily": {
         "folder": { "default": "Tagebuch" },
         "button": { "label": "Heute", "tooltip": "Heutige Notiz ({range})" },
-        "settings": { "section": "Täglich" }
+        "settings": { "section": "Täglich" },
+        "placeholder": "Heutige Notiz beginnen…",
+        "onboarding": {
+          "title": "Ihre heutige Notiz",
+          "body": "Dies ist Ihre Notiz für heute. Jeder Tag hat seine eigene Tagesnotiz — ein Klick auf „Heute“ öffnet den ganzen Tag dieselbe Notiz. Morgen erstellt der Klick eine neue für das neue Datum.",
+          "tip": "Wochen- und Monatsnotizen sind standardmäßig deaktiviert. Sie können sie in den Einstellungen unten aktivieren."
+        }
       },
       "weekly": {
         "folder": { "default": "Wochennotizen" },
         "button": { "label": "Diese Woche", "tooltip": "Wochennotiz ({range})" },
         "settings": { "section": "Wöchentlich" },
-        "preview": { "range_hint": "← Montag der Woche {range}" }
+        "preview": { "range_hint": "← Montag der Woche {range}" },
+        "placeholder": "Notiz dieser Woche beginnen…",
+        "onboarding": {
+          "title": "Ihre Wochennotiz",
+          "body": "Dies ist eine gemeinsame Notiz für die ganze Woche (Montag–Sonntag). Egal an welchem Tag Sie auf „Diese Woche“ klicken — Sie kehren zur selben Notiz zurück. Nächste Woche erstellt der Klick eine neue.",
+          "tip": "Der Titel enthält das Datum des Montags dieser Woche und die ISO-Wochennummer (z. B. 2026-05-04 W19)."
+        }
       },
       "monthly": {
         "folder": { "default": "Monatsnotizen" },
         "button": { "label": "Dieser Monat", "tooltip": "Monatsnotiz ({range})" },
-        "settings": { "section": "Monatlich" }
+        "settings": { "section": "Monatlich" },
+        "placeholder": "Notiz dieses Monats beginnen…",
+        "onboarding": {
+          "title": "Ihre Monatsnotiz",
+          "body": "Dies ist eine gemeinsame Notiz für den ganzen Monat. Egal an welchem Tag Sie auf „Dieser Monat“ klicken — Sie öffnen dieselbe Notiz. Im nächsten Monat erstellt der Klick eine neue.",
+          "tip": "Der Titel enthält Jahr und Monat (z. B. 2026-05)."
+        }
       },
       "settings": {
         "title": "Periodische Notizen",
@@ -116,6 +134,10 @@
         "folder_select_this": "Diesen Ordner auswählen",
         "format": "Dateinamenformat",
         "preview": "Vorschau"
+      },
+      "onboarding": {
+        "open_settings": "Einstellungen öffnen",
+        "got_it": "Verstanden"
       },
       "errors": { "failed": "Notiz konnte nicht geöffnet werden" }
     }
@@ -222,8 +244,7 @@
     }
   },
   "editor": {
-    "placeholder": "Beginnen Sie zu schreiben...",
-    "placeholder_markdown": "Beginnen Sie in Markdown zu schreiben…",
+    "placeholder": "Beginnen Sie, Ihre Notiz zu schreiben…",
     "undo": "Rückgängig",
     "redo": "Wiederherstellen",
     "undo_shortcut": "Rückgängig (Strg+Z)",

@@ -97,6 +97,7 @@
   const readonlyCompartment = new Compartment();
   const autocompleteCompartment = new Compartment();
   const livePreviewCompartment = new Compartment();
+  const placeholderCompartment = new Compartment();
 
   function isDark(): boolean {
     return document.documentElement.classList.contains('dark');
@@ -349,7 +350,7 @@
         customKeymap,
         themeCompartment.of(isDark() ? oneDark : []),
         readonlyCompartment.of(EditorState.readOnly.of(readonly)),
-        placeholderExt(placeholder),
+        placeholderCompartment.of(placeholderExt(placeholder)),
         autocompleteCompartment.of(noteLinkAutocomplete(() => availableNotes, currentNoteId)),
         livePreviewCompartment.of(
           $editorMode === 'live' && !splitView
@@ -504,6 +505,15 @@
   $effect(() => {
     view?.dispatch({
       effects: readonlyCompartment.reconfigure(EditorState.readOnly.of(readonly))
+    });
+  });
+
+  // Sync placeholder prop — periodic notes set placeholder kind-aware after the
+  // async loadNote() resolves their folderId, so the prop changes after mount.
+  $effect(() => {
+    const next = placeholder;
+    view?.dispatch({
+      effects: placeholderCompartment.reconfigure(placeholderExt(next))
     });
   });
 
