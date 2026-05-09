@@ -12,6 +12,7 @@
   import { cryptoManager } from '@reborn/crypto';
   import { getSettings } from '$lib/utils/app-settings';
   import { appSettings } from '$lib/stores/app-settings.store';
+  import { syncedSettings } from '$lib/services/synced-settings.service';
   import { foldersStore } from '$lib/stores/folders.store';
   import { tagsStore } from '$lib/stores/tags.store';
   import { notesStore } from '$lib/stores/notes.store';
@@ -77,6 +78,14 @@
       // initializeStorage() is idempotent — safe to call unconditionally.
       if (!isDatabaseInitialized()) {
         await initializeStorage('notes');
+      }
+      // Pull E2E synced settings now that the master key is available.
+      // Re-init appSettings so theme/locale reflect the server state.
+      try {
+        const { applied } = await syncedSettings.pullAndMerge();
+        if (applied) await appSettings.refresh();
+      } catch (err: unknown) {
+        logger.warn('Synced settings pull on E2E unlock failed', err);
       }
       // Build NoteIndex FIRST (in parallel with folders/tags), then refresh notesStore
       await Promise.all([foldersStore.refresh(), tagsStore.refresh(), noteIndex.build()]);
@@ -163,6 +172,16 @@
       void refreshPendingCount();
 
       // i18n is initialized in +layout.ts (before render)
+
+      // Pull E2E synced settings before applying theme/locale so a fresh
+      // device sees the user's preferences instead of IDB defaults.
+      if (cryptoManager.isInitialized()) {
+        try {
+          await syncedSettings.pullAndMerge();
+        } catch (err: unknown) {
+          logger.warn('Synced settings pull failed — falling back to local IDB', err);
+        }
+      }
 
       try {
         await appSettings.init();
