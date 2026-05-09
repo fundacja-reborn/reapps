@@ -67,6 +67,7 @@
     activeSection = 'all',
     activeFolderId = null,
     isTrash = false,
+    isPeriodic = false,
     showSidebarTrigger = false,
     prominentHeader = false,
     autoFocusSearch = false,
@@ -81,6 +82,7 @@
     /** Current folder ID — used to render a breadcrumb under search results from subfolders. */
     activeFolderId?: string | null;
     isTrash?: boolean;
+    isPeriodic?: boolean;
     showSidebarTrigger?: boolean;
     prominentHeader?: boolean;
     autoFocusSearch?: boolean;
@@ -329,7 +331,7 @@
         <NoteListSortMenu bind:sortSheetOpen />
       {/if}
 
-      {#if !isTrash}
+      {#if !isTrash && !isPeriodic}
         <button
           type="button"
           onclick={handleCreate}
