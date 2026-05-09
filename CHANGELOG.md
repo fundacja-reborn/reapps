@@ -1,3 +1,15 @@
+## 0.19.0 (2026-05-09)
+
+### 🚀 Features
+
+- **notes:** task lists ([#158](https://github.com/fundacja-reborn/reapps/pull/158), [#147](https://github.com/fundacja-reborn/reapps/issues/147))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.18.1 (2026-05-09)
 
 ### 🩹 Fixes
