@@ -562,7 +562,12 @@
     // tag yet), so the user would create a note and see nothing. Switch to "All
     // notes" first and await tick so the section $effect drives the store filter
     // before we call create() + refresh().
-    if (activeSection === 'trash' || activeSection === 'starred' || activeSection === 'tags') {
+    if (
+      activeSection === 'trash' ||
+      activeSection === 'starred' ||
+      activeSection === 'tags' ||
+      isPeriodicSection(activeSection)
+    ) {
       activeSection = 'all';
       activeFolderId = undefined;
       activeTagId = null;
@@ -1169,6 +1174,7 @@
                 {activeSection}
                 activeFolderId={activeFolderId ?? null}
                 isTrash={activeTrash}
+                isPeriodic={isPeriodicSection(activeSection)}
                 subfolders={activeFolderSubfolders}
                 onSubfolderSelect={handleFolderSelect}
                 autoFocusSearch={activeSection === 'search'}
@@ -1433,6 +1439,7 @@
               {activeFolderName}
               {activeSection}
               isTrash={false}
+              isPeriodic={false}
               autoFocusSearch
               searchOnly
               oncreate={handleNewNote}
@@ -1442,6 +1449,7 @@
               {activeFolderName}
               {activeSection}
               isTrash={activeTrash}
+              isPeriodic={isPeriodicSection(activeSection)}
               oncreate={handleNewNote}
             />
           {/if}
@@ -1581,6 +1589,7 @@
             {activeSection}
             activeFolderId={activeFolderId ?? null}
             isTrash={false}
+            isPeriodic={isPeriodicSection(activeSection)}
             showSidebarTrigger
             subfolders={activeFolderSubfolders}
             onSubfolderSelect={handleFolderSelect}
