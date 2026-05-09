@@ -19,7 +19,6 @@ import {
   PERIODIC_NOTES_DEFAULTS,
   PERIODIC_NOTES_DEFAULT_FORMATS
 } from '@reborn/storage';
-import * as FolderService from './folder.service';
 import { createNote } from './note.service';
 import { foldersStore } from '$lib/stores/folders.store';
 import { notesStore } from '$lib/stores/notes.store';
