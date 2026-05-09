@@ -13,6 +13,11 @@
   import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
   import { listIndent, listOutdent } from '$lib/editor/list-keymap';
   import {
+    BULLET_ANCHOR,
+    shouldInsertBulletAnchor,
+    stripBulletAnchorListener
+  } from '$lib/editor/bullet-anchor';
+  import {
     createLivePreviewExtension,
     getMarkdownExtension,
     rebuildLivePreview,
@@ -199,8 +204,11 @@
       });
     } else {
       const stripped = afterWs.replace(/^(#{1,6} |> |[-+*] |\d+[.)] )/, '');
+      const trailing = shouldInsertBulletAnchor(prefix, indent, stripped)
+        ? BULLET_ANCHOR
+        : stripped;
       view.dispatch({
-        changes: { from: line.from, to: line.to, insert: `${indent}${prefix}${stripped}` },
+        changes: { from: line.from, to: line.to, insert: `${indent}${prefix}${trailing}` },
         selection: { anchor: line.from + indent.length + prefix.length }
       });
     }
@@ -385,6 +393,7 @@
             : []
         ),
         noteLinkDecoration,
+        stripBulletAnchorListener,
         EditorView.domEventHandlers({
           click(e) {
             const target = e.target as HTMLElement | null;
