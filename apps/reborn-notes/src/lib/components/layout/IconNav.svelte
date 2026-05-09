@@ -1,5 +1,19 @@
 <script lang="ts" module>
-  export type Section = 'all' | 'starred' | 'folders' | 'tags' | 'trash' | 'search';
+  export type Section =
+    | 'all'
+    | 'starred'
+    | 'folders'
+    | 'tags'
+    | 'trash'
+    | 'search'
+    | 'periodic-daily'
+    | 'periodic-weekly'
+    | 'periodic-monthly';
+
+  export const PERIODIC_SECTIONS = ['periodic-daily', 'periodic-weekly', 'periodic-monthly'] as const;
+  export type PeriodicSection = (typeof PERIODIC_SECTIONS)[number];
+  export const isPeriodicSection = (s: string): s is PeriodicSection =>
+    (PERIODIC_SECTIONS as readonly string[]).includes(s);
 </script>
 
 <script lang="ts">
@@ -180,12 +194,17 @@
     {/each}
     <!-- Periodic notes (Daily / Weekly / Monthly) -->
     {#each PERIODIC_BUTTONS as p (p.kind)}
+      {@const sectionId = `periodic-${p.kind}` as const}
+      {@const isActive = activeSection === sectionId}
       <button
         type="button"
         onclick={() => onPeriodic?.(p.kind)}
-        class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs
-               text-muted-foreground hover:bg-sidebar-accent/60 transition-colors"
+        class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
+          {isActive
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+          : 'text-muted-foreground hover:bg-sidebar-accent/60'}"
         aria-label={periodicTooltip(p.kind)}
+        aria-current={isActive ? 'page' : undefined}
         title={periodicTooltip(p.kind)}
       >
         <p.icon class="h-5 w-5" />
@@ -319,6 +338,8 @@
 
     <!-- Periodic notes (Daily / Weekly / Monthly) -->
     {#each PERIODIC_BUTTONS as p (p.kind)}
+      {@const sectionId = `periodic-${p.kind}` as const}
+      {@const isActive = activeSection === sectionId}
       <Tooltip.Root>
         <Tooltip.Trigger>
           {#snippet child({ props })}
@@ -326,9 +347,12 @@
               {...props}
               type="button"
               onclick={() => onPeriodic?.(p.kind)}
-              class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg text-muted-foreground
-                     hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+              class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg transition-colors
+                {isActive
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
               aria-label={periodicTooltip(p.kind)}
+              aria-current={isActive ? 'page' : undefined}
             >
               <p.icon class="h-6 w-6 md:h-5 md:w-5" />
             </button>
