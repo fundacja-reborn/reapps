@@ -31,6 +31,12 @@
       "automerge": false
     },
     {
+      "description": "Group CodeMirror + Lezer ecosystem updates — bumping @codemirror/view alone causes transitive duplicate (TS errors on EditorView's private dispatchTransactions). Cohesive bump avoids it.",
+      "matchPackageNames": ["/^@codemirror\\//", "/^@lezer\\//"],
+      "groupName": "codemirror",
+      "automerge": false
+    },
+    {
       "description": "Group Nx monorepo updates",
       "matchPackageNames": ["/^@nx\\//", "/^nx$/"],
       "groupName": "nx",
