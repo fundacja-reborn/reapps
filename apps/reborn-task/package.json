@@ -46,6 +46,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@internationalized/date": "3.12.1",
     "@lucide/svelte": "1.14.0",
     "@reborn/api-client": "workspace:*",
     "@reborn/auth": "workspace:*",
@@ -56,9 +57,12 @@
     "@reborn/types": "workspace:*",
     "@reborn/ui": "workspace:*",
     "@reborn/utils": "workspace:*",
+    "bits-ui": "2.18.1",
     "rrule": "2.8.1",
     "server-only": "0.0.1",
     "svelte-dnd-action": "0.9.69",
+    "svelte-i18n": "4.0.1",
+    "uuid": "14.0.0",
     "web-push": "3.6.7"
   }
 }

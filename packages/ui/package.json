@@ -65,11 +65,13 @@
   "dependencies": {
     "@internationalized/date": "3.12.1",
     "@lucide/svelte": "1.14.0",
+    "@reborn/auth": "workspace:*",
     "@reborn/i18n": "workspace:*",
     "bits-ui": "2.18.1",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "mode-watcher": "1.1.0",
+    "svelte-i18n": "4.0.1",
     "svelte-sonner": "1.1.1",
     "tailwind-merge": "3.5.0"
   },
