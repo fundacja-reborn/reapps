@@ -43,16 +43,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Security audit [SC1] — detect known CVEs in dependencies
-      # Currently informational (|| true) because transitive deps (nx, svelte-kit,
-      # sveltekit-superforms) have unresolved CVEs outside our control.
-      # TODO: switch to hard fail once upstream packages patch their CVEs
+      # Hard fail: prod tree must be clean at moderate+, all deps clean at high+.
+      # Transitive CVEs that upstream hasn't patched are pinned via pnpm.overrides
+      # in package.json — see "pnpm.overrides" block.
       - name: Security audit
         run: |
           echo "=== Production dependencies ==="
-          pnpm audit --audit-level moderate --prod || true
+          pnpm audit --audit-level moderate --prod
           echo ""
           echo "=== All dependencies ==="
-          pnpm audit --audit-level high || true
+          pnpm audit --audit-level high
 
       # SvelteKit sync — generate .svelte-kit/ directories
       # (required for build, test, and check targets — provides tsconfig, typed routes, $env modules)
