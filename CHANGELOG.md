@@ -1,3 +1,15 @@
+## 0.19.1 (2026-05-10)
+
+### 🩹 Fixes
+
+- **deps:** update patch-updates ([#159](https://github.com/fundacja-reborn/reapps/pull/159))
+- **deps:** update minor-updates ([#161](https://github.com/fundacja-reborn/reapps/pull/161))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.19.0 (2026-05-09)
 
 ### 🚀 Features
