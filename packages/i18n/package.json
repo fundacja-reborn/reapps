@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@reborn/types": "workspace:*",
-    "@sveltejs/vite-plugin-svelte": "7.0.0",
+    "@sveltejs/vite-plugin-svelte": "7.1.2",
     "@types/node": "24.12.3",
     "svelte": "5.55.5",
     "tsup": "8.5.1",
