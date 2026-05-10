@@ -1,17 +1,6 @@
 packages:
   - apps/*
   - packages/*
-# Legacy key, used by pnpm <= 10. Drop together with the pnpm 10 packageManager pin.
-onlyBuiltDependencies:
-  - '@prisma/client'
-  - '@prisma/engines'
-  - '@swc/core'
-  - esbuild
-  - nx
-  - prisma
-  - sharp
-  - svelte-preprocess
-# Replacement of `onlyBuiltDependencies` in pnpm 11 (strictDepBuilds=true by default).
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
