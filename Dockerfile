@@ -15,7 +15,7 @@
 # ─── Base: shared Node + pnpm layer ────────────────────────────
 FROM node:24.15.0-alpine AS base
 WORKDIR /app
-RUN npm install -g pnpm@10 --quiet
+RUN npm install -g pnpm@11.0.9 --quiet
 
 # ─── Deps: install workspace + build shared packages ───────────
 # Kept separate from app builds so its cache is reused between task/notes.
