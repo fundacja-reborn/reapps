@@ -21,6 +21,24 @@ import { createLogger } from '@reborn/utils';
 
 const logger = createLogger('CryptoManager');
 
+/**
+ * Cross-app key event broadcast.
+ *
+ * Both reborn-task and reborn-notes share origin (and therefore IndexedDB).
+ * After one app calls `setMasterKey()` / `clearMasterKey()`, the other app —
+ * if already open — has no way to discover the change without polling. The
+ * BroadcastChannel `reborn_e2e` lets the crypto layer notify all peers on
+ * the same origin; subscribers (auth stores, layout guards) react by flipping
+ * `hasE2E` and redirecting away from `/auth/unlock` without a second password
+ * prompt. The key itself stays in IndexedDB — we never put plaintext on the
+ * wire and never leak it across origins.
+ */
+const KEY_EVENT_CHANNEL = 'reborn_e2e';
+
+export type CryptoKeyEvent = 'unlocked' | 'cleared';
+
+export type KeyEventHandler = (event: CryptoKeyEvent) => void;
+
 export class CryptoManager {
   private static instance: CryptoManager;
   private masterKey: CryptoKey | null = null;
@@ -32,6 +50,12 @@ export class CryptoManager {
   private readonly IDB_KEY_ID = 'current';
   private restoreKeyAttempted = false;
   private restorePromise: Promise<boolean> | null = null;
+
+  // Cross-app key event channel — single instance with a fanout list of
+  // subscribers so HMR re-subscribing doesn't allocate extra channels.
+  private channel: BroadcastChannel | null = null;
+  private channelInitialized = false;
+  private keyEventHandlers: Set<KeyEventHandler> = new Set();
 
   // Private constructor for singleton pattern
   private constructor() {
@@ -241,6 +265,72 @@ export class CryptoManager {
     }
   }
 
+  // ── Cross-app key events (BroadcastChannel) ──────────────────
+
+  /**
+   * Lazily create the BroadcastChannel and wire its listener. Called once on
+   * first emit/subscribe. Some sandboxed environments (older iOS PWA, hardened
+   * browser modes) throw when constructing BroadcastChannel — we degrade
+   * silently so the rest of crypto keeps working (fast-path on /auth/unlock
+   * still covers cold-start scenarios; only S3 — warm cross-app unlock —
+   * regresses to the previous behaviour).
+   */
+  private ensureChannel(): void {
+    if (this.channelInitialized) return;
+    this.channelInitialized = true;
+    if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') return;
+    try {
+      this.channel = new BroadcastChannel(KEY_EVENT_CHANNEL);
+      this.channel.onmessage = (e: MessageEvent) => {
+        const data = e.data as { type?: CryptoKeyEvent } | null;
+        if (!data || (data.type !== 'unlocked' && data.type !== 'cleared')) return;
+        for (const handler of this.keyEventHandlers) {
+          try {
+            handler(data.type);
+          } catch (err) {
+            logger.error('Key event handler threw:', err);
+          }
+        }
+      };
+    } catch (error) {
+      logger.warn('BroadcastChannel unavailable — cross-app key events disabled:', error);
+      this.channel = null;
+    }
+  }
+
+  /**
+   * Emit a key event to peer apps on the same origin. Fire-and-forget —
+   * failure to broadcast must not break the local set/clear operation.
+   */
+  private postKeyEvent(type: CryptoKeyEvent): void {
+    this.ensureChannel();
+    if (!this.channel) return;
+    try {
+      this.channel.postMessage({ type });
+    } catch (error) {
+      logger.warn(`Failed to broadcast key event "${type}":`, error);
+    }
+  }
+
+  /**
+   * Subscribe to cross-app key events. Returns an unsubscriber.
+   *
+   * Usage: the peer app's auth store calls this once during initialization
+   * and reacts to `unlocked` (flip hasE2E, redirect away from /auth/unlock)
+   * and `cleared` (defense-in-depth — main logout path is the storage event
+   * on `reborn_auth_credentials`).
+   *
+   * BroadcastChannel only delivers messages to *other* contexts on the same
+   * origin, so the emitting tab does not receive its own events.
+   */
+  public subscribeToKeyEvents(handler: KeyEventHandler): () => void {
+    this.ensureChannel();
+    this.keyEventHandlers.add(handler);
+    return () => {
+      this.keyEventHandlers.delete(handler);
+    };
+  }
+
   /**
    * Get the singleton instance of CryptoManager
    */
@@ -357,6 +447,11 @@ export class CryptoManager {
     // Persist to IndexedDB (survives tab close / PWA restart)
     await this.persistKeyToIDB();
 
+    // Notify peer apps (Notes ↔ Task on same origin) so they can flip
+    // hasE2E and skip the password prompt — IDB has the key and they
+    // can read it directly.
+    this.postKeyEvent('unlocked');
+
     // Zapisz tymczasową wersję klucza w sessionStorage, aby przetrwał nawigację
     if (typeof window !== 'undefined' && window.sessionStorage) {
       try {
@@ -395,6 +490,12 @@ export class CryptoManager {
       window.sessionStorage.removeItem(this.CRYPTO_VERIFIED_KEY);
       logger.debug('Temporary master key removed from session storage');
     }
+
+    // Defense-in-depth — the primary logout path is the storage event on
+    // `reborn_auth_credentials`. Peer apps that already handle that event
+    // will treat this as a no-op; the broadcast only matters when someone
+    // calls clearMasterKey() without touching credentials (rare/buggy).
+    this.postKeyEvent('cleared');
 
     logger.debug('Master key cleared');
   }

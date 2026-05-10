@@ -6,6 +6,7 @@
 	import { session } from '$lib/stores/auth.store';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { browser } from '$app/environment';
+	import { cryptoManager } from '@reborn/crypto';
 	import { createLogger } from '@reborn/utils';
 
 	const logger = createLogger('UnlockRoute');
@@ -56,6 +57,21 @@
 				'/auth/login' + (returnTo !== '/' ? `?returnTo=${encodeURIComponent(returnTo)}` : '')
 			);
 			return;
+		}
+
+		// Fast-path for cross-app SSO: shared origin IDB may already hold the
+		// master key (peer Notes unlocked it, or initializeAuth() raced this
+		// $effect). waitForRestore() resolves with a 5s fail-soft timeout, so
+		// the password form still appears if IDB is genuinely empty/slow.
+		if (!currentSession.hasE2E) {
+			await cryptoManager.waitForRestore();
+			if (cryptoManager.isInitialized()) {
+				logger.info('Master key found in shared IDB — skipping password prompt');
+				authOperationsService.getSessionManager().setSession({ hasE2E: true });
+				isRedirecting = true;
+				await goto(returnTo);
+				return;
+			}
 		}
 
 		// If user already has E2E unlocked, redirect to return URL

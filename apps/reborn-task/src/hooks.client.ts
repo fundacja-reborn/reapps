@@ -99,6 +99,33 @@ window.addEventListener('storage', (e) => {
 });
 
 // ---------------------------------------------------------------------------
+// Cross-app E2E unlock (BroadcastChannel)
+// ---------------------------------------------------------------------------
+// When the peer app (reborn-notes) calls setMasterKey() it broadcasts an
+// `unlocked` event over the `reborn_e2e` channel. The master key already lives
+// in the shared origin IndexedDB, so this tab can flip hasE2E and bounce off
+// /auth/unlock without a second password prompt. The matching `cleared` event
+// is defense-in-depth — the primary logout path is the storage listener above.
+cryptoManager.subscribeToKeyEvents((event) => {
+	if (event === 'unlocked') {
+		if (!cryptoManager.isInitialized()) return;
+		logger.info('Cross-app E2E unlock detected — flipping hasE2E');
+		authOperationsService.getSessionManager().setSession({ hasE2E: true });
+		const path = window.location.pathname;
+		if (path.includes('/auth/unlock')) {
+			window.location.href = `${base}/`;
+		}
+		return;
+	}
+	// event === 'cleared'
+	const stillAuthenticated = !!localStorage.getItem(CREDENTIALS_KEY);
+	if (stillAuthenticated && !cryptoManager.isInitialized()) {
+		logger.info('Cross-app key cleared without logout — flipping hasE2E to false');
+		authOperationsService.getSessionManager().setSession({ hasE2E: false });
+	}
+});
+
+// ---------------------------------------------------------------------------
 // Initialize storage when the app starts
 // ---------------------------------------------------------------------------
 logger.info('Initializing storage on app startup');

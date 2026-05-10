@@ -80,6 +80,18 @@ function readFromStorage(): AuthState {
 function createAuthStore() {
   const { subscribe, set } = writable<AuthState>(readFromStorage());
 
+  /**
+   * Mark E2E as unlocked when the master key was loaded by another path —
+   * cross-app SSO (peer Task/Notes already unlocked the shared origin IDB
+   * key) or fast-path on `/auth/unlock`. Re-reads the auth credentials from
+   * localStorage so other fields stay in sync.
+   */
+  function markE2EUnlocked(): void {
+    if (!browser) return;
+    if (!cryptoManager.isInitialized()) return;
+    set({ ...readFromStorage(), hasE2E: true });
+  }
+
   /** Call once from the root layout to hydrate state and watch for cross-tab changes. */
   function initialize(): void {
     if (!browser) return;
@@ -123,6 +135,31 @@ function createAuthStore() {
 
       // Token refresh or other update — update store reactively
       set(newState);
+    });
+
+    // Cross-app E2E unlock — peer app (Task) just unlocked the master key in
+    // the shared origin IDB. Flip hasE2E and, if we're stuck on /auth/unlock,
+    // hard-redirect home so the layout's $effect picks up sync. The matching
+    // `cleared` event is a defense-in-depth backstop for `clearMasterKey()`
+    // being called without touching credentials — the normal logout path
+    // still goes through the storage listener above.
+    cryptoManager.subscribeToKeyEvents((event) => {
+      if (event === 'unlocked') {
+        if (!cryptoManager.isInitialized()) return;
+        markE2EUnlocked();
+        const path = window.location.pathname;
+        if (path.includes('/auth/unlock')) {
+          logger.info('Cross-app E2E unlock detected — redirecting from /auth/unlock to home');
+          window.location.href = `${base}/`;
+        }
+        return;
+      }
+      // event === 'cleared'
+      const stillAuthenticated = !!localStorage.getItem(CREDENTIALS_KEY);
+      if (stillAuthenticated && !cryptoManager.isInitialized()) {
+        logger.info('Cross-app key cleared without logout — flipping hasE2E to false');
+        set({ ...readFromStorage(), hasE2E: false });
+      }
     });
   }
 
@@ -215,7 +252,7 @@ function createAuthStore() {
     window.location.href = `${base}/auth/login`;
   }
 
-  return { subscribe, initialize, unlockE2E, logout };
+  return { subscribe, initialize, unlockE2E, logout, markE2EUnlocked };
 }
 
 export const authStore = createAuthStore();
