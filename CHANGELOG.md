@@ -1,3 +1,18 @@
+## 0.20.0 (2026-05-10)
+
+### 🚀 Features
+
+- **auth:** cross-app SSO unlock for shared E2E master key ([#173](https://github.com/fundacja-reborn/reapps/pull/173))
+
+### 🩹 Fixes
+
+- **task:** preserve shadow indexes when metadata decrypt fails after session unlock ([#172](https://github.com/fundacja-reborn/reapps/pull/172))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.19.1 (2026-05-10)
 
 ### 🩹 Fixes

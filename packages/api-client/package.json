@@ -1,6 +1,6 @@
 {
   "name": "@reborn/api-client",
-  "version": "0.19.1",
+  "version": "0.20.0",
   "description": "Universal API client for Reborn apps with E2E encryption support",
   "type": "module",
   "main": "./dist/index.js",
