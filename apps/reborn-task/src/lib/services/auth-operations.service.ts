@@ -483,6 +483,20 @@ export class AuthOperationsService {
 					await syncService.initialSync();
 				}
 
+				// Reconcile any IDB shadow indexes that drifted from the
+				// metadata bundle (recovery for the 2026-05-10 incident — see
+				// shadow-index-reconciler.service.ts). Cheap no-op when IDB
+				// is consistent. Run before loadLists so any UI that reads
+				// task counts immediately afterwards sees corrected state.
+				try {
+					const { verifyAndRebuildLocalShadowIndexes } = await import(
+						'./shadow-index-reconciler.service'
+					);
+					await verifyAndRebuildLocalShadowIndexes();
+				} catch (err) {
+					logger.warn('Shadow index reconciliation failed (non-fatal):', err);
+				}
+
 				// Reload lists after sync completes
 				await taskListStore.loadLists();
 
@@ -786,6 +800,18 @@ export class AuthOperationsService {
 
 		try {
 			await syncService.initialSync();
+
+			// Repair any drifted shadow indexes (post-incident recovery —
+			// see shadow-index-reconciler.service.ts). Must run before
+			// taskTitleIndex.rebuild() so the index reads corrected values.
+			try {
+				const { verifyAndRebuildLocalShadowIndexes } = await import(
+					'./shadow-index-reconciler.service'
+				);
+				await verifyAndRebuildLocalShadowIndexes();
+			} catch (err) {
+				logger.warn('Shadow index reconciliation failed (non-fatal):', err);
+			}
 
 			const { refreshDecryptedLists } = await import('$lib/stores/decrypted-lists.store');
 			const { refreshDecryptedSubtasks } = await import(

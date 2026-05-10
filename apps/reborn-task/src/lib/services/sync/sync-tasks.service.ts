@@ -1,10 +1,9 @@
 import { SyncBaseService } from './sync-base.service';
+import { rebuildShadowIndexes } from './shadow-indexes';
 import { taskStore } from '@reborn/storage';
-import { cryptoManager } from '@reborn/crypto';
 import type {
 	TaskEncrypted,
 	TaskEncryptedBooleans,
-	TaskSensitiveMetadata,
 	StorageOfflineOperation
 } from '@reborn/types';
 
@@ -189,7 +188,7 @@ export class SyncTasksService extends SyncBaseService {
 						if (localTask && task.sync_version > (localTask.sync_version || 0)) {
 							serverUpdates++;
 						}
-						await taskStore.save(await this.rebuildShadowIndexes(task));
+						await this.saveWithShadowIndexes(task);
 					}
 				} catch (error: unknown) {
 					this.logger.error(`Failed to save task ${task.id}:`, error);
@@ -410,7 +409,7 @@ export class SyncTasksService extends SyncBaseService {
 							continue;
 						}
 
-						await taskStore.save(await this.rebuildShadowIndexes(task));
+						await this.saveWithShadowIndexes(task);
 					}
 				} catch (error: unknown) {
 					this.logger.error(`Failed to save deleted task ${task.id}:`, error);
@@ -446,41 +445,23 @@ export class SyncTasksService extends SyncBaseService {
 	}
 
 	/**
-	 * Rebuild local shadow indexes from encrypted metadata.
-	 * Decrypts metadata_encrypted → TaskSensitiveMetadata → shadow fields.
+	 * Wrap {@link rebuildShadowIndexes} and persist to IDB. If the rebuild throws
+	 * (crypto not ready or decrypt failed), log a warn and skip the save —
+	 * server ciphertext is unchanged so the next successful sync will retry.
 	 */
-	private async rebuildShadowIndexes(task: TaskEncrypted): Promise<TaskEncryptedBooleans> {
+	private async saveWithShadowIndexes(task: TaskEncrypted): Promise<void> {
+		let prepared: TaskEncryptedBooleans;
 		try {
-			if (task.metadata_encrypted && cryptoManager.isInitialized()) {
-				const meta = await cryptoManager.decryptObject<TaskSensitiveMetadata>(
-					task.metadata_encrypted
-				);
-				return {
-					...task,
-					is_completed: meta.is_completed ?? false,
-					is_starred: meta.is_starred ?? false,
-					is_recurring: meta.is_recurring,
-					is_template: task.is_template === 1,
-					due_date: meta.due_date ?? null
-				} as TaskEncryptedBooleans;
-			}
+			prepared = await rebuildShadowIndexes(task);
 		} catch (error: unknown) {
-			// ERROR: metadata decryption failed — shadow indexes (is_completed, is_starred, etc.)
-			// will use defaults (false/null). The task's metadata_encrypted is preserved for
-			// future retry on next pull. This may cause incorrect UI state until next successful decrypt.
-			this.logger.error(
-				`METADATA_DECRYPT_FAILED for task ${task.id} — shadow indexes may be incorrect`,
+			this.logger.warn(
+				`Skipping save of task ${task.id} — shadow indexes could not be derived. ` +
+					`Will retry on next successful sync.`,
 				error
 			);
+			return;
 		}
-
-		return {
-			...task,
-			is_completed: false,
-			is_starred: false,
-			is_template: task.is_template === 1,
-			due_date: null
-		} as TaskEncryptedBooleans;
+		await taskStore.save(prepared);
 	}
 
 	/**
@@ -500,7 +481,7 @@ export class SyncTasksService extends SyncBaseService {
 
 				// Update local task with server response
 				if (createResponse.data) {
-					await taskStore.save(await this.rebuildShadowIndexes(createResponse.data));
+					await this.saveWithShadowIndexes(createResponse.data);
 					// Return the response so it can be processed further if needed
 					return createResponse.data;
 				}
@@ -519,7 +500,7 @@ export class SyncTasksService extends SyncBaseService {
 
 				// Save server response to IndexedDB (resets sync_status, updates sync_version)
 				if (updateResponse.data) {
-					await taskStore.save(await this.rebuildShadowIndexes(updateResponse.data));
+					await this.saveWithShadowIndexes(updateResponse.data);
 				}
 				break;
 			}
