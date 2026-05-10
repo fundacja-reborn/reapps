@@ -2,11 +2,11 @@ packages:
   - apps/*
   - packages/*
 overrides:
-  axios: ^1.15.2
-  follow-redirects: ^1.16.0
-  fast-uri: ^3.1.2
-  '@babel/plugin-transform-modules-systemjs': ^7.29.4
-  hono: ^4.12.18
+  axios: 1.16.0
+  follow-redirects: 1.16.0
+  fast-uri: 3.1.2
+  '@babel/plugin-transform-modules-systemjs': 7.29.4
+  hono: 4.12.18
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
