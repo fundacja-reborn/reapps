@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$lib/utils/navigation';
   import { authStore } from '$lib/stores/auth.store';
+  import { cryptoManager } from '@reborn/crypto';
   import { UnlockPage } from '@reborn/ui';
   import { createLogger } from '@reborn/utils';
 
@@ -14,11 +15,24 @@
   let attemptsRemaining = $state<number | undefined>(undefined);
   let username = $state('');
 
-  onMount(() => {
+  onMount(async () => {
     if (!$authStore.isAuthenticated) {
       goto('/auth/login');
       return;
     }
+
+    // Fast-path: shared origin IDB may already hold the master key (peer app
+    // unlocked it, or cold start landed here before the layout's restore
+    // settled). waitForRestore() resolves with a 5s fail-soft timeout, so the
+    // password form still appears if IDB is genuinely empty/slow.
+    await cryptoManager.waitForRestore();
+    if (cryptoManager.isInitialized()) {
+      logger.info('Master key found in shared IDB — skipping password prompt');
+      authStore.markE2EUnlocked();
+      goto('/');
+      return;
+    }
+
     if ($authStore.hasE2E) {
       goto('/');
       return;

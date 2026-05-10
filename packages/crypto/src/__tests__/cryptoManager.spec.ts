@@ -460,6 +460,97 @@ describe('CryptoManager', () => {
     }, 10_000);
   });
 
+  describe('cross-app key events (BroadcastChannel)', () => {
+    interface FakeChannel {
+      postMessage: ReturnType<typeof vi.fn>;
+      close: ReturnType<typeof vi.fn>;
+      onmessage: ((e: { data: unknown }) => void) | null;
+    }
+    let createdChannels: FakeChannel[];
+    let originalBroadcastChannel: unknown;
+
+    beforeEach(() => {
+      createdChannels = [];
+      originalBroadcastChannel = (globalThis as any).BroadcastChannel;
+      // Use a real class — vi.fn arrow form doesn't work with `new`.
+      class MockBroadcastChannel implements FakeChannel {
+        postMessage = vi.fn();
+        close = vi.fn();
+        onmessage: ((e: { data: unknown }) => void) | null = null;
+        constructor(_name: string) {
+          createdChannels.push(this);
+        }
+      }
+      (globalThis as any).BroadcastChannel = MockBroadcastChannel;
+    });
+
+    afterEach(() => {
+      (globalThis as any).BroadcastChannel = originalBroadcastChannel;
+    });
+
+    it('broadcasts "unlocked" after setMasterKey', async () => {
+      const fresh = new (CryptoManager as any)();
+      const key = await fresh.generateMasterKey();
+      await fresh.setMasterKey(key);
+
+      expect(createdChannels).toHaveLength(1);
+      expect(createdChannels[0].postMessage).toHaveBeenCalledWith({ type: 'unlocked' });
+    });
+
+    it('broadcasts "cleared" after clearMasterKey', async () => {
+      const fresh = new (CryptoManager as any)();
+      const key = await fresh.generateMasterKey();
+      await fresh.setMasterKey(key);
+      const calls = createdChannels[0].postMessage.mock.calls.length;
+
+      fresh.clearMasterKey();
+
+      expect(createdChannels[0].postMessage.mock.calls.length).toBe(calls + 1);
+      expect(createdChannels[0].postMessage).toHaveBeenLastCalledWith({ type: 'cleared' });
+    });
+
+    it('reuses a single BroadcastChannel across multiple subscribers', () => {
+      const fresh = new (CryptoManager as any)();
+      const handlerA = vi.fn();
+      const handlerB = vi.fn();
+
+      const unsubA = fresh.subscribeToKeyEvents(handlerA);
+      const unsubB = fresh.subscribeToKeyEvents(handlerB);
+
+      expect(createdChannels).toHaveLength(1);
+
+      // Simulate a peer broadcast — invoke the channel's onmessage directly.
+      createdChannels[0].onmessage?.({ data: { type: 'unlocked' } });
+
+      expect(handlerA).toHaveBeenCalledWith('unlocked');
+      expect(handlerB).toHaveBeenCalledWith('unlocked');
+
+      unsubA();
+      createdChannels[0].onmessage?.({ data: { type: 'cleared' } });
+
+      expect(handlerA).toHaveBeenCalledTimes(1); // unsubscribed → no new call
+      expect(handlerB).toHaveBeenCalledWith('cleared');
+
+      unsubB();
+    });
+
+    it('degrades silently when BroadcastChannel constructor throws', async () => {
+      class ThrowingChannel {
+        constructor() {
+          throw new Error('sandboxed');
+        }
+      }
+      (globalThis as any).BroadcastChannel = ThrowingChannel;
+
+      const fresh = new (CryptoManager as any)();
+      const key = await fresh.generateMasterKey();
+
+      // Must not throw — degraded mode just skips the broadcast.
+      await expect(fresh.setMasterKey(key)).resolves.toBeUndefined();
+      expect(fresh.isInitialized()).toBe(true);
+    });
+  });
+
   describe('error handling', () => {
     it('should handle encryption errors gracefully', async () => {
       const masterKey = await manager.generateMasterKey();
