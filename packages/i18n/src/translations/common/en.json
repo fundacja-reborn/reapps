@@ -1,7 +1,12 @@
 {
   "app": {
     "name": "Reborn",
-    "loading": "Loading application..."
+    "loading": "Loading application...",
+    "sw_update": {
+      "title": "A new version of the app is available",
+      "description": "Reload the page to load the latest version.",
+      "button": "Reload"
+    }
   },
   "dates": {
     "today": "today",

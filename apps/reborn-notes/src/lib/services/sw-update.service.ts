@@ -24,8 +24,10 @@
  */
 
 import { browser } from '$app/environment';
+import { get } from 'svelte/store';
 import { toastStore } from '@reborn/ui';
 import { createLogger } from '@reborn/utils';
+import { t } from '$lib/stores/i18n.store';
 
 const logger = createLogger('SwUpdateService');
 
@@ -118,11 +120,13 @@ function promptReload(): void {
 
   logger.info('New service worker version available — prompting user to reload');
 
-  toastStore.info('Nowa wersja aplikacji jest dostępna', {
-    description: 'Odśwież stronę, aby załadować najnowszą wersję.',
+  const $t = get(t);
+
+  toastStore.info($t('app.sw_update.title'), {
+    description: $t('app.sw_update.description'),
     duration: Number.POSITIVE_INFINITY,
     action: {
-      label: 'Odśwież',
+      label: $t('app.sw_update.button'),
       onClick: () => window.location.reload()
     }
   });
