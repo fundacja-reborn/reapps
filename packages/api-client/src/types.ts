@@ -55,6 +55,23 @@ export interface QueuedRequest {
 }
 
 /**
+ * Outcome of an `onUnauthorized` refresh attempt. Discriminates three
+ * semantically distinct cases that the legacy `boolean` return type collapsed:
+ *
+ * - `'refreshed'` — access token was rotated; ApiClient retries the original
+ *   request once with the new Bearer header.
+ * - `'session-expired'` — `/auth/refresh` returned a definitive 401/403 (or
+ *   `success:false`). The refresh token is gone; the user must re-authenticate.
+ *   ApiClient surfaces the original 401 AND invokes `onSessionExpired` so the
+ *   app can show its re-auth UI (e.g. the session-expired banner).
+ * - `'transient'` — refresh failed for a non-definitive reason (5xx from nginx
+ *   during a deploy, network error, timeout). The session is probably still
+ *   valid; ApiClient surfaces the original 401 as a regular sync error and
+ *   does NOT invoke `onSessionExpired`. Callers should retry later.
+ */
+export type UnauthorizedResult = 'refreshed' | 'session-expired' | 'transient';
+
+/**
  * API client configuration
  */
 export interface ApiClientConfig {
@@ -69,11 +86,24 @@ export interface ApiClientConfig {
   /**
    * Called when a non-auth endpoint returns 401. Implementations should
    * single-flight refresh the access token (typically `authFetch.refresh()`)
-   * and return `true` if a new token is now available — the client will
-   * re-run request interceptors and retry the original request once. Return
-   * `false` (or throw) to surface the original 401 to the caller.
+   * and return:
+   * - `'refreshed'` when a new token is available → client retries once,
+   * - `'session-expired'` when refresh failed definitively → client surfaces
+   *   the 401 AND invokes `onSessionExpired` (so the app can prompt re-auth),
+   * - `'transient'` when refresh failed transiently → client surfaces the 401
+   *   without flagging the session as expired.
+   *
+   * Throwing from this callback is treated as `'transient'` (defensive default).
    */
-  onUnauthorized?: () => Promise<boolean>;
+  onUnauthorized?: () => Promise<UnauthorizedResult>;
+  /**
+   * Called when `onUnauthorized` resolves to `'session-expired'`. Use to
+   * surface the re-auth UI (e.g. flip a `sessionExpired` store that drives the
+   * session-expired banner). Symmetric to `createAuthFetch`'s
+   * `onSessionExpired` so both refresh paths (direct `authFetch(...)` wrapper
+   * and `ApiClient` on 401) share the same UX trigger.
+   */
+  onSessionExpired?: () => void;
 }
 
 /**

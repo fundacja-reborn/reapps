@@ -1,8 +1,11 @@
 import { ApiClient } from '@reborn/api-client';
+import type { UnauthorizedResult } from '@reborn/api-client';
+import { TransientRefreshError } from '@reborn/auth';
 import { PUBLIC_BASE_PATH } from '$env/static/public';
 import { createLogger } from '@reborn/utils';
 import type { Logger } from '@reborn/utils';
 import { authFetch } from '$lib/utils/auth-fetch';
+import { sessionExpired } from '$lib/stores/session-expired.store';
 
 /**
  * Base class for sync services with common functionality
@@ -25,22 +28,34 @@ export abstract class SyncBaseService {
 		// black hole (navigator.onLine=true but no upstream) doesn't hang a
 		// sync for the default 30 s.
 		//
-		// `authFetch.refresh()` throws `TransientRefreshError` when the server
-		// is briefly unreachable (e.g. 5xx from nginx during a Docker rebuild
-		// on the production VPS). Swallow it and return `false` so the caller
-		// gets the original 401 — sync will treat it as a transient sync error
-		// and retry on the next tick instead of falsely flagging the session
-		// as expired.
+		// Three-state contract (`UnauthorizedResult`):
+		// - `'refreshed'` — new access token → ApiClient retries once,
+		// - `'session-expired'` — `/auth/refresh` returned definitive 401/403
+		//   → ApiClient surfaces the 401 AND fires `onSessionExpired`, which
+		//   flips the `sessionExpired` store so the banner appears. Without
+		//   wiring this here, a sync 401 would never trigger the banner — only
+		//   direct `authFetch(...)` calls would, leaving sync silently broken
+		//   (the bug that motivated this change, observed 2026-05-11).
+		// - `'transient'` — `TransientRefreshError` (5xx from nginx during a
+		//   Docker rebuild, network error, timeout) → ApiClient surfaces the
+		//   401 without flipping the banner; sync retries on the next tick.
 		this.apiClient = new ApiClient({
 			baseUrl,
 			timeout: 15_000,
-			onUnauthorized: async () => {
+			onUnauthorized: async (): Promise<UnauthorizedResult> => {
 				try {
-					return (await authFetch.refresh()) !== null;
-				} catch {
-					return false;
+					const newToken = await authFetch.refresh();
+					return newToken !== null ? 'refreshed' : 'session-expired';
+				} catch (err) {
+					if (err instanceof TransientRefreshError) return 'transient';
+					// Unknown error from the refresh path is safer to treat as
+					// transient than as expiry (don't log the user out on a
+					// programming bug); rethrowing would also leak from request().
+					this.logger.warn('Unexpected refresh error, treating as transient:', err);
+					return 'transient';
 				}
-			}
+			},
+			onSessionExpired: () => sessionExpired.set(true)
 		});
 	}
 
@@ -101,10 +116,11 @@ export abstract class SyncBaseService {
 		if (!response.success) {
 			const errorMessage = response.error || response.message;
 			if (this.isAuthError(errorMessage) || response.status === 401 || response.status === 403) {
-				// ApiClient already attempted a refresh + retry via `onUnauthorized`,
-				// and `authFetch` flipped `sessionExpired` on failure. If we still see
-				// a 401/403 here, the user must re-authenticate — give up the entity
-				// pull silently so the SessionExpiredBanner is the only signal.
+				// ApiClient already attempted a refresh + retry via `onUnauthorized`.
+				// On 'session-expired' it also fired `onSessionExpired` → the banner
+				// is already up. On 'transient' it left the banner alone — sync will
+				// retry on the next tick. Either way, give up this entity pull
+				// silently here so we don't double-signal the user.
 				this.logger.info(
 					`${entityType} sync skipped — session refresh failed, awaiting re-authentication.`
 				);

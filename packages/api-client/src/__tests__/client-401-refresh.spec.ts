@@ -51,7 +51,7 @@ describe('ApiClient — 401 refresh + retry', () => {
     vi.restoreAllMocks();
   });
 
-  it('retries the original request once after onUnauthorized returns true', async () => {
+  it('retries the original request once after onUnauthorized returns "refreshed"', async () => {
     localStorage.setItem('access_token', 'expired');
 
     const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
@@ -74,14 +74,16 @@ describe('ApiClient — 401 refresh + retry', () => {
 
     const onUnauthorized = vi.fn().mockImplementation(async () => {
       localStorage.setItem('access_token', 'fresh');
-      return true;
+      return 'refreshed' as const;
     });
+    const onSessionExpired = vi.fn();
 
-    const client = new ApiClient({ baseUrl: '/api', onUnauthorized });
+    const client = new ApiClient({ baseUrl: '/api', onUnauthorized, onSessionExpired });
     const res = await client.get<{ ok: boolean }>('/things');
 
     expect(res.success).toBe(true);
     expect(onUnauthorized).toHaveBeenCalledOnce();
+    expect(onSessionExpired).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledTimes(2);
     // Initial used expired, retry used fresh
     expect(
@@ -92,7 +94,7 @@ describe('ApiClient — 401 refresh + retry', () => {
     ).toBe('Bearer fresh');
   });
 
-  it('returns the original 401 when onUnauthorized returns false (no retry)', async () => {
+  it('surfaces 401 AND fires onSessionExpired when onUnauthorized returns "session-expired"', async () => {
     localStorage.setItem('access_token', 'expired');
 
     const fetchMock = vi
@@ -103,14 +105,65 @@ describe('ApiClient — 401 refresh + retry', () => {
       }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const onUnauthorized = vi.fn().mockResolvedValue(false);
+    const onUnauthorized = vi.fn().mockResolvedValue('session-expired' as const);
+    const onSessionExpired = vi.fn();
 
-    const client = new ApiClient({ baseUrl: '/api', onUnauthorized });
+    const client = new ApiClient({ baseUrl: '/api', onUnauthorized, onSessionExpired });
     const res = await client.get('/things');
 
     expect(res.success).toBe(false);
     expect(res.status).toBe(401);
     expect(onUnauthorized).toHaveBeenCalledOnce();
+    expect(onSessionExpired).toHaveBeenCalledOnce();
+    // No retry — the 401 was definitive.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces 401 WITHOUT firing onSessionExpired when onUnauthorized returns "transient"', async () => {
+    localStorage.setItem('access_token', 'expired');
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'content-type': 'application/json' }
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const onUnauthorized = vi.fn().mockResolvedValue('transient' as const);
+    const onSessionExpired = vi.fn();
+
+    const client = new ApiClient({ baseUrl: '/api', onUnauthorized, onSessionExpired });
+    const res = await client.get('/things');
+
+    expect(res.success).toBe(false);
+    expect(res.status).toBe(401);
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+    // Crucial: transient failures must NOT flip the session-expired banner.
+    expect(onSessionExpired).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a thrown onUnauthorized as "transient" (no banner, no retry)', async () => {
+    localStorage.setItem('access_token', 'expired');
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ success: false }), {
+        status: 401,
+        headers: { 'content-type': 'application/json' }
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const onUnauthorized = vi.fn().mockRejectedValue(new Error('boom'));
+    const onSessionExpired = vi.fn();
+
+    const client = new ApiClient({ baseUrl: '/api', onUnauthorized, onSessionExpired });
+    const res = await client.get('/things');
+
+    expect(res.status).toBe(401);
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+    expect(onSessionExpired).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -125,12 +178,14 @@ describe('ApiClient — 401 refresh + retry', () => {
       );
     vi.stubGlobal('fetch', fetchMock);
 
-    const onUnauthorized = vi.fn();
+    const onUnauthorized = vi.fn().mockResolvedValue('session-expired' as const);
+    const onSessionExpired = vi.fn();
 
-    const client = new ApiClient({ baseUrl: '/api', onUnauthorized });
+    const client = new ApiClient({ baseUrl: '/api', onUnauthorized, onSessionExpired });
     await client.post('/auth/refresh', {});
 
     expect(onUnauthorized).not.toHaveBeenCalled();
+    expect(onSessionExpired).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -145,11 +200,13 @@ describe('ApiClient — 401 refresh + retry', () => {
       );
     vi.stubGlobal('fetch', fetchMock);
 
-    const onUnauthorized = vi.fn();
-    const client = new ApiClient({ baseUrl: '/api', onUnauthorized });
+    const onUnauthorized = vi.fn().mockResolvedValue('session-expired' as const);
+    const onSessionExpired = vi.fn();
+    const client = new ApiClient({ baseUrl: '/api', onUnauthorized, onSessionExpired });
     await client.get('/things', { skipAuth: true });
 
     expect(onUnauthorized).not.toHaveBeenCalled();
+    expect(onSessionExpired).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
