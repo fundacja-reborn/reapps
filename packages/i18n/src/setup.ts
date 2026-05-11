@@ -29,6 +29,10 @@ type LocaleDictionary = Record<string, any>;
  */
 export function mergeTranslations(target: LocaleDictionary, source: LocaleDictionary): void {
   for (const key of Object.keys(source)) {
+    // Defense-in-depth against prototype pollution: JSON.parse can produce own
+    // properties named __proto__/constructor/prototype, and assigning them would
+    // mutate Object.prototype or replace the constructor.
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
     const sourceValue = source[key];
     const targetValue = target[key];
     if (

@@ -65,4 +65,20 @@ describe('mergeTranslations', () => {
     mergeTranslations(target, { key: null });
     expect(target.key).toBeNull();
   });
+
+  it('skips __proto__, constructor, and prototype to prevent prototype pollution', () => {
+    // Object.keys(JSON.parse('{"__proto__":{"polluted":true}}')) returns
+    // ['__proto__'] as an own property — without the guard this would mutate
+    // Object.prototype globally.
+    const malicious = JSON.parse('{"__proto__":{"polluted":true},"constructor":"x","prototype":"y","safe":"ok"}');
+    const target: Record<string, any> = {};
+    mergeTranslations(target, malicious);
+
+    expect(target.safe).toBe('ok');
+    expect(target.constructor).toBe(Object); // not overwritten
+    expect((target as any).polluted).toBeUndefined();
+    expect(({} as any).polluted).toBeUndefined(); // prototype not polluted
+    expect(Object.prototype.hasOwnProperty.call(target, '__proto__')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(target, 'prototype')).toBe(false);
+  });
 });
