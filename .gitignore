@@ -84,6 +84,7 @@ reborn-apps.code-workspace
 docker-compose.prod.yml
 docker-compose.staging.yml
 docker-compose.localprod.yml
+docker-compose.claude.yml
 nginx/prod.conf
 nginx/staging.conf
 
