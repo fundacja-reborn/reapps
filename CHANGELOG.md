@@ -1,3 +1,21 @@
+## 0.21.0 (2026-05-11)
+
+### 🚀 Features
+
+- **i18n:** localize service worker update toast across 5 locales ([#180](https://github.com/fundacja-reborn/reapps/pull/180))
+
+### 🩹 Fixes
+
+- **api-client:** three-state onUnauthorized contract with onSessionExpired callback ([#181](https://github.com/fundacja-reborn/reapps/pull/181))
+- **deps:** rollback cookie to 0.7.2 and @hono/node-server to 1.19.14 ([#179](https://github.com/fundacja-reborn/reapps/pull/179))
+- **i18n:** deep-recursive translation merge so common keys survive app-specific overrides ([#182](https://github.com/fundacja-reborn/reapps/pull/182))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- Claude Opus 4.7 (1M context)
+- rerefu @rerefu
+
 ## 0.20.1 (2026-05-11)
 
 ### 🩹 Fixes
