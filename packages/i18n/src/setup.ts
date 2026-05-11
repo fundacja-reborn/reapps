@@ -15,22 +15,33 @@ import {
 type LocaleDictionary = Record<string, any>;
 
 /**
- * Shallow-deep merge: for each top-level key, if both sides are objects,
- * merge their properties instead of overwriting. This prevents module
- * collisions (e.g. tasks/common.json overwriting common/en.json → "common").
+ * Recursive deep merge: when both target[key] and source[key] are plain objects,
+ * merge their properties at every depth. Leaves (strings, arrays, primitives)
+ * are overwritten by source. Arrays are NOT merged element-wise.
+ *
+ * Rationale: a shallow (one-level) merge causes app-specific module files (e.g.
+ * tasks/<loc>/auth.json) to silently drop nested keys defined only in the shared
+ * common module — even when the app-specific override only wants to refine a
+ * single leaf. Example: `auth.session.totp_*` defined in common/<loc>.json was
+ * wiped out by tasks/<loc>/auth.json's minimal `session` block, leaving the
+ * re-auth modal showing raw keys in Task. Deep merge lets shared keys flow
+ * through while preserving per-app leaf overrides.
  */
-function mergeTranslations(target: LocaleDictionary, source: LocaleDictionary): void {
+export function mergeTranslations(target: LocaleDictionary, source: LocaleDictionary): void {
   for (const key of Object.keys(source)) {
+    const sourceValue = source[key];
+    const targetValue = target[key];
     if (
-      target[key] &&
-      typeof target[key] === 'object' &&
-      !Array.isArray(target[key]) &&
-      typeof source[key] === 'object' &&
-      !Array.isArray(source[key])
+      targetValue &&
+      typeof targetValue === 'object' &&
+      !Array.isArray(targetValue) &&
+      sourceValue &&
+      typeof sourceValue === 'object' &&
+      !Array.isArray(sourceValue)
     ) {
-      target[key] = { ...target[key], ...source[key] };
+      mergeTranslations(targetValue, sourceValue);
     } else {
-      target[key] = source[key];
+      target[key] = sourceValue;
     }
   }
 }
