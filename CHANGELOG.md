@@ -1,3 +1,9 @@
+## 0.20.1 (2026-05-11)
+
+### 🩹 Fixes
+
+- **deps:** update minor-updates ([#174](https://github.com/fundacja-reborn/reapps/pull/174))
+
 ## 0.20.0 (2026-05-10)
 
 ### 🚀 Features
