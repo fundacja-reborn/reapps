@@ -53,7 +53,7 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 
 - **Markdown editor** — headings, lists, code blocks, images, and more
 - **Folders & tags** — flexible organization system
-- **Periodic notes** — one-click Daily, Weekly, and Monthly notes (Obsidian-style); date-based titles with configurable formats, lazy-created folders, Daily on by default
+- **Periodic notes** — one-click Daily, Weekly, and Monthly notes (Obsidian-style); date-based titles with configurable formats, lazy-created folders, Daily on by default ([blog post](https://reapps.eu/blog/periodic-notes-daily-weekly-monthly))
 - **Version history** — up to 10 saved versions per note
 - **Internal links** — link between notes with autocomplete to build a knowledge base
 - **Live preview** — edit Markdown on one side, see formatted output on the other
