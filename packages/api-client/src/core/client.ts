@@ -10,7 +10,8 @@ import type {
   SyncStatus,
   IdMapping,
   EntityType,
-  OperationType
+  OperationType,
+  UnauthorizedResult
 } from '../types';
 import { AuthInterceptor } from '../interceptors/auth';
 import { EncryptionInterceptor } from '../interceptors/encryption';
@@ -45,7 +46,11 @@ export class ApiClient {
       onRequest: config.onRequest || ((c) => c),
       onResponse: config.onResponse || ((r) => r),
       onError: config.onError || (() => {}),
-      onUnauthorized: config.onUnauthorized || (async () => false)
+      // Default: no refresh handler installed → treat 401s as transient (no
+      // retry, no session-expired UI). Apps wire `authFetch.refresh()` in
+      // through the public constructor.
+      onUnauthorized: config.onUnauthorized || (async () => 'transient'),
+      onSessionExpired: config.onSessionExpired || (() => {})
     };
 
     // Initialize utilities
@@ -162,20 +167,38 @@ export class ApiClient {
       // the new token. The retry rebuilds the request config so AuthInterceptor
       // re-reads the rotated token. Auth endpoints are skipped to avoid
       // infinite recursion (the refresh endpoint itself can return 401).
+      //
+      // `onUnauthorized` returns a discriminated union — `'session-expired'`
+      // additionally triggers `onSessionExpired` so the app's re-auth UI fires
+      // here (sync path) just as it does in the direct `authFetch(...)` wrapper.
+      // Without this, a 401 on a sync request (which goes through ApiClient,
+      // not the wrapper) would silently retry-and-fail without ever surfacing
+      // the session-expired banner.
       if (
         response.status === 401 &&
         !this.isAuthEndpoint(fullUrl) &&
         !requestConfig.skipAuth
       ) {
-        const refreshed = await this.config.onUnauthorized();
-        if (refreshed) {
+        let unauthorizedResult: UnauthorizedResult;
+        try {
+          unauthorizedResult = await this.config.onUnauthorized();
+        } catch (err) {
+          logger.warn('onUnauthorized threw — treating as transient:', err);
+          unauthorizedResult = 'transient';
+        }
+
+        if (unauthorizedResult === 'refreshed') {
           requestConfig = await buildRequestConfig();
           response = await fetch(fullUrl, {
             ...requestConfig,
             signal: controller.signal,
             credentials: 'include'
           });
+        } else if (unauthorizedResult === 'session-expired') {
+          this.config.onSessionExpired();
         }
+        // 'transient' → fall through, surface the original 401 to the caller
+        // (e.g. sync treats it as a regular error and retries on the next tick).
       }
 
       clearTimeout(timeoutId);
