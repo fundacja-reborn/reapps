@@ -112,9 +112,9 @@
   <div
     role="button"
     tabindex="0"
-    draggable={selectionMode ? 'false' : 'true'}
+    draggable={selectionMode || isMobileQuery.value ? 'false' : 'true'}
     ondragstart={(e) => {
-      if (selectionMode) {
+      if (selectionMode || isMobileQuery.value) {
         e.preventDefault();
         return;
       }
@@ -130,35 +130,27 @@
     onclick={handleItemClick}
     onkeydown={handleItemKeydown}
   >
-    <!-- Selection checkbox: visible always in selection mode, on-hover on desktop otherwise.
-         Wrapping button so clicking outside the bits-ui checkbox hitbox still works, and
-         in non-selection mode the click enters selection mode instead of toggling. -->
-    <button
-      type="button"
-      tabindex={selectionMode ? 0 : -1}
-      class="mt-0.5 -ml-0.5 flex shrink-0 items-center justify-center rounded p-0.5 transition-opacity
-        {selectionMode
-          ? 'opacity-100'
-          : isMobileQuery.value
-            ? 'hidden'
-            : 'opacity-0 group-hover:opacity-60 hover:!opacity-100'}"
-      aria-label={isSelected ? $t('notes.multiselect.exit') : $t('notes.multiselect.enter')}
-      onclick={(e) => {
-        e.stopPropagation();
-        if (selectionMode) {
+    <!-- Selection checkbox: rendered only in selection mode so the row has no
+         empty gutter in normal browsing. Entry into selection mode is via the
+         header toggle (all platforms), long-press (touch), or Cmd/Ctrl-click. -->
+    {#if selectionMode}
+      <button
+        type="button"
+        class="mt-0.5 -ml-0.5 flex shrink-0 items-center justify-center rounded p-0.5"
+        aria-label={isSelected ? $t('notes.multiselect.exit') : $t('notes.multiselect.enter')}
+        onclick={(e) => {
+          e.stopPropagation();
           ontoggleselect?.({ shift: e.shiftKey });
-        } else {
-          onenterselection?.();
-        }
-      }}
-    >
-      <span class="pointer-events-none">
-        <Checkbox
-          checked={isSelected}
-          aria-label={isSelected ? $t('notes.multiselect.exit') : $t('notes.multiselect.enter')}
-        />
-      </span>
-    </button>
+        }}
+      >
+        <span class="pointer-events-none">
+          <Checkbox
+            checked={isSelected}
+            aria-label={isSelected ? $t('notes.multiselect.exit') : $t('notes.multiselect.enter')}
+          />
+        </span>
+      </button>
+    {/if}
 
     <!-- Pin indicator -->
     {#if note.is_pinned}

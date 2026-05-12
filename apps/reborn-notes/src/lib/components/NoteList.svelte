@@ -13,7 +13,8 @@
     StarOff,
     FolderInput,
     RotateCcw,
-    Trash
+    Trash,
+    ListChecks
   } from '@lucide/svelte';
   import { exportNoteAsMarkdown } from '$lib/services/export-import.service';
   import * as NoteService from '$lib/services/note.service';
@@ -316,10 +317,19 @@
   });
 
   // Mobile: returning from a note panel to the list also exits selection.
+  // Tracks the previous activeNoteId so we only fire on the transition
+  // "note open → list" — not on every render where activeNoteId is null
+  // (which would re-fire the moment we *enter* selection mode from the list
+  // and immediately undo it).
+  let prevActiveNoteIdForSelection: string | null = null;
   $effect(() => {
     const current = $activeNoteId;
-    if (isMobileQuery.value && current === null && selectionMode) {
-      untrack(() => exitSelectionMode());
+    const prev = prevActiveNoteIdForSelection;
+    prevActiveNoteIdForSelection = current;
+    if (isMobileQuery.value && prev !== null && current === null) {
+      untrack(() => {
+        if (selectionMode) exitSelectionMode();
+      });
     }
   });
 
@@ -327,6 +337,11 @@
     if (!selectionMode) selectionMode = true;
     selectedIds.add(noteId);
     lastAnchorId = noteId;
+  }
+
+  function toggleSelectionMode() {
+    if (selectionMode) exitSelectionMode();
+    else selectionMode = true;
   }
 
   function toggleSelection(noteId: string, opts?: { shift?: boolean }) {
@@ -537,7 +552,7 @@
       <div
         class="flex shrink-0 items-center gap-1 {prominentHeader
           ? 'h-12'
-          : 'h-10'} px-3 border-b bg-accent/50"
+          : 'h-10'} px-3"
         role="toolbar"
         aria-label={$t('notes.multiselect.count', { values: { count: selectedIds.size } })}
       >
@@ -658,6 +673,18 @@
           class="min-w-0 flex-1 truncate text-sm {prominentHeader ? 'font-medium' : 'font-normal'}"
           >{activeFolderName}</span
         >
+
+        {#if $notesStore.length > 0}
+          <button
+            type="button"
+            onclick={toggleSelectionMode}
+            title={$t('notes.multiselect.enter')}
+            aria-label={$t('notes.multiselect.enter')}
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <ListChecks class="h-4 w-4" />
+          </button>
+        {/if}
 
         {#if !isTrash}
           <NoteListSortMenu bind:sortSheetOpen />

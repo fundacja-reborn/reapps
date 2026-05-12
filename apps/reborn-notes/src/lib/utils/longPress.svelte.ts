@@ -54,6 +54,11 @@ export const longPress: Action<
   let startY = 0;
   let activePointerId: number | null = null;
   let fired = false;
+  // Armed when the long-press callback fires, consumed by the next `click`
+  // event so the parent's onclick (which would otherwise treat the post-press
+  // click as a selection-mode toggle and immediately undo the entry) is
+  // suppressed exactly once.
+  let suppressNextClickArmed = false;
 
   function clearTimer() {
     if (timer !== null) {
@@ -69,7 +74,22 @@ export const longPress: Action<
   }
 
   function onPointerDown(e: PointerEvent) {
-    if (touchOnly && e.pointerType === 'mouse') return;
+    // Only primary button — right/middle clicks must not pin `activePointerId`
+    // or they would suppress their own native contextmenu via `onContextMenu`.
+    if (e.button !== 0) return;
+    // Mouse on pure desktop is skipped — selection-mode entry there is via the
+    // hover-checkbox or Ctrl/Cmd-click. We allow mouse when ANY signal hints
+    // at a touch / mobile context: real touchscreens (maxTouchPoints > 0), or
+    // a mobile-width viewport (DevTools device-mode emulation in browsers like
+    // Brave that only resize the viewport without translating pointerType).
+    // Threshold matches the project mobile breakpoint (`breakpoints.mobile`).
+    if (
+      touchOnly &&
+      e.pointerType === 'mouse' &&
+      (typeof navigator === 'undefined' || navigator.maxTouchPoints === 0) &&
+      (typeof window === 'undefined' || window.innerWidth > 768)
+    )
+      return;
     if (activePointerId !== null) return;
     activePointerId = e.pointerId;
     startX = e.clientX;
@@ -78,8 +98,17 @@ export const longPress: Action<
     timer = setTimeout(() => {
       fired = true;
       timer = null;
+      suppressNextClickArmed = true;
       callback(e);
     }, threshold);
+  }
+
+  function onClick(e: Event) {
+    if (!suppressNextClickArmed) return;
+    suppressNextClickArmed = false;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
   }
 
   function onPointerMove(e: PointerEvent) {
@@ -96,11 +125,23 @@ export const longPress: Action<
     reset();
   }
 
+  function onContextMenu(e: Event) {
+    // Suppress the OS/browser native long-press contextmenu while a press is
+    // in flight or just fired — without this, touch users and mobile-emulation
+    // see the system context menu before/instead of our callback.
+    if (activePointerId !== null || fired) {
+      e.preventDefault();
+    }
+  }
+
   node.addEventListener('pointerdown', onPointerDown);
   node.addEventListener('pointermove', onPointerMove);
   node.addEventListener('pointerup', onPointerEnd);
   node.addEventListener('pointercancel', onPointerEnd);
   node.addEventListener('pointerleave', onPointerEnd);
+  node.addEventListener('contextmenu', onContextMenu);
+  // Capture-phase so we run before the parent's onclick handler bubbles.
+  node.addEventListener('click', onClick, { capture: true });
 
   return {
     update(next) {
@@ -108,11 +149,14 @@ export const longPress: Action<
     },
     destroy() {
       reset();
+      suppressNextClickArmed = false;
       node.removeEventListener('pointerdown', onPointerDown);
       node.removeEventListener('pointermove', onPointerMove);
       node.removeEventListener('pointerup', onPointerEnd);
       node.removeEventListener('pointercancel', onPointerEnd);
       node.removeEventListener('pointerleave', onPointerEnd);
+      node.removeEventListener('contextmenu', onContextMenu);
+      node.removeEventListener('click', onClick, { capture: true });
     }
   };
 };
