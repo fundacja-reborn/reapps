@@ -33,16 +33,21 @@
   let {
     selection,
     open = $bindable(false),
+    forceSheet = false,
     onmove,
     onclose
   }: {
     selection: MoveSelection | null;
     open?: boolean;
+    /** Force the bottom-sheet variant on desktop too — used by bulk move which has no
+     *  anchoring button for the absolute desktop popup. */
+    forceSheet?: boolean;
     onmove: (folderId: string | null, e?: Event) => void;
     onclose?: () => void;
   } = $props();
 
   const isMobileQuery = useIsMobile();
+  const useSheet = $derived(forceSheet || isMobileQuery.value);
 
   let currentParentId = $state<string | null>(null);
   let searchQuery = $state('');
@@ -90,7 +95,7 @@
   });
 
   onMount(() => {
-    if (!isMobileQuery.value) {
+    if (!useSheet) {
       resetForOpen();
       // Autofocus search on desktop after paint
       tick().then(() => searchInputEl?.focus());
@@ -336,8 +341,9 @@
   {/if}
 {/snippet}
 
-<!-- Desktop: absolute popup (rendered inside the parent's relative container) -->
-{#if !isMobileQuery.value}
+<!-- Desktop popup: absolute, anchored inside the parent's relative container.
+     Skipped when forceSheet (bulk move has no per-item anchor). -->
+{#if !useSheet}
   <div
     bind:this={containerEl}
     class="absolute right-0 top-7 z-50 w-[300px] overflow-hidden rounded-md border bg-popover shadow-md"
@@ -358,14 +364,16 @@
   </div>
 {/if}
 
-<!-- Mobile: bottom sheet -->
-<Sheet bind:open>
-  <SheetContent side="bottom" class="flex h-auto max-h-[75dvh] flex-col p-0">
-    <SheetHeader class="border-b px-4 py-3">
-      <SheetTitle class="text-left text-sm">{$t('notes.move_to')}</SheetTitle>
-    </SheetHeader>
-    <div class="flex-1 overflow-y-auto pb-4">
-      {@render body()}
-    </div>
-  </SheetContent>
-</Sheet>
+<!-- Sheet: mobile by default, also desktop when forceSheet is set. -->
+{#if useSheet}
+  <Sheet bind:open>
+    <SheetContent side="bottom" class="flex h-auto max-h-[75dvh] flex-col p-0">
+      <SheetHeader class="border-b px-4 py-3">
+        <SheetTitle class="text-left text-sm">{$t('notes.move_to')}</SheetTitle>
+      </SheetHeader>
+      <div class="flex-1 overflow-y-auto pb-4">
+        {@render body()}
+      </div>
+    </SheetContent>
+  </Sheet>
+{/if}
