@@ -1,3 +1,14 @@
+## 0.22.1 (2026-05-12)
+
+### 🩹 Fixes
+
+- **notes:** match periodic notes by encrypted anchor, not by title ([#185](https://github.com/fundacja-reborn/reapps/pull/185))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.22.0 (2026-05-12)
 
 ### 🚀 Features
