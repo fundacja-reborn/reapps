@@ -889,15 +889,28 @@
   }
 
   // ── Folder breadcrumb navigation ──────────────────────────────────
-  function navigateToNoteFolder() {
+  // The section-change $effect above clears `activeFolderId` for any non-periodic
+  // transition. So we set the target id AFTER tick() - once that clearing pass
+  // has run - instead of in the same synchronous batch, where it would be wiped.
+  async function navigateToNoteFolder() {
+    const targetFolderId = noteDetailService.folderId as string | null | undefined;
+    await noteDetailService.flushAndSnapshot();
     activeSection = 'folders';
-    activeFolderId = noteDetailService.folderId as string | null | undefined;
-    if (noteDetailService.folderId) {
-      getAncestorIds(noteDetailService.folderId, $foldersStore).forEach((id) =>
-        expandedIds.add(id)
-      );
+    await tick();
+    activeFolderId = targetFolderId;
+    if (targetFolderId) {
+      getAncestorIds(targetFolderId, $foldersStore).forEach((id) => expandedIds.add(id));
+      expandedIds.add(targetFolderId);
+      lastVisitedFolderId = targetFolderId;
     }
     activeNoteId.set(null);
+    // Mobile: drill into the folder's note list (mirrors handleFolderSelect).
+    // Without this we'd land on the folder tree with the target highlighted but
+    // the user still has to tap it to see the notes - extra step.
+    if (isMobile && targetFolderId) {
+      mobileView = 'list';
+      pushMobileHistory();
+    }
   }
 
   // ── beforeNavigate — flush before SvelteKit navigation ─────────
