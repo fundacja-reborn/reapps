@@ -36,6 +36,7 @@
   import type { FolderWithChildren } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
   import { buildBreadcrumb } from '$lib/utils/folder-helpers';
+  import { bulkRun } from '$lib/utils/bulk';
 
   // ── Infinite scroll ────────────────────────────────────────────
   const PAGE_SIZE = 50;
@@ -375,20 +376,6 @@
   const allStarred = $derived(
     selectedItems.length > 0 && selectedItems.every((n) => n.is_starred)
   );
-
-  /**
-   * Sequential per-id execution with Promise.allSettled. Falls back to counting
-   * fulfilled vs rejected so a single bad id (already-deleted in another tab) doesn't
-   * abort the rest. Used for every bulk action.
-   */
-  async function bulkRun(
-    ids: string[],
-    op: (id: string) => Promise<void>
-  ): Promise<{ done: number; failed: number }> {
-    const results = await Promise.allSettled(ids.map((id) => op(id)));
-    const done = results.filter((r) => r.status === 'fulfilled').length;
-    return { done, failed: results.length - done };
-  }
 
   function reportPartial(total: number, done: number, failed: number) {
     if (failed > 0) {
