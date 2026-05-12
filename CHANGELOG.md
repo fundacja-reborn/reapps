@@ -1,3 +1,14 @@
+## 0.22.0 (2026-05-12)
+
+### 🚀 Features
+
+- **notes:** multi select ([#183](https://github.com/fundacja-reborn/reapps/pull/183))
+
+### ❤️ Thank You
+
+- Claude Opus 4.7
+- rerefu @rerefu
+
 ## 0.21.0 (2026-05-11)
 
 ### 🚀 Features
