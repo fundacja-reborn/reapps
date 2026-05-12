@@ -1,6 +1,21 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
-  import { ArrowLeft, FilePlus, Trash2, Search } from '@lucide/svelte';
+  import { SvelteSet } from 'svelte/reactivity';
+  import {
+    ArrowLeft,
+    FilePlus,
+    Trash2,
+    Search,
+    X,
+    Pin,
+    PinOff,
+    Star,
+    StarOff,
+    FolderInput,
+    RotateCcw,
+    Trash,
+    ListChecks
+  } from '@lucide/svelte';
   import { exportNoteAsMarkdown } from '$lib/services/export-import.service';
   import * as NoteService from '$lib/services/note.service';
   import { toastStore } from '@reborn/ui';
@@ -22,6 +37,7 @@
   import type { FolderWithChildren } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
   import { buildBreadcrumb } from '$lib/utils/folder-helpers';
+  import { bulkRun } from '$lib/utils/bulk';
 
   // ── Infinite scroll ────────────────────────────────────────────
   const PAGE_SIZE = 50;
@@ -273,6 +289,235 @@
     noteToPermanentDelete = null;
   }
 
+  // ── Multi-select state ─────────────────────────────────────────
+  let selectionMode = $state(false);
+  let selectedIds = $state(new SvelteSet<string>());
+  // Anchor for shift-click range selection (desktop). Tracks the last toggled id.
+  let lastAnchorId = $state<string | null>(null);
+  let bulkDeleteDialogOpen = $state(false);
+  let bulkPermanentDeleteDialogOpen = $state(false);
+  let bulkMoveSheetOpen = $state(false);
+
+  function exitSelectionMode() {
+    selectionMode = false;
+    selectedIds.clear();
+    lastAnchorId = null;
+  }
+
+  // Exit selection mode when the view changes (different folder, tag, starred, trash).
+  // Tracking these reactive deps via void-references invalidates the effect when the
+  // parent passes a different value.
+  $effect(() => {
+    void activeSection;
+    void activeFolderId;
+    void isTrash;
+    untrack(() => {
+      if (selectionMode || selectedIds.size > 0) exitSelectionMode();
+    });
+  });
+
+  // Mobile: returning from a note panel to the list also exits selection.
+  // Tracks the previous activeNoteId so we only fire on the transition
+  // "note open → list" — not on every render where activeNoteId is null
+  // (which would re-fire the moment we *enter* selection mode from the list
+  // and immediately undo it).
+  let prevActiveNoteIdForSelection: string | null = null;
+  $effect(() => {
+    const current = $activeNoteId;
+    const prev = prevActiveNoteIdForSelection;
+    prevActiveNoteIdForSelection = current;
+    if (isMobileQuery.value && prev !== null && current === null) {
+      untrack(() => {
+        if (selectionMode) exitSelectionMode();
+      });
+    }
+  });
+
+  function enterSelectionMode(noteId: string) {
+    if (!selectionMode) selectionMode = true;
+    selectedIds.add(noteId);
+    lastAnchorId = noteId;
+  }
+
+  function toggleSelectionMode() {
+    if (selectionMode) exitSelectionMode();
+    else selectionMode = true;
+  }
+
+  function toggleSelection(noteId: string, opts?: { shift?: boolean }) {
+    if (opts?.shift && lastAnchorId !== null && lastAnchorId !== noteId) {
+      // Range from anchor → noteId across the *currently visible* notes.
+      const ids = visibleNotes.map((n) => n.id);
+      const iA = ids.indexOf(lastAnchorId);
+      const iB = ids.indexOf(noteId);
+      if (iA !== -1 && iB !== -1) {
+        const [lo, hi] = iA < iB ? [iA, iB] : [iB, iA];
+        for (let i = lo; i <= hi; i++) selectedIds.add(ids[i]!);
+        lastAnchorId = noteId;
+        if (!selectionMode) selectionMode = true;
+        return;
+      }
+    }
+    if (selectedIds.has(noteId)) {
+      selectedIds.delete(noteId);
+      if (selectedIds.size === 0) {
+        // Empty selection naturally exits the mode — symmetric with delete/move that
+        // empties the set.
+        selectionMode = false;
+        lastAnchorId = null;
+      }
+    } else {
+      selectedIds.add(noteId);
+      lastAnchorId = noteId;
+      if (!selectionMode) selectionMode = true;
+    }
+  }
+
+  function selectAllVisible() {
+    for (const n of visibleNotes) selectedIds.add(n.id);
+    if (visibleNotes.length > 0) {
+      if (!selectionMode) selectionMode = true;
+      lastAnchorId = visibleNotes[visibleNotes.length - 1]!.id;
+    }
+  }
+
+  // ── Bulk action helpers ────────────────────────────────────────
+  // Selected items are derived from the *visible* notes store so we never operate on
+  // stale IDs that have disappeared from the user's current view.
+  const selectedItems = $derived($notesStore.filter((n) => selectedIds.has(n.id)));
+  const allPinned = $derived(
+    selectedItems.length > 0 && selectedItems.every((n) => n.is_pinned)
+  );
+  const allStarred = $derived(
+    selectedItems.length > 0 && selectedItems.every((n) => n.is_starred)
+  );
+
+  function reportPartial(total: number, done: number, failed: number) {
+    if (failed > 0) {
+      toastStore.error(
+        $t('notes.multiselect.partial_failure', { values: { done, total, failed } })
+      );
+    }
+  }
+
+  async function bulkPin() {
+    const items = selectedItems;
+    if (items.length === 0) return;
+    // Heuristic: pin all unpinned if any unpinned exist; otherwise unpin all.
+    const anyUnpinned = items.some((n) => !n.is_pinned);
+    const targets = anyUnpinned
+      ? items.filter((n) => !n.is_pinned).map((n) => n.id)
+      : items.map((n) => n.id);
+    const { done, failed } = await bulkRun(targets, (id) => notesStore.togglePin(id));
+    toastStore.success(
+      $t(
+        anyUnpinned ? 'notes.multiselect.pinned_count' : 'notes.multiselect.unpinned_count',
+        { values: { count: done } }
+      )
+    );
+    reportPartial(targets.length, done, failed);
+  }
+
+  async function bulkStar() {
+    const items = selectedItems;
+    if (items.length === 0) return;
+    const anyUnstarred = items.some((n) => !n.is_starred);
+    const targets = anyUnstarred
+      ? items.filter((n) => !n.is_starred).map((n) => n.id)
+      : items.map((n) => n.id);
+    const { done, failed } = await bulkRun(targets, (id) => notesStore.toggleStar(id));
+    toastStore.success(
+      $t(
+        anyUnstarred ? 'notes.multiselect.starred_count' : 'notes.multiselect.unstarred_count',
+        { values: { count: done } }
+      )
+    );
+    reportPartial(targets.length, done, failed);
+  }
+
+  async function confirmBulkDelete() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    const { done, failed } = await bulkRun(ids, (id) => notesStore.remove(id));
+    toastStore.success($t('notes.multiselect.deleted_count', { values: { count: done } }));
+    reportPartial(ids.length, done, failed);
+    exitSelectionMode();
+  }
+
+  async function bulkRestore() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    const { done, failed } = await bulkRun(ids, (id) => notesStore.restore(id));
+    toastStore.success($t('notes.multiselect.restored_count', { values: { count: done } }));
+    reportPartial(ids.length, done, failed);
+    exitSelectionMode();
+  }
+
+  async function confirmBulkPermanentDelete() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    const { done, failed } = await bulkRun(ids, (id) => notesStore.permanentDelete(id));
+    toastStore.success(
+      $t('notes.multiselect.permanently_deleted_count', { values: { count: done } })
+    );
+    reportPartial(ids.length, done, failed);
+    exitSelectionMode();
+  }
+
+  function openBulkMove() {
+    if (selectedIds.size === 0) return;
+    bulkMoveSheetOpen = true;
+  }
+
+  async function handleBulkMove(folderId: string | null) {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    bulkMoveSheetOpen = false;
+    const { done, failed } = await bulkRun(ids, (id) => notesStore.move(id, folderId));
+    if (folderId === null) {
+      toastStore.success($t('notes.multiselect.moved_to_root', { values: { count: done } }));
+    } else {
+      const folderName =
+        buildBreadcrumb($foldersStore, folderId).at(-1)?.name ?? '';
+      toastStore.success(
+        $t('notes.multiselect.moved_to_folder', { values: { count: done, folder: folderName } })
+      );
+    }
+    reportPartial(ids.length, done, failed);
+    // Selection naturally empties if moved-out notes drop out of the current view
+    // (e.g. moved to another folder). Keep IDs for cases where user is in "All".
+    if (selectedItems.length === 0) exitSelectionMode();
+  }
+
+  // ── Keyboard shortcuts ─────────────────────────────────────────
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (!selectionMode) return;
+    const target = e.target as HTMLElement | null;
+    const inEditableTarget =
+      !!target &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable);
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      exitSelectionMode();
+      return;
+    }
+    if (inEditableTarget) return;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (selectedIds.size === 0) return;
+      e.preventDefault();
+      if (isTrash) bulkPermanentDeleteDialogOpen = true;
+      else bulkDeleteDialogOpen = true;
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
+      e.preventDefault();
+      selectAllVisible();
+    }
+  }
+
   /**
    * Build a breadcrumb for a note relative to the active folder. Used when search
    * is active in a folder view to show notes from subfolders with their location.
@@ -298,67 +543,182 @@
   );
 </script>
 
-<svelte:window onclick={onWindowClick} />
+<svelte:window onclick={onWindowClick} onkeydown={onWindowKeydown} />
 
 <div class="flex h-full flex-col">
-  <!-- Panel header (hidden in searchOnly mode) -->
+  <!-- Panel header (hidden in searchOnly mode). Swaps to selection bar when in multi-select. -->
   {#if !searchOnly}
-    <div
-      class="flex shrink-0 items-center gap-1 {prominentHeader ? 'h-12' : 'h-10'} {onback
-        ? 'px-3'
-        : 'px-5'}"
-    >
-      {#if onback}
-        <button
-          type="button"
-          onclick={onback}
-          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sidebar-foreground
-         hover:bg-sidebar-accent transition-colors"
-          aria-label={$t('nav.back')}
-        >
-          <ArrowLeft class="h-4 w-4" />
-        </button>
-      {/if}
-      {#if showSidebarTrigger}
-        <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
-      {/if}
-      <span
-        class="min-w-0 flex-1 truncate text-sm {prominentHeader ? 'font-medium' : 'font-normal'}"
-        >{activeFolderName}</span
+    {#if selectionMode}
+      <div
+        class="flex shrink-0 items-center gap-1 {prominentHeader
+          ? 'h-12'
+          : 'h-10'} px-3"
+        role="toolbar"
+        aria-label={$t('notes.multiselect.count', { values: { count: selectedIds.size } })}
       >
-
-      {#if !isTrash}
-        <NoteListSortMenu bind:sortSheetOpen />
-      {/if}
-
-      {#if !isTrash && !isPeriodic}
         <button
           type="button"
-          onclick={handleCreate}
-          title={$t('nav.new_note')}
-          aria-label={$t('nav.new_note')}
-          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          onclick={exitSelectionMode}
+          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors"
+          aria-label={$t('notes.multiselect.exit')}
+          title={$t('notes.multiselect.exit')}
         >
-          <FilePlus class="h-4 w-4" />
+          <X class="h-4 w-4" />
         </button>
-      {/if}
+        <span class="min-w-0 flex-1 truncate text-sm font-medium">
+          {$t('notes.multiselect.count', { values: { count: selectedIds.size } })}
+        </span>
 
-      {#if isTrash}
-        <button
-          type="button"
-          onclick={() => {
-            emptyTrashDialogOpen = true;
-          }}
-          disabled={$notesStore.length === 0}
-          title={$t('trash.empty_trash')}
-          aria-label={$t('trash.empty_trash')}
-          class="flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-40"
+        {#if isTrash}
+          <button
+            type="button"
+            onclick={bulkRestore}
+            disabled={selectedIds.size === 0}
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            aria-label={$t('notes.multiselect.restore_all')}
+            title={$t('notes.multiselect.restore_all')}
+          >
+            <RotateCcw class="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onclick={() => (bulkPermanentDeleteDialogOpen = true)}
+            disabled={selectedIds.size === 0}
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
+            aria-label={$t('notes.multiselect.permanent_delete_all')}
+            title={$t('notes.multiselect.permanent_delete_all')}
+          >
+            <Trash class="h-4 w-4" />
+          </button>
+        {:else}
+          <button
+            type="button"
+            onclick={bulkPin}
+            disabled={selectedIds.size === 0}
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            aria-label={allPinned
+              ? $t('notes.multiselect.unpin_all')
+              : $t('notes.multiselect.pin_all')}
+            title={allPinned
+              ? $t('notes.multiselect.unpin_all')
+              : $t('notes.multiselect.pin_all')}
+          >
+            {#if allPinned}
+              <PinOff class="h-4 w-4" />
+            {:else}
+              <Pin class="h-4 w-4" />
+            {/if}
+          </button>
+          <button
+            type="button"
+            onclick={bulkStar}
+            disabled={selectedIds.size === 0}
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            aria-label={allStarred
+              ? $t('notes.multiselect.unstar_all')
+              : $t('notes.multiselect.star_all')}
+            title={allStarred
+              ? $t('notes.multiselect.unstar_all')
+              : $t('notes.multiselect.star_all')}
+          >
+            {#if allStarred}
+              <StarOff class="h-4 w-4" />
+            {:else}
+              <Star class="h-4 w-4" />
+            {/if}
+          </button>
+          <button
+            type="button"
+            onclick={openBulkMove}
+            disabled={selectedIds.size === 0}
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            aria-label={$t('notes.multiselect.move_all')}
+            title={$t('notes.multiselect.move_all')}
+          >
+            <FolderInput class="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onclick={() => (bulkDeleteDialogOpen = true)}
+            disabled={selectedIds.size === 0}
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
+            aria-label={$t('notes.multiselect.delete_all')}
+            title={$t('notes.multiselect.delete_all')}
+          >
+            <Trash2 class="h-4 w-4" />
+          </button>
+        {/if}
+      </div>
+    {:else}
+      <div
+        class="flex shrink-0 items-center gap-1 {prominentHeader ? 'h-12' : 'h-10'} {onback
+          ? 'px-3'
+          : 'px-5'}"
+      >
+        {#if onback}
+          <button
+            type="button"
+            onclick={onback}
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sidebar-foreground
+         hover:bg-sidebar-accent transition-colors"
+            aria-label={$t('nav.back')}
+          >
+            <ArrowLeft class="h-4 w-4" />
+          </button>
+        {/if}
+        {#if showSidebarTrigger}
+          <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
+        {/if}
+        <span
+          class="min-w-0 flex-1 truncate text-sm {prominentHeader ? 'font-medium' : 'font-normal'}"
+          >{activeFolderName}</span
         >
-          <Trash2 class="h-3.5 w-3.5" />
-          {$t('trash.empty_trash')}
-        </button>
-      {/if}
-    </div>
+
+        {#if $notesStore.length > 0}
+          <button
+            type="button"
+            onclick={toggleSelectionMode}
+            title={$t('notes.multiselect.enter')}
+            aria-label={$t('notes.multiselect.enter')}
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <ListChecks class="h-4 w-4" />
+          </button>
+        {/if}
+
+        {#if !isTrash}
+          <NoteListSortMenu bind:sortSheetOpen />
+        {/if}
+
+        {#if !isTrash && !isPeriodic}
+          <button
+            type="button"
+            onclick={handleCreate}
+            title={$t('nav.new_note')}
+            aria-label={$t('nav.new_note')}
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <FilePlus class="h-4 w-4" />
+          </button>
+        {/if}
+
+        {#if isTrash}
+          <button
+            type="button"
+            onclick={() => {
+              emptyTrashDialogOpen = true;
+            }}
+            disabled={$notesStore.length === 0}
+            title={$t('trash.empty_trash')}
+            aria-label={$t('trash.empty_trash')}
+            class="flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-40"
+          >
+            <Trash2 class="h-3.5 w-3.5" />
+            {$t('trash.empty_trash')}
+          </button>
+        {/if}
+      </div>
+    {/if}
   {/if}
 
   <!-- Search bar -->
@@ -420,6 +780,10 @@
             {isTrash}
             breadcrumb={getRelativeBreadcrumb(note.folder_id)}
             bind:movingNoteId
+            {selectionMode}
+            isSelected={selectedIds.has(note.id)}
+            onenterselection={() => enterSelectionMode(note.id)}
+            ontoggleselect={(opts) => toggleSelection(note.id, opts)}
             onmenuopen={handleMenuOpen}
             onpin={handleTogglePin}
             onstar={handleToggleStar}
@@ -457,10 +821,11 @@
 <!-- Mobile: Move to folder Sheet -->
 {#if isMobileQuery.value}
   <MoveToFolderMenu
-    noteId={movingNoteId}
-    currentFolderId={movingNote?.folder_id ?? null}
+    selection={movingNoteId
+      ? { kind: 'single', id: movingNoteId, currentFolderId: movingNote?.folder_id ?? null }
+      : null}
     bind:open={moveSheetOpen}
-    onmove={handleMove}
+    onmove={(folderId, e) => movingNoteId && handleMove(movingNoteId, folderId, e)}
   />
 {/if}
 
@@ -491,4 +856,38 @@
   onConfirm={async () => {
     await notesStore.emptyTrash();
   }}
+/>
+
+<!-- Bulk: move-to-folder picker (bottom sheet on both desktop and mobile —
+     no per-item anchor for an absolute desktop popup) -->
+<MoveToFolderMenu
+  selection={selectedIds.size > 0
+    ? { kind: 'multi', count: selectedIds.size }
+    : null}
+  bind:open={bulkMoveSheetOpen}
+  forceSheet
+  onmove={(folderId) => handleBulkMove(folderId)}
+  onclose={() => (bulkMoveSheetOpen = false)}
+/>
+
+<!-- Bulk: delete confirmation (active view → move to trash) -->
+<ConfirmDialog
+  bind:open={bulkDeleteDialogOpen}
+  title={$t('notes.multiselect.bulk_delete_title', { values: { count: selectedIds.size } })}
+  description={$t('notes.multiselect.bulk_delete_desc')}
+  confirmText={$t('notes.multiselect.delete_all')}
+  destructive
+  onConfirm={confirmBulkDelete}
+/>
+
+<!-- Bulk: permanent delete confirmation (trash view) -->
+<ConfirmDialog
+  bind:open={bulkPermanentDeleteDialogOpen}
+  title={$t('notes.multiselect.bulk_permanent_delete_title', {
+    values: { count: selectedIds.size }
+  })}
+  description={$t('notes.multiselect.bulk_permanent_delete_desc')}
+  confirmText={$t('notes.multiselect.permanent_delete_all')}
+  destructive
+  onConfirm={confirmBulkPermanentDelete}
 />

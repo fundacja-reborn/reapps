@@ -14,6 +14,7 @@
     Trash
   } from '@lucide/svelte';
   import {
+    Checkbox,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -26,6 +27,7 @@
   import { activeNoteId, notesStore, type NoteListItem } from '$lib/stores/notes.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import { formatNoteDate } from '$lib/utils/date-format';
+  import { longPress } from '$lib/utils/longPress.svelte';
   import TagChip from '../TagChip.svelte';
   import MoveToFolderMenu from './MoveToFolderMenu.svelte';
 
@@ -34,6 +36,10 @@
     isTrash = false,
     breadcrumb = '',
     movingNoteId = $bindable<string | null>(null),
+    selectionMode = false,
+    isSelected = false,
+    onenterselection,
+    ontoggleselect,
     onmenuopen,
     onpin,
     onstar,
@@ -49,6 +55,14 @@
     /** Folder path to show under the title — used for search results from subfolders. */
     breadcrumb?: string;
     movingNoteId: string | null;
+    /** Whether the parent NoteList is currently in multi-select mode. */
+    selectionMode?: boolean;
+    /** Whether this item is currently selected. */
+    isSelected?: boolean;
+    /** Long-press / Cmd-click on a non-selection list — enter selection mode with this item. */
+    onenterselection?: () => void;
+    /** Click while in selection mode — toggle this item. opts.shift = range from last anchor. */
+    ontoggleselect?: (opts?: { shift?: boolean }) => void;
     onmenuopen: (noteId: string) => void;
     onpin: (noteId: string, e?: Event) => void;
     onstar: (noteId: string, e?: Event) => void;
@@ -67,23 +81,77 @@
   // Display the date matching the active sort key so the visible value matches the sort.
   // For 'title' sort fall back to updated_at (most recent activity).
   const displayDate = $derived($sortByStore === 'created_at' ? note.created_at : note.updated_at);
+
+  function handleItemClick(e: MouseEvent) {
+    if (selectionMode) {
+      // Click in selection mode never opens the note — toggle selection instead.
+      // shift-click extends from the last anchor; cmd/ctrl-click also toggles single.
+      ontoggleselect?.({ shift: e.shiftKey });
+      return;
+    }
+    // Cmd/Ctrl-click on a non-selection list: enter selection mode with this item.
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      onenterselection?.();
+      return;
+    }
+    activeNoteId.set(note.id);
+  }
+
+  function handleItemKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Enter') return;
+    if (selectionMode) {
+      ontoggleselect?.({ shift: e.shiftKey });
+    } else {
+      activeNoteId.set(note.id);
+    }
+  }
 </script>
 
 <li class="relative">
   <div
     role="button"
     tabindex="0"
-    draggable="true"
+    draggable={selectionMode || isMobileQuery.value ? 'false' : 'true'}
     ondragstart={(e) => {
+      if (selectionMode || isMobileQuery.value) {
+        e.preventDefault();
+        return;
+      }
       e.dataTransfer!.effectAllowed = 'move';
       e.dataTransfer!.setData('text/note-id', note.id);
       e.dataTransfer!.setData('text/plain', note.id);
     }}
+    use:longPress={() => onenterselection?.()}
     class="note-item-bg group flex cursor-pointer items-start gap-2 rounded-lg p-4 md:p-3 transition-colors
-      {isActive ? 'bg-accent text-accent-foreground' : ''}"
-    onclick={() => activeNoteId.set(note.id)}
-    onkeydown={(e) => e.key === 'Enter' && activeNoteId.set(note.id)}
+      {isActive && !selectionMode ? 'bg-accent text-accent-foreground' : ''}
+      {selectionMode && isSelected ? 'bg-primary/10' : ''}
+      {selectionMode ? 'select-none' : ''}"
+    onclick={handleItemClick}
+    onkeydown={handleItemKeydown}
   >
+    <!-- Selection checkbox: rendered only in selection mode so the row has no
+         empty gutter in normal browsing. Entry into selection mode is via the
+         header toggle (all platforms), long-press (touch), or Cmd/Ctrl-click. -->
+    {#if selectionMode}
+      <button
+        type="button"
+        class="mt-0.5 -ml-0.5 flex shrink-0 items-center justify-center rounded p-0.5"
+        aria-label={isSelected ? $t('notes.multiselect.exit') : $t('notes.multiselect.enter')}
+        onclick={(e) => {
+          e.stopPropagation();
+          ontoggleselect?.({ shift: e.shiftKey });
+        }}
+      >
+        <span class="pointer-events-none">
+          <Checkbox
+            checked={isSelected}
+            aria-label={isSelected ? $t('notes.multiselect.exit') : $t('notes.multiselect.enter')}
+          />
+        </span>
+      </button>
+    {/if}
+
     <!-- Pin indicator -->
     {#if note.is_pinned}
       <Pin class="mt-1.5 h-3.5 w-3.5 md:mt-1 md:h-3 md:w-3 shrink-0 text-primary/70" />
@@ -120,8 +188,8 @@
       </p>
     </div>
 
-    <!-- Kebab menu button -->
-    <div class="shrink-0 mt-1.5 md:-mt-1">
+    <!-- Kebab menu button (hidden in selection mode — bulk actions live in the selection bar) -->
+    <div class="shrink-0 mt-1.5 md:-mt-1 {selectionMode ? 'invisible pointer-events-none' : ''}">
       {#if isMobileQuery.value}
         <button
           type="button"
@@ -218,9 +286,8 @@
         <!-- Move to folder submenu (desktop only) -->
         {#if !isMobileQuery.value && movingNoteId === note.id}
           <MoveToFolderMenu
-            noteId={note.id}
-            currentFolderId={note.folder_id ?? null}
-            {onmove}
+            selection={{ kind: 'single', id: note.id, currentFolderId: note.folder_id ?? null }}
+            onmove={(folderId, e) => onmove(note.id, folderId, e)}
             onclose={() => {
               movingNoteId = null;
             }}

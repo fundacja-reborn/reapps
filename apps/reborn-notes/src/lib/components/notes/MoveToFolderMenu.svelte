@@ -21,21 +21,33 @@
   } from '$lib/utils/folder-helpers';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
 
+  /**
+   * Move target — single note keeps the "already here" disabled state and auto-navigates
+   * to the parent of the current folder on open; multi-note skips both (selected notes
+   * may span folders, and there's no single "current folder" to compare against).
+   */
+  export type MoveSelection =
+    | { kind: 'single'; id: string; currentFolderId: string | null }
+    | { kind: 'multi'; count: number };
+
   let {
-    noteId,
-    currentFolderId = null,
+    selection,
     open = $bindable(false),
+    forceSheet = false,
     onmove,
     onclose
   }: {
-    noteId: string | null;
-    currentFolderId?: string | null;
+    selection: MoveSelection | null;
     open?: boolean;
-    onmove: (noteId: string, folderId: string | null, e?: Event) => void;
+    /** Force the bottom-sheet variant on desktop too — used by bulk move which has no
+     *  anchoring button for the absolute desktop popup. */
+    forceSheet?: boolean;
+    onmove: (folderId: string | null, e?: Event) => void;
     onclose?: () => void;
   } = $props();
 
   const isMobileQuery = useIsMobile();
+  const useSheet = $derived(forceSheet || isMobileQuery.value);
 
   let currentParentId = $state<string | null>(null);
   let searchQuery = $state('');
@@ -57,11 +69,17 @@
       : []
   );
 
-  // Auto-navigate to the parent of the note's current folder when opened.
+  // In multi-note mode `currentFolderId` is intentionally null: selected notes may live in
+  // different folders, so no single folder can be highlighted as "current".
+  const currentFolderId = $derived(
+    selection?.kind === 'single' ? selection.currentFolderId : null
+  );
+
+  // Auto-navigate to the parent of the note's current folder when opened (single mode only).
   function resetForOpen() {
     searchQuery = '';
-    if (currentFolderId) {
-      const ancestors = getAncestorIds(currentFolderId, tree);
+    if (selection?.kind === 'single' && selection.currentFolderId) {
+      const ancestors = getAncestorIds(selection.currentFolderId, tree);
       currentParentId = ancestors[0] ?? null;
     } else {
       currentParentId = null;
@@ -77,7 +95,7 @@
   });
 
   onMount(() => {
-    if (!isMobileQuery.value) {
+    if (!useSheet) {
       resetForOpen();
       // Autofocus search on desktop after paint
       tick().then(() => searchInputEl?.focus());
@@ -104,13 +122,13 @@
   }
 
   function doMove(folderId: string | null, e?: Event) {
-    if (!noteId) return;
-    if (folderId === (currentFolderId ?? null)) {
+    if (!selection) return;
+    if (selection.kind === 'single' && folderId === (selection.currentFolderId ?? null)) {
       // no-op: already in this folder
       closeMenu();
       return;
     }
-    onmove(noteId, folderId, e);
+    onmove(folderId, e);
     closeMenu();
   }
 
@@ -323,8 +341,9 @@
   {/if}
 {/snippet}
 
-<!-- Desktop: absolute popup (rendered inside the parent's relative container) -->
-{#if !isMobileQuery.value}
+<!-- Desktop popup: absolute, anchored inside the parent's relative container.
+     Skipped when forceSheet (bulk move has no per-item anchor). -->
+{#if !useSheet}
   <div
     bind:this={containerEl}
     class="absolute right-0 top-7 z-50 w-[300px] overflow-hidden rounded-md border bg-popover shadow-md"
@@ -345,14 +364,16 @@
   </div>
 {/if}
 
-<!-- Mobile: bottom sheet -->
-<Sheet bind:open>
-  <SheetContent side="bottom" class="flex h-auto max-h-[75dvh] flex-col p-0">
-    <SheetHeader class="border-b px-4 py-3">
-      <SheetTitle class="text-left text-sm">{$t('notes.move_to')}</SheetTitle>
-    </SheetHeader>
-    <div class="flex-1 overflow-y-auto pb-4">
-      {@render body()}
-    </div>
-  </SheetContent>
-</Sheet>
+<!-- Sheet: mobile by default, also desktop when forceSheet is set. -->
+{#if useSheet}
+  <Sheet bind:open>
+    <SheetContent side="bottom" class="flex h-auto max-h-[75dvh] flex-col p-0">
+      <SheetHeader class="border-b px-4 py-3">
+        <SheetTitle class="text-left text-sm">{$t('notes.move_to')}</SheetTitle>
+      </SheetHeader>
+      <div class="flex-1 overflow-y-auto pb-4">
+        {@render body()}
+      </div>
+    </SheetContent>
+  </Sheet>
+{/if}

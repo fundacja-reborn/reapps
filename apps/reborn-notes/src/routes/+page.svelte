@@ -168,10 +168,12 @@
     noteDetailService.folderId = folderId;
   }
 
-  async function handleDetailMoveMobile(noteId: string, folderId: string | null, e?: Event) {
+  async function handleDetailMoveMobile(folderId: string | null, e?: Event) {
     e?.stopPropagation();
+    const noteId = detailMovingNoteId;
     detailMoveSheetOpen = false;
     detailMovingNoteId = null;
+    if (!noteId) return;
     await notesStore.move(noteId, folderId);
     if (noteId === $activeNoteId) noteDetailService.folderId = folderId;
   }
@@ -1736,7 +1738,9 @@
 <!-- Detail-view move-to-folder (mobile bottom sheet) -->
 {#if isMobile}
   <MoveToFolderMenu
-    noteId={detailMovingNoteId}
+    selection={detailMovingNoteId
+      ? { kind: 'single', id: detailMovingNoteId, currentFolderId: noteDetailService.folderId ?? null }
+      : null}
     bind:open={detailMoveSheetOpen}
     onmove={handleDetailMoveMobile}
   />
