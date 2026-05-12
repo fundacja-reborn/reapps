@@ -144,13 +144,30 @@ Additionally, base64 data URIs are blocked at all editor entry points (image dia
 
 ---
 
-## 6. Supply Chain & CI
+## 6. Supply Chain & Repository Security
+
+### Build & dependencies
 
 - **Automated dependency auditing** via `pnpm audit` in the CI pipeline
-- **Automated dependency updates** via Renovate
+- **Automated dependency updates** via Renovate (covers both version updates and security patches; Dependabot version-updates is intentionally disabled to avoid duplicate PRs from two bots)
 - **Monorepo module boundaries** enforced by Nx and ESLint (`@nx/enforce-module-boundaries`)
 - **TypeScript strict mode** across the entire codebase
 - **Docker production hardening**: non-root containers (`su-exec node`), no exposed database ports (DB accessible only via internal Docker network)
+
+### GitHub repository controls
+
+*Last verified: 2026-05-12*
+
+Every push and pull request is automatically inspected by GitHub-native tooling. These controls run at repository level, independent of contributor permissions or branch protections:
+
+- **CodeQL analysis** (default setup) - static analysis on every push and PR plus a scheduled rescan. Findings of severity **High or higher fail the merge check** (configurable failure threshold). **Copilot Autofix** is enabled and proposes remediations on detected issues.
+- **Dependabot alerts** - vulnerability notifications across all manifest-tracked dependencies, with a custom rule preset configured to triage alert noise
+- **Dependabot malware alerts** - separate channel for known-malicious packages, independent of CVE-driven alerts
+- **Secret scanning with push protection** - commits containing recognized secret patterns are **rejected at push time**, not merely flagged after the fact
+- **Code quality findings** - GitHub's standard quality analysis runs alongside CodeQL
+- **Private vulnerability reporting** - external researchers can disclose findings through a private channel; see [SECURITY.md](../../SECURITY.md)
+- **Security advisories** - published vulnerability advisories for downstream consumers when applicable
+- **Prevent direct alert dismissals** (code scanning) - actors must submit a dismissal request rather than silently closing a finding, preserving an audit trail
 
 ---
 
@@ -174,4 +191,4 @@ If you discover a security vulnerability, please report it responsibly. See the 
 
 ---
 
-*Last updated: 2026-04-19*
+*Last updated: 2026-05-12*
