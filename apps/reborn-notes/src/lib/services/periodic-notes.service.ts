@@ -27,7 +27,6 @@ import {
   PERIODIC_NOTES_DEFAULT_FORMATS
 } from '@reborn/storage';
 import type { PeriodicNoteMetadata } from '@reborn/types';
-import { noteStore } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import {
