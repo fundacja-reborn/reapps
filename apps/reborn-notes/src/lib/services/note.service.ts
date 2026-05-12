@@ -13,7 +13,7 @@ import {
   noteHistoryQueries,
   noteHistoryOperations
 } from '@reborn/storage';
-import { MAX_NOTE_VERSIONS, type NoteStoredLocal, type NoteDecrypted, type NoteHistoryEntry, type NoteHistoryDecrypted, type NoteSensitiveMetadata } from '@reborn/types';
+import { MAX_NOTE_VERSIONS, type NoteStoredLocal, type NoteDecrypted, type NoteHistoryEntry, type NoteHistoryDecrypted, type NoteSensitiveMetadata, type PeriodicNoteMetadata } from '@reborn/types';
 import { cryptoManager } from '@reborn/crypto';
 import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
@@ -212,17 +212,30 @@ export async function createNote(
   title: string,
   content = '',
   folderId?: string,
-  options?: { createdAt?: string; updatedAt?: string; skipSync?: boolean }
+  options?: {
+    createdAt?: string;
+    updatedAt?: string;
+    skipSync?: boolean;
+    /**
+     * Tag this note as belonging to a Periodic Notes series (Daily/Weekly/Monthly).
+     * Stored inside `metadata_encrypted` so the server never sees the kind/anchor
+     * - this is how the Periodic feature matches existing notes for a given period
+     * regardless of locale-dependent title formatting.
+     */
+    periodic?: PeriodicNoteMetadata;
+  }
 ): Promise<string> {
   const now = new Date().toISOString();
   const createdAt = options?.createdAt ?? now;
   const updatedAt = options?.updatedAt ?? now;
   const id = crypto.randomUUID();
-  const metadataEncrypted = await cryptoManager.encryptObject<NoteSensitiveMetadata>({
+  const metadata: NoteSensitiveMetadata = {
     is_pinned: false,
     is_starred: false,
     tags: []
-  });
+  };
+  if (options?.periodic) metadata.periodic = options.periodic;
+  const metadataEncrypted = await cryptoManager.encryptObject<NoteSensitiveMetadata>(metadata);
   const note: NoteStoredLocal = {
     id,
     user_id: getUserId(),
@@ -345,6 +358,58 @@ export async function moveNoteToFolder(id: string, folderId: string | null): Pro
   // and Prisma actually clears the column when moving to root.
   pushNoteUpdate(id, { folder_id: folderId });
   noteIndex.patch(id, { folderId: folderId ?? undefined });
+}
+
+/**
+ * Decrypt metadata bundle for a note, falling back to defaults if absent or
+ * corrupted. Used by callsites that need to read/modify a single metadata
+ * field without losing the others. Returns `null` if the note doesn't exist.
+ */
+export async function readNoteMetadata(id: string): Promise<NoteSensitiveMetadata | null> {
+  const existing = await noteStore.get(id);
+  if (!existing) return null;
+  if (!existing.metadata_encrypted) return {};
+  try {
+    return await cryptoManager.decryptObject<NoteSensitiveMetadata>(existing.metadata_encrypted);
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Stamp `periodic` (kind + anchor) onto an existing note's metadata. Preserves
+ * any other metadata fields (pinned/starred/tags). Used by the Periodic Notes
+ * lazy backfill to adopt legacy notes that were created before metadata-based
+ * matching existed.
+ *
+ * No-op if the note's metadata already has a matching `periodic` entry.
+ */
+export async function setNotePeriodicMetadata(
+  id: string,
+  periodic: PeriodicNoteMetadata
+): Promise<void> {
+  const existing = await noteStore.get(id);
+  if (!existing) return;
+
+  let meta: NoteSensitiveMetadata = {};
+  if (existing.metadata_encrypted) {
+    try {
+      meta = await cryptoManager.decryptObject<NoteSensitiveMetadata>(existing.metadata_encrypted);
+    } catch {
+      meta = {};
+    }
+  }
+  if (meta.periodic?.kind === periodic.kind && meta.periodic.anchor === periodic.anchor) {
+    return;
+  }
+  meta.periodic = periodic;
+  const metadataEncrypted = await cryptoManager.encryptObject(meta);
+  await noteStore.save({
+    ...existing,
+    metadata_encrypted: metadataEncrypted,
+    sync_status: 'pending'
+  });
+  pushNoteUpdate(id, { metadata_encrypted: metadataEncrypted });
 }
 
 /** Toggle pin status. */

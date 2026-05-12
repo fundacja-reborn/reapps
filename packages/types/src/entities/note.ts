@@ -2,11 +2,36 @@ import type { SyncableEncryptedEntity } from '../base';
 
 // ─── Sensitive metadata bundle (encrypted, never sent as plaintext) ──
 
+/**
+ * Periodic-note kind. Mirrors `@reborn/storage` `PeriodicKind`; redeclared here
+ * to keep `@reborn/types` free of cross-package deps.
+ */
+export type NotePeriodicKind = 'daily' | 'weekly' | 'monthly';
+
+/**
+ * Identifies a note as belonging to a periodic series (Daily/Weekly/Monthly).
+ * The `anchor` is a locale-independent ISO date string that locks the note to
+ * a specific period regardless of the title format:
+ *   - daily   -> 'YYYY-MM-DD' of the day
+ *   - weekly  -> 'YYYY-MM-DD' of the Monday of that ISO week
+ *   - monthly -> 'YYYY-MM-01' of that month
+ *
+ * Matching is done on `(folder_id, kind, anchor)` so locale changes (PL/EN/DE
+ * weekday names) cannot create duplicates for the same period.
+ */
+export interface PeriodicNoteMetadata {
+  kind: NotePeriodicKind;
+  /** ISO `YYYY-MM-DD` (always 10 chars). See type doc for kind-specific rules. */
+  anchor: string;
+}
+
 /** Behavioral metadata bundled into metadata_encrypted for zero-knowledge. */
 export interface NoteSensitiveMetadata {
   is_starred?: boolean;
   is_pinned?: boolean;
   tags?: string[]; // tag IDs — filtering moved client-side
+  /** Set when this note was created by the Periodic Notes feature. */
+  periodic?: PeriodicNoteMetadata;
 }
 
 // ─── Decrypted type (UI representation) ──────────────────────────────
