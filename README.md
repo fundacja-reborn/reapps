@@ -23,55 +23,56 @@
 
 ---
 
-**Reborn Apps** is a suite of two Progressive Web Apps built with a **Zero Knowledge architecture** — all user data is encrypted on your device before it ever reaches the server. The server stores only ciphertext and cannot read your tasks, notes, or metadata.
+**Reborn Apps** is a suite of two Progressive Web Apps built with a **Zero Knowledge architecture** - all user data is encrypted on your device before it ever reaches the server. The server stores only ciphertext and cannot read your tasks, notes, or metadata.
 
 Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-profit. Hosted on Hetzner Cloud (Germany). No tracking, no ads, no email required.
 
 ## Apps
 
-### re/task — Encrypted task management
+### re/task - Encrypted task management
 
 <p align="center">
-  <img src="docs/assets/retask-screenshot.webp" alt="re/task — task list and task detail view" width="700">
+  <img src="docs/assets/retask-screenshot.webp" alt="re/task - task list and task detail view" width="700">
 </p>
 
 - **Task lists**
 - **Subtasks** with progress tracking
-- **Recurring tasks** — daily, weekly, or custom schedule
-- **Starred & favorites** — focus on what matters
+- **Recurring tasks** - daily, weekly, or custom schedule
+- **Starred & favorites** - focus on what matters
 - **Due dates & reminders** with optional push notifications
-- **Smart views** — Today, Upcoming, Overdue, Starred, Completed
-- **Full-text search** with operators — `list:Inbox`, `due:<7d`, `is:overdue`, `has:link`, … ([reference](docs/search-operators.md))
-- **Trash & recovery** — restore deleted tasks within 30 days
-- **Import & export** — JSON backup and restore
+- **Smart views** - Today, Upcoming, Overdue, Starred, Completed
+- **Full-text search** with operators - `list:Inbox`, `due:<7d`, `is:overdue`, `has:link`, … ([reference](docs/search-operators.md))
+- **Trash & recovery** - restore deleted tasks within 30 days
+- **Import & export** - JSON backup and restore
 
-### re/notes — Encrypted notes & documents
+### re/notes - Encrypted notes & documents
 
 <p align="center">
-  <img src="docs/assets/renotes-screenshot.webp" alt="re/notes — note list and Markdown editor" width="700">
+  <img src="docs/assets/renotes-screenshot.webp" alt="re/notes - note list and Markdown editor" width="700">
 </p>
 
-- **Markdown editor** — headings, lists, code blocks, images, and more
-- **Folders & tags** — flexible organization system
-- **Periodic notes** — one-click Daily, Weekly, and Monthly notes (Obsidian-style); date-based titles with configurable formats, lazy-created folders, Daily on by default ([blog post](https://reapps.eu/blog/periodic-notes-daily-weekly-monthly))
-- **Version history** — up to 10 saved versions per note
-- **Internal links** — link between notes with autocomplete to build a knowledge base
-- **Live preview** — edit Markdown on one side, see formatted output on the other
-- **Encryption X-Ray** — see exactly what the server sees (encrypted blobs)
-- **Full-text search** with operators — `tag:work`, `folder:projects/active`, `created:<7d`, `has:link`, `-tag:archived`, … ([reference](docs/search-operators.md))
-- **Trash & recovery** — safely delete and restore notes
-- **Import & export** — Markdown, JSON, or encrypted backup; import single `.md` files or entire folders with subfolders (e.g., an Obsidian vault) preserving directory structure
+- **Markdown editor** - headings, lists, code blocks, images, and more
+- **Folders & tags** - flexible organization system
+- **Multi-select & bulk actions** - pin, star, move to folder, or delete many notes at once (long-press on touch, header toggle on desktop)
+- **Periodic notes** - one-click Daily, Weekly, and Monthly notes (Obsidian-style); date-based titles with configurable formats, lazy-created folders, Daily on by default ([blog post](https://reapps.eu/blog/periodic-notes-daily-weekly-monthly))
+- **Version history** - up to 10 saved versions per note
+- **Internal links** - link between notes with autocomplete to build a knowledge base
+- **Live preview** - edit Markdown on one side, see formatted output on the other
+- **Encryption X-Ray** - see exactly what the server sees (encrypted blobs)
+- **Full-text search** with operators - `tag:work`, `folder:projects/active`, `created:<7d`, `has:link`, `-tag:archived`, … ([reference](docs/search-operators.md))
+- **Trash & recovery** - safely delete and restore notes
+- **Import & export** - Markdown, JSON, or encrypted backup; import single `.md` files or entire folders with subfolders (e.g., an Obsidian vault) preserving directory structure
 
 ### Shared features
 
-- 🔐 **End-to-end encryption** — data is encrypted on your device before reaching any server
-- 📱 **Offline-first PWA** — works without internet, syncs when back online
-- 🔄 **Cross-device sync** — access from any device, changes sync automatically
-- 🛡️ **Two-factor authentication** — TOTP (2FA) with one-time recovery codes
-- 👤 **One account, no email** — just a username and password, shared across both apps (SSO)
-- 🌍 **Installable** — add to home screen as a native-like app
-- 🌙 **Dark mode** — full dark theme support
-- � **Multilingual** — English 🇬🇧, French 🇫🇷, German 🇩🇪, Polish 🇵🇱, Spanish 🇪🇸
+- 🔐 **End-to-end encryption** - data is encrypted on your device before reaching any server
+- 📱 **Offline-first PWA** - works without internet, syncs when back online
+- 🔄 **Cross-device sync** - access from any device, changes sync automatically
+- 🛡️ **Two-factor authentication** - TOTP (2FA) with one-time recovery codes
+- 👤 **One account, no email** - just a username and password, shared across both apps (SSO)
+- 🌍 **Installable** - add to home screen as a native-like app
+- 🌙 **Dark mode** - full dark theme support
+- � **Multilingual** - English 🇬🇧, French 🇫🇷, German 🇩🇪, Polish 🇵🇱, Spanish 🇪🇸
 
 ## Security & privacy
 
@@ -83,17 +84,17 @@ Reborn Apps uses a **Zero Knowledge E2E architecture**:
 | Username | Server (plaintext) | Server operator |
 | Password | Server (Argon2id hash) | **Nobody** |
 | Encryption keys | Your device only | **Only you** |
-| Email, phone, real name | **Not collected** | — |
+| Email, phone, real name | **Not collected** | - |
 
 **How it works:**
 
 1. You set a password → a master encryption key is derived on your device (PBKDF2 600K iterations)
 2. All data is encrypted with AES-256-GCM before leaving the browser
-3. The server stores only ciphertext — it cannot decrypt anything
+3. The server stores only ciphertext - it cannot decrypt anything
 4. Even sensitive metadata (due dates, completion status, starred flags) is bundled into an encrypted blob
 5. If the server is compromised, attackers get only encrypted noise
 
-> ⚠️ **If you forget your password, your data is irrecoverable.** Recovery codes cannot help with password recovery — they only bypass 2FA if you lose access to your authenticator app. This is by design — the server cannot help you because it cannot read your data.
+> ⚠️ **If you forget your password, your data is irrecoverable.** Recovery codes cannot help with password recovery - they only bypass 2FA if you lose access to your authenticator app. This is by design - the server cannot help you because it cannot read your data.
 
 For a deep dive, see the [Zero Knowledge Architecture](docs/architecture/zero-knowledge-architecture.md) document and the [Security Overview](docs/security/security-overview.md).
 
@@ -112,7 +113,7 @@ No email required. Create an account with just a username and password.
 
 ## Self-hosting
 
-You own your data — you can also run your own instance.
+You own your data - you can also run your own instance.
 
 There are two flows depending on what you want to do:
 
@@ -126,7 +127,7 @@ There are two flows depending on what you want to do:
 ### Requirements
 
 - [Docker](https://docs.docker.com/get-docker/) v25+ with Docker Compose
-- A `.env` file (copy from `.env.example`, generate strong secrets — see below)
+- A `.env` file (copy from `.env.example`, generate strong secrets - see below)
 
 ### Development flow
 
@@ -165,7 +166,7 @@ docker compose --profile with-notes up
 
 ### Production flow
 
-The production flow builds a multi-stage `Dockerfile` and runs the pre-compiled SvelteKit server — no `pnpm install` at boot, no bind mount, no source on the host required at runtime.
+The production flow builds a multi-stage `Dockerfile` and runs the pre-compiled SvelteKit server - no `pnpm install` at boot, no bind mount, no source on the host required at runtime.
 
 ```bash
 git clone https://github.com/fundacja-reborn/reapps.git
@@ -203,9 +204,9 @@ The apps listen on `:4200` (task) and `:4201` (notes) on the Docker host. For SS
 - `<PUBLIC_SITE_URL>/task/`  → `http://127.0.0.1:4200/task/`
 - `<PUBLIC_SITE_URL>/notes/` → `http://127.0.0.1:4201/notes/`
 
-`nginx/dev.conf` is a reference proxy config — adapt it (add `listen 443 ssl;`, certificate paths, HSTS) for your environment.
+`nginx/dev.conf` is a reference proxy config - adapt it (add `listen 443 ssl;`, certificate paths, HSTS) for your environment.
 
-> **Portainer / Coolify / stack editors:** paste the contents of `docker-compose.yml` **and** `docker-compose.prod.yml.example` (combined or as a compose project that fetches both from git). The build context needs the repo source — point the stack at this Git URL, not at a raw paste.
+> **Portainer / Coolify / stack editors:** paste the contents of `docker-compose.yml` **and** `docker-compose.prod.yml.example` (combined or as a compose project that fetches both from git). The build context needs the repo source - point the stack at this Git URL, not at a raw paste.
 
 #### Smoke-testing the production image locally
 
@@ -292,36 +293,36 @@ We welcome community involvement! Due to the security-sensitive nature of this p
 
 **How you can help:**
 
-- **Report bugs** — [open an Issue](https://github.com/fundacja-reborn/reapps/issues) with clear reproduction steps
-- **Suggest features & discuss ideas** — join [GitHub Discussions](https://github.com/fundacja-reborn/reapps/discussions)
-- **Report security vulnerabilities** — see our [Security Policy](SECURITY.md) (please report privately)
-- **Improve translations** — suggest corrections or new languages via Issues
+- **Report bugs** - [open an Issue](https://github.com/fundacja-reborn/reapps/issues) with clear reproduction steps
+- **Suggest features & discuss ideas** - join [GitHub Discussions](https://github.com/fundacja-reborn/reapps/discussions)
+- **Report security vulnerabilities** - see our [Security Policy](SECURITY.md) (please report privately)
+- **Improve translations** - suggest corrections or new languages via Issues
 
-> **Note:** We do not accept external pull requests. Every code change undergoes internal security review to protect the integrity of the encryption layer. If you've found a bug and know the fix, please describe it in an Issue — we'll gladly credit you.
+> **Note:** We do not accept external pull requests. Every code change undergoes internal security review to protect the integrity of the encryption layer. If you've found a bug and know the fix, please describe it in an Issue - we'll gladly credit you.
 
 ## Acknowledgments
 
 Reborn Apps is shaped by feedback from people who try it, share ideas, and tell us what's missing. Special thanks to:
 
-- **[Travis Solin (@computrav)](https://github.com/computrav)** — for early feedback on the public release and detailed thinking on power-user search semantics that directly informed the operator-based search syntax.
+- **[Travis Solin (@computrav)](https://github.com/computrav)** - for early feedback on the public release and detailed thinking on power-user search semantics that directly informed the operator-based search syntax.
 
-If you've contributed something that shaped this project — an idea, a substantive bug report, a translation — and you're not listed here, please [open an Issue](https://github.com/fundacja-reborn/reapps/issues). Smaller individual reports are credited per-release in commit messages and release notes.
+If you've contributed something that shaped this project - an idea, a substantive bug report, a translation - and you're not listed here, please [open an Issue](https://github.com/fundacja-reborn/reapps/issues). Smaller individual reports are credited per-release in commit messages and release notes.
 
 ## License
 
-[AGPL-3.0](LICENSE) — Copyright © 2025 Fundacja Reborn (Poland)
+[AGPL-3.0](LICENSE) - Copyright © 2025 Fundacja Reborn (Poland)
 
 You are free to use, modify, and self-host. If you modify the server-side code and offer it as a service, you must open-source your changes under the same license.
 
 ## Further reading
 
-- [Zero Knowledge Architecture](docs/architecture/zero-knowledge-architecture.md) — how encryption works under the hood
-- [Security Overview](docs/security/security-overview.md) — security posture, cryptographic primitives, and known limitations
-- [Security Policy](SECURITY.md) — how to report vulnerabilities
+- [Zero Knowledge Architecture](docs/architecture/zero-knowledge-architecture.md) - how encryption works under the hood
+- [Security Overview](docs/security/security-overview.md) - security posture, cryptographic primitives, and known limitations
+- [Security Policy](SECURITY.md) - how to report vulnerabilities
 
 ## Support
 
-Reborn Apps is built by a non-profit foundation — no investors, no ads, no tracking. If you find our apps useful and want to support their continued development, every donation helps us build software free from commercial pressure.
+Reborn Apps is built by a non-profit foundation - no investors, no ads, no tracking. If you find our apps useful and want to support their continued development, every donation helps us build software free from commercial pressure.
 
 → [**Donate via Wise**](https://wise.com/pay/business/fundacjareborn?description=Donation+-+statutory+purposes)
 
