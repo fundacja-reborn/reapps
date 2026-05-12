@@ -218,9 +218,8 @@
         <!-- Move to folder submenu (desktop only) -->
         {#if !isMobileQuery.value && movingNoteId === note.id}
           <MoveToFolderMenu
-            noteId={note.id}
-            currentFolderId={note.folder_id ?? null}
-            {onmove}
+            selection={{ kind: 'single', id: note.id, currentFolderId: note.folder_id ?? null }}
+            onmove={(folderId, e) => onmove(note.id, folderId, e)}
             onclose={() => {
               movingNoteId = null;
             }}

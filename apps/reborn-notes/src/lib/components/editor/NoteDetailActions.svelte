@@ -57,7 +57,7 @@
     isMoveMenuOpen = !isMoveMenuOpen;
   }
 
-  function handleFolderSelected(_noteId: string, folderId: string | null, e?: Event) {
+  function handleFolderSelected(folderId: string | null, e?: Event) {
     e?.stopPropagation();
     isMoveMenuOpen = false;
     onmove(folderId, e);
@@ -151,8 +151,7 @@
       {#if isMoveMenuOpen}
         <div data-note-detail-move>
           <MoveToFolderMenu
-            noteId={note.id}
-            currentFolderId={note.folder_id ?? null}
+            selection={{ kind: 'single', id: note.id, currentFolderId: note.folder_id ?? null }}
             onmove={handleFolderSelected}
             onclose={() => {
               isMoveMenuOpen = false;

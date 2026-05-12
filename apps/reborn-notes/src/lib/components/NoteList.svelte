@@ -457,10 +457,11 @@
 <!-- Mobile: Move to folder Sheet -->
 {#if isMobileQuery.value}
   <MoveToFolderMenu
-    noteId={movingNoteId}
-    currentFolderId={movingNote?.folder_id ?? null}
+    selection={movingNoteId
+      ? { kind: 'single', id: movingNoteId, currentFolderId: movingNote?.folder_id ?? null }
+      : null}
     bind:open={moveSheetOpen}
-    onmove={handleMove}
+    onmove={(folderId, e) => movingNoteId && handleMove(movingNoteId, folderId, e)}
   />
 {/if}
 

@@ -21,17 +21,24 @@
   } from '$lib/utils/folder-helpers';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
 
+  /**
+   * Move target — single note keeps the "already here" disabled state and auto-navigates
+   * to the parent of the current folder on open; multi-note skips both (selected notes
+   * may span folders, and there's no single "current folder" to compare against).
+   */
+  export type MoveSelection =
+    | { kind: 'single'; id: string; currentFolderId: string | null }
+    | { kind: 'multi'; count: number };
+
   let {
-    noteId,
-    currentFolderId = null,
+    selection,
     open = $bindable(false),
     onmove,
     onclose
   }: {
-    noteId: string | null;
-    currentFolderId?: string | null;
+    selection: MoveSelection | null;
     open?: boolean;
-    onmove: (noteId: string, folderId: string | null, e?: Event) => void;
+    onmove: (folderId: string | null, e?: Event) => void;
     onclose?: () => void;
   } = $props();
 
@@ -57,11 +64,17 @@
       : []
   );
 
-  // Auto-navigate to the parent of the note's current folder when opened.
+  // In multi-note mode `currentFolderId` is intentionally null: selected notes may live in
+  // different folders, so no single folder can be highlighted as "current".
+  const currentFolderId = $derived(
+    selection?.kind === 'single' ? selection.currentFolderId : null
+  );
+
+  // Auto-navigate to the parent of the note's current folder when opened (single mode only).
   function resetForOpen() {
     searchQuery = '';
-    if (currentFolderId) {
-      const ancestors = getAncestorIds(currentFolderId, tree);
+    if (selection?.kind === 'single' && selection.currentFolderId) {
+      const ancestors = getAncestorIds(selection.currentFolderId, tree);
       currentParentId = ancestors[0] ?? null;
     } else {
       currentParentId = null;
@@ -104,13 +117,13 @@
   }
 
   function doMove(folderId: string | null, e?: Event) {
-    if (!noteId) return;
-    if (folderId === (currentFolderId ?? null)) {
+    if (!selection) return;
+    if (selection.kind === 'single' && folderId === (selection.currentFolderId ?? null)) {
       // no-op: already in this folder
       closeMenu();
       return;
     }
-    onmove(noteId, folderId, e);
+    onmove(folderId, e);
     closeMenu();
   }
 
