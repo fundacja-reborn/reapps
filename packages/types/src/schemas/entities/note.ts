@@ -2,12 +2,22 @@ import { z } from 'zod';
 import { SyncableEncryptedEntitySchema } from '../base';
 
 /**
+ * Schema for PeriodicNoteMetadata — see entities/note.ts for semantics.
+ * `anchor` is an ISO `YYYY-MM-DD` (10 chars, deterministic), locale-independent.
+ */
+export const PeriodicNoteMetadataSchema = z.object({
+  kind: z.enum(['daily', 'weekly', 'monthly']),
+  anchor: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+});
+
+/**
  * Schema for NoteSensitiveMetadata — bundled into metadata_encrypted
  */
 export const NoteSensitiveMetadataSchema = z.object({
   is_starred: z.boolean().optional(),
   is_pinned: z.boolean().optional(),
-  tags: z.array(z.string()).optional()
+  tags: z.array(z.string()).optional(),
+  periodic: PeriodicNoteMetadataSchema.optional()
 });
 
 /**
@@ -55,3 +65,4 @@ export type NoteDecrypted = z.infer<typeof NoteDecryptedSchema>;
 export type NoteEncrypted = z.infer<typeof NoteEncryptedSchema>;
 export type NoteStoredLocal = z.infer<typeof NoteStoredLocalSchema>;
 export type NoteSensitiveMetadata = z.infer<typeof NoteSensitiveMetadataSchema>;
+export type PeriodicNoteMetadata = z.infer<typeof PeriodicNoteMetadataSchema>;

@@ -12,6 +12,13 @@
  *   adopt that folder before falling back to creating a new one.
  *
  * No server schema changes. No new endpoints.
+ *
+ * Locale-duplicate fix (2026-05-12): note matching is based on a
+ * locale-independent `anchor` (ISO `YYYY-MM-DD`) stamped into the encrypted
+ * metadata bundle, NOT on the human-readable title. Switching the UI locale
+ * (or having two devices in different locales) no longer creates duplicate
+ * notes for the same period. Legacy notes without the metadata are adopted
+ * via title-prefix fallback the first time the kind is opened post-upgrade.
  */
 import { get } from 'svelte/store';
 import type { PeriodicKind } from '@reborn/storage';
@@ -19,16 +26,36 @@ import {
   PERIODIC_NOTES_DEFAULTS,
   PERIODIC_NOTES_DEFAULT_FORMATS
 } from '@reborn/storage';
-import { createNote } from './note.service';
+import type { PeriodicNoteMetadata } from '@reborn/types';
+import { cryptoManager } from '@reborn/crypto';
+import { createLogger } from '@reborn/utils';
+import {
+  createNote,
+  readNoteMetadata,
+  setNotePeriodicMetadata
+} from './note.service';
 import { foldersStore } from '$lib/stores/folders.store';
 import { notesStore } from '$lib/stores/notes.store';
 import { noteIndex } from '$lib/services/note-index.svelte';
 import { getSetting } from '$lib/utils/app-settings';
 import { appSettings } from '$lib/stores/app-settings.store';
 import { t as i18nT, locale as i18nLocale } from '$lib/stores/i18n.store';
-import { buildPeriodicTitle } from './periodic-notes-format';
+import {
+  buildPeriodicTitle,
+  getAnchorIso,
+  parseTitleAnchor
+} from './periodic-notes-format';
 
-export { formatName, formatRange, buildPeriodicTitle, getAnchorDate } from './periodic-notes-format';
+export {
+  formatName,
+  formatRange,
+  buildPeriodicTitle,
+  getAnchorDate,
+  getAnchorIso,
+  parseTitleAnchor
+} from './periodic-notes-format';
+
+const logger = createLogger('PeriodicNotes');
 
 /** Resolve i18n key synchronously from the active locale. */
 function tr(key: string): string {
@@ -80,6 +107,20 @@ async function persistFolderId(kind: PeriodicKind, folderId: string): Promise<vo
   await appSettings.update('periodicNotes', next);
 }
 
+/** Mark the one-time metadata backfill for `kind` as done. */
+async function persistMigrationFlag(kind: PeriodicKind): Promise<void> {
+  const current = (await getSetting('periodicNotes')) ?? PERIODIC_NOTES_DEFAULTS;
+  if (current[kind]?.metadataMigrated) return;
+  const next = {
+    ...current,
+    [kind]: {
+      ...current[kind],
+      metadataMigrated: true
+    }
+  };
+  await appSettings.update('periodicNotes', next);
+}
+
 /**
  * Find a root-level (parent_id === undefined/null) folder by exact name.
  * Used by the multi-device heuristic to adopt a folder that was created on
@@ -121,28 +162,135 @@ export async function ensureFolder(kind: PeriodicKind): Promise<string> {
 }
 
 /**
- * Find an existing periodic note by title within a specific folder. Uses the
- * in-memory note index (decrypted titles, no IndexedDB hit) — limits the search
- * scope to the configured folder per D6, so a regular note named like
- * "2026-05-08 …" outside the daily folder doesn't get hijacked.
+ * Decrypt the periodic metadata stamp for a single note. Returns `null` on
+ * any failure (missing metadata, decrypt error, no periodic field) — callers
+ * treat null as "no stamp, fall back to title parsing".
  */
-export function findExistingNote(folderId: string, title: string): string | null {
+async function readPeriodicStamp(noteId: string): Promise<PeriodicNoteMetadata | null> {
+  const meta = await readNoteMetadata(noteId);
+  return meta?.periodic ?? null;
+}
+
+/**
+ * Find an existing periodic note in `folderId` matching `(kind, anchorIso)`.
+ *
+ * Resolution order:
+ *  1. Title-prefix prefilter narrows candidates to those whose title starts
+ *     with the anchor's ISO date — fast, zero crypto. Covers the default
+ *     formats (which always start with `YYYY-MM-DD` / `YYYY-MM`).
+ *  2. For each candidate, decrypt the periodic metadata stamp.
+ *  3. Stamp matches `(kind, anchorIso)` → return that note (newest wins on
+ *     duplicates, which can happen after a multi-device race).
+ *  4. No stamp on a prefix-matched note → legacy note. Adopt it: stamp the
+ *     metadata now and return it. This is the lazy backfill path used for
+ *     notes created before the locale-duplicate fix.
+ *
+ * Returns `null` when no candidate matches — caller should create a new note.
+ */
+export async function findExistingPeriodicNote(
+  folderId: string,
+  kind: PeriodicKind,
+  anchorIso: string
+): Promise<string | null> {
+  const prefixLen = kind === 'monthly' ? 7 : 10; // 'YYYY-MM' vs 'YYYY-MM-DD'
+  const prefix = anchorIso.slice(0, prefixLen);
+
   const candidates = noteIndex
     .entries()
-    .filter((e) => e.folderId === folderId && e.title === title);
+    .filter((e) => e.folderId === folderId && e.title.startsWith(prefix));
+
   if (candidates.length === 0) return null;
-  if (candidates.length === 1) return candidates[0].id;
-  // Ambiguous (e.g. after import) — pick the most recently updated.
-  let best = candidates[0];
-  let bestUpdated = noteIndex.get(best.id)?.updatedAt ?? '';
-  for (const c of candidates.slice(1)) {
-    const u = noteIndex.get(c.id)?.updatedAt ?? '';
-    if (u.localeCompare(bestUpdated) > 0) {
-      best = c;
-      bestUpdated = u;
+
+  // Walk candidates, prefer those with a matching metadata stamp; remember
+  // the newest stamped match. Fall back to the newest legacy (no-stamp)
+  // match whose parsed title anchor agrees with anchorIso, and backfill it.
+  let stampedHit: { id: string; updatedAt: string } | null = null;
+  const legacyHits: string[] = [];
+
+  for (const c of candidates) {
+    const stamp = await readPeriodicStamp(c.id);
+    if (stamp) {
+      if (stamp.kind === kind && stamp.anchor === anchorIso) {
+        const updatedAt = noteIndex.get(c.id)?.updatedAt ?? '';
+        if (!stampedHit || updatedAt.localeCompare(stampedHit.updatedAt) > 0) {
+          stampedHit = { id: c.id, updatedAt };
+        }
+      }
+      continue;
+    }
+    // No stamp — treat as legacy. Confirm anchor via title parsing.
+    const parsed = parseTitleAnchor(c.title, kind);
+    if (parsed === anchorIso) legacyHits.push(c.id);
+  }
+
+  if (stampedHit) return stampedHit.id;
+
+  if (legacyHits.length > 0) {
+    // Pick the newest legacy hit and adopt it (stamp metadata).
+    let best = legacyHits[0];
+    let bestUpdated = noteIndex.get(best)?.updatedAt ?? '';
+    for (const id of legacyHits.slice(1)) {
+      const u = noteIndex.get(id)?.updatedAt ?? '';
+      if (u.localeCompare(bestUpdated) > 0) {
+        best = id;
+        bestUpdated = u;
+      }
+    }
+    try {
+      await setNotePeriodicMetadata(best, { kind, anchor: anchorIso });
+    } catch (e) {
+      logger.warn('Failed to backfill periodic metadata for legacy note', { id: best, error: e });
+    }
+    return best;
+  }
+
+  return null;
+}
+
+/**
+ * One-time backfill of `metadata_encrypted.periodic` for every note in
+ * `folderId` whose title parses as a periodic anchor for `kind`. Runs once
+ * per (device, kind) — the flag `metadataMigrated` lives in local app
+ * settings (not synced), so each device runs its own pass the first time
+ * the user opens that kind post-upgrade.
+ *
+ * Scoped strictly to the currently-configured folder: notes outside it are
+ * untouched, even if their titles look like daily/weekly/monthly. This
+ * matches D6 (a regular note named '2026-05-08' outside the daily folder
+ * stays a regular note).
+ *
+ * Custom-format legacy notes (no ISO prefix in title) cannot be parsed and
+ * are left alone — they'll get stamped on next click via `findExistingPeriodicNote`
+ * if the user happens to land on the same anchor, or stay unstamped (and
+ * therefore unmatched) otherwise. Acceptable trade-off: custom formats are
+ * an opt-in (gated behind P2 anyway), and we don't want to guess.
+ */
+async function runFolderBackfill(folderId: string, kind: PeriodicKind): Promise<void> {
+  if (!cryptoManager.isInitialized()) return; // need master key to decrypt/encrypt
+
+  const candidates = noteIndex.entries().filter((e) => e.folderId === folderId);
+  if (candidates.length === 0) {
+    await persistMigrationFlag(kind);
+    return;
+  }
+
+  let backfilled = 0;
+  for (const c of candidates) {
+    const parsed = parseTitleAnchor(c.title, kind);
+    if (!parsed) continue;
+    try {
+      const stamp = await readPeriodicStamp(c.id);
+      if (stamp) continue; // already stamped (either by this fix or a previous click)
+      await setNotePeriodicMetadata(c.id, { kind, anchor: parsed });
+      backfilled++;
+    } catch (e) {
+      logger.warn('Backfill failed for note', { id: c.id, error: e });
     }
   }
-  return best.id;
+  if (backfilled > 0) {
+    logger.debug(`Backfilled ${backfilled} ${kind} note(s) in folder ${folderId}`);
+  }
+  await persistMigrationFlag(kind);
 }
 
 /**
@@ -161,6 +309,14 @@ export async function getOrCreateNote(
   const format = kindCfg.format || PERIODIC_NOTES_DEFAULT_FORMATS[kind];
 
   const folderId = await ensureFolder(kind);
+
+  // One-time backfill of legacy notes in this folder. Runs at most once per
+  // (device, kind). Subsequent clicks short-circuit on the flag.
+  if (!kindCfg.metadataMigrated) {
+    await runFolderBackfill(folderId, kind);
+  }
+
+  const anchorIso = getAnchorIso(kind, now);
   const title = buildPeriodicTitle(
     kind,
     now,
@@ -169,11 +325,15 @@ export async function getOrCreateNote(
     currentLocale()
   );
 
-  const existing = findExistingNote(folderId, title);
+  const existing = await findExistingPeriodicNote(folderId, kind, anchorIso);
   if (existing) return { noteId: existing, created: false };
 
-  const noteId = await createNote(title, '', folderId);
-  // Refresh notes store so the new note appears in lists immediately.
+  const noteId = await createNote(title, '', folderId, {
+    periodic: { kind, anchor: anchorIso }
+  });
+  // Refresh notes store so the new note appears in lists immediately. The
+  // noteIndex is already patched synchronously by `createNote`, so a second
+  // click on the same device cannot race against an unflushed refresh.
   notesStore.refresh();
   return { noteId, created: true };
 }

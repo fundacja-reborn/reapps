@@ -28,6 +28,14 @@ export interface PeriodicKindSettings {
    * device gets its own onboarding the first time the kind is used there.
    */
   onboardingDismissed: boolean;
+  /**
+   * True after a one-time backfill of `metadata_encrypted.periodic` has run
+   * for every existing note in this kind's folder. Scoped per-device because
+   * settings aren't synced - each device runs its own backfill the first time
+   * the kind is opened post-upgrade. Notes' encrypted metadata themselves DO
+   * sync, so the second device usually finds nothing left to backfill.
+   */
+  metadataMigrated?: boolean;
 }
 
 export interface PeriodicNotesSettings {
@@ -77,13 +85,15 @@ export const PERIODIC_NOTES_DEFAULTS: PeriodicNotesSettings = {
     enabled: true,
     folderId: null,
     format: PERIODIC_NOTES_DEFAULT_FORMATS.daily,
-    onboardingDismissed: false
+    onboardingDismissed: false,
+    metadataMigrated: false
   },
   weekly: {
     enabled: false,
     folderId: null,
     format: PERIODIC_NOTES_DEFAULT_FORMATS.weekly,
-    onboardingDismissed: false
+    onboardingDismissed: false,
+    metadataMigrated: false
   },
   monthly: {
     enabled: false,

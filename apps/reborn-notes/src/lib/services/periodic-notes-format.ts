@@ -33,6 +33,55 @@ function pad2(n: number): string {
 }
 
 /**
+ * Locale-independent ISO `YYYY-MM-DD` anchor for matching periodic notes.
+ * Locked to the anchor day per kind (see `getAnchorDate`). This is what gets
+ * stamped into `metadata_encrypted.periodic.anchor` and what
+ * `findExistingPeriodicNote` matches against - locale-dependent titles
+ * (`Monday` / `poniedziałek`) cannot create duplicates because matching
+ * ignores them.
+ */
+export function getAnchorIso(kind: PeriodicKind, now: Date): string {
+  const anchor = getAnchorDate(kind, now);
+  return `${anchor.getFullYear()}-${pad2(anchor.getMonth() + 1)}-${pad2(anchor.getDate())}`;
+}
+
+/**
+ * Parse the anchor ISO date from a title that uses one of the default formats.
+ * Returns the YYYY-MM-DD anchor or `null` if the title doesn't start with a
+ * recognizable date prefix. Used as a fallback for legacy notes that were
+ * created before metadata-based matching existed.
+ *
+ *   daily/weekly default: 'YYYY-MM-DD …'  → match first 10 chars
+ *   monthly default:      'YYYY-MM'       → match first 7 chars, normalize to YYYY-MM-01
+ *
+ * Callers should validate that the parsed date actually exists (regex doesn't
+ * reject 2026-13-32). We re-construct a Date and round-trip to be safe.
+ */
+export function parseTitleAnchor(title: string, kind: PeriodicKind): string | null {
+  if (kind === 'monthly') {
+    const m = title.match(/^(\d{4})-(\d{2})\b/);
+    if (!m) return null;
+    const [, y, mo] = m;
+    const d = new Date(Number(y), Number(mo) - 1, 1);
+    if (d.getFullYear() !== Number(y) || d.getMonth() !== Number(mo) - 1) return null;
+    return `${y}-${mo}-01`;
+  }
+  // daily & weekly: titles begin with `YYYY-MM-DD`
+  const m = title.match(/^(\d{4})-(\d{2})-(\d{2})\b/);
+  if (!m) return null;
+  const [, y, mo, day] = m;
+  const d = new Date(Number(y), Number(mo) - 1, Number(day));
+  if (
+    d.getFullYear() !== Number(y) ||
+    d.getMonth() !== Number(mo) - 1 ||
+    d.getDate() !== Number(day)
+  ) {
+    return null;
+  }
+  return `${y}-${mo}-${day}`;
+}
+
+/**
  * Format a Date using a token-based format string.
  *
  * Supported tokens (longest matched first inside one segment):
