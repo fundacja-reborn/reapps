@@ -1,3 +1,10 @@
+## 0.22.2 (2026-05-13)
+
+### 🩹 Fixes
+
+- **notes:** preserve folder id when navigating from note metadata ([#186](https://github.com/fundacja-reborn/reapps/pull/186))
+- **notes:** dim markdown markers on the active line in Live Preview ([#188](https://github.com/fundacja-reborn/reapps/pull/188))
+
 ## 0.22.1 (2026-05-12)
 
 ### 🩹 Fixes
