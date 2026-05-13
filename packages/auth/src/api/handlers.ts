@@ -427,132 +427,137 @@ export async function handleSession(
  * - Each login creates a new "family" of tokens (family_id)
  * - On refresh, the old token is marked as revoked and a new one is created in the same family
  * - If a revoked token is presented again → the entire family is invalidated (potential theft)
+ *
+ * Error classification: this handler intentionally does **not** wrap the body in
+ * a try/catch. Auth-level failures (validation, missing/revoked/expired token)
+ * resolve with `{ success: false, error }` and the route maps them to 401 -
+ * client classifies as definitive expiry → session-expired banner. Infrastructure
+ * failures (Prisma cold-start, DB connection drop, JWT signing error) propagate
+ * up to the route's outer try/catch which returns 500 - client classifies as
+ * transient (`TransientRefreshError`) and stays in offline mode without flashing
+ * the banner. See `docs/development/planning/session-expiry-server-rebuild-resilience.md`.
  */
 export async function handleRefreshToken(
   data: unknown,
   options: HandlerOptions
 ): Promise<ApiResponse<LoginResult>> {
-  try {
-    // Validate input
-    const validationResult = schemas.RefreshTokenRequestSchema.safeParse(data);
-    if (!validationResult.success) {
-      return {
-        success: false,
-        error: 'Invalid refresh token data'
-      };
-    }
-
-    const { refresh_token: refreshToken } = validationResult.data;
-    const { dbClient } = options;
-    const generateTokensFn = options.generateTokens || generateJwtTokens;
-
-    // Find refresh token (include user for response data)
-    const storedToken = await dbClient.refreshToken.findUnique({
-      where: { token: refreshToken },
-      include: { user: true }
-    });
-
-    if (!storedToken) {
-      return {
-        success: false,
-        error: 'Invalid or expired refresh token'
-      };
-    }
-
-    // TOKEN REUSE DETECTION: If this token was already revoked (used before),
-    // it means someone is replaying a stolen token → invalidate the entire family
-    if (storedToken.is_revoked) {
-      logger.warn(
-        `Refresh token reuse detected! Revoking entire token family: ${storedToken.family_id}, user: ${storedToken.user_id}`
-      );
-
-      // Revoke all tokens in this family
-      await dbClient.refreshToken.deleteMany({
-        where: { family_id: storedToken.family_id }
-      });
-
-      return {
-        success: false,
-        error: 'Token reuse detected. Please log in again.'
-      };
-    }
-
-    // Check expiry
-    if (storedToken.expires_at < new Date()) {
-      return {
-        success: false,
-        error: 'Invalid or expired refresh token'
-      };
-    }
-
-    // Generate new tokens
-    const { accessToken: newAccessToken, refreshToken: newRefreshToken } = await generateTokensFn(
-      storedToken.user_id
-    );
-
-    // Mark old token as revoked (not deleted — needed for reuse detection)
-    try {
-      await dbClient.refreshToken.updateMany({
-        where: { id: storedToken.id },
-        data: { is_revoked: true }
-      });
-    } catch (updateError: any) {
-      logger.warn('Failed to revoke old refresh token:', updateError);
-    }
-
-    // Save new refresh token in the same family, preserving session link
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-
-    await dbClient.refreshToken.create({
-      data: {
-        token: newRefreshToken,
-        user_id: storedToken.user_id,
-        family_id: storedToken.family_id,
-        expires_at: expiresAt,
-        session_id: storedToken.session_id ?? undefined
-      }
-    });
-
-    const user = storedToken.user;
-    logger.info(`Token refreshed for user: ${user.username}`);
-
-    // Cleanup: delete expired revoked tokens to prevent table bloat (non-blocking)
-    dbClient.refreshToken
-      .deleteMany({
-        where: {
-          user_id: storedToken.user_id,
-          is_revoked: true,
-          expires_at: { lt: new Date() }
-        }
-      })
-      .catch((err: unknown) => logger.debug('Revoked token cleanup failed:', err));
-
-    // Prepare response
-    const authUser: AuthUser = {
-      id: user.id,
-      username: user.username,
-      created_at: user.created_at.toISOString(),
-      updated_at: user.updated_at.toISOString()
-    };
-
-    return {
-      success: true,
-      data: {
-        success: true,
-        user: authUser,
-        encryptedMasterKey: user.master_key_encrypted,
-        masterKeySalt: user.master_key_salt,
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken
-      }
-    };
-  } catch (error) {
-    logger.error('Refresh token handler error:', error);
+  // Validate input - definitive auth failure (Zod rejects malformed body).
+  const validationResult = schemas.RefreshTokenRequestSchema.safeParse(data);
+  if (!validationResult.success) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Token refresh failed'
+      error: 'Invalid refresh token data'
     };
   }
+
+  const { refresh_token: refreshToken } = validationResult.data;
+  const { dbClient } = options;
+  const generateTokensFn = options.generateTokens || generateJwtTokens;
+
+  // Find refresh token (include user for response data).
+  // Prisma errors here (cold-start pool, ECONNREFUSED, etc.) propagate.
+  const storedToken = await dbClient.refreshToken.findUnique({
+    where: { token: refreshToken },
+    include: { user: true }
+  });
+
+  if (!storedToken) {
+    return {
+      success: false,
+      error: 'Invalid or expired refresh token'
+    };
+  }
+
+  // TOKEN REUSE DETECTION: If this token was already revoked (used before),
+  // it means someone is replaying a stolen token → invalidate the entire family
+  if (storedToken.is_revoked) {
+    logger.warn(
+      `Refresh token reuse detected! Revoking entire token family: ${storedToken.family_id}, user: ${storedToken.user_id}`
+    );
+
+    // Revoke all tokens in this family
+    await dbClient.refreshToken.deleteMany({
+      where: { family_id: storedToken.family_id }
+    });
+
+    return {
+      success: false,
+      error: 'Token reuse detected. Please log in again.'
+    };
+  }
+
+  // Check expiry
+  if (storedToken.expires_at < new Date()) {
+    return {
+      success: false,
+      error: 'Invalid or expired refresh token'
+    };
+  }
+
+  // Generate new tokens. JWT signing errors propagate as 5xx.
+  const { accessToken: newAccessToken, refreshToken: newRefreshToken } = await generateTokensFn(
+    storedToken.user_id
+  );
+
+  // Mark old token as revoked (not deleted — needed for reuse detection).
+  // Best-effort: a failure to flip is_revoked is non-fatal for the current
+  // refresh (the new token is already issued); next reuse check still has the
+  // family. Keep as warning, not as auth failure.
+  try {
+    await dbClient.refreshToken.updateMany({
+      where: { id: storedToken.id },
+      data: { is_revoked: true }
+    });
+  } catch (updateError: unknown) {
+    logger.warn('Failed to revoke old refresh token:', updateError);
+  }
+
+  // Save new refresh token in the same family, preserving session link
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+
+  await dbClient.refreshToken.create({
+    data: {
+      token: newRefreshToken,
+      user_id: storedToken.user_id,
+      family_id: storedToken.family_id,
+      expires_at: expiresAt,
+      session_id: storedToken.session_id ?? undefined
+    }
+  });
+
+  const user = storedToken.user;
+  logger.info(`Token refreshed for user: ${user.username}`);
+
+  // Cleanup: delete expired revoked tokens to prevent table bloat (non-blocking)
+  dbClient.refreshToken
+    .deleteMany({
+      where: {
+        user_id: storedToken.user_id,
+        is_revoked: true,
+        expires_at: { lt: new Date() }
+      }
+    })
+    .catch((err: unknown) => logger.debug('Revoked token cleanup failed:', err));
+
+  // Prepare response
+  const authUser: AuthUser = {
+    id: user.id,
+    username: user.username,
+    created_at: user.created_at.toISOString(),
+    updated_at: user.updated_at.toISOString()
+  };
+
+  return {
+    success: true,
+    data: {
+      success: true,
+      user: authUser,
+      encryptedMasterKey: user.master_key_encrypted,
+      masterKeySalt: user.master_key_salt,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken
+    }
+  };
 }
 
