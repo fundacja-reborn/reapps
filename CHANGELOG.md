@@ -1,3 +1,9 @@
+## 0.22.4 (2026-05-13)
+
+### 🩹 Fixes
+
+- **notes:** refresh open note view after pull sync ([#192](https://github.com/fundacja-reborn/reapps/pull/192))
+
 ## 0.22.3 (2026-05-13)
 
 ### 🩹 Fixes
