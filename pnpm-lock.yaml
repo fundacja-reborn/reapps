@@ -284,9 +284,15 @@ importers:
       '@tailwindcss/vite':
         specifier: 4.3.0
         version: 4.3.0(vite@8.0.11(@types/node@24.12.3)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4))
+      '@types/cookie':
+        specifier: 0.6.0
+        version: 0.6.0
       '@types/qrcode':
         specifier: 1.5.6
         version: 1.5.6
+      cookie:
+        specifier: 0.7.2
+        version: 0.7.2
       svelte:
         specifier: 5.55.5
         version: 5.55.5(@typescript-eslint/types@8.59.2)
@@ -381,6 +387,9 @@ importers:
       '@tailwindcss/vite':
         specifier: 4.3.0
         version: 4.3.0(vite@8.0.11(@types/node@24.12.3)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4))
+      '@types/cookie':
+        specifier: 0.6.0
+        version: 0.6.0
       '@types/node':
         specifier: 24.12.3
         version: 24.12.3
@@ -393,6 +402,9 @@ importers:
       autoprefixer:
         specifier: 10.5.0
         version: 10.5.0(postcss@8.5.14)
+      cookie:
+        specifier: 0.7.2
+        version: 0.7.2
       eslint:
         specifier: 10.3.0
         version: 10.3.0(jiti@2.7.0)

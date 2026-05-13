@@ -6,9 +6,20 @@ import { prisma } from '@reborn/database';
 
 const logger = createLogger('AuthRefresh');
 
+// CONTRACT: `cookies.get('refresh_token')` returns the value after
+// `cookie.parse()` (the override-pinned `cookie@0.7.2` package). That parser:
+//   - strips a pair of surrounding `"` (RFC 6265 quoted-string), and
+//   - runs `decodeURIComponent` on any value containing `%` (falling back to
+//     the raw string if the decode throws).
+// The returned value is passed 1:1 into `findUnique({ where: { token } })`,
+// so the DB row must hold exactly the string that `cookies.set(name, value)`
+// originally serialized. A parser regression (e.g. cookie@1.x stopped
+// auto-unquoting) silently invalidates every existing session.
+// Round-trip test: ./server.spec.ts (covers 4 variants - baseline, `=`
+// padding, surrounding quotes, URL-encoded `%20`).
 export const POST: RequestHandler = async ({ cookies }) => {
 	try {
-		// Read refresh token exclusively from httpOnly cookie — never from request body.
+		// Read refresh token exclusively from httpOnly cookie - never from request body.
 		// This ensures the token is not exposed to client-side JS (XSS protection).
 		const refreshToken = cookies.get('refresh_token');
 
