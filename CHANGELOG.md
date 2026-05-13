@@ -1,3 +1,10 @@
+## 0.22.3 (2026-05-13)
+
+### 🩹 Fixes
+
+- **notes:** preserve shadow indexes when metadata decrypt fails after login ([#189](https://github.com/fundacja-reborn/reapps/pull/189))
+- **session:** expiry rebuild resilience ([#190](https://github.com/fundacja-reborn/reapps/pull/190))
+
 ## 0.22.2 (2026-05-13)
 
 ### 🩹 Fixes
