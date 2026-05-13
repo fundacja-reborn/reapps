@@ -79,6 +79,27 @@ export const livePreviewTheme = EditorView.theme({
     '.cm-lp-h6-line': { fontSize: '0.875rem' }
   },
 
+  // Visible markdown markers on the actively-edited line. Emitted by
+  // `buildDecorations` as `Decoration.mark({ class: 'cm-lp-mark' })` on the
+  // ranges that would otherwise be hidden (`#`, `**`, `_`, `~~`, `` ` ``,
+  // `> `, `- `, `- [ ] ` / `- [x] `).
+  //
+  // Color goal: clearly subordinate to body text (Obsidian-style), so the eye
+  // lands on content. `--muted-foreground` alone (oklch ~0.556 light / ~0.65
+  // dark) is "medium gray" - too close in weight to the body. We layer
+  // `opacity: 0.5` on top so the marker reads as light gray in light mode and
+  // dim gray in dark mode, scaling against `--background` rather than being
+  // pinned to one literal lightness value.
+  //
+  // The `, .cm-lp-mark *` half of the selector handles CM6's habit of wrapping
+  // the highlight tokens (heading/processingInstruction tag spans from
+  // `defaultHighlightStyle`) inside our `Decoration.mark` span. If we only
+  // styled `.cm-lp-mark`, the inner highlight span's own color rule could
+  // shadow inheritance from the outer wrapper. `opacity` stays on the outer
+  // only - applying it to descendants too would double-multiply.
+  '.cm-lp-mark, .cm-lp-mark *': { color: 'var(--muted-foreground)' },
+  '.cm-lp-mark': { opacity: '0.5' },
+
   // Inline marks
   '.cm-lp-strong': { fontWeight: '700' },
   '.cm-lp-em': { fontStyle: 'italic' },

@@ -46,6 +46,10 @@ const DEFAULT_OPTIONS: BuildDecorationsOptions = {
 export const rebuildLivePreview = StateEffect.define<null>();
 
 const HIDDEN = Decoration.replace({});
+// Visible markdown markers on the actively-edited line (cursor in range). The
+// CSS rule in `theme.ts` dims them to `--muted-foreground` so the eye lands
+// on content first instead of competing with `#`, `**`, `> `, etc.
+const VISIBLE_MARK = Decoration.mark({ class: 'cm-lp-mark' });
 const CODE_LINE = Decoration.line({ class: 'cm-lp-code-line' });
 const CODE_LINE_FIRST = Decoration.line({ class: 'cm-lp-code-line cm-lp-code-line-first' });
 const CODE_LINE_LAST = Decoration.line({ class: 'cm-lp-code-line cm-lp-code-line-last' });
@@ -311,13 +315,16 @@ export function buildDecorations(
         const line = doc.lineAt(from);
         ranges.push(lineDeco.range(line.from));
 
-        if (!isAnySelectionInRange(state, from, to)) {
-          const headerMark = findFirstChild(nodeRef.node, 'HeaderMark');
-          if (headerMark) {
+        const cursorInside = isAnySelectionInRange(state, from, to);
+        const headerMark = findFirstChild(nodeRef.node, 'HeaderMark');
+        if (headerMark) {
+          if (!cursorInside) {
             // Hide "#... " — including the trailing space if present
             const next = doc.sliceString(headerMark.to, headerMark.to + 1);
             const hideTo = next === ' ' ? headerMark.to + 1 : headerMark.to;
             ranges.push(HIDDEN.range(headerMark.from, hideTo));
+          } else if (headerMark.to > headerMark.from) {
+            ranges.push(VISIBLE_MARK.range(headerMark.from, headerMark.to));
           }
         }
         return; // descend so inline children inside heading text get decorated
@@ -326,44 +333,44 @@ export function buildDecorations(
       // ─── Strong (**bold** / __bold__) ────────────────────────────
       if (name === 'StrongEmphasis') {
         ranges.push(STRONG_MARK.range(from, to));
-        if (!isAnySelectionInRange(state, from, to)) {
-          forEachChild(nodeRef.node, 'EmphasisMark', (mark) => {
-            ranges.push(HIDDEN.range(mark.from, mark.to));
-          });
-        }
+        const cursorInside = isAnySelectionInRange(state, from, to);
+        forEachChild(nodeRef.node, 'EmphasisMark', (mark) => {
+          if (cursorInside) ranges.push(VISIBLE_MARK.range(mark.from, mark.to));
+          else ranges.push(HIDDEN.range(mark.from, mark.to));
+        });
         return; // descend for nested emphasis/code
       }
 
       // ─── Emphasis (*italic* / _italic_) ──────────────────────────
       if (name === 'Emphasis') {
         ranges.push(EM_MARK.range(from, to));
-        if (!isAnySelectionInRange(state, from, to)) {
-          forEachChild(nodeRef.node, 'EmphasisMark', (mark) => {
-            ranges.push(HIDDEN.range(mark.from, mark.to));
-          });
-        }
+        const cursorInside = isAnySelectionInRange(state, from, to);
+        forEachChild(nodeRef.node, 'EmphasisMark', (mark) => {
+          if (cursorInside) ranges.push(VISIBLE_MARK.range(mark.from, mark.to));
+          else ranges.push(HIDDEN.range(mark.from, mark.to));
+        });
         return;
       }
 
       // ─── Strikethrough (~~text~~) — GFM ──────────────────────────
       if (name === 'Strikethrough') {
         ranges.push(STRIKE_MARK.range(from, to));
-        if (!isAnySelectionInRange(state, from, to)) {
-          forEachChild(nodeRef.node, 'StrikethroughMark', (mark) => {
-            ranges.push(HIDDEN.range(mark.from, mark.to));
-          });
-        }
+        const cursorInside = isAnySelectionInRange(state, from, to);
+        forEachChild(nodeRef.node, 'StrikethroughMark', (mark) => {
+          if (cursorInside) ranges.push(VISIBLE_MARK.range(mark.from, mark.to));
+          else ranges.push(HIDDEN.range(mark.from, mark.to));
+        });
         return;
       }
 
       // ─── Inline code (`code`) ────────────────────────────────────
       if (name === 'InlineCode') {
         ranges.push(INLINE_CODE_MARK.range(from, to));
-        if (!isAnySelectionInRange(state, from, to)) {
-          forEachChild(nodeRef.node, 'CodeMark', (mark) => {
-            ranges.push(HIDDEN.range(mark.from, mark.to));
-          });
-        }
+        const cursorInside = isAnySelectionInRange(state, from, to);
+        forEachChild(nodeRef.node, 'CodeMark', (mark) => {
+          if (cursorInside) ranges.push(VISIBLE_MARK.range(mark.from, mark.to));
+          else ranges.push(HIDDEN.range(mark.from, mark.to));
+        });
         return false;
       }
 
@@ -426,10 +433,14 @@ export function buildDecorations(
         for (let lineNo = startLine.number; lineNo <= endLine.number; lineNo++) {
           const line = doc.line(lineNo);
           ranges.push(BLOCKQUOTE_LINE.range(line.from));
-          if (!isAnySelectionInRange(state, line.from, line.to)) {
-            const m = /^(\s*>\s?)/.exec(line.text);
-            if (m) {
-              ranges.push(HIDDEN.range(line.from, line.from + m[1].length));
+          const m = /^(\s*>\s?)/.exec(line.text);
+          if (m) {
+            const markFrom = line.from;
+            const markTo = line.from + m[1].length;
+            if (!isAnySelectionInRange(state, line.from, line.to)) {
+              ranges.push(HIDDEN.range(markFrom, markTo));
+            } else if (markTo > markFrom) {
+              ranges.push(VISIBLE_MARK.range(markFrom, markTo));
             }
           }
         }
@@ -480,26 +491,37 @@ export function buildDecorations(
 
           const cursorOnLine = isAnySelectionInRange(state, itemLine.from, itemLine.to);
 
-          if (isTask && !cursorOnLine && taskMarker) {
-            // Replace `- [ ] ` (ListMark + space + TaskMarker + space) with
-            // the interactive checkbox widget. Toggle handler: `livePreviewTaskCheckboxToggle`.
-            const checked = /\[[xX]\]/.test(
-              doc.sliceString(taskMarker.from, taskMarker.to)
-            );
+          if (isTask && taskMarker) {
             const next = doc.sliceString(taskMarker.to, taskMarker.to + 1);
             const replaceTo = next === ' ' ? taskMarker.to + 1 : taskMarker.to;
-            ranges.push(
-              Decoration.replace({
-                widget: new TaskCheckboxWidget(checked)
-              }).range(listMark.from, replaceTo)
-            );
-          } else if (!isTask && !isOrdered && !cursorOnLine) {
+            if (!cursorOnLine) {
+              // Replace `- [ ] ` (ListMark + space + TaskMarker + space) with
+              // the interactive checkbox widget. Toggle handler: `livePreviewTaskCheckboxToggle`.
+              const checked = /\[[xX]\]/.test(
+                doc.sliceString(taskMarker.from, taskMarker.to)
+              );
+              ranges.push(
+                Decoration.replace({
+                  widget: new TaskCheckboxWidget(checked)
+                }).range(listMark.from, replaceTo)
+              );
+            } else {
+              // Cursor on line — raw `- [ ] ` visible; dim the marker so the
+              // checkbox/structural punctuation doesn't compete with content.
+              ranges.push(VISIBLE_MARK.range(listMark.from, replaceTo));
+            }
+          } else if (!isTask && !isOrdered) {
             // Plain bullet — hide "- " / "* " when cursor is off the line so
             // the rendered ::before bullet takes over. Ordered lists keep
-            // their numeric marker (the number is meaningful content).
+            // their numeric marker (the number is meaningful content, not a
+            // marker — don't dim it).
             const next = doc.sliceString(listMark.to, listMark.to + 1);
             const hideTo = next === ' ' ? listMark.to + 1 : listMark.to;
-            ranges.push(HIDDEN.range(listMark.from, hideTo));
+            if (!cursorOnLine) {
+              ranges.push(HIDDEN.range(listMark.from, hideTo));
+            } else {
+              ranges.push(VISIBLE_MARK.range(listMark.from, hideTo));
+            }
           }
         }
         return; // descend so inline content inside item gets decorated
