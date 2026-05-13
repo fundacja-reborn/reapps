@@ -18,6 +18,7 @@
   import { notesStore } from '$lib/stores/notes.store';
   import { authStore } from '$lib/stores/auth.store';
   import { pullFromServer, pushPendingItems, refreshStoresAfterPull } from '$lib/services/notes-sync.service';
+  import { verifyAndRebuildLocalShadowIndexes } from '$lib/services/shadow-index-reconciler.service';
   import { noteIndex } from '$lib/services/note-index.svelte';
   import { cleanupNullFkFields } from '$lib/services/idb-cleanup.service';
   import { refreshPendingCount, isOnline, sessionExpired } from '$lib/stores/sync-status.store';
@@ -35,7 +36,7 @@
   let initTimeout = $state(false);
   let hasTriggeredInitialSync = $state(false);
 
-  // Auth guard — blocked until onMount finishes initialization (appReady).
+  // Auth guard - blocked until onMount finishes initialization (appReady).
   // Uses untrack on goto() to prevent reactive dependency on navigation result.
   $effect(() => {
     if (!browser || !appReady) return;
@@ -65,7 +66,7 @@
   });
 
   // Re-decrypt all stores when E2E key becomes available (e.g. after unlock/login flow).
-  // Also triggers pull from server — covers the case where onMount already ran
+  // Also triggers pull from server - covers the case where onMount already ran
   // before authentication completed (login → goto('/') stays within the same SPA session).
   $effect(() => {
     if (!browser || !$authStore.hasE2E) return;
@@ -75,7 +76,7 @@
     const runSync = async () => {
       // Re-initialize storage if the connection was terminated
       // (e.g. user deleted IndexedDB in DevTools while the app was open).
-      // initializeStorage() is idempotent — safe to call unconditionally.
+      // initializeStorage() is idempotent - safe to call unconditionally.
       if (!isDatabaseInitialized()) {
         await initializeStorage('notes');
       }
@@ -90,11 +91,18 @@
       // Build NoteIndex FIRST (in parallel with folders/tags), then refresh notesStore
       await Promise.all([foldersStore.refresh(), tagsStore.refresh(), noteIndex.build()]);
       notesStore.refresh();
-      // Push pending offline edits BEFORE pull — otherwise pullFromServer's
+      // Push pending offline edits BEFORE pull - otherwise pullFromServer's
       // version checks could mask unsynced local changes on the next write.
       await pushPendingItems().catch(() => {});
       const synced = await pullFromServer();
       if (synced) {
+        // Repair any shadow-index drift from earlier pulls where crypto wasn't
+        // ready when metadata_encrypted was decoded. sync_version guard in
+        // pullNotes hides this corruption forever otherwise; run before the
+        // post-pull refresh so the rebuilt noteIndex sees the fixed rows.
+        await verifyAndRebuildLocalShadowIndexes().catch((err) =>
+          logger.warn('Shadow-index reconcile failed', err)
+        );
         await refreshStoresAfterPull();
       }
     };
@@ -105,7 +113,7 @@
   onMount(() => {
     if (!browser) return;
 
-    // Timeout fallback — show app even if initialization stalls (e.g. slow IndexedDB)
+    // Timeout fallback - show app even if initialization stalls (e.g. slow IndexedDB)
     const timeoutId = setTimeout(() => {
       initTimeout = true;
     }, 2000);
@@ -128,43 +136,49 @@
       }
 
       // 2a. Initialize SSO auth state AFTER storage is ready and BEFORE the
-      //     cleanup migration — cleanup repairs malformed user_id in legacy
+      //     cleanup migration - cleanup repairs malformed user_id in legacy
       //     local records, which needs the current account's UUID.
       //     (reads shared localStorage from reborn-task if same origin)
       authStore.initialize();
 
       // 2b. One-shot cleanup of legacy null FK fields + malformed user_id in
-      //     IDB. Idempotent and gated by a versioned localStorage flag — runs
+      //     IDB. Idempotent and gated by a versioned localStorage flag - runs
       //     once per browser profile per migration version. Awaited so it
       //     completes before sync touches the same records. Bounded by local
       //     IDB size (typically <1s). Re-runs on next boot if user_id repair
       //     was skipped because auth wasn't ready.
       await cleanupNullFkFields(get(authStore).userId);
 
-      // 4. Mark app as ready — unblocks auth guard $effect
+      // 4. Mark app as ready - unblocks auth guard $effect
       appReady = true;
 
       // Refresh stores now that the database is initialized
       await Promise.all([foldersStore.refresh(), tagsStore.refresh()]);
 
-      // Pull sync from server (if authenticated and E2E unlocked) — then refresh local stores
+      // Pull sync from server (if authenticated and E2E unlocked) - then refresh local stores
       if ($authStore.isAuthenticated && $authStore.hasE2E) {
         hasTriggeredInitialSync = true; // prevent $effect from duplicating pull
         // Build NoteIndex in parallel with folders/tags (data already in IndexedDB from init above)
         await noteIndex.build();
         notesStore.refresh();
-        // Push pending offline edits BEFORE pull — guarantees local unsynced
+        // Push pending offline edits BEFORE pull - guarantees local unsynced
         // changes reach the server before we merge the remote state in.
         pushPendingItems()
           .catch(() => {})
           .then(() => pullFromServer())
           .then(async (synced) => {
             if (synced) {
+              // See $effect runSync above for why shadow-index reconcile runs
+              // here too: cold-start unlock with corrupted IDB rows from a
+              // previous session needs the same self-healing path.
+              await verifyAndRebuildLocalShadowIndexes().catch((err) =>
+                logger.warn('Shadow-index reconcile failed', err)
+              );
               await refreshStoresAfterPull();
             }
           })
           .catch(() => {
-            /* offline — local data remains */
+            /* offline - local data remains */
           });
       }
 
@@ -179,7 +193,7 @@
         try {
           await syncedSettings.pullAndMerge();
         } catch (err: unknown) {
-          logger.warn('Synced settings pull failed — falling back to local IDB', err);
+          logger.warn('Synced settings pull failed - falling back to local IDB', err);
         }
       }
 
@@ -247,7 +261,7 @@
   // Visual-viewport tracker: when the soft keyboard opens on iOS Safari, the
   // layout viewport doesn't shrink (100dvh stays full size) and Safari may
   // "page-shift" the layout viewport upward to keep the focused contenteditable
-  // visible — pushing our sticky header above the visible area. Mirror the
+  // visible - pushing our sticky header above the visible area. Mirror the
   // current visualViewport state into CSS vars so the mobile note panel can
   // size itself to vv.height and counter-translate by vv.offsetTop, keeping
   // the header anchored to the top of the visible area regardless of caret
@@ -262,7 +276,7 @@
       if (document.body.scrollTop !== 0) document.body.scrollTop = 0;
 
       if (!vv) return;
-      // Round to integers — sub-pixel jitter from iOS during scroll causes
+      // Round to integers - sub-pixel jitter from iOS during scroll causes
       // useless reflows.
       const h = Math.round(vv.height);
       const offsetTop = Math.round(vv.offsetTop);
