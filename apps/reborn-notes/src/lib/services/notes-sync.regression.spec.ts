@@ -501,4 +501,40 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(refreshIdx).toBeGreaterThan(-1);
     expect(reconcileIdx).toBeLessThan(refreshIdx);
   });
+
+  it('refreshStoresAfterPull propagates fresh content to the open note detail view', () => {
+    // Without this hop, the sidebar's noteIndex rebuilds with server data but
+    // noteDetailService keeps the stale title/content snapshot taken at
+    // loadNote() time, so Preview/Edit of the currently open note keeps
+    // rendering pre-sync content until the user navigates away and back.
+    const src = readSource('./notes-sync.service.ts');
+    const refreshFn = src.slice(
+      src.indexOf('export async function refreshStoresAfterPull'),
+      src.indexOf('// ── Pull sync')
+    );
+    expect(refreshFn).toMatch(
+      /import\s*\(\s*['"]\$lib\/services\/note-detail\.service\.svelte['"]\s*\)/
+    );
+    expect(refreshFn).toMatch(/noteDetailService\.refreshFromStorage\s*\(/);
+  });
+
+  it('noteDetailService.refreshFromStorage guards against clobbering unsaved edits', () => {
+    // A pull that lands while the user is mid-edit must NOT overwrite their
+    // in-progress title/content - hasPendingChanges() and saveStatus==='saving'
+    // both must short-circuit the refresh.
+    const src = readSource('./note-detail.service.svelte.ts');
+    const methodIdx = src.indexOf('async refreshFromStorage');
+    expect(methodIdx).toBeGreaterThan(-1);
+    const methodEnd = src.indexOf('\n  }', methodIdx);
+    expect(methodEnd).toBeGreaterThan(methodIdx);
+    const method = src.slice(methodIdx, methodEnd);
+    expect(method).toMatch(/this\.hasPendingChanges\s*\(/);
+    expect(method).toMatch(/this\.saveStatus\s*===\s*['"]saving['"]/);
+    // No-op when no note is open - guards against unrelated pulls firing the
+    // hop after the user closed the editor.
+    expect(method).toMatch(/this\.noteId/);
+    // No-op when storage returns null (note deleted on another device) -
+    // detail view stays put; the deleted note will disappear from the sidebar.
+    expect(method).toMatch(/if\s*\(\s*!note\s*\)\s*return/);
+  });
 });
