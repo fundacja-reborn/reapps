@@ -84,6 +84,21 @@ class NoteDetailService {
     this.startCheckpointTimer();
   }
 
+  /** Re-read the currently open note from storage after pull sync; bails when the user has unsaved edits so their work wins. */
+  async refreshFromStorage(): Promise<void> {
+    const id = this.noteId;
+    if (!id) return;
+    if (this.hasPendingChanges() || this.saveStatus === 'saving') return;
+
+    const note = await notesStore.loadNote(id);
+    if (!note) return;
+
+    if (this.title !== note.title) this.title = note.title;
+    if (this.content !== note.content) this.content = note.content;
+    const folderId = note.folder_id ?? null;
+    if (this.folderId !== folderId) this.folderId = folderId;
+  }
+
   /**
    * Set title with debounce. Captures value synchronously.
    */

@@ -91,9 +91,11 @@ export async function refreshStoresAfterPull(): Promise<void> {
   const { foldersStore } = await import('$lib/stores/folders.store');
   const { tagsStore } = await import('$lib/stores/tags.store');
   const { notesStore } = await import('$lib/stores/notes.store');
+  const { noteDetailService } = await import('$lib/services/note-detail.service.svelte');
 
   await Promise.all([foldersStore.refresh(), tagsStore.refresh(), noteIndex.rebuild()]);
   notesStore.refresh();
+  await noteDetailService.refreshFromStorage();
 }
 
 // ── Pull sync - server → IndexedDB ───────────────────────────────
