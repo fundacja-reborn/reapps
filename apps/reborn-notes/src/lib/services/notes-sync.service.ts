@@ -51,10 +51,6 @@ const logger = createLogger('Notes-Sync');
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-function isUnauthorizedError(e: unknown): boolean {
-  return e instanceof Error && e.message.includes('401');
-}
-
 function isNetworkError(e: unknown): boolean {
   if (!(e instanceof Error)) return false;
   if (e.name === 'AbortError' || e.name === 'TimeoutError') return true;
@@ -124,10 +120,16 @@ export async function pullFromServer(): Promise<boolean> {
 
   isSyncing.set(true);
   syncError.set(false);
-  sessionExpired.set(false);
+
+  // Note: `sessionExpired` is owned by the transport layer (`authFetch` via
+  // `onSessionExpired` in `apps/reborn-notes/src/lib/utils/auth-fetch.ts`).
+  // Sync-service intentionally does **not** flip the flag itself - a 401 that
+  // bubbles up here was already classified by authFetch as either transient
+  // (refresh hit a 5xx during deploy/rebuild - banner suppressed) or definitive
+  // (refresh returned 401/403 - banner already triggered). See guideline
+  // 31-session-expiry-handling.md.
 
   let success = true;
-  let gotUnauthorized = false;
   try {
     // NOTE: We intentionally do NOT clear local stores before pulling.
     // Each pull* helper merges by sync_version and skips items with
@@ -136,43 +138,33 @@ export async function pullFromServer(): Promise<boolean> {
     // Cross-user cleanup is handled by clearAllUserData() during login/logout.
     await Promise.all([
       pullFolders().catch((e) => {
-        if (isUnauthorizedError(e)) gotUnauthorized = true;
         reportSyncError(e);
         logger.error('Pull folders failed:', e);
         success = false;
       }),
       pullTags().catch((e) => {
-        if (isUnauthorizedError(e)) gotUnauthorized = true;
         reportSyncError(e);
         logger.error('Pull tags failed:', e);
         success = false;
       })
     ]);
     // Notes after folders/tags (they reference them)
-    if (!gotUnauthorized) {
-      await pullNotes().catch((e) => {
-        if (isUnauthorizedError(e)) gotUnauthorized = true;
-        reportSyncError(e);
-        logger.error('Pull notes failed:', e);
-        success = false;
-      });
+    await pullNotes().catch((e) => {
+      reportSyncError(e);
+      logger.error('Pull notes failed:', e);
+      success = false;
+    });
 
-      // Pull note versions after notes
-      if (!gotUnauthorized) {
-        const allNotes = (await noteStore.getAll()) as NoteEncrypted[];
-        const noteIds = allNotes.map((n) => n.id);
-        await pullNoteVersions(noteIds).catch((e) => {
-          reportSyncError(e);
-          logger.error('Pull note versions failed:', e);
-          // Non-critical - don't set success=false
-        });
-      }
-    }
+    // Pull note versions after notes
+    const allNotes = (await noteStore.getAll()) as NoteEncrypted[];
+    const noteIds = allNotes.map((n) => n.id);
+    await pullNoteVersions(noteIds).catch((e) => {
+      reportSyncError(e);
+      logger.error('Pull note versions failed:', e);
+      // Non-critical - don't set success=false
+    });
 
-    if (gotUnauthorized) {
-      sessionExpired.set(true);
-      syncError.set(false);
-    } else if (success) {
+    if (success) {
       logger.info('Pull sync completed');
       lastSyncedAt.set(new Date().toISOString());
     } else {

@@ -38,6 +38,15 @@ export interface AuthFetchConfig {
   storage?: AuthFetchTokenStorage;
   /** Override fetch impl (tests). Defaults to globalThis.fetch. */
   fetchImpl?: typeof fetch;
+  /**
+   * Grace period (ms) before treating a definitive refresh failure as
+   * session expiry. On the first 401/403 from `/auth/refresh`, the wrapper
+   * waits this long and retries once before invoking `onSessionExpired`.
+   * Hides brief race conditions (token-rotation across tabs/apps, server
+   * cold-start right after a rebuild) at the cost of a small delay on
+   * genuine expiry. Defaults to 1500 ms. Set to 0 to disable.
+   */
+  gracePeriodMs?: number;
 }
 
 export interface AuthFetch {
@@ -68,6 +77,7 @@ export class TransientRefreshError extends Error {
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+const DEFAULT_REFRESH_GRACE_PERIOD_MS = 1500;
 
 const defaultStorage: AuthFetchTokenStorage = {
   getAccessToken: () =>
@@ -81,12 +91,13 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
   const storage = config.storage ?? defaultStorage;
   const timeoutMs = config.defaultTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   const fetchImpl = config.fetchImpl ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
+  const gracePeriodMs = config.gracePeriodMs ?? DEFAULT_REFRESH_GRACE_PERIOD_MS;
 
   // In-tab single-flight: concurrent 401 handlers share one refresh promise so
   // they don't all hit the server. Cross-tab is serialized via withRefreshLock.
   let refreshPromise: Promise<string | null> | null = null;
 
-  async function doRefresh(tokenBeforeLock: string | null): Promise<string | null> {
+  async function doRefreshOnce(tokenBeforeLock: string | null): Promise<string | null> {
     // Inside the cross-tab lock another tab may have already refreshed for us.
     // If the stored access token changed while we were queued, skip the
     // redundant fetch and use the fresh one.
@@ -143,12 +154,43 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
     return newToken;
   }
 
+  async function doRefreshWithGracePeriod(tokenBeforeLock: string | null): Promise<string | null> {
+    const first = await doRefreshOnce(tokenBeforeLock);
+    if (first !== null) return first;
+    if (gracePeriodMs <= 0) return null;
+
+    // Definitive failure on the first attempt. Wait briefly and retry once
+    // before reporting session expiry. Hides two classes of false positives
+    // without compromising the "401 = expired" signal beyond a small delay:
+    //   1. Cross-tab/cross-app token-rotation race where the first attempt
+    //      hit a refresh token that was revoked moments earlier by another
+    //      window completing its own rotation.
+    //   2. Server-side race during deploy/rebuild where the auth handler ran
+    //      against a partially-initialized backend (defense-in-depth on top
+    //      of the handler-level fix that maps Prisma errors to 5xx).
+    // Genuine expiry (token revoked/expired beyond the 7-day window) still
+    // surfaces the banner — just gracePeriodMs later.
+    await new Promise<void>((resolve) => setTimeout(resolve, gracePeriodMs));
+
+    // Another tab may have refreshed during the wait — use that token if so.
+    // Compare against the original tokenBeforeLock so we detect any update
+    // that happened during either the lock wait or this grace period.
+    const currentAfterWait = storage.getAccessToken();
+    if (currentAfterWait && currentAfterWait !== tokenBeforeLock) {
+      return currentAfterWait;
+    }
+
+    return doRefreshOnce(tokenBeforeLock);
+  }
+
   function refresh(): Promise<string | null> {
     if (!refreshPromise) {
       const tokenBeforeLock = storage.getAccessToken();
-      refreshPromise = withRefreshLock(() => doRefresh(tokenBeforeLock)).finally(() => {
-        refreshPromise = null;
-      });
+      refreshPromise = withRefreshLock(() => doRefreshWithGracePeriod(tokenBeforeLock)).finally(
+        () => {
+          refreshPromise = null;
+        }
+      );
     }
     return refreshPromise;
   }

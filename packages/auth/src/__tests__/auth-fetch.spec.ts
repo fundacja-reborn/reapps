@@ -115,7 +115,10 @@ describe('createAuthFetch', () => {
       refreshUrl: '/api/auth/refresh',
       storage,
       fetchImpl,
-      onSessionExpired
+      onSessionExpired,
+      // Disable grace-period for this test — we're verifying the immediate
+      // definitive-expiry path, not the retry behavior (covered separately).
+      gracePeriodMs: 0
     });
 
     const response = await authFetch('/api/things');
@@ -202,7 +205,10 @@ describe('createAuthFetch', () => {
       refreshUrl: '/api/auth/refresh',
       storage,
       fetchImpl,
-      onSessionExpired
+      onSessionExpired,
+      // Disable grace-period for this test — testing the bare refresh()
+      // result, not retry behavior (covered separately).
+      gracePeriodMs: 0
     });
 
     const newToken = await authFetch.refresh();
@@ -280,7 +286,10 @@ describe('createAuthFetch', () => {
       refreshUrl: '/api/auth/refresh',
       storage,
       fetchImpl,
-      onSessionExpired
+      onSessionExpired,
+      // Disable grace-period — this test covers the immediate definitive
+      // signal. Grace-period retry behavior is covered by dedicated tests.
+      gracePeriodMs: 0
     });
 
     const response = await authFetch('/api/things');
@@ -316,5 +325,173 @@ describe('createAuthFetch', () => {
     });
 
     await expect(authFetch.refresh()).rejects.toBeInstanceOf(TransientRefreshError);
+  });
+
+  // --- Grace period (single retry before banner) ---
+  //
+  // After a first definitive 401 from `/auth/refresh`, the wrapper waits
+  // briefly and retries once before invoking `onSessionExpired`. Hides
+  // cross-tab token-rotation races and brief server hiccups (e.g. handler
+  // ran during DB cold-start after `docker compose up --build`). Real
+  // expiry still surfaces the banner — just gracePeriodMs later.
+
+  it('retries refresh once after a brief delay on definitive 401, succeeds the second time', async () => {
+    const storage = makeStorage('expired');
+    const onSessionExpired = vi.fn();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+      // First refresh attempt — definitive 401.
+      .mockResolvedValueOnce(new Response('refresh denied', { status: 401 }))
+      // Second refresh attempt (after grace period) — succeeds.
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, data: { access_token: 'fresh' } }), {
+          status: 200
+        })
+      )
+      // Retry of original request with the fresh token.
+      .mockResolvedValueOnce(new Response('ok', { status: 200 }));
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      onSessionExpired,
+      gracePeriodMs: 100
+    });
+
+    const response = await authFetch('/api/things');
+
+    expect(response.status).toBe(200);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+    expect(storage.getAccessToken()).toBe('fresh');
+
+    // Two refresh calls (initial + retry).
+    const refreshCalls = fetchImpl.mock.calls.filter((c) => c[0] === '/api/auth/refresh');
+    expect(refreshCalls).toHaveLength(2);
+  });
+
+  it('still calls onSessionExpired when both refresh attempts return 401', async () => {
+    // Regression guard: grace period must not hide actually-expired sessions
+    // beyond the bounded delay.
+    const storage = makeStorage('expired');
+    const onSessionExpired = vi.fn();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+      .mockResolvedValueOnce(new Response('refresh denied', { status: 401 }))
+      .mockResolvedValueOnce(new Response('refresh denied', { status: 401 }));
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      onSessionExpired,
+      gracePeriodMs: 50
+    });
+
+    const response = await authFetch('/api/things');
+
+    expect(response.status).toBe(401);
+    expect(onSessionExpired).toHaveBeenCalledOnce();
+
+    const refreshCalls = fetchImpl.mock.calls.filter((c) => c[0] === '/api/auth/refresh');
+    expect(refreshCalls).toHaveLength(2);
+  });
+
+  it('does not retry when the first refresh failure is transient (5xx propagates immediately)', async () => {
+    // Transient failures already have their own retry mechanism in the
+    // sync layer — they must not eat the grace-period retry budget too.
+    const storage = makeStorage('expired');
+    const onSessionExpired = vi.fn();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+      .mockResolvedValueOnce(new Response('Bad Gateway', { status: 502 }));
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      onSessionExpired,
+      gracePeriodMs: 50
+    });
+
+    const response = await authFetch('/api/things');
+
+    expect(response.status).toBe(401);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+
+    // Only the first refresh attempt — no retry on transient.
+    const refreshCalls = fetchImpl.mock.calls.filter((c) => c[0] === '/api/auth/refresh');
+    expect(refreshCalls).toHaveLength(1);
+  });
+
+  it('grace period can be disabled with gracePeriodMs: 0 (immediate banner on 401)', async () => {
+    const storage = makeStorage('expired');
+    const onSessionExpired = vi.fn();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+      .mockResolvedValueOnce(new Response('refresh denied', { status: 401 }));
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      onSessionExpired,
+      gracePeriodMs: 0
+    });
+
+    const response = await authFetch('/api/things');
+
+    expect(response.status).toBe(401);
+    expect(onSessionExpired).toHaveBeenCalledOnce();
+
+    const refreshCalls = fetchImpl.mock.calls.filter((c) => c[0] === '/api/auth/refresh');
+    expect(refreshCalls).toHaveLength(1);
+  });
+
+  it('uses storage token if another tab refreshes during the grace period', async () => {
+    // While we wait for the grace period, another tab/app may complete a
+    // refresh and write the new token to shared storage. The wrapper should
+    // detect that and skip its own retry network call.
+    const storage = makeStorage('expired');
+    const onSessionExpired = vi.fn();
+    const fetchImpl = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url === '/api/auth/refresh') {
+        // Definitive 401 on the only refresh attempt the wrapper should make.
+        return Promise.resolve(new Response('refresh denied', { status: 401 }));
+      }
+      // Original GET retried with the cross-tab token returns 200.
+      const tokenHeader = (init?.headers as Headers | undefined)?.get('Authorization');
+      if (tokenHeader === 'Bearer fresh-from-other-tab') {
+        return Promise.resolve(new Response('ok', { status: 200 }));
+      }
+      return Promise.resolve(new Response('expired', { status: 401 }));
+    });
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      onSessionExpired,
+      gracePeriodMs: 100
+    });
+
+    const pending = authFetch('/api/things');
+
+    // Simulate another tab writing a fresh token mid-grace-period.
+    setTimeout(() => storage.setAccessToken('fresh-from-other-tab'), 30);
+
+    const response = await pending;
+
+    expect(response.status).toBe(200); // original request retried with fresh token
+    expect(onSessionExpired).not.toHaveBeenCalled();
+
+    const refreshCalls = fetchImpl.mock.calls.filter((c) => c[0] === '/api/auth/refresh');
+    // Only one refresh call (the first attempt). Retry skipped because
+    // storage already has a fresh token.
+    expect(refreshCalls).toHaveLength(1);
   });
 });
