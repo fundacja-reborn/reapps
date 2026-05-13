@@ -8,7 +8,7 @@
  *          If the call fails (offline / error), the item keeps sync_status='pending'
  *          in IndexedDB and will be retried on the next pull sync.
  *
- * The service is intentionally simple — no dedicated queue store, no complex
+ * The service is intentionally simple - no dedicated queue store, no complex
  * retry logic. Multi-device sync works by pulling from server on next app load.
  */
 import {
@@ -24,12 +24,12 @@ import {
 import type {
   NoteEncrypted,
   NoteStoredLocal,
-  NoteSensitiveMetadata,
   NoteHistoryEntry,
   FolderEncrypted,
   TagEncrypted
 } from '@reborn/types';
 import { cryptoManager } from '@reborn/crypto';
+import { extractShadowIndexes } from './shadow-index-extractor';
 import { get } from 'svelte/store';
 import { PUBLIC_BASE_PATH } from '$env/static/public';
 import { authStore } from '$lib/stores/auth.store';
@@ -69,7 +69,7 @@ function isNetworkError(e: unknown): boolean {
 
 /**
  * Central hook for any caught sync error. Hints the connectivity store whenever
- * the failure smells like a dead network — which `navigator.onLine` would
+ * the failure smells like a dead network - which `navigator.onLine` would
  * otherwise miss under an active VPN tunnel.
  */
 function reportSyncError(e: unknown): void {
@@ -86,7 +86,7 @@ function isAuthenticated(): boolean {
 /**
  * Rebuild in-memory indexes and refresh Svelte stores after a successful pull.
  *
- * `pullFromServer()` only writes to IndexedDB — the in-memory `noteIndex`,
+ * `pullFromServer()` only writes to IndexedDB - the in-memory `noteIndex`,
  * `foldersStore`, `tagsStore`, and `notesStore` remain stale until explicitly
  * refreshed. Call this after every successful pull to propagate changes to UI.
  */
@@ -100,7 +100,7 @@ export async function refreshStoresAfterPull(): Promise<void> {
   notesStore.refresh();
 }
 
-// ── Pull sync — server → IndexedDB ───────────────────────────────
+// ── Pull sync - server → IndexedDB ───────────────────────────────
 
 /**
  * Full pull sync: fetch all notes, folders, tags from server and upsert locally.
@@ -131,7 +131,7 @@ export async function pullFromServer(): Promise<boolean> {
   try {
     // NOTE: We intentionally do NOT clear local stores before pulling.
     // Each pull* helper merges by sync_version and skips items with
-    // sync_status='pending' — clearing would wipe offline edits that haven't
+    // sync_status='pending' - clearing would wipe offline edits that haven't
     // been pushed yet (observed data loss in offline → online transitions).
     // Cross-user cleanup is handled by clearAllUserData() during login/logout.
     await Promise.all([
@@ -164,7 +164,7 @@ export async function pullFromServer(): Promise<boolean> {
         await pullNoteVersions(noteIds).catch((e) => {
           reportSyncError(e);
           logger.error('Pull note versions failed:', e);
-          // Non-critical — don't set success=false
+          // Non-critical - don't set success=false
         });
       }
     }
@@ -193,7 +193,7 @@ export async function pullFromServer(): Promise<boolean> {
 async function pullFolders(): Promise<void> {
   // Capture userId once at the top. Without this guard, a logout (or auth
   // store hydration race) mid-pull would let a non-null assertion on the
-  // store's userId evaluate to undefined further down — silently writing
+  // store's userId evaluate to undefined further down - silently writing
   // user_id=undefined to IDB, which then propagates to every fresh export
   // and trips the import validator for that account. See guideline 44 +
   // `idb-cleanup.service.ts`.
@@ -215,10 +215,10 @@ async function pullFolders(): Promise<void> {
         sync_version?: number;
       }>
     ).map(async (f) => {
-      // Skip if local folder has pending changes — don't overwrite offline edits
+      // Skip if local folder has pending changes - don't overwrite offline edits
       const localFolder = await folderStore.get(f.id);
       if (localFolder && localFolder.sync_status === 'pending') {
-        logger.debug(`Skipping pull for folder ${f.id} — has pending local changes`);
+        logger.debug(`Skipping pull for folder ${f.id} - has pending local changes`);
         return;
       }
 
@@ -234,7 +234,7 @@ async function pullFolders(): Promise<void> {
             (localFolder.parent_id ?? null) !== (f.parent_id ?? null) ||
             localFolder.order_index !== f.order_index)
         ) {
-          logger.warn(`Reconciling orphaned folder edit ${f.id} — marking pending`);
+          logger.warn(`Reconciling orphaned folder edit ${f.id} - marking pending`);
           await folderStore.save({ ...localFolder, sync_status: 'pending' });
         }
         return;
@@ -257,7 +257,7 @@ async function pullFolders(): Promise<void> {
   );
 
   // Remove local folders that no longer exist on the server (deleted on another device).
-  // Only remove 'synced' items — 'pending' items were created/edited locally and not yet pushed.
+  // Only remove 'synced' items - 'pending' items were created/edited locally and not yet pushed.
   const serverFolderIds = new Set((data as Array<{ id: string }>).map((f) => f.id));
   const allLocalFolders = (await folderStore.getAll()) as FolderEncrypted[];
   const orphanIds = allLocalFolders
@@ -288,14 +288,14 @@ async function pullTags(): Promise<void> {
         sync_version?: number;
       }>
     ).map(async (t) => {
-      // Skip if local tag has pending changes — don't overwrite offline edits
+      // Skip if local tag has pending changes - don't overwrite offline edits
       const localTag = await tagStore.get(t.id);
       if (localTag && localTag.sync_status === 'pending') {
-        logger.debug(`Skipping pull for tag ${t.id} — has pending local changes`);
+        logger.debug(`Skipping pull for tag ${t.id} - has pending local changes`);
         return;
       }
 
-      // Compare sync_version — skip if server is not newer
+      // Compare sync_version - skip if server is not newer
       const serverVersion = t.sync_version ?? 1;
       if (localTag && serverVersion <= (localTag.sync_version ?? 0)) {
         // Reconciliation: see pullFolders() for rationale.
@@ -304,7 +304,7 @@ async function pullTags(): Promise<void> {
           (localTag.name_encrypted !== t.name_encrypted ||
             (localTag.color_encrypted ?? null) !== (t.color_encrypted ?? null))
         ) {
-          logger.warn(`Reconciling orphaned tag edit ${t.id} — marking pending`);
+          logger.warn(`Reconciling orphaned tag edit ${t.id} - marking pending`);
           await tagStore.save({ ...localTag, sync_status: 'pending' });
         }
         return;
@@ -359,10 +359,10 @@ async function pullNotes(): Promise<void> {
         sync_version?: number;
       }>
     ).map(async (n) => {
-      // Skip if local note has pending changes — don't overwrite offline edits
+      // Skip if local note has pending changes - don't overwrite offline edits
       const localNote = (await noteStore.get(n.id)) as NoteStoredLocal | undefined;
       if (localNote && localNote.sync_status === 'pending') {
-        logger.debug(`Skipping pull for note ${n.id} — has pending local changes`);
+        logger.debug(`Skipping pull for note ${n.id} - has pending local changes`);
         return;
       }
 
@@ -376,7 +376,7 @@ async function pullNotes(): Promise<void> {
         //   1. Old server deploys that didn't bump sync_version on soft-delete/restore.
         //   2. Rows where the server bumped but the client's pushNoteDelete/Restore
         //      response was dropped before we could mirror the new version locally.
-        // We only adjust is_archived here — content fields stay as they are so
+        // We only adjust is_archived here - content fields stay as they are so
         // local edits aren't clobbered.
         if (
           localNote.sync_status === 'synced' &&
@@ -398,33 +398,32 @@ async function pullNotes(): Promise<void> {
             (localNote.metadata_encrypted ?? null) !== (n.metadata_encrypted ?? null) ||
             (localNote.folder_id ?? null) !== (n.folder_id ?? null))
         ) {
-          logger.warn(`Reconciling orphaned note edit ${n.id} — marking pending`);
+          logger.warn(`Reconciling orphaned note edit ${n.id} - marking pending`);
           await noteStore.save({ ...localNote, sync_status: 'pending' });
         }
         return;
       }
 
-      // Rebuild shadow indexes from metadata_encrypted
-      let is_pinned = false;
-      let is_starred = false;
-      let metaTagIds: string[] = [];
+      // Rebuild shadow indexes from metadata_encrypted. extractShadowIndexes throws when
+      // cryptoManager isn't ready or AES-GCM rejects the ciphertext - in both cases we
+      // skip the save entirely instead of writing default `false/false` shadow indexes
+      // with a preserved ciphertext, which would be locked-in corruption (pull-side
+      // sync_version guard above would skip re-decrypt on every subsequent sync until
+      // the next logout+login wipes IDB). The next successful pull will retry.
+      let is_pinned: boolean;
+      let is_starred: boolean;
+      let metaTagIds: string[];
       try {
-        if (n.metadata_encrypted && cryptoManager.isInitialized()) {
-          const meta = await cryptoManager.decryptObject<NoteSensitiveMetadata>(
-            n.metadata_encrypted
-          );
-          is_pinned = meta.is_pinned ?? false;
-          is_starred = meta.is_starred ?? false;
-          metaTagIds = meta.tags ?? [];
-        }
-      } catch (decryptErr) {
-        // ERROR: metadata decryption failed — shadow indexes (is_pinned, is_starred, tags)
-        // will use defaults (false/empty). The note's metadata_encrypted is preserved for
-        // future retry on next pull. This may cause incorrect UI state until next successful decrypt.
-        logger.error(
-          `METADATA_DECRYPT_FAILED for note ${n.id} — shadow indexes may be incorrect`,
-          decryptErr
+        const shadow = await extractShadowIndexes(n.metadata_encrypted, cryptoManager);
+        is_pinned = shadow.is_pinned;
+        is_starred = shadow.is_starred;
+        metaTagIds = shadow.tagIds;
+      } catch (err) {
+        logger.warn(
+          `Skipping save of note ${n.id} - shadow indexes could not be derived. Will retry on next successful sync.`,
+          err
         );
+        return;
       }
 
       const note: NoteStoredLocal = {
@@ -481,7 +480,7 @@ async function pullNotes(): Promise<void> {
   }
 }
 
-// ── Push helpers — IndexedDB → server ────────────────────────────
+// ── Push helpers - IndexedDB → server ────────────────────────────
 
 /**
  * Push all locally-pending items (folders, tags, notes) to the server.
@@ -525,7 +524,7 @@ export async function pushPendingItems(): Promise<void> {
 
   // Push folders BFS-by-layer so parents land before children. Server's
   // POST /api/folders rejects with 404 "Parent folder not found" when
-  // parent_id references a folder not yet on the server — flat
+  // parent_id references a folder not yet on the server - flat
   // Promise.allSettled would 404-spam mid-batch on vault imports with
   // nested hierarchies. Siblings within a layer push in parallel.
   for (const layer of buildFolderLayers(pendingFolders)) {
@@ -562,7 +561,7 @@ export async function pushPendingItems(): Promise<void> {
     );
   }
 
-  // Tags don't reference folders — push in parallel after folders are
+  // Tags don't reference folders - push in parallel after folders are
   // settled. Notes' metadata_encrypted may embed tag ids, so tags must
   // land before the notes layer below.
   await Promise.allSettled(
@@ -691,7 +690,7 @@ async function pushSilently(fn: (idempotencyKey: string) => Promise<void>): Prom
  *
  * Without this, the browser can dispatch a POST /folders and a DELETE
  * /folders/{id} concurrently; if the network delivers DELETE first the folder
- * stays on the server after the POST — divergent from the empty local state.
+ * stays on the server after the POST - divergent from the empty local state.
  * The delete↔restore race for notes has the same shape.
  *
  * Different entities keep running in parallel. A chain entry clears itself
@@ -763,7 +762,7 @@ export function pushNote(note: NoteEncrypted | NoteStoredLocal): void {
       if (current) {
         const stillDirty = pushedFieldsDiffer(current, pushedFields);
         if (stillDirty) {
-          logger.debug(`Note ${note.id} changed during push — keeping sync_status=pending`);
+          logger.debug(`Note ${note.id} changed during push - keeping sync_status=pending`);
         }
         await noteStore.save({
           ...current,
@@ -801,7 +800,7 @@ export function pushNoteUpdate(
       if (current) {
         const stillDirty = pushedFieldsDiffer(current, fields);
         if (stillDirty) {
-          logger.debug(`Note ${id} changed during push — keeping sync_status=pending`);
+          logger.debug(`Note ${id} changed during push - keeping sync_status=pending`);
         }
         await noteStore.save({
           ...current,
@@ -827,19 +826,19 @@ export function pushNoteDelete(id: string, permanent = false): void {
       // Server bumps sync_version on soft-delete (since rule 11.e) and returns
       // the new value. We MUST mirror it locally, otherwise the next pull sees
       // server=N+1 vs local=N and re-applies the archive state we already have
-      // — harmless but churn. More importantly, future pushes would operate on
+      // - harmless but churn. More importantly, future pushes would operate on
       // stale sync_version and look like conflicts.
       let serverSyncVersion: number | undefined;
       try {
         const body = await res.json();
         serverSyncVersion = body?.data?.sync_version;
       } catch {
-        // Old server deploy — no body. Leave sync_version untouched.
+        // Old server deploy - no body. Leave sync_version untouched.
       }
 
       // Intent-check: if the user restored the note while DELETE was in flight,
       // `current.is_archived` will be false. Marking 'synced' would strand the
-      // local restore — chain a pushNoteRestore instead. See guideline 36 rule 11.b.
+      // local restore - chain a pushNoteRestore instead. See guideline 36 rule 11.b.
       const current = await noteStore.get(id);
       if (!current) return;
       if (current.is_archived) {
@@ -849,7 +848,7 @@ export function pushNoteDelete(id: string, permanent = false): void {
           sync_version: serverSyncVersion ?? current.sync_version
         });
       } else {
-        logger.debug(`Note ${id} restored during delete push — chaining restore`);
+        logger.debug(`Note ${id} restored during delete push - chaining restore`);
         await noteStore.save({
           ...current,
           sync_status: 'pending',
@@ -877,7 +876,7 @@ export function pushNoteRestore(id: string): void {
         const body = await res.json();
         serverSyncVersion = body?.data?.sync_version;
       } catch {
-        // Old server deploy — no body.
+        // Old server deploy - no body.
       }
 
       // Intent-check: if the user re-archived the note while /restore was in
@@ -891,7 +890,7 @@ export function pushNoteRestore(id: string): void {
           sync_version: serverSyncVersion ?? current.sync_version
         });
       } else {
-        logger.debug(`Note ${id} re-archived during restore push — chaining delete`);
+        logger.debug(`Note ${id} re-archived during restore push - chaining delete`);
         await noteStore.save({
           ...current,
           sync_status: 'pending',
@@ -933,7 +932,7 @@ export function pushFolder(
       if (current) {
         const stillDirty = pushedFieldsDiffer(current, pushedFields);
         if (stillDirty) {
-          logger.debug(`Folder ${folder.id} changed during push — keeping sync_status=pending`);
+          logger.debug(`Folder ${folder.id} changed during push - keeping sync_status=pending`);
         }
         await folderStore.save({
           ...current,
@@ -963,7 +962,7 @@ export function pushFolderUpdate(
       if (current) {
         const stillDirty = pushedFieldsDiffer(current, fields);
         if (stillDirty) {
-          logger.debug(`Folder ${id} changed during push — keeping sync_status=pending`);
+          logger.debug(`Folder ${id} changed during push - keeping sync_status=pending`);
         }
         await folderStore.save({
           ...current,
@@ -985,7 +984,7 @@ export function pushFolderDelete(id: string): void {
       if (!res.ok) throw new Error(`DELETE /api/folders/${id}: ${res.status}`);
       // Folder is hard-deleted locally before this runs (see folder.service.ts
       // deleteFolder), so there is nothing to reconcile. We deliberately do NOT
-      // resurrect the row and clobber sync_version the way the old code did —
+      // resurrect the row and clobber sync_version the way the old code did -
       // that broke conflict detection on the rare in-flight re-sync path.
     })
   );
@@ -1020,7 +1019,7 @@ export function pushTag(tag: {
       if (current) {
         const stillDirty = pushedFieldsDiffer(current, pushedFields);
         if (stillDirty) {
-          logger.debug(`Tag ${tag.id} changed during push — keeping sync_status=pending`);
+          logger.debug(`Tag ${tag.id} changed during push - keeping sync_status=pending`);
         }
         await tagStore.save({
           ...current,
@@ -1050,7 +1049,7 @@ export function pushTagUpdate(
       if (current) {
         const stillDirty = pushedFieldsDiffer(current, fields);
         if (stillDirty) {
-          logger.debug(`Tag ${id} changed during push — keeping sync_status=pending`);
+          logger.debug(`Tag ${id} changed during push - keeping sync_status=pending`);
         }
         await tagStore.save({
           ...current,
@@ -1071,7 +1070,7 @@ export function pushTagDelete(id: string): void {
       });
       if (!res.ok) throw new Error(`DELETE /api/tags/${id}: ${res.status}`);
       // Tag is hard-deleted locally before this runs (see tag.service.ts
-      // deleteTag), so there is nothing to reconcile. No sync_version reset —
+      // deleteTag), so there is nothing to reconcile. No sync_version reset -
       // that's the same bug we removed from pushFolderDelete.
     })
   );

@@ -16,7 +16,7 @@ function readSource(relative: string): string {
   return readFileSync(resolve(__dirname, relative), 'utf-8');
 }
 
-describe('notes-sync — regression (offline data loss)', () => {
+describe('notes-sync - regression (offline data loss)', () => {
   it('pullFromServer does NOT clear local stores before fetching (BUG-2)', () => {
     const src = readSource('./notes-sync.service.ts');
     const pullFn = src.slice(
@@ -91,7 +91,7 @@ describe('notes-sync — regression (offline data loss)', () => {
       const match = signature.exec(src);
       expect(match, `signature not found: ${signature}`).not.toBeNull();
       const start = match!.index;
-      // Scan only the next ~600 chars — long enough for the wrapper, short
+      // Scan only the next ~600 chars - long enough for the wrapper, short
       // enough to avoid crossing into the next function.
       const body = src.slice(start, start + 600);
       expect(body, `${signature} must call serializePerEntity('${type}', …)`).toMatch(
@@ -243,7 +243,7 @@ describe('notes-sync — regression (offline data loss)', () => {
   it('pushPendingItems pushes folders BFS-by-layer (parent before child)', () => {
     // Server's POST /api/folders FK-checks parent_id and 404s if the parent
     // isn't on the server yet. Flat Promise.allSettled would 404-spam mid-batch
-    // on nested vault imports — pushPendingItems must use buildFolderLayers
+    // on nested vault imports - pushPendingItems must use buildFolderLayers
     // and await each layer before starting the next.
     const src = readSource('./notes-sync.service.ts');
     const fn = src.slice(
@@ -279,7 +279,7 @@ describe('notes-sync — regression (offline data loss)', () => {
   it('importJsonBackup defers all pushes to pushPendingItems (ordering)', () => {
     // Production reproduction: backup with 7 folders + 85 notes triggered ~25
     // simultaneous "POST /api/notes 404 Folder not found" errors during import
-    // because per-loop fire-and-forget pushFolder/pushNote raced — notes POST
+    // because per-loop fire-and-forget pushFolder/pushNote raced - notes POST
     // reached the server before their parent folder POST completed, the
     // server's FK check missed the folder, and 404 came back. pushPendingItems
     // already runs `Promise.allSettled([folders + tags]) → Promise.allSettled
@@ -293,7 +293,7 @@ describe('notes-sync — regression (offline data loss)', () => {
     expect(importEnd).toBeGreaterThan(importStart);
     const importBody = src.slice(importStart, importEnd);
 
-    // No per-element pushFolder/pushTag/pushNote in importJsonBackup — all
+    // No per-element pushFolder/pushTag/pushNote in importJsonBackup - all
     // imports save with sync_status='pending' and rely on pushPendingItems.
     expect(importBody).not.toMatch(/\bpushFolder\s*\(/);
     expect(importBody).not.toMatch(/\bpushTag\s*\(/);
@@ -324,7 +324,7 @@ describe('notes-sync — regression (offline data loss)', () => {
       /TagService\.createTag\([^)]*\{\s*skipSync:\s*true\s*\}\s*\)/
     );
 
-    // No direct pushNote/pushFolder/pushTag calls inside importFolder —
+    // No direct pushNote/pushFolder/pushTag calls inside importFolder -
     // pushPendingItems() is the single push path so order is enforced.
     const importFolder = src.slice(importFolderStart);
     expect(importFolder).not.toMatch(/\bpushNote\s*\(/);
@@ -339,7 +339,7 @@ describe('notes-sync — regression (offline data loss)', () => {
     // The schema requires user_id to be a UUID; the importer always
     // overwrites it with the current account's userId on save. Setting it
     // before validation (instead of after) makes legacy backups with
-    // null/missing/invalid user_id pass — the value from the file is dead
+    // null/missing/invalid user_id pass - the value from the file is dead
     // weight we don't use. See guideline 44.
     const src = readSource('./export-import.service.ts');
 
@@ -372,7 +372,7 @@ describe('notes-sync — regression (offline data loss)', () => {
     for (const fnName of ['pullFolders', 'pullTags', 'pullNotes']) {
       const start = src.indexOf(`async function ${fnName}`);
       expect(start, `${fnName} not found`).toBeGreaterThan(-1);
-      // Bound the function body — stop at the next top-level `async function`
+      // Bound the function body - stop at the next top-level `async function`
       // or the push-helpers section header.
       const after = src.slice(start);
       const nextFnIdx = after.indexOf('\nasync function ', 1);
@@ -454,5 +454,51 @@ describe('notes-sync — regression (offline data loss)', () => {
         /userId/
       );
     }
+  });
+
+  it('pullNotes routes shadow-index decoding through extractShadowIndexes and skips save on throw', () => {
+    const src = readSource('./notes-sync.service.ts');
+    const pullNotes = src.slice(
+      src.indexOf('async function pullNotes'),
+      src.indexOf('// ── Push helpers')
+    );
+    // Must call the typed helper, not an inline cryptoManager.decryptObject. The
+    // inline pattern was the original silent-default trap that wrote is_pinned:
+    // false / is_starred: false on transient crypto-not-ready.
+    expect(pullNotes).toMatch(/extractShadowIndexes\s*\(/);
+    expect(pullNotes).not.toMatch(/cryptoManager\.decryptObject<NoteSensitiveMetadata>/);
+
+    // The catch block following extractShadowIndexes must skip the noteStore.save
+    // for this iteration (return from the map callback). Anchor on the actual
+    // call expression (not a comment mention) and look for try/catch/return.
+    const callMatch = /await\s+extractShadowIndexes\s*\(/.exec(pullNotes);
+    expect(callMatch).not.toBeNull();
+    const window = pullNotes.slice(callMatch!.index, callMatch!.index + 600);
+    expect(window).toMatch(/catch\s*\(/);
+    expect(window).toMatch(/return;/);
+  });
+
+  it('post-pull reconciler runs in +layout.svelte runSync and onMount paths', () => {
+    const layout = readSource('../../routes/+layout.svelte');
+    expect(layout).toMatch(/from '\$lib\/services\/shadow-index-reconciler\.service'/);
+    // Both sync paths (the $effect runSync and the onMount fallback) must call
+    // the reconciler when pullFromServer returned synced=true. We check that the
+    // reconciler symbol appears at least twice after the pullFromServer wiring.
+    const calls = [...layout.matchAll(/verifyAndRebuildLocalShadowIndexes\s*\(/g)];
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('post-reauth path runs the reconciler before refreshing in-memory stores', () => {
+    const src = readSource('./notes-auth.service.ts');
+    const refresh = src.slice(
+      src.indexOf('async function refreshAfterReauth'),
+      src.indexOf('export async function reAuthenticate')
+    );
+    expect(refresh).toMatch(/verifyAndRebuildLocalShadowIndexes/);
+    const reconcileIdx = refresh.search(/verifyAndRebuildLocalShadowIndexes\s*\(/);
+    const refreshIdx = refresh.search(/refreshStoresAfterPull\s*\(/);
+    expect(reconcileIdx).toBeGreaterThan(-1);
+    expect(refreshIdx).toBeGreaterThan(-1);
+    expect(reconcileIdx).toBeLessThan(refreshIdx);
   });
 });

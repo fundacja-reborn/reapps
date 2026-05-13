@@ -3,7 +3,7 @@
  *
  * Calls the local /api/auth/login endpoint, saves credentials to localStorage
  * in the same format as reborn-task, then unlocks E2E via cryptoManager.
- * This allows Notes to authenticate users independently — without reborn-task.
+ * This allows Notes to authenticate users independently - without reborn-task.
  */
 import { PUBLIC_BASE_PATH } from '$env/static/public';
 import { authStore, CREDENTIALS_KEY, ACCESS_TOKEN_KEY } from '$lib/stores/auth.store';
@@ -44,7 +44,7 @@ export async function loginInNotes(username: string, password: string): Promise<
 
     const { data } = body;
 
-    // 2FA required — return redirect info (password saved by caller via sessionStorage)
+    // 2FA required - return redirect info (password saved by caller via sessionStorage)
     if (data?.twoFactorRequired) {
       return {
         success: false,
@@ -85,10 +85,10 @@ export async function loginInNotes(username: string, password: string): Promise<
     // Clear stale session-expired banner from a previous session
     sessionExpired.set(false);
 
-    // Unlock E2E using the same password — avoids a second prompt
+    // Unlock E2E using the same password - avoids a second prompt
     const unlocked = await authStore.unlockE2E(password);
     if (!unlocked) {
-      // Credentials saved, but E2E failed — redirect to unlock page
+      // Credentials saved, but E2E failed - redirect to unlock page
       authStore.initialize();
       return { success: true };
     }
@@ -110,22 +110,32 @@ async function refreshAfterReauth(): Promise<void> {
     const { pullFromServer, refreshStoresAfterPull } = await import(
       '$lib/services/notes-sync.service'
     );
+    const { verifyAndRebuildLocalShadowIndexes } = await import(
+      '$lib/services/shadow-index-reconciler.service'
+    );
     const synced = await pullFromServer();
-    if (synced) await refreshStoresAfterPull();
+    if (synced) {
+      // Re-auth keeps IDB intact (offline-first), so any shadow-index drift
+      // from the previous unlock-race window sits across the reauth boundary.
+      // Run the reconciler before refreshing in-memory stores so the
+      // post-pull noteIndex rebuild sees corrected pinned/starred flags.
+      await verifyAndRebuildLocalShadowIndexes().catch(() => {});
+      await refreshStoresAfterPull();
+    }
   } catch {
-    // Non-blocking — re-auth succeeded even if sync fails.
+    // Non-blocking - re-auth succeeded even if sync fails.
     // User can trigger manual sync via SyncStatusFooter.
   }
 }
 
 /**
- * Re-authenticate after session expiry — password step.
+ * Re-authenticate after session expiry - password step.
  *
  * Calls /api/auth/login to obtain new tokens. Master key in CryptoManager is
  * preserved (E2E access kept across session-expiry events).
  *
  * If the account has 2FA enabled the endpoint returns `twoFactorRequired: true`
- * without an access token — we propagate that to the caller so the UI can
+ * without an access token - we propagate that to the caller so the UI can
  * collect a TOTP/recovery code and call {@link verifyTotpForReauth}.
  */
 export async function reAuthenticate(password: string): Promise<ReAuthResult> {
@@ -182,7 +192,7 @@ export async function reAuthenticate(password: string): Promise<ReAuthResult> {
 
   localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
 
-  // Credentials remain the same — touch to ensure they're still parseable
+  // Credentials remain the same - touch to ensure they're still parseable
   try {
     localStorage.setItem(CREDENTIALS_KEY, credentialsRaw);
   } catch {
@@ -195,7 +205,7 @@ export async function reAuthenticate(password: string): Promise<ReAuthResult> {
 }
 
 /**
- * Re-authenticate after session expiry — TOTP step (invoked from ReAuthModal
+ * Re-authenticate after session expiry - TOTP step (invoked from ReAuthModal
  * after {@link reAuthenticate} returned `two_factor_required`).
  */
 export async function verifyTotpForReauth(userId: string, code: string): Promise<ReAuthResult> {
@@ -224,7 +234,7 @@ export async function verifyTotpForReauth(userId: string, code: string): Promise
   }
 
   if (!res.ok || !body?.success) {
-    // The server returns 400 for invalid codes — treat as invalid_totp so the
+    // The server returns 400 for invalid codes - treat as invalid_totp so the
     // UI can show a code-specific error instead of the generic password one.
     if (res.status === 400) return { kind: 'invalid_totp' };
     return { kind: 'error', message: body?.error };
