@@ -41,7 +41,7 @@
 @source "./routes/**/*.{svelte,js,ts}";
 @source "../../../packages/ui/src/**/*.{svelte,js,ts}";
 
-/* iOS Safari body scroll-lock — prevents Safari from scrolling the window when
+/* iOS Safari body scroll-lock - prevents Safari from scrolling the window when
  * a contenteditable (CodeMirror) gains focus and the virtual keyboard opens.
  * Without this, Safari scrolls <html>/<body> to keep the caret visible, which
  * pushes the app header off-screen. position:fixed neutralizes window-level
@@ -55,6 +55,23 @@
     inset: 0;
     width: 100%;
     height: 100%;
+  }
+}
+
+/* Public read-only share view (/s/[slug]) opts out of the lock above so the
+ * page scrolls naturally with the native browser scrollbar at the side of the
+ * viewport. Read-only - no contenteditable, no virtual keyboard, no need for
+ * the iOS workaround. The class is toggled on <html> by the share page on
+ * mount/destroy. */
+@layer base {
+  html.share-view,
+  html.share-view body {
+    overflow: visible;
+    overscroll-behavior: auto;
+    position: static;
+    inset: auto;
+    width: auto;
+    height: auto;
   }
 }
 

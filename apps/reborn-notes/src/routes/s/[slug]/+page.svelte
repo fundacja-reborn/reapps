@@ -122,14 +122,25 @@
   }
 
   onMount(() => {
+    // Opt out of the global iOS keyboard scroll-lock (app.css) - this is a
+    // read-only public page, no contenteditable means no virtual keyboard,
+    // and the page should scroll with the native browser scrollbar.
+    document.documentElement.classList.add('share-view');
+    document.body.classList.add('share-view');
+
     slug = $page.params.slug ?? '';
     const fragment = parseShareFragment(window.location.hash);
-    if (!fragment) {
+    if (fragment) {
+      fragmentKey = fragment.key;
+      void attempt(true);
+    } else {
       stage = 'missing-key';
-      return;
     }
-    fragmentKey = fragment.key;
-    void attempt(true);
+
+    return () => {
+      document.documentElement.classList.remove('share-view');
+      document.body.classList.remove('share-view');
+    };
   });
 
   function formatRelative(iso: string | null): string {
@@ -152,9 +163,63 @@
   <meta name="referrer" content="no-referrer" />
 </svelte:head>
 
-<div class="h-[100dvh] overflow-y-auto bg-background">
-  <main class="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-8">
-    {#if stage === 'loading'}
+<div class="min-h-screen bg-background">
+  <div class="h-[3px] w-full bg-yellow-400" aria-hidden="true"></div>
+  <div class="mx-auto max-w-4xl px-4">
+    <header class="flex h-14 items-center justify-between gap-3 border-b">
+      <a
+        href="https://reapps.eu"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex items-center transition-opacity hover:opacity-80"
+        aria-label="re/notes"
+      >
+        <img src="{base}/logo-black.svg" alt="re/notes" class="block h-4 w-auto dark:hidden" />
+        <img src="{base}/logo-white.svg" alt="re/notes" class="hidden h-4 w-auto dark:block dark:opacity-80" />
+      </a>
+
+      {#if stage === 'ready' && notePayload}
+        <div class="hidden flex-wrap items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground sm:flex">
+          <span class="inline-flex items-center gap-1">
+            <ShieldCheck class="h-3.5 w-3.5" />
+            {$t('share.view.read_only_badge')}
+          </span>
+          {#if maxAccessCount !== null && accessCount !== null}
+            <span aria-hidden="true">·</span>
+            <span>
+              {$t('share.view.opens_progress', {
+                values: { used: accessCount, max: maxAccessCount }
+              })}
+            </span>
+          {/if}
+          {#if expiresAt}
+            <span aria-hidden="true">·</span>
+            <span>{$t('share.view.expires_in', { values: { relative: formatRelative(expiresAt) } })}</span>
+          {/if}
+        </div>
+      {/if}
+    </header>
+
+    <main class="flex flex-col gap-4 py-6">
+      {#if stage === 'ready' && notePayload}
+        <div class="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground sm:hidden">
+          <span class="inline-flex items-center gap-1">
+            <ShieldCheck class="h-3.5 w-3.5" />
+            {$t('share.view.read_only_badge')}
+          </span>
+          {#if maxAccessCount !== null && accessCount !== null}
+            <span>
+              {$t('share.view.opens_progress', {
+                values: { used: accessCount, max: maxAccessCount }
+              })}
+            </span>
+          {/if}
+          {#if expiresAt}
+            <span>{$t('share.view.expires_in', { values: { relative: formatRelative(expiresAt) } })}</span>
+          {/if}
+        </div>
+      {/if}
+      {#if stage === 'loading'}
       <p class="text-sm text-muted-foreground">{$t('share.view.loading')}</p>
     {:else if stage === 'missing-key'}
       <Card class="p-6">
@@ -220,25 +285,6 @@
         </form>
       </Card>
     {:else if stage === 'ready' && notePayload}
-      <div class="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-        <span class="inline-flex items-center gap-1">
-          <ShieldCheck class="h-3.5 w-3.5" />
-          {$t('share.view.read_only_badge')}
-        </span>
-        <div class="flex flex-wrap items-center gap-3">
-          {#if maxAccessCount !== null && accessCount !== null}
-            <span>
-              {$t('share.view.opens_progress', {
-                values: { used: accessCount, max: maxAccessCount }
-              })}
-            </span>
-          {/if}
-          {#if expiresAt}
-            <span>{$t('share.view.expires_in', { values: { relative: formatRelative(expiresAt) } })}</span>
-          {/if}
-        </div>
-      </div>
-
       <h1 class="text-2xl font-semibold leading-tight">
         {notePayload.title || $t('share.view.untitled')}
       </h1>
@@ -253,12 +299,7 @@
       <article class="prose prose-sm dark:prose-invert max-w-none">
         <MarkdownPreview content={notePayload.content} imageLoadMode={notePayload.metadata?.image_mode ?? 'ask'} />
       </article>
-
-      <footer class="mt-8 border-t pt-4 text-center text-xs text-muted-foreground">
-        <a href="https://reapps.eu" rel="noopener noreferrer" class="hover:underline">
-          {$t('share.view.powered_by')}
-        </a>
-      </footer>
     {/if}
-  </main>
+    </main>
+  </div>
 </div>

@@ -275,6 +275,12 @@
     const vv = window.visualViewport;
 
     const update = () => {
+      // Public share view (/s/[slug]) opts out of the body scroll-lock so the
+      // page can use the native browser scrollbar. Skip the safety reset and
+      // visual-viewport tracking here - none of it applies to the read-only
+      // share page (no contenteditable, no keyboard, no mobile note panel).
+      if (root.classList.contains('share-view')) return;
+
       if (root.scrollTop !== 0) root.scrollTop = 0;
       if (document.body.scrollTop !== 0) document.body.scrollTop = 0;
 
