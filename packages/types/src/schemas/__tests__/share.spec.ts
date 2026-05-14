@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   CreateShareRequestSchema,
+  OwnShareListItemSchema,
   SharedSnapshotPayloadSchema,
   SlugSchema,
+  SHARE_MAX_ACCESS_COUNT_LIMIT,
   SHARE_SLUG_LENGTH,
   SNAPSHOT_PAYLOAD_VERSION
 } from '../../share';
@@ -56,6 +58,92 @@ describe('CreateShareRequestSchema', () => {
       password: 'short'
     });
     expect(result.success).toBe(false);
+  });
+
+  it('accepts null max_access_count (unlimited)', () => {
+    const result = CreateShareRequestSchema.safeParse({
+      payload_encrypted: validBlob,
+      owner_key_wrapped: validBlob,
+      max_access_count: null
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a positive integer max_access_count within the cap', () => {
+    expect(
+      CreateShareRequestSchema.safeParse({
+        payload_encrypted: validBlob,
+        owner_key_wrapped: validBlob,
+        max_access_count: 1
+      }).success
+    ).toBe(true);
+    expect(
+      CreateShareRequestSchema.safeParse({
+        payload_encrypted: validBlob,
+        owner_key_wrapped: validBlob,
+        max_access_count: SHARE_MAX_ACCESS_COUNT_LIMIT
+      }).success
+    ).toBe(true);
+  });
+
+  it('rejects max_access_count below 1 or above the hard cap', () => {
+    expect(
+      CreateShareRequestSchema.safeParse({
+        payload_encrypted: validBlob,
+        owner_key_wrapped: validBlob,
+        max_access_count: 0
+      }).success
+    ).toBe(false);
+    expect(
+      CreateShareRequestSchema.safeParse({
+        payload_encrypted: validBlob,
+        owner_key_wrapped: validBlob,
+        max_access_count: SHARE_MAX_ACCESS_COUNT_LIMIT + 1
+      }).success
+    ).toBe(false);
+  });
+
+  it('rejects non-integer max_access_count', () => {
+    const result = CreateShareRequestSchema.safeParse({
+      payload_encrypted: validBlob,
+      owner_key_wrapped: validBlob,
+      max_access_count: 1.5
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('OwnShareListItemSchema', () => {
+  const baseItem = {
+    id: '00000000-0000-0000-0000-000000000000',
+    slug: 'AbCd1234EfGh5678',
+    owner_key_wrapped: 'YWFhYQ==:dGVzdA==',
+    has_password: false,
+    expires_at: null,
+    created_at: '2026-05-14T10:00:00.000Z',
+    last_accessed_at: null,
+    access_count: 0,
+    max_access_count: null,
+    revoked_at: null
+  };
+
+  it('accepts a null max_access_count', () => {
+    expect(OwnShareListItemSchema.safeParse(baseItem).success).toBe(true);
+  });
+
+  it('accepts a positive integer max_access_count', () => {
+    expect(
+      OwnShareListItemSchema.safeParse({ ...baseItem, max_access_count: 5 }).success
+    ).toBe(true);
+  });
+
+  it('rejects a zero or negative max_access_count', () => {
+    expect(
+      OwnShareListItemSchema.safeParse({ ...baseItem, max_access_count: 0 }).success
+    ).toBe(false);
+    expect(
+      OwnShareListItemSchema.safeParse({ ...baseItem, max_access_count: -1 }).success
+    ).toBe(false);
   });
 });
 
