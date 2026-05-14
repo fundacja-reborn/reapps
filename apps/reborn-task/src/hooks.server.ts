@@ -8,7 +8,8 @@ import { getClientIp } from '$lib/server/client-ip';
 import {
 	findIdempotencyKey,
 	storeIdempotencyResponse,
-	cleanupExpiredKeys
+	cleanupExpiredKeys,
+	cleanupExpiredShares
 } from '@reborn/database';
 
 const BASE = process.env.PUBLIC_BASE_PATH ?? '';
@@ -204,12 +205,22 @@ const idempotencyHandle: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
+// ── Lazy cleanup of expired / revoked share snapshots ─────────────
+const shareCleanupHandle: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event);
+	if (Math.random() < 0.005) {
+		void cleanupExpiredShares();
+	}
+	return response;
+};
+
 // Combine all handles
 export const handle = sequence(
 	requestSizeHandle,
 	rateLimitHandle,
 	authHandle,
 	idempotencyHandle,
+	shareCleanupHandle,
 	localeHandle,
 	securityHandle
 );

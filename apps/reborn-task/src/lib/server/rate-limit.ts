@@ -144,3 +144,9 @@ export const changePasswordLockout = createLoginLockout({ maxFailures: 5, window
 
 /** Per-userId lockout: 5 failed 2FA disable attempts per 15 min = temporary lockout. */
 export const twoFactorDisableLockout = createLoginLockout({ maxFailures: 5, windowMs: 15 * 60_000 });
+
+/** Share creation (authenticated): 20 new shares per hour per IP. */
+export const shareCreateLimiter = createRateLimiter({ maxRequests: 20, windowMs: 60 * 60_000 });
+
+/** Public share view: 100 reads per minute per IP. */
+export const sharePublicLimiter = createRateLimiter({ maxRequests: 100, windowMs: 60_000 });
