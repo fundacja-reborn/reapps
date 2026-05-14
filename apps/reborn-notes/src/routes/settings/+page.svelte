@@ -11,6 +11,7 @@
     Shield,
     Trash2,
     LayoutList,
+    Share2,
     ChevronLeft,
     ChevronRight,
     ChevronDown,
@@ -100,6 +101,12 @@
       title: $t('settings_page.security.active_sessions'),
       description: $t('settings_page.security.active_sessions_desc'),
       href: '/settings/security/sessions'
+    },
+    {
+      icon: Share2,
+      title: $t('share.list.settings_title'),
+      description: $t('share.list.settings_desc'),
+      href: '/settings/security/shares'
     }
   ];
 </script>
