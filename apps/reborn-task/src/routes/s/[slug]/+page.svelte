@@ -150,7 +150,7 @@
   <meta name="referrer" content="no-referrer" />
 </svelte:head>
 
-<div class="min-h-screen bg-background">
+<div class="h-[100dvh] overflow-y-auto bg-background">
   <main class="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-8">
     {#if stage === 'loading'}
       <p class="text-sm text-muted-foreground">{$t('share.view.loading')}</p>

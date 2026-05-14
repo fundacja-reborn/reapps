@@ -205,8 +205,18 @@
     annotateTopLevelLines(tokens);
     lastTokens = tokens;
     const raw = sanitize(md.parser(tokens) as string);
-    if (!resolveNoteTitle) return raw;
-    return raw.replace(
+    // Wrap each rendered table in a horizontally-scrollable container so wide
+    // tables (long unbreakable identifiers like `MAX_ENCRYPTED_FOO_BYTES`)
+    // get their own scrollbar next to the table itself, instead of forcing
+    // horizontal scroll on the entire preview where the scrollbar lands at
+    // the bottom of the whole note - far from the offending row. Mirrors the
+    // <pre> overflow-x:auto pattern. marked's GFM output emits a bare
+    // `<table>` with no attributes, so a literal replace is safe.
+    const tableWrapped = raw
+      .replace(/<table>/g, '<div class="table-wrap"><table>')
+      .replace(/<\/table>/g, '</table></div>');
+    if (!resolveNoteTitle) return tableWrapped;
+    return tableWrapped.replace(
       /<a ([^>]*?)href="note:([0-9a-f-]{36})"([^>]*?)>([^<]*)<\/a>/gi,
       (_match, pre, noteId, post, _text) => {
         const currentTitle = resolveNoteTitle(noteId);
@@ -644,10 +654,18 @@
     border-top: 1px solid var(--border);
   }
 
+  /* Tables sit inside `.table-wrap` (see $derived html). The wrapper owns the
+     horizontal scroll so a row of long unbreakable tokens (file paths,
+     SCREAMING_SNAKE constants) gets its own scrollbar attached to the table,
+     not stranded at the bottom of the whole preview. */
+  .preview :global(.table-wrap) {
+    overflow-x: auto;
+    margin-bottom: 1em;
+    max-width: 100%;
+  }
   .preview :global(table) {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 1em;
     font-size: 0.9375rem;
   }
   .preview :global(th),
