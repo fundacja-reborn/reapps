@@ -329,7 +329,8 @@ model SharedSnapshot {
   created_at         DateTime  @default(now())
   last_accessed_at   DateTime?
   access_count       Int       @default(0)
-  revoked_at         DateTime? // Soft delete - kept 24h for UI feedback then hard-deleted by cleanup
+  max_access_count   Int?      // NULL = unlimited; when access_count reaches this value the share auto-revokes
+  revoked_at         DateTime? // Soft delete - kept 24h for UI feedback then hard-deleted by cleanup. Set automatically when access_count reaches max_access_count.
 
   user               User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
