@@ -8,7 +8,8 @@ import { createLogger } from '@reborn/utils';
 import {
   findIdempotencyKey,
   storeIdempotencyResponse,
-  cleanupExpiredKeys
+  cleanupExpiredKeys,
+  cleanupExpiredShares
 } from '@reborn/database';
 
 const logger = createLogger('notes-hooks');
@@ -184,6 +185,19 @@ const idempotencyHandle: Handle = async ({ event, resolve }) => {
   return response;
 };
 
+// ── Lazy cleanup of expired / revoked share snapshots ─────────────
+//
+// Runs on ~0.5% of resolved requests, regardless of auth or method, so that
+// public share reads also drive cleanup. Idempotency cleanup is fine to
+// stay scoped to mutations.
+const shareCleanupHandle: Handle = async ({ event, resolve }) => {
+  const response = await resolve(event);
+  if (Math.random() < 0.005) {
+    void cleanupExpiredShares();
+  }
+  return response;
+};
+
 const SUPPORTED_LOCALES_SERVER = ['en', 'pl', 'de', 'es', 'fr'] as const;
 
 // Locale detection middleware
@@ -211,4 +225,4 @@ const localeHandle: Handle = async ({ event, resolve }) => {
   });
 };
 
-export const handle = sequence(requestSizeHandle, rateLimitHandle, authHandle, idempotencyHandle, localeHandle, securityHandle);
+export const handle = sequence(requestSizeHandle, rateLimitHandle, authHandle, idempotencyHandle, shareCleanupHandle, localeHandle, securityHandle);

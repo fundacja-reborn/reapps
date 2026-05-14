@@ -16,3 +16,6 @@ export { Prisma, PrismaClient } from './generated/prisma/client';
 
 // Idempotency key helpers
 export { findIdempotencyKey, storeIdempotencyResponse, cleanupExpiredKeys } from './idempotency';
+
+// Shared snapshot helpers (lazy cleanup of expired / revoked rows)
+export { cleanupExpiredShares } from './share';
