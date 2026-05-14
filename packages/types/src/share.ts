@@ -24,6 +24,9 @@ export const SHARE_DEFAULT_EXPIRY_SECONDS = SHARE_EXPIRY_PRESETS['7d'];
 /** Max length of optional sender label included in payload. */
 export const SHARE_SENDER_LABEL_MAX_LENGTH = 40;
 
+/** Hard upper bound for `max_access_count`. Beyond this an unlimited share makes more sense. */
+export const SHARE_MAX_ACCESS_COUNT_LIMIT = 1000;
+
 /** Max bytes of encrypted payload (~500 KB plaintext + AES-GCM overhead). */
 export const MAX_SHARE_PAYLOAD_BYTES = 750_000;
 
@@ -137,7 +140,14 @@ export const CreateShareRequestSchema = z.object({
     .max(365 * 86_400) // hard cap 1 year
     .nullable()
     .optional(),
-  password: z.string().min(8).max(200).optional()
+  password: z.string().min(8).max(200).optional(),
+  max_access_count: z
+    .number()
+    .int()
+    .min(1)
+    .max(SHARE_MAX_ACCESS_COUNT_LIMIT)
+    .nullable()
+    .optional()
 });
 export type CreateShareRequest = z.infer<typeof CreateShareRequestSchema>;
 
@@ -147,6 +157,7 @@ export interface CreateShareResponse {
   slug: string;
   created_at: string;
   expires_at: string | null;
+  max_access_count: number | null;
 }
 
 // ─── API: GET /api/shares/{slug} (public, no auth) ───────────────────
@@ -161,7 +172,10 @@ export interface ShareViewResponse {
   payload_encrypted: string;
   expires_at: string | null;
   created_at: string;
+  /** Post-increment value: the count including the read that produced this response. */
   access_count: number;
+  /** NULL = unlimited. When non-null and `access_count` reaches this value, the share is exhausted (auto-revoked). */
+  max_access_count: number | null;
 }
 
 export interface SharePasswordRequiredResponse {
@@ -169,6 +183,15 @@ export interface SharePasswordRequiredResponse {
 }
 
 export type SharePublicResponse = ShareViewResponse | SharePasswordRequiredResponse;
+
+/** Discriminator for 410 Gone responses so the client can render dedicated copy. */
+export type ShareGoneCode = 'REVOKED' | 'EXPIRED' | 'EXHAUSTED';
+
+export interface ShareGoneErrorBody {
+  success: false;
+  error: string;
+  code: ShareGoneCode;
+}
 
 // ─── API: GET /api/shares (list own, auth required) ──────────────────
 
@@ -187,6 +210,7 @@ export interface OwnShareListItem {
   created_at: string;
   last_accessed_at: string | null;
   access_count: number;
+  max_access_count: number | null;
   revoked_at: string | null;
 }
 
@@ -199,6 +223,7 @@ export const OwnShareListItemSchema = z.object({
   created_at: z.string(),
   last_accessed_at: z.string().nullable(),
   access_count: z.number().int().nonnegative(),
+  max_access_count: z.number().int().positive().nullable(),
   revoked_at: z.string().nullable()
 });
 
