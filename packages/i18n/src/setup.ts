@@ -67,6 +67,7 @@ const TASKS_MODULE_FILES = [
   'profile',
   'search',
   'settings',
+  'share',
   'sync',
   'task',
   'taskList',

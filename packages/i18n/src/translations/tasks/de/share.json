@@ -1,0 +1,78 @@
+{
+  "share": {
+    "create": {
+      "cta": "Link erstellen",
+      "creating": "Wird erstellt…",
+      "expires_label": "Läuft ab nach",
+      "expires": {
+        "1d": "1 Tag",
+        "7d": "7 Tagen",
+        "30d": "30 Tagen",
+        "never": "Nie"
+      },
+      "sender_label": "Absender-Bezeichnung (optional)",
+      "sender_label_placeholder": "Dein Name",
+      "password_toggle": "Mit Passwort schützen",
+      "password_placeholder": "Passwort",
+      "password_confirm_placeholder": "Passwort bestätigen",
+      "password_mismatch": "Passwörter stimmen nicht überein",
+      "password_too_short": "Mindestens 8 Zeichen",
+      "success_title": "Link bereit",
+      "copy_link": "Link kopieren",
+      "copied": "Kopiert",
+      "copy_failed": "Kopieren fehlgeschlagen",
+      "close_cta": "Schließen",
+      "offline_warning": "Zum Teilen wird eine Internetverbindung benötigt"
+    },
+    "task": {
+      "menu_label": "Nur-Lese-Freigabe",
+      "dialog_header": "Aufgabe nur lesbar freigeben",
+      "subtasks_count": "{count, plural, one {# Teilaufgabe} other {# Teilaufgaben}}"
+    },
+    "view": {
+      "loading": "Wird geladen…",
+      "error_title": "Freigabe kann nicht angezeigt werden",
+      "read_only_badge": "Schreibgeschützter Schnappschuss",
+      "untitled": "Ohne Titel",
+      "missing_key": "Der Link ist unvollständig - der Entschlüsselungsschlüssel (nach #) fehlt. Bitte prüfe, ob du die vollständige URL kopiert hast.",
+      "not_found": "Diese Freigabe existiert nicht oder wurde widerrufen.",
+      "expired": "Diese Freigabe ist abgelaufen.",
+      "decrypt_failed": "Inhalt konnte nicht entschlüsselt werden. Der Schlüssel ist möglicherweise ungültig.",
+      "password_prompt": "Diese Freigabe ist passwortgeschützt",
+      "password_submit": "Öffnen",
+      "password_wrong": "Falsches Passwort",
+      "shared_at": "Geteilt {relative}",
+      "shared_by": "Geteilt von {label}",
+      "expires_in": "Läuft ab {relative}",
+      "powered_by": "Bereitgestellt von Reborn Apps",
+      "task": {
+        "completed_badge": "Erledigt",
+        "due_date_label": "Fällig",
+        "subtasks_label": "Teilaufgaben",
+        "no_subtasks": "Keine Teilaufgaben",
+        "no_description": "Keine Beschreibung"
+      }
+    },
+    "list": {
+      "title": "Aktive Freigaben",
+      "settings_title": "Aktive Freigaben",
+      "settings_desc": "Verwalte schreibgeschützte öffentliche Links zu deinen Aufgaben",
+      "empty": "Du hast keine aktiven Freigaben.",
+      "error_load": "Freigaben konnten nicht geladen werden.",
+      "column": {
+        "created": "Erstellt",
+        "expires": "Läuft ab",
+        "access_count": "Aufrufe",
+        "actions": "Aktionen"
+      },
+      "no_local_key_hint": "Auf einem anderen Gerät erstellt - nur Widerruf möglich",
+      "password_protected": "Passwortgeschützt",
+      "revoked_label": "Widerrufen",
+      "revoke_action": "Widerrufen",
+      "revoke_error": "Freigabe konnte nicht widerrufen werden",
+      "revoked_toast": "Freigabe widerrufen",
+      "confirm_revoke_title": "Freigabe widerrufen?",
+      "confirm_revoke_desc": "Der Link funktioniert sofort nicht mehr."
+    }
+  }
+}

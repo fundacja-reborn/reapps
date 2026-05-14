@@ -937,5 +937,76 @@
     "offline_title": "You are offline",
     "offline_description": "This page is not available offline. Connect to the internet and try again.",
     "retry": "Try again"
+  },
+  "share": {
+    "create": {
+      "cta": "Create link",
+      "creating": "Creating…",
+      "expires_label": "Expires after",
+      "expires": {
+        "1d": "1 day",
+        "7d": "7 days",
+        "30d": "30 days",
+        "never": "Never"
+      },
+      "sender_label": "Sender label (optional)",
+      "sender_label_placeholder": "Your name",
+      "password_toggle": "Protect with password",
+      "password_placeholder": "Password",
+      "password_confirm_placeholder": "Confirm password",
+      "password_mismatch": "Passwords do not match",
+      "password_too_short": "Minimum 8 characters",
+      "success_title": "Link ready",
+      "copy_link": "Copy link",
+      "copied": "Copied",
+      "copy_failed": "Failed to copy",
+      "close_cta": "Close",
+      "offline_warning": "Sharing requires an internet connection"
+    },
+    "note": {
+      "menu_label": "Share read-only",
+      "dialog_header": "Share note read-only"
+    },
+    "view": {
+      "loading": "Loading…",
+      "error_title": "Cannot show share",
+      "read_only_badge": "Read-only snapshot",
+      "untitled": "Untitled",
+      "missing_key": "The link is incomplete - the decryption key (after #) is missing. Make sure you copied the entire URL.",
+      "not_found": "This share does not exist or was revoked.",
+      "expired": "This share has expired.",
+      "decrypt_failed": "Could not decrypt content. The key may be invalid.",
+      "password_prompt": "This share is password protected",
+      "password_submit": "Open",
+      "password_wrong": "Incorrect password",
+      "shared_at": "Shared {relative}",
+      "shared_by": "Shared by {label}",
+      "expires_in": "Expires {relative}",
+      "powered_by": "Powered by Reborn Apps",
+      "note": {
+        "tags_label": "Tags"
+      }
+    },
+    "list": {
+      "title": "Active shares",
+      "settings_title": "Active shares",
+      "settings_desc": "Manage read-only public links to your notes",
+      "empty": "You have no active shares.",
+      "error_load": "Could not load shares.",
+      "column": {
+        "created": "Created",
+        "expires": "Expires",
+        "access_count": "Opens",
+        "actions": "Actions"
+      },
+      "no_local_key_hint": "Created on another device - revoke only",
+      "password_protected": "Password protected",
+      "revoked_label": "Revoked",
+      "revoke_action": "Revoke",
+      "revoke_error": "Failed to revoke share",
+      "revoked_toast": "Share revoked",
+      "confirm_revoke_title": "Revoke share?",
+      "confirm_revoke_desc": "The link will stop working immediately."
+    }
   }
 }
