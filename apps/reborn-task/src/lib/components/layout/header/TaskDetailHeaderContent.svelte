@@ -12,6 +12,7 @@
 		Star,
 		MoreVertical,
 		ArrowRight,
+		Share2,
 		Trash2,
 		PenLine,
 		Loader2,
@@ -28,6 +29,7 @@
 		onToggleCompleted: () => void;
 		onToggleStarred: () => void;
 		onOpenMoveDialog: () => void;
+		onOpenShareDialog?: () => void;
 		onOpenDeleteDialog: () => void;
 		onNavigateToList?: () => void;
 	}
@@ -38,6 +40,7 @@
 		onToggleCompleted,
 		onToggleStarred,
 		onOpenMoveDialog,
+		onOpenShareDialog,
 		onOpenDeleteDialog,
 		onNavigateToList
 	}: Props = $props();
@@ -169,6 +172,12 @@
 								<ArrowRight class="mr-2 h-4 w-4" />
 								{$t('tasks.move_to_list')}
 							</DropdownMenu.Item>
+							{#if onOpenShareDialog}
+								<DropdownMenu.Item onclick={onOpenShareDialog}>
+									<Share2 class="mr-2 h-4 w-4" />
+									{$t('share.task.menu_label')}
+								</DropdownMenu.Item>
+							{/if}
 							<DropdownMenu.Separator />
 							<DropdownMenu.Item class="text-destructive" onclick={onOpenDeleteDialog}>
 								<Trash2 class="mr-2 h-4 w-4" />
@@ -235,6 +244,20 @@
 					<ArrowRight class="mr-2 h-4 w-4" />
 					{$t('tasks.move_to_list')}
 				</Button>
+
+				{#if onOpenShareDialog}
+					<Button
+						variant="ghost"
+						class="justify-start"
+						onclick={() => {
+							mobileMenuOpen = false;
+							onOpenShareDialog?.();
+						}}
+					>
+						<Share2 class="mr-2 h-4 w-4" />
+						{$t('share.task.menu_label')}
+					</Button>
+				{/if}
 
 				<div class="h-px bg-border my-2"></div>
 

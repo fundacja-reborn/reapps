@@ -21,7 +21,8 @@
 		User,
 		LogOut,
 		StickyNote,
-		ShieldAlert
+		ShieldAlert,
+		Share2
 	} from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { locale } from '$lib/stores/i18n.store';
@@ -268,6 +269,17 @@
 						</div>
 					</a>
 				{/each}
+
+				<!-- Active read-only shares -->
+				<a href={resolve('/settings/security/shares')} class={itemClasses}>
+					<Share2 class="h-5 w-5 text-muted-foreground shrink-0" />
+					<div class="flex-1 min-w-0">
+						<div class="font-medium">{$t('share.list.settings_title')}</div>
+						<div class="text-sm text-muted-foreground">
+							{$t('share.list.settings_desc')}
+						</div>
+					</div>
+				</a>
 
 				<!-- Active sessions link with counter -->
 				<a href={resolve('/settings/security/sessions')} class={itemClasses}>
