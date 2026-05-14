@@ -37,10 +37,20 @@
     }
   }
 
-  function isRevoked(s: OwnShareListItem): boolean {
+  function isExhausted(s: OwnShareListItem): boolean {
+    return s.max_access_count !== null && s.access_count >= s.max_access_count;
+  }
+
+  function isInactive(s: OwnShareListItem): boolean {
     if (s.revoked_at) return true;
     if (s.expires_at && new Date(s.expires_at) < new Date()) return true;
     return false;
+  }
+
+  function formatOpens(s: OwnShareListItem): string {
+    return s.max_access_count !== null
+      ? `${s.access_count} / ${s.max_access_count}`
+      : String(s.access_count);
   }
 
   async function hydrateUrls(items: OwnShareListItem[]) {
@@ -150,8 +160,9 @@
     {:else}
       {#each shares as share (share.id)}
         {@const url = urls[share.id]}
-        {@const revoked = isRevoked(share)}
-        <Card class={revoked ? 'opacity-60' : ''}>
+        {@const exhausted = isExhausted(share)}
+        {@const inactive = isInactive(share)}
+        <Card class={inactive ? 'opacity-60' : ''}>
           <CardContent class="flex flex-col gap-2 px-4 py-3">
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
@@ -159,12 +170,14 @@
                   <Lock class="h-3.5 w-3.5" />
                   {$t('share.list.password_protected')}
                 {/if}
-                {#if revoked}
+                {#if exhausted}
+                  <span class="text-destructive">{$t('share.list.exhausted_label')}</span>
+                {:else if inactive}
                   <span class="text-destructive">{$t('share.list.revoked_label')}</span>
                 {/if}
               </div>
               <div class="flex gap-1">
-                {#if !revoked && url}
+                {#if !inactive && url}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -187,9 +200,9 @@
                 {/if}
               </div>
             </div>
-            {#if url}
+            {#if url && !inactive}
               <p class="break-all font-mono text-xs text-muted-foreground">{url}</p>
-            {:else if !revoked}
+            {:else if !url && !inactive}
               <p class="text-xs italic text-muted-foreground">{$t('share.list.no_local_key_hint')}</p>
             {/if}
             <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -198,7 +211,12 @@
                 {$t('share.list.column.expires')}:
                 {share.expires_at ? formatDate(share.expires_at) : $t('share.create.expires.never')}
               </span>
-              <span>{$t('share.list.column.access_count')}: {share.access_count}</span>
+              <span>{$t('share.list.column.access_count')}: {formatOpens(share)}</span>
+              {#if share.last_accessed_at}
+                <span>
+                  {$t('share.list.column.last_accessed')}: {formatDate(share.last_accessed_at)}
+                </span>
+              {/if}
             </div>
           </CardContent>
         </Card>

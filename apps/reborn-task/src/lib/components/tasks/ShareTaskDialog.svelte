@@ -23,6 +23,7 @@
   } from '@reborn/crypto';
   import {
     SHARE_EXPIRY_PRESETS,
+    SHARE_MAX_ACCESS_COUNT_LIMIT,
     SNAPSHOT_PAYLOAD_VERSION,
     SHARE_SENDER_LABEL_MAX_LENGTH,
     type CreateShareResponse,
@@ -48,6 +49,8 @@
   let passwordEnabled = $state(false);
   let password = $state('');
   let passwordConfirm = $state('');
+  let maxOpensUnlimited = $state(true);
+  let maxOpens = $state(5);
   let errorMessage = $state('');
   let resultUrl = $state('');
 
@@ -58,6 +61,8 @@
     passwordEnabled = false;
     password = '';
     passwordConfirm = '';
+    maxOpensUnlimited = true;
+    maxOpens = 5;
     errorMessage = '';
     resultUrl = '';
   }
@@ -70,6 +75,11 @@
     if (passwordEnabled) {
       if (password.length < 8) return $t('share.create.password_too_short');
       if (password !== passwordConfirm) return $t('share.create.password_mismatch');
+    }
+    if (!maxOpensUnlimited) {
+      if (!Number.isInteger(maxOpens) || maxOpens < 1 || maxOpens > SHARE_MAX_ACCESS_COUNT_LIMIT) {
+        return $t('share.create.max_opens_invalid');
+      }
     }
     return null;
   }
@@ -135,7 +145,8 @@
           payload_encrypted: payloadEncrypted,
           owner_key_wrapped: ownerKeyWrapped,
           expires_in_seconds: expirySeconds,
-          password: passwordEnabled ? password : undefined
+          password: passwordEnabled ? password : undefined,
+          max_access_count: maxOpensUnlimited ? null : maxOpens
         })
       });
       if (!res.ok) {
@@ -202,6 +213,37 @@
             <option value="30d">{$t('share.create.expires.30d')}</option>
             <option value="never">{$t('share.create.expires.never')}</option>
           </select>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <Label for="share-task-max-opens">{$t('share.create.max_opens_label')}</Label>
+          <div class="flex items-center gap-2">
+            <Input
+              id="share-task-max-opens"
+              type="number"
+              min="1"
+              max={SHARE_MAX_ACCESS_COUNT_LIMIT}
+              step="1"
+              bind:value={maxOpens}
+              placeholder={$t('share.create.max_opens_placeholder')}
+              disabled={stage === 'creating' || maxOpensUnlimited}
+              class="flex-1"
+            />
+            <label class="flex items-center gap-2 text-sm whitespace-nowrap">
+              <input
+                type="checkbox"
+                bind:checked={maxOpensUnlimited}
+                disabled={stage === 'creating'}
+              />
+              {$t('share.create.max_opens_unlimited')}
+            </label>
+          </div>
+          <p class="text-xs text-muted-foreground">{$t('share.create.max_opens_hint')}</p>
+          {#if !maxOpensUnlimited && maxOpens === 1}
+            <p class="text-xs text-muted-foreground">
+              {$t('share.create.max_opens_self_destruct_hint')}
+            </p>
+          {/if}
         </div>
 
         <div class="flex flex-col gap-2">

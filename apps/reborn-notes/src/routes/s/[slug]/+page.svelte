@@ -22,6 +22,8 @@
     | 'missing-key'
     | 'not-found'
     | 'expired'
+    | 'revoked'
+    | 'exhausted'
     | 'decrypt-failed'
     | 'password-prompt'
     | 'ready'
@@ -34,14 +36,16 @@
   let passwordSubmitting = $state(false);
   let payload = $state<SharedSnapshotPayload | null>(null);
   let expiresAt = $state<string | null>(null);
+  let accessCount = $state<number | null>(null);
+  let maxAccessCount = $state<number | null>(null);
 
   let slug = '';
   let fragmentKey = '';
 
-  function classifyHttp(status: number): Stage {
-    if (status === 404) return 'not-found';
-    if (status === 410) return 'expired';
-    return 'error';
+  function classifyGoneCode(code: string | undefined): Stage {
+    if (code === 'EXHAUSTED') return 'exhausted';
+    if (code === 'REVOKED') return 'revoked';
+    return 'expired';
   }
 
   async function fetchSnapshot(passwordValue?: string) {
@@ -79,7 +83,16 @@
         return;
       }
       if (!res.ok) {
-        stage = classifyHttp(res.status);
+        if (res.status === 404) {
+          stage = 'not-found';
+          return;
+        }
+        if (res.status === 410) {
+          const body = await res.json().catch(() => ({}));
+          stage = classifyGoneCode(body?.code);
+          return;
+        }
+        stage = 'error';
         return;
       }
       const json = (await res.json()) as { success: boolean; data: SharePublicResponse };
@@ -89,6 +102,8 @@
         return;
       }
       expiresAt = data.expires_at;
+      accessCount = data.access_count;
+      maxAccessCount = data.max_access_count;
       await decryptAndShow(data.payload_encrypted);
     } catch (err: unknown) {
       stage = 'error';
@@ -156,6 +171,16 @@
         <h1 class="text-lg font-semibold">{$t('share.view.error_title')}</h1>
         <p class="mt-2 text-sm text-muted-foreground">{$t('share.view.expired')}</p>
       </Card>
+    {:else if stage === 'revoked'}
+      <Card class="p-6">
+        <h1 class="text-lg font-semibold">{$t('share.view.error_title')}</h1>
+        <p class="mt-2 text-sm text-muted-foreground">{$t('share.view.not_found')}</p>
+      </Card>
+    {:else if stage === 'exhausted'}
+      <Card class="p-6">
+        <h1 class="text-lg font-semibold">{$t('share.view.error_title')}</h1>
+        <p class="mt-2 text-sm text-muted-foreground">{$t('share.view.exhausted')}</p>
+      </Card>
     {:else if stage === 'decrypt-failed'}
       <Card class="p-6">
         <h1 class="text-lg font-semibold">{$t('share.view.error_title')}</h1>
@@ -195,14 +220,23 @@
         </form>
       </Card>
     {:else if stage === 'ready' && notePayload}
-      <div class="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+      <div class="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-wider text-muted-foreground">
         <span class="inline-flex items-center gap-1">
           <ShieldCheck class="h-3.5 w-3.5" />
           {$t('share.view.read_only_badge')}
         </span>
-        {#if expiresAt}
-          <span>{$t('share.view.expires_in', { values: { relative: formatRelative(expiresAt) } })}</span>
-        {/if}
+        <div class="flex flex-wrap items-center gap-3">
+          {#if maxAccessCount !== null && accessCount !== null}
+            <span>
+              {$t('share.view.opens_progress', {
+                values: { used: accessCount, max: maxAccessCount }
+              })}
+            </span>
+          {/if}
+          {#if expiresAt}
+            <span>{$t('share.view.expires_in', { values: { relative: formatRelative(expiresAt) } })}</span>
+          {/if}
+        </div>
       </div>
 
       <h1 class="text-2xl font-semibold leading-tight">
