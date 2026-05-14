@@ -49,7 +49,10 @@
       path.startsWith(`${basePath}/auth/unlock`) ||
       path.startsWith(`${basePath}/auth/2fa`);
 
-    if (!$authStore.isAuthenticated && !isAuthRoute) {
+    // Public read-only share view (/s/{slug}) - no account needed.
+    const isPublicShareRoute = path.startsWith(`${basePath}/s/`);
+
+    if (!$authStore.isAuthenticated && !isAuthRoute && !isPublicShareRoute) {
       untrack(() => noteIndex.clear());
       untrack(() => {
         goto('/auth/login');
@@ -57,7 +60,7 @@
       return;
     }
 
-    if ($authStore.isAuthenticated && !$authStore.hasE2E && !isAuthRoute) {
+    if ($authStore.isAuthenticated && !$authStore.hasE2E && !isAuthRoute && !isPublicShareRoute) {
       untrack(() => noteIndex.clear());
       untrack(() => {
         goto('/auth/unlock');

@@ -9,6 +9,7 @@
     Download,
     FileText,
     Link2,
+    Share2,
     ScanEye,
     Trash2
   } from '@lucide/svelte';
@@ -33,6 +34,7 @@
     onexport,
     onexportpdf,
     oncopylink,
+    onshare,
     onshowxray,
     ondelete
   }: {
@@ -45,6 +47,7 @@
     onexport: () => void;
     onexportpdf: () => void;
     oncopylink: () => void;
+    onshare?: () => void;
     onshowxray: () => void;
     ondelete: () => void;
   } = $props();
@@ -133,6 +136,12 @@
             <Link2 class="h-3.5 w-3.5" />
             {$t('notes.copy_note_link')}
           </DropdownMenuItem>
+          {#if onshare}
+            <DropdownMenuItem onclick={onshare}>
+              <Share2 class="h-3.5 w-3.5" />
+              {$t('share.note.menu_label')}
+            </DropdownMenuItem>
+          {/if}
           <DropdownMenuItem onclick={onshowxray}>
             <ScanEye class="h-3.5 w-3.5" />
             {$t('encryption.title')}

@@ -37,6 +37,7 @@
   import NoteDetailActions from '$lib/components/editor/NoteDetailActions.svelte';
   import NoteMetadataBar from '$lib/components/editor/NoteMetadataBar.svelte';
   import NoteActionSheet from '$lib/components/notes/NoteActionSheet.svelte';
+  import ShareNoteDialog from '$lib/components/notes/ShareNoteDialog.svelte';
   import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
   import TagSidebarSection from '$lib/components/tags/TagSidebarSection.svelte';
   import TagListMobile from '$lib/components/tags/TagListMobile.svelte';
@@ -219,6 +220,20 @@
     } catch {
       toastStore.error('Failed to copy');
     }
+  }
+
+  // ── Read-only share dialog state ───────────────────────────────
+  let shareDialogOpen = $state(false);
+  let shareNoteId = $state<string | null>(null);
+  let shareNoteTitle = $state<string>('');
+
+  function handleDetailShare(noteArg?: NoteListItem) {
+    detailActionSheetOpen = false;
+    const target = noteArg ?? detailMenuNote;
+    if (!target) return;
+    shareNoteId = target.id;
+    shareNoteTitle = target.title ?? '';
+    shareDialogOpen = true;
   }
 
   function handleDetailDelete() {
@@ -1316,6 +1331,7 @@
                   onexport={() => handleDetailExport()}
                   onexportpdf={() => handleDetailExportPdf()}
                   oncopylink={() => handleDetailCopyLink()}
+                  onshare={() => handleDetailShare()}
                   onshowxray={() => { showEncryptionXRay = true; }}
                   ondelete={handleDetailDelete}
                 />
@@ -1777,3 +1793,7 @@
   kind={periodicOnboardingKind}
   onclose={handlePeriodicOnboardingClose}
 />
+
+{#if shareNoteId}
+  <ShareNoteDialog bind:open={shareDialogOpen} noteId={shareNoteId} noteTitle={shareNoteTitle} />
+{/if}
