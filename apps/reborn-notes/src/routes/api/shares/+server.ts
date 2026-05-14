@@ -52,7 +52,8 @@ export const POST: RequestHandler = async (event) => {
         { status: 400 }
       );
     }
-    const { payload_encrypted, owner_key_wrapped, expires_in_seconds, password } = validation.data;
+    const { payload_encrypted, owner_key_wrapped, expires_in_seconds, password, max_access_count } =
+      validation.data;
 
     const now = new Date();
     const effectiveExpiry =
@@ -61,6 +62,7 @@ export const POST: RequestHandler = async (event) => {
       effectiveExpiry === null ? null : new Date(now.getTime() + effectiveExpiry * 1000);
 
     const passwordHash = password ? await hashPassword(password) : null;
+    const maxAccessCount = max_access_count ?? null;
 
     const slug = await generateUniqueShareSlug();
 
@@ -71,16 +73,18 @@ export const POST: RequestHandler = async (event) => {
         payload_encrypted,
         owner_key_wrapped,
         password_hash: passwordHash,
-        expires_at: expiresAt
+        expires_at: expiresAt,
+        max_access_count: maxAccessCount
       },
-      select: { id: true, slug: true, created_at: true, expires_at: true }
+      select: { id: true, slug: true, created_at: true, expires_at: true, max_access_count: true }
     });
 
     const response: CreateShareResponse = {
       id: share.id,
       slug: share.slug,
       created_at: share.created_at.toISOString(),
-      expires_at: share.expires_at ? share.expires_at.toISOString() : null
+      expires_at: share.expires_at ? share.expires_at.toISOString() : null,
+      max_access_count: share.max_access_count
     };
     return json({ success: true, data: response });
   } catch (err: unknown) {
@@ -106,6 +110,7 @@ export const GET: RequestHandler = async ({ request }) => {
         created_at: true,
         last_accessed_at: true,
         access_count: true,
+        max_access_count: true,
         revoked_at: true
       }
     });
@@ -120,6 +125,7 @@ export const GET: RequestHandler = async ({ request }) => {
         created_at: r.created_at.toISOString(),
         last_accessed_at: r.last_accessed_at ? r.last_accessed_at.toISOString() : null,
         access_count: r.access_count,
+        max_access_count: r.max_access_count,
         revoked_at: r.revoked_at ? r.revoked_at.toISOString() : null
       }))
     };

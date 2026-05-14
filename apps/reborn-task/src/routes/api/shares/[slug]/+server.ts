@@ -24,7 +24,12 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { prisma } from '@reborn/database';
 import { createLogger } from '@reborn/utils';
-import { SlugSchema, type ShareViewResponse, type SharePasswordRequiredResponse } from '@reborn/types';
+import {
+  SlugSchema,
+  type ShareViewResponse,
+  type SharePasswordRequiredResponse,
+  type ShareGoneCode
+} from '@reborn/types';
 import { verifyPassword } from '@reborn/crypto';
 import { getUserFromToken } from '$lib/server/auth';
 import { sharePublicLimiter, authLimiter } from '$lib/server/rate-limit';
@@ -42,6 +47,38 @@ function respond(body: unknown, status: number, extraHeaders: Record<string, str
     status,
     headers: { ...NO_REFERRER_HEADERS, ...extraHeaders }
   });
+}
+
+function gone(error: string, code: ShareGoneCode) {
+  return respond({ success: false, error, code }, 410);
+}
+
+type IncrementResult = {
+  payload_encrypted: string;
+  expires_at: Date | null;
+  created_at: Date;
+  access_count: number;
+  max_access_count: number | null;
+};
+
+async function incrementAccessAtomic(id: string): Promise<IncrementResult | null> {
+  const rows = await prisma.$queryRaw<IncrementResult[]>`
+    UPDATE "SharedSnapshot"
+    SET access_count = access_count + 1,
+        last_accessed_at = NOW(),
+        revoked_at = CASE
+          WHEN max_access_count IS NOT NULL
+            AND access_count + 1 >= max_access_count
+          THEN NOW()
+          ELSE revoked_at
+        END
+    WHERE id = ${id}
+      AND revoked_at IS NULL
+      AND (expires_at IS NULL OR expires_at > NOW())
+      AND (max_access_count IS NULL OR access_count < max_access_count)
+    RETURNING payload_encrypted, expires_at, created_at, access_count, max_access_count
+  `;
+  return rows[0] ?? null;
 }
 
 export const GET: RequestHandler = async (event) => {
@@ -67,11 +104,10 @@ export const GET: RequestHandler = async (event) => {
       where: { slug },
       select: {
         id: true,
-        payload_encrypted: true,
         password_hash: true,
         expires_at: true,
-        created_at: true,
         access_count: true,
+        max_access_count: true,
         revoked_at: true
       }
     });
@@ -81,22 +117,25 @@ export const GET: RequestHandler = async (event) => {
     }
 
     if (share.revoked_at) {
-      return respond({ success: false, error: 'Share has been revoked' }, 410);
+      return gone('Share has been revoked', 'REVOKED');
     }
     if (share.expires_at && share.expires_at < new Date()) {
-      return respond({ success: false, error: 'Share has expired' }, 410);
+      return gone('Share has expired', 'EXPIRED');
+    }
+    if (
+      share.max_access_count !== null &&
+      share.access_count >= share.max_access_count
+    ) {
+      return gone('Share has reached its access limit', 'EXHAUSTED');
     }
 
-    // Password gate
     if (share.password_hash) {
       const provided = event.request.headers.get('x-share-password');
       if (!provided) {
-        // Not auth failure — UX path: client renders password prompt.
         const body: SharePasswordRequiredResponse = { password_required: true };
         return respond({ success: true, data: body }, 200);
       }
 
-      // Rate-limit password attempts per IP (reuse authLimiter shape).
       if (!authLimiter.check(ip)) {
         const retryAfter = authLimiter.retryAfter(ip);
         return respond(
@@ -112,20 +151,18 @@ export const GET: RequestHandler = async (event) => {
       }
     }
 
-    // Success path — bump access counters (best-effort, do not block response).
-    void prisma.sharedSnapshot
-      .update({
-        where: { id: share.id },
-        data: { access_count: { increment: 1 }, last_accessed_at: new Date() }
-      })
-      .catch((err) => logger.error('Failed to bump access counters:', err));
+    const updated = await incrementAccessAtomic(share.id);
+    if (!updated) {
+      return gone('Share has reached its access limit', 'EXHAUSTED');
+    }
 
     const data: ShareViewResponse = {
       password_required: false,
-      payload_encrypted: share.payload_encrypted,
-      expires_at: share.expires_at ? share.expires_at.toISOString() : null,
-      created_at: share.created_at.toISOString(),
-      access_count: share.access_count
+      payload_encrypted: updated.payload_encrypted,
+      expires_at: updated.expires_at ? updated.expires_at.toISOString() : null,
+      created_at: updated.created_at.toISOString(),
+      access_count: updated.access_count,
+      max_access_count: updated.max_access_count
     };
     return respond({ success: true, data }, 200);
   } catch (err: unknown) {
