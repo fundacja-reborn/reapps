@@ -40,7 +40,8 @@ model User {
   tags                  Tag[]
   noteVersions          NoteVersion[]
   idempotencyKeys       IdempotencyKey[]
-  
+  sharedSnapshots       SharedSnapshot[]
+
   @@index([username])
   @@index([created_at])
 }
@@ -303,5 +304,37 @@ model IdempotencyKey {
 
   @@index([user_id])
   @@index([expires_at])
+}
+
+// ==================== SHARED SNAPSHOTS (read-only public links) ====================
+//
+// One row per share link. ZK invariants:
+//   - payload_encrypted: full snapshot JSON encrypted with a fresh per-share AES-GCM
+//     key. The key NEVER touches the server (lives in URL fragment #k=).
+//   - owner_key_wrapped: per-share key wrapped with the owner's master key, for
+//     cross-device access by the owner (master key never leaves the client either).
+//   - password_hash: optional Argon2id of an owner-supplied password (defense in depth).
+//
+// Server can see: user_id (FK, owner), slug (public path), timestamps, access_count,
+// expires_at, revoked_at, has_password. Server CANNOT see: title, content type
+// (note vs task), source entity IDs - nothing leaks through plaintext columns.
+model SharedSnapshot {
+  id                 String    @id @default(uuid())
+  user_id            String
+  slug               String    @unique // 16-char base64url public identifier
+  payload_encrypted  String    // iv:ciphertext (Base64) - encrypted with per-share key
+  owner_key_wrapped  String    // iv:ciphertext (Base64) - per-share key wrapped with master key
+  password_hash      String?   // Argon2id - optional password protection
+  expires_at         DateTime? // NULL = no expiry
+  created_at         DateTime  @default(now())
+  last_accessed_at   DateTime?
+  access_count       Int       @default(0)
+  revoked_at         DateTime? // Soft delete - kept 24h for UI feedback then hard-deleted by cleanup
+
+  user               User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@index([revoked_at])
 }
 

@@ -45,6 +45,17 @@ export {
   KNOWN_SENSITIVE_FIELDS
 } from './encryption-validation';
 
+// Snapshot share helpers (per-share AES-GCM key, URL fragment transport)
+export {
+  generateSnapshotKey,
+  exportKeyToBase64url,
+  importKeyFromBase64url,
+  encryptSnapshotPayload,
+  decryptSnapshotPayload,
+  buildShareUrl,
+  parseShareFragment
+} from './snapshot';
+
 // Password hashing functions
 export {
   hashPassword,
