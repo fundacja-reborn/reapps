@@ -3,8 +3,9 @@
   import { base } from '$app/paths';
   import { page } from '$app/stores';
   import { Button, Input, Card } from '@reborn/ui';
-  import { Lock, ShieldCheck, Star, CheckCircle2, Circle } from '@lucide/svelte';
+  import { Lock, ShieldCheck } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
+  import TaskSnapshotView from '$lib/components/tasks/TaskSnapshotView.svelte';
   import {
     importKeyFromBase64url,
     decryptSnapshotPayload,
@@ -152,7 +153,6 @@
   }
 
   const taskPayload = $derived(payload && payload.type === 'task' ? payload : null);
-  const taskMeta = $derived(taskPayload?.metadata as { due_date?: string | null; has_time?: boolean; is_completed?: boolean; is_starred?: boolean } | undefined);
 </script>
 
 <svelte:head>
@@ -283,62 +283,7 @@
         </form>
       </Card>
     {:else if stage === 'ready' && taskPayload}
-      <div class="flex items-start gap-3">
-        {#if taskMeta?.is_completed}
-          <CheckCircle2 class="mt-1 h-5 w-5 shrink-0 text-green-600" />
-        {:else}
-          <Circle class="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
-        {/if}
-        <h1 class="flex-1 text-2xl font-semibold leading-tight" class:line-through={taskMeta?.is_completed}>
-          {taskPayload.title || $t('share.view.untitled')}
-        </h1>
-        {#if taskMeta?.is_starred}
-          <Star class="mt-1 h-5 w-5 shrink-0 fill-yellow-400 text-yellow-400" />
-        {/if}
-      </div>
-
-      <div class="flex flex-wrap gap-2 text-xs text-muted-foreground">
-        {#if taskPayload.shared_by_label}
-          <span>{$t('share.view.shared_by', { values: { label: taskPayload.shared_by_label } })}</span>
-        {/if}
-        <span>{$t('share.view.shared_at', { values: { relative: formatDate(taskPayload.shared_at) } })}</span>
-        {#if taskMeta?.due_date}
-          <span>· {$t('share.view.task.due_date_label')}: {formatDate(taskMeta.due_date)}</span>
-        {/if}
-        {#if taskMeta?.is_completed}
-          <span>· {$t('share.view.task.completed_badge')}</span>
-        {/if}
-      </div>
-
-      {#if taskPayload.description}
-        <Card class="p-4">
-          <p class="whitespace-pre-wrap text-sm">{taskPayload.description}</p>
-        </Card>
-      {:else}
-        <p class="text-xs italic text-muted-foreground">{$t('share.view.task.no_description')}</p>
-      {/if}
-
-      <section class="flex flex-col gap-2">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          {$t('share.view.task.subtasks_label')}
-        </h2>
-        {#if taskPayload.subtasks.length === 0}
-          <p class="text-xs italic text-muted-foreground">{$t('share.view.task.no_subtasks')}</p>
-        {:else}
-          <ul class="flex flex-col gap-1">
-            {#each taskPayload.subtasks as subtask, i (i)}
-              {@const completed = (subtask.metadata as { is_completed?: boolean } | undefined)?.is_completed}
-              <li class="flex items-start gap-2 text-sm">
-                <input type="checkbox" disabled checked={completed} class="mt-0.5" />
-                <span class:line-through={completed} class:text-muted-foreground={completed}>
-                  {subtask.name}
-                </span>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </section>
-
+      <TaskSnapshotView payload={taskPayload} />
     {/if}
     </main>
   </div>

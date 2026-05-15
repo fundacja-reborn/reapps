@@ -15,7 +15,7 @@
     type SharedSnapshotPayload,
     type SharePublicResponse
   } from '@reborn/types';
-  import MarkdownPreview from '$lib/components/MarkdownPreview.svelte';
+  import NoteSnapshotView from '$lib/components/notes/NoteSnapshotView.svelte';
 
   type Stage =
     | 'loading'
@@ -285,20 +285,7 @@
         </form>
       </Card>
     {:else if stage === 'ready' && notePayload}
-      <h1 class="text-2xl font-semibold leading-tight">
-        {notePayload.title || $t('share.view.untitled')}
-      </h1>
-
-      <div class="flex flex-wrap gap-2 text-xs text-muted-foreground">
-        {#if notePayload.shared_by_label}
-          <span>{$t('share.view.shared_by', { values: { label: notePayload.shared_by_label } })}</span>
-        {/if}
-        <span>{$t('share.view.shared_at', { values: { relative: formatRelative(notePayload.shared_at) } })}</span>
-      </div>
-
-      <article class="prose prose-sm dark:prose-invert max-w-none">
-        <MarkdownPreview content={notePayload.content} imageLoadMode={notePayload.metadata?.image_mode ?? 'ask'} />
-      </article>
+      <NoteSnapshotView payload={notePayload} />
     {/if}
     </main>
   </div>
