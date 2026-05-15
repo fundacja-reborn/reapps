@@ -316,12 +316,15 @@ model IdempotencyKey {
 //   - password_hash: optional Argon2id of an owner-supplied password (defense in depth).
 //
 // Server can see: user_id (FK, owner), slug (public path), timestamps, access_count,
-// expires_at, revoked_at, has_password. Server CANNOT see: title, content type
-// (note vs task), source entity IDs - nothing leaks through plaintext columns.
+// expires_at, revoked_at, has_password, snapshot_type (app namespace - 'note' | 'task').
+// Server CANNOT see: title, content, source entity IDs - nothing leaks through plaintext columns.
+// snapshot_type is the originating app, NOT a content classification - it scopes the listing
+// per-app so /notes/settings/security/shares does not show task shares and vice versa.
 model SharedSnapshot {
   id                 String    @id @default(uuid())
   user_id            String
   slug               String    @unique // 16-char base64url public identifier
+  snapshot_type      String    @default("unknown") // 'note' | 'task' | 'unknown' (legacy)
   payload_encrypted  String    // iv:ciphertext (Base64) - encrypted with per-share key
   owner_key_wrapped  String    // iv:ciphertext (Base64) - per-share key wrapped with master key
   password_hash      String?   // Argon2id - optional password protection
@@ -335,6 +338,7 @@ model SharedSnapshot {
   user               User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([user_id, snapshot_type])
   @@index([expires_at])
   @@index([revoked_at])
 }
