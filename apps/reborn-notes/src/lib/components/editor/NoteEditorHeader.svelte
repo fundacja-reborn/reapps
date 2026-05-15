@@ -16,6 +16,7 @@
   import { t } from '$lib/stores/i18n.store';
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import EditorModeButton from './EditorModeButton.svelte';
+  import NoteShareIndicator from '../notes/NoteShareIndicator.svelte';
   import type { Snippet } from 'svelte';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -34,7 +35,9 @@
     onhistoryreset,
     actions,
     title = '',
-    showTitle = false
+    showTitle = false,
+    noteId = null,
+    onShareCreate
   }: {
     isMobile: boolean;
     activeTrash: boolean;
@@ -52,6 +55,10 @@
     title?: string;
     /** Whether to show small title in header (when large title scrolled away) */
     showTitle?: boolean;
+    /** Source note id — drives the per-note share indicator. */
+    noteId?: string | null;
+    /** Wired to the parent's create-share flow so the indicator can launch it. */
+    onShareCreate?: () => void;
   } = $props();
 
   const VIEW_MODES: { mode: ViewMode; label: string; icon: typeof Pencil }[] = $derived([
@@ -145,6 +152,11 @@
         {formatKB(noteDetailService.contentSize)} / {formatKB(noteDetailService.contentLimitBytes)}
       </span>
     {/if}
+  {/if}
+
+  <!-- Active share indicator (only when this note has live shares) -->
+  {#if !activeTrash}
+    <NoteShareIndicator {noteId} onCreateNew={onShareCreate} />
   {/if}
 
   <!-- E2EE badge -->

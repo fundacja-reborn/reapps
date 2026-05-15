@@ -94,5 +94,20 @@
       "note": "Nota",
       "task": "Tarea"
     }
+  },
+  "indicator": {
+    "label": "Compartido",
+    "tooltip": "Esta tarea tiene {count} compartido(s) activo(s)",
+    "aria_label": "{count} compartido(s) activo(s) para esta tarea"
+  },
+  "manage": {
+    "dialog_title": "Compartidos activos",
+    "for_note_title": "Compartidos de esta nota",
+    "for_task_title": "Compartidos de esta tarea",
+    "for_note_description": "Enlaces de solo lectura que apuntan a esta nota. Copia o revoca según necesites.",
+    "for_task_description": "Enlaces de solo lectura que apuntan a esta tarea. Copia o revoca según necesites.",
+    "empty_for_note": "Esta nota no tiene compartidos activos.",
+    "empty_for_task": "Esta tarea no tiene compartidos activos.",
+    "create_new_cta": "Crear nuevo compartido"
   }
 }

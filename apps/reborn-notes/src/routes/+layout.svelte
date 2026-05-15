@@ -17,6 +17,7 @@
   import { tagsStore } from '$lib/stores/tags.store';
   import { notesStore } from '$lib/stores/notes.store';
   import { authStore } from '$lib/stores/auth.store';
+  import { sharesStore } from '$lib/stores/shares.store';
   import { pullFromServer, pushPendingItems, refreshStoresAfterPull } from '$lib/services/notes-sync.service';
   import { verifyAndRebuildLocalShadowIndexes } from '$lib/services/shadow-index-reconciler.service';
   import { noteIndex } from '$lib/services/note-index.svelte';
@@ -165,6 +166,12 @@
       //     IDB size (typically <1s). Re-runs on next boot if user_id repair
       //     was skipped because auth wasn't ready.
       await cleanupNullFkFields(get(authStore).userId);
+
+      // 3. Wire the shares store so the per-note badge / IconNav badge stay in
+      //    sync across lock/unlock cycles. init() is idempotent and self-guards
+      //    on crypto.isInitialized() - safe to call here even on a fresh app
+      //    boot before the user has unlocked their master key. See guideline 59.
+      sharesStore.init();
 
       // 4. Mark app as ready - unblocks auth guard $effect
       appReady = true;

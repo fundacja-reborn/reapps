@@ -94,5 +94,20 @@
       "note": "Note",
       "task": "Tâche"
     }
+  },
+  "indicator": {
+    "label": "Partagé",
+    "tooltip": "Cette tâche a {count} partage(s) actif(s)",
+    "aria_label": "{count} partage(s) actif(s) pour cette tâche"
+  },
+  "manage": {
+    "dialog_title": "Partages actifs",
+    "for_note_title": "Partages de cette note",
+    "for_task_title": "Partages de cette tâche",
+    "for_note_description": "Liens en lecture seule pointant vers cette note. Copier ou révoquer selon vos besoins.",
+    "for_task_description": "Liens en lecture seule pointant vers cette tâche. Copier ou révoquer selon vos besoins.",
+    "empty_for_note": "Cette note n'a aucun partage actif.",
+    "empty_for_task": "Cette tâche n'a aucun partage actif.",
+    "create_new_cta": "Créer un nouveau partage"
   }
 }

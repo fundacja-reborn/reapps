@@ -22,7 +22,8 @@
 		CalendarOff,
 		Trash2,
 		Settings,
-		LogOut
+		LogOut,
+		Share2
 	} from '@lucide/svelte';
 	import {
 		overdueTasks,
@@ -38,6 +39,8 @@
 	import { goto } from '$lib/utils/navigation';
 	import { t } from '$lib/stores/i18n.store';
 	import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
+	import { activeSharesCount } from '$lib/stores/shares.store';
+	import ManageSharesDialog from '$lib/components/tasks/ManageSharesDialog.svelte';
 
 	let {
 		activeSection = $bindable<Section>('lists'),
@@ -56,6 +59,7 @@
 	const isMobileQuery = useIsMobile();
 	let loggingOut = $state(false);
 	let userSheetOpen = $state(false);
+	let sharesDialogOpen = $state(false);
 
 	function getUserInitial(username: string | null): string {
 		if (!username) return '?';
@@ -110,14 +114,15 @@
 			label: $t('taskList.filter.date.no_date'),
 			short: $t('taskList.filter.date.no_date'),
 			icon: CalendarOff
-		},
-		{
-			id: 'trash' as Section,
-			label: $t('task.sidebar.trash'),
-			short: $t('task.sidebar.trash'),
-			icon: Trash2
 		}
 	]);
+
+	const TRASH_SECTION = $derived({
+		id: 'trash' as Section,
+		label: $t('task.sidebar.trash'),
+		short: $t('task.sidebar.trash'),
+		icon: Trash2
+	});
 </script>
 
 {#if horizontal}
@@ -197,6 +202,45 @@
 				<span class="text-[11px] leading-none whitespace-nowrap">{s.short}</span>
 			</button>
 		{/each}
+		<!-- Shares (always visible, count badge when > 0) -->
+		<button
+			type="button"
+			onclick={() => (sharesDialogOpen = true)}
+			class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
+				text-muted-foreground hover:bg-sidebar-accent/60"
+			aria-label={$t('nav.shares')}
+		>
+			<span class="relative">
+				<Share2 class="h-5 w-5" />
+				{#if $activeSharesCount > 0}
+					<span
+						class="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center
+							rounded-full bg-foreground/15 text-[8px] font-medium leading-none text-muted-foreground px-0.5"
+						aria-label="{$activeSharesCount} {$t('nav.shares')}"
+					>
+						{$activeSharesCount > 99 ? '99+' : $activeSharesCount}
+					</span>
+				{/if}
+			</span>
+			<span class="text-[11px] leading-none whitespace-nowrap">{$t('nav.shares')}</span>
+		</button>
+		<!-- Trash -->
+		<button
+			type="button"
+			onclick={() => {
+				onSectionClick?.(TRASH_SECTION.id);
+				activeSection = TRASH_SECTION.id;
+			}}
+			class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
+				{activeSection === TRASH_SECTION.id
+				? 'bg-sidebar-accent text-sidebar-accent-foreground'
+				: 'text-muted-foreground hover:bg-sidebar-accent/60'}"
+			aria-label={TRASH_SECTION.label}
+			aria-current={activeSection === TRASH_SECTION.id ? 'page' : undefined}
+		>
+			<TRASH_SECTION.icon class="h-5 w-5" />
+			<span class="text-[11px] leading-none whitespace-nowrap">{TRASH_SECTION.short}</span>
+		</button>
 	</div>
 {:else}
 	<!-- ── Vertical mode (desktop icon rail) ─────────────────────── -->
@@ -298,6 +342,61 @@
 			</Tooltip.Root>
 		{/each}
 
+		<!-- Shares (always visible, count badge when > 0) -->
+		<Tooltip.Root>
+			<Tooltip.Trigger>
+				{#snippet child({ props })}
+					<button
+						{...props}
+						type="button"
+						onclick={() => (sharesDialogOpen = true)}
+						class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg
+							text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+						aria-label={$t('nav.shares')}
+					>
+						<span class="relative">
+							<Share2 class="h-6 w-6 md:h-5 md:w-5" />
+							{#if $activeSharesCount > 0}
+								<span
+									class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center
+										rounded-full bg-foreground/15 text-[9px] font-medium leading-none text-muted-foreground px-0.5"
+									aria-label="{$activeSharesCount} {$t('nav.shares')}"
+								>
+									{$activeSharesCount > 99 ? '99+' : $activeSharesCount}
+								</span>
+							{/if}
+						</span>
+					</button>
+				{/snippet}
+			</Tooltip.Trigger>
+			<Tooltip.Content side="right" sideOffset={6}>{$t('nav.shares')}</Tooltip.Content>
+		</Tooltip.Root>
+
+		<!-- Trash -->
+		<Tooltip.Root>
+			<Tooltip.Trigger>
+				{#snippet child({ props })}
+					<button
+						{...props}
+						type="button"
+						onclick={() => {
+							onSectionClick?.(TRASH_SECTION.id);
+							activeSection = TRASH_SECTION.id;
+						}}
+						class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg transition-colors
+							{activeSection === TRASH_SECTION.id
+							? 'bg-sidebar-accent text-sidebar-accent-foreground'
+							: 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
+						aria-label={TRASH_SECTION.label}
+						aria-current={activeSection === TRASH_SECTION.id ? 'page' : undefined}
+					>
+						<TRASH_SECTION.icon class="h-6 w-6 md:h-5 md:w-5" />
+					</button>
+				{/snippet}
+			</Tooltip.Trigger>
+			<Tooltip.Content side="right" sideOffset={6}>{TRASH_SECTION.label}</Tooltip.Content>
+		</Tooltip.Root>
+
 		<div class="flex-1"></div>
 
 		<!-- Settings -->
@@ -394,6 +493,9 @@
 		{/if}
 	</nav>
 {/if}
+
+<!-- Shares manage dialog (mounted once, used by both nav modes) -->
+<ManageSharesDialog bind:open={sharesDialogOpen} sourceId={null} />
 
 <!-- Mobile: User menu Sheet -->
 <Sheet bind:open={userSheetOpen}>

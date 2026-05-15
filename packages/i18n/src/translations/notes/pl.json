@@ -6,6 +6,7 @@
     "folders": "Foldery",
     "tags": "Tagi",
     "trash": "Kosz",
+    "shares": "Udostępnienia",
     "new_note": "Nowa notatka",
     "new_short": "Nowa",
     "settings": "Ustawienia",
@@ -1029,6 +1030,21 @@
         "note": "Notatka",
         "task": "Zadanie"
       }
+    },
+    "indicator": {
+      "label": "Udostępnione",
+      "tooltip": "Ta notatka ma aktywnych udostępnień: {count}",
+      "aria_label": "Aktywne udostępnienia tej notatki: {count}"
+    },
+    "manage": {
+      "dialog_title": "Aktywne udostępnienia",
+      "for_note_title": "Udostępnienia tej notatki",
+      "for_task_title": "Udostępnienia tego zadania",
+      "for_note_description": "Linki tylko-do-odczytu wskazujące na tę notatkę. Możesz skopiować lub cofnąć.",
+      "for_task_description": "Linki tylko-do-odczytu wskazujące na to zadanie. Możesz skopiować lub cofnąć.",
+      "empty_for_note": "Ta notatka nie ma aktywnych udostępnień.",
+      "empty_for_task": "To zadanie nie ma aktywnych udostępnień.",
+      "create_new_cta": "Utwórz nowe udostępnienie"
     }
   }
 }

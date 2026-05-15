@@ -21,6 +21,7 @@
 	import { syncedSettings } from '$lib/services/synced-settings.service';
 	import { taskTitleIndex } from '$lib/services/task-title-index.svelte';
 	import { taskCounts } from '$lib/stores/task-counts.store';
+	import { sharesStore } from '$lib/stores/shares.store';
 
 	const logger = createLogger('Layout');
 
@@ -251,6 +252,11 @@
 					logger.warn('Synced settings pull failed — falling back to local IDB', error);
 				}
 			}
+
+			// Wire the shares store so the per-task badge / IconNav badge stay in
+			// sync across lock/unlock cycles. init() is idempotent and self-guards
+			// on crypto.isInitialized(). See guideline 59.
+			sharesStore.init();
 
 			// Initialize app settings (includes theme application)
 			try {

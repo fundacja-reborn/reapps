@@ -14,6 +14,7 @@
   } from '@reborn/ui';
   import { t } from '$lib/stores/i18n.store';
   import { authFetch } from '$lib/utils/auth-fetch';
+  import { sharesStore } from '$lib/stores/shares.store';
   import {
     cryptoManager,
     generateSnapshotKey,
@@ -129,7 +130,8 @@
           metadata: { is_completed: s.is_completed }
         })),
         shared_at: new Date().toISOString(),
-        shared_by_label: senderLabel.trim() || undefined
+        shared_by_label: senderLabel.trim() || undefined,
+        source_id: task.id
       };
 
       const snapshotKey = await generateSnapshotKey();
@@ -161,6 +163,7 @@
         keyBase64url,
         SNAPSHOT_PAYLOAD_VERSION
       );
+      void sharesStore.refresh();
       stage = 'success';
     } catch (err: unknown) {
       errorMessage = err instanceof Error ? err.message : String(err);

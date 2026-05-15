@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { base } from '$app/paths';
   import { onMount } from 'svelte';
-  import { authFetch } from '$lib/utils/auth-fetch';
+  import { SvelteSet } from 'svelte/reactivity';
   import {
     RefreshCw,
     Trash2,
@@ -27,37 +26,25 @@
     DialogTitle,
     toastStore
   } from '@reborn/ui';
-  import { createLogger } from '@reborn/utils';
-  import {
-    cryptoManager,
-    buildShareUrl,
-    importKeyFromBase64url,
-    decryptSnapshotPayload
-  } from '@reborn/crypto';
-  import {
-    SNAPSHOT_PAYLOAD_VERSION,
-    SharedSnapshotPayloadSchema,
-    type OwnShareListItem,
-    type SharedSnapshotTaskPayload
-  } from '@reborn/types';
+  import { type OwnShareListItem, type SharedSnapshotTaskPayload } from '@reborn/types';
   import TaskSnapshotView from '$lib/components/tasks/TaskSnapshotView.svelte';
+  import {
+    sharesStore,
+    isShareInactive,
+    isShareExhausted
+  } from '$lib/stores/shares.store';
 
-  const logger = createLogger('Task-SharesPage');
-
-  type Decoded = {
-    payload: SharedSnapshotTaskPayload;
-    url: string;
-  };
-
-  let isLoading = $state(true);
-  let revoking = $state<string | null>(null);
-  let shares = $state<OwnShareListItem[]>([]);
-  let decoded = $state<Record<string, Decoded>>({});
-  let decryptErrors = $state<Set<string>>(new Set());
-  let urlsVisible = $state<Set<string>>(new Set());
+  let urlsVisible = new SvelteSet<string>();
   let previewing = $state<SharedSnapshotTaskPayload | null>(null);
   let previewOpen = $state(false);
-  let error = $state<string | null>(null);
+  let revoking = $state<string | null>(null);
+
+  const storeState = $derived($sharesStore);
+  const shares = $derived(storeState.shares);
+  const decoded = $derived(storeState.decoded);
+  const decryptErrors = $derived(storeState.decryptErrors);
+  const isLoading = $derived(storeState.loading);
+  const error = $derived(storeState.error);
 
   function formatDate(iso: string | null) {
     if (!iso) return '-';
@@ -71,75 +58,10 @@
     }
   }
 
-  function isExhausted(s: OwnShareListItem): boolean {
-    return s.max_access_count !== null && s.access_count >= s.max_access_count;
-  }
-
-  function isInactive(s: OwnShareListItem): boolean {
-    if (s.revoked_at) return true;
-    if (s.expires_at && new Date(s.expires_at) < new Date()) return true;
-    return false;
-  }
-
   function formatOpens(s: OwnShareListItem): string {
     return s.max_access_count !== null
       ? `${s.access_count} / ${s.max_access_count}`
       : String(s.access_count);
-  }
-
-  async function hydrate(items: OwnShareListItem[]) {
-    if (!cryptoManager.isInitialized()) return;
-    const nextDecoded: Record<string, Decoded> = {};
-    const nextErrors = new Set<string>();
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    await Promise.all(
-      items.map(async (s) => {
-        let rawKey: string;
-        try {
-          rawKey = await cryptoManager.decryptString(s.owner_key_wrapped);
-        } catch (err) {
-          logger.warn('Failed to unwrap share key:', err);
-          nextErrors.add(s.id);
-          return;
-        }
-        const url = buildShareUrl(`${origin}${base}`, s.slug, rawKey, SNAPSHOT_PAYLOAD_VERSION);
-        try {
-          const key = await importKeyFromBase64url(rawKey);
-          const plaintext = await decryptSnapshotPayload(s.payload_encrypted, key);
-          const parsed = SharedSnapshotPayloadSchema.safeParse(plaintext);
-          if (!parsed.success || parsed.data.type !== 'task') {
-            nextErrors.add(s.id);
-            return;
-          }
-          nextDecoded[s.id] = { payload: parsed.data, url };
-        } catch (err) {
-          logger.warn('Failed to decrypt share payload:', err);
-          nextErrors.add(s.id);
-        }
-      })
-    );
-    decoded = nextDecoded;
-    decryptErrors = nextErrors;
-  }
-
-  async function fetchShares() {
-    isLoading = true;
-    error = null;
-    try {
-      const res = await authFetch(`${base}/api/shares`);
-      const data = await res.json();
-      if (!data.success) {
-        error = $t('share.list.error_load');
-        return;
-      }
-      shares = data.data.shares as OwnShareListItem[];
-      await hydrate(shares);
-    } catch (err: unknown) {
-      logger.error('Fetch shares failed:', err);
-      error = $t('share.list.error_load');
-    } finally {
-      isLoading = false;
-    }
   }
 
   async function copyUrl(id: string) {
@@ -154,10 +76,8 @@
   }
 
   function toggleUrl(id: string) {
-    const next = new Set(urlsVisible);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    urlsVisible = next;
+    if (urlsVisible.has(id)) urlsVisible.delete(id);
+    else urlsVisible.add(id);
   }
 
   function openPreview(id: string) {
@@ -169,23 +89,15 @@
 
   async function revoke(share: OwnShareListItem) {
     revoking = share.id;
-    try {
-      const res = await authFetch(`${base}/api/shares/${share.slug}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Revoke failed');
-      shares = shares.map((s) =>
-        s.id === share.id ? { ...s, revoked_at: new Date().toISOString() } : s
-      );
+    const ok = await sharesStore.revoke(share.slug);
+    if (ok) {
       toastStore.success($t('share.list.revoked_toast'));
-    } catch (err: unknown) {
-      logger.error('Revoke failed:', err);
+    } else {
       toastStore.error($t('share.list.revoke_error'));
-    } finally {
-      revoking = null;
     }
+    revoking = null;
   }
 
-  // Defense-in-depth: server already filters by snapshot_type but the client
-  // double-checks against the actual payload type from the ciphertext.
   const visibleShares = $derived(
     shares.filter((s) => {
       if (s.snapshot_type === 'task') return true;
@@ -197,7 +109,8 @@
   );
 
   onMount(() => {
-    fetchShares();
+    sharesStore.init();
+    void sharesStore.refresh();
   });
 </script>
 
@@ -210,7 +123,7 @@
     <Button
       variant="ghost"
       size="icon"
-      onclick={fetchShares}
+      onclick={() => sharesStore.refresh()}
       disabled={isLoading}
       aria-label="Refresh"
     >
@@ -221,11 +134,11 @@
   <div class="space-y-4">
     {#if error}
       <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
+        <AlertDescription>{$t('share.list.error_load')}</AlertDescription>
       </Alert>
     {/if}
 
-    {#if isLoading}
+    {#if isLoading && visibleShares.length === 0}
       <div class="flex justify-center py-12">
         <RefreshCw class="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
@@ -239,8 +152,8 @@
       {#each visibleShares as share (share.id)}
         {@const entry = decoded[share.id]}
         {@const hasDecryptError = decryptErrors.has(share.id)}
-        {@const exhausted = isExhausted(share)}
-        {@const inactive = isInactive(share)}
+        {@const exhausted = isShareExhausted(share)}
+        {@const inactive = isShareInactive(share)}
         {@const urlShown = urlsVisible.has(share.id)}
         <Card class={inactive ? 'opacity-60' : ''}>
           <CardContent class="flex flex-col gap-3 px-4 py-3">

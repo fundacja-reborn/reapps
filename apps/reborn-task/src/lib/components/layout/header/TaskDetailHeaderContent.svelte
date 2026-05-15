@@ -22,6 +22,7 @@
 	import { t } from '$lib/stores/i18n.store';
 	import { cn } from '@reborn/ui';
 	import { taskDetailService } from '$lib/services/task-detail.service';
+	import TaskShareIndicator from '$lib/components/tasks/TaskShareIndicator.svelte';
 
 	interface Props {
 		list: ListDecrypted | null;
@@ -89,6 +90,9 @@
 		<!-- Task actions (right aligned) -->
 		{#if task}
 			<div class="flex items-center gap-2 flex-shrink-0">
+				<!-- Active share indicator (only when this task has live shares) -->
+				<TaskShareIndicator taskId={task.id} onCreateNew={onOpenShareDialog} />
+
 				<!-- Save status indicator -->
 				{#if saveStatus === 'dirty'}
 					<PenLine class="h-4 w-4 text-amber-500" />

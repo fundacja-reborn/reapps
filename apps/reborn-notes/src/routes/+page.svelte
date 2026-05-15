@@ -1320,6 +1320,8 @@
               onhistoryreset={resetHistoryState}
               title={noteDetailService.title}
               showTitle={!mobileTitleVisible}
+              noteId={$activeNoteId}
+              onShareCreate={() => handleDetailShare()}
             >
               {#snippet actions()}
                 <NoteDetailActions
@@ -1551,6 +1553,8 @@
             onhistoryreset={resetHistoryState}
             title={noteDetailService.title}
             showTitle={!desktopTitleVisible}
+            noteId={$activeNoteId}
+            onShareCreate={() => handleDetailShare()}
           >
             {#snippet actions()}
               <NoteDetailActions
@@ -1562,6 +1566,7 @@
                 onexport={() => handleDetailExport()}
                 onexportpdf={() => handleDetailExportPdf()}
                 oncopylink={() => handleDetailCopyLink()}
+                onshare={() => handleDetailShare()}
                 onshowxray={() => { showEncryptionXRay = true; }}
                 ondelete={handleDetailDelete}
               />
@@ -1757,6 +1762,7 @@
   onexport={(note) => handleDetailExport(note)}
   onexportpdf={(note) => handleDetailExportPdf(note)}
   oncopylink={(note) => handleDetailCopyLink(note)}
+  onshare={(note) => handleDetailShare(note)}
   ondelete={() => handleDetailDelete()}
   onhistory={handleDetailHistory}
   onshowxray={() => { showEncryptionXRay = true; }}

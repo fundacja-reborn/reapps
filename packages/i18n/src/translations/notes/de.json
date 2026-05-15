@@ -6,6 +6,7 @@
     "folders": "Ordner",
     "tags": "Tags",
     "trash": "Papierkorb",
+    "shares": "Freigaben",
     "new_note": "Neue Notiz",
     "new_short": "Neu",
     "settings": "Einstellungen",
@@ -1029,6 +1030,21 @@
         "note": "Notiz",
         "task": "Aufgabe"
       }
+    },
+    "indicator": {
+      "label": "Geteilt",
+      "tooltip": "Diese Notiz hat {count} aktive Freigabe(n)",
+      "aria_label": "{count} aktive Freigabe(n) für diese Notiz"
+    },
+    "manage": {
+      "dialog_title": "Aktive Freigaben",
+      "for_note_title": "Freigaben dieser Notiz",
+      "for_task_title": "Freigaben dieser Aufgabe",
+      "for_note_description": "Schreibgeschützte Links zu dieser Notiz. Kopieren oder zurückziehen nach Bedarf.",
+      "for_task_description": "Schreibgeschützte Links zu dieser Aufgabe. Kopieren oder zurückziehen nach Bedarf.",
+      "empty_for_note": "Diese Notiz hat keine aktiven Freigaben.",
+      "empty_for_task": "Diese Aufgabe hat keine aktiven Freigaben.",
+      "create_new_cta": "Neue Freigabe erstellen"
     }
   }
 }

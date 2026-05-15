@@ -827,6 +827,7 @@
   onmove={openMoveMenu}
   onexport={handleExportNote}
   oncopylink={handleCopyNoteLink}
+  onshare={(note) => handleShare(note)}
   ondelete={handleDelete}
   onrestore={handleRestore}
   onpermanentdelete={handlePermanentDelete}

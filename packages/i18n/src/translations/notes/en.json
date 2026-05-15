@@ -6,6 +6,7 @@
     "folders": "Folders",
     "tags": "Tags",
     "trash": "Trash",
+    "shares": "Shares",
     "new_note": "New Note",
     "new_short": "New",
     "settings": "Settings",
@@ -1029,6 +1030,21 @@
         "note": "Note",
         "task": "Task"
       }
+    },
+    "indicator": {
+      "label": "Shared",
+      "tooltip": "This note has {count} active read-only share(s)",
+      "aria_label": "{count} active shares for this note"
+    },
+    "manage": {
+      "dialog_title": "Active shares",
+      "for_note_title": "Shares for this note",
+      "for_task_title": "Shares for this task",
+      "for_note_description": "Read-only links pointing to this note. Revoke or copy as needed.",
+      "for_task_description": "Read-only links pointing to this task. Revoke or copy as needed.",
+      "empty_for_note": "This note has no active shares.",
+      "empty_for_task": "This task has no active shares.",
+      "create_new_cta": "Create new share"
     }
   }
 }

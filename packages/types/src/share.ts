@@ -62,6 +62,14 @@ export interface SharedSnapshotNotePayload {
   };
   shared_at: string;
   shared_by_label?: string;
+  /**
+   * UUID of the source note this snapshot was created from. Lives inside the
+   * ciphertext (server never sees it). Owner-only - used by the client to
+   * surface "this note has N active shares" indicators next to the source
+   * without hitting the public endpoint. Optional for backward compat with
+   * shares created before this field existed.
+   */
+  source_id?: string;
 }
 
 /** Task snapshot payload (single task with subtasks inline). */
@@ -77,6 +85,8 @@ export interface SharedSnapshotTaskPayload {
   }>;
   shared_at: string;
   shared_by_label?: string;
+  /** See SharedSnapshotNotePayload.source_id - same role, for tasks. */
+  source_id?: string;
 }
 
 export type SharedSnapshotPayload = SharedSnapshotNotePayload | SharedSnapshotTaskPayload;
@@ -105,7 +115,8 @@ export const SharedSnapshotPayloadSchema: z.ZodType<SharedSnapshotPayload> = z.d
         .passthrough()
         .optional(),
       shared_at: z.string(),
-      shared_by_label: z.string().max(SHARE_SENDER_LABEL_MAX_LENGTH).optional()
+      shared_by_label: z.string().max(SHARE_SENDER_LABEL_MAX_LENGTH).optional(),
+      source_id: z.string().max(64).optional()
     }),
     z.object({
       type: z.literal('task'),
@@ -122,7 +133,8 @@ export const SharedSnapshotPayloadSchema: z.ZodType<SharedSnapshotPayload> = z.d
         )
         .max(500),
       shared_at: z.string(),
-      shared_by_label: z.string().max(SHARE_SENDER_LABEL_MAX_LENGTH).optional()
+      shared_by_label: z.string().max(SHARE_SENDER_LABEL_MAX_LENGTH).optional(),
+      source_id: z.string().max(64).optional()
     })
   ]
 ) as unknown as z.ZodType<SharedSnapshotPayload>;
