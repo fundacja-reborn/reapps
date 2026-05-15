@@ -117,7 +117,9 @@ describe('OwnShareListItemSchema', () => {
   const baseItem = {
     id: '00000000-0000-0000-0000-000000000000',
     slug: 'AbCd1234EfGh5678',
+    snapshot_type: 'note' as const,
     owner_key_wrapped: 'YWFhYQ==:dGVzdA==',
+    payload_encrypted: 'YWFhYQ==:dGVzdA==',
     has_password: false,
     expires_at: null,
     created_at: '2026-05-14T10:00:00.000Z',
@@ -144,6 +146,27 @@ describe('OwnShareListItemSchema', () => {
     expect(
       OwnShareListItemSchema.safeParse({ ...baseItem, max_access_count: -1 }).success
     ).toBe(false);
+  });
+
+  it('accepts task and unknown snapshot types', () => {
+    expect(
+      OwnShareListItemSchema.safeParse({ ...baseItem, snapshot_type: 'task' }).success
+    ).toBe(true);
+    expect(
+      OwnShareListItemSchema.safeParse({ ...baseItem, snapshot_type: 'unknown' }).success
+    ).toBe(true);
+  });
+
+  it('rejects an unrecognised snapshot_type', () => {
+    expect(
+      OwnShareListItemSchema.safeParse({ ...baseItem, snapshot_type: 'folder' }).success
+    ).toBe(false);
+  });
+
+  it('requires payload_encrypted to be present', () => {
+    const { payload_encrypted, ...withoutPayload } = baseItem;
+    void payload_encrypted;
+    expect(OwnShareListItemSchema.safeParse(withoutPayload).success).toBe(false);
   });
 });
 

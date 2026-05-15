@@ -196,15 +196,30 @@ export interface ShareGoneErrorBody {
 // ─── API: GET /api/shares (list own, auth required) ──────────────────
 
 /**
+ * Snapshot origin app. Plaintext metadata for listing scope - the value
+ * tells us which app created the share (notes vs task) so each app's
+ * settings page only renders its own shares. NOT a content classification:
+ * the actual payload type is inside the ciphertext (server cannot see it).
+ *
+ * 'unknown' is a backfill value for rows created before this column existed.
+ */
+export const SNAPSHOT_TYPES = ['note', 'task', 'unknown'] as const;
+export type SnapshotType = (typeof SNAPSHOT_TYPES)[number];
+export const SnapshotTypeSchema = z.enum(SNAPSHOT_TYPES);
+
+/**
  * Listing item for the owner. Includes owner_key_wrapped so the client
- * can reconstruct the URL on any device. Excludes payload_encrypted —
- * for content preview the client fetches the public endpoint like any
- * other recipient.
+ * can reconstruct the URL on any device, and payload_encrypted so the
+ * owner can decrypt locally to render title/preview without hitting the
+ * public endpoint (which would consume an access slot). The wrapped key
+ * and ciphertext are useless without the master key.
  */
 export interface OwnShareListItem {
   id: string;
   slug: string;
+  snapshot_type: SnapshotType;
   owner_key_wrapped: string;
+  payload_encrypted: string;
   has_password: boolean;
   expires_at: string | null;
   created_at: string;
@@ -217,7 +232,9 @@ export interface OwnShareListItem {
 export const OwnShareListItemSchema = z.object({
   id: z.string(),
   slug: z.string(),
+  snapshot_type: SnapshotTypeSchema,
   owner_key_wrapped: z.string(),
+  payload_encrypted: z.string(),
   has_password: z.boolean(),
   expires_at: z.string().nullable(),
   created_at: z.string(),

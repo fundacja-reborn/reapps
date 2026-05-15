@@ -70,6 +70,7 @@ export const POST: RequestHandler = async (event) => {
       data: {
         user_id: userId,
         slug,
+        snapshot_type: 'note',
         payload_encrypted,
         owner_key_wrapped,
         password_hash: passwordHash,
@@ -98,13 +99,17 @@ export const GET: RequestHandler = async ({ request }) => {
     const userId = await getUserFromToken(request.headers.get('authorization'));
     if (!userId) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
+    // Include 'unknown' legacy rows in both apps - client decrypts payload
+    // and filters by the actual type from the ciphertext.
     const rows = await prisma.sharedSnapshot.findMany({
-      where: { user_id: userId },
+      where: { user_id: userId, snapshot_type: { in: ['note', 'unknown'] } },
       orderBy: { created_at: 'desc' },
       select: {
         id: true,
         slug: true,
+        snapshot_type: true,
         owner_key_wrapped: true,
+        payload_encrypted: true,
         password_hash: true,
         expires_at: true,
         created_at: true,
@@ -119,7 +124,11 @@ export const GET: RequestHandler = async ({ request }) => {
       shares: rows.map((r) => ({
         id: r.id,
         slug: r.slug,
+        snapshot_type: (r.snapshot_type === 'note' || r.snapshot_type === 'task'
+          ? r.snapshot_type
+          : 'unknown') as 'note' | 'task' | 'unknown',
         owner_key_wrapped: r.owner_key_wrapped,
+        payload_encrypted: r.payload_encrypted,
         has_password: r.password_hash !== null,
         expires_at: r.expires_at ? r.expires_at.toISOString() : null,
         created_at: r.created_at.toISOString(),
