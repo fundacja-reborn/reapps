@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
+	import { page } from '$app/stores';
 	import { t, locale } from '$lib/stores/i18n.store';
 	import { session } from '$lib/stores/auth.store';
 	import { isOnline } from '$lib/stores/network.store';
@@ -29,6 +30,14 @@
 	let initTimeout = $state(false);
 	// Prevent duplicate initial sync (onMount vs $effect)
 	let hasTriggeredInitialSync = $state(false);
+
+	// Public read-only share view (/s/[slug]) - no auth, no IndexedDB, no sync.
+	// Used both to short-circuit init() and to unblock the loading-screen gate
+	// (which otherwise waits for $session.isInitialized that never fires for
+	// anonymous visitors). See guideline 59 for rationale.
+	const isPublicShareRoute = $derived(
+		($page?.url?.pathname ?? '').startsWith(`${base || ''}/s/`)
+	);
 
 	// Update HTML lang attribute when locale changes
 	$effect(() => {
@@ -140,7 +149,19 @@
 		document.addEventListener('visibilitychange', handleVisibilityChange);
 
 		const init = async () => {
-			// i18n is initialized in +layout.ts (before render) — no need to repeat here
+			// Public read-only share view (/s/[slug]) bypass: skip auth/storage/sync
+			// init entirely. The snapshot page fetches its own ciphertext and decrypts
+			// client-side with the URL-fragment key. Without this guard,
+			// initializeStorage() would create an empty Reborn_task_DB in the
+			// visitor's browser. The theme-flash inline script in app.html has
+			// already applied dark/light from localStorage + prefers-color-scheme,
+			// so appSettings.init() is also unnecessary. See guideline 59.
+			const basePath = base || '';
+			if (window.location.pathname.startsWith(`${basePath}/s/`)) {
+				return;
+			}
+
+			// i18n is initialized in +layout.ts (before render) - no need to repeat here
 
 			// Wait for CryptoManager to restore key from sessionStorage (if any)
 			// Without this, refreshDecrypted*() runs before isInitialized() is true
@@ -268,7 +289,7 @@
 	<link rel="icon" type="image/svg+xml" href="{base}/favicon.svg" />
 </svelte:head>
 
-{#if $session?.isInitialized || initTimeout}
+{#if $session?.isInitialized || initTimeout || isPublicShareRoute}
 	<SessionExpiredBanner
 		visible={$sessionExpired && navigator.onLine}
 		username={$session?.user?.username ?? ''}

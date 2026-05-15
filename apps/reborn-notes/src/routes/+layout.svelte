@@ -126,6 +126,20 @@
     const handleSchemeChange = () => applyTheme('system');
 
     const init = async () => {
+      // Public read-only share view (/s/[slug]) bypass: no auth, no IndexedDB,
+      // no sync needed. The snapshot page fetches its own ciphertext and
+      // decrypts client-side with the URL-fragment key. Without this guard,
+      // initializeStorage() would create an empty Reborn_notes_DB in the
+      // visitor's browser - bloat + storage pollution for anonymous viewers.
+      // The theme-flash inline script in app.html has already applied the
+      // right dark/light class from localStorage + prefers-color-scheme, so
+      // we don't need appSettings.init() either. See guideline 59.
+      const basePath = base || '';
+      if (window.location.pathname.startsWith(`${basePath}/s/`)) {
+        appReady = true;
+        return;
+      }
+
       // 1. Wait for CryptoManager to restore key from sessionStorage (if any)
       await cryptoManager.waitForRestore();
 
