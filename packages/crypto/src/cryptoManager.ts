@@ -59,8 +59,25 @@ export class CryptoManager {
 
   // Private constructor for singleton pattern
   private constructor() {
-    // Lazy init: restorePromise is created but not awaited in constructor
-    this.restorePromise = this.restoreKeyOnStartup();
+    // Restoration is started lazily on the first ensureRestoreStarted() call
+    // (waitForRestore / unwrap / verify / persist), NOT in the constructor.
+    // Reason: importing @reborn/crypto from the public share view
+    // (apps/*/src/routes/s/[slug]/+page.svelte) would otherwise open the
+    // `reborn_crypto_keys` IndexedDB for every anonymous viewer even though
+    // the snapshot decryption uses only crypto.subtle with the URL-fragment
+    // key and never needs the master key. See guideline 59 rule #12.
+  }
+
+  /**
+   * Start the (idempotent) key-restoration flow on demand. The first call
+   * kicks off restoreKeyOnStartup(); subsequent calls return the same
+   * promise so multiple callers share a single IDB open + key import.
+   */
+  private ensureRestoreStarted(): Promise<boolean> {
+    if (!this.restorePromise) {
+      this.restorePromise = this.restoreKeyOnStartup();
+    }
+    return this.restorePromise;
   }
 
   /**
@@ -240,7 +257,9 @@ export class CryptoManager {
    * @returns true if a key was successfully restored, false otherwise
    */
   public async waitForRestore(): Promise<boolean> {
-    if (!this.restorePromise) return false;
+    // Trigger lazy restoration on first wait. Pages that never call this
+    // (e.g. the public snapshot view) never open the crypto IDB.
+    const restorePromise = this.ensureRestoreStarted();
 
     // Clear the timer the moment the restore promise wins the race — otherwise
     // the setTimeout callback still fires (with its `resolve(false)` ignored)
@@ -250,7 +269,7 @@ export class CryptoManager {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       return await Promise.race([
-        this.restorePromise,
+        restorePromise,
         new Promise<boolean>((resolve) => {
           timer = setTimeout(() => {
             logger.warn('waitForRestore timed out — proceeding without key');
