@@ -992,6 +992,7 @@
       "shared_by": "Partagé par {label}",
       "expires_in": "Expire {relative}",
       "powered_by": "Propulsé par Reborn Apps",
+      "images_privacy_note": "Pour préserver la confidentialité de votre visite, les images externes ne se chargent qu'au clic.",
       "note": {
         "tags_label": "Étiquettes"
       }

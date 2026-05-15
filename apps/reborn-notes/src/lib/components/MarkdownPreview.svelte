@@ -42,6 +42,7 @@
     scrollEl = $bindable<HTMLElement | null>(null),
     contentEl = $bindable<HTMLElement | null>(null),
     imageLoadMode = 'ask' as ImageLoadMode,
+    loadAllImagesHint,
     onNoteLink,
     onTaskToggle,
     onrender,
@@ -58,6 +59,13 @@
      */
     contentEl?: HTMLElement | null;
     imageLoadMode?: ImageLoadMode;
+    /**
+     * Optional plain-text caption rendered next to the "Load all images"
+     * button. Used by the shared-snapshot viewer to explain to non-technical
+     * recipients why external images don't load automatically. Owner-side
+     * previews leave this unset.
+     */
+    loadAllImagesHint?: string;
     /** Called when user clicks a note:UUID link */
     onNoteLink?: (noteId: string) => void;
     /**
@@ -291,12 +299,13 @@
       return;
     }
 
-    // Handle "Load all images" button
+    // Handle "Load all images" button - remove the whole row (button + optional
+    // privacy hint) so the hint doesn't linger after images are loaded.
     if (target.closest('.load-all-images-btn')) {
       e.preventDefault();
       const placeholders = containerEl.querySelectorAll('.image-placeholder');
       placeholders.forEach((p) => loadImage(p as HTMLElement));
-      target.closest('.load-all-images-btn')?.remove();
+      target.closest('.load-all-images-row')?.remove();
       return;
     }
 
@@ -341,9 +350,14 @@
   data-sveltekit-preload-code="off"
 >
   {#if hasImagePlaceholders}
-    <button type="button" class="load-all-images-btn">
-      {$t('editor.image_load_all')}
-    </button>
+    <div class="load-all-images-row">
+      <button type="button" class="load-all-images-btn">
+        {$t('editor.image_load_all')}
+      </button>
+      {#if loadAllImagesHint}
+        <span class="load-all-images-hint">{loadAllImagesHint}</span>
+      {/if}
+    </div>
   {/if}
   <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized with DOMPurify -->
   {@html html}
@@ -774,10 +788,19 @@
     opacity: 0.9;
   }
 
-  /* ── Load all images button ───────────────────────────────── */
-  .load-all-images-btn {
-    display: block;
+  /* ── Load all images button + optional hint ──────────────────
+     Row owns the bottom margin so adding/removing the hint never
+     shifts the button's spacing. `flex-wrap` lets the hint drop
+     below the button on narrow viewports instead of squeezing it. */
+  .load-all-images-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em 0.75em;
     margin: 0 0 1em;
+  }
+
+  .load-all-images-btn {
     padding: 0.4em 1em;
     border-radius: 0.375em;
     background: var(--muted);
@@ -785,10 +808,19 @@
     border: 1px solid var(--border);
     cursor: pointer;
     font-size: 0.8rem;
+    flex: 0 0 auto;
   }
 
   .load-all-images-btn:hover {
     background: var(--accent);
     color: var(--accent-foreground);
+  }
+
+  .load-all-images-hint {
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    flex: 1 1 200px;
+    min-width: 0;
   }
 </style>

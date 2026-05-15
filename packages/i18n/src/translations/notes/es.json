@@ -992,6 +992,7 @@
       "shared_by": "Compartido por {label}",
       "expires_in": "Caduca {relative}",
       "powered_by": "Funciona con Reborn Apps",
+      "images_privacy_note": "Para mantener la privacidad de tu visita, las imágenes externas se cargan solo al hacer clic.",
       "note": {
         "tags_label": "Etiquetas"
       }

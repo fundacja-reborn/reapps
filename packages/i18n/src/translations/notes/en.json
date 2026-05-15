@@ -992,6 +992,7 @@
       "shared_by": "Shared by {label}",
       "expires_in": "Expires {relative}",
       "powered_by": "Powered by Reborn Apps",
+      "images_privacy_note": "To keep your visit private, external images load only when you click them.",
       "note": {
         "tags_label": "Tags"
       }

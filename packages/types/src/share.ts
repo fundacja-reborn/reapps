@@ -57,8 +57,6 @@ export interface SharedSnapshotNotePayload {
   metadata?: NoteSensitiveMetadata & {
     created_at?: string;
     updated_at?: string;
-    /** Author's image-load preference for external images (mirrors O25). */
-    image_mode?: 'always' | 'never' | 'ask';
   };
   shared_at: string;
   shared_by_label?: string;
@@ -109,8 +107,7 @@ export const SharedSnapshotPayloadSchema: z.ZodType<SharedSnapshotPayload> = z.d
           is_pinned: z.boolean().optional(),
           tags: z.array(z.string()).optional(),
           created_at: z.string().optional(),
-          updated_at: z.string().optional(),
-          image_mode: z.enum(['always', 'never', 'ask']).optional()
+          updated_at: z.string().optional()
         })
         .passthrough()
         .optional(),

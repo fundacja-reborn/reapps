@@ -29,5 +29,14 @@
 {/if}
 
 <article class="prose prose-sm dark:prose-invert min-w-0 max-w-none">
-  <MarkdownPreview content={payload.content} imageLoadMode={payload.metadata?.image_mode ?? 'ask'} />
+  <!-- Force 'ask' regardless of the author's preference: the viewer (anonymous
+       recipient) is the one whose IP leaks to image hosts, so the decision to
+       fetch belongs to them, not the sender. Defense-in-depth per audit O34.
+       `loadAllImagesHint` surfaces the *why* for non-technical viewers right
+       next to the "Load all images" button. -->
+  <MarkdownPreview
+    content={payload.content}
+    imageLoadMode="ask"
+    loadAllImagesHint={$t('share.view.images_privacy_note')}
+  />
 </article>

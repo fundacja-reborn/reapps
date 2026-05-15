@@ -992,6 +992,7 @@
       "shared_by": "Udostępnione przez: {label}",
       "expires_in": "Wygasa {relative}",
       "powered_by": "Tworzone przez Reborn Apps",
+      "images_privacy_note": "Aby zachować prywatność Twojej wizyty, zewnętrzne obrazy ładują się dopiero po kliknięciu.",
       "note": {
         "tags_label": "Tagi"
       }
