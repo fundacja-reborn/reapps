@@ -81,6 +81,18 @@
     "revoke_error": "Freigabe konnte nicht widerrufen werden",
     "revoked_toast": "Freigabe widerrufen",
     "confirm_revoke_title": "Freigabe widerrufen?",
-    "confirm_revoke_desc": "Der Link funktioniert sofort nicht mehr."
+    "confirm_revoke_desc": "Der Link funktioniert sofort nicht mehr.",
+    "untitled": "(ohne Titel)",
+    "decrypting": "Wird entschlüsselt…",
+    "decrypt_failed": "Snapshot konnte nicht entschlüsselt werden",
+    "preview_action": "Vorschau",
+    "preview_hint": "Die Vorschau zählt nicht zum Öffnungslimit.",
+    "preview_dialog_title": "Snapshot-Vorschau",
+    "show_link": "Link anzeigen",
+    "hide_link": "Link verbergen",
+    "type": {
+      "note": "Notiz",
+      "task": "Aufgabe"
+    }
   }
 }

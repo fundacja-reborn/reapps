@@ -81,6 +81,18 @@
     "revoke_error": "Nie udało się odwołać udostępnienia",
     "revoked_toast": "Udostępnienie odwołane",
     "confirm_revoke_title": "Odwołać udostępnienie?",
-    "confirm_revoke_desc": "Link przestanie działać natychmiast."
+    "confirm_revoke_desc": "Link przestanie działać natychmiast.",
+    "untitled": "(bez tytułu)",
+    "decrypting": "Odszyfrowywanie…",
+    "decrypt_failed": "Nie udało się odszyfrować tego snapshotu",
+    "preview_action": "Podgląd",
+    "preview_hint": "Podgląd nie jest wliczany do limitu otwarć.",
+    "preview_dialog_title": "Podgląd snapshotu",
+    "show_link": "Pokaż link",
+    "hide_link": "Ukryj link",
+    "type": {
+      "note": "Notatka",
+      "task": "Zadanie"
+    }
   }
 }

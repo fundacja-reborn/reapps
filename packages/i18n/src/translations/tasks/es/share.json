@@ -81,6 +81,18 @@
     "revoke_error": "Error al revocar el enlace",
     "revoked_toast": "Enlace revocado",
     "confirm_revoke_title": "¿Revocar enlace?",
-    "confirm_revoke_desc": "El enlace dejará de funcionar inmediatamente."
+    "confirm_revoke_desc": "El enlace dejará de funcionar inmediatamente.",
+    "untitled": "(sin título)",
+    "decrypting": "Descifrando…",
+    "decrypt_failed": "No se pudo descifrar este snapshot",
+    "preview_action": "Vista previa",
+    "preview_hint": "La vista previa no cuenta para el límite de aperturas.",
+    "preview_dialog_title": "Vista previa del snapshot",
+    "show_link": "Mostrar enlace",
+    "hide_link": "Ocultar enlace",
+    "type": {
+      "note": "Nota",
+      "task": "Tarea"
+    }
   }
 }

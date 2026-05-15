@@ -1016,7 +1016,19 @@
       "revoke_error": "Failed to revoke share",
       "revoked_toast": "Share revoked",
       "confirm_revoke_title": "Revoke share?",
-      "confirm_revoke_desc": "The link will stop working immediately."
+      "confirm_revoke_desc": "The link will stop working immediately.",
+      "untitled": "(untitled)",
+      "decrypting": "Decrypting…",
+      "decrypt_failed": "Could not decrypt this snapshot",
+      "preview_action": "Preview",
+      "preview_hint": "Preview does not count towards the open limit.",
+      "preview_dialog_title": "Snapshot preview",
+      "show_link": "Show link",
+      "hide_link": "Hide link",
+      "type": {
+        "note": "Note",
+        "task": "Task"
+      }
     }
   }
 }

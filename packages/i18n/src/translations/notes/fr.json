@@ -1016,7 +1016,19 @@
       "revoke_error": "Échec de la révocation",
       "revoked_toast": "Partage révoqué",
       "confirm_revoke_title": "Révoquer le partage ?",
-      "confirm_revoke_desc": "Le lien cessera de fonctionner immédiatement."
+      "confirm_revoke_desc": "Le lien cessera de fonctionner immédiatement.",
+      "untitled": "(sans titre)",
+      "decrypting": "Déchiffrement…",
+      "decrypt_failed": "Impossible de déchiffrer ce snapshot",
+      "preview_action": "Aperçu",
+      "preview_hint": "L'aperçu n'est pas comptabilisé dans la limite d'ouvertures.",
+      "preview_dialog_title": "Aperçu du snapshot",
+      "show_link": "Afficher le lien",
+      "hide_link": "Masquer le lien",
+      "type": {
+        "note": "Note",
+        "task": "Tâche"
+      }
     }
   }
 }
