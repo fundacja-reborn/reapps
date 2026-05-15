@@ -353,15 +353,15 @@
 </SettingsLayout>
 
 <Dialog bind:open={previewOpen}>
-  <DialogContent class="max-w-2xl max-h-[85vh] overflow-y-auto">
-    <DialogHeader>
+  <DialogContent class="flex max-h-[85vh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+    <DialogHeader class="flex-shrink-0 border-b px-6 py-4 pr-12">
       <DialogTitle>{$t('share.list.preview_dialog_title')}</DialogTitle>
     </DialogHeader>
     {#if previewing}
-      <div class="flex flex-col gap-3">
+      <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
         <TaskSnapshotView payload={previewing} />
+        <p class="text-xs italic text-muted-foreground">{$t('share.list.preview_hint')}</p>
       </div>
-      <p class="text-xs italic text-muted-foreground">{$t('share.list.preview_hint')}</p>
     {/if}
   </DialogContent>
 </Dialog>
