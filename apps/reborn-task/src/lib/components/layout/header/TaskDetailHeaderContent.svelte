@@ -91,7 +91,7 @@
 		{#if task}
 			<div class="flex items-center gap-2 flex-shrink-0">
 				<!-- Active share indicator (only when this task has live shares) -->
-				<TaskShareIndicator taskId={task.id} onCreateNew={onOpenShareDialog} />
+				<TaskShareIndicator taskId={task?.id ?? null} onCreateNew={onOpenShareDialog} />
 
 				<!-- Save status indicator -->
 				{#if saveStatus === 'dirty'}

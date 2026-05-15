@@ -373,7 +373,7 @@
 			<TaskTitleEditor
 				value={taskTitle}
 				disabled={isSaving || isTrashed}
-				isCompleted={decryptedTask.is_completed}
+				isCompleted={decryptedTask?.is_completed ?? false}
 				placeholder={$t('task.placeholders.title')}
 				class="text-xl font-semibold"
 				onValueChanged={handleTitleChange}
@@ -390,12 +390,12 @@
 		<div class="space-y-3">
 			<!-- Task properties (date, recurrence) -->
 			<TaskProperties
-				dueDate={decryptedTask.due_date ?? undefined}
-				hasTime={decryptedTask.has_time ?? false}
-				isRecurring={decryptedTask.is_recurring ?? false}
-				recurrenceRule={decryptedTask.recurrence_rule ?? null}
+				dueDate={decryptedTask?.due_date ?? undefined}
+				hasTime={decryptedTask?.has_time ?? false}
+				isRecurring={decryptedTask?.is_recurring ?? false}
+				recurrenceRule={decryptedTask?.recurrence_rule ?? null}
 				isSaving={isSaving || isTrashed}
-				hideRecurrence={!!decryptedTask.parent_task_id}
+				hideRecurrence={!!decryptedTask?.parent_task_id}
 				onUpdate={(updates) =>
 					handlePropertiesUpdate({
 						...updates,

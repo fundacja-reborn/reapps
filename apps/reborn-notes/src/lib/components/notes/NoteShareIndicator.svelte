@@ -35,7 +35,7 @@
     <span class="hidden sm:inline">
       {$t('share.indicator.label', { values: { count } })}
     </span>
-    <span class="sm:hidden tabular-nums">{count}</span>
+    <span class="tabular-nums">{count}</span>
   </button>
 
   <ManageSharesDialog bind:open={dialogOpen} sourceId={noteId} {onCreateNew} />
