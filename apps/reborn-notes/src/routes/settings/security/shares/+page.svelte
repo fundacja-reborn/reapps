@@ -2,7 +2,17 @@
   import { base } from '$app/paths';
   import { onMount } from 'svelte';
   import { authFetch } from '$lib/utils/auth-fetch';
-  import { RefreshCw, Trash2, Copy, Lock } from '@lucide/svelte';
+  import {
+    RefreshCw,
+    Trash2,
+    Copy,
+    Lock,
+    FileText,
+    Eye,
+    ChevronDown,
+    ChevronUp,
+    AlertTriangle
+  } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import {
     SettingsLayout,
@@ -11,22 +21,46 @@
     AlertDescription,
     Card,
     CardContent,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
     toastStore
   } from '@reborn/ui';
   import { createLogger } from '@reborn/utils';
-  import { cryptoManager, buildShareUrl } from '@reborn/crypto';
-  import { SNAPSHOT_PAYLOAD_VERSION, type OwnShareListItem } from '@reborn/types';
+  import {
+    cryptoManager,
+    buildShareUrl,
+    importKeyFromBase64url,
+    decryptSnapshotPayload
+  } from '@reborn/crypto';
+  import {
+    SNAPSHOT_PAYLOAD_VERSION,
+    SharedSnapshotPayloadSchema,
+    type OwnShareListItem,
+    type SharedSnapshotNotePayload
+  } from '@reborn/types';
+  import NoteSnapshotView from '$lib/components/notes/NoteSnapshotView.svelte';
 
   const logger = createLogger('Notes-SharesPage');
+
+  type Decoded = {
+    payload: SharedSnapshotNotePayload;
+    url: string;
+  };
 
   let isLoading = $state(true);
   let revoking = $state<string | null>(null);
   let shares = $state<OwnShareListItem[]>([]);
-  let urls = $state<Record<string, string>>({});
+  let decoded = $state<Record<string, Decoded>>({});
+  let decryptErrors = $state<Set<string>>(new Set());
+  let urlsVisible = $state<Set<string>>(new Set());
+  let previewing = $state<SharedSnapshotNotePayload | null>(null);
+  let previewOpen = $state(false);
   let error = $state<string | null>(null);
 
   function formatDate(iso: string | null) {
-    if (!iso) return '—';
+    if (!iso) return '-';
     try {
       return new Date(iso).toLocaleString(undefined, {
         dateStyle: 'medium',
@@ -53,21 +87,39 @@
       : String(s.access_count);
   }
 
-  async function hydrateUrls(items: OwnShareListItem[]) {
+  async function hydrate(items: OwnShareListItem[]) {
     if (!cryptoManager.isInitialized()) return;
-    const next: Record<string, string> = {};
+    const nextDecoded: Record<string, Decoded> = {};
+    const nextErrors = new Set<string>();
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     await Promise.all(
       items.map(async (s) => {
+        let rawKey: string;
         try {
-          const key = await cryptoManager.decryptString(s.owner_key_wrapped);
-          next[s.id] = buildShareUrl(`${origin}${base}`, s.slug, key, SNAPSHOT_PAYLOAD_VERSION);
+          rawKey = await cryptoManager.decryptString(s.owner_key_wrapped);
         } catch (err) {
           logger.warn('Failed to unwrap share key:', err);
+          nextErrors.add(s.id);
+          return;
+        }
+        const url = buildShareUrl(`${origin}${base}`, s.slug, rawKey, SNAPSHOT_PAYLOAD_VERSION);
+        try {
+          const key = await importKeyFromBase64url(rawKey);
+          const plaintext = await decryptSnapshotPayload(s.payload_encrypted, key);
+          const parsed = SharedSnapshotPayloadSchema.safeParse(plaintext);
+          if (!parsed.success || parsed.data.type !== 'note') {
+            nextErrors.add(s.id);
+            return;
+          }
+          nextDecoded[s.id] = { payload: parsed.data, url };
+        } catch (err) {
+          logger.warn('Failed to decrypt share payload:', err);
+          nextErrors.add(s.id);
         }
       })
     );
-    urls = next;
+    decoded = nextDecoded;
+    decryptErrors = nextErrors;
   }
 
   async function fetchShares() {
@@ -81,7 +133,7 @@
         return;
       }
       shares = data.data.shares as OwnShareListItem[];
-      await hydrateUrls(shares);
+      await hydrate(shares);
     } catch (err: unknown) {
       logger.error('Fetch shares failed:', err);
       error = $t('share.list.error_load');
@@ -91,7 +143,7 @@
   }
 
   async function copyUrl(id: string) {
-    const url = urls[id];
+    const url = decoded[id]?.url;
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
@@ -99,6 +151,20 @@
     } catch {
       toastStore.error($t('share.create.copy_failed'));
     }
+  }
+
+  function toggleUrl(id: string) {
+    const next = new Set(urlsVisible);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    urlsVisible = next;
+  }
+
+  function openPreview(id: string) {
+    const item = decoded[id];
+    if (!item) return;
+    previewing = item.payload;
+    previewOpen = true;
   }
 
   async function revoke(share: OwnShareListItem) {
@@ -118,13 +184,27 @@
     }
   }
 
+  // Defense-in-depth: server already filters by snapshot_type but the client
+  // double-checks against the actual payload type from the ciphertext.
+  const visibleShares = $derived(
+    shares.filter((s) => {
+      if (s.snapshot_type === 'note') return true;
+      // Legacy 'unknown' rows: keep only if we decrypted into a note payload,
+      // or if decryption failed (so the user can still revoke the row).
+      if (s.snapshot_type === 'unknown') {
+        return decoded[s.id]?.payload.type === 'note' || decryptErrors.has(s.id);
+      }
+      return false;
+    })
+  );
+
   onMount(() => {
     fetchShares();
   });
 </script>
 
 <svelte:head>
-  <title>{$t('share.list.title')} — re/notes</title>
+  <title>{$t('share.list.title')} - re/notes</title>
 </svelte:head>
 
 <SettingsLayout title={$t('share.list.title')} backHref="/settings">
@@ -151,33 +231,65 @@
       <div class="flex justify-center py-12">
         <RefreshCw class="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
-    {:else if shares.length === 0}
+    {:else if visibleShares.length === 0}
       <Card>
         <CardContent class="px-4 py-8 text-center text-sm text-muted-foreground">
           {$t('share.list.empty')}
         </CardContent>
       </Card>
     {:else}
-      {#each shares as share (share.id)}
-        {@const url = urls[share.id]}
+      {#each visibleShares as share (share.id)}
+        {@const entry = decoded[share.id]}
+        {@const hasDecryptError = decryptErrors.has(share.id)}
         {@const exhausted = isExhausted(share)}
         {@const inactive = isInactive(share)}
+        {@const urlShown = urlsVisible.has(share.id)}
         <Card class={inactive ? 'opacity-60' : ''}>
-          <CardContent class="flex flex-col gap-2 px-4 py-3">
-            <div class="flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                {#if share.has_password}
-                  <Lock class="h-3.5 w-3.5" />
-                  {$t('share.list.password_protected')}
-                {/if}
-                {#if exhausted}
-                  <span class="text-destructive">{$t('share.list.exhausted_label')}</span>
-                {:else if inactive}
-                  <span class="text-destructive">{$t('share.list.revoked_label')}</span>
-                {/if}
+          <CardContent class="flex flex-col gap-3 px-4 py-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex min-w-0 flex-1 items-start gap-2">
+                <FileText class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {$t('share.list.type.note')}
+                    </span>
+                    {#if share.has_password}
+                      <span class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <Lock class="h-3 w-3" />
+                        {$t('share.list.password_protected')}
+                      </span>
+                    {/if}
+                    {#if exhausted}
+                      <span class="text-[10px] uppercase tracking-wider text-destructive">{$t('share.list.exhausted_label')}</span>
+                    {:else if inactive}
+                      <span class="text-[10px] uppercase tracking-wider text-destructive">{$t('share.list.revoked_label')}</span>
+                    {/if}
+                  </div>
+                  {#if entry}
+                    <p class="truncate text-sm font-medium">
+                      {entry.payload.title || $t('share.list.untitled')}
+                    </p>
+                  {:else if hasDecryptError}
+                    <p class="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                      <AlertTriangle class="h-3.5 w-3.5" />
+                      {$t('share.list.decrypt_failed')}
+                    </p>
+                  {:else}
+                    <p class="text-sm italic text-muted-foreground">{$t('share.list.decrypting')}</p>
+                  {/if}
+                </div>
               </div>
-              <div class="flex gap-1">
-                {#if !inactive && url}
+              <div class="flex shrink-0 gap-1">
+                {#if entry && !inactive}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={$t('share.list.preview_action')}
+                    onclick={() => openPreview(share.id)}
+                  >
+                    <Eye class="h-4 w-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -200,11 +312,28 @@
                 {/if}
               </div>
             </div>
-            {#if url && !inactive}
-              <p class="break-all font-mono text-xs text-muted-foreground">{url}</p>
-            {:else if !url && !inactive}
-              <p class="text-xs italic text-muted-foreground">{$t('share.list.no_local_key_hint')}</p>
+
+            {#if entry && !inactive}
+              <div class="flex flex-col gap-1">
+                <button
+                  type="button"
+                  class="inline-flex w-fit items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                  onclick={() => toggleUrl(share.id)}
+                >
+                  {#if urlShown}
+                    <ChevronUp class="h-3 w-3" />
+                    {$t('share.list.hide_link')}
+                  {:else}
+                    <ChevronDown class="h-3 w-3" />
+                    {$t('share.list.show_link')}
+                  {/if}
+                </button>
+                {#if urlShown}
+                  <p class="break-all font-mono text-xs text-muted-foreground">{entry.url}</p>
+                {/if}
+              </div>
             {/if}
+
             <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>{$t('share.list.column.created')}: {formatDate(share.created_at)}</span>
               <span>
@@ -224,3 +353,17 @@
     {/if}
   </div>
 </SettingsLayout>
+
+<Dialog bind:open={previewOpen}>
+  <DialogContent class="max-w-2xl max-h-[85vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>{$t('share.list.preview_dialog_title')}</DialogTitle>
+    </DialogHeader>
+    {#if previewing}
+      <div class="flex flex-col gap-3">
+        <NoteSnapshotView payload={previewing} />
+      </div>
+      <p class="text-xs italic text-muted-foreground">{$t('share.list.preview_hint')}</p>
+    {/if}
+  </DialogContent>
+</Dialog>
