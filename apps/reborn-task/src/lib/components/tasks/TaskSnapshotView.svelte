@@ -27,7 +27,10 @@
     {:else}
       <Circle class="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
     {/if}
-    <h1 class="flex-1 text-2xl font-semibold leading-tight" class:line-through={meta?.is_completed}>
+    <h1
+      class="min-w-0 flex-1 break-words text-2xl font-semibold leading-tight"
+      class:line-through={meta?.is_completed}
+    >
       {payload.title || $t('share.view.untitled')}
     </h1>
     {#if meta?.is_starred}
@@ -51,7 +54,7 @@
 
 {#if payload.description}
   <Card class="p-4">
-    <p class="whitespace-pre-wrap text-sm">{payload.description}</p>
+    <p class="whitespace-pre-wrap break-words text-sm">{payload.description}</p>
   </Card>
 {:else}
   <p class="text-xs italic text-muted-foreground">{$t('share.view.task.no_description')}</p>
@@ -69,7 +72,11 @@
         {@const completed = (subtask.metadata as { is_completed?: boolean } | undefined)?.is_completed}
         <li class="flex items-start gap-2 text-sm">
           <input type="checkbox" disabled checked={completed} class="mt-0.5" />
-          <span class:line-through={completed} class:text-muted-foreground={completed}>
+          <span
+            class="min-w-0 break-words"
+            class:line-through={completed}
+            class:text-muted-foreground={completed}
+          >
             {subtask.name}
           </span>
         </li>

@@ -16,7 +16,7 @@
 </script>
 
 {#if showHeader}
-  <h1 class="text-2xl font-semibold leading-tight">
+  <h1 class="break-words text-2xl font-semibold leading-tight">
     {payload.title || $t('share.view.untitled')}
   </h1>
 
@@ -28,6 +28,6 @@
   </div>
 {/if}
 
-<article class="prose prose-sm dark:prose-invert max-w-none">
+<article class="prose prose-sm dark:prose-invert min-w-0 max-w-none">
   <MarkdownPreview content={payload.content} imageLoadMode={payload.metadata?.image_mode ?? 'ask'} />
 </article>
