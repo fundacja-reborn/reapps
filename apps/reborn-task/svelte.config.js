@@ -18,8 +18,17 @@ const config = {
 		adapter: isProduction ? adapterNode() : adapterAuto(),
 		// BASE_PATH controls same-origin deployment path (e.g. "/task").
 		// Empty in dev. Set PUBLIC_BASE_PATH=/task in production env.
+		//
+		// `paths.relative: false` forces absolute asset URLs (`/task/_app/...`)
+		// instead of SvelteKit 2's default relative (`./_app/...`). The service
+		// worker serves the cached `${base}/` shell HTML as SPA fallback for any
+		// navigation under base (F5 on `/task/tasks/<id>`, `/task/lists/<id>`,
+		// `/task/s/<slug>` etc.). With relative paths the shell's `./_app/...`
+		// resolves against the current URL and 404s every chunk; absolute paths
+		// work identically from every URL the shell can be served at.
 		paths: {
-			base: process.env.PUBLIC_BASE_PATH ?? ''
+			base: process.env.PUBLIC_BASE_PATH ?? '',
+			relative: false
 		},
 		alias: {
 			$lib: './src/lib'

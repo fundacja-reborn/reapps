@@ -176,10 +176,9 @@ sw.addEventListener('fetch', (event) => {
 
 	// Public read-only share routes (`${base}/s/<slug>`) and their API endpoint
 	// (`${base}/api/shares/<slug>`) are capability URLs that must always go to
-	// the network. Returning the cached `/task/` app shell here would render
-	// wrong HTML at the share URL: SvelteKit emits relative asset paths
-	// (`paths.relative: true` default), so the shell's `./_app/...` resolves to
-	// `/task/s/_app/...` under the share URL and every asset 404s.
+	// the network: max_access_count enforcement and revocation must reflect the
+	// server's current state on every open, so serving any cached response here
+	// would defeat the access-count gate and let revoked shares keep opening.
 	const sharePath = `${base}/s/`;
 	const shareApiPath = `${base}/api/shares/`;
 	const reqUrl = new URL(event.request.url);
