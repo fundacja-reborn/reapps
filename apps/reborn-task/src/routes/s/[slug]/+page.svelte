@@ -16,7 +16,8 @@
     ShieldAlert,
     ShieldCheck
   } from '@lucide/svelte';
-  import { t } from '$lib/stores/i18n.store';
+  import { get } from 'svelte/store';
+  import { t, locale } from '$lib/stores/i18n.store';
   import TaskSnapshotView from '$lib/components/tasks/TaskSnapshotView.svelte';
   import ShareGate from '$lib/components/share/ShareGate.svelte';
   import {
@@ -164,7 +165,7 @@
   function formatDate(iso: string | null | undefined): string {
     if (!iso) return '';
     try {
-      return new Date(iso).toLocaleString();
+      return new Date(iso).toLocaleString(get(locale) ?? undefined);
     } catch {
       return iso;
     }
