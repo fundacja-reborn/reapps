@@ -12,7 +12,7 @@
  * Errors:
  *   - 404 — slug not found
  *   - 410 Gone — revoked or expired
- *   - 401 — password supplied but wrong (also bumps authLimiter / IP)
+ *   - 401 — password supplied but wrong (also bumps sharePasswordLimiter / IP)
  *   - 429 — too many requests
  *
  * Headers: Referrer-Policy: no-referrer + Cache-Control: no-store on every
@@ -32,7 +32,7 @@ import {
 } from '@reborn/types';
 import { verifyPassword } from '@reborn/crypto';
 import { getUserFromToken } from '$lib/server/auth';
-import { sharePublicLimiter, authLimiter } from '$lib/server/rate-limit';
+import { sharePublicLimiter, sharePasswordLimiter } from '$lib/server/rate-limit';
 import { getClientIp } from '$lib/server/client-ip';
 
 const logger = createLogger('Notes-API-Share-View');
@@ -148,9 +148,11 @@ export const GET: RequestHandler = async (event) => {
         return respond({ success: true, data: body }, 200);
       }
 
-      // Rate-limit password attempts per IP (reuse authLimiter shape).
-      if (!authLimiter.check(ip)) {
-        const retryAfter = authLimiter.retryAfter(ip);
+      // Rate-limit password attempts per IP. Dedicated limiter (not authLimiter)
+      // so that brute-forcing a share password cannot exhaust the login limiter
+      // for legitimate users behind the same NAT (and vice versa).
+      if (!sharePasswordLimiter.check(ip)) {
+        const retryAfter = sharePasswordLimiter.retryAfter(ip);
         return respond(
           { success: false, error: 'Too many attempts' },
           429,
