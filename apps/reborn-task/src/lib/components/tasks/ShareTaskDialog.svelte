@@ -22,6 +22,7 @@
     encryptSnapshotPayload,
     buildShareUrl
   } from '@reborn/crypto';
+  import { Eye, EyeOff } from '@lucide/svelte';
   import {
     SHARE_EXPIRY_PRESETS,
     SHARE_MAX_ACCESS_COUNT_LIMIT,
@@ -52,8 +53,10 @@
   let passwordEnabled = $state(false);
   let password = $state('');
   let passwordConfirm = $state('');
+  let showPassword = $state(false);
+  let showPasswordConfirm = $state(false);
   let maxOpensUnlimited = $state(true);
-  let maxOpens = $state(5);
+  let maxOpens = $state<number | null>(null);
   let errorMessage = $state('');
   let resultUrl = $state('');
 
@@ -65,8 +68,10 @@
     passwordEnabled = false;
     password = '';
     passwordConfirm = '';
+    showPassword = false;
+    showPasswordConfirm = false;
     maxOpensUnlimited = true;
-    maxOpens = 5;
+    maxOpens = null;
     errorMessage = '';
     resultUrl = '';
   }
@@ -237,7 +242,7 @@
               bind:value={maxOpens}
               placeholder={$t('share.create.max_opens_placeholder')}
               disabled={stage === 'creating' || maxOpensUnlimited}
-              class="flex-1"
+              class="w-32"
             />
             <label class="flex items-center gap-2 text-sm whitespace-nowrap">
               <input
@@ -286,18 +291,56 @@
 
         {#if passwordEnabled}
           <div class="flex flex-col gap-2">
-            <Input
-              type="password"
-              bind:value={password}
-              placeholder={$t('share.create.password_placeholder')}
-              disabled={stage === 'creating'}
-            />
-            <Input
-              type="password"
-              bind:value={passwordConfirm}
-              placeholder={$t('share.create.password_confirm_placeholder')}
-              disabled={stage === 'creating'}
-            />
+            <div class="relative">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                bind:value={password}
+                placeholder={$t('share.create.password_placeholder')}
+                autocomplete="new-password"
+                disabled={stage === 'creating'}
+                class="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onclick={() => (showPassword = !showPassword)}
+                disabled={stage === 'creating'}
+                tabindex={-1}
+              >
+                {#if showPassword}
+                  <EyeOff class="h-4 w-4 text-muted-foreground" />
+                {:else}
+                  <Eye class="h-4 w-4 text-muted-foreground" />
+                {/if}
+              </Button>
+            </div>
+            <div class="relative">
+              <Input
+                type={showPasswordConfirm ? 'text' : 'password'}
+                bind:value={passwordConfirm}
+                placeholder={$t('share.create.password_confirm_placeholder')}
+                autocomplete="new-password"
+                disabled={stage === 'creating'}
+                class="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onclick={() => (showPasswordConfirm = !showPasswordConfirm)}
+                disabled={stage === 'creating'}
+                tabindex={-1}
+              >
+                {#if showPasswordConfirm}
+                  <EyeOff class="h-4 w-4 text-muted-foreground" />
+                {:else}
+                  <Eye class="h-4 w-4 text-muted-foreground" />
+                {/if}
+              </Button>
+            </div>
           </div>
         {/if}
 
