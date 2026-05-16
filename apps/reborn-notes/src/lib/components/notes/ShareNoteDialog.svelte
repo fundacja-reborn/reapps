@@ -154,6 +154,9 @@
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        if (res.status === 413 && body.error === 'QUOTA_EXCEEDED') {
+          throw new Error($t('share.create.quota_exceeded'));
+        }
         throw new Error(body.error ?? `HTTP ${res.status}`);
       }
       const json = (await res.json()) as { success: boolean; data: CreateShareResponse };

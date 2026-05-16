@@ -179,7 +179,12 @@
     "warning": "Se está acercando al límite de almacenamiento",
     "exceeded": "Límite de almacenamiento excedido. Elimine o reduzca notas.",
     "learn_more": "Más información sobre el límite",
-    "info": "Las notas en formato Markdown son muy ligeras — una nota típica ocupa solo 5–50 KB. 100 MB significan espacio para miles de notas, dependiendo de su longitud y el número de versiones guardadas en el historial de edición. Para comparar — eso equivale a decenas de libros en texto. Reborn Apps son gratuitas y desarrolladas por una fundación sin fines de lucro — si hay demanda de más almacenamiento y el apoyo de la comunidad lo hace posible, se aumentarán los límites."
+    "info": "Las notas en formato Markdown son muy ligeras - una nota típica ocupa solo 5-50 KB. 100 MB significan espacio para miles de notas, dependiendo de su longitud y el número de versiones guardadas en el historial de edición. Para comparar - eso equivale a decenas de libros en texto. Reborn Apps son gratuitas y desarrolladas por una fundación sin fines de lucro - si hay demanda de más almacenamiento y el apoyo de la comunidad lo hace posible, se aumentarán los límites.",
+    "breakdown": {
+      "notes": "Notas",
+      "versions": "Historial",
+      "shares": "Compartidos"
+    }
   },
   "folders": {
     "title": "Carpetas",
@@ -973,7 +978,8 @@
       "copied": "Copiado",
       "copy_failed": "Error al copiar",
       "close_cta": "Cerrar",
-      "offline_warning": "Compartir requiere conexión a internet"
+      "offline_warning": "Compartir requiere conexión a internet",
+      "quota_exceeded": "Cuota de almacenamiento alcanzada. Revoca compartidos sin uso o elimina notas para liberar espacio."
     },
     "note": {
       "menu_label": "Compartir solo lectura",

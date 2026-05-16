@@ -179,7 +179,12 @@
     "warning": "You are approaching the storage limit",
     "exceeded": "Storage limit exceeded. Delete or reduce notes.",
     "learn_more": "Learn more about the limit",
-"info": "Notes in Markdown format are very lightweight — a typical note takes only 5–50 KB. 100 MB means room for thousands of notes, depending on their length and the number of saved versions in the edit history. For comparison — that’s the equivalent of dozens of books of text. Reborn Apps are free and developed by a non-profit foundation — if there is demand for more storage and community support makes it possible, the limits will be increased."
+"info": "Notes in Markdown format are very lightweight - a typical note takes only 5-50 KB. 100 MB means room for thousands of notes, depending on their length and the number of saved versions in the edit history. For comparison - that's the equivalent of dozens of books of text. Reborn Apps are free and developed by a non-profit foundation - if there is demand for more storage and community support makes it possible, the limits will be increased.",
+    "breakdown": {
+      "notes": "Notes",
+      "versions": "History",
+      "shares": "Shares"
+    }
   },
   "folders": {
     "title": "Folders",
@@ -973,7 +978,8 @@
       "copied": "Copied",
       "copy_failed": "Failed to copy",
       "close_cta": "Close",
-      "offline_warning": "Sharing requires an internet connection"
+      "offline_warning": "Sharing requires an internet connection",
+      "quota_exceeded": "Storage quota reached. Revoke unused shares or delete notes to free up space."
     },
     "note": {
       "menu_label": "Share read-only",

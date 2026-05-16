@@ -16,7 +16,12 @@ export const GET: RequestHandler = async ({ request }) => {
       data: {
         used_bytes: quota.used,
         limit_bytes: quota.limit,
-        usage_percent: quota.percent
+        usage_percent: quota.percent,
+        breakdown: {
+          notes_bytes: quota.breakdown.notes,
+          versions_bytes: quota.breakdown.versions,
+          shares_bytes: quota.breakdown.shares
+        }
       }
     });
   } catch {

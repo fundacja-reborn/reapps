@@ -179,7 +179,12 @@
     "warning": "Sie nähern sich dem Speicherlimit",
     "exceeded": "Speicherlimit überschritten. Löschen oder reduzieren Sie Notizen.",
     "learn_more": "Mehr über das Limit erfahren",
-    "info": "Notizen im Markdown-Format sind sehr leichtgewichtig — eine typische Notiz belegt nur 5–50 KB. 100 MB bedeuten Platz für Tausende von Notizen, abhängig von ihrer Länge und der Anzahl gespeicherter Versionen im Bearbeitungsverlauf. Zum Vergleich — das entspricht Dutzenden von Büchern in Textform. Reborn Apps sind kostenlos und werden von einer gemeinnützigen Stiftung entwickelt — wenn die Nachfrage nach mehr Speicherplatz besteht und die Unterstützung der Community es ermöglicht, werden die Limits erhöht."
+    "info": "Notizen im Markdown-Format sind sehr leichtgewichtig - eine typische Notiz belegt nur 5-50 KB. 100 MB bedeuten Platz für Tausende von Notizen, abhängig von ihrer Länge und der Anzahl gespeicherter Versionen im Bearbeitungsverlauf. Zum Vergleich - das entspricht Dutzenden von Büchern in Textform. Reborn Apps sind kostenlos und werden von einer gemeinnützigen Stiftung entwickelt - wenn die Nachfrage nach mehr Speicherplatz besteht und die Unterstützung der Community es ermöglicht, werden die Limits erhöht.",
+    "breakdown": {
+      "notes": "Notizen",
+      "versions": "Verlauf",
+      "shares": "Freigaben"
+    }
   },
   "folders": {
     "title": "Ordner",
@@ -973,7 +978,8 @@
       "copied": "Kopiert",
       "copy_failed": "Kopieren fehlgeschlagen",
       "close_cta": "Schließen",
-      "offline_warning": "Zum Teilen wird eine Internetverbindung benötigt"
+      "offline_warning": "Zum Teilen wird eine Internetverbindung benötigt",
+      "quota_exceeded": "Speicherlimit erreicht. Widerrufe ungenutzte Freigaben oder lösche Notizen, um Platz freizugeben."
     },
     "note": {
       "menu_label": "Nur-Lese-Freigabe",

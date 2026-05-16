@@ -36,6 +36,9 @@
     quotaLimitBytes,
     quotaPercent,
     quotaLoading,
+    quotaNotesBytes,
+    quotaVersionsBytes,
+    quotaSharesBytes,
     isOverQuota,
     isQuotaWarning,
     refreshQuota
@@ -266,6 +269,24 @@
                     style="width: {Math.min($quotaPercent, 100)}%"
                   ></div>
                 </div>
+                <ul class="ml-8 mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <li>
+                    <span class="font-medium text-foreground">{$t('storage.breakdown.notes')}:</span>
+                    {formatBytes($quotaNotesBytes)}
+                  </li>
+                  <li>
+                    <span class="font-medium text-foreground"
+                      >{$t('storage.breakdown.versions')}:</span
+                    >
+                    {formatBytes($quotaVersionsBytes)}
+                  </li>
+                  <li>
+                    <span class="font-medium text-foreground"
+                      >{$t('storage.breakdown.shares')}:</span
+                    >
+                    {formatBytes($quotaSharesBytes)}
+                  </li>
+                </ul>
                 {#if $isOverQuota}
                   <p class="ml-8 mt-1.5 text-xs text-destructive">{$t('storage.exceeded')}</p>
                 {:else if $isQuotaWarning}

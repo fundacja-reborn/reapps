@@ -13,6 +13,11 @@ export const quotaLimitBytes = writable(0);
 export const quotaPercent = writable(0);
 export const quotaLoading = writable(false);
 
+/** Per-component breakdown of `quotaUsedBytes`. Components sum to the total. */
+export const quotaNotesBytes = writable(0);
+export const quotaVersionsBytes = writable(0);
+export const quotaSharesBytes = writable(0);
+
 /** Whether the user has exceeded their storage quota. */
 export const isOverQuota = derived(
   [quotaUsedBytes, quotaLimitBytes],
@@ -40,6 +45,11 @@ export async function refreshQuota(): Promise<void> {
       quotaUsedBytes.set(json.data.used_bytes);
       quotaLimitBytes.set(json.data.limit_bytes);
       quotaPercent.set(json.data.usage_percent);
+      // Breakdown may be absent on legacy servers - default to zeros.
+      const breakdown = json.data.breakdown ?? {};
+      quotaNotesBytes.set(breakdown.notes_bytes ?? 0);
+      quotaVersionsBytes.set(breakdown.versions_bytes ?? 0);
+      quotaSharesBytes.set(breakdown.shares_bytes ?? 0);
     }
   } catch (err) {
     logger.error('Failed to fetch quota:', err);

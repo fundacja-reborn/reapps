@@ -156,8 +156,15 @@ export const changePasswordLockout = createLoginLockout({ maxFailures: 5, window
 /** Per-userId lockout: 5 failed 2FA disable attempts per 15 min = temporary lockout. */
 export const twoFactorDisableLockout = createLoginLockout({ maxFailures: 5, windowMs: 15 * 60_000 });
 
-/** Share creation (authenticated): 20 new shares per hour per IP. */
-export const shareCreateLimiter = createRateLimiter({ maxRequests: 20, windowMs: 60 * 60_000 });
+/**
+ * Share creation (authenticated): 30 new shares per hour per userId.
+ *
+ * Keyed by userId rather than IP because the endpoint is authenticated - using
+ * the IP would unfairly punish users sharing the same NAT (mobile carriers,
+ * offices, dorms) while doing nothing against an attacker rotating IPs. The
+ * userId is the stable identity that this limit is supposed to bound.
+ */
+export const shareCreateLimiter = createRateLimiter({ maxRequests: 30, windowMs: 60 * 60_000 });
 
 /** Public share view: 100 reads per minute per IP. Generous to support newsletter bursts. */
 export const sharePublicLimiter = createRateLimiter({ maxRequests: 100, windowMs: 60_000 });
