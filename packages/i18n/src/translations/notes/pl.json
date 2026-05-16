@@ -179,7 +179,12 @@
     "warning": "Zbliżasz się do limitu storage",
     "exceeded": "Limit storage przekroczony. Usuń lub zmniejsz notatki.",
     "learn_more": "Dowiedz się więcej o limicie",
-    "info": "Notatki w formacie Markdown są bardzo lekkie — typowa notatka zajmuje zaledwie 5–50 KB. 100 MB to miejsce nawet na tysiące notatek, w zależności od ich długości i liczby zapisanych wersji w historii edycji. Dla porównania — to równowartość kilkudziesięciu książek tekstu. Reborn Apps są darmowe i rozwijane przez fundację non-profit — jeśli pojawi się zapotrzebowanie na większą pojemność, a wsparcie społeczności na to pozwoli, limity zostaną zwiększone."
+    "info": "Notatki w formacie Markdown są bardzo lekkie - typowa notatka zajmuje zaledwie 5-50 KB. 100 MB to miejsce nawet na tysiące notatek, w zależności od ich długości i liczby zapisanych wersji w historii edycji. Dla porównania - to równowartość kilkudziesięciu książek tekstu. Reborn Apps są darmowe i rozwijane przez fundację non-profit - jeśli pojawi się zapotrzebowanie na większą pojemność, a wsparcie społeczności na to pozwoli, limity zostaną zwiększone.",
+    "breakdown": {
+      "notes": "Notatki",
+      "versions": "Historia",
+      "shares": "Udostępnienia"
+    }
   },
   "folders": {
     "title": "Foldery",
@@ -973,7 +978,8 @@
       "copied": "Skopiowano",
       "copy_failed": "Nie udało się skopiować",
       "close_cta": "Zamknij",
-      "offline_warning": "Udostępnianie wymaga połączenia z internetem"
+      "offline_warning": "Udostępnianie wymaga połączenia z internetem",
+      "quota_exceeded": "Osiągnięto limit storage. Wycofaj nieużywane udostępnienia lub usuń notatki, aby zwolnić miejsce."
     },
     "note": {
       "menu_label": "Udostępnij tylko do odczytu",

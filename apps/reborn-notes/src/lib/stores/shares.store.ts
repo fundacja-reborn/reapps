@@ -3,6 +3,7 @@ import { browser } from '$app/environment';
 import { base } from '$app/paths';
 import { authFetch } from '$lib/utils/auth-fetch';
 import { connectivityStore } from '$lib/stores/connectivity.store';
+import { refreshQuota } from '$lib/stores/storage-quota.store';
 import {
   cryptoManager,
   buildShareUrl,
@@ -118,6 +119,9 @@ function createSharesStore() {
         error: null,
         lastFetchedAt: Date.now()
       });
+      // Active shares count toward storage quota - keep the settings UI and
+      // header badges in sync without waiting for the next sync cycle.
+      void refreshQuota();
     } catch (err: unknown) {
       logger.error('Fetch shares failed:', err);
       state.update((s) => ({ ...s, loading: false, error: 'load_failed' }));
@@ -134,6 +138,8 @@ function createSharesStore() {
         ...s,
         shares: s.shares.map((sh) => (sh.slug === slug ? { ...sh, revoked_at: now } : sh))
       }));
+      // Revoke frees quota immediately (server filters revoked_at IS NULL).
+      void refreshQuota();
       return true;
     } catch (err: unknown) {
       logger.error('Revoke failed:', err);

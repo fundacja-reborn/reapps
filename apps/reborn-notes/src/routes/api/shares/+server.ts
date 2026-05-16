@@ -26,6 +26,7 @@ import { hashPassword } from '@reborn/crypto';
 import { getUserFromToken } from '$lib/server/auth';
 import { generateUniqueShareSlug } from '$lib/server/shares';
 import { shareCreateLimiter } from '$lib/server/rate-limit';
+import { checkQuota } from '$lib/server/storage-quota';
 
 const logger = createLogger('Notes-API-Shares');
 
@@ -54,6 +55,22 @@ export const POST: RequestHandler = async (event) => {
     }
     const { payload_encrypted, owner_key_wrapped, expires_in_seconds, password, max_access_count } =
       validation.data;
+
+    // Active shares count toward the user's storage quota. Payload is base64
+    // ASCII so `.length` equals byte count (same as OCTET_LENGTH server-side).
+    const payloadSize = payload_encrypted.length;
+    const quota = await checkQuota(userId, payloadSize);
+    if (!quota.allowed) {
+      return json(
+        {
+          success: false,
+          error: 'QUOTA_EXCEEDED',
+          used: quota.used,
+          limit: quota.limit
+        },
+        { status: 413 }
+      );
+    }
 
     const now = new Date();
     const effectiveExpiry =

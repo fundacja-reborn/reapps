@@ -179,7 +179,12 @@
     "warning": "Vous approchez de la limite de stockage",
     "exceeded": "Limite de stockage dépassée. Supprimez ou réduisez des notes.",
     "learn_more": "En savoir plus sur la limite",
-    "info": "Les notes au format Markdown sont très légères — une note typique ne fait que 5 à 50 Ko. 100 Mo signifient de la place pour des milliers de notes, selon leur longueur et le nombre de versions enregistrées dans l'historique d'édition. À titre de comparaison — c'est l'équivalent de dizaines de livres en texte. Reborn Apps sont gratuites et développées par une fondation à but non lucratif — s'il y a une demande de stockage supplémentaire et que le soutien de la communauté le permet, les limites seront augmentées."
+    "info": "Les notes au format Markdown sont très légères - une note typique ne fait que 5 à 50 Ko. 100 Mo signifient de la place pour des milliers de notes, selon leur longueur et le nombre de versions enregistrées dans l'historique d'édition. À titre de comparaison - c'est l'équivalent de dizaines de livres en texte. Reborn Apps sont gratuites et développées par une fondation à but non lucratif - s'il y a une demande de stockage supplémentaire et que le soutien de la communauté le permet, les limites seront augmentées.",
+    "breakdown": {
+      "notes": "Notes",
+      "versions": "Historique",
+      "shares": "Partages"
+    }
   },
   "folders": {
     "title": "Dossiers",
@@ -973,7 +978,8 @@
       "copied": "Copié",
       "copy_failed": "Échec de la copie",
       "close_cta": "Fermer",
-      "offline_warning": "Le partage nécessite une connexion internet"
+      "offline_warning": "Le partage nécessite une connexion internet",
+      "quota_exceeded": "Quota de stockage atteint. Révoquez des partages inutilisés ou supprimez des notes pour libérer de l'espace."
     },
     "note": {
       "menu_label": "Partager en lecture seule",
