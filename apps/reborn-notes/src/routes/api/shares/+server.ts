@@ -26,7 +26,6 @@ import { hashPassword } from '@reborn/crypto';
 import { getUserFromToken } from '$lib/server/auth';
 import { generateUniqueShareSlug } from '$lib/server/shares';
 import { shareCreateLimiter } from '$lib/server/rate-limit';
-import { getClientIp } from '$lib/server/client-ip';
 
 const logger = createLogger('Notes-API-Shares');
 
@@ -35,9 +34,10 @@ export const POST: RequestHandler = async (event) => {
     const userId = await getUserFromToken(event.request.headers.get('authorization'));
     if (!userId) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
-    const ip = getClientIp(event);
-    if (!shareCreateLimiter.check(ip)) {
-      const retryAfter = shareCreateLimiter.retryAfter(ip);
+    // Limiter keyed by userId (not IP): the endpoint is authenticated, so the
+    // stable identity is the user, not the network path. See rate-limit.ts.
+    if (!shareCreateLimiter.check(userId)) {
+      const retryAfter = shareCreateLimiter.retryAfter(userId);
       return json(
         { success: false, error: 'Too many shares created. Try again later.' },
         { status: 429, headers: { 'Retry-After': String(retryAfter) } }
