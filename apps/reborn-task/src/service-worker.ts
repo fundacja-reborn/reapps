@@ -174,6 +174,18 @@ sw.addEventListener('fetch', (event) => {
 	// Ignore POST requests etc
 	if (event.request.method !== 'GET') return;
 
+	// Public read-only share routes (`${base}/s/<slug>`) and their API endpoint
+	// (`${base}/api/shares/<slug>`) are capability URLs that must always go to
+	// the network: max_access_count enforcement and revocation must reflect the
+	// server's current state on every open, so serving any cached response here
+	// would defeat the access-count gate and let revoked shares keep opening.
+	const sharePath = `${base}/s/`;
+	const shareApiPath = `${base}/api/shares/`;
+	const reqUrl = new URL(event.request.url);
+	if (reqUrl.pathname.startsWith(sharePath) || reqUrl.pathname.startsWith(shareApiPath)) {
+		return;
+	}
+
 	async function respond() {
 		const url = new URL(event.request.url);
 		const cache = await caches.open(CACHE);

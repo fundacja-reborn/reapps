@@ -67,6 +67,7 @@ const TASKS_MODULE_FILES = [
   'profile',
   'search',
   'settings',
+  'share',
   'sync',
   'task',
   'taskList',
@@ -104,6 +105,17 @@ export interface I18nOptions {
   initialLocale?: SupportedLocale;
   loadingDelay?: number;
   apps: TranslationModule[];
+  /**
+   * Whether to persist the active locale to `localStorage` under
+   * `LOCALE_STORAGE_KEY`. Defaults to `true` for the main app surfaces.
+   *
+   * Public, unauthenticated routes (e.g. the share-snapshot viewer at
+   * `/s/[slug]`) should pass `false`: a guest visitor's browser locale
+   * should not seed `preferred_language` for the origin, otherwise it
+   * would later be picked up as the default for the account they may
+   * register from the same browser.
+   */
+  persistPreference?: boolean;
 }
 
 /**
@@ -188,7 +200,8 @@ export async function setupI18n(options: I18nOptions) {
     fallbackLocale = DEFAULT_LOCALE,
     initialLocale = getBrowserLocale(),
     loadingDelay = 200,
-    apps
+    apps,
+    persistPreference = true
   } = options;
 
   // Load translations for all supported locales and requested modules
@@ -258,19 +271,21 @@ export async function setupI18n(options: I18nOptions) {
     warnOnMissingMessages: true
   });
 
-  // Save initial locale preference only if no existing preference is stored.
-  // Without this guard, a browser-detected locale (e.g. 'en' from navigator.language)
-  // would overwrite the user's saved preference on every page load.
-  if (typeof window !== 'undefined' && !localStorage.getItem(LOCALE_STORAGE_KEY)) {
-    saveLocalePreference(initialLocale);
-  }
-
-  // Subscribe to locale changes to save preference
-  svelteLocale.subscribe(($locale: string | null | undefined) => {
-    if ($locale && SUPPORTED_LOCALES.includes($locale as SupportedLocale)) {
-      saveLocalePreference($locale as SupportedLocale);
+  if (persistPreference) {
+    // Save initial locale preference only if no existing preference is stored.
+    // Without this guard, a browser-detected locale (e.g. 'en' from navigator.language)
+    // would overwrite the user's saved preference on every page load.
+    if (typeof window !== 'undefined' && !localStorage.getItem(LOCALE_STORAGE_KEY)) {
+      saveLocalePreference(initialLocale);
     }
-  });
+
+    // Subscribe to locale changes to save preference
+    svelteLocale.subscribe(($locale: string | null | undefined) => {
+      if ($locale && SUPPORTED_LOCALES.includes($locale as SupportedLocale)) {
+        saveLocalePreference($locale as SupportedLocale);
+      }
+    });
+  }
 }
 
 /**

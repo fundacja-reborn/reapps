@@ -30,7 +30,8 @@
     Shield,
     CalendarCheck,
     CalendarRange,
-    CalendarDays
+    CalendarDays,
+    Share2
   } from '@lucide/svelte';
   import * as Tooltip from '@reborn/ui/components/tooltip';
   import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
@@ -43,6 +44,8 @@
   import { periodicNotesSettings } from '$lib/stores/app-settings.store';
   import { formatRange } from '$lib/services/periodic-notes-format';
   import type { PeriodicKind } from '@reborn/storage';
+  import { activeSharesCount } from '$lib/stores/shares.store';
+  import ManageSharesDialog from '../notes/ManageSharesDialog.svelte';
 
   let {
     activeSection = $bindable<Section>('all'),
@@ -67,6 +70,7 @@
   const isMobileQuery = useIsMobile();
   let loggingOut = $state(false);
   let userSheetOpen = $state(false);
+  let sharesDialogOpen = $state(false);
 
   // Refresh `now` every minute so tooltips stay accurate across midnight /
   // week boundary / month boundary without forcing the user to reload.
@@ -211,6 +215,28 @@
         <span class="text-[11px] leading-none">{periodicLabel(p.kind)}</span>
       </button>
     {/each}
+    <!-- Shares (always visible, count badge when > 0) -->
+    <button
+      type="button"
+      onclick={() => (sharesDialogOpen = true)}
+      class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
+        text-muted-foreground hover:bg-sidebar-accent/60"
+      aria-label={$t('nav.shares')}
+    >
+      <span class="relative">
+        <Share2 class="h-5 w-5" />
+        {#if $activeSharesCount > 0}
+          <span
+            class="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center
+              rounded-full bg-foreground/15 text-[8px] font-medium leading-none text-muted-foreground px-0.5"
+            aria-label="{$activeSharesCount} {$t('nav.shares')}"
+          >
+            {$activeSharesCount > 99 ? '99+' : $activeSharesCount}
+          </span>
+        {/if}
+      </span>
+      <span class="text-[11px] leading-none">{$t('nav.shares')}</span>
+    </button>
     <!-- Trash -->
     <button
       type="button"
@@ -362,6 +388,36 @@
       </Tooltip.Root>
     {/each}
 
+    <!-- Shares (always visible, count badge when > 0) -->
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <button
+            {...props}
+            type="button"
+            onclick={() => (sharesDialogOpen = true)}
+            class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg
+                   text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+            aria-label={$t('nav.shares')}
+          >
+            <span class="relative">
+              <Share2 class="h-6 w-6 md:h-5 md:w-5" />
+              {#if $activeSharesCount > 0}
+                <span
+                  class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center
+                    rounded-full bg-foreground/15 text-[9px] font-medium leading-none text-muted-foreground px-0.5"
+                  aria-label="{$activeSharesCount} {$t('nav.shares')}"
+                >
+                  {$activeSharesCount > 99 ? '99+' : $activeSharesCount}
+                </span>
+              {/if}
+            </span>
+          </button>
+        {/snippet}
+      </Tooltip.Trigger>
+      <Tooltip.Content side="right" sideOffset={6}>{$t('nav.shares')}</Tooltip.Content>
+    </Tooltip.Root>
+
     <!-- Trash -->
     <Tooltip.Root>
       <Tooltip.Trigger>
@@ -483,6 +539,9 @@
     {/if}
   </nav>
 {/if}
+
+<!-- Shares manage dialog (mounted once, used by both nav modes) -->
+<ManageSharesDialog bind:open={sharesDialogOpen} sourceId={null} />
 
 <!-- Mobile: User menu Sheet -->
 <Sheet bind:open={userSheetOpen}>

@@ -30,6 +30,7 @@
   import ConfirmDialog from './shared/ConfirmDialog.svelte';
   import NoteListItemComponent from './notes/NoteListItem.svelte';
   import NoteActionSheet from './notes/NoteActionSheet.svelte';
+  import ShareNoteDialog from './notes/ShareNoteDialog.svelte';
   import NoteListSearchBar from './notes/NoteListSearchBar.svelte';
   import NoteListSortMenu from './notes/NoteListSortMenu.svelte';
   import MoveToFolderMenu from './notes/MoveToFolderMenu.svelte';
@@ -77,6 +78,18 @@
   });
 
   onDestroy(() => observer?.disconnect());
+
+  // ── Share dialog state ─────────────────────────────────────────
+  let shareDialogOpen = $state(false);
+  let shareNoteId = $state<string | null>(null);
+  let shareNoteTitle = $state<string>('');
+
+  function handleShare(note: NoteListItem, e?: Event) {
+    e?.stopPropagation();
+    shareNoteId = note.id;
+    shareNoteTitle = note.title ?? '';
+    shareDialogOpen = true;
+  }
 
   let {
     activeFolderName = '',
@@ -790,6 +803,7 @@
             onmove={handleMove}
             onexport={handleExportNote}
             oncopylink={handleCopyNoteLink}
+            onshare={handleShare}
             ondelete={handleDelete}
             onrestore={handleRestore}
             onpermanentdelete={handlePermanentDelete}
@@ -813,6 +827,7 @@
   onmove={openMoveMenu}
   onexport={handleExportNote}
   oncopylink={handleCopyNoteLink}
+  onshare={(note) => handleShare(note)}
   ondelete={handleDelete}
   onrestore={handleRestore}
   onpermanentdelete={handlePermanentDelete}
@@ -891,3 +906,7 @@
   destructive
   onConfirm={confirmBulkPermanentDelete}
 />
+
+{#if shareNoteId}
+  <ShareNoteDialog bind:open={shareDialogOpen} noteId={shareNoteId} noteTitle={shareNoteTitle} />
+{/if}

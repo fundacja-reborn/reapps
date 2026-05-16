@@ -12,6 +12,7 @@
 		Star,
 		MoreVertical,
 		ArrowRight,
+		Share2,
 		Trash2,
 		PenLine,
 		Loader2,
@@ -21,6 +22,7 @@
 	import { t } from '$lib/stores/i18n.store';
 	import { cn } from '@reborn/ui';
 	import { taskDetailService } from '$lib/services/task-detail.service';
+	import TaskShareIndicator from '$lib/components/tasks/TaskShareIndicator.svelte';
 
 	interface Props {
 		list: ListDecrypted | null;
@@ -28,6 +30,7 @@
 		onToggleCompleted: () => void;
 		onToggleStarred: () => void;
 		onOpenMoveDialog: () => void;
+		onOpenShareDialog?: () => void;
 		onOpenDeleteDialog: () => void;
 		onNavigateToList?: () => void;
 	}
@@ -38,6 +41,7 @@
 		onToggleCompleted,
 		onToggleStarred,
 		onOpenMoveDialog,
+		onOpenShareDialog,
 		onOpenDeleteDialog,
 		onNavigateToList
 	}: Props = $props();
@@ -86,6 +90,9 @@
 		<!-- Task actions (right aligned) -->
 		{#if task}
 			<div class="flex items-center gap-2 flex-shrink-0">
+				<!-- Active share indicator (only when this task has live shares) -->
+				<TaskShareIndicator taskId={task?.id ?? null} onCreateNew={onOpenShareDialog} />
+
 				<!-- Save status indicator -->
 				{#if saveStatus === 'dirty'}
 					<PenLine class="h-4 w-4 text-amber-500" />
@@ -169,6 +176,12 @@
 								<ArrowRight class="mr-2 h-4 w-4" />
 								{$t('tasks.move_to_list')}
 							</DropdownMenu.Item>
+							{#if onOpenShareDialog}
+								<DropdownMenu.Item onclick={onOpenShareDialog}>
+									<Share2 class="mr-2 h-4 w-4" />
+									{$t('share.task.menu_label')}
+								</DropdownMenu.Item>
+							{/if}
 							<DropdownMenu.Separator />
 							<DropdownMenu.Item class="text-destructive" onclick={onOpenDeleteDialog}>
 								<Trash2 class="mr-2 h-4 w-4" />
@@ -235,6 +248,20 @@
 					<ArrowRight class="mr-2 h-4 w-4" />
 					{$t('tasks.move_to_list')}
 				</Button>
+
+				{#if onOpenShareDialog}
+					<Button
+						variant="ghost"
+						class="justify-start"
+						onclick={() => {
+							mobileMenuOpen = false;
+							onOpenShareDialog?.();
+						}}
+					>
+						<Share2 class="mr-2 h-4 w-4" />
+						{$t('share.task.menu_label')}
+					</Button>
+				{/if}
 
 				<div class="h-px bg-border my-2"></div>
 

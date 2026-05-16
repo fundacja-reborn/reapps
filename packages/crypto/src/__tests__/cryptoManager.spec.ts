@@ -389,10 +389,16 @@ describe('CryptoManager', () => {
   });
 
   describe('wasKeyRestoreAttempted', () => {
-    it('should be true after constructor completes (no saved key)', async () => {
-      // With lazy Promise pattern, restoreKeyAttempted is set to true
-      // immediately in constructor when no key is in sessionStorage
-      expect(manager.wasKeyRestoreAttempted()).toBe(true);
+    it('should be false until waitForRestore() is called (lazy init)', async () => {
+      // Restoration is now deferred until the first ensureRestoreStarted()
+      // call (guideline 59 rule #12) so that the public share view, which
+      // imports @reborn/crypto without ever needing the master key, doesn't
+      // allocate the reborn_crypto_keys IndexedDB for anonymous viewers.
+      const newManager = new (CryptoManager as any)();
+      expect(newManager.wasKeyRestoreAttempted()).toBe(false);
+
+      await newManager.waitForRestore();
+      expect(newManager.wasKeyRestoreAttempted()).toBe(true);
     });
 
     it('should be true after restore when key was saved', async () => {

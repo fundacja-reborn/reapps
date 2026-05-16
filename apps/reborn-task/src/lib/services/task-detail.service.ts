@@ -66,6 +66,9 @@ class TaskDetailService {
 	private pendingTitle: string | null = null;
 	private pendingDescription: string | null = null;
 
+	// Deferred-reset flag: see reset() for why we defer to a microtask.
+	private pendingReset = false;
+
 	constructor() {
 		// Reset timers on cleanup
 	}
@@ -129,6 +132,10 @@ class TaskDetailService {
 	 * Load and decrypt task
 	 */
 	async loadTask(taskId: string, options?: { silent?: boolean }): Promise<void> {
+		// A new page mount is taking over - cancel any reset queued by the
+		// previous mount's cleanup so the store state survives the remount.
+		this.pendingReset = false;
+
 		const state = get(this.state);
 
 		if (!taskId) {
@@ -640,9 +647,29 @@ class TaskDetailService {
 	}
 
 	/**
-	 * Reset service state
+	 * Reset service state.
+	 *
+	 * Deferred to a microtask: if a new page mount calls loadTask() before the
+	 * microtask fires, the reset is cancelled. This eliminates the destroy/
+	 * remount race that flips decryptedTask to null mid-flush during a Svelte 5
+	 * reactive batch (e.g. when DevTools mobile-mode toggle remounts the page
+	 * subtree). Without the defer, lazy prop-getter expressions in the page
+	 * template - which Svelte 5 compiles to `get foo() { return decryptedTask.x }`
+	 * closures evaluated lazily by child components during the same flush -
+	 * read field-of-null and throw, breaking the batch and leaving taskTitle/
+	 * taskDescription stuck on empty placeholders even after loadTask resolves.
 	 */
 	reset(): void {
+		if (this.pendingReset) return;
+		this.pendingReset = true;
+		queueMicrotask(() => {
+			if (!this.pendingReset) return;
+			this.pendingReset = false;
+			this.doReset();
+		});
+	}
+
+	private doReset(): void {
 		this.clearTimers();
 		this.pendingTitle = null;
 		this.pendingDescription = null;

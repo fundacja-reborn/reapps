@@ -9,6 +9,7 @@
     Folder,
     Download,
     Link2,
+    Share2,
     Trash2,
     RotateCcw,
     Trash
@@ -46,6 +47,7 @@
     onmove,
     onexport,
     oncopylink,
+    onshare,
     ondelete,
     onrestore,
     onpermanentdelete
@@ -69,6 +71,7 @@
     onmove: (noteId: string, folderId: string | null, e?: Event) => void;
     onexport: (note: NoteListItem, e?: Event) => void;
     oncopylink: (note: NoteListItem, e?: Event) => void;
+    onshare?: (note: NoteListItem, e?: Event) => void;
     ondelete: (noteId: string, e?: Event) => void;
     onrestore: (noteId: string, e?: Event) => void;
     onpermanentdelete: (noteId: string, e?: Event) => void;
@@ -271,6 +274,12 @@
                 <Link2 class="h-3.5 w-3.5" />
                 {$t('notes.copy_note_link')}
               </DropdownMenuItem>
+              {#if onshare}
+                <DropdownMenuItem onclick={(e) => onshare?.(note, e)}>
+                  <Share2 class="h-3.5 w-3.5" />
+                  {$t('share.note.menu_label')}
+                </DropdownMenuItem>
+              {/if}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 class="text-destructive focus:text-destructive"

@@ -33,6 +33,7 @@ export { prisma } from './client';
 export * from '../src/generated/prisma/client';
 export { Prisma, PrismaClient } from '../src/generated/prisma/client';
 export { findIdempotencyKey, storeIdempotencyResponse, cleanupExpiredKeys } from '../src/idempotency';
+export { cleanupExpiredShares } from '../src/share';
 `;
 
     const clientDtsContent = `import { PrismaClient } from '../src/generated/prisma/client';

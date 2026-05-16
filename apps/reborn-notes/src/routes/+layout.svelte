@@ -17,6 +17,7 @@
   import { tagsStore } from '$lib/stores/tags.store';
   import { notesStore } from '$lib/stores/notes.store';
   import { authStore } from '$lib/stores/auth.store';
+  import { sharesStore } from '$lib/stores/shares.store';
   import { pullFromServer, pushPendingItems, refreshStoresAfterPull } from '$lib/services/notes-sync.service';
   import { verifyAndRebuildLocalShadowIndexes } from '$lib/services/shadow-index-reconciler.service';
   import { noteIndex } from '$lib/services/note-index.svelte';
@@ -49,7 +50,10 @@
       path.startsWith(`${basePath}/auth/unlock`) ||
       path.startsWith(`${basePath}/auth/2fa`);
 
-    if (!$authStore.isAuthenticated && !isAuthRoute) {
+    // Public read-only share view (/s/{slug}) - no account needed.
+    const isPublicShareRoute = path.startsWith(`${basePath}/s/`);
+
+    if (!$authStore.isAuthenticated && !isAuthRoute && !isPublicShareRoute) {
       untrack(() => noteIndex.clear());
       untrack(() => {
         goto('/auth/login');
@@ -57,7 +61,7 @@
       return;
     }
 
-    if ($authStore.isAuthenticated && !$authStore.hasE2E && !isAuthRoute) {
+    if ($authStore.isAuthenticated && !$authStore.hasE2E && !isAuthRoute && !isPublicShareRoute) {
       untrack(() => noteIndex.clear());
       untrack(() => {
         goto('/auth/unlock');
@@ -123,6 +127,20 @@
     const handleSchemeChange = () => applyTheme('system');
 
     const init = async () => {
+      // Public read-only share view (/s/[slug]) bypass: no auth, no IndexedDB,
+      // no sync needed. The snapshot page fetches its own ciphertext and
+      // decrypts client-side with the URL-fragment key. Without this guard,
+      // initializeStorage() would create an empty Reborn_notes_DB in the
+      // visitor's browser - bloat + storage pollution for anonymous viewers.
+      // The theme-flash inline script in app.html has already applied the
+      // right dark/light class from localStorage + prefers-color-scheme, so
+      // we don't need appSettings.init() either. See guideline 59.
+      const basePath = base || '';
+      if (window.location.pathname.startsWith(`${basePath}/s/`)) {
+        appReady = true;
+        return;
+      }
+
       // 1. Wait for CryptoManager to restore key from sessionStorage (if any)
       await cryptoManager.waitForRestore();
 
@@ -148,6 +166,12 @@
       //     IDB size (typically <1s). Re-runs on next boot if user_id repair
       //     was skipped because auth wasn't ready.
       await cleanupNullFkFields(get(authStore).userId);
+
+      // 3. Wire the shares store so the per-note badge / IconNav badge stay in
+      //    sync across lock/unlock cycles. init() is idempotent and self-guards
+      //    on crypto.isInitialized() - safe to call here even on a fresh app
+      //    boot before the user has unlocked their master key. See guideline 59.
+      sharesStore.init();
 
       // 4. Mark app as ready - unblocks auth guard $effect
       appReady = true;
@@ -272,6 +296,12 @@
     const vv = window.visualViewport;
 
     const update = () => {
+      // Public share view (/s/[slug]) opts out of the body scroll-lock so the
+      // page can use the native browser scrollbar. Skip the safety reset and
+      // visual-viewport tracking here - none of it applies to the read-only
+      // share page (no contenteditable, no keyboard, no mobile note panel).
+      if (root.classList.contains('share-view')) return;
+
       if (root.scrollTop !== 0) root.scrollTop = 0;
       if (document.body.scrollTop !== 0) document.body.scrollTop = 0;
 

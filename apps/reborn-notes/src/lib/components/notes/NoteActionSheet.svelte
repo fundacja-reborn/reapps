@@ -8,6 +8,7 @@
     Download,
     FileText,
     Link2,
+    Share2,
     ScanEye,
     Trash2,
     RotateCcw,
@@ -28,6 +29,7 @@
     onexport,
     onexportpdf,
     oncopylink,
+    onshare,
     ondelete,
     onrestore,
     onpermanentdelete,
@@ -41,9 +43,11 @@
     onstar: (id: string) => void;
     onmove: (id: string) => void;
     onexport: (note: NoteListItem) => void;
-    /** Optional — only shown in the open-note context (NoteList omits it). */
+    /** Optional - only shown in the open-note context (NoteList omits it). */
     onexportpdf?: (note: NoteListItem) => void;
     oncopylink: (note: NoteListItem) => void;
+    /** Opens read-only share dialog. */
+    onshare?: (note: NoteListItem) => void;
     ondelete: (id: string) => void;
     onrestore: (id: string) => void;
     onpermanentdelete: (id: string) => void;
@@ -138,6 +142,21 @@
           <Link2 class="mr-2 h-4 w-4" />
           {$t('notes.copy_note_link')}
         </Button>
+        {#if onshare}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => {
+              if (note) {
+                open = false;
+                onshare?.(note);
+              }
+            }}
+          >
+            <Share2 class="mr-2 h-4 w-4" />
+            {$t('share.note.menu_label')}
+          </Button>
+        {/if}
         {#if onhistory}
           <Button
             variant="ghost"

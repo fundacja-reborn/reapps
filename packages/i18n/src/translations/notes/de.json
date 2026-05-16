@@ -6,6 +6,7 @@
     "folders": "Ordner",
     "tags": "Tags",
     "trash": "Papierkorb",
+    "shares": "Freigaben",
     "new_note": "Neue Notiz",
     "new_short": "Neu",
     "settings": "Einstellungen",
@@ -315,6 +316,8 @@
     "image_cancel": "Abbrechen",
     "image_load": "Bild laden",
     "image_load_all": "Alle Bilder laden",
+    "image_load_all_hint": "Externe Bilder werden nicht automatisch geladen, um deine IP-Adresse vor Drittanbieter-Servern zu schützen.",
+    "image_load_all_settings_link": "In Darstellungseinstellungen ändern",
     "image_base64_blocked": "Eingebettete Bilder (Base64) werden nicht unterstützt. Verwenden Sie stattdessen eine externe Bild-URL.",
     "image_paste_blocked": "Das direkte Einfügen von Bildern wird nicht unterstützt. Laden Sie das Bild auf einen Hosting-Dienst hoch und fügen Sie die URL ein.",
     "image_drop_blocked": "Das Ablegen von Bilddateien wird nicht unterstützt. Laden Sie das Bild auf einen Hosting-Dienst hoch und verwenden Sie die URL.",
@@ -937,5 +940,146 @@
     "offline_title": "Sie sind offline",
     "offline_description": "Diese Seite ist offline nicht verfügbar. Stellen Sie eine Internetverbindung her und versuchen Sie es erneut.",
     "retry": "Erneut versuchen"
+  },
+  "share": {
+    "create": {
+      "cta": "Link erstellen",
+      "creating": "Wird erstellt…",
+      "expires_label": "Läuft ab nach",
+      "expires": {
+        "1d": "1 Tag",
+        "7d": "7 Tagen",
+        "30d": "30 Tagen",
+        "never": "Nie"
+      },
+      "display_name_label": "Anzeigename (optional)",
+      "display_name_placeholder": "Standardmäßig der Titel",
+      "display_name_hint": "Wird in der Snapshot-Kopfzeile anstelle des ursprünglichen Titels angezeigt.",
+      "sender_label": "Absender-Bezeichnung (optional)",
+      "sender_label_placeholder": "Dein Name",
+      "password_toggle": "Mit Passwort schützen",
+      "password_placeholder": "Passwort",
+      "password_confirm_placeholder": "Passwort bestätigen",
+      "password_mismatch": "Passwörter stimmen nicht überein",
+      "password_too_short": "Mindestens 8 Zeichen",
+      "max_opens_label": "Maximale Aufrufe",
+      "max_opens_unlimited": "Unbegrenzt",
+      "max_opens_placeholder": "z. B. 5",
+      "max_opens_hint": "Jeder Seitenaufruf zählt als eine Öffnung.",
+      "max_opens_invalid": "Bitte eine Zahl zwischen 1 und 1000 eingeben.",
+      "max_opens_self_destruct_hint": "Der Link zerstört sich nach der ersten Öffnung selbst. 24 Stunden lang siehst du noch den letzten Zugriffszeitpunkt in den Einstellungen, danach wird der Datensatz endgültig gelöscht.",
+      "success_title": "Link bereit",
+      "copy_link": "Link kopieren",
+      "copied": "Kopiert",
+      "copy_failed": "Kopieren fehlgeschlagen",
+      "close_cta": "Schließen",
+      "offline_warning": "Zum Teilen wird eine Internetverbindung benötigt"
+    },
+    "note": {
+      "menu_label": "Nur-Lese-Freigabe",
+      "dialog_header": "Notiz nur lesbar freigeben"
+    },
+    "view": {
+      "loading": "Wird geladen…",
+      "error_title": "Freigabe kann nicht angezeigt werden",
+      "read_only_badge": "Schreibgeschützter Schnappschuss",
+      "untitled": "Ohne Titel",
+      "missing_key": "Der Link ist unvollständig - der Entschlüsselungsschlüssel (nach #) fehlt. Bitte prüfe, ob du die vollständige URL kopiert hast.",
+      "not_found": "Diese Freigabe existiert nicht oder wurde widerrufen.",
+      "expired": "Diese Freigabe ist abgelaufen.",
+      "exhausted": "Diese Freigabe hat ihr Aufrufslimit erreicht.",
+      "opens_progress": "Aufrufe {used}/{max}",
+      "decrypt_failed": "Inhalt konnte nicht entschlüsselt werden. Der Schlüssel ist möglicherweise ungültig.",
+      "password_prompt": "Diese Freigabe ist passwortgeschützt",
+      "password_intro": "Ende-zu-Ende-verschlüsselter Snapshot einer Notiz. Gib das Passwort ein, um ihn zu öffnen.",
+      "password_submit": "Öffnen",
+      "password_wrong": "Falsches Passwort",
+      "shared_at": "Geteilt {relative}",
+      "shared_by": "Geteilt von {label}",
+      "note_label": "Notiz: {label}",
+      "expires_in": "Läuft ab {relative}",
+      "powered_by": "Bereitgestellt von Reborn Apps",
+      "footer_shared_from": "Geteilt aus {app}",
+      "footer_e2e_encrypted": "Ende-zu-Ende-verschlüsselt",
+      "images_privacy_note": "Diese Notiz enthält externe Bilder. Damit Ihr Besuch privat bleibt, werden sie erst nach einem Klick geladen.",
+      "gate": {
+        "title": {
+          "missing_key": "Unvollständiger Link",
+          "not_found": "Freigabe nicht gefunden",
+          "expired": "Link abgelaufen",
+          "revoked": "Zugriff widerrufen",
+          "exhausted": "Öffnungslimit erreicht",
+          "decrypt_failed": "Entschlüsselung fehlgeschlagen",
+          "error": "Etwas ist schiefgegangen"
+        },
+        "hint": {
+          "missing_key": "Stelle sicher, dass du die gesamte URL kopiert hast, einschließlich des Teils nach `#`.",
+          "not_found": "Der Absender hat sie möglicherweise entfernt, oder der Link wurde falsch übertragen.",
+          "expired": "Bitte den Absender um einen neuen Link.",
+          "revoked": "Der Absender hat das Teilen dieses Snapshots beendet.",
+          "exhausted": "Diese Freigabe hat ihr Öffnungslimit erreicht. Bitte den Absender um einen neuen Link.",
+          "decrypt_failed": "Überprüfe die URL oder bitte den Absender um eine erneute Freigabe.",
+          "error": "Bitte versuche es gleich noch einmal."
+        },
+        "cta_learn_more": "Mehr über {app} erfahren"
+      },
+      "note": {
+        "tags_label": "Tags"
+      }
+    },
+    "list": {
+      "title": "Aktive Freigaben",
+      "settings_title": "Aktive Freigaben",
+      "settings_desc": "Verwalte schreibgeschützte öffentliche Links zu deinen Notizen",
+      "empty": "Du hast keine aktiven Freigaben.",
+      "error_load": "Freigaben konnten nicht geladen werden.",
+      "error_load_offline_hint": "Du scheinst offline zu sein. Prüfe deine Verbindung und versuche es erneut.",
+      "error_load_stale_banner": "Konnte nicht aktualisiert werden - es wird die zuletzt geladene Liste angezeigt.",
+      "retry_action": "Erneut versuchen",
+      "column": {
+        "created": "Erstellt",
+        "expires": "Läuft ab",
+        "access_count": "Aufrufe",
+        "last_accessed": "Letzter Aufruf",
+        "actions": "Aktionen"
+      },
+      "no_local_key_hint": "Auf einem anderen Gerät erstellt - nur Widerruf möglich",
+      "password_protected": "Passwortgeschützt",
+      "revoked_label": "Widerrufen",
+      "exhausted_label": "Limit erreicht",
+      "revoke_action": "Widerrufen",
+      "revoke_error": "Freigabe konnte nicht widerrufen werden",
+      "revoked_toast": "Freigabe widerrufen",
+      "confirm_revoke_title": "Freigabe widerrufen?",
+      "confirm_revoke_desc": "Der Link funktioniert sofort nicht mehr.",
+      "untitled": "(ohne Titel)",
+      "decrypting": "Wird entschlüsselt…",
+      "decrypt_failed": "Snapshot konnte nicht entschlüsselt werden",
+      "preview_action": "Vorschau",
+      "preview_hint": "Die Vorschau zählt nicht zum Öffnungslimit.",
+      "preview_dialog_title": "Snapshot-Vorschau",
+      "show_link": "Link anzeigen",
+      "hide_link": "Link verbergen",
+      "type": {
+        "note": "Notiz",
+        "task": "Aufgabe"
+      }
+    },
+    "indicator": {
+      "label": "Geteilt",
+      "tooltip": "Diese Notiz hat {count} aktive Freigabe(n)",
+      "aria_label": "{count} aktive Freigabe(n) für diese Notiz",
+      "create_tooltip": "Diese Notiz teilen"
+    },
+    "manage": {
+      "dialog_title": "Aktive Freigaben",
+      "for_note_title": "Freigaben dieser Notiz",
+      "for_task_title": "Freigaben dieser Aufgabe",
+      "for_note_description": "Schreibgeschützte Links zu dieser Notiz. Kopieren oder zurückziehen nach Bedarf.",
+      "for_task_description": "Schreibgeschützte Links zu dieser Aufgabe. Kopieren oder zurückziehen nach Bedarf.",
+      "empty_for_note": "Diese Notiz hat keine aktiven Freigaben.",
+      "empty_for_task": "Diese Aufgabe hat keine aktiven Freigaben.",
+      "create_new_cta": "Neue Freigabe erstellen"
+    }
   }
 }

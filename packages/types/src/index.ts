@@ -17,6 +17,9 @@ export * from './api/responses';
 // Storage types
 export * from './storage';
 
+// Shared read-only snapshot types
+export * from './share';
+
 // Database types for API compatibility
 export * from './database';
 

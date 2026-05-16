@@ -1,0 +1,145 @@
+{
+  "create": {
+    "cta": "Create link",
+    "creating": "Creating…",
+    "expires_label": "Expires after",
+    "expires": {
+      "1d": "1 day",
+      "7d": "7 days",
+      "30d": "30 days",
+      "never": "Never"
+    },
+    "display_name_label": "Display name (optional)",
+    "display_name_placeholder": "Defaults to the title",
+    "display_name_hint": "Shown in the snapshot header instead of the original title.",
+    "sender_label": "Sender label (optional)",
+    "sender_label_placeholder": "Your name",
+    "password_toggle": "Protect with password",
+    "password_placeholder": "Password",
+    "password_confirm_placeholder": "Confirm password",
+    "password_mismatch": "Passwords do not match",
+    "password_too_short": "Minimum 8 characters",
+    "max_opens_label": "Max opens",
+    "max_opens_unlimited": "Unlimited",
+    "max_opens_placeholder": "e.g. 5",
+    "max_opens_hint": "Each page load counts as one open.",
+    "max_opens_invalid": "Enter a number between 1 and 1000.",
+    "max_opens_self_destruct_hint": "The share will self-destruct after the first open. For 24 hours you'll still see the last access time in Settings, then the record is permanently deleted.",
+    "success_title": "Link ready",
+    "copy_link": "Copy link",
+    "copied": "Copied",
+    "copy_failed": "Failed to copy",
+    "close_cta": "Close",
+    "offline_warning": "Sharing requires an internet connection"
+  },
+  "task": {
+    "menu_label": "Share read-only",
+    "dialog_header": "Share task read-only",
+    "subtasks_count": "{count, plural, one {# subtask} other {# subtasks}}"
+  },
+  "view": {
+    "loading": "Loading…",
+    "error_title": "Cannot show share",
+    "read_only_badge": "Read-only snapshot",
+    "untitled": "Untitled",
+    "missing_key": "The link is incomplete - the decryption key (after #) is missing. Make sure you copied the entire URL.",
+    "not_found": "This share does not exist or was revoked.",
+    "expired": "This share has expired.",
+    "exhausted": "This share has reached its access limit.",
+    "opens_progress": "Opened {used}/{max}",
+    "decrypt_failed": "Could not decrypt content. The key may be invalid.",
+    "password_prompt": "This share is password protected",
+    "password_intro": "End-to-end encrypted snapshot of a task. Enter the password to open it.",
+    "password_submit": "Open",
+    "password_wrong": "Incorrect password",
+    "shared_at": "Shared {relative}",
+    "shared_by": "Shared by {label}",
+    "expires_in": "Expires {relative}",
+    "powered_by": "Powered by Reborn Apps",
+    "footer_shared_from": "Shared from {app}",
+    "footer_e2e_encrypted": "End-to-end encrypted",
+    "gate": {
+      "title": {
+        "missing_key": "Incomplete link",
+        "not_found": "Link not found",
+        "expired": "Link expired",
+        "revoked": "Access revoked",
+        "exhausted": "Open limit reached",
+        "decrypt_failed": "Could not decrypt",
+        "error": "Something went wrong"
+      },
+      "hint": {
+        "missing_key": "Make sure you copied the entire URL, including the part after `#`.",
+        "not_found": "The sender may have removed it, or the link is mistyped.",
+        "expired": "Ask the sender for a fresh link.",
+        "revoked": "The sender has stopped sharing this snapshot.",
+        "exhausted": "This share has reached its open limit. Ask the sender for a new link.",
+        "decrypt_failed": "Double-check the URL or ask the sender to re-share.",
+        "error": "Please try again in a moment."
+      },
+      "cta_learn_more": "Learn more about {app}"
+    },
+    "task": {
+      "completed_badge": "Completed",
+      "due_date_label": "Due",
+      "subtasks_label": "Subtasks",
+      "description_label": "Description",
+      "no_subtasks": "No subtasks",
+      "no_description": "No description"
+    }
+  },
+  "list": {
+    "title": "Active shares",
+    "settings_title": "Active shares",
+    "settings_desc": "Manage read-only public links to your tasks",
+    "empty": "You have no active shares.",
+    "error_load": "Could not load shares.",
+    "error_load_offline_hint": "You appear to be offline. Check your connection and try again.",
+    "error_load_stale_banner": "Couldn't refresh - showing the last list we managed to load.",
+    "retry_action": "Retry",
+    "column": {
+      "created": "Created",
+      "expires": "Expires",
+      "access_count": "Opens",
+      "last_accessed": "Last opened",
+      "actions": "Actions"
+    },
+    "no_local_key_hint": "Created on another device - revoke only",
+    "password_protected": "Password protected",
+    "revoked_label": "Revoked",
+    "exhausted_label": "Limit reached",
+    "revoke_action": "Revoke",
+    "revoke_error": "Failed to revoke share",
+    "revoked_toast": "Share revoked",
+    "confirm_revoke_title": "Revoke share?",
+    "confirm_revoke_desc": "The link will stop working immediately.",
+    "untitled": "(untitled)",
+    "decrypting": "Decrypting…",
+    "decrypt_failed": "Could not decrypt this snapshot",
+    "preview_action": "Preview",
+    "preview_hint": "Preview does not count towards the open limit.",
+    "preview_dialog_title": "Snapshot preview",
+    "show_link": "Show link",
+    "hide_link": "Hide link",
+    "type": {
+      "note": "Note",
+      "task": "Task"
+    }
+  },
+  "indicator": {
+    "label": "Shared",
+    "tooltip": "This task has {count} active read-only share(s)",
+    "aria_label": "{count} active shares for this task",
+    "create_tooltip": "Share this task"
+  },
+  "manage": {
+    "dialog_title": "Active shares",
+    "for_note_title": "Shares for this note",
+    "for_task_title": "Shares for this task",
+    "for_note_description": "Read-only links pointing to this note. Revoke or copy as needed.",
+    "for_task_description": "Read-only links pointing to this task. Revoke or copy as needed.",
+    "empty_for_note": "This note has no active shares.",
+    "empty_for_task": "This task has no active shares.",
+    "create_new_cta": "Create new share"
+  }
+}

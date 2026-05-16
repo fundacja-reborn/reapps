@@ -42,6 +42,9 @@
     scrollEl = $bindable<HTMLElement | null>(null),
     contentEl = $bindable<HTMLElement | null>(null),
     imageLoadMode = 'ask' as ImageLoadMode,
+    loadAllImagesHint,
+    settingsLinkLabel,
+    settingsLinkHref,
     onNoteLink,
     onTaskToggle,
     onrender,
@@ -58,6 +61,22 @@
      */
     contentEl?: HTMLElement | null;
     imageLoadMode?: ImageLoadMode;
+    /**
+     * Optional plain-text caption rendered next to the "Load all images"
+     * button. Used by the shared-snapshot viewer to explain to non-technical
+     * recipients why external images don't load automatically, and by the
+     * owner-side preview to point at the appearance setting that controls
+     * the default behaviour.
+     */
+    loadAllImagesHint?: string;
+    /**
+     * Optional CTA appended to `loadAllImagesHint` as an inline anchor.
+     * Used by the owner-side preview to deep-link into the image-loading
+     * preference in /settings/appearance. Both label and href must be set
+     * for the link to render. Snapshot viewer leaves these unset.
+     */
+    settingsLinkLabel?: string;
+    settingsLinkHref?: string;
     /** Called when user clicks a note:UUID link */
     onNoteLink?: (noteId: string) => void;
     /**
@@ -205,8 +224,18 @@
     annotateTopLevelLines(tokens);
     lastTokens = tokens;
     const raw = sanitize(md.parser(tokens) as string);
-    if (!resolveNoteTitle) return raw;
-    return raw.replace(
+    // Wrap each rendered table in a horizontally-scrollable container so wide
+    // tables (long unbreakable identifiers like `MAX_ENCRYPTED_FOO_BYTES`)
+    // get their own scrollbar next to the table itself, instead of forcing
+    // horizontal scroll on the entire preview where the scrollbar lands at
+    // the bottom of the whole note - far from the offending row. Mirrors the
+    // <pre> overflow-x:auto pattern. marked's GFM output emits a bare
+    // `<table>` with no attributes, so a literal replace is safe.
+    const tableWrapped = raw
+      .replace(/<table>/g, '<div class="table-wrap"><table>')
+      .replace(/<\/table>/g, '</table></div>');
+    if (!resolveNoteTitle) return tableWrapped;
+    return tableWrapped.replace(
       /<a ([^>]*?)href="note:([0-9a-f-]{36})"([^>]*?)>([^<]*)<\/a>/gi,
       (_match, pre, noteId, post, _text) => {
         const currentTitle = resolveNoteTitle(noteId);
@@ -281,12 +310,13 @@
       return;
     }
 
-    // Handle "Load all images" button
+    // Handle "Load all images" button - remove the whole row (button + optional
+    // privacy hint) so the hint doesn't linger after images are loaded.
     if (target.closest('.load-all-images-btn')) {
       e.preventDefault();
       const placeholders = containerEl.querySelectorAll('.image-placeholder');
       placeholders.forEach((p) => loadImage(p as HTMLElement));
-      target.closest('.load-all-images-btn')?.remove();
+      target.closest('.load-all-images-row')?.remove();
       return;
     }
 
@@ -331,9 +361,26 @@
   data-sveltekit-preload-code="off"
 >
   {#if hasImagePlaceholders}
-    <button type="button" class="load-all-images-btn">
-      {$t('editor.image_load_all')}
-    </button>
+    <div class="load-all-images-row">
+      <button type="button" class="load-all-images-btn">
+        {$t('editor.image_load_all')}
+      </button>
+      {#if loadAllImagesHint}
+        <span class="load-all-images-hint">
+          {loadAllImagesHint}
+          {#if settingsLinkLabel && settingsLinkHref}
+            <a
+              href={settingsLinkHref}
+              class="load-all-images-settings-link"
+              data-sveltekit-preload-data="off"
+              data-sveltekit-preload-code="off"
+            >
+              {settingsLinkLabel}
+            </a>
+          {/if}
+        </span>
+      {/if}
+    </div>
   {/if}
   <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized with DOMPurify -->
   {@html html}
@@ -644,10 +691,18 @@
     border-top: 1px solid var(--border);
   }
 
+  /* Tables sit inside `.table-wrap` (see $derived html). The wrapper owns the
+     horizontal scroll so a row of long unbreakable tokens (file paths,
+     SCREAMING_SNAKE constants) gets its own scrollbar attached to the table,
+     not stranded at the bottom of the whole preview. */
+  .preview :global(.table-wrap) {
+    overflow-x: auto;
+    margin-bottom: 1em;
+    max-width: 100%;
+  }
   .preview :global(table) {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 1em;
     font-size: 0.9375rem;
   }
   .preview :global(th),
@@ -756,21 +811,63 @@
     opacity: 0.9;
   }
 
-  /* ── Load all images button ───────────────────────────────── */
-  .load-all-images-btn {
-    display: block;
+  /* ── Load all images button + optional hint ──────────────────
+     Row owns the bottom margin so adding/removing the hint never
+     shifts the button's spacing. `flex-wrap` lets the hint drop
+     below the button on narrow viewports instead of squeezing it.
+
+     When `loadAllImagesHint` is set (share viewer context, see
+     NoteSnapshotView), `:has()` upgrades the row into a notice
+     banner with bg + border to anchor the privacy hint visually.
+     Owner-side previews (no hint) keep the bare-row layout. */
+  .load-all-images-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em 0.75em;
     margin: 0 0 1em;
+  }
+
+  .load-all-images-row:has(.load-all-images-hint) {
+    padding: 0.625em 0.875em;
+    border: 1px solid var(--border);
+    border-radius: 0.5em;
+    background: var(--muted);
+    margin-bottom: 1.25em;
+  }
+
+  .load-all-images-btn {
     padding: 0.4em 1em;
     border-radius: 0.375em;
-    background: var(--muted);
-    color: var(--muted-foreground);
+    background: var(--background);
+    color: var(--foreground);
     border: 1px solid var(--border);
     cursor: pointer;
     font-size: 0.8rem;
+    flex: 0 0 auto;
   }
 
   .load-all-images-btn:hover {
     background: var(--accent);
     color: var(--accent-foreground);
+  }
+
+  .load-all-images-hint {
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    flex: 1 1 200px;
+    min-width: 0;
+  }
+
+  .load-all-images-settings-link {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    margin-left: 0.25em;
+  }
+
+  .load-all-images-settings-link:hover {
+    opacity: 0.85;
   }
 </style>

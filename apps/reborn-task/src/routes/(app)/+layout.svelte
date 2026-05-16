@@ -37,6 +37,7 @@
 	} from '$lib/components/layout';
 	import { CreateListSheet, DeleteListDialog, EditListNameModal, TaskListSheet } from '$lib/components/task-list';
 	import { DeleteTaskDialog, TaskList, TaskFilterBar } from '$lib/components/tasks';
+	import ShareTaskDialog from '$lib/components/tasks/ShareTaskDialog.svelte';
 	import { TaskSelectPlaceholder, FilterViewPlaceholder } from '$lib/components/tasks';
 	import { page } from '$app/stores';
 	import { goto } from '$lib/utils/navigation';
@@ -272,6 +273,10 @@
 	let currentTaskId = $derived($page.params.taskId);
 	let currentTask = $state<TaskDecrypted | null>(null);
 	let isTaskPage = $derived(!!currentTaskId);
+
+	// Share dialog state (read-only public snapshot)
+	let shareDialogOpen = $state(false);
+	let shareDialogTask = $state<TaskDecrypted | null>(null);
 
 	// Current list for header
 	let currentList = $derived(
@@ -1132,6 +1137,12 @@
 								onOpenMoveDialog={() => {
 									if (currentTask) layoutStore.openMoveTaskDialog(currentTask);
 								}}
+								onOpenShareDialog={() => {
+									if (currentTask) {
+										shareDialogTask = currentTask;
+										shareDialogOpen = true;
+									}
+								}}
 								onOpenDeleteDialog={() => {
 									if (currentTask) layoutStore.openTaskDeleteDialog(currentTask);
 								}}
@@ -1221,6 +1232,12 @@
 								onToggleStarred={toggleTaskStarred}
 								onOpenMoveDialog={() => {
 									if (currentTask) layoutStore.openMoveTaskDialog(currentTask);
+								}}
+								onOpenShareDialog={() => {
+									if (currentTask) {
+										shareDialogTask = currentTask;
+										shareDialogOpen = true;
+									}
 								}}
 								onOpenDeleteDialog={() => {
 									if (currentTask) layoutStore.openTaskDeleteDialog(currentTask);
@@ -1356,6 +1373,9 @@
 			</DialogContent>
 		</Dialog>
 	{/if}
+
+	<!-- Share read-only snapshot dialog -->
+	<ShareTaskDialog bind:open={shareDialogOpen} task={shareDialogTask} />
 {:else}
 	<div class="flex items-center justify-center h-screen bg-background">
 		<div class="flex flex-col items-center gap-3">

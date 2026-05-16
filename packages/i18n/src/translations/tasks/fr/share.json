@@ -1,0 +1,145 @@
+{
+  "create": {
+    "cta": "Créer le lien",
+    "creating": "Création…",
+    "expires_label": "Expire après",
+    "expires": {
+      "1d": "1 jour",
+      "7d": "7 jours",
+      "30d": "30 jours",
+      "never": "Jamais"
+    },
+    "display_name_label": "Nom d'affichage (facultatif)",
+    "display_name_placeholder": "Par défaut, le titre",
+    "display_name_hint": "Affiché dans l'en-tête du snapshot à la place du titre d'origine.",
+    "sender_label": "Étiquette de l'expéditeur (facultatif)",
+    "sender_label_placeholder": "Votre nom",
+    "password_toggle": "Protéger par mot de passe",
+    "password_placeholder": "Mot de passe",
+    "password_confirm_placeholder": "Confirmer le mot de passe",
+    "password_mismatch": "Les mots de passe ne correspondent pas",
+    "password_too_short": "Minimum 8 caractères",
+    "max_opens_label": "Ouvertures max.",
+    "max_opens_unlimited": "Illimitées",
+    "max_opens_placeholder": "p. ex. 5",
+    "max_opens_hint": "Chaque chargement de page compte comme une ouverture.",
+    "max_opens_invalid": "Saisissez un nombre entre 1 et 1000.",
+    "max_opens_self_destruct_hint": "Le lien s'auto-détruira après la première ouverture. Pendant 24 heures, vous verrez encore la date du dernier accès dans les Paramètres, puis l'enregistrement sera supprimé définitivement.",
+    "success_title": "Lien prêt",
+    "copy_link": "Copier le lien",
+    "copied": "Copié",
+    "copy_failed": "Échec de la copie",
+    "close_cta": "Fermer",
+    "offline_warning": "Le partage nécessite une connexion internet"
+  },
+  "task": {
+    "menu_label": "Partager en lecture seule",
+    "dialog_header": "Partager la tâche en lecture seule",
+    "subtasks_count": "{count, plural, one {# sous-tâche} other {# sous-tâches}}"
+  },
+  "view": {
+    "loading": "Chargement…",
+    "error_title": "Impossible d'afficher le partage",
+    "read_only_badge": "Instantané en lecture seule",
+    "untitled": "Sans titre",
+    "missing_key": "Le lien est incomplet - la clé de déchiffrement (après #) est manquante. Vérifiez que vous avez copié l'URL entière.",
+    "not_found": "Ce partage n'existe pas ou a été révoqué.",
+    "expired": "Ce partage a expiré.",
+    "exhausted": "Ce partage a atteint sa limite d'ouvertures.",
+    "opens_progress": "Ouvert {used}/{max}",
+    "decrypt_failed": "Impossible de déchiffrer le contenu. La clé est peut-être invalide.",
+    "password_prompt": "Ce partage est protégé par mot de passe",
+    "password_intro": "Instantané d'une tâche chiffré de bout en bout. Saisis le mot de passe pour l'ouvrir.",
+    "password_submit": "Ouvrir",
+    "password_wrong": "Mot de passe incorrect",
+    "shared_at": "Partagé {relative}",
+    "shared_by": "Partagé par {label}",
+    "expires_in": "Expire {relative}",
+    "powered_by": "Propulsé par Reborn Apps",
+    "footer_shared_from": "Partagé depuis {app}",
+    "footer_e2e_encrypted": "Chiffrement de bout en bout",
+    "gate": {
+      "title": {
+        "missing_key": "Lien incomplet",
+        "not_found": "Partage introuvable",
+        "expired": "Lien expiré",
+        "revoked": "Accès révoqué",
+        "exhausted": "Limite d'ouvertures atteinte",
+        "decrypt_failed": "Déchiffrement impossible",
+        "error": "Une erreur s'est produite"
+      },
+      "hint": {
+        "missing_key": "Assurez-vous d'avoir copié l'URL complète, y compris la partie après `#`.",
+        "not_found": "L'expéditeur l'a peut-être supprimé, ou le lien comporte une erreur de saisie.",
+        "expired": "Demandez à l'expéditeur un nouveau lien.",
+        "revoked": "L'expéditeur a cessé de partager cet instantané.",
+        "exhausted": "Ce partage a atteint sa limite d'ouvertures. Demandez à l'expéditeur un nouveau lien.",
+        "decrypt_failed": "Vérifiez l'URL ou demandez à l'expéditeur de partager à nouveau.",
+        "error": "Veuillez réessayer dans un instant."
+      },
+      "cta_learn_more": "En savoir plus sur {app}"
+    },
+    "task": {
+      "completed_badge": "Terminé",
+      "due_date_label": "Échéance",
+      "subtasks_label": "Sous-tâches",
+      "description_label": "Description",
+      "no_subtasks": "Aucune sous-tâche",
+      "no_description": "Aucune description"
+    }
+  },
+  "list": {
+    "title": "Partages actifs",
+    "settings_title": "Partages actifs",
+    "settings_desc": "Gérer les liens publics en lecture seule vers vos tâches",
+    "empty": "Vous n'avez aucun partage actif.",
+    "error_load": "Impossible de charger les partages.",
+    "error_load_offline_hint": "Vous semblez être hors ligne. Vérifiez votre connexion et réessayez.",
+    "error_load_stale_banner": "Échec de l'actualisation - affichage de la dernière liste chargée.",
+    "retry_action": "Réessayer",
+    "column": {
+      "created": "Créé",
+      "expires": "Expire",
+      "access_count": "Ouvertures",
+      "last_accessed": "Dernière ouverture",
+      "actions": "Actions"
+    },
+    "no_local_key_hint": "Créé sur un autre appareil - révocation uniquement",
+    "password_protected": "Protégé par mot de passe",
+    "revoked_label": "Révoqué",
+    "exhausted_label": "Limite atteinte",
+    "revoke_action": "Révoquer",
+    "revoke_error": "Échec de la révocation",
+    "revoked_toast": "Partage révoqué",
+    "confirm_revoke_title": "Révoquer le partage ?",
+    "confirm_revoke_desc": "Le lien cessera de fonctionner immédiatement.",
+    "untitled": "(sans titre)",
+    "decrypting": "Déchiffrement…",
+    "decrypt_failed": "Impossible de déchiffrer ce snapshot",
+    "preview_action": "Aperçu",
+    "preview_hint": "L'aperçu n'est pas comptabilisé dans la limite d'ouvertures.",
+    "preview_dialog_title": "Aperçu du snapshot",
+    "show_link": "Afficher le lien",
+    "hide_link": "Masquer le lien",
+    "type": {
+      "note": "Note",
+      "task": "Tâche"
+    }
+  },
+  "indicator": {
+    "label": "Partagé",
+    "tooltip": "Cette tâche a {count} partage(s) actif(s)",
+    "aria_label": "{count} partage(s) actif(s) pour cette tâche",
+    "create_tooltip": "Partager cette tâche"
+  },
+  "manage": {
+    "dialog_title": "Partages actifs",
+    "for_note_title": "Partages de cette note",
+    "for_task_title": "Partages de cette tâche",
+    "for_note_description": "Liens en lecture seule pointant vers cette note. Copier ou révoquer selon vos besoins.",
+    "for_task_description": "Liens en lecture seule pointant vers cette tâche. Copier ou révoquer selon vos besoins.",
+    "empty_for_note": "Cette note n'a aucun partage actif.",
+    "empty_for_task": "Cette tâche n'a aucun partage actif.",
+    "create_new_cta": "Créer un nouveau partage"
+  }
+}

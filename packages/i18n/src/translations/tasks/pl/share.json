@@ -1,0 +1,145 @@
+{
+  "create": {
+    "cta": "Utwórz link",
+    "creating": "Tworzenie…",
+    "expires_label": "Wygasa po",
+    "expires": {
+      "1d": "1 dzień",
+      "7d": "7 dni",
+      "30d": "30 dni",
+      "never": "Bez wygaśnięcia"
+    },
+    "display_name_label": "Nazwa wyświetlana (opcjonalna)",
+    "display_name_placeholder": "Domyślnie tytuł",
+    "display_name_hint": "Wyświetlana w nagłówku snapshotu zamiast oryginalnego tytułu.",
+    "sender_label": "Etykieta nadawcy (opcjonalna)",
+    "sender_label_placeholder": "Twoje imię",
+    "password_toggle": "Chroń hasłem",
+    "password_placeholder": "Hasło",
+    "password_confirm_placeholder": "Potwierdź hasło",
+    "password_mismatch": "Hasła nie są identyczne",
+    "password_too_short": "Minimum 8 znaków",
+    "max_opens_label": "Maks. otwarć",
+    "max_opens_unlimited": "Bez limitu",
+    "max_opens_placeholder": "np. 5",
+    "max_opens_hint": "Każde wczytanie strony liczy się jako jedno otwarcie.",
+    "max_opens_invalid": "Wpisz liczbę od 1 do 1000.",
+    "max_opens_self_destruct_hint": "Link zniknie po pierwszym otwarciu. Przez 24 godziny zobaczysz jeszcze czas ostatniego dostępu w Ustawieniach, potem rekord zostanie trwale usunięty.",
+    "success_title": "Link gotowy",
+    "copy_link": "Skopiuj link",
+    "copied": "Skopiowano",
+    "copy_failed": "Nie udało się skopiować",
+    "close_cta": "Zamknij",
+    "offline_warning": "Udostępnianie wymaga połączenia z internetem"
+  },
+  "task": {
+    "menu_label": "Udostępnij tylko do odczytu",
+    "dialog_header": "Udostępnij zadanie tylko do odczytu",
+    "subtasks_count": "{count, plural, one {# podzadanie} few {# podzadania} many {# podzadań} other {# podzadań}}"
+  },
+  "view": {
+    "loading": "Wczytywanie…",
+    "error_title": "Nie można wyświetlić udostępnienia",
+    "read_only_badge": "Migawka tylko do odczytu",
+    "untitled": "Bez tytułu",
+    "missing_key": "Link jest niekompletny - brakuje klucza deszyfrującego (po znaku #). Sprawdź, czy skopiowano cały adres URL.",
+    "not_found": "Udostępnienie nie istnieje lub zostało odwołane.",
+    "expired": "To udostępnienie wygasło.",
+    "exhausted": "To udostępnienie osiągnęło limit otwarć.",
+    "opens_progress": "Otwarte {used}/{max}",
+    "decrypt_failed": "Nie udało się odszyfrować zawartości. Klucz może być nieprawidłowy.",
+    "password_prompt": "Udostępnienie chronione hasłem",
+    "password_intro": "Snapshot zadania zaszyfrowany end-to-end. Wpisz hasło, aby go otworzyć.",
+    "password_submit": "Otwórz",
+    "password_wrong": "Nieprawidłowe hasło",
+    "shared_at": "Udostępniono {relative}",
+    "shared_by": "Udostępnione przez: {label}",
+    "expires_in": "Wygasa {relative}",
+    "powered_by": "Tworzone przez Reborn Apps",
+    "footer_shared_from": "Udostępnione z {app}",
+    "footer_e2e_encrypted": "Szyfrowanie end-to-end",
+    "gate": {
+      "title": {
+        "missing_key": "Niepełny link",
+        "not_found": "Nie znaleziono udostępnienia",
+        "expired": "Link wygasł",
+        "revoked": "Dostęp cofnięty",
+        "exhausted": "Limit otwarć osiągnięty",
+        "decrypt_failed": "Nie udało się odszyfrować",
+        "error": "Coś poszło nie tak"
+      },
+      "hint": {
+        "missing_key": "Upewnij się, że skopiowano cały adres, łącznie z częścią po znaku `#`.",
+        "not_found": "Nadawca mógł je usunąć lub adres został przepisany z błędem.",
+        "expired": "Poproś nadawcę o nowy link.",
+        "revoked": "Nadawca zakończył udostępnianie tego zadania.",
+        "exhausted": "To udostępnienie osiągnęło limit otwarć. Poproś nadawcę o nowy link.",
+        "decrypt_failed": "Sprawdź dokładnie adres lub poproś nadawcę o ponowne udostępnienie.",
+        "error": "Spróbuj ponownie za chwilę."
+      },
+      "cta_learn_more": "Dowiedz się więcej o {app}"
+    },
+    "task": {
+      "completed_badge": "Ukończone",
+      "due_date_label": "Termin",
+      "subtasks_label": "Podzadania",
+      "description_label": "Opis",
+      "no_subtasks": "Brak podzadań",
+      "no_description": "Brak opisu"
+    }
+  },
+  "list": {
+    "title": "Aktywne udostępnienia",
+    "settings_title": "Aktywne udostępnienia",
+    "settings_desc": "Zarządzaj publicznymi linkami do swoich zadań tylko do odczytu",
+    "empty": "Nie masz aktywnych udostępnień.",
+    "error_load": "Nie udało się wczytać udostępnień.",
+    "error_load_offline_hint": "Wygląda na to, że jesteś offline. Sprawdź połączenie i spróbuj ponownie.",
+    "error_load_stale_banner": "Nie udało się odświeżyć - wyświetlamy ostatnio pobraną listę.",
+    "retry_action": "Spróbuj ponownie",
+    "column": {
+      "created": "Utworzono",
+      "expires": "Wygasa",
+      "access_count": "Otwarć",
+      "last_accessed": "Ostatnie otwarcie",
+      "actions": "Akcje"
+    },
+    "no_local_key_hint": "Utworzono na innym urządzeniu - można tylko odwołać",
+    "password_protected": "Chronione hasłem",
+    "revoked_label": "Odwołane",
+    "exhausted_label": "Limit osiągnięty",
+    "revoke_action": "Odwołaj",
+    "revoke_error": "Nie udało się odwołać udostępnienia",
+    "revoked_toast": "Udostępnienie odwołane",
+    "confirm_revoke_title": "Odwołać udostępnienie?",
+    "confirm_revoke_desc": "Link przestanie działać natychmiast.",
+    "untitled": "(bez tytułu)",
+    "decrypting": "Odszyfrowywanie…",
+    "decrypt_failed": "Nie udało się odszyfrować tego snapshotu",
+    "preview_action": "Podgląd",
+    "preview_hint": "Podgląd nie jest wliczany do limitu otwarć.",
+    "preview_dialog_title": "Podgląd snapshotu",
+    "show_link": "Pokaż link",
+    "hide_link": "Ukryj link",
+    "type": {
+      "note": "Notatka",
+      "task": "Zadanie"
+    }
+  },
+  "indicator": {
+    "label": "Udostępnione",
+    "tooltip": "To zadanie ma aktywnych udostępnień: {count}",
+    "aria_label": "Aktywne udostępnienia tego zadania: {count}",
+    "create_tooltip": "Udostępnij to zadanie"
+  },
+  "manage": {
+    "dialog_title": "Aktywne udostępnienia",
+    "for_note_title": "Udostępnienia tej notatki",
+    "for_task_title": "Udostępnienia tego zadania",
+    "for_note_description": "Linki tylko-do-odczytu wskazujące na tę notatkę. Możesz skopiować lub cofnąć.",
+    "for_task_description": "Linki tylko-do-odczytu wskazujące na to zadanie. Możesz skopiować lub cofnąć.",
+    "empty_for_note": "Ta notatka nie ma aktywnych udostępnień.",
+    "empty_for_task": "To zadanie nie ma aktywnych udostępnień.",
+    "create_new_cta": "Utwórz nowe udostępnienie"
+  }
+}
