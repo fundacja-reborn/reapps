@@ -94,6 +94,9 @@
     "settings_desc": "Manage read-only public links to your tasks",
     "empty": "You have no active shares.",
     "error_load": "Could not load shares.",
+    "error_load_offline_hint": "You appear to be offline. Check your connection and try again.",
+    "error_load_stale_banner": "Couldn't refresh - showing the last list we managed to load.",
+    "retry_action": "Retry",
     "column": {
       "created": "Created",
       "expires": "Expires",

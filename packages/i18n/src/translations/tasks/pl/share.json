@@ -94,6 +94,9 @@
     "settings_desc": "Zarządzaj publicznymi linkami do swoich zadań tylko do odczytu",
     "empty": "Nie masz aktywnych udostępnień.",
     "error_load": "Nie udało się wczytać udostępnień.",
+    "error_load_offline_hint": "Wygląda na to, że jesteś offline. Sprawdź połączenie i spróbuj ponownie.",
+    "error_load_stale_banner": "Nie udało się odświeżyć - wyświetlamy ostatnio pobraną listę.",
+    "retry_action": "Spróbuj ponownie",
     "column": {
       "created": "Utworzono",
       "expires": "Wygasa",

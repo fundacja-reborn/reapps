@@ -2,6 +2,7 @@ import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { base } from '$app/paths';
 import { authFetch } from '$lib/utils/auth-fetch';
+import { connectivityStore } from '$lib/stores/connectivity.store';
 import {
   cryptoManager,
   buildShareUrl,
@@ -159,6 +160,23 @@ function createSharesStore() {
         reset();
       }
     });
+    // Auto-refresh when we come back online after a failed load. The
+    // connectivity store probes /api/health, so an offline → online
+    // transition is a real signal that the next API call should succeed.
+    if (connectivityStore) {
+      let prevStatus = connectivityStore.getState().status;
+      connectivityStore.subscribe((conn) => {
+        if (
+          conn.status === 'online'
+          && prevStatus !== 'online'
+          && cryptoManager.isInitialized()
+          && get(state).error !== null
+        ) {
+          void refresh();
+        }
+        prevStatus = conn.status;
+      });
+    }
   }
 
   return {
@@ -167,7 +185,7 @@ function createSharesStore() {
     refresh,
     revoke,
     reset,
-    /** Synchronous snapshot — useful for one-shot lookups outside reactive contexts. */
+    /** Synchronous snapshot - useful for one-shot lookups outside reactive contexts. */
     snapshot: () => get(state)
   };
 }

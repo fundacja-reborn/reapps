@@ -1031,6 +1031,9 @@
       "settings_desc": "Verwalte schreibgeschützte öffentliche Links zu deinen Notizen",
       "empty": "Du hast keine aktiven Freigaben.",
       "error_load": "Freigaben konnten nicht geladen werden.",
+      "error_load_offline_hint": "Du scheinst offline zu sein. Prüfe deine Verbindung und versuche es erneut.",
+      "error_load_stale_banner": "Konnte nicht aktualisiert werden - es wird die zuletzt geladene Liste angezeigt.",
+      "retry_action": "Erneut versuchen",
       "column": {
         "created": "Erstellt",
         "expires": "Läuft ab",

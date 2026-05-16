@@ -1031,6 +1031,9 @@
       "settings_desc": "Gestiona los enlaces públicos de solo lectura a tus notas",
       "empty": "No tienes enlaces activos.",
       "error_load": "No se pudieron cargar los enlaces.",
+      "error_load_offline_hint": "Parece que estás sin conexión. Comprueba tu conexión e inténtalo de nuevo.",
+      "error_load_stale_banner": "No se pudo actualizar - se muestra la última lista cargada.",
+      "retry_action": "Reintentar",
       "column": {
         "created": "Creado",
         "expires": "Caduca",

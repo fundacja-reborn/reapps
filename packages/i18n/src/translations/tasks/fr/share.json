@@ -94,6 +94,9 @@
     "settings_desc": "Gérer les liens publics en lecture seule vers vos tâches",
     "empty": "Vous n'avez aucun partage actif.",
     "error_load": "Impossible de charger les partages.",
+    "error_load_offline_hint": "Vous semblez être hors ligne. Vérifiez votre connexion et réessayez.",
+    "error_load_stale_banner": "Échec de l'actualisation - affichage de la dernière liste chargée.",
+    "retry_action": "Réessayer",
     "column": {
       "created": "Créé",
       "expires": "Expire",

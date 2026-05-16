@@ -53,6 +53,8 @@
   const decoded = $derived(storeState.decoded);
   const decryptErrors = $derived(storeState.decryptErrors);
   const isLoading = $derived(storeState.loading);
+  const loadError = $derived(storeState.error !== null);
+  const everLoaded = $derived(storeState.lastFetchedAt !== null);
 
   const visibleShares = $derived(
     storeState.shares.filter((s) => {
@@ -64,6 +66,9 @@
       return decoded[s.id]?.payload.source_id === sourceId;
     })
   );
+
+  const showErrorEmpty = $derived(loadError && !everLoaded && visibleShares.length === 0);
+  const showStaleBanner = $derived(loadError && everLoaded && !isLoading);
 
   function formatDate(iso: string | null) {
     if (!iso) return '-';
@@ -137,10 +142,51 @@
         </Button>
       {/if}
 
+      {#if showStaleBanner}
+        <div
+          class="flex items-start justify-between gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+          role="status"
+        >
+          <span class="flex items-start gap-2">
+            <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>{$t('share.list.error_load_stale_banner')}</span>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            class="h-6 px-2 text-xs"
+            disabled={isLoading}
+            onclick={() => sharesStore.refresh()}
+          >
+            <RefreshCw class="mr-1 h-3 w-3 {isLoading ? 'animate-spin' : ''}" />
+            {$t('share.list.retry_action')}
+          </Button>
+        </div>
+      {/if}
+
       {#if isLoading && visibleShares.length === 0}
         <div class="flex justify-center py-8">
           <RefreshCw class="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
+      {:else if showErrorEmpty}
+        <Card>
+          <CardContent class="flex flex-col items-center gap-3 px-4 py-8 text-center text-sm text-muted-foreground">
+            <AlertTriangle class="h-5 w-5 text-amber-500" aria-hidden="true" />
+            <div class="space-y-1">
+              <p>{$t('share.list.error_load')}</p>
+              <p class="text-xs">{$t('share.list.error_load_offline_hint')}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isLoading}
+              onclick={() => sharesStore.refresh()}
+            >
+              <RefreshCw class="mr-1.5 h-3.5 w-3.5 {isLoading ? 'animate-spin' : ''}" />
+              {$t('share.list.retry_action')}
+            </Button>
+          </CardContent>
+        </Card>
       {:else if visibleShares.length === 0}
         <Card>
           <CardContent class="px-4 py-8 text-center text-sm text-muted-foreground">
