@@ -1,3 +1,13 @@
+## 0.23.0 (2026-05-16)
+
+### 🚀 Features
+
+- **share:** readonly snapshot ([#193](https://github.com/fundacja-reborn/reapps/pull/193), [#149](https://github.com/fundacja-reborn/reapps/issues/149), [#9](https://github.com/fundacja-reborn/reapps/issues/9), [#12](https://github.com/fundacja-reborn/reapps/issues/12), [#13](https://github.com/fundacja-reborn/reapps/issues/13), [#14](https://github.com/fundacja-reborn/reapps/issues/14))
+
+### 🩹 Fixes
+
+- **share:** rate limit and quota ([#194](https://github.com/fundacja-reborn/reapps/pull/194))
+
 ## 0.22.4 (2026-05-13)
 
 ### 🩹 Fixes
