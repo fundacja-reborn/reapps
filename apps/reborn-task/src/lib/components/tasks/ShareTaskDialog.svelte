@@ -27,6 +27,7 @@
     SHARE_MAX_ACCESS_COUNT_LIMIT,
     SNAPSHOT_PAYLOAD_VERSION,
     SHARE_SENDER_LABEL_MAX_LENGTH,
+    SHARE_DISPLAY_NAME_MAX_LENGTH,
     type CreateShareResponse,
     type SharedSnapshotTaskPayload
   } from '@reborn/types';
@@ -47,6 +48,7 @@
   let stage = $state<Stage>('form');
   let expiry = $state<ExpiryPreset>('7d');
   let senderLabel = $state('');
+  let displayName = $state('');
   let passwordEnabled = $state(false);
   let password = $state('');
   let passwordConfirm = $state('');
@@ -59,6 +61,7 @@
     stage = 'form';
     expiry = '7d';
     senderLabel = '';
+    displayName = '';
     passwordEnabled = false;
     password = '';
     passwordConfirm = '';
@@ -107,6 +110,17 @@
 
     try {
       const subtasks: Subtask[] = getSubtasksForTask(task.id);
+      // Defense-in-depth: snapshot ships only the metadata fields the public
+      // viewer actually renders (due_date / has_time for the date display,
+      // is_completed for line-through + badge). Dropped on purpose:
+      //   - is_starred         personal "favourites" marker, no shared meaning
+      //   - reminder_date      personal reminder, recipient has no use for it
+      //   - completed_at       exact completion timestamp leaks productivity patterns
+      //   - is_recurring + next_occurrence_date + recurrence_base_date +
+      //     completed_occurrences_count   snapshot is a frozen point in time;
+      //                                   recurrence schedule is meaningless here
+      //   - notification_sent  app-internal state, never user-facing
+      // See SharedSnapshotTaskMetadata doc comment for the wider rationale.
       const payload: SharedSnapshotTaskPayload = {
         type: 'task',
         v: SNAPSHOT_PAYLOAD_VERSION,
@@ -115,15 +129,7 @@
         metadata: {
           due_date: task.due_date ?? null,
           has_time: task.has_time,
-          is_completed: task.is_completed,
-          is_starred: task.is_starred,
-          is_recurring: task.is_recurring,
-          completed_at: task.completed_at ?? null,
-          reminder_date: task.reminder_date ?? null,
-          next_occurrence_date: task.next_occurrence_date ?? null,
-          recurrence_base_date: task.recurrence_base_date ?? null,
-          completed_occurrences_count: task.completed_occurrences_count,
-          notification_sent: task.notification_sent
+          is_completed: task.is_completed
         },
         subtasks: subtasks.map((s) => ({
           name: s.title,
@@ -131,6 +137,7 @@
         })),
         shared_at: new Date().toISOString(),
         shared_by_label: senderLabel.trim() || undefined,
+        display_name: displayName.trim() || undefined,
         source_id: task.id
       };
 
@@ -247,6 +254,18 @@
               {$t('share.create.max_opens_self_destruct_hint')}
             </p>
           {/if}
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <Label for="share-task-display-name">{$t('share.create.display_name_label')}</Label>
+          <Input
+            id="share-task-display-name"
+            bind:value={displayName}
+            placeholder={task?.title || $t('share.create.display_name_placeholder')}
+            maxlength={SHARE_DISPLAY_NAME_MAX_LENGTH}
+            disabled={stage === 'creating'}
+          />
+          <p class="text-xs text-muted-foreground">{$t('share.create.display_name_hint')}</p>
         </div>
 
         <div class="flex flex-col gap-2">

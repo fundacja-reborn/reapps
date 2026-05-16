@@ -950,6 +950,9 @@
         "30d": "30 days",
         "never": "Never"
       },
+      "display_name_label": "Display name (optional)",
+      "display_name_placeholder": "Defaults to the title",
+      "display_name_hint": "Shown in the snapshot header instead of the original title.",
       "sender_label": "Sender label (optional)",
       "sender_label_placeholder": "Your name",
       "password_toggle": "Protect with password",
@@ -992,7 +995,9 @@
       "shared_by": "Shared by {label}",
       "expires_in": "Expires {relative}",
       "powered_by": "Powered by Reborn Apps",
-      "images_privacy_note": "To keep your visit private, external images load only when you click them.",
+      "footer_shared_from": "Shared from {app}",
+      "footer_e2e_encrypted": "End-to-end encrypted",
+      "images_privacy_note": "This note contains external images. To keep your visit private, they load only when you click them.",
       "note": {
         "tags_label": "Tags"
       }

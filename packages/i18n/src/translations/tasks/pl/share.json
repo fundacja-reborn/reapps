@@ -9,6 +9,9 @@
       "30d": "30 dni",
       "never": "Bez wygaśnięcia"
     },
+    "display_name_label": "Nazwa wyświetlana (opcjonalna)",
+    "display_name_placeholder": "Domyślnie tytuł",
+    "display_name_hint": "Wyświetlana w nagłówku snapshotu zamiast oryginalnego tytułu.",
     "sender_label": "Etykieta nadawcy (opcjonalna)",
     "sender_label_placeholder": "Twoje imię",
     "password_toggle": "Chroń hasłem",
@@ -52,10 +55,13 @@
     "shared_by": "Udostępnione przez: {label}",
     "expires_in": "Wygasa {relative}",
     "powered_by": "Tworzone przez Reborn Apps",
+    "footer_shared_from": "Udostępnione z {app}",
+    "footer_e2e_encrypted": "Szyfrowanie end-to-end",
     "task": {
       "completed_badge": "Ukończone",
       "due_date_label": "Termin",
       "subtasks_label": "Podzadania",
+      "description_label": "Opis",
       "no_subtasks": "Brak podzadań",
       "no_description": "Brak opisu"
     }

@@ -163,27 +163,52 @@
   <meta name="referrer" content="no-referrer" />
 </svelte:head>
 
-<div class="min-h-screen bg-background">
-  <div class="h-[3px] w-full bg-yellow-400" aria-hidden="true"></div>
-  <div class="mx-auto max-w-4xl px-4">
-    <header class="flex h-14 items-center justify-between gap-3 border-b">
-      <a
-        href="https://reapps.eu"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="flex items-center transition-opacity hover:opacity-80"
-        aria-label="re/notes"
-      >
-        <img src="{base}/logo-black.svg" alt="re/notes" class="block h-4 w-auto dark:hidden" />
-        <img src="{base}/logo-white.svg" alt="re/notes" class="hidden h-4 w-auto dark:block dark:opacity-80" />
-      </a>
+<div class="flex min-h-screen flex-col bg-background">
+  <div class="mx-auto w-full max-w-4xl flex-1 px-4">
+    <!-- Metadata-only header. No brand logo here on purpose: shared content
+         belongs to the user, not to re/notes - prominent branding next to
+         arbitrary user content would imply endorsement. Attribution lives in
+         the footer instead (Bitwarden Send / Notion public pages pattern).
 
-      {#if stage === 'ready' && notePayload}
-        <div class="hidden flex-wrap items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground sm:flex">
-          <span class="inline-flex items-center gap-1">
-            <ShieldCheck class="h-3.5 w-3.5" />
-            {$t('share.view.read_only_badge')}
-          </span>
+         All share metadata (title, sender, shared_at) lives here too, above
+         the border, so the content area below holds ONLY the user's note.
+
+         Mobile layout: `flex-col-reverse` so chrome (READ-ONLY · EXPIRES)
+         appears as a short status row on top, then the title block below
+         with full viewport width. Without this, a long expiry timestamp
+         starves the title to ~1ch and `break-words` shatters it char by
+         char vertically. From `sm:` up, side-by-side as designed. -->
+    <header class="flex flex-col-reverse gap-y-1 border-b py-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-x-4 sm:gap-y-2">
+      <div class="min-w-0 sm:flex-1">
+        {#if stage === 'ready' && notePayload}
+          {@const headline = notePayload.display_name?.trim() || notePayload.title || $t('share.view.untitled')}
+          <!-- No `font-semibold` here on purpose: the note's actual document
+               title is the markdown H1 below the border, so this h1 is just
+               an identifier label ("which share am I looking at?"). Hierarchy
+               comes from text-sm vs text-xs + foreground vs muted; bold would
+               over-claim and visually compete with the markdown H1. -->
+          <h1 class="break-words text-sm leading-snug text-foreground">
+            {headline}
+          </h1>
+          <div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs leading-snug text-muted-foreground">
+            {#if notePayload.shared_by_label}
+              <span>{$t('share.view.shared_by', { values: { label: notePayload.shared_by_label } })}</span>
+              <span aria-hidden="true">·</span>
+            {/if}
+            <span>{$t('share.view.shared_at', { values: { relative: formatRelative(notePayload.shared_at) } })}</span>
+          </div>
+        {/if}
+      </div>
+      <!-- `leading-snug` here so wrapped chrome rows have predictable height
+           that matches the meta/title leading - was the source of the uneven
+           mobile rhythm (4px wrap-gap vs 8px block-gap vs 2px title-meta gap;
+           now uniformly 4px). -->
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] uppercase leading-snug tracking-wider text-muted-foreground">
+        <span class="inline-flex items-center gap-1">
+          <ShieldCheck class="h-3.5 w-3.5" />
+          {$t('share.view.read_only_badge')}
+        </span>
+        {#if stage === 'ready' && notePayload}
           {#if maxAccessCount !== null && accessCount !== null}
             <span aria-hidden="true">·</span>
             <span>
@@ -196,29 +221,11 @@
             <span aria-hidden="true">·</span>
             <span>{$t('share.view.expires_in', { values: { relative: formatRelative(expiresAt) } })}</span>
           {/if}
-        </div>
-      {/if}
+        {/if}
+      </div>
     </header>
 
-    <main class="flex flex-col gap-4 py-6">
-      {#if stage === 'ready' && notePayload}
-        <div class="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground sm:hidden">
-          <span class="inline-flex items-center gap-1">
-            <ShieldCheck class="h-3.5 w-3.5" />
-            {$t('share.view.read_only_badge')}
-          </span>
-          {#if maxAccessCount !== null && accessCount !== null}
-            <span>
-              {$t('share.view.opens_progress', {
-                values: { used: accessCount, max: maxAccessCount }
-              })}
-            </span>
-          {/if}
-          {#if expiresAt}
-            <span>{$t('share.view.expires_in', { values: { relative: formatRelative(expiresAt) } })}</span>
-          {/if}
-        </div>
-      {/if}
+    <main class="flex flex-col gap-6 pb-10 pt-10">
       {#if stage === 'loading'}
       <p class="text-sm text-muted-foreground">{$t('share.view.loading')}</p>
     {:else if stage === 'missing-key'}
@@ -285,8 +292,29 @@
         </form>
       </Card>
     {:else if stage === 'ready' && notePayload}
-      <NoteSnapshotView payload={notePayload} />
+      <NoteSnapshotView payload={notePayload} showHeader={false} />
     {/if}
     </main>
   </div>
+
+  <!-- Footer attribution. Soft separator + small muted text so it sits at the
+       page bottom without competing with the user's content. The reapps.eu
+       link gives the recipient a path to learn what re/notes is (= organic
+       growth) without claiming ownership of the shared content. -->
+  <footer class="border-t border-border/60">
+    <div class="mx-auto w-full max-w-4xl px-4 py-4 text-center text-xs text-muted-foreground">
+      <span>{$t('share.view.footer_shared_from', { values: { app: 're/notes' } })}</span>
+      <span aria-hidden="true"> · </span>
+      <span>{$t('share.view.footer_e2e_encrypted')}</span>
+      <span aria-hidden="true"> · </span>
+      <a
+        href="https://reapps.eu"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline-offset-2 hover:underline"
+      >
+        reapps.eu
+      </a>
+    </div>
+  </footer>
 </div>

@@ -950,6 +950,9 @@
         "30d": "30 Tagen",
         "never": "Nie"
       },
+      "display_name_label": "Anzeigename (optional)",
+      "display_name_placeholder": "Standardmäßig der Titel",
+      "display_name_hint": "Wird in der Snapshot-Kopfzeile anstelle des ursprünglichen Titels angezeigt.",
       "sender_label": "Absender-Bezeichnung (optional)",
       "sender_label_placeholder": "Dein Name",
       "password_toggle": "Mit Passwort schützen",
@@ -992,7 +995,9 @@
       "shared_by": "Geteilt von {label}",
       "expires_in": "Läuft ab {relative}",
       "powered_by": "Bereitgestellt von Reborn Apps",
-      "images_privacy_note": "Damit Ihr Besuch privat bleibt, werden externe Bilder erst nach einem Klick geladen.",
+      "footer_shared_from": "Geteilt aus {app}",
+      "footer_e2e_encrypted": "Ende-zu-Ende-verschlüsselt",
+      "images_privacy_note": "Diese Notiz enthält externe Bilder. Damit Ihr Besuch privat bleibt, werden sie erst nach einem Klick geladen.",
       "note": {
         "tags_label": "Tags"
       }

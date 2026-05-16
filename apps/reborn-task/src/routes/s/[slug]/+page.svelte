@@ -153,6 +153,15 @@
   }
 
   const taskPayload = $derived(payload && payload.type === 'task' ? payload : null);
+  // Only `due_date` and `is_completed` are surfaced in the public snapshot.
+  // `is_starred` is intentionally NOT read here: starring is the owner's
+  // personal organisational metadata ("this matters to me"), with no shared
+  // semantic for the recipient, and surfacing it would subtly leak personal
+  // state. The full payload field stays in the encrypted blob for owner-side
+  // previews (TaskSnapshotView with showHeader=true), just not here.
+  const taskMeta = $derived(taskPayload?.metadata as
+    | { due_date?: string | null; is_completed?: boolean }
+    | undefined);
 </script>
 
 <svelte:head>
@@ -161,27 +170,44 @@
   <meta name="referrer" content="no-referrer" />
 </svelte:head>
 
-<div class="min-h-screen bg-background">
-  <div class="h-[3px] w-full bg-green-500" aria-hidden="true"></div>
-  <div class="mx-auto max-w-3xl px-4">
-    <header class="flex h-14 items-center justify-between gap-3 border-b">
-      <a
-        href="https://reapps.eu"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="flex items-center transition-opacity hover:opacity-80"
-        aria-label="re/task"
-      >
-        <img src="{base}/logo-black.svg" alt="re/task" class="block h-4 w-auto dark:hidden" />
-        <img src="{base}/logo-white.svg" alt="re/task" class="hidden h-4 w-auto dark:block dark:opacity-80" />
-      </a>
+<div class="flex min-h-screen flex-col bg-background">
+  <div class="mx-auto w-full max-w-3xl flex-1 px-4">
+    <!-- Metadata-only header. Brand attribution lives in the footer instead -
+         shared content is the user's, not re/task's, so we avoid letterhead
+         framing. Mirrors the notes share viewer pattern.
 
-      {#if stage === 'ready' && taskPayload}
-        <div class="hidden flex-wrap items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground sm:flex">
-          <span class="inline-flex items-center gap-1">
-            <ShieldCheck class="h-3.5 w-3.5" />
-            {$t('share.view.read_only_badge')}
-          </span>
+         Differs from notes: the task title is NOT in this header - it lives
+         below the border (see <main> below) as the document's h1. Rationale:
+         tasks have no "content-supplied" title (no markdown H1), so the task
+         title IS the document title and deserves the visual prominence the
+         markdown H1 plays in notes. Mirrors the in-app task detail layout.
+         Here we keep only share-level metadata: who shared, when, plus the
+         read-only chrome on the right.
+
+         Mobile layout: `flex-col-reverse` so chrome (READ-ONLY · EXPIRES)
+         appears as a status row on top, then the share-meta row below. See
+         notes share viewer for the squeeze bug this avoids. -->
+    <header class="flex flex-col-reverse gap-y-1 border-b py-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-x-4 sm:gap-y-2">
+      <div class="min-w-0 sm:flex-1">
+        {#if stage === 'ready' && taskPayload}
+          <div class="flex flex-wrap gap-x-2 gap-y-1 text-xs leading-snug text-muted-foreground">
+            {#if taskPayload.shared_by_label}
+              <span>{$t('share.view.shared_by', { values: { label: taskPayload.shared_by_label } })}</span>
+              <span aria-hidden="true">·</span>
+            {/if}
+            <span>{$t('share.view.shared_at', { values: { relative: formatDate(taskPayload.shared_at) } })}</span>
+          </div>
+        {/if}
+      </div>
+      <!-- `leading-snug` here so wrapped chrome rows have predictable height
+           that matches the meta leading - was the source of the uneven mobile
+           rhythm (chrome wrap-gap 4px vs block-gap 8px). Now uniformly 4px. -->
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] uppercase leading-snug tracking-wider text-muted-foreground">
+        <span class="inline-flex items-center gap-1">
+          <ShieldCheck class="h-3.5 w-3.5" />
+          {$t('share.view.read_only_badge')}
+        </span>
+        {#if stage === 'ready' && taskPayload}
           {#if maxAccessCount !== null && accessCount !== null}
             <span aria-hidden="true">·</span>
             <span>
@@ -194,29 +220,11 @@
             <span aria-hidden="true">·</span>
             <span>{$t('share.view.expires_in', { values: { relative: formatDate(expiresAt) } })}</span>
           {/if}
-        </div>
-      {/if}
+        {/if}
+      </div>
     </header>
 
-    <main class="flex flex-col gap-4 py-6">
-      {#if stage === 'ready' && taskPayload}
-        <div class="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground sm:hidden">
-          <span class="inline-flex items-center gap-1">
-            <ShieldCheck class="h-3.5 w-3.5" />
-            {$t('share.view.read_only_badge')}
-          </span>
-          {#if maxAccessCount !== null && accessCount !== null}
-            <span>
-              {$t('share.view.opens_progress', {
-                values: { used: accessCount, max: maxAccessCount }
-              })}
-            </span>
-          {/if}
-          {#if expiresAt}
-            <span>{$t('share.view.expires_in', { values: { relative: formatDate(expiresAt) } })}</span>
-          {/if}
-        </div>
-      {/if}
+    <main class="flex flex-col gap-6 pb-10 pt-10">
       {#if stage === 'loading'}
       <p class="text-sm text-muted-foreground">{$t('share.view.loading')}</p>
     {:else if stage === 'missing-key'}
@@ -283,8 +291,53 @@
         </form>
       </Card>
     {:else if stage === 'ready' && taskPayload}
-      <TaskSnapshotView payload={taskPayload} />
+      <!-- Task title lives in the content area (not the header) because the
+           task title IS the document title - tasks have no markdown body to
+           supply one. Semantic h1 (one per page, a11y/SEO), visual text-xl
+           (lighter than the default 2rem h1; the snapshot is meant to read
+           like a document, not a heading-only landing page). -->
+      {@const headline = taskPayload.display_name?.trim() || taskPayload.title || $t('share.view.untitled')}
+      <header class="flex flex-col gap-1">
+        <h1
+          class="break-words text-xl font-semibold leading-tight text-foreground"
+          class:line-through={taskMeta?.is_completed}
+        >
+          {headline}
+        </h1>
+        {#if taskMeta?.due_date || taskMeta?.is_completed}
+          <div class="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+            {#if taskMeta?.due_date}
+              <span>{$t('share.view.task.due_date_label')}: {formatDate(taskMeta.due_date)}</span>
+            {/if}
+            {#if taskMeta?.due_date && taskMeta?.is_completed}
+              <span aria-hidden="true">·</span>
+            {/if}
+            {#if taskMeta?.is_completed}
+              <span>{$t('share.view.task.completed_badge')}</span>
+            {/if}
+          </div>
+        {/if}
+      </header>
+      <TaskSnapshotView payload={taskPayload} showHeader={false} />
     {/if}
     </main>
   </div>
+
+  <!-- Footer attribution. See notes share viewer for design rationale. -->
+  <footer class="border-t border-border/60">
+    <div class="mx-auto w-full max-w-3xl px-4 py-4 text-center text-xs text-muted-foreground">
+      <span>{$t('share.view.footer_shared_from', { values: { app: 're/task' } })}</span>
+      <span aria-hidden="true"> · </span>
+      <span>{$t('share.view.footer_e2e_encrypted')}</span>
+      <span aria-hidden="true"> · </span>
+      <a
+        href="https://reapps.eu"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline-offset-2 hover:underline"
+      >
+        reapps.eu
+      </a>
+    </div>
+  </footer>
 </div>

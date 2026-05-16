@@ -28,6 +28,7 @@
     SHARE_MAX_ACCESS_COUNT_LIMIT,
     SNAPSHOT_PAYLOAD_VERSION,
     SHARE_SENDER_LABEL_MAX_LENGTH,
+    SHARE_DISPLAY_NAME_MAX_LENGTH,
     type CreateShareResponse,
     type SharedSnapshotNotePayload
   } from '@reborn/types';
@@ -48,6 +49,7 @@
   let stage = $state<Stage>('form');
   let expiry = $state<ExpiryPreset>('7d');
   let senderLabel = $state('');
+  let displayName = $state('');
   let passwordEnabled = $state(false);
   let password = $state('');
   let passwordConfirm = $state('');
@@ -60,6 +62,7 @@
     stage = 'form';
     expiry = '7d';
     senderLabel = '';
+    displayName = '';
     passwordEnabled = false;
     password = '';
     passwordConfirm = '';
@@ -105,20 +108,20 @@
       const note = await NoteService.getNote(noteId);
       if (!note) throw new Error('Note not found');
 
+      // Defense-in-depth: snapshot payload is intentionally minimal. We drop
+      // note metadata (is_starred, is_pinned, tags, created_at, updated_at)
+      // entirely - none of those fields are rendered for the recipient, and
+      // shipping them would leak personal organisational state (favourites,
+      // pinning, taxonomy, editing patterns) once the recipient decrypts.
+      // See SharedSnapshotNotePayload doc comment for the wider rationale.
       const payload: SharedSnapshotNotePayload = {
         type: 'note',
         v: SNAPSHOT_PAYLOAD_VERSION,
         title: note.title ?? '',
         content: note.content ?? '',
-        metadata: {
-          is_starred: note.is_starred,
-          is_pinned: note.is_pinned,
-          tags: note.tags,
-          created_at: note.created_at,
-          updated_at: note.updated_at
-        },
         shared_at: new Date().toISOString(),
         shared_by_label: senderLabel.trim() || undefined,
+        display_name: displayName.trim() || undefined,
         source_id: noteId
       };
 
@@ -228,6 +231,18 @@
               {$t('share.create.max_opens_self_destruct_hint')}
             </p>
           {/if}
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <Label for="share-display-name">{$t('share.create.display_name_label')}</Label>
+          <Input
+            id="share-display-name"
+            bind:value={displayName}
+            placeholder={noteTitle || $t('share.create.display_name_placeholder')}
+            maxlength={SHARE_DISPLAY_NAME_MAX_LENGTH}
+            disabled={stage === 'creating'}
+          />
+          <p class="text-xs text-muted-foreground">{$t('share.create.display_name_hint')}</p>
         </div>
 
         <div class="flex flex-col gap-2">

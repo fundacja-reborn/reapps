@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import type { NoteSensitiveMetadata } from './entities/note';
-import type { TaskSensitiveMetadata, SubtaskSensitiveMetadata } from './entities/task';
+import type { SubtaskSensitiveMetadata } from './entities/task';
 
 // ─── Format constants ────────────────────────────────────────────────
 
@@ -23,6 +22,16 @@ export const SHARE_DEFAULT_EXPIRY_SECONDS = SHARE_EXPIRY_PRESETS['7d'];
 
 /** Max length of optional sender label included in payload. */
 export const SHARE_SENDER_LABEL_MAX_LENGTH = 40;
+
+/**
+ * Max length of optional display name included in payload. Display name is the
+ * label shown in the snapshot viewer header in place of the source note/task
+ * title - lets the sender share without leaking a sensitive original title
+ * (e.g. "Bank passwords.md") while still giving the recipient context.
+ *
+ * Lives inside the encrypted payload, so the server never sees it.
+ */
+export const SHARE_DISPLAY_NAME_MAX_LENGTH = 80;
 
 /** Hard upper bound for `max_access_count`. Beyond this an unlimited share makes more sense. */
 export const SHARE_MAX_ACCESS_COUNT_LIMIT = 1000;
@@ -47,6 +56,35 @@ const encryptedBlob = (maxBytes: number) =>
     .regex(ENCRYPTED_BLOB_REGEX, 'Encrypted blob must match iv:ciphertext (Base64) format');
 
 // ─── Payload (after decryption, never seen by server) ────────────────
+//
+// Defense-in-depth: the snapshot payload is a DELIBERATELY MINIMAL subset of
+// the source note/task. We only ship fields the recipient actually needs to
+// render the snapshot. Personal organisational metadata (is_starred,
+// is_pinned, tags, reminder_date), app-internal state (notification_sent,
+// completed_at, completed_occurrences_count, recurrence_*), and timestamps
+// with low recipient value (created_at/updated_at) are intentionally absent.
+//
+// Rationale: encrypted payloads are server-opaque BUT recipient-readable
+// after client-side decryption. Anything we ship leaks once the recipient has
+// the URL fragment key. The zero-knowledge promise stops at the recipient -
+// the user picks who that is, so we minimise what they learn beyond the
+// content the sender meant to share.
+//
+// Adding a field here should be a deliberate choice tied to a recipient-side
+// rendering need, not "we might want this later". If you're tempted to add
+// one, ask: does removing it visibly break what the recipient sees? If no,
+// it doesn't belong.
+
+/**
+ * Minimal task-level metadata included in the snapshot.
+ * - `due_date` / `has_time`: rendered as "Due 10.04.2026" below the title
+ * - `is_completed`: drives line-through styling and the "Completed" badge
+ */
+export interface SharedSnapshotTaskMetadata {
+  due_date?: string | null;
+  has_time?: boolean;
+  is_completed?: boolean;
+}
 
 /** Note snapshot payload. Encrypted by the client into payload_encrypted. */
 export interface SharedSnapshotNotePayload {
@@ -54,12 +92,10 @@ export interface SharedSnapshotNotePayload {
   v: typeof SNAPSHOT_PAYLOAD_VERSION;
   title: string;
   content: string;
-  metadata?: NoteSensitiveMetadata & {
-    created_at?: string;
-    updated_at?: string;
-  };
   shared_at: string;
   shared_by_label?: string;
+  /** See SHARE_DISPLAY_NAME_MAX_LENGTH. Falls back to `title` when absent. */
+  display_name?: string;
   /**
    * UUID of the source note this snapshot was created from. Lives inside the
    * ciphertext (server never sees it). Owner-only - used by the client to
@@ -76,13 +112,15 @@ export interface SharedSnapshotTaskPayload {
   v: typeof SNAPSHOT_PAYLOAD_VERSION;
   title: string;
   description?: string;
-  metadata: TaskSensitiveMetadata;
+  metadata: SharedSnapshotTaskMetadata;
   subtasks: Array<{
     name: string;
     metadata?: SubtaskSensitiveMetadata;
   }>;
   shared_at: string;
   shared_by_label?: string;
+  /** See SharedSnapshotNotePayload.display_name - same role, for tasks. */
+  display_name?: string;
   /** See SharedSnapshotNotePayload.source_id - same role, for tasks. */
   source_id?: string;
 }
@@ -96,23 +134,18 @@ export type SharedSnapshotPayload = SharedSnapshotNotePayload | SharedSnapshotTa
 export const SharedSnapshotPayloadSchema: z.ZodType<SharedSnapshotPayload> = z.discriminatedUnion(
   'type',
   [
+    // Strict schemas (no .passthrough()) implement defense-in-depth at the
+    // parse layer: legacy bloated payloads still validate, but Zod strips
+    // unknown fields out of the result. Even if a future sender forgets to
+    // filter, the recipient never sees the extras after .safeParse().
     z.object({
       type: z.literal('note'),
       v: z.literal(SNAPSHOT_PAYLOAD_VERSION),
       title: z.string().max(1000),
       content: z.string().max(500_000),
-      metadata: z
-        .object({
-          is_starred: z.boolean().optional(),
-          is_pinned: z.boolean().optional(),
-          tags: z.array(z.string()).optional(),
-          created_at: z.string().optional(),
-          updated_at: z.string().optional()
-        })
-        .passthrough()
-        .optional(),
       shared_at: z.string(),
       shared_by_label: z.string().max(SHARE_SENDER_LABEL_MAX_LENGTH).optional(),
+      display_name: z.string().max(SHARE_DISPLAY_NAME_MAX_LENGTH).optional(),
       source_id: z.string().max(64).optional()
     }),
     z.object({
@@ -120,17 +153,26 @@ export const SharedSnapshotPayloadSchema: z.ZodType<SharedSnapshotPayload> = z.d
       v: z.literal(SNAPSHOT_PAYLOAD_VERSION),
       title: z.string().max(1000),
       description: z.string().max(10_000).optional(),
-      metadata: z.object({}).passthrough(),
+      metadata: z.object({
+        due_date: z.string().nullable().optional(),
+        has_time: z.boolean().optional(),
+        is_completed: z.boolean().optional()
+      }),
       subtasks: z
         .array(
           z.object({
             name: z.string().max(1000),
-            metadata: z.object({}).passthrough().optional()
+            metadata: z
+              .object({
+                is_completed: z.boolean().optional()
+              })
+              .optional()
           })
         )
         .max(500),
       shared_at: z.string(),
       shared_by_label: z.string().max(SHARE_SENDER_LABEL_MAX_LENGTH).optional(),
+      display_name: z.string().max(SHARE_DISPLAY_NAME_MAX_LENGTH).optional(),
       source_id: z.string().max(64).optional()
     })
   ]

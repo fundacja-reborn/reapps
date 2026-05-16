@@ -9,6 +9,9 @@
       "30d": "30 days",
       "never": "Never"
     },
+    "display_name_label": "Display name (optional)",
+    "display_name_placeholder": "Defaults to the title",
+    "display_name_hint": "Shown in the snapshot header instead of the original title.",
     "sender_label": "Sender label (optional)",
     "sender_label_placeholder": "Your name",
     "password_toggle": "Protect with password",
@@ -52,10 +55,13 @@
     "shared_by": "Shared by {label}",
     "expires_in": "Expires {relative}",
     "powered_by": "Powered by Reborn Apps",
+    "footer_shared_from": "Shared from {app}",
+    "footer_e2e_encrypted": "End-to-end encrypted",
     "task": {
       "completed_badge": "Completed",
       "due_date_label": "Due",
       "subtasks_label": "Subtasks",
+      "description_label": "Description",
       "no_subtasks": "No subtasks",
       "no_description": "No description"
     }

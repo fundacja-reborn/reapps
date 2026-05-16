@@ -9,6 +9,9 @@
       "30d": "30 días",
       "never": "Nunca"
     },
+    "display_name_label": "Nombre visible (opcional)",
+    "display_name_placeholder": "Por defecto, el título",
+    "display_name_hint": "Se muestra en la cabecera del snapshot en lugar del título original.",
     "sender_label": "Etiqueta de remitente (opcional)",
     "sender_label_placeholder": "Tu nombre",
     "password_toggle": "Proteger con contraseña",
@@ -52,10 +55,13 @@
     "shared_by": "Compartido por {label}",
     "expires_in": "Caduca {relative}",
     "powered_by": "Funciona con Reborn Apps",
+    "footer_shared_from": "Compartido desde {app}",
+    "footer_e2e_encrypted": "Cifrado de extremo a extremo",
     "task": {
       "completed_badge": "Completada",
       "due_date_label": "Vence",
       "subtasks_label": "Subtareas",
+      "description_label": "Descripción",
       "no_subtasks": "Sin subtareas",
       "no_description": "Sin descripción"
     }

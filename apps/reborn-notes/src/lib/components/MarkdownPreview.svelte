@@ -791,7 +791,12 @@
   /* ── Load all images button + optional hint ──────────────────
      Row owns the bottom margin so adding/removing the hint never
      shifts the button's spacing. `flex-wrap` lets the hint drop
-     below the button on narrow viewports instead of squeezing it. */
+     below the button on narrow viewports instead of squeezing it.
+
+     When `loadAllImagesHint` is set (share viewer context, see
+     NoteSnapshotView), `:has()` upgrades the row into a notice
+     banner with bg + border to anchor the privacy hint visually.
+     Owner-side previews (no hint) keep the bare-row layout. */
   .load-all-images-row {
     display: flex;
     flex-wrap: wrap;
@@ -800,11 +805,19 @@
     margin: 0 0 1em;
   }
 
+  .load-all-images-row:has(.load-all-images-hint) {
+    padding: 0.625em 0.875em;
+    border: 1px solid var(--border);
+    border-radius: 0.5em;
+    background: var(--muted);
+    margin-bottom: 1.25em;
+  }
+
   .load-all-images-btn {
     padding: 0.4em 1em;
     border-radius: 0.375em;
-    background: var(--muted);
-    color: var(--muted-foreground);
+    background: var(--background);
+    color: var(--foreground);
     border: 1px solid var(--border);
     cursor: pointer;
     font-size: 0.8rem;
