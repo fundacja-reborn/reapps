@@ -58,6 +58,27 @@
     "powered_by": "Bereitgestellt von Reborn Apps",
     "footer_shared_from": "Geteilt aus {app}",
     "footer_e2e_encrypted": "Ende-zu-Ende-verschlüsselt",
+    "gate": {
+      "title": {
+        "missing_key": "Unvollständiger Link",
+        "not_found": "Freigabe nicht gefunden",
+        "expired": "Link abgelaufen",
+        "revoked": "Zugriff widerrufen",
+        "exhausted": "Öffnungslimit erreicht",
+        "decrypt_failed": "Entschlüsselung fehlgeschlagen",
+        "error": "Etwas ist schiefgegangen"
+      },
+      "hint": {
+        "missing_key": "Stelle sicher, dass du die gesamte URL kopiert hast, einschließlich des Teils nach `#`.",
+        "not_found": "Der Absender hat sie möglicherweise entfernt, oder der Link wurde falsch übertragen.",
+        "expired": "Bitte den Absender um einen neuen Link.",
+        "revoked": "Der Absender hat das Teilen dieses Snapshots beendet.",
+        "exhausted": "Diese Freigabe hat ihr Öffnungslimit erreicht. Bitte den Absender um einen neuen Link.",
+        "decrypt_failed": "Überprüfe die URL oder bitte den Absender um eine erneute Freigabe.",
+        "error": "Bitte versuche es gleich noch einmal."
+      },
+      "cta_learn_more": "Mehr über {app} erfahren"
+    },
     "task": {
       "completed_badge": "Erledigt",
       "due_date_label": "Fällig",

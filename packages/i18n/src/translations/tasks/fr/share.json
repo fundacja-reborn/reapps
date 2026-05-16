@@ -58,6 +58,27 @@
     "powered_by": "Propulsé par Reborn Apps",
     "footer_shared_from": "Partagé depuis {app}",
     "footer_e2e_encrypted": "Chiffrement de bout en bout",
+    "gate": {
+      "title": {
+        "missing_key": "Lien incomplet",
+        "not_found": "Partage introuvable",
+        "expired": "Lien expiré",
+        "revoked": "Accès révoqué",
+        "exhausted": "Limite d'ouvertures atteinte",
+        "decrypt_failed": "Déchiffrement impossible",
+        "error": "Une erreur s'est produite"
+      },
+      "hint": {
+        "missing_key": "Assurez-vous d'avoir copié l'URL complète, y compris la partie après `#`.",
+        "not_found": "L'expéditeur l'a peut-être supprimé, ou le lien comporte une erreur de saisie.",
+        "expired": "Demandez à l'expéditeur un nouveau lien.",
+        "revoked": "L'expéditeur a cessé de partager cet instantané.",
+        "exhausted": "Ce partage a atteint sa limite d'ouvertures. Demandez à l'expéditeur un nouveau lien.",
+        "decrypt_failed": "Vérifiez l'URL ou demandez à l'expéditeur de partager à nouveau.",
+        "error": "Veuillez réessayer dans un instant."
+      },
+      "cta_learn_more": "En savoir plus sur {app}"
+    },
     "task": {
       "completed_badge": "Terminé",
       "due_date_label": "Échéance",

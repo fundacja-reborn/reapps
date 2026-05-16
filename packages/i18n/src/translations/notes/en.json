@@ -1000,6 +1000,27 @@
       "footer_shared_from": "Shared from {app}",
       "footer_e2e_encrypted": "End-to-end encrypted",
       "images_privacy_note": "This note contains external images. To keep your visit private, they load only when you click them.",
+      "gate": {
+        "title": {
+          "missing_key": "Incomplete link",
+          "not_found": "Link not found",
+          "expired": "Link expired",
+          "revoked": "Access revoked",
+          "exhausted": "Open limit reached",
+          "decrypt_failed": "Could not decrypt",
+          "error": "Something went wrong"
+        },
+        "hint": {
+          "missing_key": "Make sure you copied the entire URL, including the part after `#`.",
+          "not_found": "The sender may have removed it, or the link is mistyped.",
+          "expired": "Ask the sender for a fresh link.",
+          "revoked": "The sender has stopped sharing this snapshot.",
+          "exhausted": "This share has reached its open limit. Ask the sender for a new link.",
+          "decrypt_failed": "Double-check the URL or ask the sender to re-share.",
+          "error": "Please try again in a moment."
+        },
+        "cta_learn_more": "Learn more about {app}"
+      },
       "note": {
         "tags_label": "Tags"
       }

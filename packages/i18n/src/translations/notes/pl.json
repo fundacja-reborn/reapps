@@ -1000,6 +1000,27 @@
       "footer_shared_from": "Udostępnione z {app}",
       "footer_e2e_encrypted": "Szyfrowanie end-to-end",
       "images_privacy_note": "Ta notatka zawiera zewnętrzne zdjęcia. Aby zachować Twoją prywatność, ładują się dopiero po kliknięciu.",
+      "gate": {
+        "title": {
+          "missing_key": "Niepełny link",
+          "not_found": "Nie znaleziono udostępnienia",
+          "expired": "Link wygasł",
+          "revoked": "Dostęp cofnięty",
+          "exhausted": "Limit otwarć osiągnięty",
+          "decrypt_failed": "Nie udało się odszyfrować",
+          "error": "Coś poszło nie tak"
+        },
+        "hint": {
+          "missing_key": "Upewnij się, że skopiowano cały adres, łącznie z częścią po znaku `#`.",
+          "not_found": "Nadawca mógł je usunąć lub adres został przepisany z błędem.",
+          "expired": "Poproś nadawcę o nowy link.",
+          "revoked": "Nadawca zakończył udostępnianie tej notatki.",
+          "exhausted": "To udostępnienie osiągnęło limit otwarć. Poproś nadawcę o nowy link.",
+          "decrypt_failed": "Sprawdź dokładnie adres lub poproś nadawcę o ponowne udostępnienie.",
+          "error": "Spróbuj ponownie za chwilę."
+        },
+        "cta_learn_more": "Dowiedz się więcej o {app}"
+      },
       "note": {
         "tags_label": "Tagi"
       }

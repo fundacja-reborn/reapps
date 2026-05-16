@@ -3,7 +3,19 @@
   import { base } from '$app/paths';
   import { page } from '$app/stores';
   import { Button, Input, Card } from '@reborn/ui';
-  import { Eye, EyeOff, Lock, ShieldCheck } from '@lucide/svelte';
+  import {
+    AlertCircle,
+    AlertOctagon,
+    Ban,
+    Clock,
+    Eye,
+    EyeOff,
+    KeyRound,
+    Link2Off,
+    Lock,
+    ShieldAlert,
+    ShieldCheck
+  } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import {
     importKeyFromBase64url,
@@ -16,6 +28,22 @@
     type SharePublicResponse
   } from '@reborn/types';
   import NoteSnapshotView from '$lib/components/notes/NoteSnapshotView.svelte';
+  import ShareGate from '$lib/components/notes/ShareGate.svelte';
+
+  // Terminal "the link is gone" states: the recipient can't recover by
+  // copy-pasting the URL again. These get the soft CTA ("Learn about re/notes")
+  // because (a) they're trusted-referral touchpoints we don't want to leave
+  // as dead ends and (b) there's no actionable fix to suggest, so a brand
+  // pointer doesn't compete with a "do this instead" message. Recoverable
+  // states (missing-key, decrypt-failed) and the transient `error` state are
+  // intentionally CTA-free.
+  const TERMINAL_STATES = new Set([
+    'not-found',
+    'expired',
+    'revoked',
+    'exhausted'
+  ]);
+  const LEARN_MORE_URL = 'https://reapps.eu';
 
   type Stage =
     | 'loading'
@@ -239,40 +267,63 @@
       {#if stage === 'loading'}
       <p class="text-sm text-muted-foreground">{$t('share.view.loading')}</p>
     {:else if stage === 'missing-key'}
-      <Card class="p-6">
-        <h1 class="text-lg font-semibold">{$t('share.view.error_title')}</h1>
-        <p class="mt-2 text-sm text-muted-foreground">{$t('share.view.missing_key')}</p>
-      </Card>
+      <ShareGate
+        icon={KeyRound}
+        title={$t('share.view.gate.title.missing_key')}
+        hint={$t('share.view.gate.hint.missing_key')}
+      />
     {:else if stage === 'not-found'}
-      <Card class="p-6">
-        <h1 class="text-lg font-semibold">{$t('share.view.error_title')}</h1>
-        <p class="mt-2 text-sm text-muted-foreground">{$t('share.view.not_found')}</p>
-      </Card>
+      <ShareGate
+        icon={Link2Off}
+        title={$t('share.view.gate.title.not_found')}
+        hint={$t('share.view.gate.hint.not_found')}
+        cta={{
+          label: $t('share.view.gate.cta_learn_more', { values: { app: 're/notes' } }),
+          href: LEARN_MORE_URL
+        }}
+      />
     {:else if stage === 'expired'}
-      <Card class="p-6">
-        <h1 class="text-lg font-semibold">{$t('share.view.error_title')}</h1>
-        <p class="mt-2 text-sm text-muted-foreground">{$t('share.view.expired')}</p>
-      </Card>
+      <ShareGate
+        icon={Clock}
+        title={$t('share.view.gate.title.expired')}
+        hint={$t('share.view.gate.hint.expired')}
+        cta={{
+          label: $t('share.view.gate.cta_learn_more', { values: { app: 're/notes' } }),
+          href: LEARN_MORE_URL
+        }}
+      />
     {:else if stage === 'revoked'}
-      <Card class="p-6">
-        <h1 class="text-lg font-semibold">{$t('share.view.error_title')}</h1>
-        <p class="mt-2 text-sm text-muted-foreground">{$t('share.view.not_found')}</p>
-      </Card>
+      <ShareGate
+        icon={Ban}
+        title={$t('share.view.gate.title.revoked')}
+        hint={$t('share.view.gate.hint.revoked')}
+        cta={{
+          label: $t('share.view.gate.cta_learn_more', { values: { app: 're/notes' } }),
+          href: LEARN_MORE_URL
+        }}
+      />
     {:else if stage === 'exhausted'}
-      <Card class="p-6">
-        <h1 class="text-lg font-semibold">{$t('share.view.error_title')}</h1>
-        <p class="mt-2 text-sm text-muted-foreground">{$t('share.view.exhausted')}</p>
-      </Card>
+      <ShareGate
+        icon={AlertOctagon}
+        title={$t('share.view.gate.title.exhausted')}
+        hint={$t('share.view.gate.hint.exhausted')}
+        cta={{
+          label: $t('share.view.gate.cta_learn_more', { values: { app: 're/notes' } }),
+          href: LEARN_MORE_URL
+        }}
+      />
     {:else if stage === 'decrypt-failed'}
-      <Card class="p-6">
-        <h1 class="text-lg font-semibold">{$t('share.view.error_title')}</h1>
-        <p class="mt-2 text-sm text-muted-foreground">{$t('share.view.decrypt_failed')}</p>
-      </Card>
+      <ShareGate
+        icon={ShieldAlert}
+        title={$t('share.view.gate.title.decrypt_failed')}
+        hint={$t('share.view.gate.hint.decrypt_failed')}
+      />
     {:else if stage === 'error'}
-      <Card class="p-6">
-        <h1 class="text-lg font-semibold">{$t('share.view.error_title')}</h1>
-        <p class="mt-2 text-sm text-muted-foreground">{errorDetail}</p>
-      </Card>
+      <ShareGate
+        icon={AlertCircle}
+        title={$t('share.view.gate.title.error')}
+        hint={errorDetail || $t('share.view.gate.hint.error')}
+      />
     {:else if stage === 'password-prompt'}
       <!-- Pre-unlock gate. Centered narrow column mirrors the in-app login
            page (small logo + intro + card) so the recipient immediately

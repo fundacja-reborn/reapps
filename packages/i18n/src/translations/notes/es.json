@@ -1000,6 +1000,27 @@
       "footer_shared_from": "Compartido desde {app}",
       "footer_e2e_encrypted": "Cifrado de extremo a extremo",
       "images_privacy_note": "Esta nota contiene imágenes externas. Para mantener tu privacidad, se cargan solo al hacer clic.",
+      "gate": {
+        "title": {
+          "missing_key": "Enlace incompleto",
+          "not_found": "Enlace no encontrado",
+          "expired": "Enlace caducado",
+          "revoked": "Acceso revocado",
+          "exhausted": "Límite de aperturas alcanzado",
+          "decrypt_failed": "No se pudo descifrar",
+          "error": "Algo salió mal"
+        },
+        "hint": {
+          "missing_key": "Asegúrate de haber copiado toda la URL, incluida la parte después de `#`.",
+          "not_found": "El remitente puede haberlo eliminado o el enlace contiene un error.",
+          "expired": "Pide al remitente un enlace nuevo.",
+          "revoked": "El remitente ha dejado de compartir esta instantánea.",
+          "exhausted": "Este enlace ha alcanzado su límite de aperturas. Pide al remitente uno nuevo.",
+          "decrypt_failed": "Comprueba la URL o pide al remitente que vuelva a compartir.",
+          "error": "Inténtalo de nuevo en un momento."
+        },
+        "cta_learn_more": "Más información sobre {app}"
+      },
       "note": {
         "tags_label": "Etiquetas"
       }
