@@ -1066,7 +1066,8 @@
     "indicator": {
       "label": "Partagé",
       "tooltip": "Cette note a {count} partage(s) actif(s)",
-      "aria_label": "{count} partage(s) actif(s) pour cette note"
+      "aria_label": "{count} partage(s) actif(s) pour cette note",
+      "create_tooltip": "Partager cette note"
     },
     "manage": {
       "dialog_title": "Partages actifs",

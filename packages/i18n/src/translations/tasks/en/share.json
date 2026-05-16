@@ -129,7 +129,8 @@
   "indicator": {
     "label": "Shared",
     "tooltip": "This task has {count} active read-only share(s)",
-    "aria_label": "{count} active shares for this task"
+    "aria_label": "{count} active shares for this task",
+    "create_tooltip": "Share this task"
   },
   "manage": {
     "dialog_title": "Active shares",

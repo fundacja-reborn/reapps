@@ -1066,7 +1066,8 @@
     "indicator": {
       "label": "Udostępnione",
       "tooltip": "Ta notatka ma aktywnych udostępnień: {count}",
-      "aria_label": "Aktywne udostępnienia tej notatki: {count}"
+      "aria_label": "Aktywne udostępnienia tej notatki: {count}",
+      "create_tooltip": "Udostępnij tę notatkę"
     },
     "manage": {
       "dialog_title": "Aktywne udostępnienia",

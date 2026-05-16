@@ -159,20 +159,16 @@
     <NoteShareIndicator {noteId} onCreateNew={onShareCreate} />
   {/if}
 
-  <!-- E2EE badge -->
+  <!-- E2EE indicator (flat) -->
   <button
     type="button"
     onclick={onshowxray}
-    class="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 rounded-md border border-border/60 bg-muted/50
-         px-2 py-0.5 text-xs text-muted-foreground select-none
-         transition-colors hover:bg-muted hover:text-foreground
-         {!isMobile ? 'animate-[pulse_2s_ease-in-out_1]' : ''}"
-    style={!isMobile ? 'animation-delay: 1.5s; animation-fill-mode: backwards;' : undefined}
+    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground
+         transition-colors hover:bg-accent hover:text-accent-foreground"
     title={$t('e2e.badge_tooltip')}
+    aria-label={$t('e2e.badge_tooltip')}
   >
-    <Lock class="h-3.5 w-3.5 md:h-3 md:w-3" />
-    <span class="hidden lg:inline">{$t('e2e.badge')}</span>
-    <span class="{isMobile ? '' : 'hidden sm:inline'} lg:hidden">{$t('e2e.badge_short')}</span>
+    <Lock class="h-4 w-4" />
   </button>
 
   {#if !activeTrash}

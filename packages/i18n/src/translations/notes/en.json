@@ -1066,7 +1066,8 @@
     "indicator": {
       "label": "Shared",
       "tooltip": "This note has {count} active read-only share(s)",
-      "aria_label": "{count} active shares for this note"
+      "aria_label": "{count} active shares for this note",
+      "create_tooltip": "Share this note"
     },
     "manage": {
       "dialog_title": "Active shares",

@@ -129,7 +129,8 @@
   "indicator": {
     "label": "Partagé",
     "tooltip": "Cette tâche a {count} partage(s) actif(s)",
-    "aria_label": "{count} partage(s) actif(s) pour cette tâche"
+    "aria_label": "{count} partage(s) actif(s) pour cette tâche",
+    "create_tooltip": "Partager cette tâche"
   },
   "manage": {
     "dialog_title": "Partages actifs",

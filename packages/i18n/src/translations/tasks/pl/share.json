@@ -129,7 +129,8 @@
   "indicator": {
     "label": "Udostępnione",
     "tooltip": "To zadanie ma aktywnych udostępnień: {count}",
-    "aria_label": "Aktywne udostępnienia tego zadania: {count}"
+    "aria_label": "Aktywne udostępnienia tego zadania: {count}",
+    "create_tooltip": "Udostępnij to zadanie"
   },
   "manage": {
     "dialog_title": "Aktywne udostępnienia",

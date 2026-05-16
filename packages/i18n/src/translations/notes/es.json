@@ -1066,7 +1066,8 @@
     "indicator": {
       "label": "Compartido",
       "tooltip": "Esta nota tiene {count} compartido(s) activo(s)",
-      "aria_label": "{count} compartido(s) activo(s) para esta nota"
+      "aria_label": "{count} compartido(s) activo(s) para esta nota",
+      "create_tooltip": "Compartir esta nota"
     },
     "manage": {
       "dialog_title": "Compartidos activos",

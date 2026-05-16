@@ -1066,7 +1066,8 @@
     "indicator": {
       "label": "Geteilt",
       "tooltip": "Diese Notiz hat {count} aktive Freigabe(n)",
-      "aria_label": "{count} aktive Freigabe(n) für diese Notiz"
+      "aria_label": "{count} aktive Freigabe(n) für diese Notiz",
+      "create_tooltip": "Diese Notiz teilen"
     },
     "manage": {
       "dialog_title": "Aktive Freigaben",

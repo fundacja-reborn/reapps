@@ -18,24 +18,37 @@
     if (!taskId) return 0;
     return $sharesBySourceId.get(taskId)?.length ?? 0;
   });
+
+  function handleClick() {
+    if (count > 0) {
+      dialogOpen = true;
+    } else {
+      onCreateNew?.();
+    }
+  }
 </script>
 
-{#if count > 0 && taskId}
+{#if taskId}
   <button
     type="button"
-    onclick={() => (dialogOpen = true)}
-    class="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 rounded-md border border-border/60
-           bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground select-none
-           transition-colors hover:bg-muted hover:text-foreground"
-    title={$t('share.indicator.tooltip', { values: { count } })}
-    aria-label={$t('share.indicator.aria_label', { values: { count } })}
+    onclick={handleClick}
+    class="flex shrink-0 items-center justify-center gap-1 rounded-md text-muted-foreground
+           transition-colors hover:bg-accent hover:text-accent-foreground
+           {count > 0 ? 'h-7 px-2' : 'h-7 w-7'}"
+    title={count > 0
+      ? $t('share.indicator.tooltip', { values: { count } })
+      : $t('share.indicator.create_tooltip')}
+    aria-label={count > 0
+      ? $t('share.indicator.aria_label', { values: { count } })
+      : $t('share.indicator.create_tooltip')}
   >
-    <Share2 class="h-3.5 w-3.5 md:h-3 md:w-3" />
-    <span class="hidden sm:inline">
-      {$t('share.indicator.label', { values: { count } })}
-    </span>
-    <span class="tabular-nums">{count}</span>
+    <Share2 class="h-4 w-4" />
+    {#if count > 0}
+      <span class="text-xs tabular-nums">{count}</span>
+    {/if}
   </button>
 
-  <ManageSharesDialog bind:open={dialogOpen} sourceId={taskId} {onCreateNew} />
+  {#if count > 0}
+    <ManageSharesDialog bind:open={dialogOpen} sourceId={taskId} {onCreateNew} />
+  {/if}
 {/if}

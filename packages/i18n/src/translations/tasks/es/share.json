@@ -129,7 +129,8 @@
   "indicator": {
     "label": "Compartido",
     "tooltip": "Esta tarea tiene {count} compartido(s) activo(s)",
-    "aria_label": "{count} compartido(s) activo(s) para esta tarea"
+    "aria_label": "{count} compartido(s) activo(s) para esta tarea",
+    "create_tooltip": "Compartir esta tarea"
   },
   "manage": {
     "dialog_title": "Compartidos activos",

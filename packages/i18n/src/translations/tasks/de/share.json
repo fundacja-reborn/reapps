@@ -129,7 +129,8 @@
   "indicator": {
     "label": "Geteilt",
     "tooltip": "Diese Aufgabe hat {count} aktive Freigabe(n)",
-    "aria_label": "{count} aktive Freigabe(n) für diese Aufgabe"
+    "aria_label": "{count} aktive Freigabe(n) für diese Aufgabe",
+    "create_tooltip": "Diese Aufgabe teilen"
   },
   "manage": {
     "dialog_title": "Aktive Freigaben",
