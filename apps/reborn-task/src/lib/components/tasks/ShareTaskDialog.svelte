@@ -86,7 +86,12 @@
       if (password !== passwordConfirm) return $t('share.create.password_mismatch');
     }
     if (!maxOpensUnlimited) {
-      if (!Number.isInteger(maxOpens) || maxOpens < 1 || maxOpens > SHARE_MAX_ACCESS_COUNT_LIMIT) {
+      if (
+        maxOpens === null ||
+        !Number.isInteger(maxOpens) ||
+        maxOpens < 1 ||
+        maxOpens > SHARE_MAX_ACCESS_COUNT_LIMIT
+      ) {
         return $t('share.create.max_opens_invalid');
       }
     }
