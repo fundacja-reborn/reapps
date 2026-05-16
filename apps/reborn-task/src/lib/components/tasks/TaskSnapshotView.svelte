@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { CheckCircle2, Circle } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import type { SharedSnapshotTaskPayload } from '@reborn/types';
 
@@ -23,35 +22,38 @@
 
 {#if showHeader}
   {@const headline = payload.display_name?.trim() || payload.title || $t('share.view.untitled')}
+  <!-- Layout mirrors the real /s/[slug] viewer: share-level chrome (who
+       shared, when) sits in its own row above the title, and task-level
+       metadata (due date, completed badge) sits in its own row below the
+       title. Mixing them on one line read as "Due" being the share expiry
+       rather than the task's due date. -->
   <header class="flex flex-col gap-1">
-    <div class="flex items-center gap-2">
-      {#if meta?.is_completed}
-        <CheckCircle2 class="h-4 w-4 shrink-0 text-green-600" />
-      {:else}
-        <Circle class="h-4 w-4 shrink-0 text-muted-foreground" />
-      {/if}
-      <h1
-        class="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-foreground"
-        class:line-through={meta?.is_completed}
-      >
-        {headline}
-      </h1>
-    </div>
     <div class="flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
       {#if payload.shared_by_label}
         <span>{$t('share.view.shared_by', { values: { label: payload.shared_by_label } })}</span>
         <span aria-hidden="true">·</span>
       {/if}
       <span>{$t('share.view.shared_at', { values: { relative: formatDate(payload.shared_at) } })}</span>
-      {#if meta?.due_date}
-        <span aria-hidden="true">·</span>
-        <span>{$t('share.view.task.due_date_label')}: {formatDate(meta.due_date)}</span>
-      {/if}
-      {#if meta?.is_completed}
-        <span aria-hidden="true">·</span>
-        <span>{$t('share.view.task.completed_badge')}</span>
-      {/if}
     </div>
+    <h1
+      class="break-words text-xl font-semibold leading-tight text-foreground"
+      class:line-through={meta?.is_completed}
+    >
+      {headline}
+    </h1>
+    {#if meta?.due_date || meta?.is_completed}
+      <div class="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+        {#if meta?.due_date}
+          <span>{$t('share.view.task.due_date_label')}: {formatDate(meta.due_date)}</span>
+        {/if}
+        {#if meta?.due_date && meta?.is_completed}
+          <span aria-hidden="true">·</span>
+        {/if}
+        {#if meta?.is_completed}
+          <span>{$t('share.view.task.completed_badge')}</span>
+        {/if}
+      </div>
+    {/if}
   </header>
 {/if}
 

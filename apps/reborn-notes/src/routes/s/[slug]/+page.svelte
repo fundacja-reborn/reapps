@@ -184,10 +184,10 @@
           {@const headline = notePayload.display_name?.trim() || notePayload.title || $t('share.view.untitled')}
           <!-- No `font-semibold` here on purpose: the note's actual document
                title is the markdown H1 below the border, so this h1 is just
-               an identifier label ("which share am I looking at?"). Hierarchy
-               comes from text-sm vs text-xs + foreground vs muted; bold would
-               over-claim and visually compete with the markdown H1. -->
-          <h1 class="break-words text-sm leading-snug text-foreground">
+               an identifier label ("which share am I looking at?"). It shares
+               the muted-foreground color with the rest of the meta row - the
+               markdown H1 below owns the foreground weight. -->
+          <h1 class="break-words text-sm leading-snug text-muted-foreground">
             {headline}
           </h1>
           <div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs leading-snug text-muted-foreground">
