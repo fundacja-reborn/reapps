@@ -989,6 +989,7 @@
       "opens_progress": "Otwarte {used}/{max}",
       "decrypt_failed": "Nie udało się odszyfrować zawartości. Klucz może być nieprawidłowy.",
       "password_prompt": "Udostępnienie chronione hasłem",
+      "password_intro": "Snapshot notatki zaszyfrowany end-to-end. Wpisz hasło, aby go otworzyć.",
       "password_submit": "Otwórz",
       "password_wrong": "Nieprawidłowe hasło",
       "shared_at": "Udostępniono {relative}",

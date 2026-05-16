@@ -49,6 +49,7 @@
     "opens_progress": "Abierto {used}/{max}",
     "decrypt_failed": "No se pudo descifrar el contenido. Es posible que la clave no sea válida.",
     "password_prompt": "Este enlace está protegido con contraseña",
+    "password_intro": "Instantánea de una tarea cifrada de extremo a extremo. Introduce la contraseña para abrirla.",
     "password_submit": "Abrir",
     "password_wrong": "Contraseña incorrecta",
     "shared_at": "Compartido {relative}",

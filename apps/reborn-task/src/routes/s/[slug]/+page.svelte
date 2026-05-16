@@ -3,7 +3,7 @@
   import { base } from '$app/paths';
   import { page } from '$app/stores';
   import { Button, Input, Card } from '@reborn/ui';
-  import { Lock, ShieldCheck } from '@lucide/svelte';
+  import { Eye, EyeOff, Lock, ShieldCheck } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import TaskSnapshotView from '$lib/components/tasks/TaskSnapshotView.svelte';
   import {
@@ -32,6 +32,7 @@
   let stage = $state<Stage>('loading');
   let errorDetail = $state('');
   let password = $state('');
+  let showPassword = $state(false);
   let passwordWrong = $state(false);
   let passwordSubmitting = $state(false);
   let payload = $state<SharedSnapshotPayload | null>(null);
@@ -184,9 +185,16 @@
          Here we keep only share-level metadata: who shared, when, plus the
          read-only chrome on the right.
 
+         Header only renders once the snapshot is unlocked: pre-unlock there
+         is no metadata to surface, and a lone READ-ONLY badge over an empty
+         page looked unloved. The password gate (and other blocking states)
+         carry their own self-contained centered layout below. See notes
+         share viewer for the matching pattern.
+
          Mobile layout: `flex-col-reverse` so chrome (READ-ONLY · EXPIRES)
          appears as a status row on top, then the share-meta row below. See
          notes share viewer for the squeeze bug this avoids. -->
+    {#if stage === 'ready' && taskPayload}
     <header class="flex flex-col-reverse gap-y-1 border-b py-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-x-4 sm:gap-y-2">
       <div class="min-w-0 sm:flex-1">
         {#if stage === 'ready' && taskPayload}
@@ -223,6 +231,7 @@
         {/if}
       </div>
     </header>
+    {/if}
 
     <main class="flex flex-col gap-6 pb-10 pt-10">
       {#if stage === 'loading'}
@@ -263,33 +272,67 @@
         <p class="mt-2 text-sm text-muted-foreground">{errorDetail}</p>
       </Card>
     {:else if stage === 'password-prompt'}
-      <Card class="flex flex-col gap-4 p-6">
-        <div class="flex items-center gap-2">
-          <Lock class="h-5 w-5 text-muted-foreground" />
-          <h1 class="text-lg font-semibold">{$t('share.view.password_prompt')}</h1>
-        </div>
-        <form
-          class="flex flex-col gap-3"
-          onsubmit={(e) => {
-            e.preventDefault();
-            void handlePasswordSubmit();
-          }}
-        >
-          <Input
-            type="password"
-            bind:value={password}
-            placeholder={$t('share.create.password_placeholder')}
-            autocomplete="off"
-            disabled={passwordSubmitting}
+      <!-- Pre-unlock gate. Mirrors the notes share viewer pattern: centered
+           narrow column with a small re/task logo + intro + card so the
+           recipient sees this is a re/task share rather than a phishing
+           page. Logo at h-5 (one notch smaller than the in-app login). -->
+      <div class="mx-auto flex w-full max-w-md flex-col items-center gap-6 pt-4 sm:pt-12">
+        <div class="flex flex-col items-center gap-3 text-center">
+          <img src="{base}/logo-black.svg" alt="re/task" class="block h-5 w-auto dark:hidden" />
+          <img
+            src="{base}/logo-white.svg"
+            alt="re/task"
+            class="hidden h-5 w-auto dark:block dark:opacity-80"
           />
-          {#if passwordWrong}
-            <p class="text-sm text-destructive">{$t('share.view.password_wrong')}</p>
-          {/if}
-          <Button type="submit" disabled={passwordSubmitting || password.length === 0}>
-            {$t('share.view.password_submit')}
-          </Button>
-        </form>
-      </Card>
+          <p class="text-sm text-muted-foreground">
+            {$t('share.view.password_intro')}
+          </p>
+        </div>
+        <Card class="flex w-full flex-col gap-4 p-6">
+          <div class="flex items-center gap-2">
+            <Lock class="h-5 w-5 text-muted-foreground" />
+            <h1 class="text-base font-semibold">{$t('share.view.password_prompt')}</h1>
+          </div>
+          <form
+            class="flex flex-col gap-3"
+            onsubmit={(e) => {
+              e.preventDefault();
+              void handlePasswordSubmit();
+            }}
+          >
+            <div class="relative">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                bind:value={password}
+                placeholder={$t('share.create.password_placeholder')}
+                autocomplete="off"
+                disabled={passwordSubmitting}
+                class="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onclick={() => (showPassword = !showPassword)}
+                tabindex={-1}
+              >
+                {#if showPassword}
+                  <EyeOff class="h-4 w-4 text-muted-foreground" />
+                {:else}
+                  <Eye class="h-4 w-4 text-muted-foreground" />
+                {/if}
+              </Button>
+            </div>
+            {#if passwordWrong}
+              <p class="text-sm text-destructive">{$t('share.view.password_wrong')}</p>
+            {/if}
+            <Button type="submit" disabled={passwordSubmitting || password.length === 0}>
+              {$t('share.view.password_submit')}
+            </Button>
+          </form>
+        </Card>
+      </div>
     {:else if stage === 'ready' && taskPayload}
       <!-- Task title lives in the content area (not the header) because the
            task title IS the document title - tasks have no markdown body to

@@ -49,6 +49,7 @@
     "opens_progress": "Opened {used}/{max}",
     "decrypt_failed": "Could not decrypt content. The key may be invalid.",
     "password_prompt": "This share is password protected",
+    "password_intro": "End-to-end encrypted snapshot of a task. Enter the password to open it.",
     "password_submit": "Open",
     "password_wrong": "Incorrect password",
     "shared_at": "Shared {relative}",

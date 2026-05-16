@@ -49,6 +49,7 @@
     "opens_progress": "Ouvert {used}/{max}",
     "decrypt_failed": "Impossible de déchiffrer le contenu. La clé est peut-être invalide.",
     "password_prompt": "Ce partage est protégé par mot de passe",
+    "password_intro": "Instantané d'une tâche chiffré de bout en bout. Saisis le mot de passe pour l'ouvrir.",
     "password_submit": "Ouvrir",
     "password_wrong": "Mot de passe incorrect",
     "shared_at": "Partagé {relative}",

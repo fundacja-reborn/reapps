@@ -989,6 +989,7 @@
       "opens_progress": "Aufrufe {used}/{max}",
       "decrypt_failed": "Inhalt konnte nicht entschlüsselt werden. Der Schlüssel ist möglicherweise ungültig.",
       "password_prompt": "Diese Freigabe ist passwortgeschützt",
+      "password_intro": "Ende-zu-Ende-verschlüsselter Snapshot einer Notiz. Gib das Passwort ein, um ihn zu öffnen.",
       "password_submit": "Öffnen",
       "password_wrong": "Falsches Passwort",
       "shared_at": "Geteilt {relative}",
