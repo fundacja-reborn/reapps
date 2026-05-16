@@ -994,6 +994,7 @@
       "password_wrong": "Contraseña incorrecta",
       "shared_at": "Compartido {relative}",
       "shared_by": "Compartido por {label}",
+      "note_label": "Nota: {label}",
       "expires_in": "Caduca {relative}",
       "powered_by": "Funciona con Reborn Apps",
       "footer_shared_from": "Compartido desde {app}",

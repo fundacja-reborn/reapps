@@ -994,6 +994,7 @@
       "password_wrong": "Falsches Passwort",
       "shared_at": "Geteilt {relative}",
       "shared_by": "Geteilt von {label}",
+      "note_label": "Notiz: {label}",
       "expires_in": "Läuft ab {relative}",
       "powered_by": "Bereitgestellt von Reborn Apps",
       "footer_shared_from": "Geteilt aus {app}",

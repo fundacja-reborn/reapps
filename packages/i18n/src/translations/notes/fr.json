@@ -994,6 +994,7 @@
       "password_wrong": "Mot de passe incorrect",
       "shared_at": "Partagé {relative}",
       "shared_by": "Partagé par {label}",
+      "note_label": "Note : {label}",
       "expires_in": "Expire {relative}",
       "powered_by": "Propulsé par Reborn Apps",
       "footer_shared_from": "Partagé depuis {app}",

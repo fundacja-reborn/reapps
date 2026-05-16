@@ -994,6 +994,7 @@
       "password_wrong": "Nieprawidłowe hasło",
       "shared_at": "Udostępniono {relative}",
       "shared_by": "Udostępnione przez: {label}",
+      "note_label": "Notatka: {label}",
       "expires_in": "Wygasa {relative}",
       "powered_by": "Tworzone przez Reborn Apps",
       "footer_shared_from": "Udostępnione z {app}",

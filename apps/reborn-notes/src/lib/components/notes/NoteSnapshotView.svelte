@@ -18,8 +18,8 @@
 {#if showHeader}
   {@const headline = payload.display_name?.trim() || payload.title || $t('share.view.untitled')}
   <header class="flex flex-col gap-1">
-    <h1 class="break-words text-sm font-semibold leading-snug text-foreground">
-      {headline}
+    <h1 class="break-words text-xs leading-snug text-muted-foreground">
+      {$t('share.view.note_label', { values: { label: headline } })}
     </h1>
     <div class="flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
       {#if payload.shared_by_label}
