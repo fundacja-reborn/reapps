@@ -73,6 +73,7 @@ memory/
 docs/development/
 scripts/*
 !scripts/release.mjs
+!scripts/check-i18n-parity.mjs
 tmp/
 patches/
 *.bak
