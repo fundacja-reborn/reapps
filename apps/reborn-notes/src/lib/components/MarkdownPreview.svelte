@@ -43,6 +43,8 @@
     contentEl = $bindable<HTMLElement | null>(null),
     imageLoadMode = 'ask' as ImageLoadMode,
     loadAllImagesHint,
+    settingsLinkLabel,
+    settingsLinkHref,
     onNoteLink,
     onTaskToggle,
     onrender,
@@ -62,10 +64,19 @@
     /**
      * Optional plain-text caption rendered next to the "Load all images"
      * button. Used by the shared-snapshot viewer to explain to non-technical
-     * recipients why external images don't load automatically. Owner-side
-     * previews leave this unset.
+     * recipients why external images don't load automatically, and by the
+     * owner-side preview to point at the appearance setting that controls
+     * the default behaviour.
      */
     loadAllImagesHint?: string;
+    /**
+     * Optional CTA appended to `loadAllImagesHint` as an inline anchor.
+     * Used by the owner-side preview to deep-link into the image-loading
+     * preference in /settings/appearance. Both label and href must be set
+     * for the link to render. Snapshot viewer leaves these unset.
+     */
+    settingsLinkLabel?: string;
+    settingsLinkHref?: string;
     /** Called when user clicks a note:UUID link */
     onNoteLink?: (noteId: string) => void;
     /**
@@ -355,7 +366,19 @@
         {$t('editor.image_load_all')}
       </button>
       {#if loadAllImagesHint}
-        <span class="load-all-images-hint">{loadAllImagesHint}</span>
+        <span class="load-all-images-hint">
+          {loadAllImagesHint}
+          {#if settingsLinkLabel && settingsLinkHref}
+            <a
+              href={settingsLinkHref}
+              class="load-all-images-settings-link"
+              data-sveltekit-preload-data="off"
+              data-sveltekit-preload-code="off"
+            >
+              {settingsLinkLabel}
+            </a>
+          {/if}
+        </span>
       {/if}
     </div>
   {/if}
@@ -835,5 +858,16 @@
     line-height: 1.4;
     flex: 1 1 200px;
     min-width: 0;
+  }
+
+  .load-all-images-settings-link {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    margin-left: 0.25em;
+  }
+
+  .load-all-images-settings-link:hover {
+    opacity: 0.85;
   }
 </style>

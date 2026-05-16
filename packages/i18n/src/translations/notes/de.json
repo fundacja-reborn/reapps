@@ -316,6 +316,8 @@
     "image_cancel": "Abbrechen",
     "image_load": "Bild laden",
     "image_load_all": "Alle Bilder laden",
+    "image_load_all_hint": "Externe Bilder werden nicht automatisch geladen, um deine IP-Adresse vor Drittanbieter-Servern zu schützen.",
+    "image_load_all_settings_link": "In Darstellungseinstellungen ändern",
     "image_base64_blocked": "Eingebettete Bilder (Base64) werden nicht unterstützt. Verwenden Sie stattdessen eine externe Bild-URL.",
     "image_paste_blocked": "Das direkte Einfügen von Bildern wird nicht unterstützt. Laden Sie das Bild auf einen Hosting-Dienst hoch und fügen Sie die URL ein.",
     "image_drop_blocked": "Das Ablegen von Bilddateien wird nicht unterstützt. Laden Sie das Bild auf einen Hosting-Dienst hoch und verwenden Sie die URL.",

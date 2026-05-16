@@ -316,6 +316,8 @@
     "image_cancel": "Anuluj",
     "image_load": "Załaduj obraz",
     "image_load_all": "Załaduj wszystkie obrazy",
+    "image_load_all_hint": "Obrazy zewnętrzne nie ładują się automatycznie, aby chronić Twój adres IP przed serwerami stron trzecich.",
+    "image_load_all_settings_link": "Zmień w ustawieniach wyglądu",
     "image_base64_blocked": "Osadzone obrazy (base64) nie są obsługiwane. Użyj zewnętrznego adresu URL obrazu.",
     "image_paste_blocked": "Wklejanie obrazów bezpośrednio nie jest obsługiwane. Prześlij obraz na serwer hostingowy i wklej URL.",
     "image_drop_blocked": "Upuszczanie plików graficznych nie jest obsługiwane. Prześlij obraz na serwer hostingowy i użyj URL.",

@@ -316,6 +316,8 @@
     "image_cancel": "Annuler",
     "image_load": "Charger l'image",
     "image_load_all": "Charger toutes les images",
+    "image_load_all_hint": "Les images externes ne se chargent pas automatiquement pour préserver votre adresse IP des serveurs tiers.",
+    "image_load_all_settings_link": "Modifier dans les paramètres d'apparence",
     "image_base64_blocked": "Les images intégrées (base64) ne sont pas prises en charge. Utilisez une URL d'image externe.",
     "image_paste_blocked": "Le collage direct d'images n'est pas pris en charge. Téléchargez l'image sur un service d'hébergement et collez l'URL.",
     "image_drop_blocked": "Le dépôt de fichiers image n'est pas pris en charge. Téléchargez l'image sur un service d'hébergement et utilisez l'URL.",

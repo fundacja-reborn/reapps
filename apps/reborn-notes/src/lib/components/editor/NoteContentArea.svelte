@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import NoteEditor from '$lib/components/NoteEditor.svelte';
   import MarkdownPreview from '$lib/components/MarkdownPreview.svelte';
   import MarkdownDiffView from '$lib/components/MarkdownDiffView.svelte';
@@ -114,6 +115,16 @@
     if (next === noteDetailService.content) return;
     oncontentchange(next);
   }
+
+  // Privacy hint + deep-link to the image-loading preference, surfaced next to
+  // the "Load all images" button so the owner understands why their own images
+  // don't auto-load and can flip the default in one click. MarkdownPreview only
+  // renders the row when imageLoadMode === 'ask' AND the note contains external
+  // images, so passing these props unconditionally is safe — they stay hidden
+  // when they wouldn't apply.
+  const loadAllImagesHint = $derived($t('editor.image_load_all_hint'));
+  const settingsLinkLabel = $derived($t('editor.image_load_all_settings_link'));
+  const settingsLinkHref = resolve('/settings/appearance');
 </script>
 
 <div class="relative {isParentScrollActive ? '' : 'flex min-h-0 flex-1 overflow-hidden'}">
@@ -189,6 +200,9 @@
               onTaskToggle={handleTaskToggle}
               {resolveNoteTitle}
               {imageLoadMode}
+              {loadAllImagesHint}
+              {settingsLinkLabel}
+              {settingsLinkHref}
             />
           </div>
         </div>
@@ -204,6 +218,9 @@
             onTaskToggle={handleTaskToggle}
             {resolveNoteTitle}
             {imageLoadMode}
+            {loadAllImagesHint}
+            {settingsLinkLabel}
+            {settingsLinkHref}
           />
           </div>
         </div>

@@ -316,6 +316,8 @@
     "image_cancel": "Cancelar",
     "image_load": "Cargar imagen",
     "image_load_all": "Cargar todas las imágenes",
+    "image_load_all_hint": "Las imágenes externas no se cargan automáticamente para proteger tu dirección IP de servidores de terceros.",
+    "image_load_all_settings_link": "Cambiar en ajustes de apariencia",
     "image_base64_blocked": "Las imágenes incrustadas (base64) no son compatibles. Utilice una URL de imagen externa.",
     "image_paste_blocked": "No se admite pegar imágenes directamente. Suba la imagen a un servicio de alojamiento y pegue la URL.",
     "image_drop_blocked": "No se admite soltar archivos de imagen. Suba la imagen a un servicio de alojamiento y utilice la URL.",

@@ -316,6 +316,8 @@
     "image_cancel": "Cancel",
     "image_load": "Load image",
     "image_load_all": "Load all images",
+    "image_load_all_hint": "External images don't load automatically to keep your IP private from third-party servers.",
+    "image_load_all_settings_link": "Change in appearance settings",
     "image_base64_blocked": "Embedded images (base64) are not supported. Use an external image URL instead.",
     "image_paste_blocked": "Pasting images directly is not supported. Upload the image to a hosting service and paste the URL.",
     "image_drop_blocked": "Dropping image files is not supported. Upload the image to a hosting service and use the URL.",
