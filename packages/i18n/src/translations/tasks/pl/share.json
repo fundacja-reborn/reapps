@@ -79,6 +79,12 @@
       },
       "cta_learn_more": "Dowiedz się więcej o {app}"
     },
+    "actions": {
+      "copy_markdown": "Kopiuj markdown",
+      "copy_done": "Skopiowano",
+      "copy_failed": "Nie udało się skopiować",
+      "download_markdown": "Pobierz .md"
+    },
     "task": {
       "completed_badge": "Ukończone",
       "due_date_label": "Termin",

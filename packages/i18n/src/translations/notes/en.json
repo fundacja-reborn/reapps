@@ -1030,6 +1030,12 @@
         },
         "cta_learn_more": "Learn more about {app}"
       },
+      "actions": {
+        "copy_markdown": "Copy markdown",
+        "copy_done": "Copied",
+        "copy_failed": "Copy failed",
+        "download_markdown": "Download .md"
+      },
       "note": {
         "tags_label": "Tags"
       }

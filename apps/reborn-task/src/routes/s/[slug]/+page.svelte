@@ -7,7 +7,10 @@
     AlertCircle,
     AlertOctagon,
     Ban,
+    Check,
     Clock,
+    Copy,
+    Download,
     Eye,
     EyeOff,
     KeyRound,
@@ -60,6 +63,86 @@
 
   let slug = '';
   let fragmentKey = '';
+
+  let copyStatus = $state<'idle' | 'copied' | 'failed'>('idle');
+  let copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function sanitizeFilename(name: string): string {
+    return (name.replace(/[\\/:*?"<>|\n\r\t]/g, '_').trim() || 'task').slice(0, 100);
+  }
+
+  // Tasks aren't authored in markdown - the snapshot is structured data
+  // (title + metadata + subtasks + description). We synthesize a light
+  // markdown representation that mirrors what the viewer sees: title as
+  // H1, an optional meta line for due date / completed flag, then sections
+  // for subtasks (as GFM task-list items) and free-form description. Same
+  // labels as the rendered view so the .md file reads in the recipient's
+  // locale.
+  function buildTaskMarkdown(p: NonNullable<typeof taskPayload>): string {
+    const headline =
+      p.display_name?.trim() || p.title?.trim() || $t('share.view.untitled');
+    const lines: string[] = [`# ${headline}`, ''];
+
+    const meta: string[] = [];
+    if (p.metadata.due_date) {
+      meta.push(`${$t('share.view.task.due_date_label')}: ${formatDate(p.metadata.due_date)}`);
+    }
+    if (p.metadata.is_completed) {
+      meta.push(`✓ ${$t('share.view.task.completed_badge')}`);
+    }
+    if (meta.length > 0) {
+      lines.push(...meta, '');
+    }
+
+    if (p.subtasks.length > 0) {
+      lines.push(`## ${$t('share.view.task.subtasks_label')}`, '');
+      for (const subtask of p.subtasks) {
+        const done = (subtask.metadata as { is_completed?: boolean } | undefined)?.is_completed;
+        lines.push(`- [${done ? 'x' : ' '}] ${subtask.name}`);
+      }
+      lines.push('');
+    }
+
+    if (p.description) {
+      lines.push(`## ${$t('share.view.task.description_label')}`, '', p.description, '');
+    }
+
+    return lines.join('\n').replace(/\n+$/, '\n');
+  }
+
+  async function handleCopyMarkdown() {
+    if (!taskPayload) return;
+    try {
+      await navigator.clipboard.writeText(buildTaskMarkdown(taskPayload));
+      copyStatus = 'copied';
+    } catch {
+      copyStatus = 'failed';
+    }
+    if (copyResetTimer) clearTimeout(copyResetTimer);
+    copyResetTimer = setTimeout(() => {
+      copyStatus = 'idle';
+      copyResetTimer = null;
+    }, 2000);
+  }
+
+  function handleDownloadMarkdown() {
+    if (!taskPayload) return;
+    const label =
+      taskPayload.display_name?.trim() ||
+      taskPayload.title?.trim() ||
+      $t('share.view.untitled');
+    const blob = new Blob([buildTaskMarkdown(taskPayload)], {
+      type: 'text/markdown; charset=utf-8'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${sanitizeFilename(label)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
   function classifyGoneCode(code: string | undefined): Stage {
     if (code === 'EXHAUSTED') return 'exhausted';
@@ -249,6 +332,43 @@
         {/if}
       </div>
     </header>
+    <!-- Recipient actions row. Mirrors the notes share viewer: ghost buttons
+         dimmed to match the chrome row above. For a task there is no native
+         markdown source, so the handlers synthesize a light .md (title +
+         meta + subtasks as GFM task-list + description) before copy/save -
+         see buildTaskMarkdown above. -->
+    <div class="mt-2 flex justify-end gap-1">
+      <Button
+        variant="ghost"
+        size="sm"
+        onclick={handleCopyMarkdown}
+        title={$t('share.view.actions.copy_markdown')}
+        aria-label={$t('share.view.actions.copy_markdown')}
+        class="text-xs font-normal text-muted-foreground hover:text-foreground"
+      >
+        {#if copyStatus === 'copied'}
+          <Check class="h-3.5 w-3.5 text-green-600 dark:text-green-500" />
+          <span class="hidden sm:inline">{$t('share.view.actions.copy_done')}</span>
+        {:else if copyStatus === 'failed'}
+          <AlertCircle class="h-3.5 w-3.5 text-destructive" />
+          <span class="hidden sm:inline">{$t('share.view.actions.copy_failed')}</span>
+        {:else}
+          <Copy class="h-3.5 w-3.5" />
+          <span class="hidden sm:inline">{$t('share.view.actions.copy_markdown')}</span>
+        {/if}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onclick={handleDownloadMarkdown}
+        title={$t('share.view.actions.download_markdown')}
+        aria-label={$t('share.view.actions.download_markdown')}
+        class="text-xs font-normal text-muted-foreground hover:text-foreground"
+      >
+        <Download class="h-3.5 w-3.5" />
+        <span class="hidden sm:inline">{$t('share.view.actions.download_markdown')}</span>
+      </Button>
+    </div>
     {/if}
 
     <main class="flex flex-col gap-6 pb-10 pt-10">
