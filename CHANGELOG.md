@@ -1,3 +1,9 @@
+## 0.23.3 (2026-05-17)
+
+### 🩹 Fixes
+
+- **notes,task:** inject localized OG meta tags for shared link unfurls ([#200](https://github.com/fundacja-reborn/reapps/pull/200))
+
 ## 0.23.2 (2026-05-17)
 
 ### 🩹 Fixes
