@@ -12,6 +12,7 @@ import {
 	cleanupExpiredShares
 } from '@reborn/database';
 import { getShareOgStrings } from '$lib/server/share-og';
+import { getAppLoadingStrings } from '$lib/server/app-loading-strings';
 
 const BASE = process.env.PUBLIC_BASE_PATH ?? '';
 const RATE_LIMITED_AUTH = new Set([
@@ -148,9 +149,18 @@ const localeHandle: Handle = async ({ event, resolve }) => {
 
 	const isSharePage = event.url.pathname.startsWith(SHARE_PATH_PREFIX);
 
+	const loading = getAppLoadingStrings(locale);
+	const initLoadingMsg = escAttr(loading.initLoading);
+	const stallMsg = escAttr(loading.stall);
+	const offlineMsg = escAttr(loading.offline);
+
 	return resolve(event, {
 		transformPageChunk: ({ html }) => {
-			let out = html.replace('%lang%', locale);
+			let out = html
+				.replace('%lang%', locale)
+				.replace('%init_loading_msg%', initLoadingMsg)
+				.replace('%stall_msg%', stallMsg)
+				.replace('%offline_msg%', offlineMsg);
 			if (!isSharePage) return out;
 
 			const og = getShareOgStrings(locale);

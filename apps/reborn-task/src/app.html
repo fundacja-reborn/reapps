@@ -32,10 +32,12 @@
 		     inline dark-mode script in <head> runs BEFORE this renders, so the
 		     .dark class is already set on <html> when the selectors below apply.
 		-->
-		<div id="app-loading">
+		<div id="app-loading"
+			data-stall-msg="%stall_msg%"
+			data-offline-msg="%offline_msg%">
 			<div class="app-loading__inner">
 				<div class="app-loading__spinner"></div>
-				<p>Loading re/task...</p>
+				<p>%init_loading_msg%</p>
 			</div>
 		</div>
 		<style nonce="%sveltekit.nonce%">
@@ -83,17 +85,19 @@
 			(function(){
 				var el=document.getElementById('app-loading');
 				if(!el)return;
+				var stallMsg=el.dataset.stallMsg||'';
+				var offlineMsg=el.dataset.offlineMsg||'';
 				var offline=typeof navigator!=='undefined'&&!navigator.onLine;
 				// On iOS Safari PWA cold starts `navigator.serviceWorker.controller` is
 				// transiently null even when a service worker is registered and will
 				// soon take control, so the previous `!controller` probe produced a
 				// false "Brak połączenia" screen. Only fail fast when the browser has
-				// no Service Worker API at all — otherwise let the 15s stall timeout
+				// no Service Worker API at all - otherwise let the 15s stall timeout
 				// below decide.
 				var noSW=typeof navigator!=='undefined'&&!('serviceWorker' in navigator);
 				if(offline&&noSW){
 					el.querySelector('.app-loading__spinner').style.display='none';
-					el.querySelector('p').textContent='Brak połączenia z siecią. Połącz się i spróbuj ponownie.';
+					el.querySelector('p').textContent=offlineMsg;
 					return;
 				}
 				setTimeout(function(){
@@ -101,9 +105,9 @@
 						el.querySelector('.app-loading__spinner').style.display='none';
 						var p=el.querySelector('p');
 						if(navigator.onLine){
-							p.textContent='Ładowanie trwa dłużej niż zwykle. Spróbuj odświeżyć stronę.';
+							p.textContent=stallMsg;
 						}else{
-							p.textContent='Brak połączenia z siecią. Połącz się i spróbuj ponownie.';
+							p.textContent=offlineMsg;
 						}
 					}
 				},15000);
