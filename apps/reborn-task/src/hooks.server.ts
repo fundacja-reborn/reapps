@@ -11,6 +11,7 @@ import {
 	cleanupExpiredKeys,
 	cleanupExpiredShares
 } from '@reborn/database';
+import { getShareOgStrings } from '$lib/server/share-og';
 
 const BASE = process.env.PUBLIC_BASE_PATH ?? '';
 const RATE_LIMITED_AUTH = new Set([
@@ -109,7 +110,23 @@ const authHandle: Handle = async ({ event, resolve }) => {
 
 const SUPPORTED_LOCALES_SERVER = ['en', 'pl', 'de', 'es', 'fr'] as const;
 
-// Locale detection middleware
+const SHARE_PATH_PREFIX = `${BASE}/s/`;
+
+function escAttr(s: string): string {
+	return s
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+}
+
+// Locale detection middleware. Also injects OG / description meta tags for
+// the public share page (/s/<slug>) so link-unfurl bots (Signal, Slack,
+// Discord, iMessage) show a localized "End-to-end encrypted snapshot of a
+// task shared with you" preview. The bots fetch the URL with no cookies and
+// usually no Accept-Language, so we fall back to 'en' by default. SSR is
+// disabled app-wide (+layout.ts), so this transformPageChunk is the only
+// chance to put crawler-visible metadata into the response.
 const localeHandle: Handle = async ({ event, resolve }) => {
 	const cookieLocale = event.cookies.get('locale');
 	let locale = 'en';
@@ -129,8 +146,35 @@ const localeHandle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+	const isSharePage = event.url.pathname.startsWith(SHARE_PATH_PREFIX);
+
 	return resolve(event, {
-		transformPageChunk: ({ html }) => html.replace('%lang%', locale)
+		transformPageChunk: ({ html }) => {
+			let out = html.replace('%lang%', locale);
+			if (!isSharePage) return out;
+
+			const og = getShareOgStrings(locale);
+			const ogImage = `${event.url.origin}${BASE}/icons/icon-512.png`;
+			const pageUrl = `${event.url.origin}${event.url.pathname}`;
+			const title = escAttr(og.title);
+			const description = escAttr(og.description);
+			const tags = [
+				`<meta name="description" content="${description}" />`,
+				`<meta property="og:title" content="${title}" />`,
+				`<meta property="og:description" content="${description}" />`,
+				`<meta property="og:type" content="website" />`,
+				`<meta property="og:url" content="${escAttr(pageUrl)}" />`,
+				`<meta property="og:image" content="${escAttr(ogImage)}" />`,
+				`<meta name="twitter:card" content="summary" />`,
+				`<meta name="twitter:title" content="${title}" />`,
+				`<meta name="twitter:description" content="${description}" />`
+			].join('\n\t\t');
+
+			return out.replace(
+				'<title>re/task</title>',
+				`<title>${title}</title>\n\t\t${tags}`
+			);
+		}
 	});
 };
 
