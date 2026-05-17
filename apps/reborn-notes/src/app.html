@@ -3,10 +3,17 @@
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg?v=2026-04-26" />
-		<!-- interactive-widget=resizes-content shrinks the layout viewport when the
-		     soft keyboard opens (Chromium 108+, Safari iOS 17.4+). Older engines
-		     fall back to the JS visual-viewport tracker in +layout.svelte. -->
-		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+		<!-- Layout viewport stays stable when the soft keyboard opens (default
+		     interactive-widget=resizes-visual). Editor positioning is handled
+		     entirely by the JS visual-viewport tracker in +layout.svelte which
+		     emits --rn-vv-height / --rn-vv-offset-top CSS vars. Keeping the
+		     layout viewport stable means Panel 1 (icon rail + list) and any
+		     other viewport-unit consumers (dialog centering, desktop sidebar)
+		     are not affected by the keyboard - only Panel 2 (editor) opts into
+		     vv-tracked sizing. Going through resizes-content would shrink the
+		     whole DOM on every keyboard event and collapse IconNav's flex-1
+		     spacer in list mode. -->
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
 		<meta name="theme-color" content="#FFD43B" />
 		<title>re/notes</title>
