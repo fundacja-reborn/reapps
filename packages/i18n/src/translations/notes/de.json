@@ -38,6 +38,7 @@
     "note_deleted": "Notiz gelöscht",
     "note_actions": "Notiz-Aktionen",
     "sort_notes": "Notizen sortieren",
+    "notes_count": "{count, plural, =0 {Keine Notizen} one {1 Notiz} other {# Notizen}}",
     "clear_search": "Suche löschen",
     "search_hint": "Tippen Sie, um Ihre Notizen zu durchsuchen",
     "search_in_content": "Im Inhalt suchen",

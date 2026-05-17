@@ -68,19 +68,34 @@ async function toDecrypted(enc: FolderEncrypted): Promise<Omit<FolderWithChildre
 
 // ── Public API ───────────────────────────────────────────────────
 
+// Locale-aware, case-insensitive alphabetical sort applied after decryption.
+// The storage layer orders by `order_index` (ciphertext-friendly), but users
+// only ever see decrypted names — sort here so the order matches what they read.
+const folderNameCollator = new Intl.Collator(undefined, {
+  sensitivity: 'base',
+  numeric: true
+});
+
+function sortFoldersByName<T extends { name: string }>(folders: T[]): T[] {
+  return [...folders].sort((a, b) => folderNameCollator.compare(a.name, b.name));
+}
+
 export async function getFolderTree(): Promise<FolderWithChildren[]> {
   const all = await folderQueries.getFolderTree();
 
   async function convertNode(
     node: FolderEncrypted & { children: (typeof node)[] }
   ): Promise<FolderWithChildren> {
+    const decrypted = await toDecrypted(node);
+    const children = await Promise.all(node.children.map(convertNode));
     return {
-      ...(await toDecrypted(node)),
-      children: await Promise.all(node.children.map(convertNode))
+      ...decrypted,
+      children: sortFoldersByName(children)
     };
   }
 
-  return Promise.all(all.map(convertNode as never));
+  const tree = await Promise.all(all.map(convertNode as never));
+  return sortFoldersByName(tree as FolderWithChildren[]);
 }
 
 // `options.skipSync` defers the network push to the caller — used by batch

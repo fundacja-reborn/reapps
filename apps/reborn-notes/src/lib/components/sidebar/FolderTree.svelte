@@ -188,8 +188,10 @@
   });
 
   // ── Drag & Drop ─────────────────────────────────────────────────
+  // Folder rows are sorted alphabetically (see folder.service.getFolderTree),
+  // so sibling reorder is meaningless — drop on a row only ever means
+  // "move dragged folder/note INTO this folder".
   let dragOverId = $state<string | null>(null);
-  let dragOverPos = $state<'before' | 'inside' | 'after'>('inside');
 
   function onDragStart(folder: FolderWithChildren, e: DragEvent) {
     e.dataTransfer!.effectAllowed = 'move';
@@ -201,12 +203,6 @@
     e.preventDefault();
     e.dataTransfer!.dropEffect = 'move';
     dragOverId = folder.id;
-
-    // Detect position: top 25% = before, bottom 25% = after, center = inside
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const relY = e.clientY - rect.top;
-    const ratio = relY / rect.height;
-    dragOverPos = ratio < 0.25 ? 'before' : ratio > 0.75 ? 'after' : 'inside';
   }
 
   function onDragLeave() {
@@ -217,7 +213,7 @@
     e.preventDefault();
     e.stopPropagation(); // prevent bubbling to AppSidebar root handler
 
-    // Handle note drop — move note into this folder (any drop position)
+    // Handle note drop — move note into this folder
     const noteId = e.dataTransfer!.getData('text/note-id');
     if (noteId) {
       await notesStore.move(noteId, target.id);
@@ -232,29 +228,9 @@
       return;
     }
 
-    if (dragOverPos === 'inside') {
-      // Move dragged folder into target
-      await foldersStore.move(draggedId, target.id);
-      expandedIds.add(target.id);
-    } else {
-      // Reorder: move dragged folder to same level as target
-      const parentId = target.parent_id ?? null;
-      const siblings = nodes; // current level
-      const targetIdx = siblings.findIndex((n) => n.id === target.id);
-      const draggedIdx = siblings.findIndex((n) => n.id === draggedId);
-
-      if (draggedIdx === -1) {
-        // Coming from different level — change parent
-        await foldersStore.move(draggedId, parentId);
-      } else {
-        // Same level reorder
-        const reordered = [...siblings.map((n) => n.id)];
-        reordered.splice(draggedIdx, 1);
-        const insertAt = dragOverPos === 'before' ? targetIdx : targetIdx + 1;
-        reordered.splice(draggedIdx < targetIdx ? insertAt - 1 : insertAt, 0, draggedId);
-        await foldersStore.reorder(parentId, reordered);
-      }
-    }
+    // Move dragged folder into target
+    await foldersStore.move(draggedId, target.id);
+    expandedIds.add(target.id);
 
     dragOverId = null;
   }
@@ -279,11 +255,6 @@
       aria-expanded={hasChildren ? isExpanded : undefined}
       aria-selected={activeFolderId === folder.id}
     >
-      <!-- Drop indicator: BEFORE -->
-      {#if isDragTarget && dragOverPos === 'before'}
-        <div class="mx-2 h-0.5 rounded-full bg-primary"></div>
-      {/if}
-
       <div
         data-folder-id={folder.id}
         draggable="true"
@@ -296,7 +267,7 @@
           {isActive
           ? 'bg-accent text-accent-foreground font-medium'
           : 'text-foreground hover:bg-accent/50'}
-          {isDragTarget && dragOverPos === 'inside' ? 'ring-1 ring-primary bg-accent/30' : ''}"
+          {isDragTarget ? 'ring-1 ring-primary bg-accent/30' : ''}"
         style="padding-left: {depth * 0.75 + 0.5}rem"
         role="button"
         tabindex="0"
@@ -401,11 +372,6 @@
           {/if}
         {/if}
       </div>
-
-      <!-- Drop indicator: AFTER -->
-      {#if isDragTarget && dragOverPos === 'after'}
-        <div class="mx-2 h-0.5 rounded-full bg-primary"></div>
-      {/if}
 
       <!-- Children (recursive) -->
       {#if isExpanded && hasChildren}

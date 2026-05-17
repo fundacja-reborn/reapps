@@ -16,13 +16,19 @@
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
 
   let {
-    sortSheetOpen = $bindable(false)
+    sortSheetOpen = $bindable(false),
+    prominent = false
   }: {
     sortSheetOpen: boolean;
+    /** Larger button/icon sizing to match the mobile prominent header. */
+    prominent?: boolean;
   } = $props();
 
   const isMobileQuery = useIsMobile();
   const sortByStore = notesStore.sortBy;
+
+  const buttonSizeClass = $derived(prominent ? 'h-11 w-11' : 'h-9 w-9');
+  const iconSizeClass = $derived(prominent ? 'h-5 w-5' : 'h-4 w-4');
 
   const SORT_OPTIONS: { value: SortBy; label: string }[] = $derived([
     { value: 'updated_at', label: $t('notes.sort.last_modified') },
@@ -42,9 +48,9 @@
     onclick={() => (sortSheetOpen = true)}
     title={$t('notes.sort_notes')}
     aria-label={$t('notes.sort_notes')}
-    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+    class="flex {buttonSizeClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
   >
-    <ArrowDownUp class="h-4 w-4" />
+    <ArrowDownUp class={iconSizeClass} />
   </button>
 {:else}
   <DropdownMenu>
@@ -55,9 +61,9 @@
           type="button"
           title={$t('notes.sort_notes')}
           aria-label={$t('notes.sort_notes')}
-          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          class="flex {buttonSizeClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         >
-          <ArrowDownUp class="h-4 w-4" />
+          <ArrowDownUp class={iconSizeClass} />
         </button>
       {/snippet}
     </DropdownMenuTrigger>

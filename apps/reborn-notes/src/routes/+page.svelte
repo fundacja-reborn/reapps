@@ -652,6 +652,18 @@
     pendingRenameId.set(id);
   }
 
+  /** Create a subfolder under the currently-open folder.
+   *  Used by the "+ subfolder" button rendered in the NoteList header.
+   *  The subfolder appears in SubfolderList immediately via store reactivity. */
+  async function handleNewSubfolder() {
+    if (!activeFolderId) return;
+    const id = await foldersStore.create($t('folders.new_folder'), activeFolderId);
+    expandedIds.add(activeFolderId);
+    // If the user navigates to the FolderTree sidebar, the new folder will be
+    // pre-armed for inline rename.
+    pendingRenameId.set(id);
+  }
+
   async function handleSectionClick(section: Section) {
     // Fires on every IconNav click. Resets sub-selection when re-clicking the
     // already-active section so users can always get back to the section root.
@@ -1234,6 +1246,9 @@
                         }
                       }
                     : undefined}
+                onNewSubfolder={activeSection === 'folders' && activeFolderId
+                  ? handleNewSubfolder
+                  : undefined}
                 oncreate={handleNewNote}
               />
             {/if}
@@ -1635,6 +1650,9 @@
             subfolders={activeFolderSubfolders}
             onSubfolderSelect={handleFolderSelect}
             onback={activeFolderParentId ? handleFolderBack : undefined}
+            onNewSubfolder={activeSection === 'folders' && activeFolderId
+              ? handleNewSubfolder
+              : undefined}
             oncreate={handleNewNote}
           />
         </div>
