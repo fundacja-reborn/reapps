@@ -276,6 +276,35 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(between).toMatch(/await\s+Promise\.allSettled/);
   });
 
+  it('pushPendingItems sends PATCH before DELETE for archived notes with server-side history', () => {
+    // Regression for the "orphaned note edit" pull-warn loop on archived
+    // notes (incident 2026-05-17, note 050a8227-bbfe-437e-b703-98f8ef7804bd):
+    // when a content PATCH push silently failed before the user archived the
+    // note, pushPendingItems used to send only DELETE, which doesn't carry
+    // ciphertext. Server kept stale ciphertext, pull's orphan-edit branch
+    // flagged the row pending again, push DELETE'd again, loop. The fix sends
+    // PATCH (via pushNoteUpdate) before DELETE (via pushNoteDelete), gated by
+    // sync_version > 0 so notes that never reached the server stay local-only.
+    const src = readSource('./notes-sync.service.ts');
+    const fn = src.slice(
+      src.indexOf('export async function pushPendingItems'),
+      src.indexOf('/** Retry a function with exponential backoff')
+    );
+
+    // Locate the archived-pending loop and assert it gates on sync_version.
+    const loopIdx = fn.search(/for\s*\(\s*const\s+n\s+of\s+pendingArchivedNotes\s*\)/);
+    expect(loopIdx).toBeGreaterThan(-1);
+    const loopBody = fn.slice(loopIdx);
+    expect(loopBody).toMatch(/n\.sync_version\s*\?\?\s*0\)?\s*>\s*0/);
+
+    // PATCH (pushNoteUpdate) must appear before DELETE (pushNoteDelete).
+    const patchIdx = loopBody.search(/pushNoteUpdate\s*\(/);
+    const deleteIdx = loopBody.search(/pushNoteDelete\s*\(/);
+    expect(patchIdx).toBeGreaterThan(-1);
+    expect(deleteIdx).toBeGreaterThan(-1);
+    expect(patchIdx).toBeLessThan(deleteIdx);
+  });
+
   it('importJsonBackup defers all pushes to pushPendingItems (ordering)', () => {
     // Production reproduction: backup with 7 folders + 85 notes triggered ~25
     // simultaneous "POST /api/notes 404 Folder not found" errors during import
