@@ -47,6 +47,7 @@
   let urlsVisible = new SvelteSet<string>();
   let previewing = $state<SharedSnapshotTaskPayload | null>(null);
   let previewOpen = $state(false);
+  let previewScrollEl = $state<HTMLDivElement | null>(null);
   let revoking = $state<string | null>(null);
 
   const storeState = $derived($sharesStore);
@@ -118,6 +119,10 @@
 
   $effect(() => {
     if (open) void sharesStore.refresh();
+  });
+
+  $effect(() => {
+    if (previewOpen && previewScrollEl) previewScrollEl.scrollTop = 0;
   });
 </script>
 
@@ -312,12 +317,18 @@
 </Dialog>
 
 <Dialog bind:open={previewOpen}>
-  <DialogContent class="flex max-h-[85vh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+  <DialogContent
+    class="flex max-h-[85vh] max-w-2xl flex-col gap-0 overflow-hidden p-0"
+    onOpenAutoFocus={(e) => e.preventDefault()}
+  >
     <DialogHeader class="flex-shrink-0 border-b px-6 py-4 pr-12">
       <DialogTitle>{$t('share.list.preview_dialog_title')}</DialogTitle>
     </DialogHeader>
     {#if previewing}
-      <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
+      <div
+        bind:this={previewScrollEl}
+        class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 py-4"
+      >
         <TaskSnapshotView payload={previewing} />
         <p class="text-xs italic text-muted-foreground">{$t('share.list.preview_hint')}</p>
       </div>
