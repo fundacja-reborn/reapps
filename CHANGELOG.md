@@ -1,3 +1,9 @@
+## 0.23.4 (2026-05-17)
+
+### 🩹 Fixes
+
+- **notes:** drop interactive-widget=resizes-content to stop IconNav squash ([#201](https://github.com/fundacja-reborn/reapps/pull/201))
+
 ## 0.23.3 (2026-05-17)
 
 ### 🩹 Fixes
