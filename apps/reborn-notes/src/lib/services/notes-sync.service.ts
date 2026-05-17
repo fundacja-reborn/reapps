@@ -628,12 +628,25 @@ export async function pushPendingItems(): Promise<void> {
     )
   );
 
-  // Retry archived-pending notes via DELETE (see partition comment above).
-  // pushNoteDelete is itself serialized per-entity, so if a POST for the same
-  // note is still in the chain (e.g. first-time create+archive), the DELETE
-  // waits for it to land.
+  // Retry archived-pending notes. For notes that exist on the server
+  // (sync_version > 0) we PATCH the content first, then DELETE. Without the
+  // PATCH, a row whose last update push silently failed before being archived
+  // keeps a server-side ciphertext that diverges from local - pull's orphan-
+  // edit reconciliation flags it forever (mark pending → push DELETE only →
+  // pull still sees drift → mark pending …) and "1 pending" wedges in the UI.
+  // pushNoteUpdate + pushNoteDelete are serialized per-entity, so DELETE waits
+  // for PATCH to land. Notes with sync_version === 0 never reached the server,
+  // so there is nothing to update or delete remotely - skip both.
   for (const n of pendingArchivedNotes) {
-    pushNoteDelete(n.id);
+    if ((n.sync_version ?? 0) > 0) {
+      pushNoteUpdate(n.id, {
+        title_encrypted: n.title_encrypted,
+        content_encrypted: n.content_encrypted,
+        folder_id: n.folder_id ?? null,
+        metadata_encrypted: n.metadata_encrypted ?? undefined
+      });
+      pushNoteDelete(n.id);
+    }
   }
 
   // Push pending note versions
