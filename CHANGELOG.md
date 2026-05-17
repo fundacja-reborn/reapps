@@ -1,3 +1,9 @@
+## 0.23.1 (2026-05-17)
+
+### 🩹 Fixes
+
+- **share:** close manage dialog before opening create dialog ([#196](https://github.com/fundacja-reborn/reapps/pull/196))
+
 ## 0.23.0 (2026-05-16)
 
 ### 🚀 Features
