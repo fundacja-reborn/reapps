@@ -1,3 +1,11 @@
+## 0.23.2 (2026-05-17)
+
+### 🩹 Fixes
+
+- **notes:** prevent IconNav squash when keyboard opens on mobile list ([#197](https://github.com/fundacja-reborn/reapps/pull/197))
+- **notes:** folder UI improvements ([#198](https://github.com/fundacja-reborn/reapps/pull/198))
+- **notes:** push pending content before delete for archived notes ([#199](https://github.com/fundacja-reborn/reapps/pull/199))
+
 ## 0.23.1 (2026-05-17)
 
 ### 🩹 Fixes
