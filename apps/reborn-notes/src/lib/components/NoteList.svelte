@@ -849,8 +849,12 @@
 
   <!-- Notes list -->
   <div class="flex-1 overflow-y-auto px-3">
-    {#if subfolders.length > 0 && !searchInput && !searchOnly}
-      <SubfolderList {subfolders} onselect={(id) => onSubfolderSelect?.(id)} />
+    {#if !searchInput && !searchOnly}
+      <SubfolderList
+        {subfolders}
+        parentId={activeFolderId}
+        onselect={(id) => onSubfolderSelect?.(id)}
+      />
     {/if}
     {#if searchOnly && !searchInput}
       <div class="px-4 py-12 text-center">

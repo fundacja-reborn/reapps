@@ -31,6 +31,7 @@
   import type { FolderWithChildren } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
   import { notesStore } from '$lib/stores/notes.store';
+  import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import type { DeleteFolderMode } from '$lib/services/folder.service';
@@ -68,6 +69,38 @@
       setTimeout(() => editInputEl?.select(), 0);
     }
   });
+
+  // ── Inline new-folder draft (root list only) ───────────────────
+  // When `pendingNewFolderDraft.parentId === null`, the root FolderTree
+  // (depth 0) renders an input row at the very top. Folder is created on
+  // commit, not when the draft is requested.
+  let draftName = $state('');
+  let draftInputEl = $state<HTMLInputElement | undefined>(undefined);
+  const showDraft = $derived(depth === 0 && $pendingNewFolderDraft?.parentId === null);
+
+  $effect(() => {
+    if (showDraft) {
+      draftName = $t('folders.new_folder');
+      setTimeout(() => {
+        draftInputEl?.scrollIntoView({ block: 'nearest' });
+        draftInputEl?.select();
+      }, 0);
+    }
+  });
+
+  async function commitDraft() {
+    // Guard against re-entry: Enter and Escape both clear the store, which
+    // removes the input from the DOM. The browser then fires a blur event on
+    // the removed node, which would otherwise call commitDraft a second time.
+    if (!$pendingNewFolderDraft) return;
+    const trimmed = draftName.trim();
+    pendingNewFolderDraft.set(null);
+    if (trimmed) await foldersStore.create(trimmed);
+  }
+
+  function cancelDraft() {
+    pendingNewFolderDraft.set(null);
+  }
 
   function startRename(folder: FolderWithChildren, e?: Event) {
     e?.stopPropagation();
@@ -244,6 +277,27 @@
 />
 
 <ul class="select-none" role="tree">
+  {#if showDraft}
+    <li role="treeitem" aria-selected="false">
+      <div
+        class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm bg-accent/30"
+        style="padding-left: {depth * 0.75 + 0.5}rem"
+      >
+        <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
+        <input
+          bind:this={draftInputEl}
+          bind:value={draftName}
+          class="min-w-0 flex-1 rounded-md border bg-background px-2 py-0.5 text-sm caret-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          onkeydown={(e) => {
+            if (e.key === 'Enter') commitDraft();
+            if (e.key === 'Escape') cancelDraft();
+          }}
+          onblur={commitDraft}
+          aria-label={$t('folders.new_folder')}
+        />
+      </div>
+    </li>
+  {/if}
   {#each nodes as folder (folder.id)}
     {@const isExpanded = expandedIds.has(folder.id)}
     {@const isActive = activeFolderId === folder.id}
