@@ -38,6 +38,7 @@
     "note_deleted": "Notatka usunięta",
     "note_actions": "Akcje notatki",
     "sort_notes": "Sortuj notatki",
+    "notes_count": "{count, plural, =0 {Brak notatek} one {1 notatka} few {# notatki} many {# notatek} other {# notatek}}",
     "clear_search": "Wyczyść wyszukiwanie",
     "search_hint": "Wpisz frazę, aby wyszukać notatki",
     "search_in_content": "Szukaj w treści",

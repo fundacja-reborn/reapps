@@ -38,6 +38,7 @@
     "note_deleted": "Note supprimée",
     "note_actions": "Actions sur la note",
     "sort_notes": "Trier les notes",
+    "notes_count": "{count, plural, =0 {Aucune note} one {1 note} other {# notes}}",
     "clear_search": "Effacer la recherche",
     "search_hint": "Saisissez pour rechercher dans vos notes",
     "search_in_content": "Rechercher dans le contenu",

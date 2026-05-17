@@ -26,7 +26,8 @@
   import NotePicker from '$lib/components/NotePicker.svelte';
 
   import VersionHistorySheet from '$lib/components/VersionHistorySheet.svelte';
-  import FolderTree, { pendingRenameId } from '$lib/components/sidebar/FolderTree.svelte';
+  import FolderTree from '$lib/components/sidebar/FolderTree.svelte';
+  import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
   import NoteEditor from '$lib/components/NoteEditor.svelte';
 
@@ -647,9 +648,18 @@
   }
 
   // ── Folder management ────────────────────────────────────────────
-  async function handleNewFolder() {
-    const id = await foldersStore.create($t('folders.new_folder'));
-    pendingRenameId.set(id);
+  // Both handlers arm an inline draft input at the top of the relevant list
+  // (root tree for new folder, SubfolderList for new subfolder) instead of
+  // pre-creating the folder. The folder is created only when the user commits
+  // a non-empty name — see `pendingNewFolderDraft`.
+  function handleNewFolder() {
+    pendingNewFolderDraft.set({ parentId: null });
+  }
+
+  function handleNewSubfolder() {
+    if (!activeFolderId) return;
+    expandedIds.add(activeFolderId);
+    pendingNewFolderDraft.set({ parentId: activeFolderId });
   }
 
   async function handleSectionClick(section: Section) {
@@ -1234,6 +1244,9 @@
                         }
                       }
                     : undefined}
+                onNewSubfolder={activeSection === 'folders' && activeFolderId
+                  ? handleNewSubfolder
+                  : undefined}
                 oncreate={handleNewNote}
               />
             {/if}
@@ -1635,6 +1648,9 @@
             subfolders={activeFolderSubfolders}
             onSubfolderSelect={handleFolderSelect}
             onback={activeFolderParentId ? handleFolderBack : undefined}
+            onNewSubfolder={activeSection === 'folders' && activeFolderId
+              ? handleNewSubfolder
+              : undefined}
             oncreate={handleNewNote}
           />
         </div>

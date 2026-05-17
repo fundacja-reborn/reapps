@@ -4,6 +4,7 @@
   import {
     ArrowLeft,
     FilePlus,
+    FolderPlus,
     Trash2,
     Search,
     X,
@@ -35,10 +36,23 @@
   import NoteListSortMenu from './notes/NoteListSortMenu.svelte';
   import MoveToFolderMenu from './notes/MoveToFolderMenu.svelte';
   import SubfolderList from './SubfolderList.svelte';
+  import FolderActionMenu from './sidebar/FolderActionMenu.svelte';
   import type { FolderWithChildren } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
   import { buildBreadcrumb } from '$lib/utils/folder-helpers';
   import { bulkRun } from '$lib/utils/bulk';
+
+  function findFolderNode(
+    nodes: FolderWithChildren[],
+    id: string
+  ): FolderWithChildren | null {
+    for (const n of nodes) {
+      if (n.id === id) return n;
+      const sub = findFolderNode(n.children ?? [], id);
+      if (sub) return sub;
+    }
+    return null;
+  }
 
   // ── Infinite scroll ────────────────────────────────────────────
   const PAGE_SIZE = 50;
@@ -104,7 +118,8 @@
     subfolders = [],
     onback,
     oncreate,
-    onSubfolderSelect
+    onSubfolderSelect,
+    onNewSubfolder
   }: {
     activeFolderName?: string;
     activeSection?: string;
@@ -120,6 +135,8 @@
     onback?: () => void;
     oncreate?: () => void | Promise<void>;
     onSubfolderSelect?: (id: string) => void;
+    /** Only provided when we're inside a specific folder — renders the "new subfolder" icon. */
+    onNewSubfolder?: () => void;
   } = $props();
 
   const isMobileQuery = useIsMobile();
@@ -554,29 +571,137 @@
   const movingNote = $derived(
     movingNoteId ? ($notesStore.find((n) => n.id === movingNoteId) ?? null) : null
   );
+
+  // Header button sizing — matches the mobile sidebar header (h-11/h-5) when
+  // `prominentHeader` is on, smaller (h-9/h-4) for desktop sidebar panes.
+  const headerBtnClass = $derived(prominentHeader ? 'h-11 w-11' : 'h-9 w-9');
+  const headerIconClass = $derived(prominentHeader ? 'h-5 w-5' : 'h-4 w-4');
+
+  // ── Active folder action menu + inline rename ─────────────────
+  const activeFolder = $derived<FolderWithChildren | null>(
+    activeFolderId ? findFolderNode($foldersStore, activeFolderId) : null
+  );
+
+  let editingFolderName = $state('');
+  let editingActiveFolder = $state(false);
+  let editFolderInputEl = $state<HTMLInputElement | undefined>(undefined);
+
+  function startActiveFolderRename() {
+    if (!activeFolder) return;
+    editingFolderName = activeFolder.name;
+    editingActiveFolder = true;
+    setTimeout(() => editFolderInputEl?.select(), 0);
+  }
+
+  async function commitActiveFolderRename() {
+    if (!editingActiveFolder || !activeFolder) return;
+    const trimmed = editingFolderName.trim();
+    if (trimmed && trimmed !== activeFolder.name) {
+      await foldersStore.rename(activeFolder.id, trimmed);
+    }
+    editingActiveFolder = false;
+  }
+
+  function cancelActiveFolderRename() {
+    editingActiveFolder = false;
+  }
+
+  // Exit rename mode when the active folder changes (navigation away).
+  $effect(() => {
+    void activeFolderId;
+    untrack(() => {
+      if (editingActiveFolder) editingActiveFolder = false;
+    });
+  });
 </script>
 
 <svelte:window onclick={onWindowClick} onkeydown={onWindowKeydown} />
 
 <div class="flex h-full flex-col">
-  <!-- Panel header (hidden in searchOnly mode). Swaps to selection bar when in multi-select. -->
+  <!-- Panel header (hidden in searchOnly mode). Two rows:
+       row 1 = back + folder name + (in folder view) new-subfolder
+       row 2 = note count + actions, OR selection toolbar when multi-select is on. -->
   {#if !searchOnly}
+    <!-- Row 1: title + folder-level action. Stays visible during selection. -->
+    <div
+      class="flex shrink-0 items-center gap-1 {prominentHeader ? 'h-14' : 'h-10'} {onback
+        ? 'px-3'
+        : 'px-5'}"
+    >
+      {#if onback}
+        <button
+          type="button"
+          onclick={onback}
+          class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-sidebar-foreground
+         hover:bg-sidebar-accent transition-colors"
+          aria-label={$t('nav.back')}
+        >
+          <ArrowLeft class={headerIconClass} />
+        </button>
+      {/if}
+      {#if showSidebarTrigger}
+        <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
+      {/if}
+      {#if editingActiveFolder && activeFolder}
+        <input
+          bind:this={editFolderInputEl}
+          bind:value={editingFolderName}
+          class="min-w-0 flex-1 rounded-md border bg-background px-2 py-1 text-sm caret-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          onkeydown={(e) => {
+            if (e.key === 'Enter') commitActiveFolderRename();
+            if (e.key === 'Escape') cancelActiveFolderRename();
+          }}
+          onblur={commitActiveFolderRename}
+        />
+      {:else}
+        <span
+          class="min-w-0 flex-1 truncate text-sm {prominentHeader
+            ? 'font-medium'
+            : 'font-normal'}">{activeFolderName}</span
+        >
+      {/if}
+
+      {#if onNewSubfolder}
+        <button
+          type="button"
+          onclick={onNewSubfolder}
+          title={$t('folders.new_subfolder')}
+          aria-label={$t('folders.new_subfolder')}
+          class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <FolderPlus class={headerIconClass} />
+        </button>
+      {/if}
+
+      {#if activeFolder}
+        <FolderActionMenu
+          folder={activeFolder}
+          buttonClass={headerBtnClass}
+          iconClass={headerIconClass}
+          onNewSubfolder={onNewSubfolder}
+          onStartRename={startActiveFolderRename}
+          onAfterDelete={onback}
+        />
+      {/if}
+    </div>
+
+    <!-- Row 2: count + per-list actions, swaps to selection toolbar in multi-select. -->
     {#if selectionMode}
       <div
-        class="flex shrink-0 items-center gap-1 {prominentHeader
-          ? 'h-12'
-          : 'h-10'} px-3"
+        class="flex shrink-0 items-center gap-1 {prominentHeader ? 'h-14' : 'h-10'} {onback
+          ? 'px-3'
+          : 'px-5'}"
         role="toolbar"
         aria-label={$t('notes.multiselect.count', { values: { count: selectedIds.size } })}
       >
         <button
           type="button"
           onclick={exitSelectionMode}
-          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors"
+          class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors"
           aria-label={$t('notes.multiselect.exit')}
           title={$t('notes.multiselect.exit')}
         >
-          <X class="h-4 w-4" />
+          <X class={headerIconClass} />
         </button>
         <span class="min-w-0 flex-1 truncate text-sm font-medium">
           {$t('notes.multiselect.count', { values: { count: selectedIds.size } })}
@@ -587,28 +712,28 @@
             type="button"
             onclick={bulkRestore}
             disabled={selectedIds.size === 0}
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.restore_all')}
             title={$t('notes.multiselect.restore_all')}
           >
-            <RotateCcw class="h-4 w-4" />
+            <RotateCcw class={headerIconClass} />
           </button>
           <button
             type="button"
             onclick={() => (bulkPermanentDeleteDialogOpen = true)}
             disabled={selectedIds.size === 0}
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.permanent_delete_all')}
             title={$t('notes.multiselect.permanent_delete_all')}
           >
-            <Trash class="h-4 w-4" />
+            <Trash class={headerIconClass} />
           </button>
         {:else}
           <button
             type="button"
             onclick={bulkPin}
             disabled={selectedIds.size === 0}
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={allPinned
               ? $t('notes.multiselect.unpin_all')
               : $t('notes.multiselect.pin_all')}
@@ -617,16 +742,16 @@
               : $t('notes.multiselect.pin_all')}
           >
             {#if allPinned}
-              <PinOff class="h-4 w-4" />
+              <PinOff class={headerIconClass} />
             {:else}
-              <Pin class="h-4 w-4" />
+              <Pin class={headerIconClass} />
             {/if}
           </button>
           <button
             type="button"
             onclick={bulkStar}
             disabled={selectedIds.size === 0}
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={allStarred
               ? $t('notes.multiselect.unstar_all')
               : $t('notes.multiselect.star_all')}
@@ -635,57 +760,42 @@
               : $t('notes.multiselect.star_all')}
           >
             {#if allStarred}
-              <StarOff class="h-4 w-4" />
+              <StarOff class={headerIconClass} />
             {:else}
-              <Star class="h-4 w-4" />
+              <Star class={headerIconClass} />
             {/if}
           </button>
           <button
             type="button"
             onclick={openBulkMove}
             disabled={selectedIds.size === 0}
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.move_all')}
             title={$t('notes.multiselect.move_all')}
           >
-            <FolderInput class="h-4 w-4" />
+            <FolderInput class={headerIconClass} />
           </button>
           <button
             type="button"
             onclick={() => (bulkDeleteDialogOpen = true)}
             disabled={selectedIds.size === 0}
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.delete_all')}
             title={$t('notes.multiselect.delete_all')}
           >
-            <Trash2 class="h-4 w-4" />
+            <Trash2 class={headerIconClass} />
           </button>
         {/if}
       </div>
     {:else}
       <div
-        class="flex shrink-0 items-center gap-1 {prominentHeader ? 'h-12' : 'h-10'} {onback
-          ? 'px-3'
-          : 'px-5'}"
+        class="flex {prominentHeader ? 'h-14' : 'h-10'} shrink-0 items-center gap-1 pl-5 {onback
+          ? 'pr-3'
+          : 'pr-5'}"
       >
-        {#if onback}
-          <button
-            type="button"
-            onclick={onback}
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sidebar-foreground
-         hover:bg-sidebar-accent transition-colors"
-            aria-label={$t('nav.back')}
-          >
-            <ArrowLeft class="h-4 w-4" />
-          </button>
-        {/if}
-        {#if showSidebarTrigger}
-          <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
-        {/if}
-        <span
-          class="min-w-0 flex-1 truncate text-sm {prominentHeader ? 'font-medium' : 'font-normal'}"
-          >{activeFolderName}</span
-        >
+        <span class="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+          {$t('notes.notes_count', { values: { count: $notesStore.length } })}
+        </span>
 
         {#if $notesStore.length > 0}
           <button
@@ -693,14 +803,14 @@
             onclick={toggleSelectionMode}
             title={$t('notes.multiselect.enter')}
             aria-label={$t('notes.multiselect.enter')}
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
-            <ListChecks class="h-4 w-4" />
+            <ListChecks class={headerIconClass} />
           </button>
         {/if}
 
         {#if !isTrash}
-          <NoteListSortMenu bind:sortSheetOpen />
+          <NoteListSortMenu bind:sortSheetOpen prominent={prominentHeader} />
         {/if}
 
         {#if !isTrash && !isPeriodic}
@@ -709,9 +819,9 @@
             onclick={handleCreate}
             title={$t('nav.new_note')}
             aria-label={$t('nav.new_note')}
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
-            <FilePlus class="h-4 w-4" />
+            <FilePlus class={headerIconClass} />
           </button>
         {/if}
 
@@ -739,8 +849,12 @@
 
   <!-- Notes list -->
   <div class="flex-1 overflow-y-auto px-3">
-    {#if subfolders.length > 0 && !searchInput && !searchOnly}
-      <SubfolderList {subfolders} onselect={(id) => onSubfolderSelect?.(id)} />
+    {#if !searchInput && !searchOnly}
+      <SubfolderList
+        {subfolders}
+        parentId={activeFolderId}
+        onselect={(id) => onSubfolderSelect?.(id)}
+      />
     {/if}
     {#if searchOnly && !searchInput}
       <div class="px-4 py-12 text-center">

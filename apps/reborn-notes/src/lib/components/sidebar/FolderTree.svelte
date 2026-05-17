@@ -31,6 +31,7 @@
   import type { FolderWithChildren } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
   import { notesStore } from '$lib/stores/notes.store';
+  import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import type { DeleteFolderMode } from '$lib/services/folder.service';
@@ -68,6 +69,38 @@
       setTimeout(() => editInputEl?.select(), 0);
     }
   });
+
+  // ── Inline new-folder draft (root list only) ───────────────────
+  // When `pendingNewFolderDraft.parentId === null`, the root FolderTree
+  // (depth 0) renders an input row at the very top. Folder is created on
+  // commit, not when the draft is requested.
+  let draftName = $state('');
+  let draftInputEl = $state<HTMLInputElement | undefined>(undefined);
+  const showDraft = $derived(depth === 0 && $pendingNewFolderDraft?.parentId === null);
+
+  $effect(() => {
+    if (showDraft) {
+      draftName = $t('folders.new_folder');
+      setTimeout(() => {
+        draftInputEl?.scrollIntoView({ block: 'nearest' });
+        draftInputEl?.select();
+      }, 0);
+    }
+  });
+
+  async function commitDraft() {
+    // Guard against re-entry: Enter and Escape both clear the store, which
+    // removes the input from the DOM. The browser then fires a blur event on
+    // the removed node, which would otherwise call commitDraft a second time.
+    if (!$pendingNewFolderDraft) return;
+    const trimmed = draftName.trim();
+    pendingNewFolderDraft.set(null);
+    if (trimmed) await foldersStore.create(trimmed);
+  }
+
+  function cancelDraft() {
+    pendingNewFolderDraft.set(null);
+  }
 
   function startRename(folder: FolderWithChildren, e?: Event) {
     e?.stopPropagation();
@@ -188,8 +221,10 @@
   });
 
   // ── Drag & Drop ─────────────────────────────────────────────────
+  // Folder rows are sorted alphabetically (see folder.service.getFolderTree),
+  // so sibling reorder is meaningless — drop on a row only ever means
+  // "move dragged folder/note INTO this folder".
   let dragOverId = $state<string | null>(null);
-  let dragOverPos = $state<'before' | 'inside' | 'after'>('inside');
 
   function onDragStart(folder: FolderWithChildren, e: DragEvent) {
     e.dataTransfer!.effectAllowed = 'move';
@@ -201,12 +236,6 @@
     e.preventDefault();
     e.dataTransfer!.dropEffect = 'move';
     dragOverId = folder.id;
-
-    // Detect position: top 25% = before, bottom 25% = after, center = inside
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const relY = e.clientY - rect.top;
-    const ratio = relY / rect.height;
-    dragOverPos = ratio < 0.25 ? 'before' : ratio > 0.75 ? 'after' : 'inside';
   }
 
   function onDragLeave() {
@@ -217,7 +246,7 @@
     e.preventDefault();
     e.stopPropagation(); // prevent bubbling to AppSidebar root handler
 
-    // Handle note drop — move note into this folder (any drop position)
+    // Handle note drop — move note into this folder
     const noteId = e.dataTransfer!.getData('text/note-id');
     if (noteId) {
       await notesStore.move(noteId, target.id);
@@ -232,29 +261,9 @@
       return;
     }
 
-    if (dragOverPos === 'inside') {
-      // Move dragged folder into target
-      await foldersStore.move(draggedId, target.id);
-      expandedIds.add(target.id);
-    } else {
-      // Reorder: move dragged folder to same level as target
-      const parentId = target.parent_id ?? null;
-      const siblings = nodes; // current level
-      const targetIdx = siblings.findIndex((n) => n.id === target.id);
-      const draggedIdx = siblings.findIndex((n) => n.id === draggedId);
-
-      if (draggedIdx === -1) {
-        // Coming from different level — change parent
-        await foldersStore.move(draggedId, parentId);
-      } else {
-        // Same level reorder
-        const reordered = [...siblings.map((n) => n.id)];
-        reordered.splice(draggedIdx, 1);
-        const insertAt = dragOverPos === 'before' ? targetIdx : targetIdx + 1;
-        reordered.splice(draggedIdx < targetIdx ? insertAt - 1 : insertAt, 0, draggedId);
-        await foldersStore.reorder(parentId, reordered);
-      }
-    }
+    // Move dragged folder into target
+    await foldersStore.move(draggedId, target.id);
+    expandedIds.add(target.id);
 
     dragOverId = null;
   }
@@ -268,6 +277,27 @@
 />
 
 <ul class="select-none" role="tree">
+  {#if showDraft}
+    <li role="treeitem" aria-selected="false">
+      <div
+        class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm bg-accent/30"
+        style="padding-left: {depth * 0.75 + 0.5}rem"
+      >
+        <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
+        <input
+          bind:this={draftInputEl}
+          bind:value={draftName}
+          class="min-w-0 flex-1 rounded-md border bg-background px-2 py-0.5 text-sm caret-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          onkeydown={(e) => {
+            if (e.key === 'Enter') commitDraft();
+            if (e.key === 'Escape') cancelDraft();
+          }}
+          onblur={commitDraft}
+          aria-label={$t('folders.new_folder')}
+        />
+      </div>
+    </li>
+  {/if}
   {#each nodes as folder (folder.id)}
     {@const isExpanded = expandedIds.has(folder.id)}
     {@const isActive = activeFolderId === folder.id}
@@ -279,11 +309,6 @@
       aria-expanded={hasChildren ? isExpanded : undefined}
       aria-selected={activeFolderId === folder.id}
     >
-      <!-- Drop indicator: BEFORE -->
-      {#if isDragTarget && dragOverPos === 'before'}
-        <div class="mx-2 h-0.5 rounded-full bg-primary"></div>
-      {/if}
-
       <div
         data-folder-id={folder.id}
         draggable="true"
@@ -296,7 +321,7 @@
           {isActive
           ? 'bg-accent text-accent-foreground font-medium'
           : 'text-foreground hover:bg-accent/50'}
-          {isDragTarget && dragOverPos === 'inside' ? 'ring-1 ring-primary bg-accent/30' : ''}"
+          {isDragTarget ? 'ring-1 ring-primary bg-accent/30' : ''}"
         style="padding-left: {depth * 0.75 + 0.5}rem"
         role="button"
         tabindex="0"
@@ -401,11 +426,6 @@
           {/if}
         {/if}
       </div>
-
-      <!-- Drop indicator: AFTER -->
-      {#if isDragTarget && dragOverPos === 'after'}
-        <div class="mx-2 h-0.5 rounded-full bg-primary"></div>
-      {/if}
 
       <!-- Children (recursive) -->
       {#if isExpanded && hasChildren}
