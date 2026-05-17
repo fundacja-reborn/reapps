@@ -1052,15 +1052,20 @@
      MOBILE: Master-Detail with two full-screen panels
      ══════════════════════════════════════════════════════════════════ -->
   <Tooltip.Provider delayDuration={0}>
-    <!-- Mobile root sized to the *visual* viewport (height shrinks when the soft
-         keyboard opens), and counter-translated by visualViewport.offsetTop to
-         neutralise iOS Safari "page-shift" — so the editor header stays anchored
-         to the top of the visible area regardless of caret position. CSS vars are
-         emitted in +layout.svelte; fallback `100dvh` covers SSR + browsers
-         without visualViewport. -->
+    <!-- Mobile root: only the editor panel (Panel 2) needs visual-viewport
+         sizing + counter-translate to neutralise iOS Safari "page-shift" of the
+         contenteditable. Panel 1 (icon rail + list) only has plain inputs - if
+         the root shrank to vv.height there too, the IconNav's flex-1 spacer
+         would collapse and pull Settings/Avatar up under the section icons.
+         Switch sizing strategy on $activeNoteId: vv-tracked when editor is in
+         view, plain 100dvh otherwise (keyboard just covers the bottom, like
+         the Task app). CSS vars emitted in +layout.svelte; the 100dvh fallback
+         also covers SSR + browsers without visualViewport. -->
     <div
       class="relative overflow-hidden bg-sidebar"
-      style="height: var(--rn-vv-height, 100dvh); transform: translateY(var(--rn-vv-offset-top, 0px));"
+      style={$activeNoteId
+        ? 'height: var(--rn-vv-height, 100dvh); transform: translateY(var(--rn-vv-offset-top, 0px));'
+        : 'height: 100dvh;'}
     >
       <!-- ── Panel 1: Icon Rail + List ──────────────────────────────── -->
       <div
