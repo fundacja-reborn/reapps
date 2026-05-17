@@ -1,3 +1,13 @@
+## 0.24.0 (2026-05-17)
+
+### 🚀 Features
+
+- **notes,task:** add Copy markdown / Download .md to share viewer ([#203](https://github.com/fundacja-reborn/reapps/pull/203))
+
+### 🩹 Fixes
+
+- **notes,task:** localize app-loading stall and offline banners ([#202](https://github.com/fundacja-reborn/reapps/pull/202))
+
 ## 0.23.4 (2026-05-17)
 
 ### 🩹 Fixes
