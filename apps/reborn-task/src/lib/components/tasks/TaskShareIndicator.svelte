@@ -26,6 +26,11 @@
       onCreateNew?.();
     }
   }
+
+  function handleCreateNew() {
+    dialogOpen = false;
+    onCreateNew?.();
+  }
 </script>
 
 {#if taskId}
@@ -49,6 +54,6 @@
   </button>
 
   {#if count > 0}
-    <ManageSharesDialog bind:open={dialogOpen} sourceId={taskId} {onCreateNew} />
+    <ManageSharesDialog bind:open={dialogOpen} sourceId={taskId} onCreateNew={handleCreateNew} />
   {/if}
 {/if}

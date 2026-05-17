@@ -44,7 +44,7 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 - **Full-text search** with operators - `list:Inbox`, `due:<7d`, `is:overdue`, `has:link`, … ([reference](docs/search-operators.md))
 - **Trash & recovery** - restore deleted tasks within 30 days
 - **Import & export** - JSON backup and restore
-- **Read-only share links** - send a frozen snapshot of a task (with its subtasks) via an encrypted public URL; the snapshot key lives in the URL fragment so the server never sees it. Optional password, expiry, and view-count limit; revoke anytime.
+- **Read-only share links** - send a frozen snapshot of a task (with its subtasks) via an encrypted public URL; the snapshot key lives in the URL fragment so the server never sees it. Optional password, expiry, and view-count limit; revoke anytime ([blog post](https://reapps.eu/blog/sharing-notes-tasks-zero-knowledge-snapshots/)).
 
 ### re/notes - Encrypted notes & documents
 
@@ -63,7 +63,7 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 - **Full-text search** with operators - `tag:work`, `folder:projects/active`, `created:<7d`, `has:link`, `-tag:archived`, … ([reference](docs/search-operators.md))
 - **Trash & recovery** - safely delete and restore notes
 - **Import & export** - Markdown, JSON, or encrypted backup; import single `.md` files or entire folders with subfolders (e.g., an Obsidian vault) preserving directory structure
-- **Read-only share links** - publish a frozen snapshot of a note via an encrypted public URL; the snapshot key lives in the URL fragment so the server never sees it. Optional password, expiry, and view-count limit; revoke anytime.
+- **Read-only share links** - publish a frozen snapshot of a note via an encrypted public URL; the snapshot key lives in the URL fragment so the server never sees it. Optional password, expiry, and view-count limit; revoke anytime ([blog post](https://reapps.eu/blog/sharing-notes-tasks-zero-knowledge-snapshots/)).
 
 ### Shared features
 

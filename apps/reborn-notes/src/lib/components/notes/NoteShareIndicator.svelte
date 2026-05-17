@@ -27,6 +27,11 @@
       onCreateNew?.();
     }
   }
+
+  function handleCreateNew() {
+    dialogOpen = false;
+    onCreateNew?.();
+  }
 </script>
 
 {#if noteId}
@@ -50,6 +55,6 @@
   </button>
 
   {#if count > 0}
-    <ManageSharesDialog bind:open={dialogOpen} sourceId={noteId} {onCreateNew} />
+    <ManageSharesDialog bind:open={dialogOpen} sourceId={noteId} onCreateNew={handleCreateNew} />
   {/if}
 {/if}
