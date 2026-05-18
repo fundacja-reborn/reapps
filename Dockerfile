@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.23
+# syntax=docker/dockerfile:1.24
 #
 # Multi-stage Dockerfile for Reborn Apps (reborn-task + reborn-notes).
 #
