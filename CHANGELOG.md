@@ -1,3 +1,9 @@
+## 0.25.0 (2026-05-18)
+
+### 🚀 Features
+
+- **ui:** support Windows forced-colors mode for selected states ([#212](https://github.com/fundacja-reborn/reapps/pull/212))
+
 ## 0.24.1 (2026-05-18)
 
 ### 🩹 Fixes
