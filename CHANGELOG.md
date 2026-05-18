@@ -1,3 +1,11 @@
+## 0.24.1 (2026-05-18)
+
+### 🩹 Fixes
+
+- **deps:** update patch-updates ([#207](https://github.com/fundacja-reborn/reapps/pull/207))
+- **deps:** update minor-updates ([#209](https://github.com/fundacja-reborn/reapps/pull/209))
+- **notes:** enlarge action icons in All Notes header on mobile ([#210](https://github.com/fundacja-reborn/reapps/pull/210))
+
 ## 0.24.0 (2026-05-17)
 
 ### 🚀 Features
