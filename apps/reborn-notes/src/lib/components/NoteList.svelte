@@ -577,6 +577,14 @@
   const headerBtnClass = $derived(prominentHeader ? 'h-11 w-11' : 'h-9 w-9');
   const headerIconClass = $derived(prominentHeader ? 'h-5 w-5' : 'h-4 w-4');
 
+  // Row 2 (count + actions, selection toolbar) always uses the prominent
+  // sizing on mobile so the tap targets/icons match drill-in views like
+  // Favorites/Trash/Folder. Row 1 (title) still follows `prominentHeader`.
+  const rowTwoProminent = $derived(prominentHeader || isMobileQuery.value);
+  const rowTwoHeight = $derived(rowTwoProminent ? 'h-14' : 'h-10');
+  const rowTwoBtnClass = $derived(rowTwoProminent ? 'h-11 w-11' : 'h-9 w-9');
+  const rowTwoIconClass = $derived(rowTwoProminent ? 'h-5 w-5' : 'h-4 w-4');
+
   // ── Active folder action menu + inline rename ─────────────────
   const activeFolder = $derived<FolderWithChildren | null>(
     activeFolderId ? findFolderNode($foldersStore, activeFolderId) : null
@@ -688,20 +696,18 @@
     <!-- Row 2: count + per-list actions, swaps to selection toolbar in multi-select. -->
     {#if selectionMode}
       <div
-        class="flex shrink-0 items-center gap-1 {prominentHeader ? 'h-14' : 'h-10'} {onback
-          ? 'px-3'
-          : 'px-5'}"
+        class="flex shrink-0 items-center gap-1 {rowTwoHeight} {onback ? 'px-3' : 'px-5'}"
         role="toolbar"
         aria-label={$t('notes.multiselect.count', { values: { count: selectedIds.size } })}
       >
         <button
           type="button"
           onclick={exitSelectionMode}
-          class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors"
+          class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors"
           aria-label={$t('notes.multiselect.exit')}
           title={$t('notes.multiselect.exit')}
         >
-          <X class={headerIconClass} />
+          <X class={rowTwoIconClass} />
         </button>
         <span class="min-w-0 flex-1 truncate text-sm font-medium">
           {$t('notes.multiselect.count', { values: { count: selectedIds.size } })}
@@ -712,28 +718,28 @@
             type="button"
             onclick={bulkRestore}
             disabled={selectedIds.size === 0}
-            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.restore_all')}
             title={$t('notes.multiselect.restore_all')}
           >
-            <RotateCcw class={headerIconClass} />
+            <RotateCcw class={rowTwoIconClass} />
           </button>
           <button
             type="button"
             onclick={() => (bulkPermanentDeleteDialogOpen = true)}
             disabled={selectedIds.size === 0}
-            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.permanent_delete_all')}
             title={$t('notes.multiselect.permanent_delete_all')}
           >
-            <Trash class={headerIconClass} />
+            <Trash class={rowTwoIconClass} />
           </button>
         {:else}
           <button
             type="button"
             onclick={bulkPin}
             disabled={selectedIds.size === 0}
-            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={allPinned
               ? $t('notes.multiselect.unpin_all')
               : $t('notes.multiselect.pin_all')}
@@ -742,16 +748,16 @@
               : $t('notes.multiselect.pin_all')}
           >
             {#if allPinned}
-              <PinOff class={headerIconClass} />
+              <PinOff class={rowTwoIconClass} />
             {:else}
-              <Pin class={headerIconClass} />
+              <Pin class={rowTwoIconClass} />
             {/if}
           </button>
           <button
             type="button"
             onclick={bulkStar}
             disabled={selectedIds.size === 0}
-            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={allStarred
               ? $t('notes.multiselect.unstar_all')
               : $t('notes.multiselect.star_all')}
@@ -760,38 +766,36 @@
               : $t('notes.multiselect.star_all')}
           >
             {#if allStarred}
-              <StarOff class={headerIconClass} />
+              <StarOff class={rowTwoIconClass} />
             {:else}
-              <Star class={headerIconClass} />
+              <Star class={rowTwoIconClass} />
             {/if}
           </button>
           <button
             type="button"
             onclick={openBulkMove}
             disabled={selectedIds.size === 0}
-            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.move_all')}
             title={$t('notes.multiselect.move_all')}
           >
-            <FolderInput class={headerIconClass} />
+            <FolderInput class={rowTwoIconClass} />
           </button>
           <button
             type="button"
             onclick={() => (bulkDeleteDialogOpen = true)}
             disabled={selectedIds.size === 0}
-            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.delete_all')}
             title={$t('notes.multiselect.delete_all')}
           >
-            <Trash2 class={headerIconClass} />
+            <Trash2 class={rowTwoIconClass} />
           </button>
         {/if}
       </div>
     {:else}
       <div
-        class="flex {prominentHeader ? 'h-14' : 'h-10'} shrink-0 items-center gap-1 pl-5 {onback
-          ? 'pr-3'
-          : 'pr-5'}"
+        class="flex {rowTwoHeight} shrink-0 items-center gap-1 pl-5 {onback ? 'pr-3' : 'pr-5'}"
       >
         <span class="min-w-0 flex-1 truncate text-xs text-muted-foreground">
           {$t('notes.notes_count', { values: { count: $notesStore.length } })}
@@ -803,14 +807,14 @@
             onclick={toggleSelectionMode}
             title={$t('notes.multiselect.enter')}
             aria-label={$t('notes.multiselect.enter')}
-            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
-            <ListChecks class={headerIconClass} />
+            <ListChecks class={rowTwoIconClass} />
           </button>
         {/if}
 
         {#if !isTrash}
-          <NoteListSortMenu bind:sortSheetOpen prominent={prominentHeader} />
+          <NoteListSortMenu bind:sortSheetOpen prominent={rowTwoProminent} />
         {/if}
 
         {#if !isTrash && !isPeriodic}
@@ -819,9 +823,9 @@
             onclick={handleCreate}
             title={$t('nav.new_note')}
             aria-label={$t('nav.new_note')}
-            class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
-            <FilePlus class={headerIconClass} />
+            <FilePlus class={rowTwoIconClass} />
           </button>
         {/if}
 
