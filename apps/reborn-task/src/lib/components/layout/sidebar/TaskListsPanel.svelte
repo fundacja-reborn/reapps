@@ -89,6 +89,7 @@
 								<button
 									type="button"
 									onclick={() => onListSelect(list.id)}
+									aria-current={isActive ? 'page' : undefined}
 									class="flex w-full items-center gap-2 rounded-md px-3 py-3 md:py-2 text-base md:text-sm transition-colors
                     {isActive
 										? 'bg-accent text-accent-foreground'
