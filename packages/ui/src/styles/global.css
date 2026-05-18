@@ -121,7 +121,7 @@
   }
 }
 
-/* Browser autofill override — prevent light background on filled inputs in dark mode */
+/* Browser autofill override - prevent light background on filled inputs in dark mode */
 .dark input:-webkit-autofill,
 .dark input:-webkit-autofill:hover,
 .dark input:-webkit-autofill:focus,
@@ -130,4 +130,44 @@
   -webkit-text-fill-color: var(--foreground) !important;
   caret-color: var(--foreground);
   transition: background-color 5000s ease-in-out 0s;
+}
+
+/*
+ * Forced Colors Mode (Windows High Contrast) support.
+ *
+ * Without this, the OS forces its own palette on top of our CSS: selected
+ * list items get the system Highlight color (typically saturated blue),
+ * which surprised a user who saw a dark-blue selection where the design
+ * uses a neutral gray. We can't override the user's OS preference, but we
+ * CAN make the result coherent by mapping our active/selected states to
+ * the semantic system colors (SelectedItem / SelectedItemText), preserving
+ * indicator colors that carry meaning (default-list star, badges), and
+ * giving non-selected hover a visible outline instead of a filled bg.
+ */
+@media (forced-colors: active) {
+  [aria-current="page"],
+  [aria-current="true"],
+  [aria-selected="true"],
+  [aria-selected="true"] > [role="button"] {
+    background-color: SelectedItem;
+    color: SelectedItemText;
+    forced-color-adjust: none;
+  }
+
+  [data-state="active"],
+  [data-state="on"],
+  [data-state="checked"] {
+    background-color: SelectedItem;
+    color: SelectedItemText;
+    forced-color-adjust: none;
+  }
+
+  .text-yellow-500,
+  .text-orange-500,
+  .text-amber-500,
+  .text-destructive,
+  .task-badge-today,
+  .task-badge-tomorrow {
+    forced-color-adjust: none;
+  }
 }
