@@ -40,12 +40,12 @@
   "devDependencies": {
     "@reborn/types": "workspace:*",
     "@sveltejs/vite-plugin-svelte": "7.1.2",
-    "@types/node": "24.12.3",
+    "@types/node": "24.12.4",
     "svelte": "5.55.7",
     "tsup": "8.5.1",
     "typescript": "6.0.3",
-    "vite": "8.0.11",
-    "vitest": "4.1.5"
+    "vite": "8.0.13",
+    "vitest": "4.1.6"
   },
   "peerDependencies": {
     "svelte": "5.55.7"

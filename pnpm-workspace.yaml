@@ -2,11 +2,11 @@ packages:
   - apps/*
   - packages/*
 overrides:
-  axios: 1.16.0
+  axios: 1.16.1
   follow-redirects: 1.16.0
   fast-uri: 3.1.2
   '@babel/plugin-transform-modules-systemjs': 7.29.4
-  hono: 4.12.18
+  hono: 4.12.19
   cookie: 0.7.2
   esbuild: 0.28.0
   '@hono/node-server': 1.19.14
