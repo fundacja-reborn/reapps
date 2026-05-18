@@ -23,12 +23,12 @@
   },
   "devDependencies": {
     "@reborn/types": "workspace:*",
-    "@types/node": "24.12.3",
-    "@vitest/coverage-v8": "4.1.5",
-    "@vitest/ui": "4.1.5",
+    "@types/node": "24.12.4",
+    "@vitest/coverage-v8": "4.1.6",
+    "@vitest/ui": "4.1.6",
     "jsdom": "29.1.1",
     "tsup": "8.5.1",
     "typescript": "6.0.3",
-    "vitest": "4.1.5"
+    "vitest": "4.1.6"
   }
 }
