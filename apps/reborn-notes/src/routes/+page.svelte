@@ -75,6 +75,7 @@
   import { goto } from '$lib/utils/navigation';
   import { createScrollSync } from '$lib/utils/scroll-sync';
   import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
+  import { requireActiveSession } from '$lib/utils/require-active-session';
   import type { EditorView } from '@codemirror/view';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -228,10 +229,14 @@
   let shareNoteId = $state<string | null>(null);
   let shareNoteTitle = $state<string>('');
 
-  function handleDetailShare(noteArg?: NoteListItem) {
+  async function handleDetailShare(noteArg?: NoteListItem) {
     detailActionSheetOpen = false;
     const target = noteArg ?? detailMenuNote;
     if (!target) return;
+    const ok = await requireActiveSession({
+      description: $t('share.session_required.create')
+    });
+    if (!ok) return;
     shareNoteId = target.id;
     shareNoteTitle = target.title ?? '';
     shareDialogOpen = true;

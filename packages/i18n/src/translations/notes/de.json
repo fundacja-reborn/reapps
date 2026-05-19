@@ -1093,6 +1093,10 @@
       "empty_for_note": "Diese Notiz hat keine aktiven Freigaben.",
       "empty_for_task": "Diese Aufgabe hat keine aktiven Freigaben.",
       "create_new_cta": "Neue Freigabe erstellen"
+    },
+    "session_required": {
+      "view": "Bitte melde dich erneut an, um deine aktiven Freigaben zu sehen.",
+      "create": "Bitte melde dich erneut an, um eine Freigabe zu erstellen."
     }
   }
 }

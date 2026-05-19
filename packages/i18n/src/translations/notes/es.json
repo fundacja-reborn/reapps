@@ -1093,6 +1093,10 @@
       "empty_for_note": "Esta nota no tiene compartidos activos.",
       "empty_for_task": "Esta tarea no tiene compartidos activos.",
       "create_new_cta": "Crear nuevo compartido"
+    },
+    "session_required": {
+      "view": "Vuelve a iniciar sesión para ver tus compartidos activos.",
+      "create": "Vuelve a iniciar sesión para crear un compartido."
     }
   }
 }

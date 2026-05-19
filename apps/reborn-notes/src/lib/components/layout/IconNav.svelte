@@ -45,6 +45,7 @@
   import { formatRange } from '$lib/services/periodic-notes-format';
   import type { PeriodicKind } from '@reborn/storage';
   import { activeSharesCount } from '$lib/stores/shares.store';
+  import { requireActiveSession } from '$lib/utils/require-active-session';
   import ManageSharesDialog from '../notes/ManageSharesDialog.svelte';
 
   let {
@@ -71,6 +72,14 @@
   let loggingOut = $state(false);
   let userSheetOpen = $state(false);
   let sharesDialogOpen = $state(false);
+
+  async function handleOpenShares() {
+    const ok = await requireActiveSession({
+      description: $t('share.session_required.view')
+    });
+    if (!ok) return;
+    sharesDialogOpen = true;
+  }
 
   // Refresh `now` every minute so tooltips stay accurate across midnight /
   // week boundary / month boundary without forcing the user to reload.
@@ -218,7 +227,7 @@
     <!-- Shares (always visible, count badge when > 0) -->
     <button
       type="button"
-      onclick={() => (sharesDialogOpen = true)}
+      onclick={handleOpenShares}
       class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
         text-muted-foreground hover:bg-sidebar-accent/60"
       aria-label={$t('nav.shares')}
@@ -395,7 +404,7 @@
           <button
             {...props}
             type="button"
-            onclick={() => (sharesDialogOpen = true)}
+            onclick={handleOpenShares}
             class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg
                    text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
             aria-label={$t('nav.shares')}

@@ -27,6 +27,7 @@
   import { SidebarTrigger } from '@reborn/ui/sidebar';
   import { t } from '$lib/stores/i18n.store';
   import { sessionExpired, isInitialSync } from '$lib/stores/sync-status.store';
+  import { requireActiveSession } from '$lib/utils/require-active-session';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import ConfirmDialog from './shared/ConfirmDialog.svelte';
   import NoteListItemComponent from './notes/NoteListItem.svelte';
@@ -98,8 +99,12 @@
   let shareNoteId = $state<string | null>(null);
   let shareNoteTitle = $state<string>('');
 
-  function handleShare(note: NoteListItem, e?: Event) {
+  async function handleShare(note: NoteListItem, e?: Event) {
     e?.stopPropagation();
+    const ok = await requireActiveSession({
+      description: $t('share.session_required.create')
+    });
+    if (!ok) return;
     shareNoteId = note.id;
     shareNoteTitle = note.title ?? '';
     shareDialogOpen = true;

@@ -147,5 +147,9 @@
     "empty_for_note": "This note has no active shares.",
     "empty_for_task": "This task has no active shares.",
     "create_new_cta": "Create new share"
+  },
+  "session_required": {
+    "view": "Sign in again to view your active shares.",
+    "create": "Sign in again to create a share."
   }
 }
