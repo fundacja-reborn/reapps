@@ -555,11 +555,11 @@ describe('createAuthFetch', () => {
 
   // --- Definitive-expiry cache (short-circuits sequential cascades) ---
 
-  it('caches definitive expiry briefly so a sync cascade does not flood /auth/refresh', async () => {
-    // Without the cache, two sequential 401s on /api/things would each fire
-    // up to 2 refresh requests (initial + grace retry) = 4 total. The first
-    // refresh definitively confirmed expiry; subsequent refresh() calls in
-    // the same access_token context should short-circuit to null.
+  it('caches definitive expiry so a sync cascade does not flood /auth/refresh', async () => {
+    // Without the cache, sequential 401s on /api/things would each fire up
+    // to 2 refresh requests (initial + grace retry). The first refresh
+    // definitively confirmed expiry; every subsequent refresh() with the
+    // same access_token short-circuits to null with no network call.
     const storage = makeStorage('expired');
     const onSessionExpired = vi.fn();
     const fetchImpl = vi.fn().mockImplementation((url: string) => {
@@ -586,6 +586,35 @@ describe('createAuthFetch', () => {
     // Next two requests: 0 refresh attempts — cached null short-circuits.
     expect(refreshCalls).toHaveLength(2);
     expect(onSessionExpired).toHaveBeenCalledTimes(3);
+  });
+
+  it('expiry cache survives arbitrarily long without TTL — user idle time does not re-flood refresh', async () => {
+    // A user with the banner up may sit idle for minutes before re-auth.
+    // Every periodic sync tick, every interaction-triggered request keeps
+    // arriving and refresh() must keep short-circuiting on the same token —
+    // otherwise the per-IP rate-limiter (60 / 15 min) would be exhausted
+    // long before the user gets around to typing their password.
+    const storage = makeStorage('expired');
+    const fetchImpl = vi.fn().mockImplementation((url: string) => {
+      if (url === '/api/auth/refresh') {
+        return Promise.resolve(new Response('refresh denied', { status: 401 }));
+      }
+      return Promise.resolve(new Response('expired', { status: 401 }));
+    });
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      gracePeriodMs: 50
+    });
+
+    await authFetch('/api/things'); // 2 refresh calls — cache populated
+    vi.advanceTimersByTime(10 * 60_000); // 10 minutes of idle
+    await authFetch('/api/things'); // still cached — 0 refresh calls
+
+    const refreshCalls = fetchImpl.mock.calls.filter((c) => c[0] === '/api/auth/refresh');
+    expect(refreshCalls).toHaveLength(2);
   });
 
   it('expiry cache is invalidated when access_token changes (post re-auth)', async () => {
@@ -620,34 +649,6 @@ describe('createAuthFetch', () => {
 
     expect(refreshed).toBe('fresh');
     expect(storage.getAccessToken()).toBe('fresh');
-  });
-
-  it('expiry cache expires after TTL so a later cascade still triggers the banner', async () => {
-    // Cache is a short-lived deduper, not a permanent verdict. After the TTL
-    // window passes, refresh() must hit the network again — this guards
-    // against scenarios where the user's network conditions changed and a
-    // retry might now succeed.
-    const storage = makeStorage('expired');
-    const fetchImpl = vi.fn().mockImplementation((url: string) => {
-      if (url === '/api/auth/refresh') {
-        return Promise.resolve(new Response('refresh denied', { status: 401 }));
-      }
-      return Promise.resolve(new Response('expired', { status: 401 }));
-    });
-
-    const authFetch = createAuthFetch({
-      refreshUrl: '/api/auth/refresh',
-      storage,
-      fetchImpl,
-      gracePeriodMs: 50
-    });
-
-    await authFetch('/api/things'); // 2 refresh calls (cache populated)
-    vi.advanceTimersByTime(5000); // > 3000 ms TTL
-    await authFetch('/api/things'); // 2 more refresh calls (cache expired)
-
-    const refreshCalls = fetchImpl.mock.calls.filter((c) => c[0] === '/api/auth/refresh');
-    expect(refreshCalls).toHaveLength(4);
   });
 
   it('successful refresh clears any stale cached expiry', async () => {
