@@ -427,6 +427,64 @@ describe('createAuthFetch', () => {
     expect(refreshCalls).toHaveLength(1);
   });
 
+  it('first refresh 401, grace retry 429 → still calls onSessionExpired (definitive wins over transient)', async () => {
+    // Regression guard: when attempt #1 returns a definitive 401 but the
+    // grace retry hits a transient failure (rate-limit, brief 5xx, network),
+    // trust the first definitive answer. Grace period must hide false-
+    // positive expiry, never convert real expiry into a transient error.
+    // Symptom before fix: refresh_token cookie deleted + sync cascade pushed
+    // the per-IP refresh limiter past 60/15min — the grace retry hit 429,
+    // throw bubbled up, banner stayed hidden.
+    const storage = makeStorage('expired');
+    const onSessionExpired = vi.fn();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+      .mockResolvedValueOnce(new Response('refresh denied', { status: 401 }))
+      .mockResolvedValueOnce(new Response('too many', { status: 429 }));
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      onSessionExpired,
+      gracePeriodMs: 50
+    });
+
+    const response = await authFetch('/api/things');
+
+    expect(response.status).toBe(401);
+    expect(onSessionExpired).toHaveBeenCalledOnce();
+
+    const refreshCalls = fetchImpl.mock.calls.filter((c) => c[0] === '/api/auth/refresh');
+    expect(refreshCalls).toHaveLength(2);
+  });
+
+  it('first refresh 401, grace retry 502 → still calls onSessionExpired (same rule applies to 5xx)', async () => {
+    // Same as the 429 case above, but for 5xx — covers nginx returning 502
+    // during a server rebuild simultaneously with a real session expiry.
+    const storage = makeStorage('expired');
+    const onSessionExpired = vi.fn();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+      .mockResolvedValueOnce(new Response('refresh denied', { status: 401 }))
+      .mockResolvedValueOnce(new Response('Bad Gateway', { status: 502 }));
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      onSessionExpired,
+      gracePeriodMs: 50
+    });
+
+    const response = await authFetch('/api/things');
+
+    expect(response.status).toBe(401);
+    expect(onSessionExpired).toHaveBeenCalledOnce();
+  });
+
   it('grace period can be disabled with gracePeriodMs: 0 (immediate banner on 401)', async () => {
     const storage = makeStorage('expired');
     const onSessionExpired = vi.fn();

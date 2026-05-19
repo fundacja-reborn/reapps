@@ -180,7 +180,17 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
       return currentAfterWait;
     }
 
-    return doRefreshOnce(tokenBeforeLock);
+    try {
+      return await doRefreshOnce(tokenBeforeLock);
+    } catch (err) {
+      // Attempt #1 already gave a definitive null. If the grace retry blows
+      // up transiently (429 from refresh rate-limiter under sync cascade,
+      // 5xx during a deploy, network blip), do NOT let it overrule the
+      // definitive first answer — grace period is meant to hide
+      // false-positive expiry, not to mask real expiry as transient.
+      if (err instanceof TransientRefreshError) return null;
+      throw err;
+    }
   }
 
   function refresh(): Promise<string | null> {
