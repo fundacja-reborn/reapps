@@ -97,6 +97,20 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
   // they don't all hit the server. Cross-tab is serialized via withRefreshLock.
   let refreshPromise: Promise<string | null> | null = null;
 
+  // Memo of a definitive expiry verdict, keyed by the access_token that
+  // produced the null. Once `/auth/refresh` definitively reports expiry for
+  // a given JWT, that JWT is permanently invalid — the verdict doesn't flip
+  // back to valid for the same token. Sequential sync batches each fire
+  // their own refresh() (single-flight only covers *concurrent* calls), so
+  // without this memo every action the user takes while the banner is up
+  // generates two more refresh HTTP calls (initial + grace retry), quickly
+  // flooding the per-IP 60/15min refresh rate-limiter. Invalidated implicitly
+  // when access_token changes — re-auth via the banner writes a fresh token,
+  // a successful refresh writes a fresh token, both flow through storage
+  // and the key mismatch sends the next refresh() back to the network.
+  let cachedExpiryForToken: string | null = null;
+  let hasCachedExpiry = false;
+
   async function doRefreshOnce(tokenBeforeLock: string | null): Promise<string | null> {
     // Inside the cross-tab lock another tab may have already refreshed for us.
     // If the stored access token changed while we were queued, skip the
@@ -180,17 +194,46 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
       return currentAfterWait;
     }
 
-    return doRefreshOnce(tokenBeforeLock);
+    try {
+      return await doRefreshOnce(tokenBeforeLock);
+    } catch (err) {
+      // Attempt #1 already gave a definitive null. If the grace retry blows
+      // up transiently (429 from refresh rate-limiter under sync cascade,
+      // 5xx during a deploy, network blip), do NOT let it overrule the
+      // definitive first answer — grace period is meant to hide
+      // false-positive expiry, not to mask real expiry as transient.
+      if (err instanceof TransientRefreshError) return null;
+      throw err;
+    }
   }
 
   function refresh(): Promise<string | null> {
     if (!refreshPromise) {
       const tokenBeforeLock = storage.getAccessToken();
-      refreshPromise = withRefreshLock(() => doRefreshWithGracePeriod(tokenBeforeLock)).finally(
-        () => {
+
+      // Short-circuit: a prior refresh against this exact access_token
+      // already confirmed expiry. Skip the network round-trip — banner is
+      // already up, sync callers just need the null. Prevents cascade-driven
+      // rate-limit exhaustion (the bug where the grace retry then hit 429
+      // and masked the original definitive 401 as transient).
+      if (hasCachedExpiry && cachedExpiryForToken === tokenBeforeLock) {
+        return Promise.resolve(null);
+      }
+
+      refreshPromise = withRefreshLock(() => doRefreshWithGracePeriod(tokenBeforeLock))
+        .then((result) => {
+          if (result === null) {
+            hasCachedExpiry = true;
+            cachedExpiryForToken = tokenBeforeLock;
+          } else {
+            hasCachedExpiry = false;
+            cachedExpiryForToken = null;
+          }
+          return result;
+        })
+        .finally(() => {
           refreshPromise = null;
-        }
-      );
+        });
     }
     return refreshPromise;
   }
