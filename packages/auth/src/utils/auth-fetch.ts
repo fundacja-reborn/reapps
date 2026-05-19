@@ -78,6 +78,7 @@ export class TransientRefreshError extends Error {
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 const DEFAULT_REFRESH_GRACE_PERIOD_MS = 1500;
+const DEFINITIVE_EXPIRY_CACHE_TTL_MS = 3000;
 
 const defaultStorage: AuthFetchTokenStorage = {
   getAccessToken: () =>
@@ -96,6 +97,18 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
   // In-tab single-flight: concurrent 401 handlers share one refresh promise so
   // they don't all hit the server. Cross-tab is serialized via withRefreshLock.
   let refreshPromise: Promise<string | null> | null = null;
+
+  // Short-lived memo of a definitive expiry result. Sequential sync batches
+  // each fire their own refresh() (single-flight only covers *concurrent*
+  // calls — once the in-flight promise resolves, the next call starts a new
+  // one). Without this memo, N batches arriving over ~N×1.5 s each consume up
+  // to two refresh HTTP calls (initial + grace retry) and flood the per-IP
+  // 60/15min refresh rate-limiter, masking real expiry as 429-transient.
+  // Cached keyed by the access_token that produced the null so re-auth (which
+  // writes a new access_token to storage) implicitly invalidates the cache on
+  // its first refresh() call.
+  let cachedExpiryAt: number | null = null;
+  let cachedExpiryForToken: string | null = null;
 
   async function doRefreshOnce(tokenBeforeLock: string | null): Promise<string | null> {
     // Inside the cross-tab lock another tab may have already refreshed for us.
@@ -196,11 +209,34 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
   function refresh(): Promise<string | null> {
     if (!refreshPromise) {
       const tokenBeforeLock = storage.getAccessToken();
-      refreshPromise = withRefreshLock(() => doRefreshWithGracePeriod(tokenBeforeLock)).finally(
-        () => {
+
+      // Short-circuit: a recent refresh against this same access_token already
+      // confirmed expiry. Skip the network round-trip — banner is already up,
+      // sync caller just needs the null. Prevents cascade-driven rate-limit
+      // exhaustion (the bug where the grace retry then hit 429 and masked the
+      // original definitive 401 as transient).
+      if (
+        cachedExpiryAt !== null &&
+        cachedExpiryForToken === tokenBeforeLock &&
+        Date.now() - cachedExpiryAt < DEFINITIVE_EXPIRY_CACHE_TTL_MS
+      ) {
+        return Promise.resolve(null);
+      }
+
+      refreshPromise = withRefreshLock(() => doRefreshWithGracePeriod(tokenBeforeLock))
+        .then((result) => {
+          if (result === null) {
+            cachedExpiryAt = Date.now();
+            cachedExpiryForToken = tokenBeforeLock;
+          } else {
+            cachedExpiryAt = null;
+            cachedExpiryForToken = null;
+          }
+          return result;
+        })
+        .finally(() => {
           refreshPromise = null;
-        }
-      );
+        });
     }
     return refreshPromise;
   }

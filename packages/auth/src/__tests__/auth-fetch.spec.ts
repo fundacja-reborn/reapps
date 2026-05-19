@@ -552,4 +552,131 @@ describe('createAuthFetch', () => {
     // storage already has a fresh token.
     expect(refreshCalls).toHaveLength(1);
   });
+
+  // --- Definitive-expiry cache (short-circuits sequential cascades) ---
+
+  it('caches definitive expiry briefly so a sync cascade does not flood /auth/refresh', async () => {
+    // Without the cache, two sequential 401s on /api/things would each fire
+    // up to 2 refresh requests (initial + grace retry) = 4 total. The first
+    // refresh definitively confirmed expiry; subsequent refresh() calls in
+    // the same access_token context should short-circuit to null.
+    const storage = makeStorage('expired');
+    const onSessionExpired = vi.fn();
+    const fetchImpl = vi.fn().mockImplementation((url: string) => {
+      if (url === '/api/auth/refresh') {
+        return Promise.resolve(new Response('refresh denied', { status: 401 }));
+      }
+      return Promise.resolve(new Response('expired', { status: 401 }));
+    });
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      onSessionExpired,
+      gracePeriodMs: 50
+    });
+
+    await authFetch('/api/things');
+    await authFetch('/api/things');
+    await authFetch('/api/things');
+
+    const refreshCalls = fetchImpl.mock.calls.filter((c) => c[0] === '/api/auth/refresh');
+    // First request: 2 refresh attempts (initial + grace retry).
+    // Next two requests: 0 refresh attempts — cached null short-circuits.
+    expect(refreshCalls).toHaveLength(2);
+    expect(onSessionExpired).toHaveBeenCalledTimes(3);
+  });
+
+  it('expiry cache is invalidated when access_token changes (post re-auth)', async () => {
+    // After the user re-authenticates via the SessionExpiredBanner, a fresh
+    // access_token is written to storage. The next refresh() must go to the
+    // network (key in the cache no longer matches), not return the stale
+    // cached null.
+    const storage = makeStorage('expired');
+    const fetchImpl = vi
+      .fn()
+      // request 1: original 401, refresh #1 401, grace retry 401 → cache null
+      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+      .mockResolvedValueOnce(new Response('refresh denied', { status: 401 }))
+      .mockResolvedValueOnce(new Response('refresh denied', { status: 401 }))
+      // request 2 (after re-auth swaps the token): refresh succeeds
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, data: { access_token: 'fresh' } }), {
+          status: 200
+        })
+      );
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      gracePeriodMs: 50
+    });
+
+    await authFetch('/api/things'); // populate cache with null for 'expired'
+    storage.setAccessToken('post-reauth-token'); // simulate re-auth via banner
+    const refreshed = await authFetch.refresh(); // must go to network
+
+    expect(refreshed).toBe('fresh');
+    expect(storage.getAccessToken()).toBe('fresh');
+  });
+
+  it('expiry cache expires after TTL so a later cascade still triggers the banner', async () => {
+    // Cache is a short-lived deduper, not a permanent verdict. After the TTL
+    // window passes, refresh() must hit the network again — this guards
+    // against scenarios where the user's network conditions changed and a
+    // retry might now succeed.
+    const storage = makeStorage('expired');
+    const fetchImpl = vi.fn().mockImplementation((url: string) => {
+      if (url === '/api/auth/refresh') {
+        return Promise.resolve(new Response('refresh denied', { status: 401 }));
+      }
+      return Promise.resolve(new Response('expired', { status: 401 }));
+    });
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      gracePeriodMs: 50
+    });
+
+    await authFetch('/api/things'); // 2 refresh calls (cache populated)
+    vi.advanceTimersByTime(5000); // > 3000 ms TTL
+    await authFetch('/api/things'); // 2 more refresh calls (cache expired)
+
+    const refreshCalls = fetchImpl.mock.calls.filter((c) => c[0] === '/api/auth/refresh');
+    expect(refreshCalls).toHaveLength(4);
+  });
+
+  it('successful refresh clears any stale cached expiry', async () => {
+    // If a prior refresh() set the cache, then a later refresh() succeeds
+    // (token validity restored e.g. by another tab), the cache must be
+    // cleared so further refresh() calls don't return stale null.
+    const storage = makeStorage('t1');
+    const fetchImpl = vi
+      .fn()
+      // First refresh cycle: definitive expiry → caches null
+      .mockResolvedValueOnce(new Response('refresh denied', { status: 401 }))
+      .mockResolvedValueOnce(new Response('refresh denied', { status: 401 }))
+      // After token change + re-auth in storage, refresh() resumes and
+      // succeeds → cache cleared
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, data: { access_token: 't2' } }), {
+          status: 200
+        })
+      );
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh',
+      storage,
+      fetchImpl,
+      gracePeriodMs: 50
+    });
+
+    expect(await authFetch.refresh()).toBeNull(); // populate cache
+    storage.setAccessToken('t2-pre-auth'); // change key so next call isn't short-circuited
+    expect(await authFetch.refresh()).toBe('t2'); // success clears cache
+  });
 });
