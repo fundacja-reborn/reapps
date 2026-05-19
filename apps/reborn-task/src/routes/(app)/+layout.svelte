@@ -41,6 +41,7 @@
 	import { TaskSelectPlaceholder, FilterViewPlaceholder } from '$lib/components/tasks';
 	import { page } from '$app/stores';
 	import { goto } from '$lib/utils/navigation';
+	import { requireActiveSession } from '$lib/utils/require-active-session';
 	import { session } from '$lib/stores/auth.store';
 	import { t } from '$lib/stores/i18n.store';
 	import { activeLists, taskListStore } from '$lib/stores/decrypted-lists.store';
@@ -277,6 +278,16 @@
 	// Share dialog state (read-only public snapshot)
 	let shareDialogOpen = $state(false);
 	let shareDialogTask = $state<TaskDecrypted | null>(null);
+
+	async function openShareDialogForCurrentTask() {
+		if (!currentTask) return;
+		const ok = await requireActiveSession({
+			description: $t('share.session_required.create')
+		});
+		if (!ok) return;
+		shareDialogTask = currentTask;
+		shareDialogOpen = true;
+	}
 
 	// Current list for header
 	let currentList = $derived(
@@ -1137,12 +1148,7 @@
 								onOpenMoveDialog={() => {
 									if (currentTask) layoutStore.openMoveTaskDialog(currentTask);
 								}}
-								onOpenShareDialog={() => {
-									if (currentTask) {
-										shareDialogTask = currentTask;
-										shareDialogOpen = true;
-									}
-								}}
+								onOpenShareDialog={openShareDialogForCurrentTask}
 								onOpenDeleteDialog={() => {
 									if (currentTask) layoutStore.openTaskDeleteDialog(currentTask);
 								}}
@@ -1233,12 +1239,7 @@
 								onOpenMoveDialog={() => {
 									if (currentTask) layoutStore.openMoveTaskDialog(currentTask);
 								}}
-								onOpenShareDialog={() => {
-									if (currentTask) {
-										shareDialogTask = currentTask;
-										shareDialogOpen = true;
-									}
-								}}
+								onOpenShareDialog={openShareDialogForCurrentTask}
 								onOpenDeleteDialog={() => {
 									if (currentTask) layoutStore.openTaskDeleteDialog(currentTask);
 								}}

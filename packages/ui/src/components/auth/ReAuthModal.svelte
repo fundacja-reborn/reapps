@@ -26,15 +26,21 @@
   let {
     open = $bindable(false),
     username = '',
+    description,
     onSubmitPassword,
-    onSubmitTotp
+    onSubmitTotp,
+    onClose
   } = $props<{
     open?: boolean;
     username?: string;
+    /** Optional override for the password-step description text. Defaults to `auth.session.reauth_description`. */
+    description?: string;
     /** Called with the password. Returns a ReAuthResult. */
     onSubmitPassword?: (password: string) => Promise<ReAuthResult>;
     /** Called with a TOTP or recovery code once 2FA is required. */
     onSubmitTotp?: (userId: string, code: string) => Promise<ReAuthResult>;
+    /** Called when the dialog closes. Receives `true` if a re-auth succeeded, `false` if cancelled. */
+    onClose?: (success: boolean) => void;
   }>();
 
   type Step = 'password' | 'totp';
@@ -47,6 +53,7 @@
   let pendingUserId = $state<string | null>(null);
   let loading = $state(false);
   let error = $state<string | null>(null);
+  let succeeded = $state(false);
 
   function resetAll() {
     step = 'password';
@@ -57,12 +64,25 @@
     pendingUserId = null;
     loading = false;
     error = null;
+    succeeded = false;
   }
 
-  function handleOpenChange(isOpen: boolean) {
-    open = isOpen;
-    if (!isOpen) resetAll();
-  }
+  // bits-ui only fires onOpenChange when it INTERNALLY toggles open (X click,
+  // Escape, click-outside). Setting `open = false` programmatically from a
+  // success branch bypasses that callback, so we use a $effect to detect every
+  // open → closed transition. `prevOpen` is a plain JS var so the assignment
+  // inside the effect doesn't retrigger it.
+  let prevOpen = false;
+  $effect(() => {
+    const isOpen = open;
+    if (isOpen === prevOpen) return;
+    prevOpen = isOpen;
+    if (!isOpen) {
+      const wasSuccess = succeeded;
+      resetAll();
+      onClose?.(wasSuccess);
+    }
+  });
 
   function describeResult(result: ReAuthResult): string | null {
     switch (result.kind) {
@@ -97,8 +117,8 @@
       };
 
       if (result.kind === 'ok') {
+        succeeded = true;
         open = false;
-        resetAll();
         return;
       }
 
@@ -138,8 +158,8 @@
       };
 
       if (result.kind === 'ok') {
+        succeeded = true;
         open = false;
-        resetAll();
         return;
       }
 
@@ -152,13 +172,13 @@
   }
 </script>
 
-<Dialog bind:open onOpenChange={handleOpenChange}>
+<Dialog bind:open>
   <DialogContent class="sm:max-w-md">
     {#if step === 'password'}
       <DialogHeader>
         <DialogTitle>{$t('auth.session.reauth_title')}</DialogTitle>
         <DialogDescription>
-          {$t('auth.session.reauth_description')}
+          {description ?? $t('auth.session.reauth_description')}
         </DialogDescription>
       </DialogHeader>
 

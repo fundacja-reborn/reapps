@@ -1093,6 +1093,10 @@
       "empty_for_note": "Cette note n'a aucun partage actif.",
       "empty_for_task": "Cette tâche n'a aucun partage actif.",
       "create_new_cta": "Créer un nouveau partage"
+    },
+    "session_required": {
+      "view": "Reconnectez-vous pour voir vos partages actifs.",
+      "create": "Reconnectez-vous pour créer un partage."
     }
   }
 }

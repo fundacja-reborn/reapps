@@ -1093,6 +1093,10 @@
       "empty_for_note": "Ta notatka nie ma aktywnych udostępnień.",
       "empty_for_task": "To zadanie nie ma aktywnych udostępnień.",
       "create_new_cta": "Utwórz nowe udostępnienie"
+    },
+    "session_required": {
+      "view": "Zaloguj się ponownie, aby zobaczyć aktywne udostępnienia.",
+      "create": "Zaloguj się ponownie, aby utworzyć udostępnienie."
     }
   }
 }

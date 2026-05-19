@@ -3,6 +3,7 @@ import { browser } from '$app/environment';
 import { base } from '$app/paths';
 import { authFetch } from '$lib/utils/auth-fetch';
 import { connectivityStore } from '$lib/stores/connectivity.store';
+import { sessionExpired } from '$lib/stores/sync-status.store';
 import { refreshQuota } from '$lib/stores/storage-quota.store';
 import {
   cryptoManager,
@@ -183,6 +184,20 @@ function createSharesStore() {
         prevStatus = conn.status;
       });
     }
+    // Auto-refresh when the session is re-established after expiry. Without
+    // this, a ManageSharesDialog opened during expiry keeps showing the stale
+    // "Couldn't refresh" banner even though the user has signed in again.
+    let prevExpired = get(sessionExpired);
+    sessionExpired.subscribe((expired) => {
+      if (
+        prevExpired === true
+        && expired === false
+        && cryptoManager.isInitialized()
+      ) {
+        void refresh();
+      }
+      prevExpired = expired;
+    });
   }
 
   return {

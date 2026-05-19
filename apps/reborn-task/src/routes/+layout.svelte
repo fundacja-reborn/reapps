@@ -10,7 +10,7 @@
 	import { sessionExpired } from '$lib/stores/session-expired.store';
 	import { syncService } from '$lib/services/sync.service';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
-	import { SessionExpiredBanner } from '@reborn/ui';
+	import { SessionExpiredBanner, RequireSessionModal } from '@reborn/ui';
 	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 	import { Toaster } from '@reborn/ui';
 	import type { Snippet } from 'svelte';
@@ -298,6 +298,11 @@
 {#if $session?.isInitialized || initTimeout || isPublicShareRoute}
 	<SessionExpiredBanner
 		visible={$sessionExpired && navigator.onLine}
+		username={$session?.user?.username ?? ''}
+		onReAuth={(password) => authOperationsService.reAuthenticate(password)}
+		onVerifyTotp={(userId, code) => authOperationsService.verifyTotpForReauth(userId, code)}
+	/>
+	<RequireSessionModal
 		username={$session?.user?.username ?? ''}
 		onReAuth={(password) => authOperationsService.reAuthenticate(password)}
 		onVerifyTotp={(userId, code) => authOperationsService.verifyTotpForReauth(userId, code)}

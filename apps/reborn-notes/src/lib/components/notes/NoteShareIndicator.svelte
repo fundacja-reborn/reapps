@@ -2,6 +2,7 @@
   import { Share2 } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import { sharesBySourceId } from '$lib/stores/shares.store';
+  import { requireActiveSession } from '$lib/utils/require-active-session';
   import ManageSharesDialog from './ManageSharesDialog.svelte';
 
   let {
@@ -20,16 +21,28 @@
     return $sharesBySourceId.get(noteId)?.length ?? 0;
   });
 
-  function handleClick() {
-    if (count > 0) {
+  async function handleClick() {
+    // Capture count at click time. We don't re-read after the await: the user's
+    // intent was determined when they clicked (view vs. create), and re-reading
+    // the reactive count could pick a different branch if a sync arrived during
+    // the gate.
+    const hadShares = count > 0;
+    const reason = hadShares ? 'share.session_required.view' : 'share.session_required.create';
+    const ok = await requireActiveSession({ description: $t(reason) });
+    if (!ok) return;
+    if (hadShares) {
       dialogOpen = true;
     } else {
       onCreateNew?.();
     }
   }
 
-  function handleCreateNew() {
+  async function handleCreateNew() {
     dialogOpen = false;
+    const ok = await requireActiveSession({
+      description: $t('share.session_required.create')
+    });
+    if (!ok) return;
     onCreateNew?.();
   }
 </script>
@@ -54,7 +67,8 @@
     {/if}
   </button>
 
-  {#if count > 0}
-    <ManageSharesDialog bind:open={dialogOpen} sourceId={noteId} onCreateNew={handleCreateNew} />
-  {/if}
+  <!-- Always mounted (gated by dialogOpen) so that a sync arriving mid-creation
+       cannot dynamically mount this dialog and cover the success view inside
+       ShareNoteDialog. -->
+  <ManageSharesDialog bind:open={dialogOpen} sourceId={noteId} onCreateNew={handleCreateNew} />
 {/if}
