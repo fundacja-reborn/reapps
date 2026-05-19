@@ -1,3 +1,10 @@
+## 0.25.1 (2026-05-19)
+
+### 🩹 Fixes
+
+- **session:** expired banner rate limit ([#213](https://github.com/fundacja-reborn/reapps/pull/213))
+- **ui:** gate share dialogs on active session, fix programmatic re-auth close ([#214](https://github.com/fundacja-reborn/reapps/pull/214))
+
 ## 0.25.0 (2026-05-18)
 
 ### 🚀 Features
