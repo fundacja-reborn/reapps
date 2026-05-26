@@ -1,3 +1,9 @@
+## 0.25.2 (2026-05-26)
+
+### 🩹 Fixes
+
+- **notes:** keep caret at click position on plain list content in Live Preview ([#215](https://github.com/fundacja-reborn/reapps/pull/215), [#153](https://github.com/fundacja-reborn/reapps/issues/153))
+
 ## 0.25.1 (2026-05-19)
 
 ### 🩹 Fixes
