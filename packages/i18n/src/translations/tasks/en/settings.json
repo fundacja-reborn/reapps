@@ -129,7 +129,6 @@
     "label": "Remind me about tasks with a time",
     "help": "When to fire a notification for a task that has a specific time set.",
     "options": {
-      "at_due": "At the due time",
       "15min": "15 minutes before",
       "30min": "30 minutes before",
       "1h": "1 hour before",
@@ -141,7 +140,11 @@
   },
   "notification_all_day_time": {
     "label": "Reminder time for date-only tasks",
-    "help": "You'll get a notification at this time on the day a task without a specific time is due."
+    "help": "You'll get a notification at this time on the day a task without a specific time is due. Snaps to 5-minute marks."
+  },
+  "notification_background_delivery": {
+    "label": "Background notifications (server-assisted)",
+    "help": "When on, notifications fire even with the app closed. The server learns when (rounded to 5 minutes) a reminder is due, but never sees the task title or body - those are decrypted locally on your device. Turn off if you prefer the server to know nothing about reminder timing; notifications will then only fire while the app is open."
   },
   "notifications_macos_info": "On macOS, also check System Settings → Notifications → your browser and make sure notifications are allowed.",
   "send_test_notification": "Send test notification",

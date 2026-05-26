@@ -1,4 +1,4 @@
-# Security Overview — Reborn Apps
+# Security Overview - Reborn Apps
 
 Reborn Apps is a suite of PWA productivity applications (task management and notes) built on a **True Zero Knowledge end-to-end encryption** architecture. This document describes the security model, cryptographic design, and protective measures currently in place.
 
@@ -21,16 +21,17 @@ Reborn Apps follows a strict Zero Knowledge (ZK) principle: **the server never h
 
 ### What the server never sees
 
-- **All user content**: task titles, descriptions, note bodies, list/folder/tag names — stored as `*_encrypted` fields (AES-GCM ciphertext)
-- **Behavioral metadata**: completion status, starred/pinned flags, due dates, reminders, tag associations — bundled into a single `metadata_encrypted` field per record
+- **All user content**: task titles, descriptions, note bodies, list/folder/tag names - stored as `*_encrypted` fields (AES-GCM ciphertext)
+- **Behavioral metadata**: completion status, starred/pinned flags, due dates, tag associations - bundled into a single `metadata_encrypted` field per record
 - **Device information**: session device details are encrypted client-side (`device_info_encrypted`)
 - **No email, phone, or any personally identifiable information** beyond the username
+- **Reminder timing metadata is the single exception**, scoped to users who opt in to server-assisted background push delivery. See section 7 "Known Limitations" for the documented trade-off; users who keep that option off remain fully invisible to the server in this dimension.
 
 ### Deliberate privacy trade-offs
 
 The server sees the **structural graph** (which tasks belong to which list, which notes belong to which folder) because it needs this for cascade operations, per-parent sync, and authorization. However:
 
-- **Tag associations are fully hidden.** Unlike folder membership (1-to-N), tag relationships (N-to-M) would expose a correlation graph that could fingerprint user behavior. Tag IDs are therefore encrypted inside `metadata_encrypted` — no `NoteTag` join table exists on the server.
+- **Tag associations are fully hidden.** Unlike folder membership (1-to-N), tag relationships (N-to-M) would expose a correlation graph that could fingerprint user behavior. Tag IDs are therefore encrypted inside `metadata_encrypted` - no `NoteTag` join table exists on the server.
 - **Filtering by tags is client-side only**, performed against an in-memory decrypted index after unlock.
 
 ---
@@ -50,7 +51,7 @@ The server sees the **structural graph** (which tasks belong to which list, whic
 
 1. **Registration**: A random master key is generated on the client, wrapped with a key derived from the user's password (PBKDF2 600K), and the ciphertext is sent to the server alongside the Argon2id password hash.
 2. **Login**: The server returns the encrypted master key. The client derives the wrapping key from the password and decrypts the master key locally.
-3. **Session**: The decrypted master key is persisted in IndexedDB (survives browser/PWA restarts) and restored automatically on app load. The key is cleared only on explicit logout. This matches industry practice (Standard Notes, Bitwarden, Proton Mail) — in a Zero Knowledge architecture, client-side storage protection against local device access is out of scope; ZK protects against server-side attacks.
+3. **Session**: The decrypted master key is persisted in IndexedDB (survives browser/PWA restarts) and restored automatically on app load. The key is cleared only on explicit logout. This matches industry practice (Standard Notes, Bitwarden, Proton Mail) - in a Zero Knowledge architecture, client-side storage protection against local device access is out of scope; ZK protects against server-side attacks.
 4. **Data operations**: All encrypt/decrypt operations use the master key via AES-GCM. The key never leaves the device.
 
 ---
@@ -66,8 +67,8 @@ The server sees the **structural graph** (which tasks belong to which list, whic
 ### Token management
 
 - **Short-lived access tokens** (JWT) with JTI-based blacklisting on logout
-- **Refresh tokens delivered exclusively via `httpOnly` cookies** — never exposed in response bodies or accessible from JavaScript, eliminating XSS-based token theft
-- **Refresh token rotation** with **family tracking** — if a refresh token is reused (indicating theft), the entire token family is revoked
+- **Refresh tokens delivered exclusively via `httpOnly` cookies** - never exposed in response bodies or accessible from JavaScript, eliminating XSS-based token theft
+- **Refresh token rotation** with **family tracking** - if a refresh token is reused (indicating theft), the entire token family is revoked
 - **Dual JWT secret support** for zero-downtime secret rotation (`JWT_SECRET` + `JWT_SECRET_PREVIOUS`)
 
 ### Brute-force protection
@@ -75,10 +76,10 @@ The server sees the **structural graph** (which tasks belong to which list, whic
 - **Per-username login lockout**: 5 failed attempts trigger a 15-minute lockout window, applied to both login and 2FA endpoints
 - **Per-user lockout** on sensitive operations: change-password, 2FA disable, and account deletion all enforce attempt limits with automatic lockout
 - **4-layer anti-bot protection** on registration:
-  1. **Honeypot** — hidden field rejected if filled
-  2. **Timing check** — submissions faster than a human minimum are rejected
-  3. **Proof-of-Work (PoW)** — client must solve a server-issued HMAC-SHA256 challenge before the server accepts the request (no third-party CAPTCHA, consistent with Zero Knowledge — no external tracking)
-  4. **Server-side signature verification** — the PoW challenge is signed server-side and verified before solution is checked
+  1. **Honeypot** - hidden field rejected if filled
+  2. **Timing check** - submissions faster than a human minimum are rejected
+  3. **Proof-of-Work (PoW)** - client must solve a server-issued HMAC-SHA256 challenge before the server accepts the request (no third-party CAPTCHA, consistent with Zero Knowledge - no external tracking)
+  4. **Server-side signature verification** - the PoW challenge is signed server-side and verified before solution is checked
 - **Constant-time responses** on login and registration to prevent username enumeration via timing side-channels
 - **IP resolution hardening**: right-to-left `X-Forwarded-For` parsing with configurable trusted proxies (RFC 1918 awareness) to prevent IP spoofing
 
@@ -89,15 +90,15 @@ The server sees the **structural graph** (which tasks belong to which list, whic
 ### HTTP security headers
 
 - **HSTS**: `Strict-Transport-Security: max-age=31536000; includeSubDomains` (production only)
-- **Content Security Policy**: Nonce-based CSP (`mode: 'nonce'`) — eliminates `unsafe-inline` from `script-src`. Script sources restricted to `'self'`, `'nonce-…'`, and `'wasm-unsafe-eval'` (required for Argon2id WASM). Additional directives: `base-uri: 'self'`, `form-action: 'self'`, `object-src: 'none'`
-- **X-Frame-Options**: `DENY` — prevents clickjacking (consistent between nginx and application layer)
-- **X-Content-Type-Options**: `nosniff` — prevents MIME-type sniffing
-- **Server identity hiding**: `server_tokens off` in nginx — prevents version disclosure
+- **Content Security Policy**: Nonce-based CSP (`mode: 'nonce'`) - eliminates `unsafe-inline` from `script-src`. Script sources restricted to `'self'`, `'nonce-…'`, and `'wasm-unsafe-eval'` (required for Argon2id WASM). Additional directives: `base-uri: 'self'`, `form-action: 'self'`, `object-src: 'none'`
+- **X-Frame-Options**: `DENY` - prevents clickjacking (consistent between nginx and application layer)
+- **X-Content-Type-Options**: `nosniff` - prevents MIME-type sniffing
+- **Server identity hiding**: `server_tokens off` in nginx - prevents version disclosure
 - **Request size limit**: 1 MB maximum request body (enforced at both nginx and application level)
 
 ### Authorization & input validation
 
-- **Ownership verification on every data endpoint** — all CRUD operations filter by `user_id` from the authenticated JWT; no endpoint relies on client-supplied user IDs (IDOR-safe by design, verified across all 47 API endpoints)
+- **Ownership verification on every data endpoint** - all CRUD operations filter by `user_id` from the authenticated JWT; no endpoint relies on client-supplied user IDs (IDOR-safe by design, verified across all 47 API endpoints)
 - **Auth middleware** in both applications' server hooks validates JWT on every protected request
 - Centralized request validation using **Zod** schemas (`validateBody()`) applied to all data endpoints (tasks, notes, folders, tags, subtasks, push subscriptions)
 - HTML output from Markdown rendering sanitized via **DOMPurify** with restricted URI schemes
@@ -112,10 +113,10 @@ The server sees the **structural graph** (which tasks belong to which list, whic
 
 ### Offline-first storage model
 
-- **IndexedDB is the source of truth** — the app works fully offline, syncing in the background when connectivity is available
-- **Separate IndexedDB databases per application** (`Reborn_task_DB`, `Reborn_notes_DB`) — prevents cross-app data corruption during schema upgrades
-- **No optimistic UI updates** — the interface reflects data only after confirmed writes
-- **Shadow indexes** (decrypted copies of sort/filter fields like `is_completed`, `due_date`) exist only in local IndexedDB for query performance — they are **stripped before any server sync**
+- **IndexedDB is the source of truth** - the app works fully offline, syncing in the background when connectivity is available
+- **Separate IndexedDB databases per application** (`Reborn_task_DB`, `Reborn_notes_DB`) - prevents cross-app data corruption during schema upgrades
+- **No optimistic UI updates** - the interface reflects data only after confirmed writes
+- **Shadow indexes** (decrypted copies of sort/filter fields like `is_completed`, `due_date`) exist only in local IndexedDB for query performance - they are **stripped before any server sync**
 
 ### Encryption Guard
 
@@ -131,16 +132,16 @@ This defense-in-depth approach ensures that plaintext data cannot accidentally b
 
 Markdown content imported from external sources (`.md` files, Obsidian vault folders) is sanitized **before** encryption and storage:
 
-- **Base64 images** (`![alt](data:...)`) — stripped (alt text preserved, data URI removed)
-- **Dangerous HTML tags** (`<script>`, `<iframe>`, `<object>`, `<embed>`, `<form>`, `<input>`, `<style>`, `<link>`) — removed entirely
-- **Unsafe URI schemes** in links (`javascript:`, `vbscript:`, `data:text/html:`) — stripped (link text preserved)
-- **Tags from frontmatter** — validated against safe character whitelist, length-limited
+- **Base64 images** (`![alt](data:...)`) - stripped (alt text preserved, data URI removed)
+- **Dangerous HTML tags** (`<script>`, `<iframe>`, `<object>`, `<embed>`, `<form>`, `<input>`, `<style>`, `<link>`) - removed entirely
+- **Unsafe URI schemes** in links (`javascript:`, `vbscript:`, `data:text/html:`) - stripped (link text preserved)
+- **Tags from frontmatter** - validated against safe character whitelist, length-limited
 
-Additionally, base64 data URIs are blocked at all editor entry points (image dialog, paste, drop) and render as a warning placeholder in the preview. This is a defense-in-depth measure — DOMPurify protects at the rendering stage, but sanitizing at input prevents dangerous content from being persisted.
+Additionally, base64 data URIs are blocked at all editor entry points (image dialog, paste, drop) and render as a warning placeholder in the preview. This is a defense-in-depth measure - DOMPurify protects at the rendering stage, but sanitizing at input prevents dangerous content from being persisted.
 
 ### Cross-app SSO
 
-- Single sign-on between applications uses **shared `localStorage`** on the same origin (behind a reverse proxy), not IndexedDB — preserving database isolation
+- Single sign-on between applications uses **shared `localStorage`** on the same origin (behind a reverse proxy), not IndexedDB - preserving database isolation
 
 ---
 
@@ -181,7 +182,8 @@ In the spirit of transparency, these are conscious trade-offs in the current arc
 | `img-src: 'https:'` in Notes | Accepted | Required for external images embedded in Markdown notes. Task app restricts to `'self' data:` only. |
 | JWT algorithm | HMAC-SHA256 | Asymmetric signing (ES256) is planned but not yet implemented. Acceptable for a single-server deployment. |
 | Token blacklist | In-memory | Access token blacklist is not persisted across server restarts. Risk is low given the short token lifetime (15 minutes). Redis-backed persistence is planned for multi-instance deployments. |
-| No email-based recovery | By design | This is a feature, not a limitation — it ensures the server holds no PII beyond the username. Users are responsible for securely storing their recovery codes. |
+| No email-based recovery | By design | This is a feature, not a limitation - it ensures the server holds no PII beyond the username. Users are responsible for securely storing their recovery codes. |
+| Reminder timing metadata | Server-visible (opt-in) | Required for server-side push delivery so reminders fire even with the app closed. When the per-account toggle "Background notifications (server-assisted)" is on, the server stores `(task_id, fire_at)` rows with `fire_at` bucketed to **5-minute** marks client-side. The server thus learns **when** (with 5-min precision) a reminder is scheduled, but not **what** it is for - task title and body remain encrypted at rest and the push payload sent over the wire is a generic wake-up that is decrypted inside the service worker from local IndexedDB. Users who turn the toggle off retain full reminder-timing privacy (server never sees `fire_at`); notifications then only fire while the app is in the foreground. The 5-minute bucketing is the sole leakage tunable and is documented in [`docs/development/planning/task-push-notifications-server-side.md`](../development/planning/task-push-notifications-server-side.md). |
 
 ---
 
@@ -191,4 +193,4 @@ If you discover a security vulnerability, please report it responsibly. See the 
 
 ---
 
-*Last updated: 2026-05-12*
+*Last updated: 2026-05-26*

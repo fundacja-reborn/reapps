@@ -41,13 +41,13 @@ if (!isPublicShareRoute) {
 	// Kick off lazy master-key restoration as early as possible so the
 	// layout's awaited waitForRestore() resolves immediately on cold start.
 	// Restoration is now lazy on @reborn/crypto import (guideline 59 rule
-	// #12) — the call here puts us back at the pre-share-snapshot timing
+	// #12) - the call here puts us back at the pre-share-snapshot timing
 	// for normal routes.
 	void cryptoManager.waitForRestore().catch(() => {});
 }
 
 // ---------------------------------------------------------------------------
-// Client-side error handler — detect offline chunk-loading failures
+// Client-side error handler - detect offline chunk-loading failures
 // ---------------------------------------------------------------------------
 export const handleError: HandleClientError = ({ error }) => {
 	const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
@@ -58,9 +58,9 @@ export const handleError: HandleClientError = ({ error }) => {
 			/failed to fetch/i.test(error.message));
 
 	if (isDynamicImportFailure && isOffline) {
-		logger.warn('Offline navigation — dynamic import failed');
+		logger.warn('Offline navigation - dynamic import failed');
 		return {
-			message: 'Jesteś offline — ta strona nie jest jeszcze dostępna.',
+			message: 'Jesteś offline - ta strona nie jest jeszcze dostępna.',
 			isOffline: true
 		};
 	}
@@ -71,9 +71,9 @@ export const handleError: HandleClientError = ({ error }) => {
 	};
 };
 
-// Start watching for service worker updates — shows a toast when a new
+// Start watching for service worker updates - shows a toast when a new
 // version is deployed so the user can reload to pick up fresh code.
-// Skipped on /s/<slug> — service worker is bypassed there per rule #9, and
+// Skipped on /s/<slug> - service worker is bypassed there per rule #9, and
 // SSO logout/unlock listeners + storage init have no addressee in the
 // anonymous snapshot viewer.
 if (!isPublicShareRoute) {
@@ -100,11 +100,11 @@ if (!isPublicShareRoute) {
 			// Credentials removed → cross-app (or cross-tab) logout.
 			// Clear local state BEFORE the redirect so the next login doesn't
 			// find stale ciphertexts in IndexedDB encrypted under a previous
-			// user's master key — that caused AES-GCM OperationError on decrypt.
-			logger.info('Cross-app logout detected via storage event — redirecting to login');
+			// user's master key - that caused AES-GCM OperationError on decrypt.
+			logger.info('Cross-app logout detected via storage event - redirecting to login');
 			sessionExpired.set(false);
 			cryptoManager.clearMasterKey();
-			// Fire-and-forget — the hard redirect below completes the logout even
+			// Fire-and-forget - the hard redirect below completes the logout even
 			// if the IDB clear is still in flight.
 			import('@reborn/storage')
 				.then(({ clearAllUserData }) => clearAllUserData())
@@ -117,8 +117,8 @@ if (!isPublicShareRoute) {
 
 		if (e.oldValue === null) {
 			// Credentials appeared (was absent, now present) → cross-app login
-			// Redirect to E2E unlock — master key must be decrypted with the user's password
-			logger.info('Cross-app login detected via storage event — redirecting to unlock');
+			// Redirect to E2E unlock - master key must be decrypted with the user's password
+			logger.info('Cross-app login detected via storage event - redirecting to unlock');
 			window.location.href = `${base}/auth/unlock`;
 		}
 	});
@@ -130,11 +130,11 @@ if (!isPublicShareRoute) {
 	// `unlocked` event over the `reborn_e2e` channel. The master key already lives
 	// in the shared origin IndexedDB, so this tab can flip hasE2E and bounce off
 	// /auth/unlock without a second password prompt. The matching `cleared` event
-	// is defense-in-depth — the primary logout path is the storage listener above.
+	// is defense-in-depth - the primary logout path is the storage listener above.
 	cryptoManager.subscribeToKeyEvents((event) => {
 		if (event === 'unlocked') {
 			if (!cryptoManager.isInitialized()) return;
-			logger.info('Cross-app E2E unlock detected — flipping hasE2E');
+			logger.info('Cross-app E2E unlock detected - flipping hasE2E');
 			authOperationsService.getSessionManager().setSession({ hasE2E: true });
 			const path = window.location.pathname;
 			if (path.includes('/auth/unlock')) {
@@ -145,7 +145,7 @@ if (!isPublicShareRoute) {
 		// event === 'cleared'
 		const stillAuthenticated = !!localStorage.getItem(CREDENTIALS_KEY);
 		if (stillAuthenticated && !cryptoManager.isInitialized()) {
-			logger.info('Cross-app key cleared without logout — flipping hasE2E to false');
+			logger.info('Cross-app key cleared without logout - flipping hasE2E to false');
 			authOperationsService.getSessionManager().setSession({ hasE2E: false });
 		}
 	});
@@ -204,7 +204,8 @@ if (!isPublicShareRoute) {
 						leadMinutes:
 							(await getSetting('notification_lead_minutes')) ?? DEFAULT_NOTIFICATION_LEAD_MINUTES,
 						allDayTime:
-							(await getSetting('notification_all_day_time')) ?? DEFAULT_NOTIFICATION_ALL_DAY_TIME
+							(await getSetting('notification_all_day_time')) ?? DEFAULT_NOTIFICATION_ALL_DAY_TIME,
+						backgroundDelivery: (await getSetting('notification_background_delivery')) ?? true
 					});
 
 					const syncIfEnabled = async () => {
@@ -225,20 +226,34 @@ if (!isPublicShareRoute) {
 
 					// Re-sync when notification timing settings change so the user sees
 					// the new schedule immediately without waiting for the next trigger.
+					// Includes notification_background_delivery so toggling the server-
+					// assisted opt-in immediately pushes (or clears) the server schedule.
 					let lastLead: number | undefined;
 					let lastAllDay: string | undefined;
+					let lastBackground: boolean | undefined;
 					appSettings.subscribe(($settings) => {
 						if (!$settings) return;
 						const lead = $settings.notification_lead_minutes;
 						const allDay = $settings.notification_all_day_time;
-						if (lastLead === undefined && lastAllDay === undefined) {
+						const background = $settings.notification_background_delivery;
+						if (
+							lastLead === undefined &&
+							lastAllDay === undefined &&
+							lastBackground === undefined
+						) {
 							lastLead = lead;
 							lastAllDay = allDay;
+							lastBackground = background;
 							return;
 						}
-						if (lead !== lastLead || allDay !== lastAllDay) {
+						if (
+							lead !== lastLead ||
+							allDay !== lastAllDay ||
+							background !== lastBackground
+						) {
 							lastLead = lead;
 							lastAllDay = allDay;
+							lastBackground = background;
 							void syncIfEnabled();
 						}
 					});

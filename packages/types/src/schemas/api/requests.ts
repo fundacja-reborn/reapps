@@ -78,11 +78,11 @@ export const E2ERegisterRequestSchema = z.object({
   device_name: z.string().optional(),
   preferred_language: z.string().optional(),
   // Bot protection fields
-  website: z.string().optional(), // Honeypot — must be empty
+  website: z.string().optional(), // Honeypot - must be empty
   _t: z.number().optional(), // Form load timestamp (ms) for timing check
   powChallenge: z.string().optional(), // Signed PoW challenge (JSON)
   powSolution: z.number().optional(), // PoW nonce solution
-  // Default task list — created atomically with user (encrypted client-side)
+  // Default task list - created atomically with user (encrypted client-side)
   defaultTaskList: z.object({
     id: z.string().uuid(),
     name_encrypted: z.string().min(1),
@@ -116,10 +116,35 @@ export type WebPushSubscription = z.infer<typeof WebPushSubscriptionSchema>;
 /**
  * E2E synced user settings bundle (PUT body for /api/settings/{shared|app}).
  * `settings_encrypted` carries an AES-GCM ciphertext in `iv:ciphertext` base64
- * format — strict format validation runs in the Encryption Guard layer.
+ * format - strict format validation runs in the Encryption Guard layer.
  */
 export const SettingsBundleBodySchema = z.object({
   settings_encrypted: z.string().min(20).max(1_000_000),
   updated_at: z.string().datetime()
 });
 export type SettingsBundleBody = z.infer<typeof SettingsBundleBodySchema>;
+
+/**
+ * Push schedule request - client posts the list of pending task reminders.
+ *
+ * Idempotent replace-all per (subscription, user): the server deletes all
+ * unsent schedules for the subscription and re-inserts the current list. This
+ * lets the client re-sync after any task change without tracking diffs.
+ *
+ * `task_id` is a plaintext FK (server already knows task IDs).
+ * `fire_at` is bucketed to 5-minute marks client-side - server precision is
+ * 5 min, which is the documented ZK trade-off (see security-overview.md §7).
+ *
+ * Cap of 500 entries: gracefully bounds the request size; a typical user has
+ * far fewer due reminders in any 7-day window.
+ */
+export const PushScheduleItemSchema = z.object({
+  task_id: z.string().uuid(),
+  fire_at: z.string().datetime()
+});
+
+export const PushScheduleBodySchema = z.object({
+  endpoint: z.string().url().max(2048),
+  items: z.array(PushScheduleItemSchema).max(500)
+});
+export type PushScheduleBody = z.infer<typeof PushScheduleBodySchema>;

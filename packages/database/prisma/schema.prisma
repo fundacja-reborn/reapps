@@ -32,6 +32,7 @@ model User {
   sessions              UserSession[]
   refreshTokens         RefreshToken[]
   webPushSubscriptions  UserWebPushSubscription[]
+  pushSchedules         PushSchedule[]
   userSettings          UserSettings[]
 
   // Notes-related relations
@@ -69,7 +70,7 @@ model RefreshToken {
   is_revoked Boolean      @default(false) // Marked true after rotation; reuse = compromise
   expires_at DateTime
   created_at DateTime     @default(now())
-  session_id String?      // Links to UserSession — nullable for backward compatibility
+  session_id String?      // Links to UserSession - nullable for backward compatibility
 
   user       User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
   session    UserSession? @relation(fields: [session_id], references: [id], onDelete: SetNull)
@@ -108,10 +109,10 @@ model TwoFactorAuth {
 
 // E2E synced user preferences. One row per (user_id, scope). Scope is a free-form
 // string so adding a new app does not need a schema migration:
-//   'shared'           — cross-app preferences (language, dateFormat, …)
-//   'app:reborn-task'  — Task-only preferences (theme, notifications, …)
-//   'app:reborn-notes' — Notes-only preferences (theme, editor mode, periodic notes, …)
-// Server only ever sees ciphertext + scope + updated_at — values are decrypted client-side.
+//   'shared'           - cross-app preferences (language, dateFormat, …)
+//   'app:reborn-task'  - Task-only preferences (theme, notifications, …)
+//   'app:reborn-notes' - Notes-only preferences (theme, editor mode, periodic notes, …)
+// Server only ever sees ciphertext + scope + updated_at - values are decrypted client-side.
 model UserSettings {
   id                 String   @id @default(uuid())
   user_id            String
@@ -136,10 +137,36 @@ model UserWebPushSubscription {
   last_used_at DateTime @updatedAt
   is_active    Boolean  @default(true)
   device_info_encrypted String?  // E2E encrypted
-  
+
   user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  
+  pushSchedules PushSchedule[]
+
   @@index([user_id, is_active])
+}
+
+// Server-side push schedule. Cron scans (fire_at <= now AND sent_at IS NULL)
+// and sends a generic wake-up payload via web-push; the SW decrypts the task
+// from local IndexedDB and shows the real title/body. Server only learns the
+// fire timing (bucketed to 5 min client-side) and which subscription to wake -
+// never the task content. See docs/development/planning/task-push-notifications-server-side.md.
+model PushSchedule {
+  id              String    @id @default(uuid())
+  user_id         String
+  subscription_id String
+  task_id         String    // Plaintext FK - tasks already expose `id` server-side
+  fire_at         DateTime  // Bucketed to 5-minute marks client-side
+  sent_at         DateTime?
+  failed_at       DateTime?
+  failure_count   Int       @default(0)
+  created_at      DateTime  @default(now())
+
+  user            User                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  subscription    UserWebPushSubscription @relation(fields: [subscription_id], references: [id], onDelete: Cascade)
+
+  @@unique([subscription_id, task_id])
+  @@index([fire_at, sent_at])
+  @@index([user_id])
+  @@index([subscription_id])
 }
 
 // ==================== TASKS ====================
@@ -242,7 +269,7 @@ model Note {
   created_at           DateTime   @default(now())
   updated_at           DateTime   @updatedAt
   deleted_at           DateTime?  // Soft delete
-  is_archived          Boolean    @default(false)  // Operational — stays plain
+  is_archived          Boolean    @default(false)  // Operational - stays plain
   order_index          Int        @default(0)
   sync_version         Int        @default(0)
 

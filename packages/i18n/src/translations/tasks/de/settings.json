@@ -129,7 +129,6 @@
     "label": "Erinnerung f\u00fcr Aufgaben mit Uhrzeit",
     "help": "Wann eine Benachrichtigung f\u00fcr eine Aufgabe mit konkreter Uhrzeit ausgel\u00f6st werden soll.",
     "options": {
-      "at_due": "Zum F\u00e4lligkeitszeitpunkt",
       "15min": "15 Minuten vorher",
       "30min": "30 Minuten vorher",
       "1h": "1 Stunde vorher",
@@ -141,7 +140,11 @@
   },
   "notification_all_day_time": {
     "label": "Erinnerungszeit f\u00fcr Aufgaben ohne Uhrzeit",
-    "help": "Zu dieser Uhrzeit erhalten Sie am F\u00e4lligkeitstag eine Benachrichtigung f\u00fcr Aufgaben ohne konkrete Uhrzeit."
+    "help": "Zu dieser Uhrzeit erhalten Sie am F\u00e4lligkeitstag eine Benachrichtigung f\u00fcr Aufgaben ohne konkrete Uhrzeit. Wird auf 5-Minuten-Schritte gerundet."
+  },
+  "notification_background_delivery": {
+    "label": "Hintergrund-Benachrichtigungen (mit Server-Unterst\u00fctzung)",
+    "help": "Eingeschaltet: Benachrichtigungen werden auch bei geschlossener App ausgel\u00f6st. Der Server erf\u00e4hrt nur, wann (auf 5 Minuten genau) eine Erinnerung f\u00e4llig ist - Titel und Inhalt der Aufgabe sieht er nie (die Entschl\u00fcsselung erfolgt lokal auf Ihrem Ger\u00e4t). Ausschalten, wenn Sie m\u00f6chten, dass der Server keine Erinnerungszeiten kennt; Benachrichtigungen werden dann nur ausgel\u00f6st, solange die App ge\u00f6ffnet ist."
   },
   "notifications_macos_info": "Unter macOS \u00fcberpr\u00fcfen Sie auch Systemeinstellungen \u2192 Mitteilungen \u2192 Ihr Browser und stellen Sie sicher, dass Benachrichtigungen erlaubt sind.",
   "send_test_notification": "Testbenachrichtigung senden",

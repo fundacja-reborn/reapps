@@ -57,6 +57,15 @@ export interface AppSettings {
   notification_lead_minutes: number;
   /** Local 'HH:MM' clock time to fire reminders for date-only tasks (has_time === false). */
   notification_all_day_time: string;
+  /**
+   * Opt-in to server-assisted background delivery. When ON, the client posts a
+   * `(task_id, bucketed fire_at)` schedule to the server so Web Push wakes the
+   * SW even with the app closed. When OFF, the server never learns `fire_at`
+   * and notifications only fire while the tab is open (legacy SW-poll path).
+   * The push payload is always a generic wake-up - task title/body are
+   * decrypted inside the SW from local IndexedDB.
+   */
+  notification_background_delivery: boolean;
   auto_sync_enabled: boolean;
   sync_interval_minutes: number;
   imageLoadMode: ImageLoadMode;
@@ -64,7 +73,7 @@ export interface AppSettings {
   editorModeIntroSeen: boolean;
   /**
    * Notes-only: per-kind settings for Daily / Weekly / Monthly Notes (Obsidian-style).
-   * Local & device-specific — not synced. Optional in the type so reborn-task settings
+   * Local & device-specific - not synced. Optional in the type so reborn-task settings
    * don't carry the field. Defaults are written by `initializeDefaults` for the notes app.
    */
   periodicNotes?: PeriodicNotesSettings;
@@ -173,6 +182,7 @@ export const settingsOperations = {
           notifications_enabled: false,
           notification_lead_minutes: 60,
           notification_all_day_time: '09:00',
+          notification_background_delivery: true,
           auto_sync_enabled: true,
           sync_interval_minutes: 5,
           imageLoadMode: 'ask',

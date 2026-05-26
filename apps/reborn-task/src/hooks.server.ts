@@ -13,6 +13,14 @@ import {
 } from '@reborn/database';
 import { getShareOgStrings } from '$lib/server/share-og';
 import { getAppLoadingStrings } from '$lib/server/app-loading-strings';
+import { startPushCron } from '$lib/server/push-cron';
+
+// Start the server-side push notification cron exactly once per process.
+// Idempotent under HMR. Skipped in test runs (NODE_ENV='test') so unit tests
+// don't open a 60s interval handle that keeps Vitest's event loop alive.
+if (process.env.NODE_ENV !== 'test') {
+	startPushCron();
+}
 
 const BASE = process.env.PUBLIC_BASE_PATH ?? '';
 const RATE_LIMITED_AUTH = new Set([
@@ -243,7 +251,7 @@ const idempotencyHandle: Handle = async ({ event, resolve }) => {
 	// Process request normally
 	const response = await resolve(event);
 
-	// Cache only successful responses — caching errors would make retries useless
+	// Cache only successful responses - caching errors would make retries useless
 	// (pushSilently reuses the same Idempotency-Key for all retry attempts)
 	if (response.status >= 200 && response.status < 300) {
 		const clone = response.clone();

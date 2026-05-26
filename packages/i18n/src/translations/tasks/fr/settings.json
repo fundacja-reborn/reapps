@@ -129,7 +129,6 @@
     "label": "Rappel pour les t\u00e2ches avec heure",
     "help": "Quand d\u00e9clencher la notification pour une t\u00e2che dont l'heure pr\u00e9cise est d\u00e9finie.",
     "options": {
-      "at_due": "\u00c0 l'heure d'\u00e9ch\u00e9ance",
       "15min": "15 minutes avant",
       "30min": "30 minutes avant",
       "1h": "1 heure avant",
@@ -141,7 +140,11 @@
   },
   "notification_all_day_time": {
     "label": "Heure de rappel pour les t\u00e2ches sans heure",
-    "help": "Vous recevrez une notification \u00e0 cette heure le jour d'\u00e9ch\u00e9ance d'une t\u00e2che sans heure pr\u00e9cise."
+    "help": "Vous recevrez une notification \u00e0 cette heure le jour d'\u00e9ch\u00e9ance d'une t\u00e2che sans heure pr\u00e9cise. Arrondi par pas de 5 minutes."
+  },
+  "notification_background_delivery": {
+    "label": "Notifications en arri\u00e8re-plan (assistance serveur)",
+    "help": "Activ\u00e9 : les notifications se d\u00e9clenchent m\u00eame lorsque l'application est ferm\u00e9e. Le serveur sait uniquement quand (\u00e0 5 minutes pr\u00e8s) un rappel doit partir - il ne voit jamais le titre ni le contenu de la t\u00e2che (le d\u00e9chiffrement se fait localement sur votre appareil). D\u00e9sactivez si vous pr\u00e9f\u00e9rez que le serveur n'ait connaissance d'aucune heure de rappel ; les notifications ne se d\u00e9clencheront alors que lorsque l'application est ouverte."
   },
   "notifications_macos_info": "Sur macOS, v\u00e9rifiez \u00e9galement R\u00e9glages Syst\u00e8me \u2192 Notifications \u2192 votre navigateur et assurez-vous que les notifications sont autoris\u00e9es.",
   "send_test_notification": "Envoyer une notification de test",
