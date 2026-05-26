@@ -3,7 +3,7 @@ import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import type { DecorationSet } from '@codemirror/view';
-import { buildDecorations, isAnySelectionInRange } from './decorations';
+import { buildDecorations, isAnySelectionInRange, resolveListClickForward } from './decorations';
 import { TableWidget } from './table-widget';
 import { ImageWidget } from './image-widget';
 import { TaskCheckboxWidget } from './widgets';
@@ -679,5 +679,126 @@ describe('buildDecorations — GFM task list', () => {
 
     const listMarkPos = doc.indexOf('- [ ] inner');
     expect(hasHiddenRange(ranges, nestedLineFrom, listMarkPos)).toBe(true);
+  });
+});
+
+describe('resolveListClickForward — padding-zone vs content gate', () => {
+  // The handler `livePreviewListClickForward` exists to bump clicks landing
+  // *before* the rendered content (in the hidden marker / leading whitespace /
+  // ::before bullet zone) to the first content character. The pure helper
+  // tested here decides yes/no. Two regression families:
+  //
+  //   - Click on actual content text → MUST return null. Plain (unstyled) list
+  //     content has no wrapping span, so its DOM clicks bubble up to `.cm-line`
+  //     and the handler used to slam every such click to `contentStart`, even
+  //     though the user clicked far past the marker.
+  //   - Click in padding/marker zone → MUST return { contentStart } so the
+  //     original #146/#153 fix (no caret stuck before a hidden `- `) keeps
+  //     working.
+
+  it('returns null for a click on plain content text in a bullet item', () => {
+    const doc = '- hello world\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const clickInContent = doc.indexOf('world'); // somewhere past the `- `
+    expect(resolveListClickForward(state, clickInContent)).toBeNull();
+  });
+
+  it('returns { contentStart } for a click at the start of the line (padding/hidden marker)', () => {
+    const doc = '- hello world\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    // pos = 0 → before/inside the hidden `- ` marker
+    const result = resolveListClickForward(state, 0);
+    expect(result).not.toBeNull();
+    // Content starts after `- ` → position 2
+    expect(result?.contentStart).toBe(2);
+  });
+
+  it('returns { contentStart } for a click inside the hidden marker range', () => {
+    const doc = '- hello world\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    // pos = 1 → between `-` and the space (still in the hidden marker zone)
+    const result = resolveListClickForward(state, 1);
+    expect(result?.contentStart).toBe(2);
+  });
+
+  it('returns null at the exact contentStart boundary (click on first content char)', () => {
+    const doc = '- hello world\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    // pos = 2 → exactly at `h` of `hello`; CM6 default placement is correct
+    expect(resolveListClickForward(state, 2)).toBeNull();
+  });
+
+  it('returns null for a click on plain content text in an ordered item', () => {
+    const doc = '1. ordered content\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const clickInContent = doc.indexOf('content');
+    expect(resolveListClickForward(state, clickInContent)).toBeNull();
+  });
+
+  it('returns { contentStart } for a click at the start of an ordered item', () => {
+    const doc = '1. ordered content\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const result = resolveListClickForward(state, 0);
+    // `1. ` is 3 chars long
+    expect(result?.contentStart).toBe(3);
+  });
+
+  it('returns null for a click on content of a task item (past the `- [ ] `)', () => {
+    const doc = '- [ ] buy milk\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const clickInContent = doc.indexOf('milk');
+    expect(resolveListClickForward(state, clickInContent)).toBeNull();
+  });
+
+  it('returns { contentStart } past the task marker for a click at start of a task item', () => {
+    const doc = '- [ ] buy milk\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const result = resolveListClickForward(state, 0);
+    // `- [ ] ` is 6 chars long → content starts at 6
+    expect(result?.contentStart).toBe(6);
+  });
+
+  it('returns { contentStart } for a click inside the raw `[ ]` of a task item', () => {
+    // When the cursor is on the line, raw `- [ ] ` is visible. Clicking inside
+    // the `[ ]` should still bump to contentStart (consistent with original
+    // handler behavior — avoids landing between `- ` and `[` which collides
+    // with the checkbox widget replace range).
+    const doc = '- [ ] buy milk\n\nbody';
+    const state = makeState(doc, 8); // cursor on the line, raw marker visible
+    const clickInsideMarker = 3; // pos of the space inside `[ ]`
+    const result = resolveListClickForward(state, clickInsideMarker);
+    expect(result?.contentStart).toBe(6);
+  });
+
+  it('returns null for a click outside any list (paragraph text)', () => {
+    const doc = 'just a paragraph\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    expect(resolveListClickForward(state, 5)).toBeNull();
+  });
+
+  it('returns null for a click on content of a nested bullet item', () => {
+    // Nested list — depth 2 bullet. Clicking on the content text inside the
+    // nested item must NOT be forwarded; the bug was that nested clicks were
+    // also being slammed to contentStart.
+    const doc = '- outer\n  - inner content\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const clickInContent = doc.indexOf('content');
+    expect(resolveListClickForward(state, clickInContent)).toBeNull();
+  });
+
+  it('returns { contentStart } past the inner marker for a click on the inner ListMark', () => {
+    // Nested items: the leading whitespace of the inner item belongs to the
+    // OUTER ListItem in the lezer-markdown tree (it's part of the outer
+    // item's indented continuation). The inner ListItem range starts at the
+    // inner ListMark — so the syntax-tree-driven helper can only recognize
+    // "padding click on the inner item" when pos lands on the inner marker
+    // itself. Anything left of that resolves to the outer item.
+    const doc = '- outer\n  - inner content\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const innerMarkerPos = doc.indexOf('- inner'); // 10 (the `-`)
+    const result = resolveListClickForward(state, innerMarkerPos);
+    expect(result).not.toBeNull();
+    // contentStart = innerMarkerPos + 2 (past `- `)
+    expect(result?.contentStart).toBe(innerMarkerPos + 2);
   });
 });

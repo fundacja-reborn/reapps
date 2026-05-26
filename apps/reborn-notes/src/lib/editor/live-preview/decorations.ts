@@ -646,18 +646,91 @@ export const livePreviewAtomicRanges = EditorView.atomicRanges.of((view) => {
 });
 
 /**
+ * Resolves a click position inside a list-item line to a forward target, or
+ * null if the click should be left to CM6's native selection handling.
+ *
+ * Returns `{ contentStart }` only when `pos` lies in the "padding/marker zone"
+ * (before the first character of actual content) — that's the case the
+ * `livePreviewListClickForward` handler exists to fix (#146/#153). When `pos`
+ * is already at or past `contentStart`, the user clicked on real content text
+ * and CM6's default `posAtCoords` selection is exactly right; forwarding would
+ * destroy the intended caret position (#XXX bug: clicks on unstyled list
+ * content were being slammed to `contentStart` because plain text nodes have
+ * `.cm-line` as their event target).
+ *
+ * Extracted as a pure function so the gate is unit-testable without mounting
+ * a DOM EditorView.
+ */
+export function resolveListClickForward(
+  state: EditorState,
+  pos: number
+): { contentStart: number } | null {
+  const tree = syntaxTree(state);
+  // Resolve with both biases and prefer the deepest (tightest-range) ListItem
+  // containing `pos`. Neither bias alone is sufficient:
+  //  - Leftward (-1) is right for clicks at the END of a line (would otherwise
+  //    spill into the next sibling), and is needed inside content.
+  //  - Rightward (+1) is right for the very start of a top-level item
+  //    (pos === 0; leftward would resolve to `Document` and the walk would
+  //    fail) and for the inner ListMark of a nested item (leftward returns the
+  //    OUTER ListItem because the inner item's leading whitespace belongs to
+  //    the outer item's range in the lezer-markdown tree).
+  // Picking the smaller of the two ranges gives the deepest nesting at every
+  // boundary case.
+  const walk = (n: SyntaxNode | null): SyntaxNode | null => {
+    let p = n;
+    while (p && p.type.name !== 'ListItem') p = p.parent;
+    return p;
+  };
+  const itemLeft = walk(tree.resolveInner(pos, -1));
+  const itemRight = walk(tree.resolveInner(pos, 1));
+  let item: SyntaxNode | null;
+  if (!itemLeft) item = itemRight;
+  else if (!itemRight) item = itemLeft;
+  else item = itemRight.to - itemRight.from < itemLeft.to - itemLeft.from ? itemRight : itemLeft;
+  if (!item) return null;
+  const n = item;
+
+  // For task items, anchor the cursor after the task marker (`[ ] ` / `[x] `)
+  // — otherwise the user lands between `- ` and `[`, which collides with the
+  // checkbox widget replace range and feels off.
+  const taskChild = findFirstChild(n, 'Task');
+  const taskMarker = taskChild ? findFirstChild(taskChild, 'TaskMarker') : null;
+  let contentStart: number;
+  if (taskMarker) {
+    const next = state.doc.sliceString(taskMarker.to, taskMarker.to + 1);
+    contentStart = next === ' ' ? taskMarker.to + 1 : taskMarker.to;
+  } else {
+    const listMark = findFirstChild(n, 'ListMark');
+    if (!listMark) return null;
+    const next = state.doc.sliceString(listMark.to, listMark.to + 1);
+    contentStart = next === ' ' ? listMark.to + 1 : listMark.to;
+  }
+
+  if (pos >= contentStart) return null;
+  return { contentStart };
+}
+
+/**
  * Forwards a click in the "padding zone" of a list-item line (the area left
  * of the marker and over the rendered `::before` bullet) to the content start
- * (position right after `- ` / `1. `). Without this, CM6's `posAtCoords` maps
- * such clicks to `itemLine.from`, which then bumps to `listMark.from` via
- * the atomic prefix — leaving the cursor BEFORE the marker, where the user
- * has to manually arrow-right twice to start typing.
+ * (position right after `- ` / `1. ` / `- [ ] `). Without this, CM6's
+ * `posAtCoords` maps such clicks to `itemLine.from`, which then bumps to
+ * `listMark.from` via the atomic prefix — leaving the cursor BEFORE the
+ * marker, where the user has to manually arrow-right twice to start typing.
  *
- * Trigger condition: `event.target` is the `.cm-line` element itself (i.e.
- * the click did NOT land on any text node / span inside the line). When the
- * user clicks an actual character — including the marker once it's revealed
- * (cursor on line) — `target` is a child span and we let CM6's default
- * selection handling run, so the caret lands exactly where clicked.
+ * Two-stage gate:
+ *  1. `event.target === .cm-line` — fast reject for clicks that landed on a
+ *     wrapping span (highlighted tokens like `**bold**`, `*italic*`, code,
+ *     widgets); CM6's default selection already handles those correctly.
+ *  2. `pos >= contentStart` — reject clicks resolving to actual content text.
+ *     Plain (unstyled) list content has no wrapping span, so its text nodes
+ *     bubble events up to `.cm-line` — the target check alone would treat
+ *     every such click as a padding-zone click and slam the caret to
+ *     `contentStart`, losing the user's intended position. Comparing the
+ *     resolved doc position against `contentStart` distinguishes a real
+ *     padding-zone click (pos lands in hidden marker / leading whitespace,
+ *     i.e. < contentStart) from a content click (pos >= contentStart).
  */
 export const livePreviewListClickForward = EditorView.domEventHandlers({
   mousedown(event, view) {
@@ -675,33 +748,11 @@ export const livePreviewListClickForward = EditorView.domEventHandlers({
     const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
     if (pos === null) return false;
 
-    const tree = syntaxTree(view.state);
-    let n: SyntaxNode | null = tree.resolveInner(pos, -1);
-    while (n && n.type.name !== 'ListItem') n = n.parent;
-    if (!n) return false;
-
-    // For task items, anchor the cursor after the task marker (`[ ] ` / `[x] `)
-    // — otherwise the user lands between `- ` and `[`, which collides with the
-    // checkbox widget replace range and feels off.
-    const taskChild = findFirstChild(n, 'Task');
-    const taskMarker = taskChild ? findFirstChild(taskChild, 'TaskMarker') : null;
-    if (taskMarker) {
-      const next = view.state.doc.sliceString(taskMarker.to, taskMarker.to + 1);
-      const contentStart = next === ' ' ? taskMarker.to + 1 : taskMarker.to;
-      event.preventDefault();
-      view.dispatch({ selection: { anchor: contentStart } });
-      view.focus();
-      return true;
-    }
-
-    const listMark = findFirstChild(n, 'ListMark');
-    if (!listMark) return false;
-
-    const next = view.state.doc.sliceString(listMark.to, listMark.to + 1);
-    const contentStart = next === ' ' ? listMark.to + 1 : listMark.to;
+    const result = resolveListClickForward(view.state, pos);
+    if (!result) return false;
 
     event.preventDefault();
-    view.dispatch({ selection: { anchor: contentStart } });
+    view.dispatch({ selection: { anchor: result.contentStart } });
     view.focus();
     return true;
   }
