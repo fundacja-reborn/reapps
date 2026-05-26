@@ -60,14 +60,14 @@ export const handleError: HandleClientError = ({ error }) => {
 	if (isDynamicImportFailure && isOffline) {
 		logger.warn('Offline navigation - dynamic import failed');
 		return {
-			message: 'Jesteś offline - ta strona nie jest jeszcze dostępna.',
+			message: 'You are offline - this page is not yet available.',
 			isOffline: true
 		};
 	}
 
 	logger.error('Unhandled client error:', error);
 	return {
-		message: (error as Error)?.message ?? 'Wystąpił nieoczekiwany błąd.'
+		message: (error as Error)?.message ?? 'An unexpected error occurred.'
 	};
 };
 

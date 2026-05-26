@@ -122,6 +122,11 @@
   "notifications_permission_needed": "Pour recevoir des notifications, veuillez d'abord accorder l'autorisation syst\u00e8me.",
   "grant_permission": "Accorder l'autorisation syst\u00e8me",
   "enable_notifications_label": "Recevoir les notifications de l'application",
+  "notification_permission_granted_toast": "L'autorisation des notifications a \u00e9t\u00e9 accord\u00e9e",
+  "notification_permission_not_granted_toast": "L'autorisation des notifications n'a pas \u00e9t\u00e9 accord\u00e9e",
+  "notifications_enabled_toast": "Les notifications ont \u00e9t\u00e9 activ\u00e9es",
+  "notifications_disabled_toast": "Les notifications ont \u00e9t\u00e9 d\u00e9sactiv\u00e9es",
+  "test_notification_body": "Notification de test - le pipeline fonctionne correctement.",
   "notification_error": {
     "unknown_error": "Une erreur inconnue s'est produite lors de la modification des param\u00e8tres de notification."
   },

@@ -122,6 +122,11 @@
   "notifications_permission_needed": "Um Benachrichtigungen zu erhalten, erteilen Sie bitte zuerst die Systemberechtigung.",
   "grant_permission": "Systemberechtigung erteilen",
   "enable_notifications_label": "Benachrichtigungen von der App erhalten",
+  "notification_permission_granted_toast": "Benachrichtigungsberechtigung wurde erteilt",
+  "notification_permission_not_granted_toast": "Benachrichtigungsberechtigung wurde nicht erteilt",
+  "notifications_enabled_toast": "Benachrichtigungen wurden aktiviert",
+  "notifications_disabled_toast": "Benachrichtigungen wurden deaktiviert",
+  "test_notification_body": "Testbenachrichtigung - Pipeline funktioniert korrekt.",
   "notification_error": {
     "unknown_error": "Ein unbekannter Fehler ist beim \u00c4ndern der Benachrichtigungseinstellungen aufgetreten."
   },

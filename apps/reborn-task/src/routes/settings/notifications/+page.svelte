@@ -130,10 +130,10 @@
 			const granted = await pushNotificationService.requestPermission();
 			if (granted) {
 				permissionState = 'granted';
-				toast.success('Uprawnienia do powiadomień zostały przyznane');
+				toast.success($t('settings.notification_permission_granted_toast'));
 			} else {
 				permissionState = pushNotificationService.getPermission();
-				toast.error('Uprawnienia nie zostały przyznane');
+				toast.error($t('settings.notification_permission_not_granted_toast'));
 			}
 		} finally {
 			isLoading = false;
@@ -143,7 +143,9 @@
 	async function handleSendTestNotification() {
 		isSendingTest = true;
 		try {
-			const ok = await pushNotificationService.sendTestNotification();
+			const ok = await pushNotificationService.sendTestNotification(
+				$t('settings.test_notification_body')
+			);
 			if (ok) {
 				toast.success($t('settings.test_notification_sent'));
 			} else {
@@ -166,7 +168,7 @@
 					const granted = await pushNotificationService.requestPermission();
 					if (!granted) {
 						permissionState = pushNotificationService.getPermission();
-						toast.error('Uprawnienia nie zostały przyznane');
+						toast.error($t('settings.notification_permission_not_granted_toast'));
 						return;
 					}
 					permissionState = 'granted';
@@ -179,7 +181,7 @@
 				// Save to local settings
 				await appSettings.update('notifications_enabled', true);
 				notificationsEnabled = true;
-				toast.success('Powiadomienia zostały włączone');
+				toast.success($t('settings.notifications_enabled_toast'));
 			} else {
 				// Unsubscribe
 				await pushNotificationService.unsubscribe();
@@ -188,7 +190,7 @@
 				// Save to local settings
 				await appSettings.update('notifications_enabled', false);
 				notificationsEnabled = false;
-				toast.success('Powiadomienia zostały wyłączone');
+				toast.success($t('settings.notifications_disabled_toast'));
 			}
 		} catch (err: unknown) {
 			logger.error('Failed to toggle notifications', err);

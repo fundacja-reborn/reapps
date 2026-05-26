@@ -122,6 +122,11 @@
   "notifications_permission_needed": "To receive notifications, please grant system permission first.",
   "grant_permission": "Grant System Permission",
   "enable_notifications_label": "Receive notifications from the app",
+  "notification_permission_granted_toast": "Notification permission has been granted",
+  "notification_permission_not_granted_toast": "Notification permission was not granted",
+  "notifications_enabled_toast": "Notifications have been enabled",
+  "notifications_disabled_toast": "Notifications have been disabled",
+  "test_notification_body": "Test notification - pipeline works correctly.",
   "notification_error": {
     "unknown_error": "An unknown error occurred while changing notification settings."
   },

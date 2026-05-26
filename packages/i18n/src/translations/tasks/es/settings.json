@@ -122,6 +122,11 @@
   "notifications_permission_needed": "Para recibir notificaciones, primero conceda el permiso del sistema.",
   "grant_permission": "Conceder permiso del sistema",
   "enable_notifications_label": "Recibir notificaciones de la aplicación",
+  "notification_permission_granted_toast": "Permiso de notificaciones concedido",
+  "notification_permission_not_granted_toast": "Permiso de notificaciones no concedido",
+  "notifications_enabled_toast": "Notificaciones activadas",
+  "notifications_disabled_toast": "Notificaciones desactivadas",
+  "test_notification_body": "Notificación de prueba - la canalización funciona correctamente.",
   "notification_error": {
     "unknown_error": "Se produjo un error desconocido al cambiar los ajustes de notificación."
   },

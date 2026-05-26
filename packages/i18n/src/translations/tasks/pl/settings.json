@@ -197,6 +197,11 @@
   "notifications_permission_needed": "Aby otrzymywać powiadomienia, najpierw nadaj uprawnienia systemowe.",
   "grant_permission": "Nadaj uprawnienia systemowe",
   "enable_notifications_label": "Otrzymuj powiadomienia z aplikacji",
+  "notification_permission_granted_toast": "Uprawnienia do powiadomień zostały przyznane",
+  "notification_permission_not_granted_toast": "Uprawnienia nie zostały przyznane",
+  "notifications_enabled_toast": "Powiadomienia zostały włączone",
+  "notifications_disabled_toast": "Powiadomienia zostały wyłączone",
+  "test_notification_body": "Testowe powiadomienie - pipeline działa poprawnie.",
   "login_methods_title": "Logowanie bezhasłowe",
   "login_methods_description": "Skonfiguruj szybkie i bezpieczne logowanie za pomocą odcisku palca, rozpoznawania twarzy lub fizycznego klucza (np. YubiKey)",
   "notification_error": {

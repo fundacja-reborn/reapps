@@ -378,12 +378,12 @@ class PushNotificationService {
 	 * postMessage to the SW - this way the call is awaitable and doesn't
 	 * depend on the SW staying alive long enough to handle the message.
 	 */
-	async sendTestNotification(): Promise<boolean> {
+	async sendTestNotification(body: string): Promise<boolean> {
 		if (!this.isSupported() || Notification.permission !== 'granted') return false;
 		try {
 			const registration = await navigator.serviceWorker.ready;
 			await registration.showNotification('re/task', {
-				body: 'Testowe powiadomienie - pipeline działa poprawnie.',
+				body,
 				icon: `${PUBLIC_BASE_PATH}/icons/icon-192.png`,
 				badge: `${PUBLIC_BASE_PATH}/icons/icon-192.png`,
 				data: { url: '/' },

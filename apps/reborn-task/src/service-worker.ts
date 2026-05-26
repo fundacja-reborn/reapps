@@ -67,8 +67,58 @@ const DYNAMIC_ROUTE_PATTERNS = [
 // (e.g. first install happened offline). Plain HTML + inline CSS so it does
 // not require a CSP nonce. Reload button triggers a normal navigation which
 // will retry the fetch handler.
-const OFFLINE_HTML = `<!DOCTYPE html>
-<html lang="pl"><head><meta charset="utf-8"><title>Offline - re/task</title>
+//
+// Strings are duplicated per locale (same reason as REMINDER_STRINGS below -
+// no @reborn/i18n module can run inside the SW). Pre-built once at SW load.
+interface OfflineStrings {
+	title: string;
+	heading: string;
+	description: string;
+	reload: string;
+}
+
+const OFFLINE_STRINGS: Record<SupportedLocale, OfflineStrings> = {
+	en: {
+		title: 'Offline - re/task',
+		heading: 'No connection',
+		description:
+			'This page has not been saved to the app cache yet. Connect to the network and try again.',
+		reload: 'Try again'
+	},
+	pl: {
+		title: 'Offline - re/task',
+		heading: 'Brak połączenia',
+		description:
+			'Ta strona nie została jeszcze zapisana w pamięci podręcznej aplikacji. Połącz się z siecią i spróbuj ponownie.',
+		reload: 'Spróbuj ponownie'
+	},
+	de: {
+		title: 'Offline - re/task',
+		heading: 'Keine Verbindung',
+		description:
+			'Diese Seite wurde noch nicht im App-Cache gespeichert. Stellen Sie eine Netzwerkverbindung her und versuchen Sie es erneut.',
+		reload: 'Erneut versuchen'
+	},
+	fr: {
+		title: 'Offline - re/task',
+		heading: 'Pas de connexion',
+		description:
+			"Cette page n'a pas encore été enregistrée dans le cache de l'application. Connectez-vous au réseau et réessayez.",
+		reload: 'Réessayer'
+	},
+	es: {
+		title: 'Offline - re/task',
+		heading: 'Sin conexión',
+		description:
+			'Esta página aún no se ha guardado en la caché de la aplicación. Conéctese a la red e inténtelo de nuevo.',
+		reload: 'Intentar de nuevo'
+	}
+};
+
+function buildOfflineHtml(locale: SupportedLocale): string {
+	const s = OFFLINE_STRINGS[locale];
+	return `<!DOCTYPE html>
+<html lang="${locale}"><head><meta charset="utf-8"><title>${s.title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>html,body{margin:0;height:100%;font-family:system-ui;background:#f9fafb;color:#374151;display:flex;align-items:center;justify-content:center}
 .box{max-width:320px;text-align:center;padding:24px}
@@ -76,15 +126,38 @@ h1{font-size:18px;margin:0 0 8px;font-weight:600}
 p{font-size:14px;line-height:1.5;margin:0 0 16px;color:#6b7280}
 button{appearance:none;border:0;border-radius:8px;padding:10px 16px;background:#43a047;color:#fff;font-size:14px;font-weight:500;cursor:pointer}
 @media (prefers-color-scheme: dark){html,body{background:#252525;color:#e5e7eb}p{color:#a3a3a3}}
-</style></head><body><div class="box"><h1>Brak połączenia</h1>
-<p>Ta strona nie została jeszcze zapisana w pamięci podręcznej aplikacji. Połącz się z siecią i spróbuj ponownie.</p>
-<button onclick="location.reload()">Spróbuj ponownie</button></div></body></html>`;
+</style></head><body><div class="box"><h1>${s.heading}</h1>
+<p>${s.description}</p>
+<button onclick="location.reload()">${s.reload}</button></div></body></html>`;
+}
 
-const OFFLINE_RESPONSE = () =>
-	new Response(OFFLINE_HTML, {
+const OFFLINE_HTML_BY_LOCALE: Record<SupportedLocale, string> = {
+	en: buildOfflineHtml('en'),
+	pl: buildOfflineHtml('pl'),
+	de: buildOfflineHtml('de'),
+	fr: buildOfflineHtml('fr'),
+	es: buildOfflineHtml('es')
+};
+
+const OFFLINE_RESPONSE = async (): Promise<Response> => {
+	let locale: SupportedLocale = 'en';
+	try {
+		const db = await openIDBForRead(TASK_DB_NAME);
+		if (db) {
+			try {
+				locale = await readReborTaskLocale(db);
+			} finally {
+				db.close();
+			}
+		}
+	} catch {
+		/* keep default locale */
+	}
+	return new Response(OFFLINE_HTML_BY_LOCALE[locale], {
 		status: 503,
 		headers: { 'Content-Type': 'text/html; charset=utf-8' }
 	});
+};
 
 // Race a network fetch against a short timeout so slow/airplane-mode requests
 // don't block the service worker while the OS waits for DNS/TCP to time out
@@ -246,7 +319,7 @@ sw.addEventListener('fetch', (event) => {
 				return response;
 			} catch {
 				// 4. Absolute last resort - minimal inline offline page.
-				return OFFLINE_RESPONSE();
+				return await OFFLINE_RESPONSE();
 			}
 		}
 
@@ -626,7 +699,7 @@ async function readReborTaskLocale(db: IDBDatabase): Promise<SupportedLocale> {
 	const taskSettings = all.find((s) => s.app_name === 'reborn-task');
 	const lang = taskSettings?.language;
 	if (lang && lang in REMINDER_STRINGS) return lang;
-	return 'pl';
+	return 'en';
 }
 
 function formatBody(
@@ -671,9 +744,9 @@ async function handleTaskReminderPush(payload: { task_id?: string }): Promise<vo
 	const taskId = payload.task_id;
 	const url = taskId ? `${base}/tasks/${taskId}` : `${base}/`;
 
-	// Default to Polish (the app's default locale per settings.store.ts) so we
-	// never show a partially-loaded English fallback when IDB read fails.
-	let locale: SupportedLocale = 'pl';
+	// English fallback when the IDB locale read fails - keeps notification copy
+	// in the project's source-of-truth language.
+	let locale: SupportedLocale = 'en';
 	let strings = REMINDER_STRINGS[locale];
 
 	try {
@@ -765,8 +838,7 @@ sw.addEventListener('message', (event) => {
 	const data = event.data as
 		| { type: 'SCHEDULE_NOTIFICATION'; notification: ScheduledNotification }
 		| { type: 'CANCEL_NOTIFICATION'; taskId: string }
-		| { type: 'CANCEL_ALL_NOTIFICATIONS' }
-		| { type: 'SHOW_TEST_NOTIFICATION' };
+		| { type: 'CANCEL_ALL_NOTIFICATIONS' };
 
 	if (!data?.type) return;
 
@@ -781,15 +853,5 @@ sw.addEventListener('message', (event) => {
 	} else if (data.type === 'CANCEL_ALL_NOTIFICATIONS') {
 		scheduledNotifications.clear();
 		stopCheckInterval();
-	} else if (data.type === 'SHOW_TEST_NOTIFICATION') {
-		event.waitUntil(
-			sw.registration.showNotification('re/task', {
-				body: 'Testowe powiadomienie - pipeline działa poprawnie.',
-				icon: `${base}/icons/icon-192.png`,
-				badge: `${base}/icons/icon-192.png`,
-				data: { url: '/' },
-				tag: 'reborn-task-test'
-			})
-		);
 	}
 });
