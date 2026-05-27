@@ -50,11 +50,11 @@ The toggle is in **Settings -> Notifications -> Background notifications (server
 
 Turning it off:
 
-- The server stops receiving any reminder fire times. Past schedules for your device are deleted from the server immediately.
+- The server stops receiving any reminder fire times. Past schedules for your account are deleted from the server immediately.
 - Notifications continue to work, but only while the app is open in a foreground tab. When the app is closed or the tab is in the background, no reminder is delivered.
 - Recommended for users with elevated threat models (journalists, researchers, dissidents) who prefer the strictest Zero Knowledge posture over the convenience of background delivery.
 
-The setting is per-device. If you log into the same account on another device, that device makes its own choice.
+The setting is part of your synced account settings, so toggling it on one device flips it on every signed-in device automatically. When you turn it off, all pending server-side schedules across every device are dropped in the same transaction.
 
 ---
 
@@ -66,8 +66,10 @@ This part describes the server contract, what is stored where, and the defence-i
 
 When the user has the background-delivery toggle on, the client maintains a server-side schedule via two endpoints:
 
-- `POST /api/notifications/schedule` - replace the pending schedule for this push subscription. Body: `{ items: [{ task_id, fire_at }, ...] }`. Idempotent; the server replaces all rows for the subscription where `sent_at IS NULL` and inserts the new set.
-- `DELETE /api/notifications/schedule/:task_id` - cancel the schedule for a specific task (used when a task is completed, deleted, or has its reminder removed).
+- `POST /api/notifications/schedule` - replace the pending schedule for the account. Body: `{ endpoint, items: [{ task_id, fire_at }, ...] }`. The `endpoint` identifies the caller's push subscription and must belong to the authenticated user (rejected otherwise). The server then fans the items out across **every** active subscription registered for that user so the dispatcher can wake every signed-in device, not only the one that authored the change. Idempotent: in one transaction the server drops every row where `user_id = caller AND sent_at IS NULL` and re-inserts `items × subscriptions`.
+- `DELETE /api/notifications/schedule` - cancel the schedule for a specific task across every subscription the user has. Body: `{ task_id }`. Used when a task is completed, deleted, or has its reminder removed.
+
+Why fan-out per user instead of per subscription: the local task store is synced across devices, so every device computes the same `(task_id, fire_at)` set. If only the device that authored a change wrote schedule rows, a phone left in your pocket would never be woken. With per-user fan-out, any device that opens the application and runs a re-sync writes schedules covering every device.
 
 The client recomputes the schedule from the local task store whenever the task store changes, on `visibilitychange`, and on a 15-minute interval. The horizon is 7 days; reminders further than 7 days out are scheduled later, when they enter the window.
 
@@ -93,9 +95,13 @@ Note the absence of any encrypted-content column. There is no `payload_encrypted
 
 Pending rows (`sent_at IS NULL`) are hard-deleted when the toggle is turned off. Sent rows are retained for 7 days for delivery diagnostics and then hard-deleted.
 
+For users with multiple signed-in devices, each scheduled reminder is materialised once per active push subscription (so a user with three devices, two pending reminders, will have six rows). The total leakage is unchanged - the server already knows how many active subscriptions you have from the `UserWebPushSubscription` table - but the row count in `PushSchedule` scales with `devices × pending_reminders`.
+
 ### Dispatch path
 
-A scheduler process (held in-process for now, guarded by a Postgres advisory lock so multi-instance deployments never duplicate sends) scans `WHERE sent_at IS NULL AND fire_at <= now()` every 5 minutes. For each due row it calls `webpush.sendNotification(subscription, JSON.stringify({ type: 'task_reminder', task_id }))`.
+A scheduler process (held in-process for now, guarded by a Postgres advisory lock so multi-instance deployments never duplicate sends) scans `WHERE sent_at IS NULL AND fire_at <= now()` every 5 minutes, aligned to wall-clock 5-minute boundaries (xx:00, xx:05, xx:10 ...). For each due row it calls `webpush.sendNotification(subscription, JSON.stringify({ type: 'task_reminder', task_id }))`.
+
+Wall-clock alignment matters because it locks down the delivery window. The client floors each `fire_at` down to the previous 5-minute mark before sending; the cron then dispatches at that same wall-clock mark with only the small jitter of scan + dispatch. Net result: a reminder configured for 14:48 (15 minutes before a 15:03 deadline) is bucketed to 14:45 and dispatched around 14:45 - up to 3 minutes earlier than the user's intended fire time, never later. Without the wall-clock alignment, a phase-shifted 5-minute interval could just as easily fire the same reminder at 14:49 (a minute late), which is exactly what we want to rule out for a productivity tool.
 
 The dispatched push payload is encrypted by the `web-push` library using the subscription's `p256dh` key before it leaves our server. The browser's push service (FCM / Apple Push / Mozilla autopush) sees only opaque ciphertext. Even so, **our server briefly sees the cleartext payload** while building it - which is why that payload contains only the type tag and the task id, both already plaintext on the server. No new information is leaked at this layer.
 
@@ -117,7 +123,7 @@ The encrypted local task store is the only place the title is decrypted. The cle
 | Server compromise (database dump) | Attacker learns reminder fire times bucketed to 5 minutes, plus the existing plaintext `(task_id, user_id, updated_at)` triples. Attacker does **not** learn task titles, bodies, descriptions, list names, tag associations, completion state, starred state, or any non-reminder behavioural metadata. |
 | Push service compromise (FCM / Apple Push / Mozilla autopush) | The push service sees ciphertext payloads (encrypted by `web-push` with the subscription's p256dh key). It learns only that a wake-up was sent to a device at a particular time. |
 | Network observer (TLS-terminated) | Sees TLS-encrypted traffic. The HTTPS connection to our server is end-to-end at the TLS layer; nothing in the push pipeline weakens it. |
-| User with elevated threat model | Turn the toggle off. Reverts to local-only delivery; the server then receives **no** reminder timing data at all and the `PushSchedule` table holds no rows for that subscription. |
+| User with elevated threat model | Turn the toggle off. The setting is account-wide (synced across devices), so flipping it on any device clears the server-side schedule for every device in the same transaction. The `PushSchedule` table holds no pending rows for the account, and no reminder timing data is sent to the server until the toggle is re-enabled. |
 
 ### What this trades, and why
 
