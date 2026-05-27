@@ -39,7 +39,7 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 - **Subtasks** with progress tracking
 - **Recurring tasks** - daily, weekly, or custom schedule
 - **Starred & favorites** - focus on what matters
-- **Due dates & reminders** with optional push notifications
+- **Due dates & reminders** with optional push notifications - delivered even when the app is closed via an opt-in server-assisted pipeline that learns *when* a reminder fires (bucketed to 5 minutes), never *what* it is for ([design doc](docs/security/push-notifications.md))
 - **Smart views** - Today, Upcoming, Overdue, Starred, Completed
 - **Full-text search** with operators - `list:Inbox`, `due:<7d`, `is:overdue`, `has:link`, … ([reference](docs/search-operators.md))
 - **Trash & recovery** - restore deleted tasks within 30 days
@@ -320,6 +320,8 @@ You are free to use, modify, and self-host. If you modify the server-side code a
 
 - [Zero Knowledge Architecture](docs/architecture/zero-knowledge-architecture.md) - how encryption works under the hood
 - [Security Overview](docs/security/security-overview.md) - security posture, cryptographic primitives, and known limitations
+- [Push Notifications - Zero Knowledge Design](docs/security/push-notifications.md) - threat model and opt-in trade-off for server-assisted reminders
+- [Read-only Snapshot Sharing - Zero Knowledge Design](docs/security/read-only-snapshot-sharing.md) - how public share links keep the server blind
 - [Security Policy](SECURITY.md) - how to report vulnerabilities
 
 ## Support
