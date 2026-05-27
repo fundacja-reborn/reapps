@@ -1,3 +1,9 @@
+## 0.26.0 (2026-05-27)
+
+### 🚀 Features
+
+- **task:** push notifications server side ([#216](https://github.com/fundacja-reborn/reapps/pull/216))
+
 ## 0.25.2 (2026-05-26)
 
 ### 🩹 Fixes

@@ -1,6 +1,6 @@
 {
   "name": "@reborn/i18n",
-  "version": "0.25.2",
+  "version": "0.26.0",
   "private": true,
   "type": "module",
   "description": "Internationalization package for Reborn apps",
