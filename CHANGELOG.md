@@ -1,3 +1,9 @@
+## 0.26.1 (2026-05-27)
+
+### 🩹 Fixes
+
+- **task:** fan out push schedules per user + align cron to wall-clock 5min ([#218](https://github.com/fundacja-reborn/reapps/pull/218))
+
 ## 0.26.0 (2026-05-27)
 
 ### 🚀 Features
