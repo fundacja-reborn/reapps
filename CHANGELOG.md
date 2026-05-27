@@ -1,3 +1,9 @@
+## 0.26.2 (2026-05-27)
+
+### 🩹 Fixes
+
+- **task:** auto-recover push subscription after VAPID key rotation ([#219](https://github.com/fundacja-reborn/reapps/pull/219))
+
 ## 0.26.1 (2026-05-27)
 
 ### 🩹 Fixes
