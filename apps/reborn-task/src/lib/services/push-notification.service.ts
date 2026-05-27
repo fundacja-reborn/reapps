@@ -346,7 +346,12 @@ class PushNotificationService {
 						title: task.title,
 						body,
 						fireAt,
-						url: `/tasks/${task.id}`
+						// Must include PUBLIC_BASE_PATH so notificationclick navigates
+						// to the correct route under sub-path deployments (prod runs
+						// the app under /task). The server-assisted path builds the
+						// URL in service-worker.ts using `${base}/tasks/...` from the
+						// SW registration scope; this client path mirrors that.
+						url: `${PUBLIC_BASE_PATH}/tasks/${task.id}`
 					}
 				});
 			}

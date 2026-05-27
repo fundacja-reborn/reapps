@@ -26,6 +26,15 @@ export const GET: RequestHandler = () => {
 		start_url: base ? `${base}/` : '/',
 		scope: base ? `${base}/` : '/',
 		display: 'standalone',
+		// Route in-scope URLs (notification clicks, deep links) to the installed
+		// PWA window instead of a browser tab. Without this, Android Chrome opens
+		// `clients.openWindow(url)` from the notificationclick handler in a regular
+		// browser tab even when the PWA is installed.
+		// `navigate-existing`: focus & navigate an open PWA window if any.
+		// `handle_links: preferred`: when no PWA window is open, prefer launching
+		// the PWA over the browser for URLs within scope. Chromium >= 102 / 96.
+		launch_handler: { client_mode: 'navigate-existing' },
+		handle_links: 'preferred',
 		background_color: '#ffffff',
 		theme_color: '#43a047',
 		orientation: 'portrait-primary',
