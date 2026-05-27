@@ -8,11 +8,15 @@
  * or body - only `task_id` and a bucketed (5-min) `fire_at` value.
  *
  * Concurrency / multi-instance safety: every tick takes a Postgres advisory
- * lock (`pg_try_advisory_lock(LOCK_ID)`). Only the instance that grabs the
- * lock runs the scan; the rest no-op. The lock is released at the end of the
- * tick so any single instance can take it next time - no leader election, no
- * external coordinator. Picked over a dedicated worker per D1 decision
- * (2026-05-26).
+ * lock (`pg_try_advisory_xact_lock(LOCK_ID)`) inside a short transaction that
+ * also SELECTs the due rows. The xact-scoped variant auto-releases on commit
+ * or rollback regardless of which pool connection runs the implicit release,
+ * which the session-scoped `pg_advisory_lock` cannot guarantee under Prisma's
+ * pool (LOCK on connection A + UNLOCK from connection X silently leaks the
+ * lock on A). Only the instance that grabs the lock runs the scan; the rest
+ * no-op. Picked over a dedicated worker per D1 decision (2026-05-26). An
+ * in-process `inFlight` guard provides intra-instance defense in depth so two
+ * overlapping ticks (e.g. one running >5 min) cannot duplicate deliveries.
  *
  * Lifecycle: started lazily on module import from hooks.server.ts. Each tick
  * uses setTimeout aligned to the next wall-clock 5-min boundary, re-scheduling
@@ -54,9 +58,26 @@ const MAX_FAILURE_COUNT = 3;
 /** Maximum number of due rows we process per tick (bounds tail latency). */
 const BATCH_SIZE = 200;
 
+/**
+ * How long sent rows stick around before lazy purge sweeps them. 7 days gives
+ * ample window for forensic queries ("when did this notification fire?") while
+ * keeping the table small. The partial-unique index keeps inserts from
+ * colliding with sent history regardless of how big it grows, but a smaller
+ * table still helps with vacuum, index size, and operational sanity.
+ */
+const SENT_ROW_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Probability that a given tick also runs the retention sweep. With 1/12 we
+ * average ~one sweep per hour (12 ticks × 5 min) - frequent enough that the
+ * table never blows up, infrequent enough that delivery ticks stay cheap.
+ */
+const PURGE_PROBABILITY = 1 / 12;
+
 let started = false;
 let tickTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
 let vapidConfigured = false;
+let tickInFlight = false;
 
 function configureVapid(): boolean {
 	if (vapidConfigured) return true;
@@ -92,25 +113,48 @@ interface DueRow {
 	keys_encrypted: string;
 }
 
-async function fetchDueRows(): Promise<DueRow[]> {
-	// Inline join to avoid n+1. We only need endpoint + keys for the push call.
-	return prisma.$queryRaw<DueRow[]>`
-		SELECT
-			ps.id,
-			ps.subscription_id,
-			ps.task_id,
-			ps.failure_count,
-			s.endpoint,
-			s.keys_encrypted
-		FROM "PushSchedule" ps
-		INNER JOIN "UserWebPushSubscription" s ON s.id = ps.subscription_id
-		WHERE ps.sent_at IS NULL
-			AND ps.fire_at <= NOW()
-			AND ps.failure_count < ${MAX_FAILURE_COUNT}
-			AND s.is_active = true
-		ORDER BY ps.fire_at ASC
-		LIMIT ${BATCH_SIZE}
-	`;
+/**
+ * Try to acquire the advisory lock and, if acquired, return the batch of due
+ * rows that this tick should deliver. Lock + SELECT share a transaction so the
+ * xact-scoped lock auto-releases at commit (regardless of pool connection),
+ * and the SELECT is consistent with the lock acquisition.
+ *
+ * Returns an empty array both when no other instance holds the lock but there
+ * is nothing due, AND when the lock could not be acquired. The caller cannot
+ * tell the two cases apart - that is intentional, both lead to "skip this
+ * tick" and the metric value we care about (number of due deliveries) is the
+ * same.
+ *
+ * Delivery happens OUTSIDE this transaction because web-push HTTPS calls are
+ * the slow part of a tick (hundreds of ms each); holding a DB transaction
+ * open across them would tie up a pool connection for the whole batch.
+ */
+async function acquireLockAndFetchDueRows(): Promise<DueRow[]> {
+	return prisma.$transaction(async (tx) => {
+		const lockResult = await tx.$queryRaw<{ acquired: boolean }[]>`
+			SELECT pg_try_advisory_xact_lock(${ADVISORY_LOCK_CLASSID}::int, ${ADVISORY_LOCK_OBJID}::int) AS acquired
+		`;
+		if (lockResult[0]?.acquired !== true) return [];
+
+		// Inline join to avoid n+1. We only need endpoint + keys for the push call.
+		return tx.$queryRaw<DueRow[]>`
+			SELECT
+				ps.id,
+				ps.subscription_id,
+				ps.task_id,
+				ps.failure_count,
+				s.endpoint,
+				s.keys_encrypted
+			FROM "PushSchedule" ps
+			INNER JOIN "UserWebPushSubscription" s ON s.id = ps.subscription_id
+			WHERE ps.sent_at IS NULL
+				AND ps.fire_at <= NOW()
+				AND ps.failure_count < ${MAX_FAILURE_COUNT}
+				AND s.is_active = true
+			ORDER BY ps.fire_at ASC
+			LIMIT ${BATCH_SIZE}
+		`;
+	});
 }
 
 async function deliverOne(row: DueRow): Promise<void> {
@@ -182,40 +226,45 @@ async function deliverOne(row: DueRow): Promise<void> {
 	}
 }
 
+async function maybePurgeSentRows(): Promise<void> {
+	if (Math.random() >= PURGE_PROBABILITY) return;
+	try {
+		const cutoff = new Date(Date.now() - SENT_ROW_RETENTION_MS);
+		const result = await prisma.pushSchedule.deleteMany({
+			where: { sent_at: { not: null, lt: cutoff } }
+		});
+		if (result.count > 0) {
+			logger.info(`Purged ${result.count} sent push schedule rows older than 7d`);
+		}
+	} catch (error) {
+		logger.error('Sent-row purge failed:', error);
+	}
+}
+
 async function runTick(): Promise<void> {
 	if (!configureVapid()) return;
-
-	// Postgres advisory locks need a single connection for the lock to be held.
-	// $queryRaw uses a pool connection per query, so try-lock + release in the
-	// same statement to keep things simple. If another instance holds it we skip
-	// this tick - the next instance picks up due rows at its own cadence.
-	const lockResult = await prisma.$queryRaw<{ pg_try_advisory_lock: boolean }[]>`
-		SELECT pg_try_advisory_lock(${ADVISORY_LOCK_CLASSID}::int, ${ADVISORY_LOCK_OBJID}::int)
-	`;
-	const acquired = lockResult[0]?.pg_try_advisory_lock === true;
-	if (!acquired) return;
+	if (tickInFlight) return;
+	tickInFlight = true;
 
 	try {
-		const rows = await fetchDueRows();
-		if (rows.length === 0) return;
-
-		logger.info(`Delivering ${rows.length} due push notifications`);
-		// Sequential delivery: web-push is I/O bound but bounded batch + per-row
-		// error handling is simpler than chasing concurrency bugs. Tail latency
-		// stays under TICK_MS for realistic batch sizes.
-		for (const row of rows) {
-			try {
-				await deliverOne(row);
-			} catch (error) {
-				logger.error('Unhandled delivery error:', { id: row.id, error });
+		const rows = await acquireLockAndFetchDueRows();
+		if (rows.length > 0) {
+			logger.info(`Delivering ${rows.length} due push notifications`);
+			// Sequential delivery: web-push is I/O bound but bounded batch + per-row
+			// error handling is simpler than chasing concurrency bugs. Tail latency
+			// stays under TICK_MS for realistic batch sizes.
+			for (const row of rows) {
+				try {
+					await deliverOne(row);
+				} catch (error) {
+					logger.error('Unhandled delivery error:', { id: row.id, error });
+				}
 			}
 		}
+
+		await maybePurgeSentRows();
 	} finally {
-		await prisma.$queryRaw`
-			SELECT pg_advisory_unlock(${ADVISORY_LOCK_CLASSID}::int, ${ADVISORY_LOCK_OBJID}::int)
-		`.catch(() => {
-			/* best-effort unlock - if connection died Postgres releases it for us */
-		});
+		tickInFlight = false;
 	}
 }
 

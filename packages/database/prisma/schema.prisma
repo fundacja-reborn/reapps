@@ -167,7 +167,12 @@ model PushSchedule {
   user            User                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
   subscription    UserWebPushSubscription @relation(fields: [subscription_id], references: [id], onDelete: Cascade)
 
-  @@unique([subscription_id, task_id])
+  // Partial unique on (subscription_id, task_id) WHERE sent_at IS NULL, declared
+  // via raw SQL in migration `20260527120108_push_schedule_partial_unique`.
+  // Prisma can't express partial unique indexes natively. Keeps the idempotency
+  // guarantee (one pending row per device per task) while allowing historical
+  // sent rows to accumulate without colliding on reschedule.
+
   @@index([fire_at, sent_at])
   @@index([user_id])
   @@index([subscription_id])

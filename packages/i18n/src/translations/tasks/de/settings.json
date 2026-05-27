@@ -130,6 +130,10 @@
   "notification_error": {
     "unknown_error": "Ein unbekannter Fehler ist beim \u00c4ndern der Benachrichtigungseinstellungen aufgetreten."
   },
+  "notification_sync_error": {
+    "title": "Der Erinnerungsplan konnte nicht mit dem Server synchronisiert werden",
+    "help": "Deine Benachrichtigungszeiten wurden nicht registriert. Lade die Seite neu oder schalte die Benachrichtigungen aus und wieder ein, um es erneut zu versuchen. Bis zur Synchronisierung k\u00f6nnen Erinnerungen ausbleiben."
+  },
   "notification_lead": {
     "label": "Erinnerung f\u00fcr Aufgaben mit Uhrzeit",
     "help": "Wann eine Benachrichtigung f\u00fcr eine Aufgabe mit konkreter Uhrzeit ausgel\u00f6st werden soll.",

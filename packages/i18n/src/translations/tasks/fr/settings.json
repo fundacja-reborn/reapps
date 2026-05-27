@@ -130,6 +130,10 @@
   "notification_error": {
     "unknown_error": "Une erreur inconnue s'est produite lors de la modification des param\u00e8tres de notification."
   },
+  "notification_sync_error": {
+    "title": "Impossible de synchroniser votre planning de rappels avec le serveur",
+    "help": "Vos heures de notification n'ont pas \u00e9t\u00e9 enregistr\u00e9es. Rechargez la page ou d\u00e9sactivez puis r\u00e9activez les notifications pour r\u00e9essayer. Tant que la synchronisation n'aboutit pas, les rappels risquent de ne pas se d\u00e9clencher."
+  },
   "notification_lead": {
     "label": "Rappel pour les t\u00e2ches avec heure",
     "help": "Quand d\u00e9clencher la notification pour une t\u00e2che dont l'heure pr\u00e9cise est d\u00e9finie.",

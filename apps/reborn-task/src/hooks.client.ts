@@ -231,13 +231,20 @@ if (!isPublicShareRoute) {
 						await pushNotificationService.syncScheduledNotifications(get(tasks), opts);
 					};
 
-					tasks.subscribe(($tasks) => {
-						void (async () => {
-							const enabled = await getSetting('notifications_enabled');
-							if (!enabled) return;
-							const opts = await readTimingOptions();
-							await pushNotificationService.syncScheduledNotifications($tasks, opts);
-						})();
+					// Debounce sync triggered by tasks store changes. Initial sync pulls
+					// fan out tens to hundreds of decrypted-task updates in quick
+					// succession (each list/tag/task arrives separately), and we would
+					// otherwise POST /api/notifications/schedule once per update,
+					// blowing past the 60/min rate limit on first load. 1s coalesces
+					// the burst into a single sync against the final task set.
+					const TASK_SYNC_DEBOUNCE_MS = 1000;
+					let taskSyncTimer: ReturnType<typeof setTimeout> | null = null;
+					tasks.subscribe(() => {
+						if (taskSyncTimer !== null) clearTimeout(taskSyncTimer);
+						taskSyncTimer = setTimeout(() => {
+							taskSyncTimer = null;
+							void syncIfEnabled();
+						}, TASK_SYNC_DEBOUNCE_MS);
 					});
 
 					// Re-sync when notification timing settings change so the user sees

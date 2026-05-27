@@ -130,6 +130,10 @@
   "notification_error": {
     "unknown_error": "Se produjo un error desconocido al cambiar los ajustes de notificación."
   },
+  "notification_sync_error": {
+    "title": "No se pudo sincronizar el calendario de recordatorios con el servidor",
+    "help": "Tus horarios de notificación no se han registrado. Recarga la página o desactiva y vuelve a activar las notificaciones para reintentarlo. Hasta que la sincronización funcione, los recordatorios podrían no dispararse."
+  },
   "notification_lead": {
     "label": "Recordatorio para tareas con hora",
     "help": "Cuándo enviar la notificación de una tarea con hora específica.",

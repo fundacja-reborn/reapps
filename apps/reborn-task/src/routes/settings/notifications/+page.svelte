@@ -18,6 +18,7 @@
 	} from '@reborn/ui';
 	import { Bell, BellOff, AlertTriangle, Info, Send, Clock } from '@lucide/svelte';
 	import { appSettings } from '$lib/stores/app-settings.store';
+	import { pushSyncError } from '$lib/stores/push-sync-error.store';
 	import {
 		pushNotificationService,
 		type PermissionState,
@@ -261,6 +262,22 @@
 					<CardDescription>{$t('settings.notifications_description')}</CardDescription>
 				</CardHeader>
 				<CardContent class="space-y-4">
+					{#if $pushSyncError && notificationsEnabled}
+						<div class="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3">
+							<AlertTriangle class="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+							<div class="flex-1 space-y-1">
+								<p class="text-sm text-destructive font-medium">
+									{$t('settings.notification_sync_error.title')}
+								</p>
+								<p class="text-xs text-muted-foreground">
+									{$t('settings.notification_sync_error.help')}
+								</p>
+								<p class="text-xs text-muted-foreground font-mono break-all">
+									{$pushSyncError}
+								</p>
+							</div>
+						</div>
+					{/if}
 					<div class="flex items-center justify-between gap-4">
 						<Label for="notifications-switch" class="flex-1 cursor-pointer">
 							{$t('settings.enable_notifications_label')}

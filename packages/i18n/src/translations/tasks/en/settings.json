@@ -130,6 +130,10 @@
   "notification_error": {
     "unknown_error": "An unknown error occurred while changing notification settings."
   },
+  "notification_sync_error": {
+    "title": "Couldn't sync your reminder schedule with the server",
+    "help": "Your notification times haven't been registered. Reload the page or toggle notifications off and on to retry. Reminders may not fire until the schedule syncs."
+  },
   "notification_lead": {
     "label": "Remind me about tasks with a time",
     "help": "When to fire a notification for a task that has a specific time set.",
