@@ -1,3 +1,9 @@
+## 0.26.3 (2026-05-27)
+
+### 🩹 Fixes
+
+- **task:** push delivery ([#220](https://github.com/fundacja-reborn/reapps/pull/220))
+
 ## 0.26.2 (2026-05-27)
 
 ### 🩹 Fixes
