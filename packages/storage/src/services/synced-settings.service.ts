@@ -12,7 +12,7 @@
  *   - Conflict (HTTP 409): pull the server's current bundle and re-apply
  *     local changes on top.
  *
- * Offline-tolerant: any network failure is logged and swallowed — IndexedDB
+ * Offline-tolerant: any network failure is logged and swallowed - IndexedDB
  * remains the source of truth for the current session and the next online
  * tick will re-attempt sync.
  */
@@ -57,7 +57,7 @@ interface PutSettingsResponse {
 export interface SyncedSettingsAdapter {
   /** Authenticated fetch wrapper (handles 401 → refresh → retry). */
   authFetch: typeof fetch;
-  /** SvelteKit `base` path — passed in to keep the service framework-agnostic. */
+  /** SvelteKit `base` path - passed in to keep the service framework-agnostic. */
   basePath: string;
   /** Which app's IDB row we are reading/writing. */
   appName: AppName;
@@ -89,7 +89,7 @@ export class SyncedSettingsService {
    */
   async pullAndMerge(): Promise<{ applied: boolean }> {
     if (!cryptoManager.isInitialized()) {
-      logger.debug('Master key not initialized — skipping pull');
+      logger.debug('Master key not initialized - skipping pull');
       return { applied: false };
     }
 
@@ -120,7 +120,7 @@ export class SyncedSettingsService {
       if (shared) sharedBundle = migrateSharedBundle(JSON.parse(await cryptoManager.decryptText(shared.settings_encrypted)));
       if (app) appBundle = migrateAppBundle(JSON.parse(await cryptoManager.decryptText(app.settings_encrypted)));
     } catch (err) {
-      logger.error('Failed to decrypt server bundle — local IDB stays authoritative', err);
+      logger.error('Failed to decrypt server bundle - local IDB stays authoritative', err);
       return { applied: false };
     }
 
@@ -142,7 +142,7 @@ export class SyncedSettingsService {
 
     if (!sharedBundle && !appBundle) {
       // Nothing on the server. Either we just bootstrapped above, or this is
-      // a brand-new account with no IDB row yet — caller's `init()` will run
+      // a brand-new account with no IDB row yet - caller's `init()` will run
       // `initializeDefaults()` next and we'll push on first mutation.
       return { applied: false };
     }
@@ -155,7 +155,7 @@ export class SyncedSettingsService {
     const localUpdated = localSettings ? Date.parse(localSettings.updated_at) : 0;
 
     if (!localSettings) {
-      // No local row yet — adopt server bundle as-is. Caller will create the
+      // No local row yet - adopt server bundle as-is. Caller will create the
       // row from defaults if any keys are missing on subsequent flow.
       const seed: AppSettings = {
         id: crypto.randomUUID(),
@@ -168,6 +168,7 @@ export class SyncedSettingsService {
         notifications_enabled: false,
         notification_lead_minutes: 60,
         notification_all_day_time: '09:00',
+        notification_background_delivery: true,
         auto_sync_enabled: true,
         sync_interval_minutes: 5,
         imageLoadMode: 'ask',
@@ -264,7 +265,7 @@ export class SyncedSettingsService {
     if (res.ok) return;
 
     if (res.status === 409) {
-      logger.info('Settings push conflict — pulling and retrying', { scope });
+      logger.info('Settings push conflict - pulling and retrying', { scope });
       let conflictBody: PutSettingsResponse;
       try {
         conflictBody = (await res.json()) as PutSettingsResponse;
@@ -285,7 +286,7 @@ export class SyncedSettingsService {
 }
 
 /**
- * Convenience factory — mirrors how other services in this package are wired.
+ * Convenience factory - mirrors how other services in this package are wired.
  */
 export function createSyncedSettingsService(adapter: SyncedSettingsAdapter): SyncedSettingsService {
   return new SyncedSettingsService(adapter);

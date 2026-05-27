@@ -40,12 +40,14 @@
 	let allDayTime = $state<string>(
 		$appSettings?.notification_all_day_time ?? DEFAULT_NOTIFICATION_ALL_DAY_TIME
 	);
+	let backgroundDelivery = $state<boolean>(
+		$appSettings?.notification_background_delivery ?? true
+	);
 	const isMacOS = $derived(
 		typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 	);
 
 	const leadOptions = $derived([
-		{ value: '0', label: $t('settings.notification_lead.options.at_due') },
 		{ value: '15', label: $t('settings.notification_lead.options.15min') },
 		{ value: '30', label: $t('settings.notification_lead.options.30min') },
 		{ value: '60', label: $t('settings.notification_lead.options.1h') },
@@ -56,7 +58,7 @@
 	]);
 
 	const leadLabel = $derived(
-		leadOptions.find((o) => Number(o.value) === leadMinutes)?.label ?? leadOptions[3].label
+		leadOptions.find((o) => Number(o.value) === leadMinutes)?.label ?? leadOptions[2].label
 	);
 
 	onMount(() => {
@@ -65,6 +67,7 @@
 			notificationsEnabled = settings?.notifications_enabled ?? false;
 			leadMinutes = settings?.notification_lead_minutes ?? DEFAULT_NOTIFICATION_LEAD_MINUTES;
 			allDayTime = settings?.notification_all_day_time ?? DEFAULT_NOTIFICATION_ALL_DAY_TIME;
+			backgroundDelivery = settings?.notification_background_delivery ?? true;
 		});
 
 		// Detect permission and subscription state
@@ -87,10 +90,26 @@
 	async function updateAllDayTime(value: string) {
 		// Basic HH:MM validation; native input enforces format but be defensive.
 		if (!/^\d{1,2}:\d{2}$/.test(value)) return;
+		// Snap to 5-minute bucket so the stored time matches the server-side
+		// scheduling granularity (cron fires every 5 min, fire_at is bucketed).
+		const [hStr, mStr] = value.split(':');
+		const h = Number(hStr);
+		const m = Math.floor(Number(mStr) / 5) * 5;
+		const snapped = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 		try {
-			await appSettings.update('notification_all_day_time', value);
+			await appSettings.update('notification_all_day_time', snapped);
 		} catch (err: unknown) {
 			logger.error('Failed to update notification_all_day_time', err);
+			toast.error($t('settings.notification_error.unknown_error'));
+		}
+	}
+
+	async function updateBackgroundDelivery(enabled: boolean) {
+		try {
+			await appSettings.update('notification_background_delivery', enabled);
+			backgroundDelivery = enabled;
+		} catch (err: unknown) {
+			logger.error('Failed to update notification_background_delivery', err);
 			toast.error($t('settings.notification_error.unknown_error'));
 		}
 	}
@@ -111,10 +130,10 @@
 			const granted = await pushNotificationService.requestPermission();
 			if (granted) {
 				permissionState = 'granted';
-				toast.success('Uprawnienia do powiadomień zostały przyznane');
+				toast.success($t('settings.notification_permission_granted_toast'));
 			} else {
 				permissionState = pushNotificationService.getPermission();
-				toast.error('Uprawnienia nie zostały przyznane');
+				toast.error($t('settings.notification_permission_not_granted_toast'));
 			}
 		} finally {
 			isLoading = false;
@@ -124,7 +143,9 @@
 	async function handleSendTestNotification() {
 		isSendingTest = true;
 		try {
-			const ok = await pushNotificationService.sendTestNotification();
+			const ok = await pushNotificationService.sendTestNotification(
+				$t('settings.test_notification_body')
+			);
 			if (ok) {
 				toast.success($t('settings.test_notification_sent'));
 			} else {
@@ -147,7 +168,7 @@
 					const granted = await pushNotificationService.requestPermission();
 					if (!granted) {
 						permissionState = pushNotificationService.getPermission();
-						toast.error('Uprawnienia nie zostały przyznane');
+						toast.error($t('settings.notification_permission_not_granted_toast'));
 						return;
 					}
 					permissionState = 'granted';
@@ -160,7 +181,7 @@
 				// Save to local settings
 				await appSettings.update('notifications_enabled', true);
 				notificationsEnabled = true;
-				toast.success('Powiadomienia zostały włączone');
+				toast.success($t('settings.notifications_enabled_toast'));
 			} else {
 				// Unsubscribe
 				await pushNotificationService.unsubscribe();
@@ -169,7 +190,7 @@
 				// Save to local settings
 				await appSettings.update('notifications_enabled', false);
 				notificationsEnabled = false;
-				toast.success('Powiadomienia zostały wyłączone');
+				toast.success($t('settings.notifications_disabled_toast'));
 			}
 		} catch (err: unknown) {
 			logger.error('Failed to toggle notifications', err);
@@ -229,7 +250,7 @@
 				</CardContent>
 			</Card>
 
-		<!-- Permission granted — show toggle -->
+		<!-- Permission granted - show toggle -->
 		{:else}
 			<Card>
 				<CardHeader>
@@ -288,6 +309,7 @@
 							<input
 								id="notification-all-day-time"
 								type="time"
+								step="300"
 								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 								value={allDayTime}
 								disabled={isLoading}
@@ -296,6 +318,24 @@
 							/>
 							<p class="text-xs text-muted-foreground">
 								{$t('settings.notification_all_day_time.help')}
+							</p>
+						</div>
+
+						<!-- Background delivery (server-assisted) opt-in/out -->
+						<div class="space-y-2 rounded-md border border-border p-3">
+							<div class="flex items-center justify-between gap-4">
+								<Label for="notification-background-delivery" class="flex-1 cursor-pointer">
+									{$t('settings.notification_background_delivery.label')}
+								</Label>
+								<Switch
+									id="notification-background-delivery"
+									checked={backgroundDelivery}
+									disabled={isLoading}
+									onCheckedChange={updateBackgroundDelivery}
+								/>
+							</div>
+							<p class="text-xs text-muted-foreground">
+								{$t('settings.notification_background_delivery.help')}
 							</p>
 						</div>
 

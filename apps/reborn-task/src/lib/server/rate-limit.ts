@@ -165,3 +165,17 @@ export const sharePublicLimiter = createRateLimiter({ maxRequests: 100, windowMs
  * versa).
  */
 export const sharePasswordLimiter = createRateLimiter({ maxRequests: 10, windowMs: 15 * 60_000 });
+
+/**
+ * Push notification endpoints (subscribe / schedule): 60 calls per minute per
+ * userId. Both endpoints are authenticated and trigger DB mutations:
+ *   - /api/notifications/schedule POST runs a replace-all transaction
+ *     (deleteMany + createMany of up to 500 rows)
+ *   - /api/notifications/subscribe POST upserts a UserWebPushSubscription
+ * Keyed by userId (not IP) because the endpoint is authenticated - using the
+ * IP would unfairly punish users sharing a NAT while doing nothing against an
+ * attacker rotating IPs with one stolen JWT. 60/min is generous for the normal
+ * sync cadence (tasks.subscribe + 15-min interval + visibilitychange) and
+ * still bounds DB abuse.
+ */
+export const notificationLimiter = createRateLimiter({ maxRequests: 60, windowMs: 60_000 });

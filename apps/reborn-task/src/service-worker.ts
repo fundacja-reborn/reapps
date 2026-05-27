@@ -14,7 +14,7 @@ const base = sw.registration?.scope
 
 // Cache names are prefixed with `reborn-task-` so we can isolate them from
 // other apps deployed under the same origin (e.g. reborn-notes at /notes).
-// The Cache Storage API is per-origin, NOT per-scope — without the prefix,
+// The Cache Storage API is per-origin, NOT per-scope - without the prefix,
 // each SW would wipe the other app's caches on activate.
 const CACHE_PREFIX = 'reborn-task-';
 const CACHE = `${CACHE_PREFIX}cache-${version}`;
@@ -26,7 +26,7 @@ const ASSETS = [
 	...files // everything in `static`
 ];
 
-// Critical routes to pre-cache (static paths) — prefixed with `base` so the
+// Critical routes to pre-cache (static paths) - prefixed with `base` so the
 // pre-cache and pattern matching work under sub-path deployments
 // (e.g. PUBLIC_BASE_PATH=/task → routes live at /task/auth/login, not /auth/login).
 //
@@ -57,7 +57,7 @@ const APP_SHELL = `${base}/`;
 // Escape regex meta-characters so `base` can be safely interpolated into a pattern.
 const escapedBase = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Patterns for dynamic routes that should be cached — base-aware.
+// Patterns for dynamic routes that should be cached - base-aware.
 const DYNAMIC_ROUTE_PATTERNS = [
 	new RegExp(`^${escapedBase}/lists/[^/]+$`), // /lists/:listId
 	new RegExp(`^${escapedBase}/tasks/[^/]+$`) // /tasks/:taskId
@@ -67,8 +67,58 @@ const DYNAMIC_ROUTE_PATTERNS = [
 // (e.g. first install happened offline). Plain HTML + inline CSS so it does
 // not require a CSP nonce. Reload button triggers a normal navigation which
 // will retry the fetch handler.
-const OFFLINE_HTML = `<!DOCTYPE html>
-<html lang="pl"><head><meta charset="utf-8"><title>Offline — re/task</title>
+//
+// Strings are duplicated per locale (same reason as REMINDER_STRINGS below -
+// no @reborn/i18n module can run inside the SW). Pre-built once at SW load.
+interface OfflineStrings {
+	title: string;
+	heading: string;
+	description: string;
+	reload: string;
+}
+
+const OFFLINE_STRINGS: Record<SupportedLocale, OfflineStrings> = {
+	en: {
+		title: 'Offline - re/task',
+		heading: 'No connection',
+		description:
+			'This page has not been saved to the app cache yet. Connect to the network and try again.',
+		reload: 'Try again'
+	},
+	pl: {
+		title: 'Offline - re/task',
+		heading: 'Brak połączenia',
+		description:
+			'Ta strona nie została jeszcze zapisana w pamięci podręcznej aplikacji. Połącz się z siecią i spróbuj ponownie.',
+		reload: 'Spróbuj ponownie'
+	},
+	de: {
+		title: 'Offline - re/task',
+		heading: 'Keine Verbindung',
+		description:
+			'Diese Seite wurde noch nicht im App-Cache gespeichert. Stellen Sie eine Netzwerkverbindung her und versuchen Sie es erneut.',
+		reload: 'Erneut versuchen'
+	},
+	fr: {
+		title: 'Offline - re/task',
+		heading: 'Pas de connexion',
+		description:
+			"Cette page n'a pas encore été enregistrée dans le cache de l'application. Connectez-vous au réseau et réessayez.",
+		reload: 'Réessayer'
+	},
+	es: {
+		title: 'Offline - re/task',
+		heading: 'Sin conexión',
+		description:
+			'Esta página aún no se ha guardado en la caché de la aplicación. Conéctese a la red e inténtelo de nuevo.',
+		reload: 'Intentar de nuevo'
+	}
+};
+
+function buildOfflineHtml(locale: SupportedLocale): string {
+	const s = OFFLINE_STRINGS[locale];
+	return `<!DOCTYPE html>
+<html lang="${locale}"><head><meta charset="utf-8"><title>${s.title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>html,body{margin:0;height:100%;font-family:system-ui;background:#f9fafb;color:#374151;display:flex;align-items:center;justify-content:center}
 .box{max-width:320px;text-align:center;padding:24px}
@@ -76,15 +126,38 @@ h1{font-size:18px;margin:0 0 8px;font-weight:600}
 p{font-size:14px;line-height:1.5;margin:0 0 16px;color:#6b7280}
 button{appearance:none;border:0;border-radius:8px;padding:10px 16px;background:#43a047;color:#fff;font-size:14px;font-weight:500;cursor:pointer}
 @media (prefers-color-scheme: dark){html,body{background:#252525;color:#e5e7eb}p{color:#a3a3a3}}
-</style></head><body><div class="box"><h1>Brak połączenia</h1>
-<p>Ta strona nie została jeszcze zapisana w pamięci podręcznej aplikacji. Połącz się z siecią i spróbuj ponownie.</p>
-<button onclick="location.reload()">Spróbuj ponownie</button></div></body></html>`;
+</style></head><body><div class="box"><h1>${s.heading}</h1>
+<p>${s.description}</p>
+<button onclick="location.reload()">${s.reload}</button></div></body></html>`;
+}
 
-const OFFLINE_RESPONSE = () =>
-	new Response(OFFLINE_HTML, {
+const OFFLINE_HTML_BY_LOCALE: Record<SupportedLocale, string> = {
+	en: buildOfflineHtml('en'),
+	pl: buildOfflineHtml('pl'),
+	de: buildOfflineHtml('de'),
+	fr: buildOfflineHtml('fr'),
+	es: buildOfflineHtml('es')
+};
+
+const OFFLINE_RESPONSE = async (): Promise<Response> => {
+	let locale: SupportedLocale = 'en';
+	try {
+		const db = await openIDBForRead(TASK_DB_NAME);
+		if (db) {
+			try {
+				locale = await readReborTaskLocale(db);
+			} finally {
+				db.close();
+			}
+		}
+	} catch {
+		/* keep default locale */
+	}
+	return new Response(OFFLINE_HTML_BY_LOCALE[locale], {
 		status: 503,
 		headers: { 'Content-Type': 'text/html; charset=utf-8' }
 	});
+};
 
 // Race a network fetch against a short timeout so slow/airplane-mode requests
 // don't block the service worker while the OS waits for DNS/TCP to time out
@@ -100,14 +173,14 @@ async function fetchWithTimeout(request: Request, timeoutMs: number): Promise<Re
 	}
 }
 
-// Background refresh for stale-while-revalidate — never throws.
+// Background refresh for stale-while-revalidate - never throws.
 function refreshInBackground(cache: Cache, request: Request, timeoutMs = 5000): Promise<void> {
 	return fetchWithTimeout(request, timeoutMs)
 		.then((response) => {
 			if (response.ok) return cache.put(request, response.clone()).catch(() => {});
 		})
 		.catch(() => {
-			/* best-effort refresh — silent on failure */
+			/* best-effort refresh - silent on failure */
 		});
 }
 
@@ -152,7 +225,7 @@ sw.addEventListener('install', (event) => {
 
 // Activate service worker
 sw.addEventListener('activate', (event) => {
-	// Remove previous cached data from disk — but ONLY caches owned by this app.
+	// Remove previous cached data from disk - but ONLY caches owned by this app.
 	// Cache Storage is per-origin, so iterating without the prefix filter would
 	// wipe out other apps' caches (e.g. reborn-notes) on every activation.
 	async function deleteOldCaches() {
@@ -212,7 +285,7 @@ sw.addEventListener('fetch', (event) => {
 		// Navigation requests: cache-first with SPA app-shell fallback.
 		//
 		// We flipped from "network-first with cache fallback" because the old
-		// strategy blocked offline cold start — mobile browsers wait 30+ s for
+		// strategy blocked offline cold start - mobile browsers wait 30+ s for
 		// `fetch()` to reject before the fallback ran, producing the multi-second
 		// splash screen users saw in airplane mode. Cache-first returns the shell
 		// immediately and refreshes in the background (stale-while-revalidate).
@@ -226,7 +299,7 @@ sw.addEventListener('fetch', (event) => {
 				return cachedExact;
 			}
 
-			// 2. SPA fallback — any cached app-shell HTML. SvelteKit's client
+			// 2. SPA fallback - any cached app-shell HTML. SvelteKit's client
 			//    router takes over after hydration and resolves the real route.
 			const shell = await routesCache.match(APP_SHELL);
 			if (shell) {
@@ -236,7 +309,7 @@ sw.addEventListener('fetch', (event) => {
 				return shell;
 			}
 
-			// 3. No cached shell — try network with a short timeout so we don't
+			// 3. No cached shell - try network with a short timeout so we don't
 			//    hang on a stale DNS lookup.
 			try {
 				const response = await fetchWithTimeout(event.request, 3000);
@@ -245,8 +318,8 @@ sw.addEventListener('fetch', (event) => {
 				}
 				return response;
 			} catch {
-				// 4. Absolute last resort — minimal inline offline page.
-				return OFFLINE_RESPONSE();
+				// 4. Absolute last resort - minimal inline offline page.
+				return await OFFLINE_RESPONSE();
 			}
 		}
 
@@ -276,7 +349,7 @@ sw.addEventListener('fetch', (event) => {
 
 				return response;
 			} catch {
-				// Network failed — cross-cache fallback: check build assets cache
+				// Network failed - cross-cache fallback: check build assets cache
 				const buildFallback = await cache.match(url.pathname);
 				if (buildFallback) {
 					return buildFallback;
@@ -333,7 +406,7 @@ interface ScheduledNotification {
 
 // In-memory map: taskId → ScheduledNotification
 //
-// NOTE: We intentionally avoid `setTimeout(delay)` per task — the browser
+// NOTE: We intentionally avoid `setTimeout(delay)` per task - the browser
 // terminates idle service workers after ~30 seconds, so any long-lived
 // timeouts would be silently lost. Instead, we keep a map of pending
 // notifications and a single short-interval poll (`checkNotifications`) that
@@ -373,32 +446,372 @@ function checkNotifications(): void {
 }
 
 /**
- * Push event — triggered by server-sent Web Push
+ * Push event - triggered by server-sent Web Push.
+ *
+ * Two payload shapes are handled:
+ *
+ * 1. `{type: 'task_reminder', task_id}` - the canonical wake-up sent by the
+ *    server cron (apps/reborn-task/src/lib/server/push-cron.ts). The server
+ *    NEVER includes task content. We open local IndexedDB, decrypt the task
+ *    with the master key (also in IDB after first unlock), and show the real
+ *    title/body. If the master key is not available (user locked the app
+ *    since the schedule was registered), fall back to a generic "open the
+ *    app" notification - tap navigates to the task's URL so the user is
+ *    prompted to unlock and lands directly on the right task.
+ *
+ * 2. Legacy `{title, body, url}` payload - older clients / future direct
+ *    pushes. Shown as-is.
+ *
+ * Generic strings are inlined per supported locale (read from app settings
+ * IDB). The SW intentionally does NOT import @reborn/i18n - bundle size and
+ * the cryptoManager singleton (window/sessionStorage refs) are out of place
+ * here. Per planning doc:
+ *   docs/development/planning/task-push-notifications-server-side.md
  */
 sw.addEventListener('push', (event) => {
-	if (!event.data) return;
+	if (!event.data) {
+		return;
+	}
 
-	let payload: { title?: string; body?: string; url?: string } = {};
+	let payload: unknown = null;
 	try {
 		payload = event.data.json();
 	} catch {
 		payload = { title: 're/task', body: event.data.text() };
 	}
 
-	const title = payload.title ?? 're/task';
+	if (
+		payload &&
+		typeof payload === 'object' &&
+		(payload as { type?: string }).type === 'task_reminder'
+	) {
+		event.waitUntil(handleTaskReminderPush(payload as { task_id?: string }));
+		return;
+	}
+
+	const legacy = payload as { title?: string; body?: string; url?: string };
+	const title = legacy?.title ?? 're/task';
 	const options: NotificationOptions = {
-		body: payload.body ?? '',
+		body: legacy?.body ?? '',
 		icon: `${base}/icons/icon-192.png`,
 		badge: `${base}/icons/icon-192.png`,
-		data: { url: payload.url ?? '/' },
+		data: { url: legacy?.url ?? '/' },
 		tag: 'reborn-task-push'
 	};
 
 	event.waitUntil(sw.registration.showNotification(title, options));
 });
 
+// ── Task reminder push handler ───────────────────────────────
+
+type SupportedLocale = 'en' | 'pl' | 'de' | 'es' | 'fr';
+
+interface TaskReminderStrings {
+	appName: string;
+	genericTitle: string;
+	genericBody: string;
+	bodyTime: (timeFormatted: string) => string;
+	bodyToday: string;
+	bodyDate: (dateFormatted: string) => string;
+	bodyUnknown: string;
+}
+
+// Mirrors the keys used in formatReminderBody (push-notification.service.ts)
+// and notifications.task_due.* in the i18n bundles. Duplicated here because
+// the SW must run before any module from packages/i18n has loaded.
+const REMINDER_STRINGS: Record<SupportedLocale, TaskReminderStrings> = {
+	en: {
+		appName: 're/task',
+		genericTitle: 'Task reminder',
+		genericBody: 'You have a task scheduled - open the app to see details.',
+		bodyTime: (t) => `Scheduled for ${t}`,
+		bodyToday: 'Scheduled for today',
+		bodyDate: (d) => `Scheduled for ${d}`,
+		bodyUnknown: 'Task reminder'
+	},
+	pl: {
+		appName: 're/task',
+		genericTitle: 'Przypomnienie o zadaniu',
+		genericBody: 'Masz zaplanowane zadanie - otwórz aplikację, aby zobaczyć szczegóły.',
+		bodyTime: (t) => `Zaplanowane na ${t}`,
+		bodyToday: 'Zaplanowane na dziś',
+		bodyDate: (d) => `Zaplanowane na ${d}`,
+		bodyUnknown: 'Przypomnienie o zadaniu'
+	},
+	de: {
+		appName: 're/task',
+		genericTitle: 'Aufgabenerinnerung',
+		genericBody: 'Sie haben eine geplante Aufgabe - öffnen Sie die App für Details.',
+		bodyTime: (t) => `Geplant für ${t}`,
+		bodyToday: 'Heute geplant',
+		bodyDate: (d) => `Geplant für ${d}`,
+		bodyUnknown: 'Aufgabenerinnerung'
+	},
+	es: {
+		appName: 're/task',
+		genericTitle: 'Recordatorio de tarea',
+		genericBody: 'Tienes una tarea programada - abre la app para ver los detalles.',
+		bodyTime: (t) => `Programada para las ${t}`,
+		bodyToday: 'Programada para hoy',
+		bodyDate: (d) => `Programada para ${d}`,
+		bodyUnknown: 'Recordatorio de tarea'
+	},
+	fr: {
+		appName: 're/task',
+		genericTitle: 'Rappel de tâche',
+		genericBody: "Vous avez une tâche planifiée - ouvrez l'application pour voir les détails.",
+		bodyTime: (t) => `Prévue à ${t}`,
+		bodyToday: "Prévue aujourd'hui",
+		bodyDate: (d) => `Prévue le ${d}`,
+		bodyUnknown: 'Rappel de tâche'
+	}
+};
+
+const CRYPTO_DB_NAME = 'reborn_crypto_keys';
+const CRYPTO_STORE_NAME = 'master_key';
+const CRYPTO_KEY_ID = 'current';
+const TASK_DB_NAME = 'Reborn_task_DB';
+const TASK_STORE_NAME = 'tasks';
+const APP_SETTINGS_STORE_NAME = 'appSettings';
+const IDB_OPEN_TIMEOUT_MS = 3_000;
+
+function openIDBForRead(dbName: string): Promise<IDBDatabase | null> {
+	return new Promise((resolve) => {
+		let settled = false;
+		const timer = setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			resolve(null);
+		}, IDB_OPEN_TIMEOUT_MS);
+
+		try {
+			// `indexedDB.open` without `version` opens the existing DB and never
+			// triggers onupgradeneeded - we must not create or migrate stores
+			// from the SW (the main thread owns the schema).
+			const req = indexedDB.open(dbName);
+			req.onsuccess = () => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				resolve(req.result);
+			};
+			req.onerror = () => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				resolve(null);
+			};
+			req.onblocked = () => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				resolve(null);
+			};
+		} catch {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			resolve(null);
+		}
+	});
+}
+
+function idbGet<T>(db: IDBDatabase, storeName: string, key: IDBValidKey): Promise<T | null> {
+	return new Promise((resolve) => {
+		if (!db.objectStoreNames.contains(storeName)) {
+			resolve(null);
+			return;
+		}
+		try {
+			const tx = db.transaction(storeName, 'readonly');
+			const req = tx.objectStore(storeName).get(key);
+			req.onsuccess = () => resolve((req.result as T | undefined) ?? null);
+			req.onerror = () => resolve(null);
+		} catch {
+			resolve(null);
+		}
+	});
+}
+
+function idbGetAll<T>(db: IDBDatabase, storeName: string): Promise<T[]> {
+	return new Promise((resolve) => {
+		if (!db.objectStoreNames.contains(storeName)) {
+			resolve([]);
+			return;
+		}
+		try {
+			const tx = db.transaction(storeName, 'readonly');
+			const req = tx.objectStore(storeName).getAll();
+			req.onsuccess = () => resolve((req.result as T[] | undefined) ?? []);
+			req.onerror = () => resolve([]);
+		} catch {
+			resolve([]);
+		}
+	});
+}
+
+function base64ToBytes(input: string): Uint8Array {
+	let s = input.trim().replace(/-/g, '+').replace(/_/g, '/');
+	const pad = s.length % 4;
+	if (pad === 2) s += '==';
+	else if (pad === 3) s += '=';
+	const bin = atob(s);
+	const out = new Uint8Array(bin.length);
+	for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+	return out;
+}
+
+async function decryptIvCiphertext(value: string, key: CryptoKey): Promise<string | null> {
+	const sep = value.indexOf(':');
+	if (sep <= 0) return null;
+	try {
+		const iv = base64ToBytes(value.slice(0, sep));
+		const ciphertext = base64ToBytes(value.slice(sep + 1));
+		const buf = await crypto.subtle.decrypt(
+			{ name: 'AES-GCM', iv: iv.buffer as ArrayBuffer, tagLength: 128 },
+			key,
+			ciphertext.buffer as ArrayBuffer
+		);
+		return new TextDecoder().decode(buf);
+	} catch {
+		return null;
+	}
+}
+
+interface AppSettingsRecord {
+	app_name?: string;
+	language?: SupportedLocale;
+}
+
+interface TaskRecord {
+	id: string;
+	title_encrypted?: string;
+	metadata_encrypted?: string;
+}
+
+interface TaskMetadata {
+	due_date?: string | null;
+	has_time?: boolean;
+}
+
+async function readReborTaskLocale(db: IDBDatabase): Promise<SupportedLocale> {
+	const all = await idbGetAll<AppSettingsRecord>(db, APP_SETTINGS_STORE_NAME);
+	const taskSettings = all.find((s) => s.app_name === 'reborn-task');
+	const lang = taskSettings?.language;
+	if (lang && lang in REMINDER_STRINGS) return lang;
+	return 'en';
+}
+
+function formatBody(
+	strings: TaskReminderStrings,
+	metadata: TaskMetadata | null,
+	locale: SupportedLocale
+): string {
+	if (!metadata?.due_date) return strings.bodyUnknown;
+	const due = new Date(metadata.due_date);
+	if (Number.isNaN(due.getTime())) return strings.bodyUnknown;
+
+	const localeTag = locale === 'pl' ? 'pl-PL' : locale;
+
+	if (metadata.has_time) {
+		const time = due.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' });
+		return strings.bodyTime(time);
+	}
+
+	const today = new Date();
+	if (
+		due.getUTCFullYear() === today.getFullYear() &&
+		due.getUTCMonth() === today.getMonth() &&
+		due.getUTCDate() === today.getDate()
+	) {
+		return strings.bodyToday;
+	}
+
+	const taskLocalDay = new Date(
+		due.getUTCFullYear(),
+		due.getUTCMonth(),
+		due.getUTCDate()
+	);
+	const date = taskLocalDay.toLocaleDateString(localeTag, {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric'
+	});
+	return strings.bodyDate(date);
+}
+
+async function handleTaskReminderPush(payload: { task_id?: string }): Promise<void> {
+	const taskId = payload.task_id;
+	const url = taskId ? `${base}/tasks/${taskId}` : `${base}/`;
+
+	// English fallback when the IDB locale read fails - keeps notification copy
+	// in the project's source-of-truth language.
+	let locale: SupportedLocale = 'en';
+	let strings = REMINDER_STRINGS[locale];
+
+	try {
+		const taskDb = await openIDBForRead(TASK_DB_NAME);
+		if (taskDb) {
+			try {
+				locale = await readReborTaskLocale(taskDb);
+				strings = REMINDER_STRINGS[locale];
+			} catch {
+				/* keep default locale */
+			}
+		}
+
+		const cryptoDb = await openIDBForRead(CRYPTO_DB_NAME);
+		const masterKey = cryptoDb
+			? await idbGet<CryptoKey>(cryptoDb, CRYPTO_STORE_NAME, CRYPTO_KEY_ID)
+			: null;
+		cryptoDb?.close();
+
+		let title: string | null = null;
+		let body: string = strings.bodyUnknown;
+
+		if (taskDb && masterKey && taskId) {
+			const task = await idbGet<TaskRecord>(taskDb, TASK_STORE_NAME, taskId);
+			if (task) {
+				if (task.title_encrypted) {
+					title = await decryptIvCiphertext(task.title_encrypted, masterKey);
+				}
+				if (task.metadata_encrypted) {
+					const json = await decryptIvCiphertext(task.metadata_encrypted, masterKey);
+					if (json) {
+						try {
+							const meta = JSON.parse(json) as TaskMetadata;
+							body = formatBody(strings, meta, locale);
+						} catch {
+							/* keep bodyUnknown */
+						}
+					}
+				}
+			}
+		}
+		taskDb?.close();
+
+		const tagSuffix = taskId ?? 'unknown';
+		await sw.registration.showNotification(title ?? strings.genericTitle, {
+			body: title ? body : strings.genericBody,
+			icon: `${base}/icons/icon-192.png`,
+			badge: `${base}/icons/icon-192.png`,
+			data: { url },
+			tag: `task-${tagSuffix}`
+		});
+	} catch (error) {
+		console.warn('handleTaskReminderPush failed, falling back to generic:', error);
+		await sw.registration.showNotification(strings.genericTitle, {
+			body: strings.genericBody,
+			icon: `${base}/icons/icon-192.png`,
+			badge: `${base}/icons/icon-192.png`,
+			data: { url },
+			tag: `task-${taskId ?? 'unknown'}`
+		});
+	}
+}
+
 /**
- * Notification click — focus or open the app
+ * Notification click - focus or open the app
  */
 sw.addEventListener('notificationclick', (event) => {
 	event.notification.close();
@@ -419,14 +832,13 @@ sw.addEventListener('notificationclick', (event) => {
 });
 
 /**
- * Message handler — schedule/cancel local notifications from the app
+ * Message handler - schedule/cancel local notifications from the app
  */
 sw.addEventListener('message', (event) => {
 	const data = event.data as
 		| { type: 'SCHEDULE_NOTIFICATION'; notification: ScheduledNotification }
 		| { type: 'CANCEL_NOTIFICATION'; taskId: string }
-		| { type: 'CANCEL_ALL_NOTIFICATIONS' }
-		| { type: 'SHOW_TEST_NOTIFICATION' };
+		| { type: 'CANCEL_ALL_NOTIFICATIONS' };
 
 	if (!data?.type) return;
 
@@ -441,15 +853,5 @@ sw.addEventListener('message', (event) => {
 	} else if (data.type === 'CANCEL_ALL_NOTIFICATIONS') {
 		scheduledNotifications.clear();
 		stopCheckInterval();
-	} else if (data.type === 'SHOW_TEST_NOTIFICATION') {
-		event.waitUntil(
-			sw.registration.showNotification('re/task', {
-				body: 'Testowe powiadomienie — pipeline działa poprawnie.',
-				icon: `${base}/icons/icon-192.png`,
-				badge: `${base}/icons/icon-192.png`,
-				data: { url: '/' },
-				tag: 'reborn-task-test'
-			})
-		);
 	}
 });

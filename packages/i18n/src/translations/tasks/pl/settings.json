@@ -197,6 +197,11 @@
   "notifications_permission_needed": "Aby otrzymywać powiadomienia, najpierw nadaj uprawnienia systemowe.",
   "grant_permission": "Nadaj uprawnienia systemowe",
   "enable_notifications_label": "Otrzymuj powiadomienia z aplikacji",
+  "notification_permission_granted_toast": "Uprawnienia do powiadomień zostały przyznane",
+  "notification_permission_not_granted_toast": "Uprawnienia nie zostały przyznane",
+  "notifications_enabled_toast": "Powiadomienia zostały włączone",
+  "notifications_disabled_toast": "Powiadomienia zostały wyłączone",
+  "test_notification_body": "Testowe powiadomienie - pipeline działa poprawnie.",
   "login_methods_title": "Logowanie bezhasłowe",
   "login_methods_description": "Skonfiguruj szybkie i bezpieczne logowanie za pomocą odcisku palca, rozpoznawania twarzy lub fizycznego klucza (np. YubiKey)",
   "notification_error": {
@@ -206,7 +211,6 @@
     "label": "Przypominaj zadania z czasem",
     "help": "Kiedy wysłać powiadomienie dla zadania z konkretną godziną.",
     "options": {
-      "at_due": "W momencie terminu",
       "15min": "15 minut wcześniej",
       "30min": "30 minut wcześniej",
       "1h": "1 godzinę wcześniej",
@@ -218,7 +222,11 @@
   },
   "notification_all_day_time": {
     "label": "Pora przypomnień dla zadań bez godziny",
-    "help": "O tej porze otrzymasz powiadomienie w dniu zadania, dla którego nie ustawiono konkretnej godziny."
+    "help": "O tej porze otrzymasz powiadomienie w dniu zadania, dla którego nie ustawiono konkretnej godziny. Zaokrąglane do pełnych 5 minut."
+  },
+  "notification_background_delivery": {
+    "label": "Powiadomienia w tle (z udziałem serwera)",
+    "help": "Włączone: powiadomienia działają nawet gdy aplikacja jest zamknięta. Serwer wie tylko kiedy (z dokładnością do 5 minut) ma się wysłać przypomnienie - nigdy nie widzi tytułu ani treści zadania (deszyfrowanie odbywa się lokalnie na Twoim urządzeniu). Wyłącz jeśli wolisz, by serwer nie znał terminów przypomnień; powiadomienia będą wtedy działać tylko z aplikacją otwartą."
   },
   "notifications_macos_info": "Na macOS dodatkowo sprawdź Ustawienia systemowe → Powiadomienia → Twoja przeglądarka i upewnij się, że powiadomienia są dozwolone.",
   "send_test_notification": "Wyślij testowe powiadomienie",

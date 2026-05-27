@@ -122,6 +122,11 @@
   "notifications_permission_needed": "Para recibir notificaciones, primero conceda el permiso del sistema.",
   "grant_permission": "Conceder permiso del sistema",
   "enable_notifications_label": "Recibir notificaciones de la aplicación",
+  "notification_permission_granted_toast": "Permiso de notificaciones concedido",
+  "notification_permission_not_granted_toast": "Permiso de notificaciones no concedido",
+  "notifications_enabled_toast": "Notificaciones activadas",
+  "notifications_disabled_toast": "Notificaciones desactivadas",
+  "test_notification_body": "Notificación de prueba - la canalización funciona correctamente.",
   "notification_error": {
     "unknown_error": "Se produjo un error desconocido al cambiar los ajustes de notificación."
   },
@@ -129,7 +134,6 @@
     "label": "Recordatorio para tareas con hora",
     "help": "Cuándo enviar la notificación de una tarea con hora específica.",
     "options": {
-      "at_due": "A la hora de vencimiento",
       "15min": "15 minutos antes",
       "30min": "30 minutos antes",
       "1h": "1 hora antes",
@@ -141,7 +145,11 @@
   },
   "notification_all_day_time": {
     "label": "Hora de recordatorio para tareas sin hora",
-    "help": "Recibirás una notificación a esta hora el día en que vence una tarea sin hora específica."
+    "help": "Recibirás una notificación a esta hora el día en que vence una tarea sin hora específica. Se redondea a múltiplos de 5 minutos."
+  },
+  "notification_background_delivery": {
+    "label": "Notificaciones en segundo plano (asistidas por servidor)",
+    "help": "Activado: las notificaciones se envían incluso con la app cerrada. El servidor solo sabe cuándo (con precisión de 5 minutos) debe dispararse un recordatorio; nunca ve el título ni el contenido de la tarea (el descifrado ocurre localmente en tu dispositivo). Desactívalo si prefieres que el servidor no conozca los tiempos de los recordatorios; las notificaciones se dispararán entonces solo mientras la app esté abierta."
   },
   "notifications_macos_info": "En macOS, también verifique Ajustes del Sistema → Notificaciones → su navegador y asegúrese de que las notificaciones estén permitidas.",
   "send_test_notification": "Enviar notificación de prueba",

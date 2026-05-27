@@ -21,11 +21,28 @@ export const DEFAULT_NOTIFICATION_LEAD_MINUTES = 60;
 /** Default local clock time for date-only reminders (HH:MM). */
 export const DEFAULT_NOTIFICATION_ALL_DAY_TIME = '09:00';
 
+/**
+ * Server-side schedule bucketing - rounds `fire_at` DOWN to the nearest
+ * 5-minute mark (matches cron tick cadence). Floor (not round) guarantees the
+ * notification never arrives LATER than promised, only up to 5 min earlier
+ * (better UX trade-off than slipping past the deadline). This bucketing is the
+ * sole ZK leakage tunable: 5-min precision is documented in
+ * docs/security/security-overview.md §7.
+ */
+export const SERVER_SCHEDULE_BUCKET_MS = 5 * 60 * 1000;
+
 export interface ReminderTimingOptions {
 	/** Minutes before `due_date` for tasks with `has_time === true`. */
 	leadMinutes: number;
 	/** Local 'HH:MM' string used as the fire time for date-only tasks. */
 	allDayTime: string;
+	/**
+	 * When true, the client posts schedules to /api/notifications/schedule so
+	 * the server cron can wake the SW even with the app closed. When false,
+	 * notifications only fire while a tab is open (legacy SW-poll path).
+	 * Server never receives `fire_at` in the OFF state.
+	 */
+	backgroundDelivery?: boolean;
 }
 
 /** Pick of TaskListItem fields needed to compute reminder fire time. */
@@ -226,6 +243,21 @@ class PushNotificationService {
 	 * Sync scheduled local notifications with current task list.
 	 * Cancels obsolete reminders and schedules upcoming ones.
 	 *
+	 * Two delivery paths run in parallel; both reuse the same `task-<id>` SW
+	 * notification tag so a duplicate fire from both paths replaces, never
+	 * stacks (same tag = one visible notification):
+	 *
+	 * 1. **Local SW poll** (always on, 24h window). The SW's in-memory map
+	 *    survives until the browser idle-kills the worker. Reliable while the
+	 *    app is in the foreground.
+	 *
+	 * 2. **Server-assisted push** (gated by `backgroundDelivery`, 7d window,
+	 *    5-min bucketing). Posts `(task_id, fire_at)` to
+	 *    /api/notifications/schedule so the server cron can wake the SW with
+	 *    a generic push - the SW then decrypts the task locally and shows
+	 *    the real title/body. Required for notifications when the app is
+	 *    closed (most realistic mobile scenario).
+	 *
 	 * Timing options come from `AppSettings`:
 	 * - tasks with `has_time === true`: fire `leadMinutes` before `due_date`.
 	 * - date-only tasks: fire on the calendar day at the local `allDayTime`.
@@ -234,7 +266,8 @@ class PushNotificationService {
 		tasks: TaskListItem[],
 		options: ReminderTimingOptions = {
 			leadMinutes: DEFAULT_NOTIFICATION_LEAD_MINUTES,
-			allDayTime: DEFAULT_NOTIFICATION_ALL_DAY_TIME
+			allDayTime: DEFAULT_NOTIFICATION_ALL_DAY_TIME,
+			backgroundDelivery: true
 		}
 	): Promise<void> {
 		if (!this.isSupported() || Notification.permission !== 'granted') return;
@@ -242,6 +275,7 @@ class PushNotificationService {
 		const sw = await navigator.serviceWorker.ready;
 		const now = Date.now();
 		const window24h = 24 * 60 * 60 * 1000;
+		const window7d = 7 * 24 * 60 * 60 * 1000;
 
 		// Lazy import to avoid pulling i18n into worker contexts.
 		const [{ get }, { t }, { currentLanguage }] = await Promise.all([
@@ -255,31 +289,58 @@ class PushNotificationService {
 		// Cancel all existing scheduled reminders first
 		sw.active?.postMessage({ type: 'CANCEL_ALL_NOTIFICATIONS' });
 
+		// Server-side schedule items, bucketed to 5 min. Built in the same loop
+		// so the local SW path and the server path see exactly the same set of
+		// (task, fireAt) pairs (modulo bucketing).
+		const serverItems: { task_id: string; fire_at: string }[] = [];
+
 		for (const task of tasks) {
 			if (task.is_completed || task.deleted_at || !task.due_date) continue;
 
 			const fireAt = computeReminderFireAt(task, options);
 			if (fireAt === null) continue;
+			if (fireAt <= now) continue;
 
-			// Only schedule if in the future and within 24 hours (SW lifecycle limit)
-			if (fireAt <= now || fireAt > now + window24h) continue;
+			// Local SW path - 24h window matches what the SW's polling can realistically cover.
+			if (fireAt <= now + window24h) {
+				const body = formatReminderBody(task, translate, locale);
+				sw.active?.postMessage({
+					type: 'SCHEDULE_NOTIFICATION',
+					notification: {
+						taskId: task.id,
+						title: task.title,
+						body,
+						fireAt,
+						url: `/tasks/${task.id}`
+					}
+				});
+			}
 
-			const body = formatReminderBody(task, translate, locale);
+			// Server-side path - 7d window; bucketed fire_at means the server only
+			// sees rounded-down 5-min marks. Skip if user opted out.
+			if (options.backgroundDelivery !== false && fireAt <= now + window7d) {
+				const bucketed = Math.floor(fireAt / SERVER_SCHEDULE_BUCKET_MS) * SERVER_SCHEDULE_BUCKET_MS;
+				serverItems.push({
+					task_id: task.id,
+					fire_at: new Date(bucketed).toISOString()
+				});
+			}
+		}
 
-			sw.active?.postMessage({
-				type: 'SCHEDULE_NOTIFICATION',
-				notification: {
-					taskId: task.id,
-					title: task.title,
-					body,
-					fireAt,
-					url: `/tasks/${task.id}`
-				}
-			});
+		// Best-effort server sync. backgroundDelivery=false sends an empty list
+		// so any previously-registered schedules are actively cleared (the OFF
+		// state must not leave stale rows the cron would still wake on). Errors
+		// logged but never bubble - local SW path is the always-on safety net.
+		try {
+			await this.syncServerSchedule(
+				options.backgroundDelivery !== false ? serverItems : []
+			);
+		} catch (error) {
+			logger.warn('Failed to sync server-side push schedule:', error);
 		}
 	}
 
-	/** Cancel a single scheduled notification. */
+	/** Cancel a single scheduled notification on the SW (local path only). */
 	async cancelNotification(taskId: string): Promise<void> {
 		if (!this.isSupported()) return;
 		const sw = await navigator.serviceWorker.ready;
@@ -287,19 +348,42 @@ class PushNotificationService {
 	}
 
 	/**
+	 * Cancel a single task's pending server-side schedule rows. Useful when
+	 * a task is completed/deleted - lets us drop the schedule eagerly instead
+	 * of waiting for the next full re-sync (which would naturally remove it
+	 * via the replace-all POST).
+	 */
+	async cancelServerSchedule(taskId: string): Promise<void> {
+		const accessToken = localStorage.getItem('access_token');
+		if (!accessToken) return;
+		try {
+			await fetch(`${PUBLIC_BASE_PATH}/api/notifications/schedule`, {
+				method: 'DELETE',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${accessToken}`
+				},
+				body: JSON.stringify({ task_id: taskId })
+			});
+		} catch (error) {
+			logger.warn('cancelServerSchedule failed:', error);
+		}
+	}
+
+	/**
 	 * Trigger a test notification immediately to verify the end-to-end pipeline
 	 * (permission → service worker → system notification center).
 	 *
 	 * Uses registration.showNotification() from the main thread instead of
-	 * postMessage to the SW — this way the call is awaitable and doesn't
+	 * postMessage to the SW - this way the call is awaitable and doesn't
 	 * depend on the SW staying alive long enough to handle the message.
 	 */
-	async sendTestNotification(): Promise<boolean> {
+	async sendTestNotification(body: string): Promise<boolean> {
 		if (!this.isSupported() || Notification.permission !== 'granted') return false;
 		try {
 			const registration = await navigator.serviceWorker.ready;
 			await registration.showNotification('re/task', {
-				body: 'Testowe powiadomienie — pipeline działa poprawnie.',
+				body,
 				icon: `${PUBLIC_BASE_PATH}/icons/icon-192.png`,
 				badge: `${PUBLIC_BASE_PATH}/icons/icon-192.png`,
 				data: { url: '/' },
@@ -317,7 +401,7 @@ class PushNotificationService {
 	private async saveSubscriptionToServer(subscription: PushSubscription): Promise<void> {
 		const accessToken = localStorage.getItem('access_token');
 		if (!accessToken) {
-			logger.warn('No access token — cannot save push subscription to server');
+			logger.warn('No access token - cannot save push subscription to server');
 			return;
 		}
 
@@ -329,7 +413,7 @@ class PushNotificationService {
 			try {
 				deviceInfoEncrypted = await cryptoManager.encryptText(parseUserAgent(navigator.userAgent));
 			} catch {
-				// Non-critical — send null
+				// Non-critical - send null
 			}
 		}
 
@@ -352,10 +436,44 @@ class PushNotificationService {
 		}
 	}
 
+	/**
+	 * Replace-all push schedule on the server for the current subscription.
+	 * Idempotent - safe to call as often as you like; server discards the
+	 * previous unsent rows and inserts the current list.
+	 *
+	 * Skipped silently when the user has no active subscription (subscribe
+	 * has not been called yet) or no access token (logged out).
+	 */
+	private async syncServerSchedule(
+		items: { task_id: string; fire_at: string }[]
+	): Promise<void> {
+		const accessToken = localStorage.getItem('access_token');
+		if (!accessToken) return;
+
+		const subscription = await this.getSubscription();
+		if (!subscription) return;
+
+		const res = await fetch(`${PUBLIC_BASE_PATH}/api/notifications/schedule`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${accessToken}`
+			},
+			body: JSON.stringify({
+				endpoint: subscription.endpoint,
+				items
+			})
+		});
+
+		if (!res.ok) {
+			throw new Error(`Schedule sync failed: ${res.status}`);
+		}
+	}
+
 	private async removeSubscriptionFromServer(endpoint: string): Promise<void> {
 		const accessToken = localStorage.getItem('access_token');
 		if (!accessToken) {
-			logger.warn('No access token — cannot remove push subscription from server');
+			logger.warn('No access token - cannot remove push subscription from server');
 			return;
 		}
 
