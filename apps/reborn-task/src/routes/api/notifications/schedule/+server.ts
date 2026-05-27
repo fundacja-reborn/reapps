@@ -25,6 +25,7 @@ import { createLogger } from '@reborn/utils';
 import { verifyToken } from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 import { validateBody, schemas } from '@reborn/types';
+import { notificationLimiter } from '$lib/server/rate-limit';
 
 const logger = createLogger('NotificationsSchedule');
 
@@ -43,6 +44,14 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const userId = await getUserId(request.headers.get('authorization'));
 		if (!userId) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+
+		if (!notificationLimiter.check(userId)) {
+			const retryAfter = notificationLimiter.retryAfter(userId);
+			return json(
+				{ success: false, error: 'Too many requests. Please try again later.' },
+				{ status: 429, headers: { 'Retry-After': String(retryAfter) } }
+			);
+		}
 
 		const body = await request.json();
 		const validation = validateBody(schemas.PushScheduleBodySchema, body);
@@ -91,6 +100,14 @@ export const DELETE: RequestHandler = async ({ request }) => {
 	try {
 		const userId = await getUserId(request.headers.get('authorization'));
 		if (!userId) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+
+		if (!notificationLimiter.check(userId)) {
+			const retryAfter = notificationLimiter.retryAfter(userId);
+			return json(
+				{ success: false, error: 'Too many requests. Please try again later.' },
+				{ status: 429, headers: { 'Retry-After': String(retryAfter) } }
+			);
+		}
 
 		const body = (await request.json()) as { task_id?: string };
 		if (!body.task_id || typeof body.task_id !== 'string') {

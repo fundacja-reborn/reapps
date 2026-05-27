@@ -132,11 +132,15 @@ model UserWebPushSubscription {
   id           String   @id @default(uuid())
   user_id      String
   endpoint     String   @unique
-  keys_encrypted String   // E2E encrypted JSON
+  // NOT E2E encrypted despite the suffix. JSON-serialized Web Push protocol
+  // keys (p256dh, auth) needed in plaintext by `web-push` to encrypt payloads
+  // per RFC 8291. They protect the user against the push service, not against
+  // the server. Rename to `push_keys_json` deferred to avoid a migration.
+  keys_encrypted String
   created_at   DateTime @default(now())
   last_used_at DateTime @updatedAt
   is_active    Boolean  @default(true)
-  device_info_encrypted String?  // E2E encrypted
+  device_info_encrypted String?  // E2E encrypted (AES-GCM, client-side)
 
   user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   pushSchedules PushSchedule[]
