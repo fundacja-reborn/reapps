@@ -14,9 +14,11 @@
  * external coordinator. Picked over a dedicated worker per D1 decision
  * (2026-05-26).
  *
- * Lifecycle: started lazily on module import from hooks.server.ts. setInterval
- * keeps the Node event loop alive; that is intentional - the cron is part of
- * the server's normal operation, not a one-shot job.
+ * Lifecycle: started lazily on module import from hooks.server.ts. Each tick
+ * uses setTimeout aligned to the next wall-clock 5-min boundary, re-scheduling
+ * after the tick completes (see `scheduleNextTick`). That keeps the Node event
+ * loop alive; that is intentional - the cron is part of the server's normal
+ * operation, not a one-shot job.
  */
 
 import webpush from 'web-push';
@@ -32,8 +34,19 @@ const logger = createLogger('PushCron');
 const ADVISORY_LOCK_CLASSID = 0x52455042; // 'REPB'
 const ADVISORY_LOCK_OBJID = 0x50534348; // 'PSCH'
 
-/** How often we wake up to check for due schedules. */
-const TICK_MS = 60_000;
+/**
+ * How often we wake up to check for due schedules.
+ *
+ * Matched to the client-side bucket size (`SERVER_SCHEDULE_BUCKET_MS = 5 min`
+ * in push-notification.service.ts). The cron also aligns its ticks to wall
+ * clock so they fire at xx:00, xx:05, xx:10 ... instead of being phase-shifted
+ * by the process boot time. With aligned 5-min ticks, a notification scheduled
+ * at bucketed `fire_at = T` is delivered between T and T+small-jitter (just
+ * the time taken to scan + dispatch) - never up to 5 min late as it would be
+ * with an unaligned 5-min interval. End-to-end delivery window is therefore
+ * "0 to ~5 min earlier than the user's intended reminder", never later.
+ */
+const TICK_MS = 5 * 60_000;
 
 /** Maximum push attempts per schedule row before we give up. */
 const MAX_FAILURE_COUNT = 3;
@@ -42,7 +55,7 @@ const MAX_FAILURE_COUNT = 3;
 const BATCH_SIZE = 200;
 
 let started = false;
-let intervalHandle: ReturnType<typeof setInterval> | null = null;
+let tickTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
 let vapidConfigured = false;
 
 function configureVapid(): boolean {
@@ -206,32 +219,52 @@ async function runTick(): Promise<void> {
 	}
 }
 
+/**
+ * Schedule the next tick aligned to the wall-clock 5-min boundary.
+ *
+ * `Math.ceil(now / TICK_MS) * TICK_MS` picks the next multiple of TICK_MS in
+ * the epoch timeline; because TICK_MS = 300_000 ms divides evenly into the day,
+ * the boundary lands on wall-clock xx:00, xx:05, xx:10 ... regardless of the
+ * server's timezone. Re-scheduling after each tick (rather than `setInterval`)
+ * lets the alignment self-correct if a tick runs long; without this, a single
+ * slow tick would phase-shift every subsequent one.
+ */
+function scheduleNextTick(): void {
+	if (!started) return;
+	const now = Date.now();
+	const nextTickAt = Math.ceil(now / TICK_MS) * TICK_MS;
+	const delayMs = nextTickAt - now;
+	tickTimeoutHandle = setTimeout(async () => {
+		try {
+			await runTick();
+		} catch (error) {
+			logger.error('Push cron tick threw:', error);
+		}
+		scheduleNextTick();
+	}, delayMs);
+}
+
 /** Idempotent start - safe to call multiple times (HMR, test setup). */
 export function startPushCron(): void {
 	if (started) return;
 	started = true;
 
-	// Only schedule the interval if VAPID is configured to avoid spinning
-	// up a tick that immediately no-ops every minute on dev environments
-	// where VAPID is left at the placeholder.
+	// Only schedule the tick chain if VAPID is configured to avoid spinning
+	// up a no-op cron on dev environments where VAPID is left at the placeholder.
 	if (!configureVapid()) {
 		logger.info('VAPID not configured - push cron disabled');
 		return;
 	}
 
-	logger.info(`Push cron started (tick every ${TICK_MS / 1000}s)`);
-	intervalHandle = setInterval(() => {
-		void runTick().catch((error) => {
-			logger.error('Push cron tick threw:', error);
-		});
-	}, TICK_MS);
+	logger.info(`Push cron started (wall-clock aligned, tick every ${TICK_MS / 1000}s)`);
+	scheduleNextTick();
 }
 
-/** For tests - clears the interval. */
+/** For tests - clears the pending tick. */
 export function stopPushCron(): void {
-	if (intervalHandle !== null) {
-		clearInterval(intervalHandle);
-		intervalHandle = null;
+	if (tickTimeoutHandle !== null) {
+		clearTimeout(tickTimeoutHandle);
+		tickTimeoutHandle = null;
 	}
 	started = false;
 }

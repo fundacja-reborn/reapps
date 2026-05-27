@@ -1,10 +1,16 @@
 /**
  * POST /api/notifications/schedule
- *   Replace-all upsert of pending push schedules for the caller's subscription.
+ *   Replace-all upsert of pending push schedules for the caller, fanned out
+ *   across ALL of their active subscriptions.
  *   Body: { endpoint, items: [{ task_id, fire_at }] }
- *   Behavior: inside one transaction, delete all unsent schedules for the
- *   subscription, then insert the new list. Idempotent - the client can re-sync
- *   on every task change without diffing.
+ *   Behavior: in one transaction, delete every unsent schedule belonging to
+ *   the user (across devices), then insert `items × subscriptions`. The
+ *   `endpoint` is kept in the contract for authenticity/diagnostics but the
+ *   write is intentionally cross-device: each item is materialized for every
+ *   active subscription so the cron wakes every signed-in device, not only
+ *   the one that authored the task change. Idempotent - whichever device
+ *   syncs last wins, but all devices compute the same `(task_id, fire_at)`
+ *   from their identical synced task store, so the result converges.
  *
  * DELETE /api/notifications/schedule
  *   Cancel a single task's pending schedules across all of the user's
@@ -61,35 +67,49 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const { endpoint, items } = validation.data;
 
-		const subscription = await prisma.userWebPushSubscription.findFirst({
+		// Verify the caller's own subscription exists - this both proves the
+		// device is registered and guards against schedules from a logged-out
+		// or stale browser. The actual write below fans out to every active
+		// subscription of the user (multi-device delivery).
+		const callerSubscription = await prisma.userWebPushSubscription.findFirst({
 			where: { endpoint, user_id: userId, is_active: true },
 			select: { id: true }
 		});
-		if (!subscription) {
+		if (!callerSubscription) {
 			return json({ success: false, error: 'Subscription not found' }, { status: 404 });
 		}
 
-		const subscriptionId = subscription.id;
+		const subscriptions = await prisma.userWebPushSubscription.findMany({
+			where: { user_id: userId, is_active: true },
+			select: { id: true }
+		});
 
-		// Replace-all: drop everything not yet sent, then re-insert. Already-sent
-		// rows are preserved so the cron's retention sweep (D4) can audit them.
+		// Replace-all per user (cross-device). Drop every pending row of the
+		// caller, then re-materialize `items × subscriptions` so the cron wakes
+		// every signed-in device, not just the one that authored the change.
+		// Already-sent rows are preserved so the retention sweep (D4) can audit
+		// them. The same `(task_id, fire_at)` is recomputed identically on each
+		// device, so replace-all from a different device converges to the same
+		// set - no oscillation between writers.
 		await prisma.$transaction(async (tx) => {
 			await tx.pushSchedule.deleteMany({
-				where: { subscription_id: subscriptionId, sent_at: null }
+				where: { user_id: userId, sent_at: null }
 			});
-			if (items.length > 0) {
+			if (items.length > 0 && subscriptions.length > 0) {
 				await tx.pushSchedule.createMany({
-					data: items.map((item) => ({
-						user_id: userId,
-						subscription_id: subscriptionId,
-						task_id: item.task_id,
-						fire_at: new Date(item.fire_at)
-					}))
+					data: subscriptions.flatMap((sub) =>
+						items.map((item) => ({
+							user_id: userId,
+							subscription_id: sub.id,
+							task_id: item.task_id,
+							fire_at: new Date(item.fire_at)
+						}))
+					)
 				});
 			}
 		});
 
-		return json({ success: true, count: items.length });
+		return json({ success: true, count: items.length, devices: subscriptions.length });
 	} catch (error: unknown) {
 		logger.error('Schedule POST error:', error);
 		return json({ success: false, error: 'Internal server error' }, { status: 500 });
