@@ -1,3 +1,9 @@
+## 0.26.4 (2026-05-27)
+
+### 🩹 Fixes
+
+- **task:** route notification clicks to PWA window under sub-path ([#222](https://github.com/fundacja-reborn/reapps/pull/222))
+
 ## 0.26.3 (2026-05-27)
 
 ### 🩹 Fixes
