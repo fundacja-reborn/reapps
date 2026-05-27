@@ -12,6 +12,7 @@ import { browser } from '$app/environment';
 import { PUBLIC_BASE_PATH } from '$env/static/public';
 import { createLogger, parseUserAgent } from '@reborn/utils';
 import { cryptoManager } from '@reborn/crypto';
+import { pushSyncError } from '$lib/stores/push-sync-error.store';
 import type { TaskListItem } from '$lib/services/task-title-index.svelte';
 
 const logger = createLogger('PushNotificationService');
@@ -365,12 +366,17 @@ class PushNotificationService {
 		// so any previously-registered schedules are actively cleared (the OFF
 		// state must not leave stale rows the cron would still wake on). Errors
 		// logged but never bubble - local SW path is the always-on safety net.
+		// We do mirror the outcome into `pushSyncError` so /settings/notifications
+		// can surface a banner; without it the user has no way to tell their
+		// schedules silently stopped registering.
 		try {
 			await this.syncServerSchedule(
 				options.backgroundDelivery !== false ? serverItems : []
 			);
+			pushSyncError.set(null);
 		} catch (error) {
 			logger.warn('Failed to sync server-side push schedule:', error);
+			pushSyncError.set(error instanceof Error ? error.message : 'Unknown sync error');
 		}
 	}
 

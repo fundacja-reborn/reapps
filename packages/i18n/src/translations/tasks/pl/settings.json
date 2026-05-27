@@ -207,6 +207,10 @@
   "notification_error": {
     "unknown_error": "Wystąpił nieznany błąd podczas zmiany ustawień powiadomień."
   },
+  "notification_sync_error": {
+    "title": "Nie udało się zsynchronizować harmonogramu powiadomień z serwerem",
+    "help": "Twoje godziny przypomnień nie zostały zarejestrowane. Odśwież stronę lub przełącz powiadomienia wył./wł., aby spróbować ponownie. Do momentu synchronizacji przypomnienia mogą nie zadziałać."
+  },
   "notification_lead": {
     "label": "Przypominaj zadania z czasem",
     "help": "Kiedy wysłać powiadomienie dla zadania z konkretną godziną.",
