@@ -177,7 +177,27 @@ class PushNotificationService {
 		}
 	}
 
-	/** Register a push subscription and save it to the server. */
+	/**
+	 * Register a push subscription and save it to the server.
+	 *
+	 * Idempotent - calling this with an already-valid subscription is a no-op
+	 * apart from re-saving the subscription to the server (also idempotent via
+	 * `upsert` keyed on endpoint). Designed to be called on every app start so
+	 * we self-heal after edge cases:
+	 *
+	 * - VAPID key rotation server-side: the push service ties a subscription
+	 *   to the public key it was created with. If `VAPID_PRIVATE_KEY` rotates
+	 *   on the server, FCM/Mozilla reject every message with 403
+	 *   ("the VAPID credentials in the authorization header do not correspond
+	 *   to the credentials used to create the subscriptions"). Without
+	 *   recovery, the only escape is for the user to manually toggle off→on
+	 *   in /settings/notifications. We compare the existing subscription's
+	 *   `applicationServerKey` to the current server VAPID key and re-subscribe
+	 *   transparently on mismatch.
+	 *
+	 * - Server-side subscription row marked inactive after a 410/Gone from the
+	 *   push service: re-saving via this code path re-activates it.
+	 */
 	async subscribe(): Promise<PushSubscription | null> {
 		if (!this.isSupported() || Notification.permission !== 'granted') return null;
 
@@ -189,8 +209,23 @@ class PushNotificationService {
 				return null;
 			}
 
-			// Check if already subscribed
 			let subscription = await registration.pushManager.getSubscription();
+
+			// VAPID rotation guard: if the existing subscription was created under
+			// a different server public key than the one currently served, every
+			// push will be rejected by the push service. Detect mismatch and
+			// transparently re-subscribe so an admin rotation doesn't silently
+			// break delivery until each user manually re-toggles notifications.
+			if (subscription && !subscriptionMatchesVapidKey(subscription, vapidKey)) {
+				logger.info('VAPID key mismatch detected - resubscribing');
+				try {
+					await this.removeSubscriptionFromServer(subscription.endpoint);
+				} catch {
+					/* best-effort cleanup of the now-stale server-side row */
+				}
+				await subscription.unsubscribe();
+				subscription = null;
+			}
 
 			if (!subscription) {
 				subscription = await registration.pushManager.subscribe({
@@ -199,7 +234,6 @@ class PushNotificationService {
 				});
 			}
 
-			// Save to server
 			await this.saveSubscriptionToServer(subscription);
 			logger.info('Push subscription registered');
 			return subscription;
@@ -490,6 +524,28 @@ class PushNotificationService {
 			logger.error('Failed to remove push subscription from server', { status: res.status });
 		}
 	}
+}
+
+/**
+ * Compare a subscription's `applicationServerKey` to the current server VAPID
+ * public key. Returns false (treat as mismatch) when the subscription has no
+ * stored key - safer to re-subscribe than to silently keep a sub the push
+ * service might reject.
+ */
+function subscriptionMatchesVapidKey(
+	subscription: PushSubscription,
+	vapidKey: string
+): boolean {
+	const stored = subscription.options.applicationServerKey;
+	if (!stored) return false;
+
+	const expected = urlBase64ToUint8Array(vapidKey);
+	const actual = new Uint8Array(stored as ArrayBuffer);
+	if (expected.length !== actual.length) return false;
+	for (let i = 0; i < expected.length; i++) {
+		if (expected[i] !== actual[i]) return false;
+	}
+	return true;
 }
 
 /** Convert base64url VAPID public key to Uint8Array backed by an ArrayBuffer */
