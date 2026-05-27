@@ -93,13 +93,13 @@ PushSchedule {
 
 Note the absence of any encrypted-content column. There is no `payload_encrypted`, no title hash, no lead-time field. The server has the minimum information needed to wake the device at the right moment and nothing else.
 
-Pending rows (`sent_at IS NULL`) are hard-deleted when the toggle is turned off. Sent rows are retained for 7 days for delivery diagnostics and then hard-deleted.
+Pending rows (`sent_at IS NULL`) are hard-deleted when the toggle is turned off. Sent rows are retained for 7 days for delivery diagnostics and then hard-deleted by a lazy sweep inside the dispatcher (~hourly on the 5-minute schedule); rows older than the retention window never survive a full day past the cut-off.
 
 For users with multiple signed-in devices, each scheduled reminder is materialised once per active push subscription (so a user with three devices, two pending reminders, will have six rows). The total leakage is unchanged - the server already knows how many active subscriptions you have from the `UserWebPushSubscription` table - but the row count in `PushSchedule` scales with `devices × pending_reminders`.
 
 ### Dispatch path
 
-A scheduler process (held in-process for now, guarded by a Postgres advisory lock so multi-instance deployments never duplicate sends) scans `WHERE sent_at IS NULL AND fire_at <= now()` every 5 minutes, aligned to wall-clock 5-minute boundaries (xx:00, xx:05, xx:10 ...). For each due row it calls `webpush.sendNotification(subscription, JSON.stringify({ type: 'task_reminder', task_id }))`.
+A scheduler process (held in-process for now, guarded by a Postgres advisory lock taken at transaction scope so the lock auto-releases on commit regardless of which pool connection completes the transaction - and so multi-instance deployments never duplicate sends) scans `WHERE sent_at IS NULL AND fire_at <= now()` every 5 minutes, aligned to wall-clock 5-minute boundaries (xx:00, xx:05, xx:10 ...). The SELECT runs inside the locked transaction; delivery happens outside the transaction so the slow web-push HTTPS calls do not tie up a pool connection. For each due row it calls `webpush.sendNotification(subscription, JSON.stringify({ type: 'task_reminder', task_id }))`.
 
 Wall-clock alignment matters because it locks down the delivery window. The client floors each `fire_at` down to the previous 5-minute mark before sending; the cron then dispatches at that same wall-clock mark with only the small jitter of scan + dispatch. Net result: a reminder configured for 14:48 (15 minutes before a 15:03 deadline) is bucketed to 14:45 and dispatched around 14:45 - up to 3 minutes earlier than the user's intended fire time, never later. Without the wall-clock alignment, a phase-shifted 5-minute interval could just as easily fire the same reminder at 14:49 (a minute late), which is exactly what we want to rule out for a productivity tool.
 
