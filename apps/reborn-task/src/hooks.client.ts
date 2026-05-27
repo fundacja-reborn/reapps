@@ -200,6 +200,22 @@ if (!isPublicShareRoute) {
 						DEFAULT_NOTIFICATION_ALL_DAY_TIME
 					} = await import('$lib/services/push-notification.service');
 
+					// Best-effort idempotent re-subscribe at app start. `subscribe()` is
+					// internally guarded against permission!=granted, so this is a no-op
+					// for users who never enabled notifications. The important case it
+					// fixes: VAPID key rotation on the server invalidates every existing
+					// subscription (FCM returns 403); `subscribe()` detects the
+					// applicationServerKey mismatch and transparently re-subscribes the
+					// browser under the current key, saving the new subscription to the
+					// server. Without this call the recovery would only trigger when the
+					// user visits /settings/notifications - we want it for every active
+					// session so silent breakage self-heals.
+					if (Notification.permission === 'granted') {
+						pushNotificationService.subscribe().catch((err) => {
+							logger.warn('Startup push re-subscribe failed:', err);
+						});
+					}
+
 					const readTimingOptions = async () => ({
 						leadMinutes:
 							(await getSetting('notification_lead_minutes')) ?? DEFAULT_NOTIFICATION_LEAD_MINUTES,
