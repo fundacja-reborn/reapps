@@ -1,6 +1,6 @@
 # Push Notifications - Zero Knowledge Design
 
-This document describes the design of the server-assisted push notification pipeline shipped in Reborn Task in November 2026 (release v0.26.0). It covers what the user gets, what the server learns, what the server still cannot see, and how to opt out.
+This document describes the design of the server-assisted push notification pipeline shipped in Reborn Task (release v0.26.0+). It covers what the user gets, what the server learns, what the server still cannot see, and how to opt out.
 
 Push notifications are the single feature in Reborn Apps where the server is given a small, deliberate window into user metadata. Every other feature is fully Zero Knowledge. This document explains the trade-off in full so that users with elevated threat models can make an informed choice.
 
@@ -128,12 +128,6 @@ The encrypted local task store is the only place the title is decrypted. The cle
 ### What this trades, and why
 
 This is the single feature in Reborn Apps where the server learns metadata that it does not strictly need for synchronisation. Every other feature is designed so that the server is a "dumb store" of ciphertext; here we deliberately admit a small leak (reminder fire times, 5-minute precision) in exchange for the ability to wake a device when the application is closed.
-
-Three options were considered before settling on this design:
-
-1. **Local-only delivery** (status quo before v0.26.0). Strictest Zero Knowledge, but reminders only fire while the app is in foreground. Most users perceived this as the feature being broken.
-2. **Server stores encrypted push payloads** including title/body. Eliminates `task_id <-> fire_at` correlation but still leaks `fire_at`, costs more bandwidth (re-upload per title change), and the dominant leak (`fire_at`) is unchanged. Not selected.
-3. **Server learns task title in plaintext to compose the push payload.** Trivial to implement but breaks the cardinal Zero Knowledge rule. Rejected outright.
 
 The chosen design (server learns only `(task_id, fire_at)`, with `fire_at` bucketed to 5 minutes, behind an opt-in-by-default toggle) is the smallest deviation from full Zero Knowledge that still solves the user-facing problem. The bucket size, the toggle default, and the table retention policy are the three knobs that can be re-tuned in future without changing the architecture.
 
