@@ -1,3 +1,23 @@
+import { z } from 'zod';
+
+// Disable Zod's JIT-compiled validators globally. Zod v4's `allowsEval`
+// feature-probe calls `new Function("")` inside try/catch to decide whether
+// to compile validators via the Function constructor. Browsers report the
+// caught throw as a CSP violation even though it never propagates - so under
+// our strict `script-src` (no 'unsafe-eval'), every app start emits a
+// `Content-Security-Policy: blocked "eval"` warning into the console.
+//
+// `jitless: true` skips the probe entirely; Zod falls back to interpreted
+// validators. Delta is sub-millisecond for our throughput (API request
+// validation via `validateBody`, IDB sync schemas) and worth the trade for
+// a clean console + zero `'unsafe-eval'` in CSP.
+//
+// Must run BEFORE any schema validates input; configured here so every
+// importer of `@reborn/types` triggers the side effect before reaching any
+// `z.*Schema` export. Upstream context: zod/v4/core/util.ts:allowsEval,
+// issues zod#4461 / zod#5414.
+z.config({ jitless: true });
+
 // Base types
 export * from './base';
 export * from './common';
