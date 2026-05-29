@@ -41,7 +41,11 @@ const config = {
 			mode: 'nonce',
 			directives: {
 				'default-src': ['self'],
-				'script-src': ['self', 'nonce', 'wasm-unsafe-eval'],
+				// SvelteKit auto-injects `'nonce-{nonce}'` because of `mode: 'nonce'`
+				// above. Do NOT include literal `'nonce'` here - it gets passed through
+				// as a bare token, which browsers interpret as the hostname `https://nonce`
+				// (harmless but pollutes the CSP and confuses debugging in Firefox).
+				'script-src': ['self', 'wasm-unsafe-eval'],
 				'style-src': ['self', 'unsafe-inline'],
 				'img-src': ['self', 'data:'],
 				'font-src': ['self', 'data:'],

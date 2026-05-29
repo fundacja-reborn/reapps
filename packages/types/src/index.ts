@@ -1,3 +1,11 @@
+// MUST stay the very first import. Configures Zod's `jitless: true` BEFORE
+// any `z.object(...)` schema is constructed in the re-exports below; if the
+// order slips, the $ZodObject constructor reads `allowsEval.value` and fires
+// a `new Function("")` CSP probe that browsers flag as a violation. See
+// `./jitless.ts` for the rationale and the ESM-hoisting trick that makes
+// this work.
+import './jitless';
+
 // Base types
 export * from './base';
 export * from './common';
