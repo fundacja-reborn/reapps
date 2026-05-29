@@ -1,3 +1,9 @@
+## 0.26.5 (2026-05-29)
+
+### 🩹 Fixes
+
+- **csp:** zod jitless ([#224](https://github.com/fundacja-reborn/reapps/pull/224))
+
 ## 0.26.4 (2026-05-27)
 
 ### 🩹 Fixes
