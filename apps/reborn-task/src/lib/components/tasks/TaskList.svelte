@@ -247,7 +247,8 @@
 		<div class="flex justify-center py-8">
 			<LoadingSpinner />
 		</div>
-	{:else if tasks.length === 0}
+	{:else}
+		{#if tasks.length === 0}
 		<div class="text-center py-12 text-muted-foreground">
 			{#if $sessionExpired}
 				<p>{$t('auth.session.empty_no_data')}</p>
@@ -255,7 +256,7 @@
 				<p>{$t('task.empty_list')}</p>
 			{/if}
 		</div>
-	{:else}
+		{:else}
 		<!-- Lista zadań aktywnych -->
 		{#if activeTasks.length === 0}
 			<div class="text-center py-8 text-muted-foreground">
@@ -289,12 +290,15 @@
 			</div>
 		{/if}
 
+		{/if}
+
 		<!-- Quick add task -->
 		<div class="mt-3">
 			<QuickAddTask bind:this={quickAddRef} {listId} />
 		</div>
 
 		<!-- Sekcja zadań wykonanych (jeśli istnieją) -->
+		{#if tasks.length > 0}
 		{#if completedTasks.length > 0}
 			<div class="mt-6">
 				<Accordion type="single">
@@ -340,6 +344,7 @@
 					</AccordionItem>
 				</Accordion>
 			</div>
+		{/if}
 		{/if}
 	{/if}
 </div>
