@@ -34,6 +34,8 @@
 	let inputEl = $state<HTMLTextAreaElement | null>(null);
 	let selectedListId = $state('');
 	let isFocused = $state(false);
+	let listSelectOpen = $state(false);
+	let blurHideTimer: ReturnType<typeof setTimeout> | undefined;
 
 	// Keep selectedListId in sync when listId prop changes, or default list loads
 	$effect(() => {
@@ -60,8 +62,10 @@
 		}
 	});
 
-	// Show list selector row only when input is focused or has content
-	let showListRow = $derived(showListSelect && (isFocused || title.length > 0));
+	// Show list selector while typing/focused, or while the list dropdown is open
+	let showListRow = $derived(
+		showListSelect && (isFocused || title.length > 0 || listSelectOpen)
+	);
 
 	export function focus() {
 		inputEl?.focus();
@@ -146,13 +150,18 @@
 	}
 
 	function handleFocus() {
+		if (blurHideTimer !== undefined) {
+			clearTimeout(blurHideTimer);
+			blurHideTimer = undefined;
+		}
 		isFocused = true;
 	}
 
 	function handleBlur() {
-		// Delay to allow click on dropdown before hiding
-		setTimeout(() => {
-			isFocused = false;
+		if (blurHideTimer !== undefined) clearTimeout(blurHideTimer);
+		blurHideTimer = setTimeout(() => {
+			blurHideTimer = undefined;
+			if (!listSelectOpen) isFocused = false;
 		}, 200);
 	}
 </script>
@@ -178,10 +187,12 @@
 	</div>
 
 	{#if showListRow && $activeLists.length > 0}
-		<div class="flex items-center gap-2 pl-1">
+		<!-- preventDefault keeps textarea focused so the row is not unmounted mid-click -->
+		<div class="flex items-center gap-2 pl-1" onmousedown={(e) => e.preventDefault()}>
 			<span class="text-xs text-muted-foreground shrink-0">{$t('task.quick_add.add_to_list')}</span>
 			<Select
 				type="single"
+				bind:open={listSelectOpen}
 				value={selectedListId}
 				onValueChange={(v) => (selectedListId = v)}
 			>
