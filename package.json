@@ -19,7 +19,8 @@
     "release:dry": "node scripts/release.mjs --dry-run",
     "release:patch": "node scripts/release.mjs --specifier=patch",
     "release:minor": "node scripts/release.mjs --specifier=minor",
-    "release:major": "node scripts/release.mjs --specifier=major"
+    "release:major": "node scripts/release.mjs --specifier=major",
+    "release:finalize": "node scripts/release.mjs --finalize"
   },
   "private": true,
   "devDependencies": {
