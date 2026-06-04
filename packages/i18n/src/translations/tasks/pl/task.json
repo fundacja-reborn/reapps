@@ -232,6 +232,7 @@
   "empty_state": "Brak zadań",
   "quick_add": {
     "placeholder": "Dodaj zadanie...",
+    "submit": "Dodaj zadanie",
     "add_to_list": "Dodaj do:",
     "hint_today": "Zadanie z dzisiejszą datą",
     "hint_starred": "Zadanie z gwiazdką",

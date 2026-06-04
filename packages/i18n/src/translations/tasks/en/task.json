@@ -232,6 +232,7 @@
   "empty_state": "No tasks",
   "quick_add": {
     "placeholder": "Add a task...",
+    "submit": "Add task",
     "add_to_list": "Add to:",
     "hint_today": "Task with today's date",
     "hint_starred": "Starred task",

@@ -232,6 +232,7 @@
   "empty_state": "Sin tareas",
   "quick_add": {
     "placeholder": "Añadir una tarea...",
+    "submit": "Añadir tarea",
     "add_to_list": "Añadir a:",
     "hint_today": "Tarea con la fecha de hoy",
     "hint_starred": "Tarea destacada",

@@ -232,6 +232,7 @@
   "empty_state": "Aucune t\u00e2che",
   "quick_add": {
     "placeholder": "Ajouter une t\u00e2che...",
+    "submit": "Ajouter la t\u00e2che",
     "add_to_list": "Ajouter \u00e0 :",
     "hint_today": "T\u00e2che avec la date d'aujourd'hui",
     "hint_starred": "T\u00e2che favorite",
