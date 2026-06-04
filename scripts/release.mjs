@@ -33,6 +33,20 @@ import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// In a sandbox (e.g. Claude Code) the network is tunneled through a proxy
+// (HTTPS_PROXY). Node's fetch (undici) ignores it by default and tries a direct
+// connect, which the sandbox blocks (EPERM) - both for our GitHub API calls and
+// nx's changelog client. Route fetch through the proxy when one is set; a no-op
+// outside a sandbox. Must run before any fetch (nx's client is created later).
+if (process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.https_proxy || process.env.http_proxy) {
+	try {
+		const { setGlobalDispatcher, EnvHttpProxyAgent } = await import('undici');
+		setGlobalDispatcher(new EnvHttpProxyAgent());
+	} catch {
+		// undici not resolvable - fetch stays direct (fine outside a sandbox)
+	}
+}
+
 // fileURLToPath (not url.pathname) so spaces in the repo path are decoded from
 // %20 to real spaces - otherwise cwd points to a nonexistent dir and every
 // spawned git call fails with ENOENT on paths like "Projekty Dev".
