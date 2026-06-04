@@ -1,3 +1,10 @@
+## 0.26.6 (2026-06-04)
+
+### 🩹 Fixes
+
+- **deps:** bump dompurify to 3.4.8 (XSS, GHSA-87xg-pxx2-7hvx) ([#229](https://github.com/fundacja-reborn/reapps/pull/229))
+- **task:** quick-add fixes for empty lists, list selector, and submit UX ([#228](https://github.com/fundacja-reborn/reapps/pull/228), [#227](https://github.com/fundacja-reborn/reapps/issues/227))
+
 ## 0.26.5 (2026-05-29)
 
 ### 🩹 Fixes
