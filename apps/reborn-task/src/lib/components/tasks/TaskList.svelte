@@ -247,21 +247,21 @@
 		<div class="flex justify-center py-8">
 			<LoadingSpinner />
 		</div>
-	{:else if tasks.length === 0}
-		<div class="text-center py-12 text-muted-foreground">
-			{#if $sessionExpired}
-				<p>{$t('auth.session.empty_no_data')}</p>
-			{:else}
-				<p>{$t('task.empty_list')}</p>
-			{/if}
-		</div>
 	{:else}
-		<!-- Lista zadań aktywnych -->
-		{#if activeTasks.length === 0}
+		{#if tasks.length === 0}
+			<div class="text-center py-12 text-muted-foreground">
+				{#if $sessionExpired}
+					<p>{$t('auth.session.empty_no_data')}</p>
+				{:else}
+					<p>{$t('task.empty_list')}</p>
+				{/if}
+			</div>
+		{:else if activeTasks.length === 0}
 			<div class="text-center py-8 text-muted-foreground">
 				<p>{$t('taskList.no_active_tasks')}</p>
 			</div>
 		{:else}
+			<!-- Lista zadań aktywnych -->
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<div
 				class="space-y-2"
@@ -289,7 +289,10 @@
 			</div>
 		{/if}
 
-		<!-- Quick add task -->
+		<!-- Quick add - renderowany też dla pustej listy (pierwsze zadanie).
+		     Celowo widoczny także przy wygasłej sesji: master key jest zachowany,
+		     więc zapis idzie do IndexedDB i synchronizuje się po re-auth (offline-first,
+		     patrz 31-session-expiry-handling.md - nie blokujemy pracy lokalnej). -->
 		<div class="mt-3">
 			<QuickAddTask bind:this={quickAddRef} {listId} />
 		</div>
