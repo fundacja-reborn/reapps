@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
 	import { Plus } from '@lucide/svelte';
+	import { onDestroy } from 'svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { taskOperationsService } from '$lib/services/task-operations.service';
 	import { toastStore } from '@reborn/ui';
@@ -34,6 +35,8 @@
 	let inputEl = $state<HTMLTextAreaElement | null>(null);
 	let selectedListId = $state('');
 	let isFocused = $state(false);
+	let listSelectOpen = $state(false);
+	let blurHideTimer: ReturnType<typeof setTimeout> | undefined;
 
 	// Keep selectedListId in sync when listId prop changes, or default list loads
 	$effect(() => {
@@ -60,8 +63,12 @@
 		}
 	});
 
-	// Show list selector row only when input is focused or has content
-	let showListRow = $derived(showListSelect && (isFocused || title.length > 0));
+	// Show the list selector row while typing/focused, or while its dropdown is
+	// open. Clicking into the dropdown blurs the textarea, so without the
+	// listSelectOpen term the row would unmount mid-selection.
+	let showListRow = $derived(
+		showListSelect && (isFocused || title.length > 0 || listSelectOpen)
+	);
 
 	export function focus() {
 		inputEl?.focus();
@@ -146,15 +153,28 @@
 	}
 
 	function handleFocus() {
+		// A refocus cancels any pending hide scheduled by a previous blur.
+		if (blurHideTimer !== undefined) {
+			clearTimeout(blurHideTimer);
+			blurHideTimer = undefined;
+		}
 		isFocused = true;
 	}
 
 	function handleBlur() {
-		// Delay to allow click on dropdown before hiding
-		setTimeout(() => {
-			isFocused = false;
+		// Defer hiding so a click landing on the list selector (or its open
+		// dropdown) does not collapse the row mid-interaction. Keep the row while
+		// the dropdown is open; the next genuine blur collapses it.
+		if (blurHideTimer !== undefined) clearTimeout(blurHideTimer);
+		blurHideTimer = setTimeout(() => {
+			blurHideTimer = undefined;
+			if (!listSelectOpen) isFocused = false;
 		}, 200);
 	}
+
+	onDestroy(() => {
+		if (blurHideTimer !== undefined) clearTimeout(blurHideTimer);
+	});
 </script>
 
 <div class="flex flex-col gap-1.5 {className}">
@@ -182,6 +202,7 @@
 			<span class="text-xs text-muted-foreground shrink-0">{$t('task.quick_add.add_to_list')}</span>
 			<Select
 				type="single"
+				bind:open={listSelectOpen}
 				value={selectedListId}
 				onValueChange={(v) => (selectedListId = v)}
 			>
