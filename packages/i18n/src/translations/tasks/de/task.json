@@ -232,6 +232,7 @@
   "empty_state": "Keine Aufgaben",
   "quick_add": {
     "placeholder": "Aufgabe hinzuf\u00fcgen...",
+    "submit": "Aufgabe hinzuf\u00fcgen",
     "add_to_list": "Hinzuf\u00fcgen zu:",
     "hint_today": "Aufgabe mit heutigem Datum",
     "hint_starred": "Markierte Aufgabe",

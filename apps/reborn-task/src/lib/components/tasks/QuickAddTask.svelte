@@ -6,7 +6,8 @@
 	Supports contextual metadata: section-aware auto-set of due_date, is_starred, etc.
 -->
 <script lang="ts">
-	import { Plus } from '@lucide/svelte';
+	import { Plus, ArrowUp } from '@lucide/svelte';
+	import { onDestroy } from 'svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { taskOperationsService } from '$lib/services/task-operations.service';
 	import { toastStore } from '@reborn/ui';
@@ -34,6 +35,8 @@
 	let inputEl = $state<HTMLTextAreaElement | null>(null);
 	let selectedListId = $state('');
 	let isFocused = $state(false);
+	let listSelectOpen = $state(false);
+	let blurHideTimer: ReturnType<typeof setTimeout> | undefined;
 
 	// Keep selectedListId in sync when listId prop changes, or default list loads
 	$effect(() => {
@@ -60,8 +63,15 @@
 		}
 	});
 
-	// Show list selector row only when input is focused or has content
-	let showListRow = $derived(showListSelect && (isFocused || title.length > 0));
+	// Show the list selector row while typing/focused, or while its dropdown is
+	// open. Clicking into the dropdown blurs the textarea, so without the
+	// listSelectOpen term the row would unmount mid-selection.
+	let showListRow = $derived(
+		showListSelect && (isFocused || title.length > 0 || listSelectOpen)
+	);
+
+	// Show the inline submit button (and reserve room for it) once there is text.
+	let hasContent = $derived(title.trim().length > 0);
 
 	export function focus() {
 		inputEl?.focus();
@@ -146,21 +156,34 @@
 	}
 
 	function handleFocus() {
+		// A refocus cancels any pending hide scheduled by a previous blur.
+		if (blurHideTimer !== undefined) {
+			clearTimeout(blurHideTimer);
+			blurHideTimer = undefined;
+		}
 		isFocused = true;
 	}
 
 	function handleBlur() {
-		// Delay to allow click on dropdown before hiding
-		setTimeout(() => {
-			isFocused = false;
+		// Defer hiding so a click landing on the list selector (or its open
+		// dropdown) does not collapse the row mid-interaction. Keep the row while
+		// the dropdown is open; the next genuine blur collapses it.
+		if (blurHideTimer !== undefined) clearTimeout(blurHideTimer);
+		blurHideTimer = setTimeout(() => {
+			blurHideTimer = undefined;
+			if (!listSelectOpen) isFocused = false;
 		}, 200);
 	}
+
+	onDestroy(() => {
+		if (blurHideTimer !== undefined) clearTimeout(blurHideTimer);
+	});
 </script>
 
 <div class="flex flex-col gap-1.5 {className}">
 	<div class="relative">
 		<Plus
-			class="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground pointer-events-none"
+			class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
 		/>
 		<textarea
 			bind:this={inputEl}
@@ -172,9 +195,26 @@
 			onblur={handleBlur}
 			disabled={isCreating}
 			rows={1}
-			class="w-full resize-none overflow-hidden rounded-md border bg-background py-2 pl-9 pr-3 text-sm placeholder:text-muted-foreground
-				focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+			class="block w-full resize-none overflow-hidden rounded-md border bg-background py-2 pl-9 text-sm placeholder:text-muted-foreground
+				focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 {hasContent
+				? 'pr-11'
+				: 'pr-3'}"
 		></textarea>
+		{#if hasContent}
+			<!-- Submit affordance for pointer/touch; keyboard users press Enter.
+			     preventDefault on mousedown keeps the textarea focused through the click. -->
+			<button
+				type="button"
+				onmousedown={(e) => e.preventDefault()}
+				onclick={handleSubmit}
+				disabled={isCreating}
+				aria-label={$t('task.quick_add.submit')}
+				title={$t('task.quick_add.submit')}
+				class="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 cursor-pointer"
+			>
+				<ArrowUp class="h-4 w-4" />
+			</button>
+		{/if}
 	</div>
 
 	{#if showListRow && $activeLists.length > 0}
@@ -182,8 +222,15 @@
 			<span class="text-xs text-muted-foreground shrink-0">{$t('task.quick_add.add_to_list')}</span>
 			<Select
 				type="single"
+				bind:open={listSelectOpen}
 				value={selectedListId}
-				onValueChange={(v) => (selectedListId = v)}
+				onValueChange={(v) => {
+					selectedListId = v;
+					// Hand focus back to the textarea so Enter creates the task
+					// instead of reopening the selector. bits-ui restores focus to
+					// the trigger on close, so defer past that.
+					setTimeout(() => inputEl?.focus(), 0);
+				}}
 			>
 				<SelectTrigger class="h-7 text-xs truncate flex-1 min-w-0">
 					{$activeLists.find((l) => l.id === selectedListId)?.name ??
