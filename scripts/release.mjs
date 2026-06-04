@@ -6,7 +6,7 @@
 // 1. Private manifest sync. nx release skips package.json files marked
 //    "private": true and never touches the workspace-root package.json.
 //    In this repo the root + apps + @reborn/i18n are all private, so a
-//    plain nx release leaves them stale — and apps/*/vite.config.ts injects
+//    plain nx release leaves them stale - and apps/*/vite.config.ts injects
 //    __APP_VERSION__ from the root manifest, so the UI version freezes
 //    at the old number.
 //
@@ -23,7 +23,7 @@
 //   2. If nothing releasable → exit 0.
 //   3. releaseVersion() with that specifier (gitCommit/Tag=false, stageChanges).
 //   4. Sync the four private manifests to the same version, git add them.
-//   5. releaseChangelog() — one commit + tag covering public + private bumps.
+//   5. releaseChangelog() - one commit + tag covering public + private bumps.
 import { releaseChangelog, releaseVersion } from 'nx/release/index.js';
 import { readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
@@ -31,7 +31,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // fileURLToPath (not url.pathname) so spaces in the repo path are decoded
-// from %20 to real spaces — otherwise cwd points to a nonexistent dir and
+// from %20 to real spaces - otherwise cwd points to a nonexistent dir and
 // every spawned git call fails with ENOENT on paths like "Projekty Dev".
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -59,22 +59,42 @@ function git(args) {
 	return execFileSync('git', args, { cwd: ROOT, encoding: 'utf-8' }).trim();
 }
 
-// nx.json configures `createRelease: "github"`, which requires nx to call the
-// GitHub REST API. nx reads the token from GITHUB_TOKEN/GH_TOKEN only — it does
-// not fall back to `gh auth`. When neither env var is set (typical local dev),
-// the API call 401s and nx drops into an interactive prompt that hangs
-// non-TTY runs. Fix: source the token from `gh auth token` when available.
+// nx.json configures `createRelease: "github"`, so nx calls the GitHub REST API
+// and reads its token from GITHUB_TOKEN/GH_TOKEN only. With neither set it falls
+// back to ~/.config/gh/hosts.yml; when the gh session is missing or expired that
+// file parses to undefined and nx crashes ("Cannot read properties of undefined
+// (reading 'github.com')") - even in --dry-run, which still inits the client to
+// preview the changelog.
+//
+// Per ~/.claude/CLAUDE.md this machine does NOT depend on `gh` (its keychain/
+// trustd path is unreliable under the Claude sandbox and its token expires). The
+// canonical token lives in the macOS keychain and is retrievable with the same
+// `git credential` call that `git push` and gh-helper.mjs use (per-repo via
+// useHttpPath, converting the SSH remote to https form). Source it there and
+// never touch gh. The token is never logged.
 function ensureGithubToken() {
 	if (process.env.GITHUB_TOKEN || process.env.GH_TOKEN) return;
 	try {
-		const token = execFileSync('gh', ['auth', 'token'], { encoding: 'utf-8' }).trim();
+		const remote = git(['remote', 'get-url', 'origin']);
+		const u = new URL(remote.replace(/^git@([^:]+):/, 'https://$1/'));
+		const input = `protocol=https\nhost=${u.host}\npath=${u.pathname.replace(/^\//, '')}\n\n`;
+		const out = execFileSync('git', ['-c', 'credential.useHttpPath=true', 'credential', 'fill'], {
+			cwd: ROOT,
+			input,
+			encoding: 'utf-8'
+		});
+		const token = out.match(/^password=(.+)$/m)?.[1];
 		if (token) {
-			process.env.GITHUB_TOKEN = token;
-			console.log('[release] Sourced GITHUB_TOKEN from `gh auth token`.');
+			process.env.GH_TOKEN = token;
+			console.log('[release] Sourced GitHub token from git credential (keychain).');
+			return;
 		}
-	} catch {
+		console.warn(`[release] git credential returned no token for ${u.host}.`);
+	} catch (err) {
 		console.warn(
-			'[release] No GITHUB_TOKEN/GH_TOKEN set and `gh auth token` unavailable — GitHub Release creation may fail.'
+			'[release] Could not source a GitHub token from git credential. GitHub ' +
+				'Release creation and changelog PR links may fail. Set GITHUB_TOKEN/GH_TOKEN ' +
+				'manually if needed.' + (verbose ? `\n${err}` : '')
 		);
 	}
 }
@@ -131,7 +151,7 @@ function computeSpecifierFromCommits() {
 const specifier = explicitSpecifier ?? (firstRelease ? undefined : computeSpecifierFromCommits());
 
 if (!firstRelease && !specifier) {
-	console.log('\n[release] No feat/fix/perf commits since last tag — nothing to release.');
+	console.log('\n[release] No feat/fix/perf commits since last tag - nothing to release.');
 	process.exit(0);
 }
 
@@ -152,7 +172,7 @@ const { workspaceVersion, projectsVersionData } = await releaseVersion({
 });
 
 if (!workspaceVersion) {
-	console.log('\n[release] No workspace version bump — nothing to sync.');
+	console.log('\n[release] No workspace version bump - nothing to sync.');
 	process.exit(0);
 }
 
@@ -179,7 +199,9 @@ if (!dryRun && syncedFiles.length > 0) {
 	execFileSync('git', ['add', '--', ...syncedFiles], { stdio: 'inherit', cwd: ROOT });
 }
 
-if (!dryRun) ensureGithubToken();
+// nx inits the GitHub client (and may hit the API for changelog PR/author data)
+// in dry-run too, so source a real token in both modes - a placeholder would 401.
+ensureGithubToken();
 
 await releaseChangelog({
 	dryRun,
