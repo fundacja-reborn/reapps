@@ -19,6 +19,15 @@ export {
 } from './utils/jwt';
 export type { TokenPair, TokenPayload } from './utils/jwt';
 
+// Refresh-token lifetime - single source of truth for session longevity.
+// Used by route handlers to set cookie `maxAge` and DB `expires_at` consistently.
+export {
+  REFRESH_TOKEN_TTL_DAYS,
+  REFRESH_TOKEN_TTL_SECONDS,
+  REFRESH_TOKEN_TTL_TIMESPAN,
+  refreshTokenExpiryDate
+} from './config/token-ttl';
+
 // Token blacklist utilities (server-side only)
 export { isTokenBlacklisted, getBlacklistSize, clearBlacklist } from './utils/tokenBlacklist';
 

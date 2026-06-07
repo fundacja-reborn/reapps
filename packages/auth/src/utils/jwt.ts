@@ -7,13 +7,18 @@ import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { createLogger } from '@reborn/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { isTokenBlacklisted, blacklistToken } from './tokenBlacklist';
+import { REFRESH_TOKEN_TTL_TIMESPAN } from '../config/token-ttl';
 
 const logger = createLogger('JWTUtils');
 
-// JWT configuration
+// JWT configuration.
+// `refreshTokenExpiry` derives from the shared refresh-token TTL (see
+// ../config/token-ttl). Note this JWT `exp` is cosmetic for the refresh flow -
+// `handleRefreshToken` never verifies the refresh token as a JWT - but we keep
+// it in sync so the access/refresh timing config stays coherent.
 const JWT_CONFIG = {
   accessTokenExpiry: '15m',
-  refreshTokenExpiry: '7d',
+  refreshTokenExpiry: REFRESH_TOKEN_TTL_TIMESPAN,
   issuer: 'reborn-apps',
   audience: 'reborn-users'
 };

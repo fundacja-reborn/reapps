@@ -7,6 +7,7 @@ import {
   extractTokenFromHeader,
   getTokenConfig
 } from '../utils/jwt';
+import { REFRESH_TOKEN_TTL_TIMESPAN } from '../config/token-ttl';
 
 // Mock environment variable
 beforeEach(() => {
@@ -161,7 +162,9 @@ describe('JWT Utils', () => {
       expect(config).toHaveProperty('accessTokenExpiry');
       expect(config).toHaveProperty('refreshTokenExpiry');
       expect(config.accessTokenExpiry).toBe('15m');
-      expect(config.refreshTokenExpiry).toBe('7d');
+      // Refresh-token TTL derives from the shared constant (single source of truth).
+      expect(config.refreshTokenExpiry).toBe(REFRESH_TOKEN_TTL_TIMESPAN);
+      expect(REFRESH_TOKEN_TTL_TIMESPAN).toBe('30d');
     });
   });
 

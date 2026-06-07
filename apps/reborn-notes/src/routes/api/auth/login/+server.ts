@@ -1,6 +1,11 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
-import { handleLogin, createDefaultHandlerOptions } from '@reborn/auth/server';
+import {
+  handleLogin,
+  createDefaultHandlerOptions,
+  REFRESH_TOKEN_TTL_SECONDS,
+  refreshTokenExpiryDate
+} from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 import { loginLockout } from '$lib/server/rate-limit';
 import { createLogger } from '@reborn/utils';
@@ -104,15 +109,14 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7,
+        maxAge: REFRESH_TOKEN_TTL_SECONDS,
         path: '/'
       });
 
       // Track session
       if (result.data.user?.id) {
         try {
-          const expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + 7);
+          const expiresAt = refreshTokenExpiryDate();
           const session = await prisma.userSession.create({
             data: {
               user_id: result.data.user.id,
@@ -132,7 +136,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: REFRESH_TOKEN_TTL_SECONDS,
             path: '/'
           });
 

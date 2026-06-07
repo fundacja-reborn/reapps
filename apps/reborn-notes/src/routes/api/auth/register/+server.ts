@@ -1,6 +1,10 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
-import { handleE2ERegister, createDefaultHandlerOptions } from '@reborn/auth/server';
+import {
+  handleE2ERegister,
+  createDefaultHandlerOptions,
+  REFRESH_TOKEN_TTL_SECONDS
+} from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 import { createLogger } from '@reborn/utils';
 
@@ -29,7 +33,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
-          maxAge: 60 * 60 * 24 * 7, // 7 days
+          maxAge: REFRESH_TOKEN_TTL_SECONDS,
           path: '/'
         });
       }

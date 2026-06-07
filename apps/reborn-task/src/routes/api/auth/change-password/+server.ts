@@ -1,7 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createLogger } from '@reborn/utils';
-import { verifyToken, blacklistAccessToken, generateTokens } from '@reborn/auth/server';
+import {
+	verifyToken,
+	blacklistAccessToken,
+	generateTokens,
+	REFRESH_TOKEN_TTL_SECONDS,
+	refreshTokenExpiryDate
+} from '@reborn/auth/server';
 import { hashPassword, verifyPassword } from '@reborn/crypto';
 import { prisma } from '@reborn/database';
 import { changePasswordLockout } from '$lib/server/rate-limit';
@@ -95,7 +101,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'lax',
-			maxAge: 60 * 60 * 24 * 7, // 7 days
+			maxAge: REFRESH_TOKEN_TTL_SECONDS,
 			path: '/'
 		});
 
@@ -105,7 +111,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				token: newTokens.refreshToken,
 				user_id: tokenData.userId,
 				family_id: crypto.randomUUID(),
-				expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+				expires_at: refreshTokenExpiryDate()
 			}
 		});
 

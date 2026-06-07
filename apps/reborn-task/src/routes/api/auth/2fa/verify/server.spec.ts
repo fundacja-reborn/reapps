@@ -25,7 +25,9 @@ vi.mock('@reborn/auth/server', () => ({
 	generateTokens: vi.fn().mockResolvedValue({
 		accessToken: 'mock-access',
 		refreshToken: 'mock-refresh'
-	})
+	}),
+	REFRESH_TOKEN_TTL_SECONDS: 60 * 60 * 24 * 30,
+	refreshTokenExpiryDate: () => new Date(Date.now() + 60 * 60 * 24 * 30 * 1000)
 }));
 
 vi.mock('@reborn/utils', () => ({
