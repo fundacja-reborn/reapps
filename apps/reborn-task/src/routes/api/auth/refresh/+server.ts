@@ -1,7 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createLogger } from '@reborn/utils';
-import { handleRefreshToken, createDefaultHandlerOptions } from '@reborn/auth/server';
+import {
+	handleRefreshToken,
+	createDefaultHandlerOptions,
+	REFRESH_TOKEN_TTL_SECONDS
+} from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 
 const logger = createLogger('AuthRefresh');
@@ -42,7 +46,7 @@ export const POST: RequestHandler = async ({ cookies }) => {
 				httpOnly: true,
 				secure: process.env.NODE_ENV === 'production',
 				sameSite: 'lax',
-				maxAge: 60 * 60 * 24 * 7, // 7 days
+				maxAge: REFRESH_TOKEN_TTL_SECONDS,
 				path: '/'
 			});
 

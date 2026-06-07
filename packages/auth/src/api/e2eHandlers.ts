@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { RegisterResult, AuthUser } from '../types';
 import type { HandlerOptions, ApiResponse } from './handlers';
 import { generateTokens as generateJwtTokens } from '../utils/jwt';
+import { refreshTokenExpiryDate } from '../config/token-ttl';
 import { verifySignedChallenge, verifyPowSolution } from '../utils/pow';
 import type { SignedPowChallenge } from '../utils/pow';
 
@@ -139,8 +140,7 @@ export async function handleE2ERegister(
     const { accessToken, refreshToken } = await generateTokensFn(user.id);
 
     // Save refresh token to database
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+    const expiresAt = refreshTokenExpiryDate();
 
     await dbClient.refreshToken.create({
       data: {

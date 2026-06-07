@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createLogger } from '@reborn/utils';
-import { generateTokens } from '@reborn/auth/server';
+import { generateTokens, REFRESH_TOKEN_TTL_SECONDS, refreshTokenExpiryDate } from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 import { v4 as uuidv4 } from 'uuid';
 import * as OTPAuth from 'otpauth';
@@ -100,8 +100,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		const { accessToken, refreshToken } = await generateTokens(user.id);
 
 		// Save refresh token
-		const expiresAt = new Date();
-		expiresAt.setDate(expiresAt.getDate() + 7);
+		const expiresAt = refreshTokenExpiryDate();
 
 		await prisma.refreshToken.create({
 			data: {
@@ -117,7 +116,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'lax',
-			maxAge: 60 * 60 * 24 * 7,
+			maxAge: REFRESH_TOKEN_TTL_SECONDS,
 			path: '/'
 		});
 
@@ -143,7 +142,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				httpOnly: true,
 				secure: process.env.NODE_ENV === 'production',
 				sameSite: 'lax',
-				maxAge: 60 * 60 * 24 * 7,
+				maxAge: REFRESH_TOKEN_TTL_SECONDS,
 				path: '/'
 			});
 		} catch {

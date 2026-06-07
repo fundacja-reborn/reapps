@@ -17,6 +17,7 @@ import {
   verifyToken as verifyJwtToken,
   blacklistAccessToken
 } from '../utils/jwt';
+import { refreshTokenExpiryDate } from '../config/token-ttl';
 import type { LoginResult, RegisterResult, AuthUser } from '../types';
 
 const logger = createLogger('AuthAPIHandlers');
@@ -145,8 +146,7 @@ export async function handleRegister(
     const { accessToken, refreshToken } = await generateTokensFn(user.id);
 
     // Save refresh token to database with a new token family
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+    const expiresAt = refreshTokenExpiryDate();
 
     await dbClient.refreshToken.create({
       data: {
@@ -268,8 +268,7 @@ export async function handleLogin(
     const { accessToken, refreshToken } = await generateTokensFn(user.id);
 
     // Save refresh token to database with a new token family
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+    const expiresAt = refreshTokenExpiryDate();
 
     await dbClient.refreshToken.create({
       data: {
@@ -513,8 +512,7 @@ export async function handleRefreshToken(
   }
 
   // Save new refresh token in the same family, preserving session link
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+  const expiresAt = refreshTokenExpiryDate();
 
   await dbClient.refreshToken.create({
     data: {
