@@ -1,3 +1,13 @@
+## 0.27.0 (2026-06-07)
+
+### 🚀 Features
+
+- **auth:** extend refresh-token lifetime to 30 days ([#236](https://github.com/fundacja-reborn/reapps/pull/236))
+
+### 🩹 Fixes
+
+- **deps:** bump hono override to 4.12.23 to clear moderate advisories ([#235](https://github.com/fundacja-reborn/reapps/pull/235))
+
 ## 0.26.6 (2026-06-04)
 
 ### 🩹 Fixes
