@@ -121,7 +121,7 @@ export async function generateTokens(userId: string, sessionId?: string): Promis
     return { accessToken, refreshToken };
   } catch (error) {
     logger.error('Token generation failed:', error);
-    throw new Error('Failed to generate tokens');
+    throw new Error('Failed to generate tokens', { cause: error });
   }
 }
 
@@ -207,7 +207,7 @@ export async function verifyToken(
 export async function generateSingleUseToken(
   userId: string,
   purpose: string,
-  expiryMinutes: number = 30
+  expiryMinutes = 30
 ): Promise<string> {
   try {
     const secret = getJwtSecret();
@@ -228,7 +228,7 @@ export async function generateSingleUseToken(
     return token;
   } catch (error) {
     logger.error('Single-use token generation failed:', error);
-    throw new Error('Failed to generate single-use token');
+    throw new Error('Failed to generate single-use token', { cause: error });
   }
 }
 

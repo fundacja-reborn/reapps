@@ -427,7 +427,7 @@ export class CryptoManager {
         window.sessionStorage.removeItem(this.CRYPTO_VERIFIED_KEY);
       }
 
-      throw new Error('Encryption verification failed');
+      throw new Error('Encryption verification failed', { cause: error });
     }
   }
 
@@ -451,7 +451,7 @@ export class CryptoManager {
       return key;
     } catch (error) {
       logger.error('Error generating master key', error);
-      throw new Error('Failed to generate master key');
+      throw new Error('Failed to generate master key', { cause: error });
     }
   }
 
@@ -559,7 +559,7 @@ export class CryptoManager {
       };
     } catch (error) {
       logger.error('Error encrypting master key', error);
-      throw new Error('Failed to encrypt master key');
+      throw new Error('Failed to encrypt master key', { cause: error });
     }
   }
 
@@ -604,7 +604,7 @@ export class CryptoManager {
       return masterKey;
     } catch (error) {
       logger.error('Error decrypting master key', error);
-      throw new Error('Failed to decrypt master key');
+      throw new Error('Failed to decrypt master key', { cause: error });
     }
   }
 
@@ -630,7 +630,7 @@ export class CryptoManager {
       };
     } catch (error) {
       logger.error('Error encrypting data', error);
-      throw new Error('Failed to encrypt data');
+      throw new Error('Failed to encrypt data', { cause: error });
     }
   }
 
@@ -662,7 +662,7 @@ export class CryptoManager {
       )) as T | string;
     } catch (error) {
       logger.error('Error decrypting data', error);
-      throw new Error('Failed to decrypt data');
+      throw new Error('Failed to decrypt data', { cause: error });
     }
   }
 
@@ -779,7 +779,7 @@ export class CryptoManager {
       logger.debug('CryptoManager initialized with key');
     } catch (error) {
       logger.error('Failed to initialize with key:', error);
-      throw new Error('Failed to initialize CryptoManager with key');
+      throw new Error('Failed to initialize CryptoManager with key', { cause: error });
     }
   }
 
@@ -804,7 +804,7 @@ export class CryptoManager {
       return null;
     } catch (error) {
       logger.error('Failed to export current master key:', error);
-      throw new Error('Failed to export master key');
+      throw new Error('Failed to export master key', { cause: error });
     }
   }
 

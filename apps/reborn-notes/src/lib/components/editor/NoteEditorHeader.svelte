@@ -25,6 +25,7 @@
   let {
     isMobile,
     activeTrash,
+    // eslint-disable-next-line no-useless-assignment -- $bindable prop default (set by parent via bind:), not dead
     viewMode = $bindable('edit'),
     effectiveViewMode,
     historyMode = $bindable<HistoryMode>('closed'),

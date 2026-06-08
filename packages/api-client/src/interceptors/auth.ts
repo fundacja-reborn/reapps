@@ -4,7 +4,7 @@ import type { RequestConfig, RequestInterceptor } from '../types';
  * Auth interceptor to add authorization headers
  */
 export class AuthInterceptor implements RequestInterceptor {
-  private currentUrl: string = '';
+  private currentUrl = '';
 
   setCurrentUrl(url: string): void {
     this.currentUrl = url;

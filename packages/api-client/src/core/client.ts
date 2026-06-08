@@ -45,12 +45,12 @@ export class ApiClient {
       headers: config.headers || {},
       onRequest: config.onRequest || ((c) => c),
       onResponse: config.onResponse || ((r) => r),
-      onError: config.onError || (() => {}),
+      onError: config.onError || (() => {/* no-op default */}),
       // Default: no refresh handler installed → treat 401s as transient (no
       // retry, no session-expired UI). Apps wire `authFetch.refresh()` in
       // through the public constructor.
       onUnauthorized: config.onUnauthorized || (async () => 'transient'),
-      onSessionExpired: config.onSessionExpired || (() => {})
+      onSessionExpired: config.onSessionExpired || (() => {/* no-op default */})
     };
 
     // Initialize utilities
@@ -471,12 +471,12 @@ export class ApiClient {
   private extractEntityInfo(url: string, config: RequestConfig): Partial<QueuedRequest> {
     // Extract entity type and ID from URL patterns
     const patterns = [
-      { regex: /\/tasks\/([^\/]+)/, type: 'task' as EntityType },
-      { regex: /\/tasklists\/([^\/]+)/, type: 'task_list' as EntityType },
-      { regex: /\/subtasks\/([^\/]+)/, type: 'sub_task' as EntityType },
-      { regex: /\/notes\/([^\/]+)/, type: 'note' as EntityType },
-      { regex: /\/folders\/([^\/]+)/, type: 'folder' as EntityType },
-      { regex: /\/tags\/([^\/]+)/, type: 'tag' as EntityType }
+      { regex: /\/tasks\/([^/]+)/, type: 'task' as EntityType },
+      { regex: /\/tasklists\/([^/]+)/, type: 'task_list' as EntityType },
+      { regex: /\/subtasks\/([^/]+)/, type: 'sub_task' as EntityType },
+      { regex: /\/notes\/([^/]+)/, type: 'note' as EntityType },
+      { regex: /\/folders\/([^/]+)/, type: 'folder' as EntityType },
+      { regex: /\/tags\/([^/]+)/, type: 'tag' as EntityType }
     ];
 
     for (const pattern of patterns) {

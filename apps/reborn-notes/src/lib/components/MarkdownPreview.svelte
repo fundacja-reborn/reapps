@@ -41,7 +41,9 @@
   let {
     content = '',
     class: className = '',
+    // eslint-disable-next-line no-useless-assignment -- $bindable prop default (set by parent via bind:), not dead
     scrollEl = $bindable<HTMLElement | null>(null),
+    // eslint-disable-next-line no-useless-assignment -- $bindable prop default (set by parent via bind:), not dead
     contentEl = $bindable<HTMLElement | null>(null),
     imageLoadMode = 'ask' as ImageLoadMode,
     loadAllImagesHint,
@@ -395,12 +397,14 @@
         <span class="load-all-images-hint">
           {loadAllImagesHint}
           {#if settingsLinkLabel && settingsLinkHref}
+            <!-- eslint-disable svelte/no-navigation-without-resolve (settingsLinkHref is pre-resolved by the caller) -->
             <a
               href={settingsLinkHref}
               class="load-all-images-settings-link"
               data-sveltekit-preload-data="off"
               data-sveltekit-preload-code="off"
             >
+            <!-- eslint-enable svelte/no-navigation-without-resolve -->
               {settingsLinkLabel}
             </a>
           {/if}

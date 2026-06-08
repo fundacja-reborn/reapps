@@ -445,7 +445,7 @@ describe('CryptoManager', () => {
       // setTimeout used by waitForRestore must be cleared so the warning
       // callback never runs after the race has been won. The logger emits
       // through console.log, so spy there and filter for the warning text.
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {/* swallow log output */});
 
       const newManager = new (CryptoManager as any)();
       const result = await newManager.waitForRestore();

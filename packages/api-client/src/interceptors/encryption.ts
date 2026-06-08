@@ -19,7 +19,7 @@ import { detectPlaintextLeaks, validateEncryptedPayload } from '@reborn/crypto';
  * surfacing the bug at the call site instead of leaking data.
  */
 export class EncryptionInterceptor implements RequestInterceptor {
-  private currentUrl: string = '';
+  private currentUrl = '';
 
   setCurrentUrl(url: string): void {
     this.currentUrl = url;

@@ -112,7 +112,7 @@ export async function decryptSnapshotPayload<T = unknown>(
     return decrypted as T;
   } catch (error) {
     logger.error('Snapshot payload decryption failed (wrong key or tampered ciphertext)');
-    throw new Error('Snapshot decryption failed');
+    throw new Error('Snapshot decryption failed', { cause: error });
   }
 }
 

@@ -271,7 +271,7 @@ export class IdResolver {
       logger.info(`Imported ${mappings.length} ID mappings`);
     } catch (error) {
       logger.error('Failed to import mappings:', error);
-      throw new Error('Invalid mapping data');
+      throw new Error('Invalid mapping data', { cause: error });
     }
   }
 

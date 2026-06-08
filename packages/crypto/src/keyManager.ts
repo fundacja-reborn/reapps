@@ -32,7 +32,7 @@ export async function generateMasterKeyForUser(password: string): Promise<{
     return result;
   } catch (error) {
     logger.error('Failed to generate master key for user', error);
-    throw new Error('Failed to generate master key');
+    throw new Error('Failed to generate master key', { cause: error });
   }
 }
 

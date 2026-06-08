@@ -971,9 +971,13 @@
       history.pushState({ _rn: 'app' }, '');
     }
 
+    // window carries a custom popstate handler ref that must survive re-mounts
+    type RnWindow = Window & { __rnPopstateHandler?: (e: PopStateEvent) => void };
+
     // Remove old persistent handler if re-mounting (e.g., returning from /settings)
-    if ((window as any).__rnPopstateHandler) {
-      window.removeEventListener('popstate', (window as any).__rnPopstateHandler);
+    const existingHandler = (window as RnWindow).__rnPopstateHandler;
+    if (existingHandler) {
+      window.removeEventListener('popstate', existingHandler);
     }
 
     let mounted = true;
@@ -1009,7 +1013,7 @@
       }
     }
 
-    (window as any).__rnPopstateHandler = handlePopstate;
+    (window as RnWindow).__rnPopstateHandler = handlePopstate;
     window.addEventListener('popstate', handlePopstate);
 
     function handleBeforeUnload(e: BeforeUnloadEvent) {

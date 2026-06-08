@@ -7,9 +7,9 @@ const logger = createLogger('RetryManager');
  */
 export class RetryManager {
   constructor(
-    private maxRetries: number = 3,
-    private baseDelay: number = 1000,
-    private maxDelay: number = 30000
+    private maxRetries = 3,
+    private baseDelay = 1000,
+    private maxDelay = 30000
   ) {}
 
   /**

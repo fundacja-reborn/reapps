@@ -44,7 +44,7 @@ class DatabaseManager {
     // Check current database version before opening
     try {
       const existingDb = await openDB(config.name, undefined, {
-        blocking: () => {}
+        blocking: () => {/* no-op: nothing to release on a version-change block */}
       });
       const currentVersion = existingDb.version;
       existingDb.close();
