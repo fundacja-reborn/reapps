@@ -975,8 +975,9 @@
     type RnWindow = Window & { __rnPopstateHandler?: (e: PopStateEvent) => void };
 
     // Remove old persistent handler if re-mounting (e.g., returning from /settings)
-    if ((window as RnWindow).__rnPopstateHandler) {
-      window.removeEventListener('popstate', (window as RnWindow).__rnPopstateHandler);
+    const existingHandler = (window as RnWindow).__rnPopstateHandler;
+    if (existingHandler) {
+      window.removeEventListener('popstate', existingHandler);
     }
 
     let mounted = true;
