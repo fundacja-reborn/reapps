@@ -288,6 +288,8 @@
     "link_text": "texte du lien",
     "note_editor": "Éditeur de notes",
     "markdown_preview": "Aperçu Markdown",
+    "code_copy": "Copier le code",
+    "code_copied": "Copié",
     "formatting": {
       "bold": "Gras",
       "italic": "Italique",
