@@ -300,7 +300,7 @@ We welcome community involvement! Due to the security-sensitive nature of this p
 - **Report security vulnerabilities** - see our [Security Policy](SECURITY.md) (please report privately)
 - **Improve translations** - suggest corrections or new languages via Issues
 
-> **Note:** We do not accept external pull requests. Every code change undergoes internal security review to protect the integrity of the encryption layer. If you've found a bug and know the fix, please describe it in an Issue - we'll gladly credit you.
+> **Note:** We do not accept external pull requests. Every code change undergoes internal security review to protect the integrity of the encryption layer. If you've found a bug and know the fix, please describe it in an Issue - we'll gladly credit you. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full policy and the reasoning behind it.
 
 ## Acknowledgments
 
