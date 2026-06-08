@@ -13,7 +13,7 @@ jobs:
     if: github.event.pull_request.head.repo.full_name != github.repository
     steps:
       - name: Close PR and leave comment
-        uses: actions/github-script@v9
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             const message = [
