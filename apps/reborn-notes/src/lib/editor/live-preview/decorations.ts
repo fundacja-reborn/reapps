@@ -16,6 +16,7 @@ import type { Text } from '@codemirror/state';
 import type { ImageLoadMode } from '@reborn/storage';
 import { CodeBlockWidget, LinkWidget, TaskCheckboxWidget } from './widgets';
 import { ImageWidget, type ImageWidgetLabels, getLoadedImages } from './image-widget';
+import type { CodeCopyLabels } from './code-copy';
 import { TableWidget } from './table-widget';
 import { parseTable } from './table-parse';
 
@@ -27,11 +28,13 @@ import { parseTable } from './table-parse';
 export interface BuildDecorationsOptions {
   imageLoadMode: ImageLoadMode;
   imageLabels: ImageWidgetLabels;
+  codeLabels: CodeCopyLabels;
 }
 
 const DEFAULT_OPTIONS: BuildDecorationsOptions = {
   imageLoadMode: 'ask',
-  imageLabels: { load: 'Load image', base64Blocked: 'Embedded images are not supported' }
+  imageLabels: { load: 'Load image', base64Blocked: 'Embedded images are not supported' },
+  codeLabels: { copy: 'Copy code', copied: 'Copied' }
 };
 
 /**
@@ -284,7 +287,7 @@ export function buildDecorations(
           const code = extractCodeText(nodeRef.node, doc);
           ranges.push(
             Decoration.replace({
-              widget: new CodeBlockWidget(code, info),
+              widget: new CodeBlockWidget(code, info, options.codeLabels),
               block: true
             }).range(startLine.from, endLine.to)
           );

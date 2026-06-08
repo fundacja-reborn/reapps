@@ -26,6 +26,7 @@ import {
 import { livePreviewTheme } from './theme';
 import { codeLanguages } from './code-languages';
 import { loadedImagesField, type ImageWidgetLabels } from './image-widget';
+import type { CodeCopyLabels } from './code-copy';
 
 /**
  * Runtime options for the Live Preview extension. The Compartment in
@@ -36,6 +37,8 @@ export interface LivePreviewOptions {
   imageLoadMode?: ImageLoadMode;
   /** i18n labels used inside DOM widgets (cannot read Svelte stores there). */
   imageLabels?: ImageWidgetLabels;
+  /** i18n labels for the fenced-code copy button. */
+  codeLabels?: CodeCopyLabels;
 }
 
 const DEFAULT_LABELS: ImageWidgetLabels = {
@@ -43,10 +46,16 @@ const DEFAULT_LABELS: ImageWidgetLabels = {
   base64Blocked: 'Embedded images are not supported'
 };
 
+const DEFAULT_CODE_LABELS: CodeCopyLabels = {
+  copy: 'Copy code',
+  copied: 'Copied'
+};
+
 export function createLivePreviewExtension(options: LivePreviewOptions = {}): Extension {
   const field = createLivePreviewField({
     imageLoadMode: options.imageLoadMode ?? 'ask',
-    imageLabels: options.imageLabels ?? DEFAULT_LABELS
+    imageLabels: options.imageLabels ?? DEFAULT_LABELS,
+    codeLabels: options.codeLabels ?? DEFAULT_CODE_LABELS
   });
   return [
     field,
@@ -102,8 +111,15 @@ export { TableWidget, tableCellEditAnnotation } from './table-widget';
 export {
   highlightCodeToHtml,
   triggerLanguageLoad,
-  escapeHtml
+  escapeHtml,
+  normalizeCodeText
 } from './highlight-html';
+export {
+  CODE_COPY_ICON,
+  CODE_CHECK_ICON,
+  copyCodeFromButton,
+  type CodeCopyLabels
+} from './code-copy';
 export { codeLanguages, matchLanguage, getLoadedLanguage } from './code-languages';
 export {
   parseTable,

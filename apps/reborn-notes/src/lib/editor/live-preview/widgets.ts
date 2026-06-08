@@ -18,10 +18,12 @@ import type { EditorView } from '@codemirror/view';
 import { WidgetType } from '@codemirror/view';
 import { matchLanguage, getLoadedLanguage } from './code-languages';
 import {
+  normalizeCodeText,
   renderHighlightedDom,
   sanitizeInfoClass,
   triggerLanguageLoad
 } from './highlight-html';
+import { CODE_COPY_ICON, copyCodeFromButton, type CodeCopyLabels } from './code-copy';
 
 export { sanitizeInfoClass } from './highlight-html';
 /** Backwards-compat alias for previous DOM helper name. */
@@ -119,7 +121,8 @@ function ensureLanguageLoaded(info: string): void {
 export class CodeBlockWidget extends WidgetType {
   constructor(
     readonly code: string,
-    readonly info: string | null
+    readonly info: string | null,
+    readonly labels: CodeCopyLabels
   ) {
     super();
   }
@@ -128,17 +131,25 @@ export class CodeBlockWidget extends WidgetType {
     return (
       other instanceof CodeBlockWidget &&
       other.code === this.code &&
-      other.info === this.info
+      other.info === this.info &&
+      other.labels.copy === this.labels.copy &&
+      other.labels.copied === this.labels.copied
     );
   }
 
   toDOM(): HTMLElement {
-    // Outer wrapper is the horizontal scroll container.
-    // Without this, the <pre>'s `white-space: pre` propagates a min-content
-    // width up to `.cm-content`, expanding it past the viewport on mobile and
-    // forcing sibling lines (paragraphs, headings) to overflow the screen.
-    // The wrapper's `overflow-x: auto` (set in theme.ts) creates a new BFC
-    // that contains the intrinsic width of the code so only the code scrolls.
+    // Outer (non-scrolling) wrapper anchors the absolutely-positioned copy
+    // button so it stays pinned to the top-right while the code scrolls under
+    // it. The inner `.cm-lp-codeblock-wrap` is the horizontal scroll container:
+    // without it, the <pre>'s `white-space: pre` propagates a min-content width
+    // up to `.cm-content`, expanding it past the viewport on mobile and forcing
+    // sibling lines (paragraphs, headings) to overflow the screen. The wrap's
+    // `overflow-x: auto` (set in theme.ts) creates a new BFC that contains the
+    // intrinsic width of the code so only the code scrolls. The button must sit
+    // outside that scroll container, otherwise it would scroll away / clip.
+    const outer = document.createElement('div');
+    outer.classList.add('cm-lp-codeblock-outer');
+
     const wrap = document.createElement('div');
     wrap.classList.add('cm-lp-codeblock-wrap');
 
@@ -153,7 +164,9 @@ export class CodeBlockWidget extends WidgetType {
     if (lang) {
       renderHighlightedDom(codeEl, this.code, lang);
     } else {
-      codeEl.textContent = this.code;
+      // Terminate with a trailing newline like the highlighted path so the
+      // last line stays selectable even before the language chunk loads.
+      codeEl.textContent = normalizeCodeText(this.code);
       if (this.info && matchLanguage(this.info)) {
         ensureLanguageLoaded(this.info);
       }
@@ -161,7 +174,33 @@ export class CodeBlockWidget extends WidgetType {
 
     pre.appendChild(codeEl);
     wrap.appendChild(pre);
-    return wrap;
+    outer.appendChild(this.buildCopyButton());
+    outer.appendChild(wrap);
+    return outer;
+  }
+
+  /**
+   * Copy-to-clipboard button pinned to the block's top-right. Labels are
+   * injected via the constructor (decorations build them from i18n) so this
+   * module stays free of store imports — same decoupling as `ImageWidget`. A
+   * locale change rebuilds the widget because `eq()` compares the labels.
+   * `mousedown` is prevented so clicking the button doesn't move the CM6 cursor
+   * into the block (which would swap this widget for the raw editable lines).
+   */
+  private buildCopyButton(): HTMLButtonElement {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cm-lp-code-copy';
+    btn.title = this.labels.copy;
+    btn.setAttribute('aria-label', this.labels.copy);
+    btn.innerHTML = CODE_COPY_ICON;
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      void copyCodeFromButton(btn, this.code, this.labels);
+    });
+    return btn;
   }
 
   ignoreEvent(): boolean {

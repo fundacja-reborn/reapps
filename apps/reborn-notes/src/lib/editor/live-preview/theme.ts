@@ -242,6 +242,14 @@ export const livePreviewTheme = EditorView.theme({
   // width from propagating up to `.cm-content` and overflowing the viewport
   // on mobile (sibling paragraphs/headings would otherwise stretch with it).
   // Margin must stay 0 — same height-map rule as line decorations.
+  // Non-scrolling positioning context for the copy button. Margin must stay 0
+  // (same CM6 height-map rule as line decorations); the inner wrap owns the
+  // horizontal scroll so the absolutely-placed button stays pinned top-right.
+  '.cm-lp-codeblock-outer': {
+    position: 'relative',
+    margin: '0',
+    maxWidth: '100%'
+  },
   '.cm-lp-codeblock-wrap': {
     margin: '0',
     maxWidth: '100%',
@@ -261,6 +269,10 @@ export const livePreviewTheme = EditorView.theme({
     margin: '0',
     borderRadius: '0.5em',
     whiteSpace: 'pre',
+    // Keep code selectable inside the widget (the rendered block sits in the
+    // contenteditable surface; be explicit rather than inherit CM6 defaults).
+    userSelect: 'text',
+    WebkitUserSelect: 'text',
     // `width: max-content` lets the <pre> grow to its longest line so the
     // wrapper's `overflow-x: auto` actually engages. `min-width: 100%` keeps
     // the muted background filling the wrapper width when code is short.
@@ -273,6 +285,39 @@ export const livePreviewTheme = EditorView.theme({
     background: 'transparent',
     padding: '0',
     fontSize: 'inherit'
+  },
+
+  // Copy button — pinned to the block's top-right, over the <pre>. Colours use
+  // app CSS vars so the button tracks light/dark via the cascade (the CM6
+  // theme stylesheet can't target `.dark` on <html> directly).
+  '.cm-lp-code-copy': {
+    position: 'absolute',
+    top: '0.4em',
+    right: '0.4em',
+    zIndex: '1',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '1.9em',
+    height: '1.9em',
+    padding: '0',
+    border: '1px solid var(--border)',
+    borderRadius: '0.375em',
+    background: 'var(--background)',
+    color: 'var(--muted-foreground)',
+    cursor: 'pointer',
+    opacity: '0.55',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    transition: 'opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease'
+  },
+  '.cm-lp-codeblock-outer:hover .cm-lp-code-copy': { opacity: '1', color: 'var(--foreground)' },
+  '.cm-lp-code-copy:hover': { opacity: '1', color: 'var(--foreground)' },
+  '.cm-lp-code-copy:focus-visible': { opacity: '1', color: 'var(--foreground)' },
+  '.cm-lp-code-copy.is-copied': {
+    opacity: '1',
+    color: '#16a34a',
+    borderColor: '#16a34a'
   },
 
   // Cursor inside: per-line decoration so the raw fences and body share
