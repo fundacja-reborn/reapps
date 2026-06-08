@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { escapeHtml, highlightCodeToHtml } from './highlight-html';
+import { escapeHtml, highlightCodeToHtml, normalizeCodeText } from './highlight-html';
 
 describe('escapeHtml', () => {
   it.each([
@@ -58,5 +58,30 @@ describe('highlightCodeToHtml', () => {
     const html = highlightCodeToHtml('x', 'js" onclick="alert(1)');
     expect(html).not.toContain('onclick');
     expect(html).not.toContain('alert');
+  });
+
+  it('terminates the code body with a single trailing newline', () => {
+    // The trailing newline gives the last code line a full line box so
+    // double-click / drag selection lands on it (browsers hit-test the last
+    // line of a <pre> inconsistently without it). Idempotent: pre-existing
+    // trailing blank lines collapse to exactly one.
+    expect(highlightCodeToHtml('a\nb', '')).toContain('<code>a\nb\n</code>');
+    expect(highlightCodeToHtml('a\nb\n\n', '')).toContain('<code>a\nb\n</code>');
+  });
+});
+
+describe('normalizeCodeText', () => {
+  it('appends a trailing newline when none is present', () => {
+    expect(normalizeCodeText('a\nb')).toBe('a\nb\n');
+  });
+
+  it('collapses trailing blank lines to exactly one newline', () => {
+    expect(normalizeCodeText('a\nb\n')).toBe('a\nb\n');
+    expect(normalizeCodeText('a\nb\n\n\n')).toBe('a\nb\n');
+  });
+
+  it('preserves interior blank lines and leading whitespace', () => {
+    expect(normalizeCodeText('a\n\nb')).toBe('a\n\nb\n');
+    expect(normalizeCodeText('  indented')).toBe('  indented\n');
   });
 });

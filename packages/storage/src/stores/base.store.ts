@@ -1,3 +1,4 @@
+// eslint-disable-next-line @nx/enforce-module-boundaries -- base.store is lazy-loaded via dynamic import in initializeStorage; the static @reborn/types value import (DB_CONFIG) is intentional
 import { DB_CONFIG } from '@reborn/types';
 import type { StoreDefinition } from '../core/database';
 import { createLogger } from '@reborn/utils';

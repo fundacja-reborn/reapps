@@ -502,9 +502,18 @@ describe('buildDecorations — tables', () => {
 
 describe('buildDecorations — inline images', () => {
   const LABELS = { load: 'Load image', base64Blocked: 'Embedded images blocked' };
-  const OPTS_ASK = { imageLoadMode: 'ask' as const, imageLabels: LABELS };
-  const OPTS_ALWAYS = { imageLoadMode: 'always' as const, imageLabels: LABELS };
-  const OPTS_NEVER = { imageLoadMode: 'never' as const, imageLabels: LABELS };
+  const CODE_LABELS = { copy: 'Copy code', copied: 'Copied' };
+  const OPTS_ASK = { imageLoadMode: 'ask' as const, imageLabels: LABELS, codeLabels: CODE_LABELS };
+  const OPTS_ALWAYS = {
+    imageLoadMode: 'always' as const,
+    imageLabels: LABELS,
+    codeLabels: CODE_LABELS
+  };
+  const OPTS_NEVER = {
+    imageLoadMode: 'never' as const,
+    imageLabels: LABELS,
+    codeLabels: CODE_LABELS
+  };
 
   it('replaces an image with an ImageWidget when cursor is outside', () => {
     const doc = 'before ![alt](https://example.com/img.png) after';

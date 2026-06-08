@@ -288,6 +288,8 @@
     "link_text": "Linktext",
     "note_editor": "Notiz-Editor",
     "markdown_preview": "Markdown-Vorschau",
+    "code_copy": "Code kopieren",
+    "code_copied": "Kopiert",
     "formatting": {
       "bold": "Fett",
       "italic": "Kursiv",

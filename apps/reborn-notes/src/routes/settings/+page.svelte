@@ -203,6 +203,7 @@
           <h2 class="text-lg font-semibold mb-3">{$t('settings_page.security.title')}</h2>
           <div class="space-y-1">
             {#each securityItems as item}
+            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
             <a href={resolveHref(item.href)} class={itemClasses}>
                 <item.icon class="h-5 w-5 text-muted-foreground shrink-0" />
                 <div class="flex-1 min-w-0">

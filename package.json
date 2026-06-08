@@ -1,7 +1,7 @@
 {
   "name": "@reborn-apps/source",
   "version": "0.27.0",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "clean": "chmod +x ./scripts/clean-all.sh && ./scripts/clean-all.sh",
     "clean:install": "pnpm clean && pnpm install && pnpm nx reset",

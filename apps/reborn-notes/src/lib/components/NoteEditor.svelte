@@ -125,6 +125,10 @@
       imageLabels: {
         load: $t('editor.image_load'),
         base64Blocked: $t('editor.image_base64_blocked')
+      },
+      codeLabels: {
+        copy: $t('editor.code_copy'),
+        copied: $t('editor.code_copied')
       }
     };
   }

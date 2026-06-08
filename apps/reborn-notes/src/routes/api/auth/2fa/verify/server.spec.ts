@@ -91,7 +91,7 @@ function createMockEvent(body: unknown) {
 async function callEndpoint(body: unknown) {
 	const { POST } = await import('./+server');
 	const event = createMockEvent(body);
-	const response = await (POST as Function)(event);
+	const response = await (POST as unknown as (event: unknown) => Promise<Response>)(event);
 	const data = await response.json();
 	return { response, data, status: response.status };
 }

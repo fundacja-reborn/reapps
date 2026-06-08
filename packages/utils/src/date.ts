@@ -15,7 +15,7 @@ export type DateFormat = (typeof DATE_FORMATS)[number]['key'];
  * Converts a local date to UTC for storage
  * Sets the time to noon UTC to avoid timezone issues
  */
-export function toUTC(date: Date | string | null, hasTime: boolean = false): string | null {
+export function toUTC(date: Date | string | null, hasTime = false): string | null {
   if (!date) return null;
   const d = date instanceof Date ? date : new Date(date);
   if (isNaN(d.getTime())) return null;
@@ -32,7 +32,7 @@ export function toUTC(date: Date | string | null, hasTime: boolean = false): str
 /**
  * Converts a UTC date string to local date object
  */
-export function toLocal(dateStr: string | null, hasTime: boolean = false): Date | null {
+export function toLocal(dateStr: string | null, hasTime = false): Date | null {
   if (!dateStr) return null;
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return null;
@@ -51,7 +51,7 @@ export function toLocal(dateStr: string | null, hasTime: boolean = false): Date 
 export function formatDateForDisplay(
   dateStr: string | null,
   format: DateFormat,
-  locale: string = 'en'
+  locale = 'en'
 ): string {
   if (!dateStr) return '';
   const date = new Date(dateStr);
@@ -82,7 +82,7 @@ export function getLocalTimeZone(): string {
 /**
  * Formats a date according to the specified format and locale
  */
-export function formatDate(date: Date, format: DateFormat, locale: string = 'en'): string {
+export function formatDate(date: Date, format: DateFormat, locale = 'en'): string {
   // For 'd MMMM yyyy' format, use direct toLocaleDateString which handles it better
   if (format === 'd MMMM yyyy') {
     return date.toLocaleDateString(locale, {

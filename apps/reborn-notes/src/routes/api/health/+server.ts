@@ -9,7 +9,7 @@ declare const __APP_VERSION__: string;
 export const HEAD: RequestHandler = () => new Response(null, { status: 200 });
 
 export const GET: RequestHandler = async () => {
-	let dbStatus = 'unknown';
+	let dbStatus: 'ok' | 'error';
 
 	try {
 		await prisma.$queryRaw`SELECT 1`;

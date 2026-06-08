@@ -129,7 +129,7 @@ export const noteQueries = {
   /**
    * Get recently updated notes
    */
-  getRecent: async (limit: number = 10): Promise<NoteStoredLocal[]> => {
+  getRecent: async (limit = 10): Promise<NoteStoredLocal[]> => {
     const notes = await noteQueries.getActive();
     return notes
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
@@ -216,7 +216,7 @@ export const noteOperations = {
   /**
    * Permanently delete archived notes older than specified days
    */
-  cleanArchived: async (daysOld: number = 90): Promise<number> => {
+  cleanArchived: async (daysOld = 90): Promise<number> => {
     const archived = await noteQueries.getArchived();
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysOld);

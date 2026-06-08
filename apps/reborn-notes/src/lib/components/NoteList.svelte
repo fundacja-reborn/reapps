@@ -326,7 +326,7 @@
 
   // ── Multi-select state ─────────────────────────────────────────
   let selectionMode = $state(false);
-  let selectedIds = $state(new SvelteSet<string>());
+  let selectedIds = new SvelteSet<string>();
   // Anchor for shift-click range selection (desktop). Tracks the last toggled id.
   let lastAnchorId = $state<string | null>(null);
   let bulkDeleteDialogOpen = $state(false);

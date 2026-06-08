@@ -7,7 +7,9 @@
   import type { ImageLoadMode } from '@reborn/storage';
   import {
     highlightCodeToHtml,
-    triggerLanguageLoad
+    triggerLanguageLoad,
+    CODE_COPY_ICON,
+    copyCodeFromButton
   } from '$lib/editor/live-preview';
   import {
     annotateTopLevelLines,
@@ -39,7 +41,9 @@
   let {
     content = '',
     class: className = '',
+    // eslint-disable-next-line no-useless-assignment -- $bindable prop default (set by parent via bind:), not dead
     scrollEl = $bindable<HTMLElement | null>(null),
+    // eslint-disable-next-line no-useless-assignment -- $bindable prop default (set by parent via bind:), not dead
     contentEl = $bindable<HTMLElement | null>(null),
     imageLoadMode = 'ask' as ImageLoadMode,
     loadAllImagesHint,
@@ -189,7 +193,14 @@
         if (loaded) langLoadTick++;
       });
     }
-    return highlightCodeToHtml(text, info);
+    // Wrap the <pre> in a positioned container holding a top-right copy
+    // button. `.code-block` (not the scrollable <pre>) is the positioning
+    // context so the button stays pinned while wide code scrolls under it.
+    // The button lives in the sanitized {@html}; clicks are handled by
+    // delegation in `handleClick`. The label is escaped for the attribute.
+    const copyLabel = $t('editor.code_copy').replace(/"/g, '&quot;');
+    const pre = highlightCodeToHtml(text, info);
+    return `<div class="code-block"><button class="code-copy-btn" type="button" aria-label="${copyLabel}" title="${copyLabel}">${CODE_COPY_ICON}</button>${pre}</div>`;
   };
 
   md.use({ renderer });
@@ -281,6 +292,23 @@
   function handleClick(e: MouseEvent) {
     const target = e.target as HTMLElement;
 
+    // Copy-code button (top-right of each fenced block). `closest` resolves
+    // clicks that land on the inner <svg>/<path>. We read the rendered code
+    // back from the <code> textContent and strip the single synthetic trailing
+    // newline added for last-line selection, so the clipboard gets the
+    // original source.
+    const copyBtn = target.closest('.code-copy-btn');
+    if (copyBtn) {
+      e.preventDefault();
+      const codeEl = copyBtn.closest('.code-block')?.querySelector('pre code');
+      const code = (codeEl?.textContent ?? '').replace(/\n$/, '');
+      void copyCodeFromButton(copyBtn as HTMLElement, code, {
+        copy: $t('editor.code_copy'),
+        copied: $t('editor.code_copied')
+      });
+      return;
+    }
+
     // Task list checkbox toggle. The browser flips `checked` before the
     // click handler runs; we read the flipped value as the desired state and
     // ask the owner to persist it in the markdown source. The next render
@@ -369,12 +397,14 @@
         <span class="load-all-images-hint">
           {loadAllImagesHint}
           {#if settingsLinkLabel && settingsLinkHref}
+            <!-- eslint-disable svelte/no-navigation-without-resolve (settingsLinkHref is pre-resolved by the caller) -->
             <a
               href={settingsLinkHref}
               class="load-all-images-settings-link"
               data-sveltekit-preload-data="off"
               data-sveltekit-preload-code="off"
             >
+            <!-- eslint-enable svelte/no-navigation-without-resolve -->
               {settingsLinkLabel}
             </a>
           {/if}
@@ -563,11 +593,60 @@
     background: var(--muted);
     overflow-x: auto;
     line-height: 1.6;
+    /* Match the <code> font-size so the <pre>'s line-box strut tracks the
+       glyphs. A larger strut (inherited 1rem on mobile vs 0.875rem code) puts
+       extra space inside each line box and skews where a click maps to a line.
+       Explicit `white-space`/`user-select` keep code reliably selectable. */
+    font-size: 0.875rem;
+    white-space: pre;
+    -webkit-user-select: text;
+    user-select: text;
   }
   .preview :global(pre code) {
     padding: 0;
     background: transparent;
-    font-size: 0.875rem;
+    font-size: inherit;
+  }
+
+  /* Fenced code block + copy button. `.code-block` is the positioning context
+     (overflow visible) so the absolutely-placed button stays pinned to the
+     top-right while the <pre> (the scroll container) scrolls under it. */
+  .preview :global(.code-block) {
+    position: relative;
+  }
+  .preview :global(.code-copy-btn) {
+    position: absolute;
+    top: 0.4em;
+    right: 0.4em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9em;
+    height: 1.9em;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 0.375em;
+    background: var(--background);
+    color: var(--muted-foreground);
+    cursor: pointer;
+    opacity: 0.55;
+    -webkit-user-select: none;
+    user-select: none;
+    transition:
+      opacity 0.12s ease,
+      color 0.12s ease,
+      border-color 0.12s ease;
+  }
+  .preview :global(.code-block:hover .code-copy-btn),
+  .preview :global(.code-copy-btn:hover),
+  .preview :global(.code-copy-btn:focus-visible) {
+    opacity: 1;
+    color: var(--foreground);
+  }
+  .preview :global(.code-copy-btn.is-copied) {
+    opacity: 1;
+    color: #16a34a;
+    border-color: #16a34a;
   }
 
   /* Syntax highlight tokens — palette mirrors editor/live-preview/theme.ts.

@@ -40,6 +40,19 @@ export function escapeHtml(s: string): string {
 }
 
 /**
+ * Normalize fenced-code text for rendering: collapse trailing blank lines to
+ * exactly one terminating newline. The final newline gives the last code line
+ * a clean, full-height line box so double-click and drag selection land on it
+ * — browsers position/hit-test the last line of a `<pre>` inconsistently when
+ * it lacks a trailing newline (the reported "can't select the last line" /
+ * "double-click selects the line above" behaviour). Mirrors marked's default
+ * code renderer and every major highlighter (highlight.js, Prism, Shiki).
+ */
+export function normalizeCodeText(code: string): string {
+  return code.replace(/\n+$/, '') + '\n';
+}
+
+/**
  * Render syntax-highlighted code into `target` (DOM). Used by `CodeBlockWidget`.
  */
 export function renderHighlightedDom(
@@ -47,9 +60,10 @@ export function renderHighlightedDom(
   code: string,
   lang: LanguageSupport
 ): void {
-  const tree = lang.language.parser.parse(code);
+  const text = normalizeCodeText(code);
+  const tree = lang.language.parser.parse(text);
   highlightCode(
-    code,
+    text,
     tree,
     classHighlighter,
     (text, classes) => {
@@ -108,7 +122,8 @@ export function highlightCodeToHtml(code: string, info: string): string {
   const safeClass = info ? sanitizeInfoClass(info) : null;
   const codeAttrs = safeClass ? ` class="lang-${safeClass}"` : '';
   const lang = info ? getLoadedLanguage(info) : null;
-  const body = lang ? renderHighlightedHtml(code, lang) : escapeHtml(code);
+  const text = normalizeCodeText(code);
+  const body = lang ? renderHighlightedHtml(text, lang) : escapeHtml(text);
   return `<pre class="cm-lp-codeblock"><code${codeAttrs}>${body}</code></pre>`;
 }
 

@@ -199,7 +199,7 @@ export class OfflineQueue {
       logger.info(`Imported ${queue.length} requests to offline queue`);
     } catch (error) {
       logger.error('Failed to import queue:', error);
-      throw new Error('Invalid queue data');
+      throw new Error('Invalid queue data', { cause: error });
     }
   }
 }

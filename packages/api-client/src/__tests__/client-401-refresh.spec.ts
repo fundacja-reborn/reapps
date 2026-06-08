@@ -35,8 +35,8 @@ function ensureBrowserGlobals() {
       window: { localStorage: Storage; addEventListener: () => void; removeEventListener: () => void };
     }).window = {
       localStorage: (globalThis as { localStorage: Storage }).localStorage,
-      addEventListener: () => {},
-      removeEventListener: () => {}
+      addEventListener: () => {/* no-op test stub */},
+      removeEventListener: () => {/* no-op test stub */}
     };
   }
 }

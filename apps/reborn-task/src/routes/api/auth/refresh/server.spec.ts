@@ -52,7 +52,7 @@ function createMockEvent(cookieHeader: string) {
 async function callRefresh(cookieHeader: string) {
 	const { POST } = await import('./+server');
 	const event = createMockEvent(cookieHeader);
-	const response = await (POST as Function)(event);
+	const response = await (POST as unknown as (event: unknown) => Promise<Response>)(event);
 	return { response, status: response.status };
 }
 

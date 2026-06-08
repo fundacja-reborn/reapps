@@ -48,12 +48,14 @@
     <h1 class="text-lg font-semibold">{title}</h1>
     <p class="text-sm text-muted-foreground">{hint}</p>
     {#if cta}
+      <!-- eslint-disable svelte/no-navigation-without-resolve (external URL; resolve() is for internal routes only) -->
       <a
         href={cta.href}
         target="_blank"
         rel="noopener noreferrer"
         class="text-sm text-primary underline-offset-2 hover:underline"
       >
+      <!-- eslint-enable svelte/no-navigation-without-resolve -->
         {cta.label}
       </a>
     {/if}
