@@ -170,7 +170,15 @@
         "open_settings": "Abrir ajustes",
         "got_it": "Entendido"
       },
-      "errors": { "failed": "No se pudo abrir la nota" }
+      "errors": { "failed": "No se pudo abrir la nota" },
+      "dedup": {
+        "toast_title": "Notas periódicas duplicadas",
+        "toast_description": "{count, plural, one {Se creó # nota duplicada en otro dispositivo.} other {Se crearon # notas duplicadas en otro dispositivo.}} ¿Combinar con la original?",
+        "merge_action": "Combinar",
+        "merge_separator": "Combinado desde un duplicado creado el {datetime}",
+        "merge_success": "{count, plural, one {Se combinó # nota duplicada.} other {Se combinaron # notas duplicadas.}}",
+        "merge_error": "No se pudieron combinar las notas duplicadas. Inténtalo de nuevo."
+      }
     }
   },
   "storage": {
