@@ -8,8 +8,8 @@
 export function parseUserAgent(ua?: string | null): string {
   if (!ua) return 'Unknown';
 
-  let browser = '';
-  let os = '';
+  let browser: string;
+  let os: string;
 
   // Browser detection (order matters: Edge contains "Chrome", Chrome contains "Safari")
   if (ua.includes('Firefox')) browser = 'Firefox';

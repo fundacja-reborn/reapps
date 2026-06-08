@@ -226,7 +226,7 @@ async function main(): Promise<void> {
     // Generate excerpt from content (first 200 chars, plain text)
     const plainText = note.content[lang]
       .replace(/#{1,6}\s/g, '')
-      .replace(/[*_`~\[\]]/g, '')
+      .replace(/[*_`~[\]]/g, '')
       .replace(/\n+/g, ' ')
       .trim();
     const excerpt = plainText.slice(0, 200);
