@@ -266,7 +266,7 @@ async function verifyPBKDF2(password: string, hashString: string): Promise<boole
  * NOTE: This doesn't actually generate a bcrypt salt, just returns a format string
  * @deprecated Use generateSalt() instead
  */
-export async function generateBcryptSalt(rounds: number = 12): Promise<string> {
+export async function generateBcryptSalt(rounds = 12): Promise<string> {
   logger.warn('generateBcryptSalt called - bcrypt is not supported in browser');
   throw new Error('Bcrypt is not supported in browser environment');
 }

@@ -207,7 +207,7 @@ export async function verifyToken(
 export async function generateSingleUseToken(
   userId: string,
   purpose: string,
-  expiryMinutes: number = 30
+  expiryMinutes = 30
 ): Promise<string> {
   try {
     const secret = getJwtSecret();

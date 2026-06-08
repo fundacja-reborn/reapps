@@ -247,7 +247,7 @@ const localeHandle: Handle = async ({ event, resolve }) => {
 
   return resolve(event, {
     transformPageChunk: ({ html }) => {
-      let out = html
+      const out = html
         .replace('%lang%', locale)
         .replace('%init_loading_msg%', initLoadingMsg)
         .replace('%stall_msg%', stallMsg)

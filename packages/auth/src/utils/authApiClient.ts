@@ -28,7 +28,7 @@ export function createAuthApiClient(options: AuthApiClientOptions = {}): IAuthAp
 
   const makeRequest = async (
     path: string,
-    method: string = 'GET',
+    method = 'GET',
     body?: any
   ): Promise<any> => {
     const response = await fetchFn(`${baseUrl}${path}`, {

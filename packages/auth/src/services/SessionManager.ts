@@ -135,7 +135,7 @@ export class SessionManager implements ISessionManager {
   /**
    * Set user authentication
    */
-  setAuthenticated(user: AuthUser, hasE2E: boolean = true): void {
+  setAuthenticated(user: AuthUser, hasE2E = true): void {
     this.setSession({
       isAuthenticated: true,
       isInitialized: true,
