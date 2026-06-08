@@ -23,6 +23,17 @@ export interface LoginResult {
   masterKeySalt?: string;
 }
 
+/** Minimal shape of the JSON body returned by the re-auth endpoints. */
+interface ReAuthResponseBody {
+  success?: boolean;
+  error?: string;
+  data?: {
+    twoFactorRequired?: boolean;
+    userId?: string;
+    access_token?: string;
+  };
+}
+
 /**
  * Log in with username + password.
  * On success: credentials are saved to localStorage (SSO-compatible with reborn-task),
@@ -170,7 +181,7 @@ export async function reAuthenticate(password: string): Promise<ReAuthResult> {
 
   if (res.status === 401) return { kind: 'invalid_password' };
 
-  let body: any;
+  let body: ReAuthResponseBody;
   try {
     body = await res.json();
   } catch {
@@ -226,7 +237,7 @@ export async function verifyTotpForReauth(userId: string, code: string): Promise
     return { kind: 'locked', retryAfter: Number.isFinite(retryAfter) ? retryAfter : 0 };
   }
 
-  let body: any;
+  let body: ReAuthResponseBody;
   try {
     body = await res.json();
   } catch {

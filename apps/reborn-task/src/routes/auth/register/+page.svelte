@@ -70,7 +70,7 @@
 			};
 		} catch (error: unknown) {
 			logger.error('Failed to prepare registration data:', error);
-			throw new Error('Failed to prepare registration data');
+			throw new Error('Failed to prepare registration data', { cause: error });
 		}
 	}
 

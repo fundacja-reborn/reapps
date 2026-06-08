@@ -21,6 +21,17 @@ import { sessionExpired } from '$lib/stores/session-expired.store';
 
 const logger = createLogger('AuthOperationsService');
 
+/** Minimal shape of the JSON body returned by the re-auth endpoints. */
+interface ReAuthResponseBody {
+	success?: boolean;
+	error?: string;
+	data?: {
+		twoFactorRequired?: boolean;
+		userId?: string;
+		access_token?: string;
+	};
+}
+
 // Use globalThis to ensure true singleton across hot reloads
 declare global {
 	var __authServiceInitialized: boolean | undefined;
@@ -878,7 +889,7 @@ export class AuthOperationsService {
 
 		if (res.status === 401) return { kind: 'invalid_password' };
 
-		let body: any;
+		let body: ReAuthResponseBody;
 		try {
 			body = await res.json();
 		} catch {
@@ -929,7 +940,7 @@ export class AuthOperationsService {
 			return { kind: 'locked', retryAfter: Number.isFinite(retryAfter) ? retryAfter : 0 };
 		}
 
-		let body: any;
+		let body: ReAuthResponseBody;
 		try {
 			body = await res.json();
 		} catch {

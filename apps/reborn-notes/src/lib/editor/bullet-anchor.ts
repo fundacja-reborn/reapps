@@ -25,7 +25,7 @@ import { EditorView } from '@codemirror/view';
 export const BULLET_ANCHOR = '​';
 
 const BULLET_PREFIX_RE = /^[-+*] $/;
-const LIST_LINE_WITH_CONTENT_RE = /^(\s*)(?:[-+*]|\d+[.)])\s+(.*[^\s​].*)$/;
+const LIST_LINE_WITH_CONTENT_RE = /^(\s*)(?:[-+*]|\d+[.)])\s+(.*[^\s\u200B].*)$/;
 
 /**
  * Decides whether `prefixLine` should append `BULLET_ANCHOR` after the

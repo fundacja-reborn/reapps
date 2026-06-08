@@ -438,7 +438,9 @@ export function toSearchEntity(
     tagIds: entry.tagIds,
     folderId: entry.folderId ?? null,
     listId: null,
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- plain immutable timestamp in a returned value, not reactive state
     createdAt: new Date(entry.createdAt),
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- plain immutable timestamp in a returned value, not reactive state
     updatedAt: new Date(entry.updatedAt),
     dueAt: null,
     flags: {

@@ -4,7 +4,6 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { authLimiter, refreshLimiter, registerLimiter, powLimiter } from '$lib/server/rate-limit';
 import { getClientIp } from '$lib/server/client-ip';
 import { verifyToken } from '@reborn/auth/server';
-import { createLogger } from '@reborn/utils';
 import {
   findIdempotencyKey,
   storeIdempotencyResponse,
@@ -13,8 +12,6 @@ import {
 } from '@reborn/database';
 import { getShareOgStrings } from '$lib/server/share-og';
 import { getAppLoadingStrings } from '$lib/server/app-loading-strings';
-
-const logger = createLogger('notes-hooks');
 
 // ── Rate-limited auth routes ──────────────────────────────────────
 

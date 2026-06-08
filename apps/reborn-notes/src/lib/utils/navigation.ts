@@ -23,6 +23,7 @@ export function goto(href: string, opts?: Parameters<typeof _goto>[1]): ReturnTy
 		!href.startsWith(base + '/') &&
 		href !== base
 	) {
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- resolveHref is resolve() cast to accept dynamic, base-prefixed strings
 		return _goto(resolveHref(href), opts);
 	}
 	// eslint-disable-next-line svelte/no-navigation-without-resolve -- path already includes base or is external

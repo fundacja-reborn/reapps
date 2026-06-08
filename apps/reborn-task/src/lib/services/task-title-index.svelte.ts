@@ -96,7 +96,7 @@ const BATCH_SIZE = 100;
 async function decryptTaskEntry(
 	enc: TaskEncryptedBooleans
 ): Promise<({ id: string } & TaskIndexEntry) | null> {
-	let title = '';
+	let title: string;
 	try {
 		title = await cryptoManager.decryptText(enc.title_encrypted);
 	} catch {

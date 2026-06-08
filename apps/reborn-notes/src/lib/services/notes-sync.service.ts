@@ -38,8 +38,7 @@ import {
   isSyncing,
   syncError,
   lastSyncedAt,
-  refreshPendingCount,
-  sessionExpired
+  refreshPendingCount
 } from '$lib/stores/sync-status.store';
 import { authFetch } from '$lib/utils/auth-fetch';
 import { validateEncryptedPayload } from '@reborn/crypto';

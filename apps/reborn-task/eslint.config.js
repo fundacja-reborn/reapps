@@ -44,5 +44,16 @@ export default [
 			// Triple-slash references are valid in .d.ts files
 			'@typescript-eslint/triple-slash-reference': 'off'
 		}
+	},
+	{
+		// Destructuring a prop solely to omit it from a `...rest` spread is a
+		// deliberate pattern (e.g. stripping refreshToken from a response body
+		// so it's never serialized), not dead code. Excludes *.svelte.ts, where
+		// no-unused-vars stays off (template usage is invisible to the TS rule).
+		files: ['**/*.ts'],
+		ignores: ['**/*.svelte.ts'],
+		rules: {
+			'@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }]
+		}
 	}
 ];
