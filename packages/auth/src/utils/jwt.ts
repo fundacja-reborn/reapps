@@ -121,7 +121,7 @@ export async function generateTokens(userId: string, sessionId?: string): Promis
     return { accessToken, refreshToken };
   } catch (error) {
     logger.error('Token generation failed:', error);
-    throw new Error('Failed to generate tokens');
+    throw new Error('Failed to generate tokens', { cause: error });
   }
 }
 
@@ -228,7 +228,7 @@ export async function generateSingleUseToken(
     return token;
   } catch (error) {
     logger.error('Single-use token generation failed:', error);
-    throw new Error('Failed to generate single-use token');
+    throw new Error('Failed to generate single-use token', { cause: error });
   }
 }
 

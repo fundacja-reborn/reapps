@@ -37,7 +37,7 @@ function makeStorage(existingCreds?: AuthCredentials): IAuthStorage {
       creds = null;
     }),
     getUserSettings: vi.fn(async () => null),
-    saveUserSettings: vi.fn(async () => {})
+    saveUserSettings: vi.fn(async () => {/* no-op */})
   };
 }
 

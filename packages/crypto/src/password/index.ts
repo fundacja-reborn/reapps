@@ -108,7 +108,7 @@ export async function hashPassword(password: string, saltBase64?: string): Promi
     return result;
   } catch (error) {
     logger.error('Password hashing failed:', error);
-    throw new Error('Failed to hash password');
+    throw new Error('Failed to hash password', { cause: error });
   }
 }
 
@@ -145,7 +145,7 @@ export async function hashPasswordPBKDF2(password: string, saltBase64?: string):
     return `pbkdf2:${PBKDF2_ITERATIONS}:${salt}:${hash}`;
   } catch (error) {
     logger.error('PBKDF2 password hashing failed:', error);
-    throw new Error('Failed to hash password');
+    throw new Error('Failed to hash password', { cause: error });
   }
 }
 
@@ -174,7 +174,7 @@ export async function verifyPassword(password: string, hashString: string): Prom
     throw new Error('Unknown hash format');
   } catch (error) {
     logger.error('Password verification failed:', error);
-    throw new Error('Failed to verify password');
+    throw new Error('Failed to verify password', { cause: error });
   }
 }
 

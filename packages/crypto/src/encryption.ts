@@ -71,7 +71,7 @@ export async function deriveKeyFromPassword(
     );
   } catch (error) {
     logger.error('Error deriving key from password', error);
-    throw new Error('Failed to derive key from password');
+    throw new Error('Failed to derive key from password', { cause: error });
   }
 }
 
@@ -126,7 +126,7 @@ export async function encryptData(
     };
   } catch (error) {
     logger.error('Error encrypting data', error);
-    throw new Error('Failed to encrypt data');
+    throw new Error('Failed to encrypt data', { cause: error });
   }
 }
 
@@ -174,14 +174,14 @@ export async function decryptData<T = string>(
         return JSON.parse(decryptedString) as T;
       } catch (e) {
         logger.error('Error parsing decrypted data as JSON', e);
-        throw new Error('Failed to parse decrypted data as JSON');
+        throw new Error('Failed to parse decrypted data as JSON', { cause: e });
       }
     }
 
     return decryptedString as unknown as T;
   } catch (error) {
     logger.error('Error decrypting data', error);
-    throw new Error('Failed to decrypt data');
+    throw new Error('Failed to decrypt data', { cause: error });
   }
 }
 
@@ -258,7 +258,8 @@ export function base64ToArrayBuffer(base64: string): Uint8Array {
     logger.error('Failed to convert base64 to ArrayBuffer:', error);
     logger.error('Input base64 string:', base64);
     throw new Error(
-      `Failed to decode base64 string: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to decode base64 string: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error }
     );
   }
 }
@@ -274,7 +275,7 @@ export async function exportKey(key: CryptoKey): Promise<Uint8Array> {
     return new Uint8Array(rawKey);
   } catch (error) {
     logger.error('Error exporting key', error);
-    throw new Error('Failed to export key');
+    throw new Error('Failed to export key', { cause: error });
   }
 }
 
@@ -302,6 +303,6 @@ export async function importKey(
     );
   } catch (error) {
     logger.error('Error importing key', error);
-    throw new Error('Failed to import key');
+    throw new Error('Failed to import key', { cause: error });
   }
 }

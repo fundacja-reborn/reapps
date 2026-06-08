@@ -1,4 +1,5 @@
 import { IndexedDBStore } from '../core/store';
+// eslint-disable-next-line @nx/enforce-module-boundaries -- reachable via the lazy ./stores barrel; the static @reborn/types value import (MAX_NOTE_VERSIONS) is intentional
 import { MAX_NOTE_VERSIONS, type NoteHistoryEntry } from '@reborn/types';
 
 export const noteHistoryStore = new IndexedDBStore<NoteHistoryEntry>({
