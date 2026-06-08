@@ -47,7 +47,7 @@
     "@lezer/common": "1.5.2",
     "@lezer/highlight": "1.2.3",
     "@lezer/markdown": "1.6.3",
-    "@lucide/svelte": "1.16.0",
+    "@lucide/svelte": "1.17.0",
     "@reborn/api-client": "workspace:*",
     "@reborn/auth": "workspace:*",
     "@reborn/crypto": "workspace:*",
