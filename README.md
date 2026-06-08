@@ -312,7 +312,7 @@ If you've contributed something that shaped this project - an idea, a substantiv
 
 ## License
 
-[AGPL-3.0](LICENSE) - Copyright © 2025 Fundacja Reborn (Poland)
+[AGPL-3.0](LICENSE) - Copyright © 2025-2026 Fundacja Reborn (Poland)
 
 You are free to use, modify, and self-host. If you modify the server-side code and offer it as a service, you must open-source your changes under the same license.
 
