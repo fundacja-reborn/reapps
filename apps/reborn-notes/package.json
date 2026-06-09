@@ -11,6 +11,7 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.4.0",
     "@eslint/js": "10.0.1",
     "@sveltejs/adapter-auto": "7.0.1",
     "@sveltejs/kit": "2.63.1",
@@ -34,6 +35,8 @@
   },
   "type": "module",
   "dependencies": {
+    "@capacitor/android": "8.4.0",
+    "@capacitor/core": "8.4.0",
     "@codemirror/autocomplete": "6.20.3",
     "@codemirror/commands": "6.10.3",
     "@codemirror/lang-css": "6.3.1",

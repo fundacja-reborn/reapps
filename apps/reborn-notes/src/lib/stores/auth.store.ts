@@ -22,6 +22,7 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { base } from '$app/paths';
+import { API_BASE } from '$lib/utils/api-base';
 import { cryptoManager } from '@reborn/crypto';
 import { sessionExpired } from '$lib/stores/sync-status.store';
 import { createLogger } from '@reborn/utils';
@@ -222,7 +223,7 @@ function createAuthStore() {
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`;
     }
-    fetch(`${base}/api/auth/logout`, { method: 'POST', headers }).catch((err) => {
+    fetch(`${API_BASE}/auth/logout`, { method: 'POST', headers }).catch((err) => {
       logger.warn('Server logout call failed (non-critical):', err);
     });
 

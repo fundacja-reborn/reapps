@@ -7,7 +7,15 @@ import globals from 'globals';
 /** @type {import('eslint').Linter.FlatConfig[]} */
 export default [
   {
-    ignores: ['**/build/**', '**/.svelte-kit/**', '**/dist/**', '**/node_modules/**']
+    ignores: [
+      '**/build/**',
+      '**/build-native/**',
+      '**/android/**',
+      '**/ios/**',
+      '**/.svelte-kit/**',
+      '**/dist/**',
+      '**/node_modules/**'
+    ]
   },
   js.configs.recommended,
   ...ts.configs.recommended,

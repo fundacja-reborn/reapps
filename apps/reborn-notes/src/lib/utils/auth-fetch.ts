@@ -1,4 +1,4 @@
-import { base } from '$app/paths';
+import { API_BASE } from '$lib/utils/api-base';
 import { createAuthFetch } from '@reborn/auth';
 import { sessionExpired } from '$lib/stores/sync-status.store';
 
@@ -13,6 +13,6 @@ import { sessionExpired } from '$lib/stores/sync-status.store';
  * Usage: drop-in replacement for `fetch()` in authenticated pages.
  */
 export const authFetch = createAuthFetch({
-  refreshUrl: `${base}/api/auth/refresh`,
+  refreshUrl: `${API_BASE}/auth/refresh`,
   onSessionExpired: () => sessionExpired.set(true)
 });

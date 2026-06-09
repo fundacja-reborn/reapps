@@ -1,5 +1,6 @@
 <script lang="ts">
   import { base } from '$app/paths';
+  import { API_BASE } from '$lib/utils/api-base';
   import {
     Dialog,
     DialogContent,
@@ -141,7 +142,7 @@
       const ownerKeyWrapped = await cryptoManager.encryptString(keyBase64url);
 
       const expirySeconds = SHARE_EXPIRY_PRESETS[expiry];
-      const res = await authFetch(`${base}/api/shares`, {
+      const res = await authFetch(`${API_BASE}/shares`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
