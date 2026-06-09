@@ -138,6 +138,28 @@ export const livePreviewTheme = EditorView.theme({
     fontStyle: 'italic'
   },
 
+  // Horizontal rule (thematic break) — the raw `---`/`***`/`___` is hidden by
+  // a full-line replace, leaving an empty line we paint a centered divider on
+  // via `::before`. Padding (not margin) gives vertical breathing room without
+  // de-syncing the CM6 height map (same rule as headings). The 1px border
+  // mirrors MarkdownPreview's <hr> (`border-top: 1px solid var(--border)`).
+  '.cm-lp-hr-line': {
+    position: 'relative',
+    paddingTop: '0.75em',
+    paddingBottom: '0.75em'
+  },
+  '.cm-lp-hr-line::before': {
+    content: '""',
+    position: 'absolute',
+    left: '0',
+    right: '0',
+    top: '50%',
+    borderTop: '1px solid var(--border)',
+    // Pseudo-element must not swallow clicks — the caret needs to land on the
+    // line to switch back to the raw, editable `---`.
+    pointerEvents: 'none'
+  },
+
   // Bullet list — depth-aware padding + ::before bullet.
   //
   // Tapered ramp (mirrored in MarkdownPreview.svelte's `[data-d{N}]` rules):

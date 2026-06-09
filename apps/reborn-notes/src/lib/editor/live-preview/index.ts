@@ -6,11 +6,12 @@
  * NoteEditor.svelte based on the user's `editorMode` setting.
  *
  * Scope: ATX headings, **bold**, *italic*, `inline code`, links (incl. note:UUID),
- * blockquote, bullet/ordered lists, GFM task lists (`- [ ]` / `- [x]` with an
- * interactive checkbox widget), fenced code blocks (```lang ... ```), GFM
- * tables (always rendered as an editable widget — Obsidian-style), and inline
- * images (`![alt](url)` — placeholder/auto-load per user preference, raw
- * markdown when the cursor is inside the image range).
+ * blockquote, horizontal rules (`---` / `***` / `___` rendered as a divider,
+ * raw when the cursor is on the line), bullet/ordered lists, GFM task lists
+ * (`- [ ]` / `- [x]` with an interactive checkbox widget), fenced code blocks
+ * (```lang ... ```), GFM tables (always rendered as an editable widget —
+ * Obsidian-style), and inline images (`![alt](url)` — placeholder/auto-load
+ * per user preference, raw markdown when the cursor is inside the image range).
  */
 import type { Extension } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
