@@ -25,10 +25,11 @@ const config: CapacitorConfig = {
   webDir: 'build-native',
   server: {
     androidScheme: 'http',
-    // Spike: allow cleartext HTTP so the emulator can reach a LOCAL backend over
-    // http://10.0.2.2 (localprod on the host). Android blocks cleartext by
-    // default. Harmless for the HTTPS staging build. DEBUG/SPIKE ONLY - drop this
-    // before any release build.
+    // Allow cleartext HTTP so the emulator can reach the LOCAL backend over
+    // http://10.0.2.2 (localprod on the host). Android blocks cleartext by default.
+    // Harmless for HTTPS (staging/prod) builds - it only permits, never forces.
+    // DEV/DEBUG ONLY: turn this off (or gate it to debug variants) in Faza 5
+    // store-prep so release builds are HTTPS-only. Tracked in TODO-native.
     cleartext: true
   },
   // Faza 0 spike: route fetch/XHR through the native HTTP layer so cross-origin
