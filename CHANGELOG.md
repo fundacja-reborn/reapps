@@ -1,3 +1,16 @@
+## 0.28.0 (2026-06-09)
+
+### 🚀 Features
+
+- **notes:** detect + merge multi-device periodic-note duplicates ([#250](https://github.com/fundacja-reborn/reapps/pull/250), [#248](https://github.com/fundacja-reborn/reapps/issues/248))
+- **notes:** render horizontal rule (---) in Live Preview ([#251](https://github.com/fundacja-reborn/reapps/pull/251))
+
+### 🩹 Fixes
+
+- **deps:** update codemirror ([#240](https://github.com/fundacja-reborn/reapps/pull/240))
+- **deps:** update patch-updates ([#241](https://github.com/fundacja-reborn/reapps/pull/241))
+- **notes:** make last code line selectable + add copy button ([#246](https://github.com/fundacja-reborn/reapps/pull/246))
+
 ## 0.27.0 (2026-06-07)
 
 ### 🚀 Features
