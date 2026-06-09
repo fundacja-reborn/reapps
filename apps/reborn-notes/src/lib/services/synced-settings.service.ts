@@ -1,4 +1,4 @@
-import { base } from '$app/paths';
+import { API_BASE } from '$lib/utils/api-base';
 import { authFetch } from '$lib/utils/auth-fetch';
 import { createSyncedSettingsService } from '@reborn/storage';
 
@@ -9,6 +9,6 @@ import { createSyncedSettingsService } from '@reborn/storage';
  */
 export const syncedSettings = createSyncedSettingsService({
   authFetch,
-  basePath: base,
+  basePath: API_BASE.replace(/\/api$/, ''),
   appName: 'reborn-notes'
 });

@@ -1,4 +1,4 @@
-import { base } from '$app/paths';
+import { API_BASE } from '$lib/utils/api-base';
 import { cryptoManager } from '@reborn/crypto';
 import { parseUserAgent, createLogger } from '@reborn/utils';
 
@@ -29,7 +29,7 @@ export async function sendEncryptedDeviceInfo(): Promise<void> {
       return;
     }
 
-    const res = await fetch(`${base}/api/auth/sessions/current`, {
+    const res = await fetch(`${API_BASE}/auth/sessions/current`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

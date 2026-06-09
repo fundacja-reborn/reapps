@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { base } from '$app/paths';
+  import { API_BASE } from '$lib/utils/api-base';
   import { onMount } from 'svelte';
   import { authFetch } from '$lib/utils/auth-fetch';
   import {
@@ -47,7 +47,7 @@
 
   async function fetchStatus() {
     try {
-      const response = await authFetch(`${base}/api/auth/recovery-codes`);
+      const response = await authFetch(`${API_BASE}/auth/recovery-codes`);
       const data = await response.json();
       if (data.success) {
         status = data.data;
@@ -67,7 +67,7 @@
     showConfirmRegenerate = false;
     error = null;
     try {
-      const response = await authFetch(`${base}/api/auth/recovery-codes`, {
+      const response = await authFetch(`${API_BASE}/auth/recovery-codes`, {
         method: 'POST'
       });
       const data = await response.json();

@@ -1,6 +1,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { base } from '$app/paths';
+import { API_BASE } from '$lib/utils/api-base';
 import { authFetch } from '$lib/utils/auth-fetch';
 import { connectivityStore } from '$lib/stores/connectivity.store';
 import { sessionExpired } from '$lib/stores/sync-status.store';
@@ -104,7 +105,7 @@ function createSharesStore() {
     }
     state.update((s) => ({ ...s, loading: true, error: null }));
     try {
-      const res = await authFetch(`${base}/api/shares`);
+      const res = await authFetch(`${API_BASE}/shares`);
       const data = await res.json();
       if (!data.success) {
         state.update((s) => ({ ...s, loading: false, error: 'load_failed' }));
@@ -132,7 +133,7 @@ function createSharesStore() {
   async function revoke(slug: string): Promise<boolean> {
     if (!browser) return false;
     try {
-      const res = await authFetch(`${base}/api/shares/${slug}`, { method: 'DELETE' });
+      const res = await authFetch(`${API_BASE}/shares/${slug}`, { method: 'DELETE' });
       if (!res.ok) return false;
       const now = new Date().toISOString();
       state.update((s) => ({
