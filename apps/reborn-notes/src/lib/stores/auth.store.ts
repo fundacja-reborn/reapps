@@ -213,7 +213,7 @@ function createAuthStore() {
    * Uses hard redirect (`window.location.href`) instead of Svelte store update
    * to avoid reactive cascades (empty stores, effect_update_depth_exceeded).
    */
-  function logout(): void {
+  async function logout(): Promise<void> {
     if (!browser) return;
     // Reset session expired flag — this is an intentional logout, not expiry
     sessionExpired.set(false);
@@ -240,16 +240,23 @@ function createAuthStore() {
     cryptoManager.clearMasterKey();
     localStorage.removeItem(CREDENTIALS_KEY);
     localStorage.removeItem(ACCESS_TOKEN_KEY);
-    // Native: drop the refresh token from secure storage too (best-effort,
-    // fire-and-forget). No-op on web (DCE'd).
-    void clearNativeRefreshToken();
 
-    // Clear all user data from IndexedDB to prevent cross-user data leakage.
-    // Fire-and-forget — the hard redirect below will complete the logout even
-    // if the clear takes a moment.
-    import('@reborn/storage').then(({ clearAllUserData }) =>
-      clearAllUserData().catch((err) => logger.error('Failed to clear IndexedDB on logout:', err))
-    );
+    // Await the data-clearing steps BEFORE the hard redirect. window.location.href
+    // reloads the page/WebView, which aborts any in-flight IndexedDB transaction —
+    // a fire-and-forget clear here would race the reload and leave orphan notes
+    // (seen on native when the next session points at a different backend). The
+    // critical synchronous logout state (cleared localStorage + in-memory master
+    // key above) is already applied, so callers see a logged-out state immediately;
+    // only the redirect waits. Best-effort: failures are logged, never block logout.
+    try {
+      const { clearAllUserData } = await import('@reborn/storage');
+      await clearAllUserData();
+    } catch (err) {
+      logger.error('Failed to clear IndexedDB on logout:', err);
+    }
+    // Native: drop the refresh token from secure storage (no-op on web; has its
+    // own internal try/catch, so this never throws).
+    await clearNativeRefreshToken();
 
     // Hard redirect — avoids reactive cascades from setting store to empty state.
     // Clearing localStorage above will also fire a storage event in reborn-task
