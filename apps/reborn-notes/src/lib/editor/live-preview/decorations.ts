@@ -70,6 +70,7 @@ const EM_MARK = Decoration.mark({ class: 'cm-lp-em' });
 const STRIKE_MARK = Decoration.mark({ class: 'cm-lp-strike' });
 const INLINE_CODE_MARK = Decoration.mark({ class: 'cm-lp-code' });
 const BLOCKQUOTE_LINE = Decoration.line({ class: 'cm-lp-blockquote-line' });
+const HR_LINE = Decoration.line({ class: 'cm-lp-hr-line' });
 
 // Visual cap on list nesting. Tapered ramp in `theme.ts` keeps even d12
 // (~14.5em ≈ 232px) usable on a 360px viewport; CommonMark realistically
@@ -304,6 +305,30 @@ export function buildDecorations(
           if (n === startLine.number) deco = CODE_LINE_FIRST;
           else if (n === endLine.number && lineCount > 0) deco = CODE_LINE_LAST;
           ranges.push(deco.range(ln.from));
+        }
+        return false;
+      }
+
+      // ─── Horizontal rule / thematic break (---, ***, ___) ────────
+      // Cursor off the line → hide the raw marker chars and paint the (now
+      // empty) line as a divider via a centered CSS border (`cm-lp-hr-line`),
+      // mirroring Preview's <hr>. Cursor on the line → reveal the raw `---`
+      // dimmed so it stays editable — same away-renders / caret-edits pattern
+      // as headings and blockquotes.
+      //
+      // A thematic break occupies the whole line and has no other content, so
+      // we hide `line.from..line.to` rather than the node range. That also
+      // cleanly covers the up-to-3-space indented form (where the node starts
+      // after the leading spaces) without leaving stray whitespace visible.
+      // Hiding the full line stays WITHIN the line (no trailing newline), so a
+      // plain inline replace suffices — no `block: true` needed.
+      if (name === 'HorizontalRule') {
+        const line = doc.lineAt(from);
+        if (!isAnySelectionInRange(state, line.from, line.to)) {
+          ranges.push(HR_LINE.range(line.from));
+          if (line.to > line.from) ranges.push(HIDDEN.range(line.from, line.to));
+        } else if (line.to > line.from) {
+          ranges.push(VISIBLE_MARK.range(line.from, line.to));
         }
         return false;
       }

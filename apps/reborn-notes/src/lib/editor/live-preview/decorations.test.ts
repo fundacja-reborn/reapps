@@ -416,6 +416,68 @@ describe('buildDecorations — fenced code blocks', () => {
   });
 });
 
+describe('buildDecorations — horizontal rule', () => {
+  it('hides the raw "---" and styles the line as a rule when cursor is outside', () => {
+    const doc = 'a\n\n---\n\nb';
+    // line "---" → from 3, to 6; cursor in "b" (pos 8)
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+
+    expect(classAt(ranges, 3, 3)).toBe('cm-lp-hr-line');
+    expect(hasHiddenRange(ranges, 3, 6)).toBe(true);
+  });
+
+  it('reveals the raw "---" (dimmed, no line styling) when cursor is on the line', () => {
+    const doc = 'a\n\n---\n\nb';
+    const state = makeState(doc, 4); // cursor between the dashes
+    const ranges = asRanges(buildDecorations(state));
+
+    // Raw chars shown for editing — not hidden, marked visible (dimmed)
+    expect(hasHiddenRange(ranges, 3, 6)).toBe(false);
+    expect(classAt(ranges, 3, 6)).toBe('cm-lp-mark');
+    // No divider line styling while editing (would overlap the raw text)
+    expect(classAt(ranges, 3, 3)).toBeUndefined();
+  });
+
+  it.each([
+    ['dashes', 'a\n\n---\n\nb'],
+    ['asterisks', 'a\n\n***\n\nb'],
+    ['underscores', 'a\n\n___\n\nb']
+  ])('recognises the %s thematic-break form', (_label, doc) => {
+    const state = makeState(doc, doc.length - 1); // cursor in trailing "b"
+    const ranges = asRanges(buildDecorations(state));
+    expect(classAt(ranges, 3, 3)).toBe('cm-lp-hr-line');
+    expect(hasHiddenRange(ranges, 3, 6)).toBe(true);
+  });
+
+  it('renders a rule on the very first line', () => {
+    const doc = '---\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+    expect(classAt(ranges, 0, 0)).toBe('cm-lp-hr-line');
+    expect(hasHiddenRange(ranges, 0, 3)).toBe(true);
+  });
+
+  it('does NOT treat a setext H2 underline ("Title\\n---") as a horizontal rule', () => {
+    // `---` directly under a paragraph line is a Setext heading underline
+    // (SetextHeading2), not a thematic break — must not get hr styling.
+    const doc = 'Title\n---\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+    expect(ranges.find((r) => r.spec.class === 'cm-lp-hr-line')).toBeUndefined();
+  });
+
+  it('coexists with other block constructs (heading above the rule)', () => {
+    const doc = '# H\n\n---\n\nbody';
+    // "# H" 0-2, rule "---" at 5-8, cursor in "body"
+    const state = makeState(doc, doc.length - 1);
+    const ranges = asRanges(buildDecorations(state));
+    expect(classAt(ranges, 0, 0)).toBe('cm-lp-h1-line');
+    expect(classAt(ranges, 5, 5)).toBe('cm-lp-hr-line');
+    expect(hasHiddenRange(ranges, 5, 8)).toBe(true);
+  });
+});
+
 describe('buildDecorations — empty / no markdown', () => {
   it('returns no decorations for an empty document', () => {
     const state = makeState('', 0);
