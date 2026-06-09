@@ -55,6 +55,14 @@ export default defineConfig({
     external: ['@reborn/database', '@prisma/client', '.prisma/client']
   },
   build: {
+    // Native (Capacitor) + CapacitorHttp: CapacitorHttp patches window.fetch, and
+    // Vite's modulePreload polyfill warms cold dynamic-import chunks via that fetch
+    // - so first-time lazy imports (CodeMirror code-block languages, jszip
+    // export/import, periodic-dedup scan) fail with "Failed to fetch dynamically
+    // imported module". Disable preloading on native: the Android System WebView
+    // (Chromium) loads chunks via native import() without window.fetch. Web keeps
+    // Vite's default preloading.
+    modulePreload: process.env.BUILD_TARGET === 'native' ? false : undefined,
     rollupOptions: {
       external: ['@prisma/client', '.prisma/client']
     }
