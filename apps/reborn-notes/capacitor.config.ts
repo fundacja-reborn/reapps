@@ -25,10 +25,15 @@ const config: CapacitorConfig = {
   webDir: 'build-native',
   server: {
     androidScheme: 'http'
-    // Faza 0 fallback if you cannot add CORS to staging: route fetch/XHR through
-    // the native layer (bypasses CORS). Representative architecture uses real
-    // CORS instead, so this stays off by default.
-    // plugins: { CapacitorHttp: { enabled: true } }
+  },
+  // Faza 0 spike: route fetch/XHR through the native HTTP layer so cross-origin
+  // calls to staging bypass CORS - no server change needed to validate
+  // crypto/IndexedDB/sync. The representative architecture uses real CORS on the
+  // server instead; in Faza 1 set enabled:false and add CORS for `http://localhost`
+  // to the nginx `location /notes` block. If CapacitorHttp causes any fetch quirk
+  // during the spike, flip enabled:false and use the nginx CORS path.
+  plugins: {
+    CapacitorHttp: { enabled: true }
   }
 };
 
