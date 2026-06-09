@@ -6,6 +6,7 @@ import { prisma } from '@reborn/database';
 import { v4 as uuidv4 } from 'uuid';
 import * as OTPAuth from 'otpauth';
 import { twoFactorLockout } from '$lib/server/rate-limit';
+import { isNativeClient } from '$lib/utils/native-client';
 
 const logger = createLogger('Notes-2FA-Verify');
 const ISSUER = 'Reborn Apps';
@@ -134,20 +135,25 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
     logger.info(`2FA verification successful for user ${user.username}`);
 
-    return json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          username: user.username,
-          created_at: user.created_at.toISOString(),
-          updated_at: user.updated_at.toISOString()
-        },
-        encryptedMasterKey: user.master_key_encrypted,
-        masterKeySalt: user.master_key_salt,
-        access_token: accessToken
-      }
-    });
+    const responseBody: Record<string, unknown> = {
+      user: {
+        id: user.id,
+        username: user.username,
+        created_at: user.created_at.toISOString(),
+        updated_at: user.updated_at.toISOString()
+      },
+      encryptedMasterKey: user.master_key_encrypted,
+      masterKeySalt: user.master_key_salt,
+      access_token: accessToken
+    };
+    // Native (Capacitor) client persists the refresh token in secure storage (it
+    // cannot use the httpOnly cookie cross-origin). Web clients send no native
+    // header -> response stays byte-identical. See $lib/utils/native-client.
+    if (isNativeClient(request)) {
+      responseBody.refresh_token = refreshToken;
+    }
+
+    return json({ success: true, data: responseBody });
   } catch (error: unknown) {
     logger.error('2FA verify error:', error);
     return json({ success: false, error: 'Internal server error' }, { status: 500 });

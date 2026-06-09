@@ -8,6 +8,7 @@ import {
 } from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 import { loginLockout } from '$lib/server/rate-limit';
+import { isNativeClient } from '$lib/utils/native-client';
 import { createLogger } from '@reborn/utils';
 
 const logger = createLogger('Notes-Login');
@@ -148,13 +149,18 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       }
 
       const { refreshToken, accessToken, ...responseData } = result.data;
-      return json({
-        success: true,
-        data: {
-          ...responseData,
-          access_token: accessToken
-        }
-      });
+      const responseBody: Record<string, unknown> = {
+        ...responseData,
+        access_token: accessToken
+      };
+      // Native (Capacitor) client cannot use the httpOnly cookie cross-origin, so
+      // it additionally receives the refresh token in the body to persist in secure
+      // storage. Web clients send no native header -> response stays byte-identical
+      // (refresh token only in the httpOnly cookie). See $lib/utils/native-client.
+      if (isNativeClient(request)) {
+        responseBody.refresh_token = refreshToken;
+      }
+      return json({ success: true, data: responseBody });
     } else {
       // Record failed login attempt for per-username lockout
       loginLockout.recordFailure(username);
