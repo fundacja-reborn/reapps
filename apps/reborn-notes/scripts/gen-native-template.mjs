@@ -36,8 +36,15 @@ html = html.replace(/ nonce="%sveltekit\.nonce%"/g, '');
 html = html.replace(/[\t ]*<link rel="manifest"[^>]*>\r?\n/g, '');
 // 4. Orphaned loading-message data attrs (consumed only by the dropped script).
 html = html.replace(/[\t ]*data-(?:stall|offline)-msg="[^"]*"\r?\n?/g, '');
-// 3. Web/PWA-only inline scripts (no `src`). Leaves <style> blocks intact.
-html = html.replace(/[\t ]*<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>\r?\n?/g, '');
+// 3. Web/PWA-only inline scripts (no `src`). Leaves <style> blocks intact. Loop
+//    until stable: removing one <script> could expose a new `<script` sequence
+//    (CodeQL: incomplete multi-character sanitization). app.html has no such
+//    nesting, but the loop is correct and clears the alert.
+let prevHtml;
+do {
+  prevHtml = html;
+  html = html.replace(/[\t ]*<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>\r?\n?/g, '');
+} while (html !== prevHtml);
 
 const banner =
   '<!--\n' +
