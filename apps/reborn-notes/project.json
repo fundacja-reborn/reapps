@@ -12,6 +12,14 @@
         "command": "vite build"
       }
     },
+    "build-native": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/build-native"],
+      "options": {
+        "cwd": "apps/reborn-notes",
+        "command": "BUILD_TARGET=native PUBLIC_BASE_PATH=https://staging.reapps.eu vite build"
+      }
+    },
     "sync": {
       "executor": "nx:run-commands",
       "options": {

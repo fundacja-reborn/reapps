@@ -1,0 +1,140 @@
+<!doctype html>
+<!--
+  Native (Capacitor) template - copy of app.html with the CSP nonce attributes
+  removed from the inline script/style tags. The native build prerenders the SPA
+  fallback (adapter-static), and SvelteKit refuses to prerender a template that
+  still carries the nonce placeholder (it cannot fill a per-request nonce into a
+  static page). Native has no CSP in Faza 0, so the inline scripts run un-nonced.
+  (Do NOT write the literal placeholder token in this comment - the prerender
+  check scans the whole template, comments included, and would re-trip.)
+  Selected via kit.files.appTemplate in svelte.config.js when BUILD_TARGET=native.
+  KNOWN DRIFT RISK: keep in sync with app.html until Faza 1 replaces this with a
+  generated template + hash-based native CSP.
+-->
+<html lang="%lang%" data-sveltekit-template>
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg?v=2026-04-26" />
+		<!-- Layout viewport stays stable when the soft keyboard opens (default
+		     interactive-widget=resizes-visual). Editor positioning is handled
+		     entirely by the JS visual-viewport tracker in +layout.svelte which
+		     emits --rn-vv-height / --rn-vv-offset-top CSS vars. Keeping the
+		     layout viewport stable means Panel 1 (icon rail + list) and any
+		     other viewport-unit consumers (dialog centering, desktop sidebar)
+		     are not affected by the keyboard - only Panel 2 (editor) opts into
+		     vv-tracked sizing. Going through resizes-content would shrink the
+		     whole DOM on every keyboard event and collapse IconNav's flex-1
+		     spacer in list mode. -->
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+		<meta name="theme-color" content="#FFD43B" />
+		<title>re/notes</title>
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<meta name="apple-mobile-web-app-title" content="re/notes" />
+		<!-- Bump ?v=YYYY-MM-DD when icons change to bypass Safari/iOS WebClip cache. -->
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/icons/apple-touch-icon.png?v=2026-04-26" />
+		%sveltekit.head%
+		<script>
+			(function(){
+				try{
+					var t=localStorage.getItem('reborn-notes-theme');
+					var d=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);
+					if(d)document.documentElement.classList.add('dark');
+				}catch(e){}
+			})()
+		</script>
+	</head>
+	<!-- htmlhint inline-style-disabled:false -->
+	<!-- webhint-disable no-inline-styles -->
+	<body data-sveltekit-preload-data="hover">
+		<!-- Initial loading indicator — styled via inline <style> block below so
+		     it displays immediately, before the app's CSS bundle loads. The
+		     inline dark-mode script in <head> runs BEFORE this renders, so the
+		     .dark class is already set on <html> when the selectors below apply.
+		-->
+		<div id="app-loading"
+			data-stall-msg="%stall_msg%"
+			data-offline-msg="%offline_msg%">
+			<div class="app-loading__inner">
+				<div class="app-loading__spinner"></div>
+				<p>%init_loading_msg%</p>
+			</div>
+		</div>
+		<style>
+			@keyframes spin {
+				to { transform: rotate(360deg); }
+			}
+			#app-loading {
+				position: fixed;
+				inset: 0;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: #f9fafb;
+				color: #6b7280;
+				font-family: system-ui;
+			}
+			#app-loading .app-loading__inner {
+				text-align: center;
+			}
+			#app-loading .app-loading__spinner {
+				width: 32px;
+				height: 32px;
+				margin: 0 auto 16px;
+				border: 3px solid #e5e7eb;
+				border-top-color: #fbc02d;
+				border-radius: 50%;
+				animation: spin 1s linear infinite;
+			}
+			.dark #app-loading {
+				background: #252525;
+				color: #a3a3a3;
+			}
+			.dark #app-loading .app-loading__spinner {
+				border-color: #404040;
+				border-top-color: #fbc02d;
+			}
+			/* Hide loading indicator when app is ready */
+			body:has(.svelte-app-ready) #app-loading {
+				display: none !important;
+			}
+		</style>
+		<script>
+			// Detect offline + no service worker (cache evicted) → show message immediately.
+			// Detect stalled JS init → after 15s replace spinner with offline message.
+			(function(){
+				var el=document.getElementById('app-loading');
+				if(!el)return;
+				var stallMsg=el.dataset.stallMsg||'';
+				var offlineMsg=el.dataset.offlineMsg||'';
+				var offline=typeof navigator!=='undefined'&&!navigator.onLine;
+				// On iOS Safari PWA cold starts `navigator.serviceWorker.controller` is
+				// transiently null even when a service worker is registered and will
+				// soon take control, so the previous `!controller` probe produced a
+				// false "Brak połączenia" screen. Only fail fast when the browser has
+				// no Service Worker API at all - otherwise let the 15s stall timeout
+				// below decide.
+				var noSW=typeof navigator!=='undefined'&&!('serviceWorker' in navigator);
+				if(offline&&noSW){
+					el.querySelector('.app-loading__spinner').style.display='none';
+					el.querySelector('p').textContent=offlineMsg;
+					return;
+				}
+				setTimeout(function(){
+					if(!document.querySelector('.svelte-app-ready')){
+						el.querySelector('.app-loading__spinner').style.display='none';
+						var p=el.querySelector('p');
+						if(navigator.onLine){
+							p.textContent=stallMsg;
+						}else{
+							p.textContent=offlineMsg;
+						}
+					}
+				},15000);
+			})()
+		</script>
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>
