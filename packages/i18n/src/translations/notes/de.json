@@ -170,7 +170,15 @@
         "open_settings": "Einstellungen öffnen",
         "got_it": "Verstanden"
       },
-      "errors": { "failed": "Notiz konnte nicht geöffnet werden" }
+      "errors": { "failed": "Notiz konnte nicht geöffnet werden" },
+      "dedup": {
+        "toast_title": "Doppelte periodische Notizen",
+        "toast_description": "{count, plural, one {# doppelte Notiz wurde auf einem anderen Gerät erstellt.} other {# doppelte Notizen wurden auf einem anderen Gerät erstellt.}} Mit dem Original zusammenführen?",
+        "merge_action": "Zusammenführen",
+        "merge_separator": "Aus einem Duplikat zusammengeführt, erstellt am {datetime}",
+        "merge_success": "{count, plural, one {# doppelte Notiz zusammengeführt.} other {# doppelte Notizen zusammengeführt.}}",
+        "merge_error": "Doppelte Notizen konnten nicht zusammengeführt werden. Bitte erneut versuchen."
+      }
     }
   },
   "storage": {
