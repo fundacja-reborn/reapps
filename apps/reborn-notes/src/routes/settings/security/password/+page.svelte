@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { base } from '$app/paths';
+  import { API_BASE } from '$lib/utils/api-base';
   import { authFetch } from '$lib/utils/auth-fetch';
   import { Lock, AlertTriangle } from '@lucide/svelte';
   import {
@@ -68,7 +68,7 @@
       const { encryptedMasterKey: newEncryptedMasterKey, salt: newMasterKeySalt } =
         await cryptoManager.encryptMasterKey(masterKey, newPassword);
 
-      const response = await authFetch(`${base}/api/auth/change-password`, {
+      const response = await authFetch(`${API_BASE}/auth/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
