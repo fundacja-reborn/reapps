@@ -12,6 +12,15 @@ const isProduction = process.env.NODE_ENV === 'production';
 // targets (adapter-node / adapter-auto) are left byte-identical when unset.
 const isNative = process.env.BUILD_TARGET === 'native';
 
+// Native CSP connect-src needs the remote API origin, derived from the build's
+// PUBLIC_API_BASE_URL (e.g. https://reapps.eu/notes/api -> https://reapps.eu).
+// CapacitorHttp routes fetch through the native layer and bypasses CSP, but this
+// keeps connect-src correct as defense-in-depth / if the transport ever changes.
+const nativeApiOrigin =
+  isNative && process.env.PUBLIC_API_BASE_URL
+    ? new URL(process.env.PUBLIC_API_BASE_URL).origin
+    : null;
+
 function selectAdapter() {
   if (isNative) {
     // SPA mode: a single index.html fallback + client-side routing. The native
@@ -68,38 +77,36 @@ const config = {
     alias: {
       $lib: './src/lib'
     },
-    // Web (SSR) uses per-request CSP nonces injected by SvelteKit at render
-    // time. The native build is fully static - there is no server to inject a
-    // nonce, and `mode: 'hash'` would nullify the `'unsafe-inline'` that Svelte
-    // relies on for inline style attributes. For the Faza 0 spike we therefore
-    // omit SvelteKit's CSP on native (the webview loads only locally-bundled
-    // assets + the API, a narrow surface) and add a proper hash-based native CSP
-    // - with the API origins in connect-src - as Faza 1 hardening.
-    ...(isNative
-      ? {}
-      : {
-          csp: {
-            mode: 'nonce',
-            directives: {
-              'default-src': ['self'],
-              // SvelteKit auto-injects `'nonce-{nonce}'` because of `mode: 'nonce'`
-              // above. Do NOT include literal `'nonce'` here - it gets passed through
-              // as a bare token, which browsers interpret as the hostname `https://nonce`
-              // (harmless but pollutes the CSP and confuses debugging in Firefox).
-              'script-src': ['self', 'wasm-unsafe-eval'],
-              'style-src': ['self', 'unsafe-inline'],
-              'img-src': ['self', 'data:', 'blob:', 'https:'],
-              'font-src': ['self', 'data:'],
-              'connect-src': isProduction
-                ? ['self']
-                : ['self', 'ws:', 'http://localhost:*', 'ws://localhost:*'],
-              'frame-ancestors': ['none'],
-              'base-uri': ['self'],
-              'form-action': ['self'],
-              'object-src': ['none']
-            }
-          }
-        })
+    // Web (SSR) injects a per-request nonce. Native is fully static (no server to
+    // mint a nonce) so it uses hashes - SvelteKit hashes the inline scripts/styles
+    // in app.native.html at build time. (Faza 0 omitted CSP on native; Faza 1
+    // restores it hash-based.)
+    csp: {
+      mode: isNative ? 'hash' : 'nonce',
+      directives: {
+        'default-src': ['self'],
+        // nonce/hash is auto-injected by `mode` above. Do NOT add a literal
+        // 'nonce' token here - browsers read it as the hostname `https://nonce`
+        // (harmless but pollutes the CSP and confuses debugging in Firefox).
+        'script-src': ['self', 'wasm-unsafe-eval'],
+        'style-src': ['self', 'unsafe-inline'],
+        // Hash mode (native) nullifies 'unsafe-inline' in style-src, which would
+        // block Svelte's runtime inline style attributes (style="..."). Keep them
+        // allowed via style-src-attr. Web (nonce mode) is unaffected.
+        ...(isNative ? { 'style-src-attr': ['unsafe-inline'] } : {}),
+        'img-src': ['self', 'data:', 'blob:', 'https:'],
+        'font-src': ['self', 'data:'],
+        'connect-src': isNative
+          ? ['self', ...(nativeApiOrigin ? [nativeApiOrigin] : [])]
+          : isProduction
+            ? ['self']
+            : ['self', 'ws:', 'http://localhost:*', 'ws://localhost:*'],
+        'frame-ancestors': ['none'],
+        'base-uri': ['self'],
+        'form-action': ['self'],
+        'object-src': ['none']
+      }
+    }
   }
 };
 
