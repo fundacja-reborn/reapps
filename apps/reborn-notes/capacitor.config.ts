@@ -24,7 +24,12 @@ const config: CapacitorConfig = {
   appName: 're/notes',
   webDir: 'build-native',
   server: {
-    androidScheme: 'http'
+    androidScheme: 'http',
+    // Spike: allow cleartext HTTP so the emulator can reach a LOCAL backend over
+    // http://10.0.2.2 (localprod on the host). Android blocks cleartext by
+    // default. Harmless for the HTTPS staging build. DEBUG/SPIKE ONLY - drop this
+    // before any release build.
+    cleartext: true
   },
   // Faza 0 spike: route fetch/XHR through the native HTTP layer so cross-origin
   // calls to staging bypass CORS - no server change needed to validate
