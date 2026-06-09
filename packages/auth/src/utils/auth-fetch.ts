@@ -27,6 +27,19 @@ export interface AuthFetchTokenStorage {
   setAccessToken: (token: string) => void;
 }
 
+/**
+ * Refresh-token store for the native (Capacitor) client. The refresh token
+ * cannot ride an httpOnly cookie cross-origin, so it lives in device secure
+ * storage (Keychain / Keystore) and is shuttled through the refresh body. Async
+ * because the native secure-storage plugin is async; may also be sync (web).
+ */
+export interface AuthFetchRefreshTokenStore {
+  /** Read the persisted refresh token (null when none / logged out). */
+  get: () => Promise<string | null> | string | null;
+  /** Persist the rotated refresh token after a successful refresh. */
+  set: (token: string) => Promise<void> | void;
+}
+
 export interface AuthFetchConfig {
   /** Absolute or relative URL of the POST /auth/refresh endpoint. */
   refreshUrl: string;
@@ -36,6 +49,14 @@ export interface AuthFetchConfig {
   onSessionExpired?: () => void;
   /** Token storage adapter — defaults to localStorage 'access_token'. */
   storage?: AuthFetchTokenStorage;
+  /**
+   * Native refresh-token store. When provided, the wrapper runs in NATIVE mode:
+   * the refresh token is read from this store and sent in the POST body, and the
+   * rotated token from the response is written back. Web clients omit this and
+   * keep the cookie-based flow (empty body, browser attaches the httpOnly cookie)
+   * — behaviour is byte-identical when `refreshTokenStore` is undefined.
+   */
+  refreshTokenStore?: AuthFetchRefreshTokenStore;
   /** Override fetch impl (tests). Defaults to globalThis.fetch. */
   fetchImpl?: typeof fetch;
   /**
@@ -118,12 +139,22 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
     const current = storage.getAccessToken();
     if (current && current !== tokenBeforeLock) return current;
 
+    // Native mode: the refresh token lives in device secure storage (it cannot
+    // ride a cross-origin cookie), so send it in the body. Web mode sends an
+    // empty body and relies on the same-origin httpOnly cookie.
+    let requestBody = '{}';
+    if (config.refreshTokenStore) {
+      const storedRefresh = await config.refreshTokenStore.get();
+      if (!storedRefresh) return null; // nothing persisted → session is gone
+      requestBody = JSON.stringify({ refresh_token: storedRefresh });
+    }
+
     let refreshRes: Response;
     try {
       refreshRes = await fetchImpl(config.refreshUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
+        body: requestBody
       });
     } catch (err) {
       // Network error / DNS / timeout — server is unreachable, not an expiry.
@@ -150,7 +181,7 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
       );
     }
 
-    let data: { success?: boolean; data?: { access_token?: string } };
+    let data: { success?: boolean; data?: { access_token?: string; refresh_token?: string } };
     try {
       data = (await refreshRes.json()) as typeof data;
     } catch (err) {
@@ -162,6 +193,13 @@ export function createAuthFetch(config: AuthFetchConfig): AuthFetch {
     // 200 OK with `success:false` is a deliberate expiry signal from the
     // server (e.g. invalid_grant). Treat as definitive.
     if (!data.success || !data.data?.access_token) return null;
+
+    // Native mode: persist the rotated refresh token for the next refresh. The
+    // native endpoint always returns it; if it were ever absent we keep the old
+    // one (the next refresh would fail cleanly rather than break silently).
+    if (config.refreshTokenStore && data.data.refresh_token) {
+      await config.refreshTokenStore.set(data.data.refresh_token);
+    }
 
     const newToken = data.data.access_token;
     storage.setAccessToken(newToken);
