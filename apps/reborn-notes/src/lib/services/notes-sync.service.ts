@@ -31,7 +31,7 @@ import type {
 import { cryptoManager } from '@reborn/crypto';
 import { extractShadowIndexes } from './shadow-index-extractor';
 import { get } from 'svelte/store';
-import { PUBLIC_BASE_PATH } from '$env/static/public';
+import { API_BASE } from '$lib/utils/api-base';
 import { authStore } from '$lib/stores/auth.store';
 import { createLogger } from '@reborn/utils';
 import {
@@ -206,7 +206,7 @@ async function pullFolders(): Promise<void> {
   // `idb-cleanup.service.ts`.
   const userId = get(authStore).userId;
   if (!userId) return;
-  const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders`);
+  const res = await authFetch(`${API_BASE}/folders`);
   if (!res.ok) throw new Error(`GET /api/folders: ${res.status}`);
   const { data } = await res.json();
 
@@ -280,7 +280,7 @@ async function pullTags(): Promise<void> {
   // See pullFolders() for rationale on the userId guard.
   const userId = get(authStore).userId;
   if (!userId) return;
-  const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags`);
+  const res = await authFetch(`${API_BASE}/tags`);
   if (!res.ok) throw new Error(`GET /api/tags: ${res.status}`);
   const { data } = await res.json();
 
@@ -347,7 +347,7 @@ async function pullNotes(): Promise<void> {
   // See pullFolders() for rationale on the userId guard.
   const userId = get(authStore).userId;
   if (!userId) return;
-  const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes?include_archived=true`);
+  const res = await authFetch(`${API_BASE}/notes?include_archived=true`);
   if (!res.ok) throw new Error(`GET /api/notes: ${res.status}`);
   const { data } = await res.json();
 
@@ -546,7 +546,7 @@ export async function pushPendingItems(): Promise<void> {
             };
             const payload = { id: f.id, ...pushedFields, created_at: f.created_at };
             validateEncryptedPayload(payload as Record<string, unknown>);
-            const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders`, {
+            const res = await authFetch(`${API_BASE}/folders`, {
               method: 'POST',
               headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
               body: JSON.stringify(payload)
@@ -581,7 +581,7 @@ export async function pushPendingItems(): Promise<void> {
           };
           const payload = { id: t.id, ...pushedFields, created_at: t.created_at };
           validateEncryptedPayload(payload as Record<string, unknown>);
-          const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags`, {
+          const res = await authFetch(`${API_BASE}/tags`, {
             method: 'POST',
             headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
             body: JSON.stringify(payload)
@@ -620,7 +620,7 @@ export async function pushPendingItems(): Promise<void> {
             created_at: n.created_at
           };
           validateEncryptedPayload(payload as Record<string, unknown>);
-          const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes`, {
+          const res = await authFetch(`${API_BASE}/notes`, {
             method: 'POST',
             headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
             body: JSON.stringify(payload)
@@ -771,7 +771,7 @@ export function pushNote(note: NoteEncrypted | NoteStoredLocal): void {
         created_at: note.created_at
       };
       validateEncryptedPayload(payload as Record<string, unknown>);
-      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes`, {
+      const res = await authFetch(`${API_BASE}/notes`, {
         method: 'POST',
         headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify(payload)
@@ -809,7 +809,7 @@ export function pushNoteUpdate(
   void serializePerEntity('note', id, () =>
     pushSilently(async (idempotencyKey) => {
       validateEncryptedPayload(fields as Record<string, unknown>);
-      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes/${id}`, {
+      const res = await authFetch(`${API_BASE}/notes/${id}`, {
         method: 'PATCH',
         headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify(fields)
@@ -835,8 +835,8 @@ export function pushNoteUpdate(
 export function pushNoteDelete(id: string, permanent = false): void {
   void serializePerEntity('note', id, () =>
     pushSilently(async (idempotencyKey) => {
-      const path = permanent ? `/api/notes/${id}?permanent=true` : `/api/notes/${id}`;
-      const res = await authFetch(`${PUBLIC_BASE_PATH}${path}`, {
+      const path = permanent ? `/notes/${id}?permanent=true` : `/notes/${id}`;
+      const res = await authFetch(`${API_BASE}${path}`, {
         method: 'DELETE',
         headers: { 'Idempotency-Key': idempotencyKey }
       });
@@ -883,7 +883,7 @@ export function pushNoteDelete(id: string, permanent = false): void {
 export function pushNoteRestore(id: string): void {
   void serializePerEntity('note', id, () =>
     pushSilently(async (idempotencyKey) => {
-      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes/${id}/restore`, {
+      const res = await authFetch(`${API_BASE}/notes/${id}/restore`, {
         method: 'POST',
         headers: { 'Idempotency-Key': idempotencyKey }
       });
@@ -941,7 +941,7 @@ export function pushFolder(
         created_at: folder.created_at
       };
       validateEncryptedPayload(payload as Record<string, unknown>);
-      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders`, {
+      const res = await authFetch(`${API_BASE}/folders`, {
         method: 'POST',
         headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify(payload)
@@ -971,7 +971,7 @@ export function pushFolderUpdate(
   void serializePerEntity('folder', id, () =>
     pushSilently(async (idempotencyKey) => {
       validateEncryptedPayload(fields as Record<string, unknown>);
-      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders/${id}`, {
+      const res = await authFetch(`${API_BASE}/folders/${id}`, {
         method: 'PATCH',
         headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify(fields)
@@ -997,7 +997,7 @@ export function pushFolderUpdate(
 export function pushFolderDelete(id: string): void {
   void serializePerEntity('folder', id, () =>
     pushSilently(async (idempotencyKey) => {
-      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/folders/${id}`, {
+      const res = await authFetch(`${API_BASE}/folders/${id}`, {
         method: 'DELETE',
         headers: { 'Idempotency-Key': idempotencyKey }
       });
@@ -1028,7 +1028,7 @@ export function pushTag(tag: {
         created_at: tag.created_at
       };
       validateEncryptedPayload(payload as Record<string, unknown>);
-      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags`, {
+      const res = await authFetch(`${API_BASE}/tags`, {
         method: 'POST',
         headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify(payload)
@@ -1058,7 +1058,7 @@ export function pushTagUpdate(
   void serializePerEntity('tag', id, () =>
     pushSilently(async (idempotencyKey) => {
       validateEncryptedPayload(fields as Record<string, unknown>);
-      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags/${id}`, {
+      const res = await authFetch(`${API_BASE}/tags/${id}`, {
         method: 'PATCH',
         headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify(fields)
@@ -1084,7 +1084,7 @@ export function pushTagUpdate(
 export function pushTagDelete(id: string): void {
   void serializePerEntity('tag', id, () =>
     pushSilently(async (idempotencyKey) => {
-      const res = await authFetch(`${PUBLIC_BASE_PATH}/api/tags/${id}`, {
+      const res = await authFetch(`${API_BASE}/tags/${id}`, {
         method: 'DELETE',
         headers: { 'Idempotency-Key': idempotencyKey }
       });
@@ -1101,7 +1101,7 @@ export function pushTagDelete(id: string): void {
 /** Push a single note version to server (fire-and-forget). Marks as synced on success. */
 export function pushNoteVersion(entry: NoteHistoryEntry): void {
   void pushSilently(async (idempotencyKey) => {
-    const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes/${entry.note_id}/versions`, {
+    const res = await authFetch(`${API_BASE}/notes/${entry.note_id}/versions`, {
       method: 'POST',
       headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify({
@@ -1128,7 +1128,7 @@ async function pullNoteVersions(noteIds: string[]): Promise<void> {
     const batch = noteIds.slice(i, i + PULL_VERSIONS_BATCH_SIZE);
     await Promise.allSettled(
       batch.map(async (noteId) => {
-        const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes/${noteId}/versions`);
+        const res = await authFetch(`${API_BASE}/notes/${noteId}/versions`);
         if (!res.ok) return;
         const { data } = await res.json();
         if (!Array.isArray(data)) return;
@@ -1164,7 +1164,7 @@ async function pushPendingVersions(): Promise<void> {
   await Promise.allSettled(
     pending.map((entry) =>
       pushSilently(async (idempotencyKey) => {
-        const res = await authFetch(`${PUBLIC_BASE_PATH}/api/notes/${entry.note_id}/versions`, {
+        const res = await authFetch(`${API_BASE}/notes/${entry.note_id}/versions`, {
           method: 'POST',
           headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
           body: JSON.stringify({

@@ -1,6 +1,6 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
-import { PUBLIC_BASE_PATH } from '$env/static/public';
+import { API_BASE } from '$lib/utils/api-base';
 import { authFetch } from '$lib/utils/auth-fetch';
 import { createLogger } from '@reborn/utils';
 
@@ -37,7 +37,7 @@ export async function refreshQuota(): Promise<void> {
 
   quotaLoading.set(true);
   try {
-    const res = await authFetch(`${PUBLIC_BASE_PATH}/api/user/quota`);
+    const res = await authFetch(`${API_BASE}/user/quota`);
     if (!res.ok) return;
 
     const json = await res.json();

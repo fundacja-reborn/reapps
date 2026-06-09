@@ -17,7 +17,7 @@
       "outputs": ["{projectRoot}/build-native"],
       "options": {
         "cwd": "apps/reborn-notes",
-        "command": "NODE_ENV=production BUILD_TARGET=native PUBLIC_BASE_PATH=https://staging.reapps.eu/notes vite build"
+        "command": "NODE_ENV=production BUILD_TARGET=native PUBLIC_API_BASE_URL=https://staging.reapps.eu/notes/api vite build"
       }
     },
     "build-native-local": {
@@ -25,7 +25,7 @@
       "outputs": ["{projectRoot}/build-native"],
       "options": {
         "cwd": "apps/reborn-notes",
-        "command": "NODE_ENV=production BUILD_TARGET=native PUBLIC_BASE_PATH=http://10.0.2.2/notes vite build"
+        "command": "NODE_ENV=production BUILD_TARGET=native PUBLIC_API_BASE_URL=http://10.0.2.2/notes/api vite build"
       }
     },
     "sync": {

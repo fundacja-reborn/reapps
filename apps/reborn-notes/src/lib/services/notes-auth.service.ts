@@ -5,7 +5,7 @@
  * in the same format as reborn-task, then unlocks E2E via cryptoManager.
  * This allows Notes to authenticate users independently - without reborn-task.
  */
-import { PUBLIC_BASE_PATH } from '$env/static/public';
+import { API_BASE } from '$lib/utils/api-base';
 import { authStore, CREDENTIALS_KEY, ACCESS_TOKEN_KEY } from '$lib/stores/auth.store';
 import { sessionExpired } from '$lib/stores/sync-status.store';
 import { clearAllUserData, isDatabaseInitialized } from '@reborn/storage';
@@ -41,7 +41,7 @@ interface ReAuthResponseBody {
  */
 export async function loginInNotes(username: string, password: string): Promise<LoginResult> {
   try {
-    const res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/login`, {
+    const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
@@ -164,7 +164,7 @@ export async function reAuthenticate(password: string): Promise<ReAuthResult> {
 
   let res: Response;
   try {
-    res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/login`, {
+    res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
@@ -222,7 +222,7 @@ export async function reAuthenticate(password: string): Promise<ReAuthResult> {
 export async function verifyTotpForReauth(userId: string, code: string): Promise<ReAuthResult> {
   let res: Response;
   try {
-    res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa/verify`, {
+    res = await fetch(`${API_BASE}/auth/2fa/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, code })

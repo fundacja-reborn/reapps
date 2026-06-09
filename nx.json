@@ -66,5 +66,6 @@
       "commitMessage": "chore(release): v{version}",
       "tag": true
     }
-  }
+  },
+  "analytics": false
 }

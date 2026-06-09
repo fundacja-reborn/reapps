@@ -10,6 +10,8 @@ export default [
     ignores: [
       '**/build/**',
       '**/build-native/**',
+      '**/android/**',
+      '**/ios/**',
       '**/.svelte-kit/**',
       '**/dist/**',
       '**/node_modules/**'

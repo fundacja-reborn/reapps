@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { PUBLIC_BASE_PATH } from '$env/static/public';
+	import { API_BASE } from '$lib/utils/api-base';
 	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
 	import { goto } from '$lib/utils/navigation';
@@ -60,7 +60,7 @@
 		isLoading = true;
 
 		try {
-			const res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa/verify`, {
+			const res = await fetch(`${API_BASE}/auth/2fa/verify`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ userId, code: codeToVerify })

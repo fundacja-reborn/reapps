@@ -8,7 +8,7 @@
   import { loginInNotes } from '$lib/services/notes-auth.service';
   import { t } from '$lib/stores/i18n.store';
   import { locale } from 'svelte-i18n';
-  import { PUBLIC_BASE_PATH } from '$env/static/public';
+  import { API_BASE } from '$lib/utils/api-base';
   import { PUBLIC_SITE_URL } from '$env/static/public';
   import { createLogger } from '@reborn/utils';
 
@@ -62,7 +62,7 @@
       cryptoManager.clearMasterKey();
 
       // 5. Register via API with bot protection data + default task list
-      const res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/register`, {
+      const res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -123,7 +123,7 @@
   header={logoHeader}
   showLoginLink={true}
   loginUrl="/auth/login"
-  powEndpoint={`${PUBLIC_BASE_PATH}/api/auth/pow`}
+  powEndpoint={`${API_BASE}/auth/pow`}
   {termsUrl}
   {privacyUrl}
   themeStorageKey="reborn-notes-theme"
