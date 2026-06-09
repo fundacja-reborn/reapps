@@ -17,7 +17,7 @@
       "outputs": ["{projectRoot}/build-native"],
       "options": {
         "cwd": "apps/reborn-notes",
-        "command": "BUILD_TARGET=native PUBLIC_BASE_PATH=https://staging.reapps.eu vite build"
+        "command": "BUILD_TARGET=native PUBLIC_BASE_PATH=https://staging.reapps.eu/notes vite build"
       }
     },
     "sync": {
