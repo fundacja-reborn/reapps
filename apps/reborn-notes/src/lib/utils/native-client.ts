@@ -32,3 +32,20 @@ export const NATIVE_CLIENT_VALUE = 'native';
 export function isNativeClient(request: Request): boolean {
   return request.headers.get(NATIVE_CLIENT_HEADER) === NATIVE_CLIENT_VALUE;
 }
+
+/**
+ * Build-time native (Capacitor) flag - `false` on the web build, so native-only
+ * branches are dead-code-eliminated and the web bundle stays byte-identical.
+ * Defined via `__REBORN_NATIVE__` in vite.config.ts (and as `false` in vitest).
+ */
+export const IS_NATIVE: boolean = __REBORN_NATIVE__;
+
+/**
+ * Headers a native client must add to token-issuing requests (login, 2fa,
+ * register, change-password) so the server returns the refresh token in the
+ * body. Empty on web -> request headers are unchanged. Spread into a fetch's
+ * `headers`: `{ 'Content-Type': 'application/json', ...nativeAuthHeaders() }`.
+ */
+export function nativeAuthHeaders(): Record<string, string> {
+  return IS_NATIVE ? { [NATIVE_CLIENT_HEADER]: NATIVE_CLIENT_VALUE } : {};
+}

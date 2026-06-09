@@ -23,6 +23,7 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { base } from '$app/paths';
 import { API_BASE } from '$lib/utils/api-base';
+import { clearNativeRefreshToken } from '$lib/utils/native-auth-storage';
 import { cryptoManager } from '@reborn/crypto';
 import { sessionExpired } from '$lib/stores/sync-status.store';
 import { createLogger } from '@reborn/utils';
@@ -239,6 +240,9 @@ function createAuthStore() {
     cryptoManager.clearMasterKey();
     localStorage.removeItem(CREDENTIALS_KEY);
     localStorage.removeItem(ACCESS_TOKEN_KEY);
+    // Native: drop the refresh token from secure storage too (best-effort,
+    // fire-and-forget). No-op on web (DCE'd).
+    void clearNativeRefreshToken();
 
     // Clear all user data from IndexedDB to prevent cross-user data leakage.
     // Fire-and-forget — the hard redirect below will complete the logout even

@@ -8,7 +8,11 @@ const rootPkg = JSON.parse(readFileSync(resolve(__dirname, '../../package.json')
 
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(rootPkg.version)
+    __APP_VERSION__: JSON.stringify(rootPkg.version),
+    // Build-time native flag. Statically `false` on the web build, so every
+    // `if (__REBORN_NATIVE__)` branch (and the secure-storage plugin behind it)
+    // is dead-code-eliminated - keeping the web bundle byte-identical.
+    __REBORN_NATIVE__: JSON.stringify(process.env.BUILD_TARGET === 'native')
   },
   plugins: [tailwindcss(), sveltekit()],
   // Load .env from monorepo root
