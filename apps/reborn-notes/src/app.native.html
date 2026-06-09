@@ -26,7 +26,9 @@
 		     whole DOM on every keyboard event and collapse IconNav's flex-1
 		     spacer in list mode. -->
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+		<!-- No web manifest in native: it is served by a +server.ts route that does
+		     not exist in the static bundle (was a 404). Capacitor provides the app
+		     identity (name/icon) natively. -->
 		<meta name="theme-color" content="#FFD43B" />
 		<title>re/notes</title>
 		<meta name="mobile-web-app-capable" content="yes" />
