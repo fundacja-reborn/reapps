@@ -170,7 +170,15 @@
         "open_settings": "Ouvrir les paramètres",
         "got_it": "Compris"
       },
-      "errors": { "failed": "Impossible d'ouvrir la note" }
+      "errors": { "failed": "Impossible d'ouvrir la note" },
+      "dedup": {
+        "toast_title": "Notes périodiques en double",
+        "toast_description": "{count, plural, one {# note en double a été créée sur un autre appareil.} other {# notes en double ont été créées sur un autre appareil.}} Fusionner dans la note originale ?",
+        "merge_action": "Fusionner",
+        "merge_separator": "Fusionné depuis un doublon créé le {datetime}",
+        "merge_success": "{count, plural, one {# note en double fusionnée.} other {# notes en double fusionnées.}}",
+        "merge_error": "Impossible de fusionner les notes en double. Veuillez réessayer."
+      }
     }
   },
   "storage": {

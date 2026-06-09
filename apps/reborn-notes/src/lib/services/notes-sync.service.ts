@@ -95,6 +95,20 @@ export async function refreshStoresAfterPull(): Promise<void> {
   await Promise.all([foldersStore.refresh(), tagsStore.refresh(), noteIndex.rebuild()]);
   notesStore.refresh();
   await noteDetailService.refreshFromStorage();
+
+  // Surface multi-device periodic-note duplicates (guideline 57). Fire-and-forget
+  // so it never blocks the UI refresh; cheap when there are none (title-prefix
+  // pre-filter, zero decryption) and only decrypts on an actual collision.
+  void (async () => {
+    try {
+      const { detectAndNotifyPeriodicDuplicates } = await import(
+        '$lib/services/periodic-dedup.service'
+      );
+      await detectAndNotifyPeriodicDuplicates();
+    } catch (e) {
+      logger.warn('Periodic duplicate scan failed', e);
+    }
+  })();
 }
 
 // ── Pull sync - server → IndexedDB ───────────────────────────────
