@@ -3,6 +3,8 @@
 
 declare global {
   const __APP_VERSION__: string;
+  /** Build-time native (Capacitor) flag. `false` on web (see vite.config.ts define). */
+  const __REBORN_NATIVE__: boolean;
 
   namespace App {
     interface Error {

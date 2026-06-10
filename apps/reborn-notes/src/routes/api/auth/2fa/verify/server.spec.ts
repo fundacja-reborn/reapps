@@ -72,12 +72,12 @@ function expectedHash(code: string): string {
 	return createHash('sha256').update(normalized).digest('hex');
 }
 
-function createMockEvent(body: unknown) {
+function createMockEvent(body: unknown, extraHeaders?: Record<string, string>) {
 	const cookieStore = new Map<string, string>();
 	return {
 		request: new Request('http://localhost/api/auth/2fa/verify', {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: { 'Content-Type': 'application/json', ...extraHeaders },
 			body: JSON.stringify(body)
 		}),
 		cookies: {
@@ -88,9 +88,9 @@ function createMockEvent(body: unknown) {
 	};
 }
 
-async function callEndpoint(body: unknown) {
+async function callEndpoint(body: unknown, extraHeaders?: Record<string, string>) {
 	const { POST } = await import('./+server');
-	const event = createMockEvent(body);
+	const event = createMockEvent(body, extraHeaders);
 	const response = await (POST as unknown as (event: unknown) => Promise<Response>)(event);
 	const data = await response.json();
 	return { response, data, status: response.status };
@@ -263,8 +263,25 @@ describe('POST /api/auth/2fa/verify (reborn-notes)', () => {
 		expect(status).toBe(200);
 		expect(data.success).toBe(true);
 		expect(data.data.access_token).toBe('mock-access');
-		// refresh_token is sent as httpOnly cookie, not in JSON body
+		// Web client: refresh_token goes out ONLY as the httpOnly cookie, never in
+		// the JSON body (byte-identical to before the native path was added).
+		expect(data.data.refresh_token).toBeUndefined();
 		expect(mockLockout.reset).toHaveBeenCalledWith(MOCK_USER_ID);
+	});
+
+	// (m) Native client (x-reborn-client: native) → refresh_token ALSO in body so
+	//     the native shell can persist it in secure storage. The httpOnly cookie is
+	//     still set too; native simply ignores it.
+	it('returns refresh_token in the body for the native client', async () => {
+		const { status, data } = await callEndpoint(
+			{ userId: MOCK_USER_ID, code: '123456' },
+			{ 'x-reborn-client': 'native' }
+		);
+
+		expect(status).toBe(200);
+		expect(data.success).toBe(true);
+		expect(data.data.access_token).toBe('mock-access');
+		expect(data.data.refresh_token).toBe('mock-refresh');
 	});
 
 	// (k) userId > 36 characters → 400 (notes-specific validation)

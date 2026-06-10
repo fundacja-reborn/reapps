@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { API_BASE } from '$lib/utils/api-base';
+	import { nativeAuthHeaders } from '$lib/utils/native-client';
+	import { persistNativeRefreshToken } from '$lib/utils/native-auth-storage';
 	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
 	import { goto } from '$lib/utils/navigation';
@@ -62,7 +64,7 @@
 		try {
 			const res = await fetch(`${API_BASE}/auth/2fa/verify`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
 				body: JSON.stringify({ userId, code: codeToVerify })
 			});
 			const body = await res.json();
@@ -88,7 +90,9 @@
 			};
 			localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
 			localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
-			// Note: refresh_token is managed exclusively via httpOnly cookie (set by server)
+			// Web: refresh_token is managed exclusively via httpOnly cookie (set by server).
+			// Native: persist the body refresh token to secure storage. No-op on web.
+			await persistNativeRefreshToken(data.refresh_token);
 
 			// Unlock E2E — use password saved by login page before redirect
 			const savedPassword = sessionStorage.getItem('2fa_pending_password');

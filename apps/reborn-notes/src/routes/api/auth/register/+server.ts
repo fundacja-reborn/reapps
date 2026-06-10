@@ -6,6 +6,7 @@ import {
   REFRESH_TOKEN_TTL_SECONDS
 } from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
+import { isNativeClient } from '$lib/utils/native-client';
 import { createLogger } from '@reborn/utils';
 
 const logger = createLogger('Notes-Register');
@@ -39,17 +40,18 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       }
 
       const { refreshToken, accessToken, ...responseData } = result.data;
-      return json(
-        {
-          success: true,
-          data: {
-            ...responseData,
-            access_token: accessToken
-            // refresh_token is sent exclusively via httpOnly cookie — never in response body
-          }
-        },
-        { status: 201 }
-      );
+      const responseBody: Record<string, unknown> = {
+        ...responseData,
+        access_token: accessToken
+        // Web: refresh_token is sent exclusively via httpOnly cookie, never in the body.
+      };
+      // Native client persists the refresh token in secure storage (cross-origin
+      // cannot use the httpOnly cookie). Gated by the native header -> web stays
+      // byte-identical. See $lib/utils/native-client.
+      if (isNativeClient(request)) {
+        responseBody.refresh_token = refreshToken;
+      }
+      return json({ success: true, data: responseBody }, { status: 201 });
     } else {
       return json({ error: result.error }, { status: 400 });
     }

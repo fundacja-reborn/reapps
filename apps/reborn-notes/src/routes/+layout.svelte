@@ -1,6 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import { onMount, untrack } from 'svelte';
+  import { installNativeAuthProbe } from '$lib/utils/native-auth-probe';
   import { get } from 'svelte/store';
   import { Toaster } from '@reborn/ui';
   import { browser } from '$app/environment';
@@ -116,6 +117,9 @@
 
   onMount(() => {
     if (!browser) return;
+
+    // Native-only dev probe for refresh-token rotation validation (no-op on web).
+    installNativeAuthProbe();
 
     // Timeout fallback - show app even if initialization stalls (e.g. slow IndexedDB)
     const timeoutId = setTimeout(() => {

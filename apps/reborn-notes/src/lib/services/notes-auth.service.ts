@@ -6,6 +6,8 @@
  * This allows Notes to authenticate users independently - without reborn-task.
  */
 import { API_BASE } from '$lib/utils/api-base';
+import { nativeAuthHeaders } from '$lib/utils/native-client';
+import { persistNativeRefreshToken } from '$lib/utils/native-auth-storage';
 import { authStore, CREDENTIALS_KEY, ACCESS_TOKEN_KEY } from '$lib/stores/auth.store';
 import { sessionExpired } from '$lib/stores/sync-status.store';
 import { clearAllUserData, isDatabaseInitialized } from '@reborn/storage';
@@ -31,6 +33,8 @@ interface ReAuthResponseBody {
     twoFactorRequired?: boolean;
     userId?: string;
     access_token?: string;
+    /** Present only for native clients (sent the native header). */
+    refresh_token?: string;
   };
 }
 
@@ -43,7 +47,7 @@ export async function loginInNotes(username: string, password: string): Promise<
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
       body: JSON.stringify({ username, password })
     });
 
@@ -80,7 +84,10 @@ export async function loginInNotes(username: string, password: string): Promise<
     };
     localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
     localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
-    // Note: refresh_token is managed exclusively via httpOnly cookie (set by server)
+    // Web: refresh_token is managed exclusively via httpOnly cookie (set by server).
+    // Native: it arrives in the body (native header) and is persisted to secure
+    // storage for createAuthFetch's native refresh path. No-op on web.
+    await persistNativeRefreshToken(data.refresh_token);
 
     // Clear any previous user's data from IndexedDB before starting new session.
     // Prevents phantom notes when switching users or after DB wipe + re-register.
@@ -166,7 +173,7 @@ export async function reAuthenticate(password: string): Promise<ReAuthResult> {
   try {
     res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
       body: JSON.stringify({ username, password })
     });
   } catch (err) {
@@ -202,6 +209,8 @@ export async function reAuthenticate(password: string): Promise<ReAuthResult> {
   if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
 
   localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+  // Native: persist the rotated refresh token from the body. No-op on web.
+  await persistNativeRefreshToken(data.refresh_token);
 
   // Credentials remain the same - touch to ensure they're still parseable
   try {
@@ -224,7 +233,7 @@ export async function verifyTotpForReauth(userId: string, code: string): Promise
   try {
     res = await fetch(`${API_BASE}/auth/2fa/verify`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
       body: JSON.stringify({ userId, code })
     });
   } catch (err) {
@@ -255,6 +264,8 @@ export async function verifyTotpForReauth(userId: string, code: string): Promise
   if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
 
   localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+  // Native: persist the rotated refresh token from the body. No-op on web.
+  await persistNativeRefreshToken(data.refresh_token);
 
   sessionExpired.set(false);
   await refreshAfterReauth();

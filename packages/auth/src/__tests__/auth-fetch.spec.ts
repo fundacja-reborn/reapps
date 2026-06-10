@@ -16,6 +16,17 @@ function makeStorage(initial: string | null = null): AuthFetchTokenStorage & { v
   } as never;
 }
 
+/** In-memory native refresh-token store (stands in for Keychain/Keystore). */
+function makeRefreshStore(initial: string | null = null) {
+  const state = { value: initial };
+  return {
+    get: () => state.value,
+    set: (t: string) => {
+      state.value = t;
+    }
+  };
+}
+
 describe('createAuthFetch', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -679,5 +690,77 @@ describe('createAuthFetch', () => {
     expect(await authFetch.refresh()).toBeNull(); // populate cache
     storage.setAccessToken('t2-pre-auth'); // change key so next call isn't short-circuited
     expect(await authFetch.refresh()).toBe('t2'); // success clears cache
+  });
+
+  // --- Native mode (refresh token in body + secure storage, no cookie) ---
+  //
+  // When `refreshTokenStore` is provided (Capacitor shell), the refresh token
+  // cannot ride a cross-origin httpOnly cookie, so it is read from secure
+  // storage, sent in the POST body, and the rotated token from the response is
+  // written back. Web mode (no store) keeps the empty-body + cookie flow.
+
+  it('native mode: sends the stored refresh token in the body and persists the rotated one', async () => {
+    const storage = makeStorage('access-old');
+    const refreshStore = makeRefreshStore('refresh-old');
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: { access_token: 'access-new', refresh_token: 'refresh-new' }
+        }),
+        { status: 200 }
+      )
+    );
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh-native',
+      storage,
+      refreshTokenStore: refreshStore,
+      fetchImpl
+    });
+
+    const newToken = await authFetch.refresh();
+
+    expect(newToken).toBe('access-new');
+    expect(storage.getAccessToken()).toBe('access-new');
+    // Rotated refresh token persisted for the next refresh.
+    expect(refreshStore.get()).toBe('refresh-new');
+    // The stored refresh token went out in the body (not a cookie).
+    const body = JSON.parse((fetchImpl.mock.calls[0][1] as RequestInit).body as string);
+    expect(body).toEqual({ refresh_token: 'refresh-old' });
+  });
+
+  it('native mode: returns null with no network call when no refresh token is stored', async () => {
+    const storage = makeStorage('access-old');
+    const refreshStore = makeRefreshStore(null);
+    const fetchImpl = vi.fn();
+
+    const authFetch = createAuthFetch({
+      refreshUrl: '/api/auth/refresh-native',
+      storage,
+      refreshTokenStore: refreshStore,
+      fetchImpl,
+      gracePeriodMs: 0
+    });
+
+    expect(await authFetch.refresh()).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('web mode (no refreshTokenStore): posts an empty body - byte-identical to before', async () => {
+    const storage = makeStorage('old');
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ success: true, data: { access_token: 'new' } }), {
+          status: 200
+        })
+      );
+
+    const authFetch = createAuthFetch({ refreshUrl: '/api/auth/refresh', storage, fetchImpl });
+
+    await authFetch.refresh();
+
+    expect((fetchImpl.mock.calls[0][1] as RequestInit).body).toBe('{}');
   });
 });

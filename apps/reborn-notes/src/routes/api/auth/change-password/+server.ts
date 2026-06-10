@@ -11,6 +11,7 @@ import {
   refreshTokenExpiryDate
 } from '@reborn/auth/server';
 import { changePasswordLockout } from '$lib/server/rate-limit';
+import { isNativeClient } from '$lib/utils/native-client';
 
 const logger = createLogger('Notes-ChangePassword');
 
@@ -106,10 +107,15 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     });
 
     logger.info(`Password changed for user ${userId}`);
-    return json({
-      success: true,
-      data: { access_token: newTokens.accessToken }
-    });
+    const responseBody: Record<string, unknown> = { access_token: newTokens.accessToken };
+    // change-password revokes ALL of the user's refresh tokens and issues a fresh
+    // one, so a native client MUST receive the new token to re-persist in secure
+    // storage - otherwise its stored token is dead and the next refresh fails.
+    // Gated by the native header -> web stays byte-identical (cookie only).
+    if (isNativeClient(request)) {
+      responseBody.refresh_token = newTokens.refreshToken;
+    }
+    return json({ success: true, data: responseBody });
   } catch (error: unknown) {
     logger.error('Change password error:', error);
     return json({ success: false, error: 'Internal server error' }, { status: 500 });
