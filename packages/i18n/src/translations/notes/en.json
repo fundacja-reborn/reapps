@@ -988,6 +988,8 @@
       "copy_link": "Copy link",
       "copied": "Copied",
       "copy_failed": "Failed to copy",
+      "share_cta": "Share",
+      "share_sheet_title": "Share note",
       "close_cta": "Close",
       "offline_warning": "Sharing requires an internet connection",
       "quota_exceeded": "Storage quota reached. Revoke unused shares or delete notes to free up space."

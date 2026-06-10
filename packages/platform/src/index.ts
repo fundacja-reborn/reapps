@@ -3,6 +3,7 @@ export type {
   NetworkStatus,
   Platform,
   PlatformBackButton,
+  PlatformDeepLinks,
   PlatformLifecycle,
   PlatformNetwork,
   WebPlatformOptions

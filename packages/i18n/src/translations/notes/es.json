@@ -988,6 +988,8 @@
       "copy_link": "Copiar enlace",
       "copied": "Copiado",
       "copy_failed": "Error al copiar",
+      "share_cta": "Compartir",
+      "share_sheet_title": "Compartir nota",
       "close_cta": "Cerrar",
       "offline_warning": "Compartir requiere conexión a internet",
       "quota_exceeded": "Cuota de almacenamiento alcanzada. Revoca compartidos sin uso o elimina notas para liberar espacio."

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
+  import { copyText } from '$lib/utils/clipboard';
   import { SvelteSet } from 'svelte/reactivity';
   import {
     ArrowLeft,
@@ -304,10 +305,9 @@
     noteActionSheetOpen = false;
     const title = note.title || $t('notes.untitled');
     const link = `[${title}](note:${note.id})`;
-    try {
-      await navigator.clipboard.writeText(link);
+    if (await copyText(link)) {
       toastStore.success($t('notes.note_link_copied'));
-    } catch {
+    } else {
       toastStore.error('Failed to copy');
     }
   }

@@ -70,6 +70,22 @@ export interface PlatformBackButton {
   setHandler(handler: (() => boolean) | null): void;
 }
 
+/**
+ * Inbound deep links (Android App Links / iOS Universal Links). The native
+ * shell wires `@capacitor/app` `appUrlOpen` plus the cold-start launch URL; web
+ * is a no-op, because in a browser the URL is already the page being viewed -
+ * there is no separate shell to route the link into.
+ */
+export interface PlatformDeepLinks {
+  /**
+   * Fires with the full inbound URL each time the app is opened via a deep link
+   * (and once at startup if it was cold-launched from one). The URL keeps its
+   * fragment (`#...`), which the share flow relies on to carry the decryption
+   * key client-side. Returns an unsubscribe. Web never fires it.
+   */
+  onOpen(handler: (url: string) => void): () => void;
+}
+
 /** The capability surface the UI depends on. */
 export interface Platform {
   /** `true` inside the Capacitor native shell, `false` on web. */
@@ -77,6 +93,7 @@ export interface Platform {
   readonly network: PlatformNetwork;
   readonly lifecycle: PlatformLifecycle;
   readonly backButton: PlatformBackButton;
+  readonly deepLinks: PlatformDeepLinks;
 }
 
 /** Inputs the app supplies when assembling the web platform. */

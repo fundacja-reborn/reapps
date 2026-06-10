@@ -12,6 +12,8 @@
  * Svelte/i18n layer rather than being duplicated here.
  */
 
+import { copyText } from '$lib/utils/clipboard';
+
 // Clipboard + check icons (Lucide-style, 16px, `stroke="currentColor"` so they
 // follow the button's text colour). Inlined as strings for the HTML-string
 // (Preview) and DOM (`innerHTML`, Live Preview) call sites alike.
@@ -35,20 +37,17 @@ const revertTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
 
 /**
  * Write `code` to the clipboard and show a transient checkmark on `btn`.
- * Safe to call repeatedly — a pending revert timer is cleared first. Silently
- * no-ops if the Clipboard API is unavailable or denied (insecure context),
- * leaving the button in its default state.
+ * Safe to call repeatedly - a pending revert timer is cleared first. Copies via
+ * `copyText` (async Clipboard API with an execCommand fallback for the native
+ * WebView); silently no-ops only if both paths fail, leaving the button in its
+ * default state.
  */
 export async function copyCodeFromButton(
   btn: HTMLElement,
   code: string,
   labels: CodeCopyLabels
 ): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(code);
-  } catch {
-    return;
-  }
+  if (!(await copyText(code))) return;
   showCopied(btn, labels);
 }
 

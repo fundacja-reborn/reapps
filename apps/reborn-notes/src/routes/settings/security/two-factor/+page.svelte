@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { authFetch } from '$lib/utils/auth-fetch';
+  import { copyText } from '$lib/utils/clipboard';
   import { API_BASE } from '$lib/utils/api-base';
   import {
     Shield,
@@ -215,33 +216,22 @@
   }
 
   async function copyCode(code: string, index: number) {
-    try {
-      await navigator.clipboard.writeText(code);
-      copiedIndex = index;
-      setTimeout(() => (copiedIndex = null), 2000);
-    } catch {
-      /* clipboard unavailable */
-    }
+    if (!(await copyText(code))) return;
+    copiedIndex = index;
+    setTimeout(() => (copiedIndex = null), 2000);
   }
 
   async function copyAllCodes() {
     if (!recoveryCodes.length) return;
-    try {
-      await navigator.clipboard.writeText(recoveryCodes.join('\n'));
+    if (await copyText(recoveryCodes.join('\n'))) {
       toast.success($t('security.recovery_codes.copied'));
-    } catch {
-      /* clipboard unavailable */
     }
   }
 
   async function copySecret() {
-    try {
-      await navigator.clipboard.writeText(secretBase32);
-      secretCopied = true;
-      setTimeout(() => (secretCopied = false), 2000);
-    } catch {
-      /* clipboard unavailable */
-    }
+    if (!(await copyText(secretBase32))) return;
+    secretCopied = true;
+    setTimeout(() => (secretCopied = false), 2000);
   }
 
   const codeError = $derived.by(() => {

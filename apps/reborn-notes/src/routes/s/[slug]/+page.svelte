@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { base } from '$app/paths';
+  import { API_BASE } from '$lib/utils/api-base';
+  import { copyText } from '$lib/utils/clipboard';
   import { page } from '$app/stores';
   import { Button, Input, Card } from '@reborn/ui';
   import {
@@ -84,10 +86,9 @@
 
   async function handleCopyMarkdown() {
     if (!notePayload) return;
-    try {
-      await navigator.clipboard.writeText(notePayload.content);
+    if (await copyText(notePayload.content)) {
       copyStatus = 'copied';
-    } catch {
+    } else {
       copyStatus = 'failed';
     }
     if (copyResetTimer) clearTimeout(copyResetTimer);
@@ -123,7 +124,7 @@
   async function fetchSnapshot(passwordValue?: string) {
     const headers: Record<string, string> = {};
     if (passwordValue) headers['X-Share-Password'] = passwordValue;
-    return fetch(`${base}/api/shares/${slug}`, {
+    return fetch(`${API_BASE}/shares/${slug}`, {
       method: 'GET',
       credentials: 'omit',
       headers

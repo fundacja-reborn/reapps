@@ -1,7 +1,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
-import { base } from '$app/paths';
 import { API_BASE } from '$lib/utils/api-base';
+import { getShareBase } from '$lib/utils/share-base';
 import { authFetch } from '$lib/utils/auth-fetch';
 import { connectivityStore } from '$lib/stores/connectivity.store';
 import { sessionExpired } from '$lib/stores/sync-status.store';
@@ -67,7 +67,7 @@ function createSharesStore() {
     const nextDecoded: Record<string, DecodedNoteShare> = {};
     const nextErrors = new Set<string>();
     if (!cryptoManager.isInitialized()) return { decoded: nextDecoded, decryptErrors: nextErrors };
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const shareBase = getShareBase();
     await Promise.all(
       items.map(async (s) => {
         let rawKey: string;
@@ -78,7 +78,7 @@ function createSharesStore() {
           nextErrors.add(s.id);
           return;
         }
-        const url = buildShareUrl(`${origin}${base}`, s.slug, rawKey, SNAPSHOT_PAYLOAD_VERSION);
+        const url = buildShareUrl(shareBase, s.slug, rawKey, SNAPSHOT_PAYLOAD_VERSION);
         try {
           const key = await importKeyFromBase64url(rawKey);
           const plaintext = await decryptSnapshotPayload(s.payload_encrypted, key);

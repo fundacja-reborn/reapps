@@ -97,4 +97,12 @@ describe('createWebPlatform', () => {
     expect(() => platform.backButton.setHandler(() => true)).not.toThrow();
     expect(() => platform.backButton.setHandler(null)).not.toThrow();
   });
+
+  it('web deep links never fire and return a callable unsubscribe', () => {
+    const platform = createWebPlatform({ network: fakeNetwork() });
+    const onOpen = vi.fn();
+    const off = platform.deepLinks.onOpen(onOpen);
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(() => off()).not.toThrow();
+  });
 });

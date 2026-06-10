@@ -2,6 +2,7 @@
   import { API_BASE } from '$lib/utils/api-base';
   import { onMount } from 'svelte';
   import { authFetch } from '$lib/utils/auth-fetch';
+  import { copyText } from '$lib/utils/clipboard';
   import {
     ShieldCheck,
     ShieldAlert,
@@ -111,22 +112,15 @@
   }
 
   async function copyCode(code: string, index: number) {
-    try {
-      await navigator.clipboard.writeText(code);
-      copiedIndex = index;
-      setTimeout(() => (copiedIndex = null), 2000);
-    } catch {
-      /* clipboard unavailable */
-    }
+    if (!(await copyText(code))) return;
+    copiedIndex = index;
+    setTimeout(() => (copiedIndex = null), 2000);
   }
 
   async function copyAllCodes() {
     if (!newCodes.length) return;
-    try {
-      await navigator.clipboard.writeText(newCodes.join('\n'));
+    if (await copyText(newCodes.join('\n'))) {
       toast.success($t('security.recovery_codes.copied'));
-    } catch {
-      /* clipboard unavailable */
     }
   }
 

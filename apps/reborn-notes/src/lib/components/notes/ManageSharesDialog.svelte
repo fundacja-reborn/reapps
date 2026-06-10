@@ -3,6 +3,7 @@
     RefreshCw,
     Trash2,
     Copy,
+    Share2,
     Lock,
     FileText,
     Eye,
@@ -13,6 +14,8 @@
   } from '@lucide/svelte';
   import { SvelteSet } from 'svelte/reactivity';
   import { t } from '$lib/stores/i18n.store';
+  import { shareLink } from '$lib/utils/native-share';
+  import { copyText } from '$lib/utils/clipboard';
   import {
     Dialog,
     DialogContent,
@@ -95,12 +98,26 @@
   async function copyUrl(id: string) {
     const url = decoded[id]?.url;
     if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
+    if (await copyText(url)) {
       toastStore.success($t('share.create.copied'));
-    } catch {
+    } else {
       toastStore.error($t('share.create.copy_failed'));
     }
+  }
+
+  // Native build only: open the OS share sheet for a stored share link. Web
+  // keeps copy-only (the button and `shareLink` are DCE'd on web).
+  const isNative = __REBORN_NATIVE__;
+
+  async function shareUrl(id: string) {
+    const entry = decoded[id];
+    if (!entry?.url) return;
+    const ok = await shareLink({
+      url: entry.url,
+      title: entry.payload.title || $t('share.list.untitled'),
+      dialogTitle: $t('share.create.share_sheet_title')
+    });
+    if (!ok) await copyUrl(id); // plugin unavailable -> fall back to clipboard
   }
 
   function toggleUrl(id: string) {
@@ -265,6 +282,16 @@
                     >
                       <Copy class="h-4 w-4" />
                     </Button>
+                    {#if isNative}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={$t('share.create.share_cta')}
+                        onclick={() => shareUrl(share.id)}
+                      >
+                        <Share2 class="h-4 w-4" />
+                      </Button>
+                    {/if}
                   {/if}
                   {#if !share.revoked_at}
                     <Button

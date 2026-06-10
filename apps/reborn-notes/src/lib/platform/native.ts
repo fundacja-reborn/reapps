@@ -17,6 +17,7 @@ import type {
   NetworkState,
   Platform,
   PlatformBackButton,
+  PlatformDeepLinks,
   PlatformLifecycle,
   PlatformNetwork
 } from '@reborn/platform';
@@ -164,12 +165,58 @@ function createNativeBackButton(): PlatformBackButton {
   };
 }
 
+/**
+ * Inbound App Links via `@capacitor/app` `appUrlOpen` (warm opens) plus the
+ * cold-start launch URL (`getLaunchUrl`). The full URL - fragment included - is
+ * handed to subscribers; the consumer maps it to an in-app route.
+ */
+function createNativeDeepLinks(): PlatformDeepLinks {
+  const handlers = new Set<(url: string) => void>();
+  let wired = false;
+  // Cold-start de-dupe: getLaunchUrl() and an appUrlOpen event can both report
+  // the same launch URL within a few ms. Drop an identical URL seen inside a
+  // short window; a genuine later re-open of the same link still goes through.
+  let last = { url: '', at: 0 };
+
+  const emit = (url: string) => {
+    const now = Date.now();
+    if (url === last.url && now - last.at < 1500) {
+      last = { url, at: now };
+      return;
+    }
+    last = { url, at: now };
+    for (const handler of [...handlers]) handler(url);
+  };
+
+  const ensureWired = async () => {
+    if (wired) return;
+    wired = true;
+    try {
+      const { App } = await import('@capacitor/app');
+      await App.addListener('appUrlOpen', (event) => emit(event.url));
+      const launch = await App.getLaunchUrl();
+      if (launch?.url) emit(launch.url);
+    } catch {
+      wired = false; // let a later subscriber retry if the plugin failed to load
+    }
+  };
+
+  return {
+    onOpen(handler) {
+      void ensureWired();
+      handlers.add(handler);
+      return () => handlers.delete(handler);
+    }
+  };
+}
+
 /** Assemble the native platform. Network is device-based, so no options needed. */
 export function createNativePlatform(): Platform {
   return {
     isNative: true,
     network: new NativeNetwork(),
     lifecycle: createNativeLifecycle(),
-    backButton: createNativeBackButton()
+    backButton: createNativeBackButton(),
+    deepLinks: createNativeDeepLinks()
   };
 }
