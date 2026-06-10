@@ -24,6 +24,7 @@
   import { noteIndex } from '$lib/services/note-index.svelte';
   import { cleanupNullFkFields } from '$lib/services/idb-cleanup.service';
   import { refreshPendingCount, isOnline, sessionExpired } from '$lib/stores/sync-status.store';
+  import { platform } from '$lib/platform';
   import { initI18n, setLocale, locale } from '$lib/stores/i18n.store';
   import { reAuthenticate, verifyTotpForReauth } from '$lib/services/notes-auth.service';
   import { SessionExpiredBanner, RequireSessionModal } from '@reborn/ui';
@@ -264,10 +265,30 @@
       5 * 60 * 1000
     );
 
+    // Native: there is no Service Worker under capacitor://, so returning to the
+    // foreground (App 'resume') drives the sync that the SW + online-transition
+    // handler cover on web. Push BEFORE pull (same ordering as everywhere else)
+    // so a pull can't overwrite still-pending offline edits. Native-only -> the
+    // whole block is dead-code-eliminated from the web bundle.
+    let offResume: (() => void) | undefined;
+    if (__REBORN_NATIVE__) {
+      offResume = platform.lifecycle.onResume(() => {
+        if ($authStore.isAuthenticated && $authStore.hasE2E) {
+          pushPendingItems().catch(() => {});
+          pullFromServer()
+            .then(async (synced) => {
+              if (synced) await refreshStoresAfterPull();
+            })
+            .catch(() => {});
+        }
+      });
+    }
+
     return () => {
       clearTimeout(timeoutId);
       clearInterval(syncInterval);
       unsubscribeNetwork();
+      offResume?.();
       mediaQuery.removeEventListener('change', handleSchemeChange);
     };
   });

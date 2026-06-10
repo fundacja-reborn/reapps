@@ -37,7 +37,9 @@
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.0",
     "@capacitor/android": "8.4.0",
+    "@capacitor/app": "8.1.0",
     "@capacitor/core": "8.4.0",
+    "@capacitor/network": "8.0.1",
     "@codemirror/autocomplete": "6.20.3",
     "@codemirror/commands": "6.10.3",
     "@codemirror/lang-css": "6.3.1",
@@ -63,6 +65,7 @@
     "@reborn/crypto": "workspace:*",
     "@reborn/database": "workspace:*",
     "@reborn/i18n": "workspace:*",
+    "@reborn/platform": "workspace:*",
     "@reborn/storage": "workspace:*",
     "@reborn/types": "workspace:*",
     "@reborn/ui": "workspace:*",

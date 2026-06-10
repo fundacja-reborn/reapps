@@ -26,6 +26,7 @@ export default defineConfig({
       '@reborn/types': resolve('../../packages/types/src/index.ts'),
       '@reborn/utils': resolve('../../packages/utils/src/index.ts'),
       '@reborn/storage': resolve('../../packages/storage/src/index.ts'),
+      '@reborn/platform': resolve('../../packages/platform/src/index.ts'),
       '@reborn/i18n': resolve('../../packages/i18n/src/index.ts'),
       // jsPDF's `html()` does `await import("html2canvas")` internally. The
       // upstream package (1.4.1, last released 2022) cannot parse modern CSS

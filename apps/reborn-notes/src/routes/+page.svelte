@@ -11,6 +11,7 @@
   import SyncStatusFooter from '$lib/components/sync/SyncStatusFooter.svelte';
   import InitialSyncState from '$lib/components/sync/InitialSyncState.svelte';
   import { isInitialSync } from '$lib/stores/sync-status.store';
+  import { platform } from '$lib/platform';
   import {
     SidebarProvider,
     Sidebar,
@@ -1006,10 +1007,11 @@
         navigateUp();
       }
 
-      // Trampoline: if we landed on the guard entry, push a new app entry
-      // so the next back gesture doesn't exit the PWA.
+      // Trampoline: on the guard entry, re-push an app entry so a browser / PWA
+      // back gesture never exits the app. Native: don't re-trap - the App
+      // backButton handler exits at the guard root (see $lib/platform/native).
       if (e.state?._rn === 'guard') {
-        history.pushState({ _rn: 'app' }, '');
+        if (!__REBORN_NATIVE__) history.pushState({ _rn: 'app' }, '');
       }
     }
 
@@ -1031,11 +1033,22 @@
     window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Native: the webview may not fire visibilitychange when the app is
+    // backgrounded, so flush pending edits on the App 'pause' lifecycle event.
+    // Native-only -> dead-code-eliminated from the web bundle.
+    let offPause: (() => void) | undefined;
+    if (__REBORN_NATIVE__) {
+      offPause = platform.lifecycle.onPause(() => {
+        if (noteDetailService.hasPendingChanges()) noteDetailService.flushAndSnapshot();
+      });
+    }
+
     return () => {
       mounted = false;
-      // DON'T remove popstate handler — it must persist for settings→root navigation
+      // DON'T remove popstate handler - it must persist for settings→root navigation
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      offPause?.();
     };
   });
 
