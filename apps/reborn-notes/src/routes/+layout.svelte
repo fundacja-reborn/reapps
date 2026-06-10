@@ -7,6 +7,7 @@
   import { browser } from '$app/environment';
   import type { Snippet } from 'svelte';
   import { goto } from '$lib/utils/navigation';
+  import { shareDeepLinkToRoute } from '$lib/utils/deep-link';
   import { base } from '$app/paths';
   import { page } from '$app/stores';
   import { initializeStorage, isDatabaseInitialized } from '@reborn/storage';
@@ -271,6 +272,7 @@
     // so a pull can't overwrite still-pending offline edits. Native-only -> the
     // whole block is dead-code-eliminated from the web bundle.
     let offResume: (() => void) | undefined;
+    let offDeepLink: (() => void) | undefined;
     if (__REBORN_NATIVE__) {
       offResume = platform.lifecycle.onResume(() => {
         if ($authStore.isAuthenticated && $authStore.hasE2E) {
@@ -282,6 +284,16 @@
             .catch(() => {});
         }
       });
+
+      // Inbound App Links to a public share (https://<host>/notes/s/<slug>#k=...):
+      // route into the in-app read-only viewer, keeping the key fragment
+      // client-side (shareDeepLinkToRoute strips the web base, preserves #...).
+      // The URL carries the decryption key, so it is never logged. The auth
+      // guard $effect treats `/s/` as public, so this works locked or unlocked.
+      offDeepLink = platform.deepLinks.onOpen((url) => {
+        const route = shareDeepLinkToRoute(url);
+        if (route) void goto(route);
+      });
     }
 
     return () => {
@@ -289,6 +301,7 @@
       clearInterval(syncInterval);
       unsubscribeNetwork();
       offResume?.();
+      offDeepLink?.();
       mediaQuery.removeEventListener('change', handleSchemeChange);
     };
   });

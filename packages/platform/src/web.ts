@@ -1,6 +1,7 @@
 import type {
   Platform,
   PlatformBackButton,
+  PlatformDeepLinks,
   PlatformLifecycle,
   WebPlatformOptions
 } from './types';
@@ -50,6 +51,20 @@ function createWebBackButton(): PlatformBackButton {
 }
 
 /**
+ * Web deep links are a no-op: a browser navigates to the share URL directly, so
+ * there is no inbound link to route into a shell. Returns a no-op unsubscribe.
+ */
+function createWebDeepLinks(): PlatformDeepLinks {
+  return {
+    onOpen() {
+      return () => {
+        /* no-op on web - never fires */
+      };
+    }
+  };
+}
+
+/**
  * Assemble the web platform. Network is injected by the app (api-client's
  * `getConnectivity`); lifecycle and back button use the web implementations
  * above. Selected by the app when `__REBORN_NATIVE__` is false.
@@ -59,6 +74,7 @@ export function createWebPlatform(options: WebPlatformOptions): Platform {
     isNative: false,
     network: options.network,
     lifecycle: createWebLifecycle(),
-    backButton: createWebBackButton()
+    backButton: createWebBackButton(),
+    deepLinks: createWebDeepLinks()
   };
 }
