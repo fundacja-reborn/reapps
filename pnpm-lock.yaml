@@ -173,6 +173,9 @@ importers:
       '@capacitor/core':
         specifier: 8.4.0
         version: 8.4.0
+      '@capacitor/ios':
+        specifier: 8.4.0
+        version: 8.4.0(@capacitor/core@8.4.0)
       '@capacitor/network':
         specifier: 8.0.1
         version: 8.0.1(@capacitor/core@8.4.0)

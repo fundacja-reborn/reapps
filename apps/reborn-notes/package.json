@@ -40,6 +40,7 @@
     "@capacitor/app": "8.1.0",
     "@capacitor/clipboard": "8.0.1",
     "@capacitor/core": "8.4.0",
+    "@capacitor/ios": "8.4.0",
     "@capacitor/network": "8.0.1",
     "@capacitor/share": "8.0.1",
     "@codemirror/autocomplete": "6.20.3",
