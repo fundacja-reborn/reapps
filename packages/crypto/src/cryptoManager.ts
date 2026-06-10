@@ -43,7 +43,7 @@ export type KeyEventHandler = (event: CryptoKeyEvent) => void;
  * Pluggable at-rest persistence for the master key (raw bytes, Base64).
  *
  * Default (no vault, web): the master key is persisted as an extractable
- * CryptoKey in IndexedDB plus a raw Base64 export in sessionStorage —
+ * CryptoKey in IndexedDB plus a raw Base64 export in sessionStorage -
  * browsers offer no hardware-backed alternative. Native shells (Capacitor)
  * inject a vault backed by the platform key store (Android Keystore /
  * iOS Keychain) via `setMasterKeyVault()`: only the Keystore/Keychain-wrapped
@@ -108,14 +108,14 @@ export class CryptoManager {
 
   /**
    * Inject a platform key vault (native shells). MUST be called before the
-   * first waitForRestore() — the restoration source is decided when the
+   * first waitForRestore() - the restoration source is decided when the
    * lazy restore actually runs. Web never calls this: without a vault the
    * IndexedDB/sessionStorage behavior below is byte-for-byte the old one.
    */
   public setMasterKeyVault(vault: MasterKeyVault): void {
     if (this.restorePromise) {
       logger.warn(
-        'setMasterKeyVault called after key restoration started — restore already used the default persistence'
+        'setMasterKeyVault called after key restoration started - restore already used the default persistence'
       );
     }
     this.vault = vault;
@@ -128,7 +128,7 @@ export class CryptoManager {
    */
   private async restoreKeyOnStartup(): Promise<boolean> {
     try {
-      // 0. Vault (native) — the platform key store is the single source of
+      // 0. Vault (native) - the platform key store is the single source of
       // truth. IndexedDB is only consulted to migrate (then purge) a key
       // persisted by a pre-vault build; the sessionStorage raw-key copy is
       // purged outright (Chromium-based webviews persist Session Storage to
@@ -285,7 +285,7 @@ export class CryptoManager {
 
   /**
    * Restore the master key from the vault. A non-null entry that fails to
-   * import or verify is treated as corrupt and removed — self-healing: the
+   * import or verify is treated as corrupt and removed - self-healing: the
    * user lands on the unlock screen and the next unlock overwrites it.
    */
   private async restoreKeyFromVault(): Promise<boolean> {
@@ -306,11 +306,11 @@ export class CryptoManager {
       logger.info('Successfully restored master key from vault');
       return true;
     } catch (error) {
-      logger.error('Vault-restored key failed to import/verify — clearing entry:', error);
+      logger.error('Vault-restored key failed to import/verify - clearing entry:', error);
       this.masterKey = null;
       this.initialized = false;
       await this.vault.clear().catch(() => {
-        // Best-effort — a failed delete leaves a corrupt entry that the next
+        // Best-effort - a failed delete leaves a corrupt entry that the next
         // restore attempt will fail (and retry clearing) the same way.
       });
       return false;
@@ -602,7 +602,7 @@ export class CryptoManager {
     this.initialized = true;
 
     if (this.vault) {
-      // Native: the vault is the ONLY at-rest copy — no extractable
+      // Native: the vault is the ONLY at-rest copy - no extractable
       // CryptoKey in IndexedDB, no raw-key export in sessionStorage
       // (Chromium-based webviews persist Session Storage to disk). Legacy
       // copies a pre-vault build may have written are purged defensively.
@@ -615,7 +615,7 @@ export class CryptoManager {
       this.postKeyEvent('unlocked');
 
       try {
-        // Same self-test as the web path below — a failure is logged but the
+        // Same self-test as the web path below - a failure is logged but the
         // in-memory key stays usable.
         await this.verifyEncryption();
       } catch (error) {
@@ -661,7 +661,7 @@ export class CryptoManager {
     this.masterKey = null;
     this.initialized = false;
 
-    // Clear the vault entry (native) — fire-and-forget like the IDB clear.
+    // Clear the vault entry (native) - fire-and-forget like the IDB clear.
     if (this.vault) {
       this.vault.clear().catch((err) => {
         logger.error('Failed to clear master key from vault during clearMasterKey:', err);

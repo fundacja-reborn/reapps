@@ -22,7 +22,7 @@ const isPublicShareRoute =
 
 // Native: persist the master key through the device vault (Android
 // Keystore / iOS Keychain-wrapped) instead of an extractable CryptoKey in
-// IndexedDB. Must be wired BEFORE the first waitForRestore() call anywhere —
+// IndexedDB. Must be wired BEFORE the first waitForRestore() call anywhere -
 // the restoration source is decided when the lazy restore runs. Deliberately
 // outside the isPublicShareRoute guard: the injection is pure state (no IO,
 // guideline 59 rule #12 holds) and a session entered via a share deep link
