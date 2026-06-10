@@ -29,8 +29,10 @@
 </script>
 
 <!-- Row 1: back/title + toggle -->
+<!-- pt: keep the header below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
 <header
-  class="flex h-12 shrink-0 items-center gap-2 border-b border-border/60
+  class="flex min-h-12 shrink-0 items-center gap-2 border-b border-border/60
+    pt-[env(safe-area-inset-top,0px)]
     {isMobile ? 'px-3' : 'px-6'}"
 >
   {#if isMobile}

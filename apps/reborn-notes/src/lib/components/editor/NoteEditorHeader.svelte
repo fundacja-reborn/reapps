@@ -81,8 +81,11 @@
   }
 </script>
 
+<!-- pt: keep the header below the iOS notch/Dynamic Island (env() is 0 elsewhere);
+     min-h instead of h so the row grows by exactly that inset. -->
 <header
-  class="flex h-14 md:h-12 shrink-0 items-center gap-2 border-b border-border/60
+  class="flex min-h-14 md:min-h-12 shrink-0 items-center gap-2 border-b border-border/60
+    pt-[env(safe-area-inset-top,0px)]
     {isMobile ? 'px-3' : 'px-6'}"
 >
   <button

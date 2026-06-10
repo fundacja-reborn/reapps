@@ -1659,7 +1659,9 @@
           </div>
         {/if}
       {:else if showNoteListInMain}
-        <div class="mx-auto h-full w-full max-w-4xl px-6 pt-6 flex flex-col">
+        <div
+          class="mx-auto h-full w-full max-w-4xl px-6 pt-[max(1.5rem,env(safe-area-inset-top,0px))] flex flex-col"
+        >
           <NoteList
             {activeFolderName}
             {activeSection}
@@ -1677,7 +1679,9 @@
           />
         </div>
       {:else}
-        <header class="flex h-12 shrink-0 items-center gap-2 border-b border-border/60 px-6">
+        <header
+          class="flex min-h-12 shrink-0 items-center gap-2 border-b border-border/60 px-6 pt-[env(safe-area-inset-top,0px)]"
+        >
           <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
           <span class="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {activeFolderName}
