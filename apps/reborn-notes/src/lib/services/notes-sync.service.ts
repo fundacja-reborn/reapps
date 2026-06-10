@@ -32,6 +32,7 @@ import { cryptoManager } from '@reborn/crypto';
 import { extractShadowIndexes } from './shadow-index-extractor';
 import { get } from 'svelte/store';
 import { API_BASE } from '$lib/utils/api-base';
+import { singleFlight } from '$lib/utils/single-flight';
 import { authStore } from '$lib/stores/auth.store';
 import { createLogger } from '@reborn/utils';
 import {
@@ -113,12 +114,31 @@ export async function refreshStoresAfterPull(): Promise<void> {
 
 // ── Pull sync - server → IndexedDB ───────────────────────────────
 
+// Leading+trailing single-flight for pull sync (see `singleFlight`). Several
+// triggers can fire a pull at once - login (notes-auth.service), the +layout
+// initial sync, the offline->online handler, and (native) the App 'resume'
+// lifecycle. Without coalescing, concurrent pulls race the read-then-write tag
+// reconciliation in pullNotes (getTagsForNote -> addTagToNote) against the unique
+// [note_id, tag_id] index, spamming "composite uniqueness" and duplicating every
+// per-note request (costly on slow native HTTP). The TRAILING half also matters:
+// a caller that just pushed (handlers do `await push; await pull`) must get a pull
+// that STARTED after its push, otherwise the freshly-synced row is misread as an
+// orphaned edit (the sync_status==='synced' branch in pullNotes) and re-marked
+// pending, churning until a later pull catches up.
+const coalescedPull = singleFlight(runPullFromServer);
+
 /**
  * Full pull sync: fetch all notes, folders, tags from server and upsert locally.
  * Should be called once after authentication / app startup.
  * Returns true if sync succeeded, false if skipped (unauthenticated / offline).
+ *
+ * Coalesced (leading+trailing single-flight) - see the note above.
  */
 export async function pullFromServer(): Promise<boolean> {
+  return coalescedPull();
+}
+
+async function runPullFromServer(): Promise<boolean> {
   if (!isAuthenticated()) return false;
 
   // Re-initialize storage if the connection was terminated
