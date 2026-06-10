@@ -113,12 +113,35 @@ export async function refreshStoresAfterPull(): Promise<void> {
 
 // ── Pull sync - server → IndexedDB ───────────────────────────────
 
+// Single-flight guard. Several triggers can fire a pull at the same time - login
+// (notes-auth.service), the +layout initial sync, the offline->online transition
+// handler, and (native) the App 'resume' lifecycle. Two concurrent pulls race the
+// read-then-write tag reconciliation in pullNotes (getTagsForNote -> addTagToNote)
+// against the unique [note_id, tag_id] index: the loser throws "composite
+// uniqueness" (caught + warned, so non-fatal, but it spams the console and wastes
+// a full redundant pull). Coalescing every caller onto one in-flight pull removes
+// the race and the duplicated work - especially valuable on native, where slow
+// CapacitorHttp widens the overlap window.
+let inFlightPull: Promise<boolean> | null = null;
+
 /**
  * Full pull sync: fetch all notes, folders, tags from server and upsert locally.
  * Should be called once after authentication / app startup.
  * Returns true if sync succeeded, false if skipped (unauthenticated / offline).
+ *
+ * Single-flight: concurrent callers share the one in-flight pull (see above).
  */
 export async function pullFromServer(): Promise<boolean> {
+  if (inFlightPull) return inFlightPull;
+  inFlightPull = runPullFromServer();
+  try {
+    return await inFlightPull;
+  } finally {
+    inFlightPull = null;
+  }
+}
+
+async function runPullFromServer(): Promise<boolean> {
   if (!isAuthenticated()) return false;
 
   // Re-initialize storage if the connection was terminated
