@@ -8,8 +8,8 @@
  * `getSecureStorage()` (see `native-secure-storage.ts`), which gates on
  * `__REBORN_NATIVE__` - on the web build the whole branch (and the plugin) is
  * dead-code-eliminated and each function is an inert no-op / null - and
- * guarantees the iOS Keychain access class (`whenUnlockedThisDeviceOnly`, no
- * backup migration, no iCloud sync) is configured before any operation.
+ * applies the iOS Keychain access class (`whenUnlockedThisDeviceOnly`, no
+ * backup migration, no iCloud sync) to every operation.
  *
  * This stores the rotating session refresh token only - NOT the master key. The
  * master key never leaves the device unencrypted and is never written here.
