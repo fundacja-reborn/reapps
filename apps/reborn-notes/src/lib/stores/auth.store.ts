@@ -24,6 +24,7 @@ import { browser } from '$app/environment';
 import { base } from '$app/paths';
 import { API_BASE } from '$lib/utils/api-base';
 import { clearNativeRefreshToken } from '$lib/utils/native-auth-storage';
+import { clearNativeSessionId } from '$lib/utils/native-session';
 import { cryptoManager } from '@reborn/crypto';
 import { sessionExpired } from '$lib/stores/sync-status.store';
 import { createLogger } from '@reborn/utils';
@@ -257,6 +258,7 @@ function createAuthStore() {
     // Native: drop the refresh token from secure storage (no-op on web; has its
     // own internal try/catch, so this never throws).
     await clearNativeRefreshToken();
+    clearNativeSessionId();
 
     // Hard redirect — avoids reactive cascades from setting store to empty state.
     // Clearing localStorage above will also fire a storage event in reborn-task

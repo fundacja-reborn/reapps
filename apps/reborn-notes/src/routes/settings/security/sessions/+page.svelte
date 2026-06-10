@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { base } from '$app/paths';
   import { onMount } from 'svelte';
   import { authFetch } from '$lib/utils/auth-fetch';
+  import { API_BASE } from '$lib/utils/api-base';
+  import { nativeSessionHeader } from '$lib/utils/native-session';
   import { Monitor, LogOut, RefreshCw, AlertTriangle, X } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import { authStore } from '$lib/stores/auth.store';
@@ -65,7 +66,9 @@
     isLoading = true;
     error = null;
     try {
-      const response = await authFetch(`${base}/api/auth/sessions`);
+      const response = await authFetch(`${API_BASE}/auth/sessions`, {
+        headers: nativeSessionHeader()
+      });
       const data = await response.json();
       if (data.success) {
         sessions = data.data;
@@ -85,7 +88,7 @@
     revoking = id;
     error = null;
     try {
-      const response = await authFetch(`${base}/api/auth/sessions/${id}`, {
+      const response = await authFetch(`${API_BASE}/auth/sessions/${id}`, {
         method: 'DELETE'
       });
       const data = await response.json();
@@ -108,7 +111,7 @@
     try {
       await Promise.all(
         otherSessions.map(async (s) => {
-          const response = await authFetch(`${base}/api/auth/sessions/${s.id}`, {
+          const response = await authFetch(`${API_BASE}/auth/sessions/${s.id}`, {
             method: 'DELETE'
           });
           const data = await response.json();
@@ -129,7 +132,7 @@
     showLogoutAllConfirm = false;
     try {
       // Call server to invalidate all sessions
-      await authFetch(`${base}/api/auth/logout-all`, { method: 'POST' });
+      await authFetch(`${API_BASE}/auth/logout-all`, { method: 'POST' });
       toast.success($t('security.sessions.logout_all_success'));
     } catch (err: unknown) {
       logger.warn('Server logout-all call failed:', err);
@@ -149,7 +152,7 @@
 </script>
 
 <svelte:head>
-  <title>{$t('security.sessions.title')} — re/notes</title>
+  <title>{$t('security.sessions.title')} - re/notes</title>
 </svelte:head>
 
 <SettingsLayout title={$t('security.sessions.title')} backHref="/settings">

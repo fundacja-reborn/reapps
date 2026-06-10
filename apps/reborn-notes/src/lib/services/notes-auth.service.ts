@@ -8,6 +8,7 @@
 import { API_BASE } from '$lib/utils/api-base';
 import { nativeAuthHeaders } from '$lib/utils/native-client';
 import { persistNativeRefreshToken } from '$lib/utils/native-auth-storage';
+import { persistNativeSessionId } from '$lib/utils/native-session';
 import { authStore, CREDENTIALS_KEY, ACCESS_TOKEN_KEY } from '$lib/stores/auth.store';
 import { sessionExpired } from '$lib/stores/sync-status.store';
 import { clearAllUserData, isDatabaseInitialized } from '@reborn/storage';
@@ -35,6 +36,8 @@ interface ReAuthResponseBody {
     access_token?: string;
     /** Present only for native clients (sent the native header). */
     refresh_token?: string;
+    /** Present only for native clients - names the current session. */
+    session_id?: string;
   };
 }
 
@@ -88,6 +91,8 @@ export async function loginInNotes(username: string, password: string): Promise<
     // Native: it arrives in the body (native header) and is persisted to secure
     // storage for createAuthFetch's native refresh path. No-op on web.
     await persistNativeRefreshToken(data.refresh_token);
+    // Native: stash session_id for the device-info PATCH + sessions-list highlight.
+    persistNativeSessionId(data.session_id);
 
     // Clear any previous user's data from IndexedDB before starting new session.
     // Prevents phantom notes when switching users or after DB wipe + re-register.
@@ -211,6 +216,8 @@ export async function reAuthenticate(password: string): Promise<ReAuthResult> {
   localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
   // Native: persist the rotated refresh token from the body. No-op on web.
   await persistNativeRefreshToken(data.refresh_token);
+  // Native: stash session_id for the device-info PATCH + sessions-list highlight.
+  persistNativeSessionId(data.session_id);
 
   // Credentials remain the same - touch to ensure they're still parseable
   try {
@@ -266,6 +273,8 @@ export async function verifyTotpForReauth(userId: string, code: string): Promise
   localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
   // Native: persist the rotated refresh token from the body. No-op on web.
   await persistNativeRefreshToken(data.refresh_token);
+  // Native: stash session_id for the device-info PATCH + sessions-list highlight.
+  persistNativeSessionId(data.session_id);
 
   sessionExpired.set(false);
   await refreshAfterReauth();

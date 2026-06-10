@@ -115,6 +115,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       });
 
       // Track session
+      let nativeSessionId: string | undefined;
       if (result.data.user?.id) {
         try {
           const expiresAt = refreshTokenExpiryDate();
@@ -126,6 +127,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
               is_active: true
             }
           });
+
+          // Native clients can't read the httpOnly session_id cookie below
+          // (cross-site), so capture the id to hand back in the body.
+          nativeSessionId = session.id;
 
           // Link the refresh token (created by handleLogin) to this session
           await prisma.refreshToken.updateMany({
@@ -159,6 +164,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       // (refresh token only in the httpOnly cookie). See $lib/utils/native-client.
       if (isNativeClient(request)) {
         responseBody.refresh_token = refreshToken;
+        // Native names its current session with this (device-info, list highlight).
+        if (nativeSessionId) responseBody.session_id = nativeSessionId;
       }
       return json({ success: true, data: responseBody });
     } else {
