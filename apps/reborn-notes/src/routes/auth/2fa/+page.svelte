@@ -2,6 +2,7 @@
 	import { API_BASE } from '$lib/utils/api-base';
 	import { nativeAuthHeaders } from '$lib/utils/native-client';
 	import { persistNativeRefreshToken } from '$lib/utils/native-auth-storage';
+	import { persistNativeSessionId } from '$lib/utils/native-session';
 	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
 	import { goto } from '$lib/utils/navigation';
@@ -93,6 +94,9 @@
 			// Web: refresh_token is managed exclusively via httpOnly cookie (set by server).
 			// Native: persist the body refresh token to secure storage. No-op on web.
 			await persistNativeRefreshToken(data.refresh_token);
+			// Native: 2FA users get their session created here (not at /login), so the
+			// session_id arrives in this response - stash it for device-info + list highlight.
+			persistNativeSessionId(data.session_id);
 
 			// Unlock E2E — use password saved by login page before redirect
 			const savedPassword = sessionStorage.getItem('2fa_pending_password');
@@ -113,7 +117,7 @@
 </script>
 
 <svelte:head>
-	<title>{$t('auth.two_factor.title')} — re/notes</title>
+	<title>{$t('auth.two_factor.title')} - re/notes</title>
 </svelte:head>
 
 <div class="h-dvh overflow-y-auto">
