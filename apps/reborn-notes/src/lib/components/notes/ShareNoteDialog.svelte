@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { base } from '$app/paths';
   import { API_BASE } from '$lib/utils/api-base';
+  import { getShareBase } from '$lib/utils/share-base';
+  import { shareLink } from '$lib/utils/native-share';
   import {
     Dialog,
     DialogContent,
@@ -161,9 +162,8 @@
         throw new Error(body.error ?? `HTTP ${res.status}`);
       }
       const json = (await res.json()) as { success: boolean; data: CreateShareResponse };
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
       resultUrl = buildShareUrl(
-        `${origin}${base}`,
+        getShareBase(),
         json.data.slug,
         keyBase64url,
         SNAPSHOT_PAYLOAD_VERSION
@@ -183,6 +183,19 @@
     } catch {
       toastStore.error($t('share.create.copy_failed'));
     }
+  }
+
+  // Native build only: open the OS share sheet. Web keeps clipboard-only (the
+  // `{#if isNative}` branch and `shareLink` are dead-code-eliminated on web).
+  const isNative = __REBORN_NATIVE__;
+
+  async function handleShare() {
+    const ok = await shareLink({
+      url: resultUrl,
+      title: noteTitle || $t('share.note.dialog_header'),
+      dialogTitle: $t('share.create.share_sheet_title')
+    });
+    if (!ok) await handleCopy(); // plugin unavailable -> fall back to clipboard
   }
 
   function close() {
@@ -354,7 +367,12 @@
       </div>
       <DialogFooter>
         <Button variant="outline" onclick={close}>{$t('share.create.close_cta')}</Button>
-        <Button onclick={handleCopy}>{$t('share.create.copy_link')}</Button>
+        {#if isNative}
+          <Button variant="outline" onclick={handleCopy}>{$t('share.create.copy_link')}</Button>
+          <Button onclick={handleShare}>{$t('share.create.share_cta')}</Button>
+        {:else}
+          <Button onclick={handleCopy}>{$t('share.create.copy_link')}</Button>
+        {/if}
       </DialogFooter>
     {/if}
   </DialogContent>

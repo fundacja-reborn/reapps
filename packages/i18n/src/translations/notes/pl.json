@@ -988,6 +988,8 @@
       "copy_link": "Skopiuj link",
       "copied": "Skopiowano",
       "copy_failed": "Nie udało się skopiować",
+      "share_cta": "Udostępnij",
+      "share_sheet_title": "Udostępnij notatkę",
       "close_cta": "Zamknij",
       "offline_warning": "Udostępnianie wymaga połączenia z internetem",
       "quota_exceeded": "Osiągnięto limit storage. Wycofaj nieużywane udostępnienia lub usuń notatki, aby zwolnić miejsce."

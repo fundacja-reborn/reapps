@@ -5,6 +5,7 @@
     RefreshCw,
     Trash2,
     Copy,
+    Share2,
     Lock,
     FileText,
     Eye,
@@ -13,6 +14,7 @@
     AlertTriangle
   } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
+  import { shareLink } from '$lib/utils/native-share';
   import {
     SettingsLayout,
     Button,
@@ -73,6 +75,21 @@
     } catch {
       toastStore.error($t('share.create.copy_failed'));
     }
+  }
+
+  // Native build only: open the OS share sheet. Web keeps copy-only (the button
+  // and `shareLink` are dead-code-eliminated on web).
+  const isNative = __REBORN_NATIVE__;
+
+  async function shareUrl(id: string) {
+    const entry = decoded[id];
+    if (!entry?.url) return;
+    const ok = await shareLink({
+      url: entry.url,
+      title: entry.payload.title || $t('share.list.untitled'),
+      dialogTitle: $t('share.create.share_sheet_title')
+    });
+    if (!ok) await copyUrl(id); // plugin unavailable -> fall back to clipboard
   }
 
   function toggleUrl(id: string) {
@@ -211,6 +228,16 @@
                   >
                     <Copy class="h-4 w-4" />
                   </Button>
+                  {#if isNative}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={$t('share.create.share_cta')}
+                      onclick={() => shareUrl(share.id)}
+                    >
+                      <Share2 class="h-4 w-4" />
+                    </Button>
+                  {/if}
                 {/if}
                 {#if !share.revoked_at}
                   <Button

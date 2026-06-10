@@ -988,6 +988,8 @@
       "copy_link": "Link kopieren",
       "copied": "Kopiert",
       "copy_failed": "Kopieren fehlgeschlagen",
+      "share_cta": "Teilen",
+      "share_sheet_title": "Notiz teilen",
       "close_cta": "Schließen",
       "offline_warning": "Zum Teilen wird eine Internetverbindung benötigt",
       "quota_exceeded": "Speicherlimit erreicht. Widerrufe ungenutzte Freigaben oder lösche Notizen, um Platz freizugeben."
