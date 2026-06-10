@@ -10,6 +10,7 @@ if (import.meta.hot) {
 }
 import { startSwUpdateWatcher } from '$lib/services/sw-update.service';
 import { startPwaInstallPrompt } from '$lib/services/pwa-install.service';
+import { createNativeMasterKeyVault } from '$lib/utils/native-master-key-vault';
 
 // Public read-only share view (/s/<slug>) runs before the layout's onMount
 // bypass, so we have to short-circuit storage init here too. Without this
@@ -18,6 +19,17 @@ import { startPwaInstallPrompt } from '$lib/services/pwa-install.service';
 const isPublicShareRoute =
   typeof window !== 'undefined' &&
   window.location.pathname.startsWith(`${base}/s/`);
+
+// Native: persist the master key through the device vault (Android
+// Keystore / iOS Keychain-wrapped) instead of an extractable CryptoKey in
+// IndexedDB. Must be wired BEFORE the first waitForRestore() call anywhere —
+// the restoration source is decided when the lazy restore runs. Deliberately
+// outside the isPublicShareRoute guard: the injection is pure state (no IO,
+// guideline 59 rule #12 holds) and a session entered via a share deep link
+// must still use the vault once the user navigates into the app.
+if (__REBORN_NATIVE__) {
+  cryptoManager.setMasterKeyVault(createNativeMasterKeyVault());
+}
 
 // ---------------------------------------------------------------------------
 // Client-side error handler — detect offline chunk-loading failures
