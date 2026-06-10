@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal Links for public share deep links (/notes/s/<slug>), the iOS
+	     mirror of the Android App Links intent-filter (Faza 3b). End-to-end
+	     verification needs the apple-app-site-association file served from
+	     https://<host>/.well-known/ with our TeamID - that lands in Faza 5
+	     together with the Apple Developer account (same gap as Android's
+	     assetlinks.json; template in guideline 61). Harmless in simulator
+	     builds, where associated domains are not validated. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:reapps.eu</string>
+		<string>applinks:staging.reapps.eu</string>
+	</array>
+</dict>
+</plist>
