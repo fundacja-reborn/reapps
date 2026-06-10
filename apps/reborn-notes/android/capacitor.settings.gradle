@@ -8,6 +8,9 @@ project(':aparajita-capacitor-secure-storage').projectDir = new File('../../../n
 include ':capacitor-app'
 project(':capacitor-app').projectDir = new File('../../../node_modules/.pnpm/@capacitor+app@8.1.0_@capacitor+core@8.4.0/node_modules/@capacitor/app/android')
 
+include ':capacitor-clipboard'
+project(':capacitor-clipboard').projectDir = new File('../../../node_modules/.pnpm/@capacitor+clipboard@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/clipboard/android')
+
 include ':capacitor-network'
 project(':capacitor-network').projectDir = new File('../../../node_modules/.pnpm/@capacitor+network@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/network/android')
 
