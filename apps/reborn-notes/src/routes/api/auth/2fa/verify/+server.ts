@@ -101,6 +101,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       path: '/'
     });
 
+    let nativeSessionId: string | undefined;
     try {
       const session = await prisma.userSession.create({
         data: {
@@ -110,6 +111,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
           is_active: true
         }
       });
+
+      // Native clients can't read the httpOnly session_id cookie below
+      // (cross-site), so capture the id to hand back in the body.
+      nativeSessionId = session.id;
 
       // Link the refresh token to this session
       await prisma.refreshToken.updateMany({
@@ -151,6 +156,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     // header -> response stays byte-identical. See $lib/utils/native-client.
     if (isNativeClient(request)) {
       responseBody.refresh_token = refreshToken;
+      // Native names its current session with this (device-info, list highlight).
+      if (nativeSessionId) responseBody.session_id = nativeSessionId;
     }
 
     return json({ success: true, data: responseBody });

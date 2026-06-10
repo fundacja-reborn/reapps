@@ -13,8 +13,11 @@ export const GET: RequestHandler = async ({ request, cookies }) => {
     if (!info) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
     // Use session_id cookie (set at login) — JWT sessionId is a random UUID that
-    // never matches UserSession.id, so cookie is the reliable source.
-    const currentSessionId = cookies.get('session_id') ?? null;
+    // never matches UserSession.id, so cookie is the reliable source. Native
+    // clients can't deliver that cookie cross-site, so they send it as a header
+    // (display-only: the list is already user-scoped via the Bearer token).
+    const currentSessionId =
+      cookies.get('session_id') ?? request.headers.get('x-reborn-session-id') ?? null;
 
     const now = new Date();
     const sessions = await prisma.userSession.findMany({

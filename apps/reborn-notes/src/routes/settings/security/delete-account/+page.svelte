@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { base } from '$app/paths';
   import { authFetch } from '$lib/utils/auth-fetch';
+  import { API_BASE } from '$lib/utils/api-base';
   import { AlertTriangle, Trash2 } from '@lucide/svelte';
   import {
     SettingsLayout,
@@ -39,7 +39,7 @@
 
     isLoading = true;
     try {
-      const response = await authFetch(`${base}/api/auth/delete-account`, {
+      const response = await authFetch(`${API_BASE}/auth/delete-account`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password })
@@ -67,7 +67,7 @@
 </script>
 
 <svelte:head>
-  <title>{$t('security.delete_account.title')} — re/notes</title>
+  <title>{$t('security.delete_account.title')} - re/notes</title>
 </svelte:head>
 
 <SettingsLayout title={$t('security.delete_account.title')} backHref="/settings">
