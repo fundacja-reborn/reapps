@@ -193,7 +193,11 @@
       return;
     }
     const tagNames = $tagsStore.filter((tg) => target.tags?.includes(tg.id)).map((tg) => tg.name);
-    exportNoteAsMarkdown(fullNote, tagNames);
+    try {
+      await exportNoteAsMarkdown(fullNote, tagNames);
+    } catch {
+      toastStore.error($t('notes.export_failed'));
+    }
   }
 
   async function handleDetailExportPdf(noteArg?: NoteListItem) {
