@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { base } from '$app/paths';
   import { onMount } from 'svelte';
   import { authFetch } from '$lib/utils/auth-fetch';
+  import { API_BASE } from '$lib/utils/api-base';
   import {
     Shield,
     ShieldCheck,
@@ -64,7 +64,7 @@
 
   async function fetchStatus() {
     try {
-      const response = await authFetch(`${base}/api/auth/2fa`);
+      const response = await authFetch(`${API_BASE}/auth/2fa`);
       const data = await response.json();
       if (data.success) {
         is2FAEnabled = data.data.isEnabled;
@@ -84,7 +84,7 @@
     isLoading = true;
     error = null;
     try {
-      const response = await authFetch(`${base}/api/auth/2fa`, {
+      const response = await authFetch(`${API_BASE}/auth/2fa`, {
         method: 'POST'
       });
       const data = await response.json();
@@ -113,7 +113,7 @@
     if (!verificationCode || verificationCode.length !== 6) return;
     isLoading = true;
     try {
-      const response = await authFetch(`${base}/api/auth/2fa`, {
+      const response = await authFetch(`${API_BASE}/auth/2fa`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: verificationCode, secretEncrypted: '' })
@@ -129,7 +129,7 @@
 
         // Auto-generate recovery codes
         try {
-          const codesResponse = await authFetch(`${base}/api/auth/recovery-codes`, {
+          const codesResponse = await authFetch(`${API_BASE}/auth/recovery-codes`, {
             method: 'POST'
           });
           const codesData = await codesResponse.json();
@@ -168,7 +168,7 @@
     isDisabling = true;
     error = null;
     try {
-      const response = await authFetch(`${base}/api/auth/2fa`, {
+      const response = await authFetch(`${API_BASE}/auth/2fa`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: disablePassword })
@@ -257,7 +257,7 @@
 </script>
 
 <svelte:head>
-  <title>{$t('security.two_factor.page_title')} — re/notes</title>
+  <title>{$t('security.two_factor.page_title')} - re/notes</title>
 </svelte:head>
 
 <SettingsLayout title={$t('security.two_factor.title')} backHref="/settings">

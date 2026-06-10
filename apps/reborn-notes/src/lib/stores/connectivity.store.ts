@@ -1,5 +1,5 @@
-import { base } from '$app/paths';
 import { browser } from '$app/environment';
+import { API_BASE } from '$lib/utils/api-base';
 import { derived, readable, type Readable } from 'svelte/store';
 import {
   getConnectivity,
@@ -9,8 +9,9 @@ import {
 
 /**
  * App-local wrapper around `@reborn/api-client`'s connectivity singleton.
- * Binds the probe endpoint to this app's `/api/health` and exposes Svelte
- * stores for reactive consumption.
+ * Binds the probe endpoint to this app's health endpoint via `API_BASE`
+ * (same-origin `/api/health` on web, the configured API origin on native)
+ * and exposes Svelte stores for reactive consumption.
  *
  * Why an active probe instead of `navigator.onLine`: an active VPN tunnel
  * (e.g. Proton in airplane mode) keeps a network interface up, so the browser
@@ -21,7 +22,7 @@ import {
 const ssrState: ConnectivityState = { status: 'unknown', lastProbeAt: null };
 
 export const connectivityStore: ConnectivityStore | null = browser
-  ? getConnectivity({ endpoint: `${base}/api/health` })
+  ? getConnectivity({ endpoint: `${API_BASE}/health` })
   : null;
 
 export const connectivity: Readable<ConnectivityState> = connectivityStore
