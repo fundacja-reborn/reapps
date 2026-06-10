@@ -51,7 +51,7 @@ The server sees the **structural graph** (which tasks belong to which list, whic
 
 1. **Registration**: A random master key is generated on the client, wrapped with a key derived from the user's password (PBKDF2 600K), and the ciphertext is sent to the server alongside the Argon2id password hash.
 2. **Login**: The server returns the encrypted master key. The client derives the wrapping key from the password and decrypts the master key locally.
-3. **Session**: The decrypted master key is persisted in IndexedDB (survives browser/PWA restarts) and restored automatically on app load. The key is cleared only on explicit logout. This matches industry practice (Standard Notes, Bitwarden, Proton Mail) - in a Zero Knowledge architecture, client-side storage protection against local device access is out of scope; ZK protects against server-side attacks.
+3. **Session**: The decrypted master key is persisted in IndexedDB (survives browser/PWA restarts) and restored automatically on app load. The key is cleared only on explicit logout. This matches industry practice (Standard Notes, Bitwarden, Proton Mail) - in a Zero Knowledge architecture, client-side storage protection against local device access is out of scope; ZK protects against server-side attacks. Native builds (Capacitor) go one step further: the key is persisted through the platform key store (Android Keystore / iOS Keychain) instead of IndexedDB, so only a hardware-wrapped ciphertext ever touches disk and the wrapping key is non-extractable.
 4. **Data operations**: All encrypt/decrypt operations use the master key via AES-GCM. The key never leaves the device.
 
 ---
