@@ -2,6 +2,7 @@
   import { onMount, onDestroy, tick, untrack } from 'svelte';
   import { beforeNavigate } from '$app/navigation';
   import { base } from '$app/paths';
+  import { copyText } from '$lib/utils/clipboard';
   import { SvelteSet } from 'svelte/reactivity';
   import { FolderPlus, Plus, ArrowLeft, Lock } from '@lucide/svelte';
 
@@ -217,10 +218,9 @@
     if (!target) return;
     const title = target.title || $t('notes.untitled');
     const link = `[${title}](note:${target.id})`;
-    try {
-      await navigator.clipboard.writeText(link);
+    if (await copyText(link)) {
       toastStore.success($t('notes.note_link_copied'));
-    } catch {
+    } else {
       toastStore.error('Failed to copy');
     }
   }

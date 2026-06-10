@@ -15,6 +15,7 @@
   } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import { shareLink } from '$lib/utils/native-share';
+  import { copyText } from '$lib/utils/clipboard';
   import {
     SettingsLayout,
     Button,
@@ -69,10 +70,9 @@
   async function copyUrl(id: string) {
     const url = decoded[id]?.url;
     if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
+    if (await copyText(url)) {
       toastStore.success($t('share.create.copied'));
-    } catch {
+    } else {
       toastStore.error($t('share.create.copy_failed'));
     }
   }

@@ -2,6 +2,7 @@
   import { API_BASE } from '$lib/utils/api-base';
   import { getShareBase } from '$lib/utils/share-base';
   import { shareLink } from '$lib/utils/native-share';
+  import { copyText } from '$lib/utils/clipboard';
   import {
     Dialog,
     DialogContent,
@@ -177,10 +178,9 @@
   }
 
   async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(resultUrl);
+    if (await copyText(resultUrl)) {
       toastStore.success($t('share.create.copied'));
-    } catch {
+    } else {
       toastStore.error($t('share.create.copy_failed'));
     }
   }

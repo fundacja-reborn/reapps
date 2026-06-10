@@ -10,3 +10,6 @@ project(':capacitor-app').projectDir = new File('../../../node_modules/.pnpm/@ca
 
 include ':capacitor-network'
 project(':capacitor-network').projectDir = new File('../../../node_modules/.pnpm/@capacitor+network@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/network/android')
+
+include ':capacitor-share'
+project(':capacitor-share').projectDir = new File('../../../node_modules/.pnpm/@capacitor+share@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/share/android')
