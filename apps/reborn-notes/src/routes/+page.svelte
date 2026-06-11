@@ -1314,6 +1314,7 @@
                 subfolders={activeFolderSubfolders}
                 onSubfolderSelect={handleFolderSelect}
                 {saveScope}
+                onsavedsearchselect={handleSavedSearchSelect}
                 autoFocusSearch={activeSection === 'search'}
                 searchOnly={activeSection === 'search'}
                 prominentHeader={noteListOwnsMobileHeader}
@@ -1751,6 +1752,7 @@
             subfolders={activeFolderSubfolders}
             onSubfolderSelect={handleFolderSelect}
             {saveScope}
+            onsavedsearchselect={handleSavedSearchSelect}
             onback={activeFolderParentId ? handleFolderBack : undefined}
             onNewSubfolder={activeSection === 'folders' && activeFolderId
               ? handleNewSubfolder

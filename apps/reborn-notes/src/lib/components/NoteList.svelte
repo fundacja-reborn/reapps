@@ -39,6 +39,7 @@
   import MoveToFolderMenu from './notes/MoveToFolderMenu.svelte';
   import SaveSearchDialog from './notes/SaveSearchDialog.svelte';
   import SavedSearchList from './notes/SavedSearchList.svelte';
+  import SavedSearchRow from './notes/SavedSearchRow.svelte';
   import { savedSearchesStore } from '$lib/stores/saved-searches.store';
   import { searchHandoff } from '$lib/stores/search-handoff.store';
   import type { SaveScope } from '$lib/utils/search-scope';
@@ -132,7 +133,8 @@
     onback,
     oncreate,
     onSubfolderSelect,
-    onNewSubfolder
+    onNewSubfolder,
+    onsavedsearchselect
   }: {
     activeFolderName?: string;
     activeSection?: string;
@@ -152,6 +154,8 @@
     onSubfolderSelect?: (id: string) => void;
     /** Only provided when we're inside a specific folder — renders the "new subfolder" icon. */
     onNewSubfolder?: () => void;
+    /** Clicking a saved search pinned to the current folder - jumps to the search section. */
+    onsavedsearchselect?: (search: SavedSearchDecrypted) => void;
   } = $props();
 
   const isMobileQuery = useIsMobile();
@@ -219,6 +223,13 @@
 
   // ── Saved searches ─────────────────────────────────────────────
   let saveSearchDialogOpen = $state(false);
+
+  // Searches pinned to the folder being browsed - shown alongside the
+  // subfolder cards so a pin made from this very view doesn't "vanish"
+  // into the tree (which is the only other place pins render).
+  const pinnedSearches = $derived(
+    activeFolderId ? $savedSearchesStore.filter((s) => s.folder_id === activeFolderId) : []
+  );
 
   function applySavedSearch(search: SavedSearchDecrypted) {
     searchInput = search.query;
@@ -912,6 +923,22 @@
         parentId={activeFolderId}
         onselect={(id) => onSubfolderSelect?.(id)}
       />
+      {#if pinnedSearches.length > 0}
+        <div class="mb-3 flex flex-col gap-1">
+          <h2 class="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {$t('saved_searches.title')}
+          </h2>
+          <ul class="flex flex-col gap-1" role="list">
+            {#each pinnedSearches as search (search.id)}
+              <SavedSearchRow
+                {search}
+                context="tree"
+                onselect={(s) => onsavedsearchselect?.(s)}
+              />
+            {/each}
+          </ul>
+        </div>
+      {/if}
     {/if}
     {#if searchOnly && !searchInput}
       {#if $savedSearchesStore.length > 0}
