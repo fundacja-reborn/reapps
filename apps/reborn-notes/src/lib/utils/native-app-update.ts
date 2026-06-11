@@ -11,7 +11,9 @@ import {
   type NativePlatform
 } from '$lib/utils/app-update';
 
-const logger = createLogger('notes:app-update');
+// No top-level side effects (logger included) - this module is imported
+// unconditionally by +layout.svelte and must stay fully treeshakeable from
+// the web bundle (same rule as native-auth-storage / native-master-key-vault).
 
 // Resume events can fire in quick bursts (app-switcher hops); the thresholds
 // change rarely, so one round-trip per interval is plenty.
@@ -77,6 +79,6 @@ export async function checkNativeUpdateGate(): Promise<void> {
       });
     }
   } catch (err) {
-    logger.debug('app-config check failed (fail-open)', err);
+    createLogger('notes:app-update').debug('app-config check failed (fail-open)', err);
   }
 }
