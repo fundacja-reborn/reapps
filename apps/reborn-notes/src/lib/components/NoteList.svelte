@@ -41,6 +41,7 @@
   import SavedSearchList from './notes/SavedSearchList.svelte';
   import { savedSearchesStore } from '$lib/stores/saved-searches.store';
   import { searchHandoff } from '$lib/stores/search-handoff.store';
+  import type { SaveScope } from '$lib/utils/search-scope';
   import type { SavedSearchDecrypted } from '@reborn/types';
   import SubfolderList from './SubfolderList.svelte';
   import FolderActionMenu from './sidebar/FolderActionMenu.svelte';
@@ -126,6 +127,7 @@
     prominentHeader = false,
     autoFocusSearch = false,
     searchOnly = false,
+    saveScope = null,
     subfolders = [],
     onback,
     oncreate,
@@ -142,6 +144,8 @@
     prominentHeader?: boolean;
     autoFocusSearch?: boolean;
     searchOnly?: boolean;
+    /** Scope of the current view, composed into the query by the save dialog. */
+    saveScope?: SaveScope | null;
     subfolders?: FolderWithChildren[];
     onback?: () => void;
     oncreate?: () => void | Promise<void>;
@@ -890,13 +894,14 @@
     {/if}
   {/if}
 
-  <!-- Search bar -->
+  <!-- Search bar. No save affordance in trash: the trash bucket has no query
+       operator, so a saved view could never reproduce a trash-scoped result. -->
   <NoteListSearchBar
     bind:searchInput
     bind:searchInContent
     bind:searchInputEl
     {searchOnly}
-    onsavesearch={() => (saveSearchDialogOpen = true)}
+    onsavesearch={isTrash ? undefined : () => (saveSearchDialogOpen = true)}
   />
 
   <!-- Notes list -->
@@ -1014,7 +1019,13 @@
   />
 {/if}
 
-<SaveSearchDialog bind:open={saveSearchDialogOpen} query={searchInput} {searchInContent} />
+<SaveSearchDialog
+  bind:open={saveSearchDialogOpen}
+  query={searchInput}
+  {searchInContent}
+  scope={saveScope}
+  inSearchSection={searchOnly}
+/>
 
 <ConfirmDialog
   bind:open={deleteDialogOpen}

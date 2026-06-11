@@ -360,12 +360,15 @@
     "title": "Gespeicherte Suchen",
     "save_button": "Suche speichern",
     "saved_toast": "Suche als \"{name}\" gespeichert",
+    "saved_toast_hint": "Suche als \"{name}\" gespeichert - zu finden in der Suche",
+    "saved_toast_pinned": "Suche als \"{name}\" gespeichert und an \"{folder}\" angeheftet",
     "save_failed_toast": "Die Suche konnte nicht gespeichert werden",
     "dialog": {
       "title": "Suche speichern",
       "description": "Speichert die aktuelle Abfrage als benannte Ansicht. Die Ergebnisse bleiben dynamisch - die Ansicht zeigt immer den aktuellen Stand Ihrer Notizen.",
       "name_label": "Name",
       "name_placeholder": "z. B. Wichtige Projekte",
+      "pin_to_folder": "An Ordner \"{name}\" anheften",
       "query_label": "Abfrage",
       "save": "Speichern",
       "cancel": "Abbrechen"

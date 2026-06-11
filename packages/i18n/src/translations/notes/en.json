@@ -360,12 +360,15 @@
     "title": "Saved searches",
     "save_button": "Save search",
     "saved_toast": "Search saved as \"{name}\"",
+    "saved_toast_hint": "Search saved as \"{name}\" - find it under Search",
+    "saved_toast_pinned": "Search saved as \"{name}\" and pinned to \"{folder}\"",
     "save_failed_toast": "Could not save the search",
     "dialog": {
       "title": "Save search",
       "description": "Saves the current query as a named view. Results stay live - the view always reflects the current state of your notes.",
       "name_label": "Name",
       "name_placeholder": "e.g. Important projects",
+      "pin_to_folder": "Pin to folder \"{name}\"",
       "query_label": "Query",
       "save": "Save",
       "cancel": "Cancel"

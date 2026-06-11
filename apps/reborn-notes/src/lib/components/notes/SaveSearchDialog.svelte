@@ -12,38 +12,67 @@
   import { MAX_SAVED_SEARCH_NAME_CHARS } from '@reborn/types';
   import { t } from '$lib/stores/i18n.store';
   import { savedSearchesStore } from '$lib/stores/saved-searches.store';
+  import { composeScopedQuery, type SaveScope } from '$lib/utils/search-scope';
 
   let {
     open = $bindable(false),
     query,
-    searchInContent = false
+    searchInContent = false,
+    scope = null,
+    inSearchSection = false
   }: {
     open: boolean;
-    /** The query string currently in the search bar - saved verbatim. */
+    /** The query string currently in the search bar. */
     query: string;
     /** Current state of the body-search toggle - saved with the view and restored on apply. */
     searchInContent?: boolean;
+    /**
+     * Scope of the view the user is saving from (folder / tag / starred).
+     * Composed into the persisted query as a regular operator so the saved
+     * view reproduces the scoped result set the user is looking at.
+     */
+    scope?: SaveScope | null;
+    /** Picks the toast variant: outside the search section, hint where saved views live. */
+    inSearchSection?: boolean;
   } = $props();
 
   let name = $state('');
   let nameInputEl = $state<HTMLInputElement | null>(null);
   let isSaving = $state(false);
+  let pinToFolder = $state(false);
 
   $effect(() => {
     if (open) {
       name = '';
+      pinToFolder = false;
       setTimeout(() => nameInputEl?.focus(), 0);
     }
   });
 
-  const canSave = $derived(name.trim().length > 0 && query.trim().length > 0);
+  // What actually gets persisted - shown 1:1 in the preview below.
+  const composedQuery = $derived(composeScopedQuery(scope, query));
+  const canSave = $derived(name.trim().length > 0 && composedQuery.length > 0);
 
   async function handleSave() {
     if (!canSave || isSaving) return;
     isSaving = true;
+    const trimmedName = name.trim();
+    const pinFolderId = scope?.kind === 'folder' && pinToFolder ? scope.folderId : undefined;
     try {
-      await savedSearchesStore.create(name, query, searchInContent);
-      toastStore.success($t('saved_searches.saved_toast', { values: { name: name.trim() } }));
+      await savedSearchesStore.create(trimmedName, composedQuery, searchInContent, pinFolderId);
+      if (pinFolderId && scope?.kind === 'folder') {
+        toastStore.success(
+          $t('saved_searches.saved_toast_pinned', {
+            values: { name: trimmedName, folder: scope.folderName }
+          })
+        );
+      } else if (!inSearchSection) {
+        toastStore.success(
+          $t('saved_searches.saved_toast_hint', { values: { name: trimmedName } })
+        );
+      } else {
+        toastStore.success($t('saved_searches.saved_toast', { values: { name: trimmedName } }));
+      }
       open = false;
     } catch {
       toastStore.error($t('saved_searches.save_failed_toast'));
@@ -80,7 +109,7 @@
         <code
           class="block w-full overflow-x-auto whitespace-nowrap rounded-md border bg-muted/50 px-3 py-2 text-xs text-muted-foreground"
         >
-          {query}
+          {composedQuery}
         </code>
         {#if searchInContent}
           <span class="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -92,6 +121,12 @@
           </span>
         {/if}
       </div>
+      {#if scope?.kind === 'folder'}
+        <label class="flex cursor-pointer items-center gap-2.5 text-sm">
+          <input type="checkbox" bind:checked={pinToFolder} class="h-4 w-4 accent-primary" />
+          {$t('saved_searches.dialog.pin_to_folder', { values: { name: scope.folderName } })}
+        </label>
+      {/if}
     </div>
 
     <DialogFooter>

@@ -11,7 +11,7 @@ All search runs **client-side** over already-decrypted data - the server never s
 | Operator | Where | Examples |
 |---|---|---|
 | `tag:NAME` | re/notes | `tag:work`, `tag:"side projects"` |
-| `folder:PATH` | re/notes | `folder:projects`, `folder:projects/active` |
+| `folder:PATH` | re/notes | `folder:projects`, `folder:projects/active` - matches the folder **and all its subfolders** (same as searching inside a folder view) |
 | `list:NAME` | re/task | `list:Inbox`, `list:"this week"` |
 | `created:DATE` | both | `created:2026-01-01`, `created:>2026-01-01`, `created:<7d`, `created:today`, `created:2026-01-01..2026-02-01` |
 | `modified:DATE` | both | `modified:<14d`, `modified:yesterday` |
@@ -182,6 +182,8 @@ Quoting also works inside operator values: `tag:"side projects"`, `list:"Q2 plan
 > **re/notes** (re/task follow-up planned)
 
 Any query you can type, you can save as a named view. With a query in the search box, click **Save search** (next to the *Search in content* toggle), give it a name, and it appears in the search panel - open search with an empty box to see your saved views. Clicking one puts its query back into the search box **and restores the *Search in content* toggle** to the state it was saved with, so the view reproduces the exact result set - always **live**: a saved search is a stored query, not a snapshot.
+
+Saving works from any view, not just the search panel. When you save while browsing a folder, a tag, or starred notes, the view's scope is composed into the query as a regular operator (`folder:"…"`, `tag:"…"`, `is:starred`) - the dialog previews the exact query being saved, so the saved view returns precisely what you were looking at. When saving from a folder, the dialog also offers to **pin the new view to that folder** right away. (The trash view has no save button: trash is a separate bucket with no query operator.)
 
 Saved searches can also be **pinned to a folder** (context menu → *Pin to folder*). A pinned search shows up inside the folder tree as a leaf node - a "smart folder" sitting next to your real folders. Example: pin `folder:projects tag:urgent` to the *Projects* folder as **Urgent projects**. Pinning is purely presentational; it does not scope the query. Deleting a folder never deletes the searches pinned to it - they just unpin back to the search panel.
 

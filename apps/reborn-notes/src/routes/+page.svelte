@@ -75,8 +75,10 @@
   import {
     flattenFolderTree,
     getAncestorIds,
-    findChildrenOfParent
+    findChildrenOfParent,
+    buildBreadcrumb
   } from '$lib/utils/folder-helpers';
+  import type { SaveScope } from '$lib/utils/search-scope';
   import { goto } from '$lib/utils/navigation';
   import { createScrollSync } from '$lib/utils/scroll-sync';
   import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
@@ -750,6 +752,29 @@
     }
   }
 
+  /**
+   * Scope of the CURRENT list view, composed into the query by the save
+   * dialog so a view saved from a scoped context reproduces what the user
+   * sees (mirrors the filter-sync effect above: trash has no operator and
+   * hides the save affordance instead).
+   */
+  const saveScope = $derived.by((): SaveScope | null => {
+    if (activeSection === 'starred') return { kind: 'starred' };
+    if (activeSection === 'tags' && activeTagId) {
+      const tag = $tagsStore.find((t) => t.id === activeTagId);
+      return tag ? { kind: 'tag', name: tag.name } : null;
+    }
+    const usesFolder = activeSection === 'folders' || isPeriodicSection(activeSection);
+    if (usesFolder && typeof activeFolderId === 'string') {
+      const path = buildBreadcrumb($foldersStore, activeFolderId)
+        .map((c) => c.name)
+        .join('/');
+      if (!path) return null;
+      return { kind: 'folder', folderId: activeFolderId, folderName: activeFolderName, path };
+    }
+    return null;
+  });
+
   // ── Saved searches in the folder tree ──────────────────────────
   const savedSearchesByFolder = $derived.by(() => {
     const map = new SvelteMap<string, SavedSearchDecrypted[]>();
@@ -1288,6 +1313,7 @@
                 isPeriodic={isPeriodicSection(activeSection)}
                 subfolders={activeFolderSubfolders}
                 onSubfolderSelect={handleFolderSelect}
+                {saveScope}
                 autoFocusSearch={activeSection === 'search'}
                 searchOnly={activeSection === 'search'}
                 prominentHeader={noteListOwnsMobileHeader}
@@ -1575,6 +1601,7 @@
               {activeSection}
               isTrash={activeTrash}
               isPeriodic={isPeriodicSection(activeSection)}
+              {saveScope}
               oncreate={handleNewNote}
             />
           {/if}
@@ -1723,6 +1750,7 @@
             showSidebarTrigger
             subfolders={activeFolderSubfolders}
             onSubfolderSelect={handleFolderSelect}
+            {saveScope}
             onback={activeFolderParentId ? handleFolderBack : undefined}
             onNewSubfolder={activeSection === 'folders' && activeFolderId
               ? handleNewSubfolder

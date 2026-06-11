@@ -360,12 +360,15 @@
     "title": "Búsquedas guardadas",
     "save_button": "Guardar búsqueda",
     "saved_toast": "Búsqueda guardada como \"{name}\"",
+    "saved_toast_hint": "Búsqueda guardada como \"{name}\": la encontrará en la búsqueda",
+    "saved_toast_pinned": "Búsqueda guardada como \"{name}\" y fijada en \"{folder}\"",
     "save_failed_toast": "No se pudo guardar la búsqueda",
     "dialog": {
       "title": "Guardar búsqueda",
       "description": "Guarda la consulta actual como una vista con nombre. Los resultados se mantienen al día: la vista siempre refleja el estado actual de sus notas.",
       "name_label": "Nombre",
       "name_placeholder": "p. ej. Proyectos importantes",
+      "pin_to_folder": "Fijar en la carpeta \"{name}\"",
       "query_label": "Consulta",
       "save": "Guardar",
       "cancel": "Cancelar"
