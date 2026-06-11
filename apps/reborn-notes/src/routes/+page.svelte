@@ -1675,7 +1675,7 @@
         {/if}
       {:else if showNoteListInMain}
         <div
-          class="mx-auto h-full w-full max-w-4xl px-6 pt-[max(1.5rem,env(safe-area-inset-top,0px))] flex flex-col"
+          class="mx-auto h-full w-full max-w-4xl px-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] flex flex-col"
         >
           <NoteList
             {activeFolderName}
