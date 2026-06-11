@@ -15,6 +15,11 @@
  *     inline script left in the rendered page is SvelteKit's bootstrap, which it
  *     hashes itself. Trade-off: brief theme FOUC on native cold start.
  *  4. Drop the now-orphaned data-stall-msg / data-offline-msg attrs.
+ *  5. Pin the viewport to maximum-scale=1: WKWebView auto-zooms the layout
+ *     viewport when a focused input has font-size < 16px (the search input
+ *     blew the layout up on iOS, pushing the icon rail off screen). Capping
+ *     the scale is the canonical Capacitor-app fix; the WEB template keeps
+ *     pinch-zoom untouched for accessibility.
  *
  * Self-validating: throws (fails the build) if app.html changed in a way that
  * leaves a nonce placeholder or an un-hashable inline script - prompting an
@@ -45,6 +50,19 @@ do {
   prevHtml = html;
   html = html.replace(/[\t ]*<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>\r?\n?/g, '');
 } while (html !== prevHtml);
+// 5. Native viewport: forbid zoom so focusing a small-font input cannot blow
+//    the layout up (see header comment). Guardrail below verifies the meta
+//    matched - a reworded viewport in app.html must update this transform.
+const viewportBefore = html;
+html = html.replace(
+  /(<meta name="viewport" content="[^"]*?)(, viewport-fit=cover")/,
+  '$1, maximum-scale=1$2'
+);
+if (html === viewportBefore) {
+  throw new Error(
+    'gen-native-template: viewport <meta> not found/changed in app.html - update transform 5.'
+  );
+}
 
 const banner =
   '<!--\n' +

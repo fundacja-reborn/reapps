@@ -81,10 +81,10 @@
   }
 </script>
 
-<!-- pt: keep the header below the iOS notch/Dynamic Island (env() is 0 elsewhere);
-     min-h instead of h so the row grows by exactly that inset. -->
+<!-- pt + min-h grow together by the iOS notch inset so the content keeps its
+     full row box and stays vertically centered (env() is 0 elsewhere). -->
 <header
-  class="flex min-h-14 md:min-h-12 shrink-0 items-center gap-2 border-b border-border/60
+  class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-border/60
     pt-[env(safe-area-inset-top,0px)]
     {isMobile ? 'px-3' : 'px-6'}"
 >

@@ -641,10 +641,11 @@
   {#if !searchOnly}
     <!-- Row 1: title + folder-level action. Stays visible during selection.
          prominentHeader = this row owns the top of the mobile screen, so it
-         also takes the iOS notch inset (env() is 0 elsewhere). -->
+         also takes the iOS notch inset; min-h grows by the same amount so the
+         content keeps its full 3.5rem box (env() is 0 elsewhere). -->
     <div
       class="flex shrink-0 items-center gap-1 {prominentHeader
-        ? 'min-h-14 pt-[env(safe-area-inset-top,0px)]'
+        ? 'min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)]'
         : 'h-10'} {onback ? 'px-3' : 'px-5'}"
     >
       {#if onback}

@@ -1121,9 +1121,11 @@
         <div class="flex flex-1 flex-col min-w-0 overflow-hidden">
           <!-- Header (hidden when NoteList handles its own header) -->
           {#if !(mobileView === 'list' && noteListOwnsMobileHeader)}
-            <!-- pt: keep the mobile header below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
+            <!-- pt + min-h grow together by the iOS notch inset so the content
+                 keeps its full 3.5rem box and stays vertically centered
+                 (env() is 0 elsewhere) -->
             <div
-              class="flex min-h-14 shrink-0 items-center gap-1 border-b border-sidebar-border px-3 pt-[env(safe-area-inset-top,0px)]"
+              class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-1 border-b border-sidebar-border px-3 pt-[env(safe-area-inset-top,0px)]"
             >
               {#if mobileView === 'folder-tree' || mobileView === 'tag-list'}
                 <button
@@ -1468,8 +1470,11 @@
       <!-- ── Content panel ───────────────────────────────────────── -->
       <div class="flex flex-1 flex-col min-w-0 overflow-hidden">
         <SidebarHeader class="border-b p-0 gap-0">
-          <!-- pt: keep the brand row below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
-          <div class="flex min-h-12 items-center gap-2 px-5 pt-[env(safe-area-inset-top,0px)]">
+          <!-- pt + min-h grow together by the iOS notch inset so the content
+               keeps its full 3rem box (env() is 0 elsewhere) -->
+          <div
+            class="flex min-h-[calc(3rem+env(safe-area-inset-top,0px))] items-center gap-2 px-5 pt-[env(safe-area-inset-top,0px)]"
+          >
             <img src="{base}/logo-black.svg" alt="re/notes" class="h-4 w-auto block dark:hidden" />
             <img
               src="{base}/logo-white.svg"
@@ -1690,7 +1695,7 @@
         </div>
       {:else}
         <header
-          class="flex min-h-12 shrink-0 items-center gap-2 border-b border-border/60 px-6 pt-[env(safe-area-inset-top,0px)]"
+          class="flex min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-border/60 px-6 pt-[env(safe-area-inset-top,0px)]"
         >
           <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
           <span class="min-w-0 flex-1 truncate text-sm text-muted-foreground">
