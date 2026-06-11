@@ -106,8 +106,10 @@
       </label>
       <div class="flex flex-col gap-1.5">
         <span class="text-sm font-medium">{$t('saved_searches.dialog.query_label')}</span>
+        <!-- Multi-line wrap: a single-line nowrap block let long queries push the
+             dialog's intrinsic width past the viewport (flex min-width:auto). -->
         <code
-          class="block w-full overflow-x-auto whitespace-nowrap rounded-md border bg-muted/50 px-3 py-2 text-xs text-muted-foreground"
+          class="block w-full min-w-0 whitespace-pre-wrap break-words rounded-md border bg-muted/50 px-3 py-2 text-xs text-muted-foreground"
         >
           {composedQuery}
         </code>
