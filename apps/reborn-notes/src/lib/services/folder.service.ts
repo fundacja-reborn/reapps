@@ -10,7 +10,8 @@ import {
   folderStore,
   noteOperations,
   noteQueries,
-  noteStore
+  noteStore,
+  savedSearchStore
 } from '@reborn/storage';
 import type { FolderEncrypted } from '@reborn/types';
 import type { FolderWithChildren } from '@reborn/types';
@@ -22,7 +23,8 @@ import {
   pushFolderUpdate,
   pushFolderDelete,
   pushNoteUpdate,
-  pushNoteDelete
+  pushNoteDelete,
+  pushSavedSearchUpdate
 } from './notes-sync.service';
 import { noteIndex } from '$lib/services/note-index.svelte';
 
@@ -208,6 +210,31 @@ export async function deleteFolder(
         pushNoteUpdate(note.id, { folder_id: null });
       }
     }
+  }
+
+  // Unpark saved searches from the deleted folder (and its descendants).
+  // A saved search is semantically independent of where it is parked, so it
+  // survives the folder and falls back to the search-panel list. Mirrors the
+  // server's `onDelete: SetNull` - but done explicitly here so sync_version
+  // bumps and other devices converge without the 404-unpark fallback.
+  let unparkedAny = false;
+  for (const fid of folderIds) {
+    const parked = await savedSearchStore.query('folder_id', fid);
+    for (const search of parked) {
+      const { folder_id: _gone, ...rest } = search;
+      await savedSearchStore.save({
+        ...rest,
+        updated_at: new Date().toISOString(),
+        sync_status: 'pending'
+      });
+      pushSavedSearchUpdate(search.id, { folder_id: null });
+      unparkedAny = true;
+    }
+  }
+  if (unparkedAny) {
+    // Dynamic import keeps the service free of a static service→store cycle.
+    const { savedSearchesStore } = await import('$lib/stores/saved-searches.store');
+    await savedSearchesStore.refresh();
   }
 
   // Then delete folders bottom-up (descendants first, root last).

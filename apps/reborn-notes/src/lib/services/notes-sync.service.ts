@@ -15,6 +15,7 @@ import {
   noteStore,
   folderStore,
   tagStore,
+  savedSearchStore,
   noteTagOperations,
   noteTagQueries,
   noteHistoryStore,
@@ -26,7 +27,8 @@ import type {
   NoteStoredLocal,
   NoteHistoryEntry,
   FolderEncrypted,
-  TagEncrypted
+  TagEncrypted,
+  SavedSearchEncrypted
 } from '@reborn/types';
 import { cryptoManager } from '@reborn/crypto';
 import { extractShadowIndexes } from './shadow-index-extractor';
@@ -90,10 +92,16 @@ export async function refreshStoresAfterPull(): Promise<void> {
   const { noteIndex } = await import('$lib/services/note-index.svelte');
   const { foldersStore } = await import('$lib/stores/folders.store');
   const { tagsStore } = await import('$lib/stores/tags.store');
+  const { savedSearchesStore } = await import('$lib/stores/saved-searches.store');
   const { notesStore } = await import('$lib/stores/notes.store');
   const { noteDetailService } = await import('$lib/services/note-detail.service.svelte');
 
-  await Promise.all([foldersStore.refresh(), tagsStore.refresh(), noteIndex.rebuild()]);
+  await Promise.all([
+    foldersStore.refresh(),
+    tagsStore.refresh(),
+    savedSearchesStore.refresh(),
+    noteIndex.rebuild()
+  ]);
   notesStore.refresh();
   await noteDetailService.refreshFromStorage();
 
@@ -180,6 +188,11 @@ async function runPullFromServer(): Promise<boolean> {
       pullTags().catch((e) => {
         reportSyncError(e);
         logger.error('Pull tags failed:', e);
+        success = false;
+      }),
+      pullSavedSearches().catch((e) => {
+        reportSyncError(e);
+        logger.error('Pull saved searches failed:', e);
         success = false;
       })
     ]);
@@ -363,6 +376,82 @@ async function pullTags(): Promise<void> {
   }
 }
 
+async function pullSavedSearches(): Promise<void> {
+  // See pullFolders() for rationale on the userId guard.
+  const userId = get(authStore).userId;
+  if (!userId) return;
+  const res = await authFetch(`${API_BASE}/saved-searches`);
+  if (!res.ok) throw new Error(`GET /api/saved-searches: ${res.status}`);
+  const { data } = await res.json();
+
+  await Promise.all(
+    (
+      data as Array<{
+        id: string;
+        name_encrypted: string;
+        query_encrypted: string;
+        folder_id: string | null;
+        position: number;
+        created_at: string;
+        updated_at: string;
+        sync_version?: number;
+      }>
+    ).map(async (s) => {
+      // Skip if local saved search has pending changes - don't overwrite offline edits
+      const local = await savedSearchStore.get(s.id);
+      if (local && local.sync_status === 'pending') {
+        logger.debug(`Skipping pull for saved search ${s.id} - has pending local changes`);
+        return;
+      }
+
+      // Compare sync_version - skip if server is not newer
+      const serverVersion = s.sync_version ?? 1;
+      if (local && serverVersion <= (local.sync_version ?? 0)) {
+        // Reconciliation: see pullFolders() for rationale. The folder_id compare
+        // also covers the server-side `onDelete: SetNull` of a parked folder,
+        // which nulls the FK without bumping sync_version - the re-marked
+        // pending push then converges via the 404-unpark fallback.
+        if (
+          local.sync_status === 'synced' &&
+          (local.name_encrypted !== s.name_encrypted ||
+            local.query_encrypted !== s.query_encrypted ||
+            (local.folder_id ?? null) !== (s.folder_id ?? null) ||
+            local.position !== s.position)
+        ) {
+          logger.warn(`Reconciling orphaned saved-search edit ${s.id} - marking pending`);
+          await savedSearchStore.save({ ...local, sync_status: 'pending' });
+        }
+        return;
+      }
+
+      const record: SavedSearchEncrypted = {
+        id: s.id,
+        user_id: userId,
+        name_encrypted: s.name_encrypted,
+        query_encrypted: s.query_encrypted,
+        folder_id: s.folder_id ?? undefined,
+        position: s.position,
+        sync_version: serverVersion,
+        sync_status: 'synced',
+        created_at: s.created_at,
+        updated_at: s.updated_at
+      };
+      await savedSearchStore.save(record);
+    })
+  );
+
+  // Remove local saved searches that no longer exist on the server (hard-deleted on another device).
+  const serverIds = new Set((data as Array<{ id: string }>).map((s) => s.id));
+  const allLocal = (await savedSearchStore.getAll()) as SavedSearchEncrypted[];
+  const orphanIds = allLocal
+    .filter((s) => s.sync_status === 'synced' && !serverIds.has(s.id))
+    .map((s) => s.id);
+  if (orphanIds.length > 0) {
+    await savedSearchStore.deleteMany(orphanIds);
+    logger.debug(`Removed ${orphanIds.length} locally-synced saved searches no longer on server`);
+  }
+}
+
 async function pullNotes(): Promise<void> {
   // See pullFolders() for rationale on the userId guard.
   const userId = get(authStore).userId;
@@ -516,14 +605,16 @@ async function pullNotes(): Promise<void> {
 export async function pushPendingItems(): Promise<void> {
   if (!isAuthenticated()) return;
 
-  const [allFolders, allTags, allNotes] = await Promise.all([
+  const [allFolders, allTags, allSavedSearches, allNotes] = await Promise.all([
     folderStore.getAll() as Promise<FolderEncrypted[]>,
     tagStore.getAll() as Promise<TagEncrypted[]>,
+    savedSearchStore.getAll() as Promise<SavedSearchEncrypted[]>,
     noteStore.getAll() as Promise<NoteStoredLocal[]>
   ]);
 
   const pendingFolders = allFolders.filter((f) => f.sync_status === 'pending');
   const pendingTags = allTags.filter((t) => t.sync_status === 'pending');
+  const pendingSavedSearches = allSavedSearches.filter((s) => s.sync_status === 'pending');
   // Partition notes by is_archived: non-archived pending rows are failed
   // creates/updates and go through POST /api/notes; archived pending rows are
   // failed soft-deletes and must be retried via pushNoteDelete. Before this
@@ -539,6 +630,7 @@ export async function pushPendingItems(): Promise<void> {
   if (
     pendingFolders.length +
       pendingTags.length +
+      pendingSavedSearches.length +
       pendingNotes.length +
       pendingArchivedNotes.length ===
     0
@@ -546,7 +638,7 @@ export async function pushPendingItems(): Promise<void> {
     return;
 
   logger.info(
-    `Pushing pending items: ${pendingFolders.length} folders, ${pendingTags.length} tags, ${pendingNotes.length} notes, ${pendingArchivedNotes.length} archived notes`
+    `Pushing pending items: ${pendingFolders.length} folders, ${pendingTags.length} tags, ${pendingSavedSearches.length} saved searches, ${pendingNotes.length} notes, ${pendingArchivedNotes.length} archived notes`
   );
 
   // Push folders BFS-by-layer so parents land before children. Server's
@@ -618,6 +710,16 @@ export async function pushPendingItems(): Promise<void> {
             });
           }
         })
+      )
+    )
+  );
+
+  // Saved searches reference folders (parking FK), so they go after the
+  // folder layers, like notes. No other entity depends on them.
+  await Promise.allSettled(
+    pendingSavedSearches.map((s) =>
+      serializePerEntity('savedSearch', s.id, () =>
+        pushSilently((idempotencyKey) => pushSavedSearchPayload(s, idempotencyKey))
       )
     )
   );
@@ -739,7 +841,7 @@ async function pushSilently(fn: (idempotencyKey: string) => Promise<void>): Prom
 const entityChains = new Map<string, Promise<unknown>>();
 
 function serializePerEntity<T>(
-  type: 'note' | 'folder' | 'tag',
+  type: 'note' | 'folder' | 'tag' | 'savedSearch',
   id: string,
   task: () => Promise<T>
 ): Promise<T> {
@@ -1112,6 +1214,160 @@ export function pushTagDelete(id: string): void {
       // Tag is hard-deleted locally before this runs (see tag.service.ts
       // deleteTag), so there is nothing to reconcile. No sync_version reset -
       // that's the same bug we removed from pushFolderDelete.
+    })
+  );
+}
+
+// ── Saved searches push ────────────────────────────────────────────
+
+/**
+ * POST one saved search, shared by `pushSavedSearch` (fire-and-forget after a
+ * local write) and `pushPendingItems` (retry sweep).
+ *
+ * 404 means the parked folder no longer exists on the server (deleted on
+ * another device while this search was created/moved offline). The search
+ * itself must not be lost over that, so we unpark (folder_id → null), retry
+ * once, and mirror the unparking locally - otherwise the row would wedge in
+ * 'pending' re-sending the dead FK forever.
+ */
+async function pushSavedSearchPayload(
+  search: Pick<
+    SavedSearchEncrypted,
+    'id' | 'name_encrypted' | 'query_encrypted' | 'folder_id' | 'position' | 'created_at'
+  >,
+  idempotencyKey: string
+): Promise<void> {
+  const pushedFields = {
+    name_encrypted: search.name_encrypted,
+    query_encrypted: search.query_encrypted,
+    folder_id: search.folder_id ?? null,
+    position: search.position
+  };
+  const payload = { id: search.id, ...pushedFields, created_at: search.created_at };
+  validateEncryptedPayload(payload as Record<string, unknown>);
+  let res = await authFetch(`${API_BASE}/saved-searches`, {
+    method: 'POST',
+    headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(payload)
+  });
+  let unparked = false;
+  if (res.status === 404 && payload.folder_id) {
+    logger.warn(
+      `Saved search ${search.id}: parked folder ${payload.folder_id} gone on server - unparking`
+    );
+    unparked = true;
+    pushedFields.folder_id = null;
+    res = await authFetch(`${API_BASE}/saved-searches`, {
+      method: 'POST',
+      headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({ ...payload, folder_id: null })
+    });
+  }
+  if (!res.ok) throw new Error(`POST /api/saved-searches: ${res.status}`);
+  const { data: resData } = await res.json();
+  const current = await savedSearchStore.get(search.id);
+  if (current) {
+    // Mirror the unparking before the dirty-compare, so the next compare sees
+    // folder_id null/undefined on both sides instead of re-flagging the row.
+    const { folder_id: currentFolderId, ...rest } = current;
+    const next = unparked ? rest : { ...rest, folder_id: currentFolderId };
+    const stillDirty = pushedFieldsDiffer(next, pushedFields);
+    if (stillDirty) {
+      logger.debug(`Saved search ${search.id} changed during push - keeping sync_status=pending`);
+    }
+    await savedSearchStore.save({
+      ...next,
+      sync_status: stillDirty ? 'pending' : 'synced',
+      sync_version: resData?.sync_version ?? 1
+    });
+  }
+}
+
+export function pushSavedSearch(
+  search: Pick<
+    SavedSearchEncrypted,
+    'id' | 'name_encrypted' | 'query_encrypted' | 'folder_id' | 'position' | 'created_at'
+  >
+): void {
+  void serializePerEntity('savedSearch', search.id, () =>
+    pushSilently((idempotencyKey) => pushSavedSearchPayload(search, idempotencyKey))
+  );
+}
+
+export function pushSavedSearchUpdate(
+  id: string,
+  fields: {
+    name_encrypted?: string;
+    query_encrypted?: string;
+    // `null` explicitly unparks the search from the folder tree. Cannot be
+    // `undefined` - JSON.stringify drops it and the server's `'folder_id' in
+    // data` check would never see the field. Same contract as note moves.
+    folder_id?: string | null;
+    position?: number;
+  }
+): void {
+  void serializePerEntity('savedSearch', id, () =>
+    pushSilently(async (idempotencyKey) => {
+      validateEncryptedPayload(fields as Record<string, unknown>);
+      let res = await authFetch(`${API_BASE}/saved-searches/${id}`, {
+        method: 'PATCH',
+        headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(fields)
+      });
+      let unparked = false;
+      if (res.status === 404 && fields.folder_id) {
+        // Distinguish "parked folder gone" (unpark + retry) from "search not
+        // on server yet" (throw - pushPendingItems POSTs the full row later).
+        let errMsg = '';
+        try {
+          errMsg = (await res.json())?.error ?? '';
+        } catch {
+          /* no body */
+        }
+        if (errMsg !== 'Folder not found') {
+          throw new Error(`PATCH /api/saved-searches/${id}: 404`);
+        }
+        logger.warn(
+          `Saved search ${id}: parked folder ${fields.folder_id} gone on server - unparking`
+        );
+        unparked = true;
+        res = await authFetch(`${API_BASE}/saved-searches/${id}`, {
+          method: 'PATCH',
+          headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+          body: JSON.stringify({ ...fields, folder_id: null })
+        });
+      }
+      if (!res.ok) throw new Error(`PATCH /api/saved-searches/${id}: ${res.status}`);
+      const { data: resData } = await res.json();
+      const current = await savedSearchStore.get(id);
+      if (current) {
+        const { folder_id: currentFolderId, ...rest } = current;
+        const next = unparked ? rest : { ...rest, folder_id: currentFolderId };
+        const compared = unparked ? { ...fields, folder_id: null } : fields;
+        const stillDirty = pushedFieldsDiffer(next, compared);
+        if (stillDirty) {
+          logger.debug(`Saved search ${id} changed during push - keeping sync_status=pending`);
+        }
+        await savedSearchStore.save({
+          ...next,
+          sync_status: stillDirty ? 'pending' : 'synced',
+          sync_version: resData?.sync_version ?? current.sync_version + 1
+        });
+      }
+    })
+  );
+}
+
+export function pushSavedSearchDelete(id: string): void {
+  void serializePerEntity('savedSearch', id, () =>
+    pushSilently(async (idempotencyKey) => {
+      const res = await authFetch(`${API_BASE}/saved-searches/${id}`, {
+        method: 'DELETE',
+        headers: { 'Idempotency-Key': idempotencyKey }
+      });
+      if (!res.ok) throw new Error(`DELETE /api/saved-searches/${id}: ${res.status}`);
+      // Saved search is hard-deleted locally before this runs (see
+      // saved-search.service.ts deleteSavedSearch) - nothing to reconcile.
     })
   );
 }

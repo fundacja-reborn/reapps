@@ -75,7 +75,7 @@ describe('notes-sync - regression (offline data loss)', () => {
 
     // Every push* that mutates a single (type, id) must route through it,
     // otherwise the network can reorder the wire and diverge server vs local.
-    const mustSerialize: Array<[RegExp, 'note' | 'folder' | 'tag']> = [
+    const mustSerialize: Array<[RegExp, 'note' | 'folder' | 'tag' | 'savedSearch']> = [
       [/export function pushNote\b/, 'note'],
       [/export function pushNoteUpdate\b/, 'note'],
       [/export function pushNoteDelete\b/, 'note'],
@@ -85,7 +85,10 @@ describe('notes-sync - regression (offline data loss)', () => {
       [/export function pushFolderDelete\b/, 'folder'],
       [/export function pushTag\b/, 'tag'],
       [/export function pushTagUpdate\b/, 'tag'],
-      [/export function pushTagDelete\b/, 'tag']
+      [/export function pushTagDelete\b/, 'tag'],
+      [/export function pushSavedSearch\b/, 'savedSearch'],
+      [/export function pushSavedSearchUpdate\b/, 'savedSearch'],
+      [/export function pushSavedSearchDelete\b/, 'savedSearch']
     ];
     for (const [signature, type] of mustSerialize) {
       const match = signature.exec(src);
