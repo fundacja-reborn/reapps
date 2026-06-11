@@ -102,6 +102,14 @@ export const NOTES_STORE_DEFINITIONS: StoreDefinition[] = [
       { name: 'note_id', keyPath: 'note_id' },
       { name: 'created_at', keyPath: 'created_at' }
     ]
+  },
+  {
+    name: 'savedSearches',
+    primaryKey: 'id',
+    indexes: [
+      { name: 'folder_id', keyPath: 'folder_id' },
+      { name: 'position', keyPath: 'position' }
+    ]
   }
 ];
 
