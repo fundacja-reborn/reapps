@@ -7,7 +7,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // Native (Capacitor) build target. The exact same client build, but emitted as
 // a static SPA that the native shell bundles and loads from a local custom
-// scheme (http://localhost on Android, capacitor://localhost on iOS). It talks
+// scheme (https://localhost on Android, capacitor://localhost on iOS). It talks
 // to the remote API cross-origin. Selected via BUILD_TARGET=native; the web
 // targets (adapter-node / adapter-auto) are left byte-identical when unset.
 const isNative = process.env.BUILD_TARGET === 'native';

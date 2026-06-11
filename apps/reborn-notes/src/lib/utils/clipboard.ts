@@ -3,8 +3,8 @@
  *
  * - **Native (Capacitor):** the OS clipboard via `@capacitor/clipboard` (the
  *   native ClipboardManager). The web Clipboard API and `execCommand('copy')`
- *   are both unreliable inside the Android WebView (served from
- *   `http://localhost`): they either reject or resolve/return true WITHOUT ever
+ *   are both unreliable inside the Android WebView (regardless of the local
+ *   scheme): they either reject or resolve/return true WITHOUT ever
  *   writing to the system clipboard, which surfaced during Faza 3b smoke testing
  *   as a "copied" toast over an empty clipboard. The plugin bypasses the WebView
  *   entirely. The dynamic import sits behind `__REBORN_NATIVE__` so the web build

@@ -8,8 +8,8 @@ import { env } from '$env/dynamic/public';
  *   `${origin}${base}` the share call-sites used before this helper. On web the
  *   page is already served from the public origin, so that is the right base.
  * - **Native (Capacitor):** the webview serves its own assets from a LOCAL
- *   scheme (`http://localhost`, see `androidScheme` in capacitor.config.ts), so
- *   `window.location.origin` is `http://localhost` - a link nobody else can
+ *   scheme (`https://localhost`, see `androidScheme` in capacitor.config.ts), so
+ *   `window.location.origin` is a local origin - a link nobody else can
  *   open. Derive the PUBLIC web base from `PUBLIC_API_BASE_URL` (set by the
  *   `build-native*` targets, e.g. `https://reapps.eu/notes/api`) by dropping the
  *   trailing `/api`, giving `https://reapps.eu/notes`. Same single source of
