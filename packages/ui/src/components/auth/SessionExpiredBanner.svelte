@@ -36,10 +36,12 @@
 
 {#if visible}
   <div class="sticky top-0 z-50">
+    <!-- pt: max() extends the banner's red background under the iOS notch /
+         Dynamic Island so the text starts below it (env() is 0 elsewhere) -->
     <button
       type="button"
       onclick={handleBannerClick}
-      class="flex w-full items-center justify-center gap-2 bg-destructive px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-destructive/90"
+      class="flex w-full items-center justify-center gap-2 bg-destructive px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top,0px))] text-sm font-medium text-white transition-colors hover:bg-destructive/90"
     >
       <AlertTriangle class="h-4 w-4 shrink-0" />
       <span>{$t('auth.session.expired_banner')}</span>

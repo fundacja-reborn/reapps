@@ -266,11 +266,13 @@
   </div>
 {:else}
   <!-- ── Vertical mode (desktop icon rail) ─────────────────────── -->
+  <!-- padding-top: max() keeps the first icon below the iOS notch/Dynamic
+       Island (env() is 0 elsewhere, so web keeps the 0.5rem of pt-2) -->
   <nav
     class="{alwaysVisible
       ? 'flex'
-      : 'hidden md:flex'} w-14 md:w-12 shrink-0 flex-col items-center gap-1 pt-2 border-r border-sidebar-border"
-    style="background-color: var(--icon-rail); padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));"
+      : 'hidden md:flex'} w-14 md:w-12 shrink-0 flex-col items-center gap-1 border-r border-sidebar-border"
+    style="background-color: var(--icon-rail); padding-top: max(0.5rem, env(safe-area-inset-top, 0px)); padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));"
     aria-label={$t('nav.main_navigation')}
   >
     <!-- New note -->

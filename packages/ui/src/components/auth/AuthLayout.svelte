@@ -29,7 +29,10 @@
 <div class="h-dvh overflow-y-auto">
   <div class="min-h-dvh flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 relative">
     {#if showLocaleSwitcher || showThemeSwitcher}
-      <div class="absolute top-4 right-4 flex items-center gap-2">
+      <!-- top: max() keeps the switchers below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
+      <div
+        class="absolute top-[max(1rem,env(safe-area-inset-top,0px))] right-4 flex items-center gap-2"
+      >
         {#if showThemeSwitcher}
           <AuthThemeSwitcher {themeStorageKey} />
         {/if}

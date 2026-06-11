@@ -1463,7 +1463,8 @@
       <!-- ── Content panel ───────────────────────────────────────── -->
       <div class="flex flex-1 flex-col min-w-0 overflow-hidden">
         <SidebarHeader class="border-b p-0 gap-0">
-          <div class="flex h-12 items-center gap-2 px-5">
+          <!-- pt: keep the brand row below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
+          <div class="flex min-h-12 items-center gap-2 px-5 pt-[env(safe-area-inset-top,0px)]">
             <img src="{base}/logo-black.svg" alt="re/notes" class="h-4 w-auto block dark:hidden" />
             <img
               src="{base}/logo-white.svg"
