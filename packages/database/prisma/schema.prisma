@@ -39,6 +39,7 @@ model User {
   notes                 Note[]
   folders               Folder[]
   tags                  Tag[]
+  savedSearches         SavedSearch[]
   noteVersions          NoteVersion[]
   idempotencyKeys       IdempotencyKey[]
   sharedSnapshots       SharedSnapshot[]
@@ -261,8 +262,9 @@ model Folder {
   
   // Relations
   notes            Note[]
+  savedSearches    SavedSearch[]
   user             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  
+
   @@index([user_id, is_archived])
   @@index([parent_id])
 }
@@ -306,6 +308,29 @@ model Tag {
   
   @@unique([user_id, name_encrypted]) // Ensure unique tag names per user
   @@index([user_id])
+}
+
+// Saved search (smart folder): a named, E2E-encrypted query string re-parsed
+// client-side by the same parser as live search. Server sees only ciphertexts
+// plus the optional folder FK used to "park" the search in the folder tree -
+// query content (operators, tags, phrases) never leaves the client.
+model SavedSearch {
+  id              String   @id @default(uuid())
+  user_id         String
+  folder_id       String?
+  name_encrypted  String   // E2E encrypted
+  query_encrypted String   // E2E encrypted (search query string)
+  position        Int      @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  sync_version    Int      @default(0)
+
+  // Relations
+  folder          Folder?  @relation(fields: [folder_id], references: [id], onDelete: SetNull)
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([folder_id])
 }
 
 model NoteVersion {
