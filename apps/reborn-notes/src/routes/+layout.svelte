@@ -30,6 +30,8 @@
   import { reAuthenticate, verifyTotpForReauth } from '$lib/services/notes-auth.service';
   import { SessionExpiredBanner, RequireSessionModal } from '@reborn/ui';
   import LoadingScreen from '$lib/components/LoadingScreen.svelte';
+  import UpdateRequiredGate from '$lib/components/layout/UpdateRequiredGate.svelte';
+  import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
   import { createLogger } from '@reborn/utils';
 
   const logger = createLogger('notes:layout');
@@ -280,8 +282,11 @@
     // whole block is dead-code-eliminated from the web bundle.
     let offResume: (() => void) | undefined;
     let offDeepLink: (() => void) | undefined;
+    let updateGateTimer: ReturnType<typeof setTimeout> | undefined;
     if (__REBORN_NATIVE__) {
       offResume = platform.lifecycle.onResume(() => {
+        // Min-version gate re-check (throttled internally, fail-open).
+        void checkNativeUpdateGate();
         if ($authStore.isAuthenticated && $authStore.hasE2E) {
           pushPendingItems().catch(() => {});
           pullFromServer()
@@ -301,11 +306,17 @@
         const route = shareDeepLinkToRoute(url);
         if (route) void goto(route);
       });
+
+      // Min-version gate (Faza 5, plan D5): the first check is deferred a few
+      // seconds so it never competes with the boot path (guideline 61 rule);
+      // later checks ride the resume handler above.
+      updateGateTimer = setTimeout(() => void checkNativeUpdateGate(), 3000);
     }
 
     return () => {
       clearTimeout(timeoutId);
       clearInterval(syncInterval);
+      if (updateGateTimer) clearTimeout(updateGateTimer);
       unsubscribeNetwork();
       offResume?.();
       offDeepLink?.();
@@ -412,6 +423,9 @@
     />
     {@render children()}
     <Toaster />
+    {#if __REBORN_NATIVE__}
+      <UpdateRequiredGate />
+    {/if}
   </div>
 {:else}
   <LoadingScreen />

@@ -1,43 +1,57 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 /**
- * Capacitor config for the Reborn Notes native shell (Faza 0 spike).
+ * Capacitor config for the Reborn Notes native shell.
  *
  * The shell bundles the SAME client build as the PWA, emitted as a static SPA
- * (see `build:native` in project.json + `BUILD_TARGET=native` in svelte.config.js)
- * and loaded locally from a custom scheme. Loading code locally - never over the
- * network - is the whole point: it is the structural mitigation of CORE-12.
+ * (see `build-native*` in project.json + `BUILD_TARGET=native` in
+ * svelte.config.js) and loaded locally from a custom scheme. Loading code
+ * locally - never over the network - is the whole point: it is the structural
+ * mitigation of CORE-12.
  *
- * Provisional values for the spike (NOT a store release):
- * - appId: reverse-DNS placeholder; finalize before the first store submission
- *   (it is effectively permanent once published).
- * - androidScheme 'http' -> assets served from http://localhost, which counts as
- *   a secure context, so Web Crypto (AES-GCM/PBKDF2) and WASM (Argon2id) work.
+ * STORE IDENTITY - PERMANENT (finalized in Faza 5):
+ * - appId: Android package name / iOS bundle id. Cannot ever change once the
+ *   app is published (it IS the app's identity in both stores, and the value
+ *   referenced by assetlinks.json / apple-app-site-association).
+ * - androidScheme: the webview origin (https://localhost) keys IndexedDB and
+ *   localStorage. Changing it after release silently resets every install's
+ *   local state (the Keystore-held master key and refresh token survive, but
+ *   users would re-sync from scratch). 'https' is Capacitor's default; the
+ *   Faza 0 spike used 'http' temporarily - switched back before v1, while the
+ *   only installs are dev devices.
  *
- * Cross-origin API: the app talks to https://staging.reapps.eu/api. That fetch
- * is governed by CORS on the server, so staging must allow the native origin
- * (Access-Control-Allow-Origin: http://localhost). See the spike runbook for
- * that prerequisite and the CapacitorHttp fallback.
+ * Cross-origin API: the app talks to the origin baked into PUBLIC_API_BASE_URL
+ * at build time. Transport is CapacitorHttp (native layer, decided in Faza 1),
+ * so no cookies or server CORS are involved; native auth is token-based
+ * (Faza 2).
  */
+// Loud sync-time banner: forgetting CAP_DEV_CLEARTEXT for an emulator/localprod
+// sync produces a shell that refuses the plain-http backend (every API call
+// fails with ERR_CONNECTION_REFUSED -> "Sync error") - tripped on 2026-06-11.
+// The reverse mistake (dev flag in a release sync) is the dangerous one.
+if (process.env.CAP_DEV_CLEARTEXT === '1') {
+  console.warn(
+    '[capacitor.config] DEV cleartext ON - emulator/localprod sync. NEVER ship this sync to a store.'
+  );
+} else {
+  console.warn(
+    '[capacitor.config] cleartext OFF (release mode). For emulator/localprod runs: CAP_DEV_CLEARTEXT=1 npx cap sync android'
+  );
+}
+
 const config: CapacitorConfig = {
   appId: 'eu.reapps.notes',
   appName: 're/notes',
   webDir: 'build-native',
   server: {
-    androidScheme: 'http',
-    // Allow cleartext HTTP so the emulator can reach the LOCAL backend over
-    // http://10.0.2.2 (localprod on the host). Android blocks cleartext by default.
-    // Harmless for HTTPS (staging/prod) builds - it only permits, never forces.
-    // DEV/DEBUG ONLY: turn this off (or gate it to debug variants) in Faza 5
-    // store-prep so release builds are HTTPS-only. Tracked in TODO-native.
-    cleartext: true
+    androidScheme: 'https',
+    // Cleartext HTTP is for LOCAL DEV ONLY: emulator/simulator builds talk to
+    // the host's localprod backend over plain http (10.0.2.2 / localhost).
+    // Read at `cap sync` time - sync for a local run needs CAP_DEV_CLEARTEXT=1
+    // in the environment; a release sync MUST run without it, so the shipped
+    // shell is HTTPS-only. See the release runbook (guideline 62).
+    cleartext: process.env.CAP_DEV_CLEARTEXT === '1'
   },
-  // Faza 0 spike: route fetch/XHR through the native HTTP layer so cross-origin
-  // calls to staging bypass CORS - no server change needed to validate
-  // crypto/IndexedDB/sync. The representative architecture uses real CORS on the
-  // server instead; in Faza 1 set enabled:false and add CORS for `http://localhost`
-  // to the nginx `location /notes` block. If CapacitorHttp causes any fetch quirk
-  // during the spike, flip enabled:false and use the nginx CORS path.
   plugins: {
     CapacitorHttp: { enabled: true }
   }

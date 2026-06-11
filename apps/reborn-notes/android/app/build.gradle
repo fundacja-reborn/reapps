@@ -1,5 +1,21 @@
 apply plugin: 'com.android.application'
 
+// Release signing (Faza 5). The UPLOAD keystore lives OUTSIDE the repo - see
+// the release runbook (guideline 62). Create android/keystore.properties
+// (gitignored) with:
+//   storeFile=/absolute/path/to/upload-keystore.jks
+//   storePassword=...
+//   keyAlias=upload
+//   keyPassword=...
+// Without the file the release build is simply unsigned (safe for CI/dev).
+// Play App Signing holds the actual app signing key; this upload key only
+// authenticates uploads and is recoverable through Play support if lost.
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
 android {
     namespace = "eu.reapps.notes"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +23,11 @@ android {
         applicationId "eu.reapps.notes"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // Store versioning (Faza 5, plan D5): versionName = public semver of the
+        // native shell (independent of the monorepo's nx-release version);
+        // versionCode = monotonic int, bumped on every store submission.
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +35,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : null
         }
     }
 }
