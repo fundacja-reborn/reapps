@@ -6,6 +6,13 @@
       "title": "Nowa wersja aplikacji jest dostępna",
       "description": "Odśwież stronę, aby załadować najnowszą wersję.",
       "button": "Odśwież"
+    },
+    "update_gate": {
+      "required_title": "Wymagana aktualizacja",
+      "required_description": "Ta wersja aplikacji jest nieaktualna i nie jest już wspierana. Zaktualizuj ją ze sklepu, aby dalej synchronizować dane.",
+      "open_store": "Otwórz sklep",
+      "recommended_title": "Dostępna aktualizacja",
+      "recommended_description": "Nowsza wersja aplikacji jest dostępna w sklepie."
     }
   },
   "dates": {

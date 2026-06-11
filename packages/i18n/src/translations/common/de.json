@@ -6,6 +6,13 @@
       "title": "Eine neue Version der App ist verfügbar",
       "description": "Laden Sie die Seite neu, um die neueste Version zu laden.",
       "button": "Neu laden"
+    },
+    "update_gate": {
+      "required_title": "Aktualisierung erforderlich",
+      "required_description": "Diese Version der App ist veraltet und wird nicht mehr unterstützt. Aktualisieren Sie sie über den Store, um Ihre Daten weiter zu synchronisieren.",
+      "open_store": "Store öffnen",
+      "recommended_title": "Aktualisierung verfügbar",
+      "recommended_description": "Im Store ist eine neuere Version der App verfügbar."
     }
   },
   "dates": {

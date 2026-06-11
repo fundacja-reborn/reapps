@@ -6,6 +6,13 @@
       "title": "Hay una nueva versión de la aplicación disponible",
       "description": "Recarga la página para cargar la última versión.",
       "button": "Recargar"
+    },
+    "update_gate": {
+      "required_title": "Actualización obligatoria",
+      "required_description": "Esta versión de la aplicación está obsoleta y ya no es compatible. Actualízala desde la tienda para seguir sincronizando tus datos.",
+      "open_store": "Abrir la tienda",
+      "recommended_title": "Actualización disponible",
+      "recommended_description": "Hay una versión más reciente de la aplicación disponible en la tienda."
     }
   },
   "dates": {

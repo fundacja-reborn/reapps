@@ -6,6 +6,13 @@
       "title": "A new version of the app is available",
       "description": "Reload the page to load the latest version.",
       "button": "Reload"
+    },
+    "update_gate": {
+      "required_title": "Update required",
+      "required_description": "This version of the app is out of date and no longer supported. Update it from the store to keep your data in sync.",
+      "open_store": "Open store",
+      "recommended_title": "Update available",
+      "recommended_description": "A newer version of the app is available in the store."
     }
   },
   "dates": {
