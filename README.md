@@ -316,7 +316,7 @@ If you've contributed something that shaped this project - an idea, a substantiv
 
 You are free to use, modify, and self-host. If you modify the server-side code and offer it as a service, you must open-source your changes under the same license.
 
-Bundled third-party components and our dual-license elections are documented in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Bundled third-party components and our dual-license elections are documented in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). App-store builds additionally carry an [app store distribution exception](LICENSE-EXCEPTIONS.md) (an AGPL-3.0 §7 additional permission), so that forks can also be published through the stores.
 
 ## Further reading
 
