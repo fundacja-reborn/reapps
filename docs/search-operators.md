@@ -2,7 +2,7 @@
 
 Both **re/task** and **re/notes** ship a unified search box that combines plain-text search with structured operators. Type a few words for substring search; add operators to filter by tag, folder, list, dates, flags, and more.
 
-All search runs **client-side** over already-decrypted data — the server never sees your query. Operators are therefore privacy-neutral: they don't add a new attack surface compared to plain-text search.
+All search runs **client-side** over already-decrypted data - the server never sees your query. Operators are therefore privacy-neutral: they don't add a new attack surface compared to plain-text search.
 
 ---
 
@@ -24,14 +24,14 @@ All search runs **client-side** over already-decrypted data — the server never
 
 **Modifiers**
 
-- `-OPERATOR` — negate the operator. Example: `-tag:archived` (exclude tag), `-is:completed` (only incomplete).
-- `-WORD` — exclude items whose title (or body, in the description/content path) contains *WORD*. Example: `cat -mouse` matches items mentioning *cat* but never *mouse*.
-- `"quoted value"` — preserve whitespace and colons. Inside an operator: `tag:"in progress"`, `list:"Q2 planning"`. As plain text: `"meeting prep"` matches the literal phrase including whitespace, instead of *meeting* AND *prep* independently.
-- `-"quoted value"` — exclude a phrase. Example: `cat -"angry mouse"`.
+- `-OPERATOR` - negate the operator. Example: `-tag:archived` (exclude tag), `-is:completed` (only incomplete).
+- `-WORD` - exclude items whose title (or body, in the description/content path) contains *WORD*. Example: `cat -mouse` matches items mentioning *cat* but never *mouse*.
+- `"quoted value"` - preserve whitespace and colons. Inside an operator: `tag:"in progress"`, `list:"Q2 planning"`. As plain text: `"meeting prep"` matches the literal phrase including whitespace, instead of *meeting* AND *prep* independently.
+- `-"quoted value"` - exclude a phrase. Example: `cat -"angry mouse"`.
 
 **Combining**
 
-By default everything is AND-combined: operators with each other, operators with plain-text words, and excludes too — every clause must hold simultaneously. Example:
+By default everything is AND-combined: operators with each other, operators with plain-text words, and excludes too - every clause must hold simultaneously. Example:
 
 ```
 meeting tag:work -is:completed modified:<14d -draft
@@ -47,7 +47,7 @@ To express "either / or" relationships, use the `OR` operator described below.
 
 Beyond the implicit AND, the search box supports explicit `OR`, parenthesized groups, and group negation. Explicit `AND` is also recognized as a redundant synonym for the implicit AND.
 
-### `OR` — alternatives
+### `OR` - alternatives
 
 ```
 cat OR mouse                    # title or body contains "cat" OR "mouse"
@@ -55,9 +55,9 @@ tag:work OR tag:personal        # either tag matches
 is:completed OR is:overdue      # finished or past due
 ```
 
-`OR` must be **uppercase** with surrounding whitespace. Lowercase `or` is treated as a plain text word — same convention as Gmail, GitHub, and Linear. To search for the literal substring `OR`, quote it: `"OR"`.
+`OR` must be **uppercase** with surrounding whitespace. Lowercase `or` is treated as a plain text word - same convention as Gmail, GitHub, and Linear. To search for the literal substring `OR`, quote it: `"OR"`.
 
-**Precedence — AND binds tighter than OR.** That mirrors how the operator behaves in mainstream search boxes:
+**Precedence - AND binds tighter than OR.** That mirrors how the operator behaves in mainstream search boxes:
 
 ```
 cat dog OR mouse                # = (cat AND dog) OR mouse
@@ -65,16 +65,16 @@ cat dog OR mouse                # = (cat AND dog) OR mouse
 
 When in doubt, parenthesize.
 
-### `AND` — explicit (and redundant)
+### `AND` - explicit (and redundant)
 
-A space between two clauses already means AND, so `cat dog` and `cat AND dog` produce the same results. The explicit form exists for symmetry with `OR` — useful inside groups where the boolean intent is clearer when written out:
+A space between two clauses already means AND, so `cat dog` and `cat AND dog` produce the same results. The explicit form exists for symmetry with `OR` - useful inside groups where the boolean intent is clearer when written out:
 
 ```
 (cat AND dog) OR mouse          # equivalent to (cat dog) OR mouse
 tag:work AND -is:completed      # equivalent to tag:work -is:completed
 ```
 
-`AND` must be **uppercase** with surrounding whitespace, exactly like `OR`. Lowercase `and` and the quoted form `"AND"` are treated as the plain text word `and`. AND has the same precedence as the implicit space — i.e. tighter than OR — so `cat AND dog OR mouse` parses as `(cat AND dog) OR mouse`.
+`AND` must be **uppercase** with surrounding whitespace, exactly like `OR`. Lowercase `and` and the quoted form `"AND"` are treated as the plain text word `and`. AND has the same precedence as the implicit space - i.e. tighter than OR - so `cat AND dog OR mouse` parses as `(cat AND dog) OR mouse`.
 
 ### Grouping with `(...)`
 
@@ -102,7 +102,7 @@ This is distinct from leaf-level negation (`-tag:archived`, `-mouse`), which neg
 
 ### Quoted boolean tokens
 
-Quotes always preserve characters literally — `OR`, `AND`, `(`, and `)` inside quotes are treated as part of the value, not as boolean syntax:
+Quotes always preserve characters literally - `OR`, `AND`, `(`, and `)` inside quotes are treated as part of the value, not as boolean syntax:
 
 ```
 "cat OR dog"     # plain phrase including the literal text "OR"
@@ -113,11 +113,11 @@ tag:"or another" # tag value containing the substring "or another"
 
 ### Graceful fallback
 
-If the parser hits a structural problem (an unmatched parenthesis, a dangling `OR` or `AND`), the whole query degrades to a flat plain-text parse — the offending characters become literal substring tokens. You'll never see a red error state mid-typing; the search just becomes less specific until the syntax is balanced again. Examples:
+If the parser hits a structural problem (an unmatched parenthesis, a dangling `OR` or `AND`), the whole query degrades to a flat plain-text parse - the offending characters become literal substring tokens. You'll never see a red error state mid-typing; the search just becomes less specific until the syntax is balanced again. Examples:
 
-- `(cat OR ` — unmatched `(`. Searches for items literally containing `(`, `cat`, and `or`.
-- `cat OR` — trailing `OR`. Searches for items literally containing `cat` and `or`.
-- `cat AND` — trailing `AND`. Searches for items literally containing `cat` and `and`.
+- `(cat OR ` - unmatched `(`. Searches for items literally containing `(`, `cat`, and `or`.
+- `cat OR` - trailing `OR`. Searches for items literally containing `cat` and `or`.
+- `cat AND` - trailing `AND`. Searches for items literally containing `cat` and `and`.
 
 ---
 
@@ -134,7 +134,7 @@ created:<2026-01-15           # before that day
 created:2026-01-01..2026-01-31  # range, inclusive on both ends
 ```
 
-Format is always `YYYY-MM-DD`. Invalid dates (e.g. `2026-02-30`) silently fall back to plain-text search instead of erroring — you can keep typing without seeing red squiggles.
+Format is always `YYYY-MM-DD`. Invalid dates (e.g. `2026-02-30`) silently fall back to plain-text search instead of erroring - you can keep typing without seeing red squiggles.
 
 ### Relative ranges
 
@@ -156,7 +156,7 @@ created:today
 modified:yesterday
 ```
 
-Dates are interpreted in your **local timezone**, not UTC — "today" matches your wall clock.
+Dates are interpreted in your **local timezone**, not UTC - "today" matches your wall clock.
 
 ---
 
@@ -164,10 +164,10 @@ Dates are interpreted in your **local timezone**, not UTC — "today" matches yo
 
 Plain-text words (anything that's not an operator) match by substring against:
 
-- **Titles** — always, instantly, no decryption.
-- **Descriptions** (re/task) / **content** (re/notes) — only when the *Search in description / content* toggle is on. Decryption happens in-memory; the server never sees the query.
+- **Titles** - always, instantly, no decryption.
+- **Descriptions** (re/task) / **content** (re/notes) - only when the *Search in description / content* toggle is on. Decryption happens in-memory; the server never sees the query.
 
-Operators that need note/task body — currently only `has:link` — automatically force the body-aware path even when the toggle is off.
+Operators that need note/task body - currently only `has:link` - automatically force the body-aware path even when the toggle is off.
 
 Multiple plain-text words are AND-combined: `meeting prep` requires both *meeting* and *prep* to appear independently in the searched fields. To require the literal phrase including whitespace, wrap it in quotes: `"meeting prep"` matches only items where the two words appear next to each other in that order.
 
@@ -177,9 +177,23 @@ Quoting also works inside operator values: `tag:"side projects"`, `list:"Q2 plan
 
 ---
 
+## Saved searches (smart folders)
+
+> **re/notes** (re/task follow-up planned)
+
+Any query you can type, you can save as a named view. With a query in the search box, click **Save search** (next to the *Search in content* toggle), give it a name, and it appears in the search panel - open search with an empty box to see your saved views. Clicking one puts its query back into the search box, so results are always **live**: a saved search is a stored query, not a snapshot.
+
+Saved searches can also be **pinned to a folder** (context menu → *Pin to folder*). A pinned search shows up inside the folder tree as a leaf node - a "smart folder" sitting next to your real folders. Example: pin `folder:Cars tag:DE` to the *Cars* folder as **German Cars**. Pinning is purely presentational; it does not scope the query. Deleting a folder never deletes the searches pinned to it - they just unpin back to the search panel.
+
+Renaming, re-pinning, and deleting are available from each saved search's context menu (deleting a saved view never touches your notes). Saved searches sync across your devices like folders and tags do.
+
+Privacy note: both the name and the query string are end-to-end encrypted (`name_encrypted`, `query_encrypted`). The server cannot see which operators, tags, or phrases your saved views filter by - it only stores opaque ciphertexts, and all evaluation happens on your device through the same parser as live search.
+
+---
+
 ## Searching in trash
 
-Both apps have a dedicated trash view, and the search box always scans the current bucket only — active items in normal views, trashed items in the trash view. There is no operator to mix the two; to browse deleted items, switch to the trash view directly. Search there works with all the operators above (tag, folder, list, dates, …) over the trashed set.
+Both apps have a dedicated trash view, and the search box always scans the current bucket only - active items in normal views, trashed items in the trash view. There is no operator to mix the two; to browse deleted items, switch to the trash view directly. Search there works with all the operators above (tag, folder, list, dates, …) over the trashed set.
 
 This is by design: cross-bucket search is rarely useful and would surface stale matches in everyday queries. A future version may introduce an explicit unified search mode.
 
@@ -187,13 +201,13 @@ This is by design: cross-bucket search is rarely useful and would surface stale 
 
 ## Graceful fallback
 
-If the parser doesn't recognize a token (e.g. a typo like `taq:work` or an invalid date), it silently treats the whole token as plain text instead of failing. This is intentional — you can keep typing without ever seeing a red error state mid-query.
+If the parser doesn't recognize a token (e.g. a typo like `taq:work` or an invalid date), it silently treats the whole token as plain text instead of failing. This is intentional - you can keep typing without ever seeing a red error state mid-query.
 
 What this means in practice:
 
-- `created:tomorrow` — there's no such keyword (we support `today` and `yesterday` only). The whole `created:tomorrow` becomes a plain-text search for the literal string `created:tomorrow`.
-- `tag:` (no value) — falls back to plain text.
-- Unknown operator names (`status:done`, `priority:high`, …) — treated as plain text. They may become real operators in a future Tier 2.
+- `created:tomorrow` - there's no such keyword (we support `today` and `yesterday` only). The whole `created:tomorrow` becomes a plain-text search for the literal string `created:tomorrow`.
+- `tag:` (no value) - falls back to plain text.
+- Unknown operator names (`status:done`, `priority:high`, …) - treated as plain text. They may become real operators in a future Tier 2.
 
 If a query "doesn't work as expected," the most common cause is a typo silently degrading to plain-text. Double-check the operator name and value format above.
 
@@ -209,7 +223,7 @@ All matching happens on your device:
 4. If the query needs body content (`has:link` or the description/content toggle), only the candidate items are decrypted and re-evaluated.
 5. Nothing is sent to the server.
 
-There is no server-side search endpoint, no inverted index, and no query telemetry — the full Zero-Knowledge architecture is preserved. For the deep dive, see [Zero Knowledge Architecture](architecture/zero-knowledge-architecture.md).
+There is no server-side search endpoint, no inverted index, and no query telemetry - the full Zero-Knowledge architecture is preserved. For the deep dive, see [Zero Knowledge Architecture](architecture/zero-knowledge-architecture.md).
 
 ---
 

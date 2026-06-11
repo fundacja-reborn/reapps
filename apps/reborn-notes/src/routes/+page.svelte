@@ -3,7 +3,7 @@
   import { beforeNavigate } from '$app/navigation';
   import { base } from '$app/paths';
   import { copyText } from '$lib/utils/clipboard';
-  import { SvelteSet } from 'svelte/reactivity';
+  import { SvelteSet, SvelteMap } from 'svelte/reactivity';
   import { FolderPlus, Plus, ArrowLeft, Lock } from '@lucide/svelte';
 
   // Layout
@@ -54,6 +54,9 @@
   import type { PeriodicKind } from '@reborn/storage';
   import { foldersStore } from '$lib/stores/folders.store';
   import { tagsStore } from '$lib/stores/tags.store';
+  import { savedSearchesStore } from '$lib/stores/saved-searches.store';
+  import { searchHandoff } from '$lib/stores/search-handoff.store';
+  import type { SavedSearchDecrypted } from '@reborn/types';
   import { getSettings } from '$lib/utils/app-settings';
   import {
     appSettings,
@@ -747,6 +750,36 @@
     }
   }
 
+  // ── Saved searches in the folder tree ──────────────────────────
+  const savedSearchesByFolder = $derived.by(() => {
+    const map = new SvelteMap<string, SavedSearchDecrypted[]>();
+    for (const search of $savedSearchesStore) {
+      if (!search.folder_id) continue;
+      const parked = map.get(search.folder_id);
+      if (parked) parked.push(search);
+      else map.set(search.folder_id, [search]);
+    }
+    return map;
+  });
+
+  /**
+   * Clicking a parked saved search jumps to the search section and replays
+   * its query. The handoff store is set AFTER a tick so NoteList's
+   * section-change reset (which clears the input) has already run - see
+   * search-handoff.store.ts.
+   */
+  async function handleSavedSearchSelect(search: SavedSearchDecrypted) {
+    await noteDetailService.flushAndSnapshot();
+    activeSection = 'search';
+    activeNoteId.set(null);
+    if (isMobile) {
+      mobileView = 'list';
+      pushMobileHistory();
+    }
+    await tick();
+    searchHandoff.set(search.query);
+  }
+
   // ── Autosave (delegated to noteDetailService) ─────────────────
   function handleContentChange(content: string) {
     noteDetailService.setContentDebounced(content);
@@ -1238,6 +1271,8 @@
                       activeFolderId={activeFolderId ?? null}
                       {expandedIds}
                       onselect={handleFolderSelect}
+                      {savedSearchesByFolder}
+                      onsavedsearchselect={handleSavedSearchSelect}
                     />
                   {/if}
                 </div>
@@ -1512,6 +1547,8 @@
                     activeFolderId={activeFolderId ?? null}
                     {expandedIds}
                     onselect={handleFolderSelect}
+                    {savedSearchesByFolder}
+                    onsavedsearchselect={handleSavedSearchSelect}
                   />
                 {/if}
               </div>

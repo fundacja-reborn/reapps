@@ -356,6 +356,29 @@
       "tags": "Tags"
     }
   },
+  "saved_searches": {
+    "title": "Gespeicherte Suchen",
+    "save_button": "Suche speichern",
+    "saved_toast": "Suche als \"{name}\" gespeichert",
+    "save_failed_toast": "Die Suche konnte nicht gespeichert werden",
+    "dialog": {
+      "title": "Suche speichern",
+      "description": "Speichert die aktuelle Abfrage als benannte Ansicht. Die Ergebnisse bleiben dynamisch - die Ansicht zeigt immer den aktuellen Stand Ihrer Notizen.",
+      "name_label": "Name",
+      "name_placeholder": "z. B. Deutsche Autos",
+      "query_label": "Abfrage",
+      "save": "Speichern",
+      "cancel": "Abbrechen"
+    },
+    "item_label": "Gespeicherte Suche: {name}",
+    "actions": "Aktionen für gespeicherte Suche",
+    "rename": "Umbenennen",
+    "move_to_folder": "An Ordner anheften…",
+    "unpark": "Vom Ordner lösen",
+    "delete": "Löschen",
+    "delete_confirm_title": "„{name}“ löschen?",
+    "delete_confirm_desc": "Nur die gespeicherte Ansicht wird entfernt - Ihre Notizen bleiben unberührt."
+  },
   "sort": {
     "title": "Sortieren nach",
     "date_created": "Erstellungsdatum",

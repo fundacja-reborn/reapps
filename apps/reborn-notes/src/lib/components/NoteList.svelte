@@ -37,6 +37,11 @@
   import NoteListSearchBar from './notes/NoteListSearchBar.svelte';
   import NoteListSortMenu from './notes/NoteListSortMenu.svelte';
   import MoveToFolderMenu from './notes/MoveToFolderMenu.svelte';
+  import SaveSearchDialog from './notes/SaveSearchDialog.svelte';
+  import SavedSearchList from './notes/SavedSearchList.svelte';
+  import { savedSearchesStore } from '$lib/stores/saved-searches.store';
+  import { searchHandoff } from '$lib/stores/search-handoff.store';
+  import type { SavedSearchDecrypted } from '@reborn/types';
   import SubfolderList from './SubfolderList.svelte';
   import FolderActionMenu from './sidebar/FolderActionMenu.svelte';
   import type { FolderWithChildren } from '@reborn/types';
@@ -206,6 +211,26 @@
 
   $effect(() => {
     notesStore.setSearchInContent(searchInContent);
+  });
+
+  // ── Saved searches ─────────────────────────────────────────────
+  let saveSearchDialogOpen = $state(false);
+
+  function applySavedSearch(search: SavedSearchDecrypted) {
+    searchInput = search.query;
+  }
+
+  // One-shot query handoff (saved search clicked outside the search section,
+  // e.g. a node parked in the folder tree). The sender switches the section
+  // first and sets the store after a tick, so the section-change reset above
+  // has already run - consuming here cannot be clobbered by it.
+  $effect(() => {
+    const pending = $searchHandoff;
+    if (pending === null) return;
+    untrack(() => {
+      searchHandoff.set(null);
+      searchInput = pending;
+    });
   });
 
   function onWindowClick() {
@@ -861,7 +886,13 @@
   {/if}
 
   <!-- Search bar -->
-  <NoteListSearchBar bind:searchInput bind:searchInContent bind:searchInputEl {searchOnly} />
+  <NoteListSearchBar
+    bind:searchInput
+    bind:searchInContent
+    bind:searchInputEl
+    {searchOnly}
+    onsavesearch={() => (saveSearchDialogOpen = true)}
+  />
 
   <!-- Notes list -->
   <div class="flex-1 overflow-y-auto px-3">
@@ -873,10 +904,14 @@
       />
     {/if}
     {#if searchOnly && !searchInput}
-      <div class="px-4 py-12 text-center">
-        <Search class="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
-        <p class="text-sm text-muted-foreground">{$t('notes.search_hint')}</p>
-      </div>
+      {#if $savedSearchesStore.length > 0}
+        <SavedSearchList onselect={applySavedSearch} />
+      {:else}
+        <div class="px-4 py-12 text-center">
+          <Search class="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
+          <p class="text-sm text-muted-foreground">{$t('notes.search_hint')}</p>
+        </div>
+      {/if}
     {:else if $notesStore.length === 0}
       {#if subfolders.length === 0 || searchInput}
         <div class="px-4 py-8 text-center">
@@ -973,6 +1008,8 @@
     onmove={(folderId, e) => movingNoteId && handleMove(movingNoteId, folderId, e)}
   />
 {/if}
+
+<SaveSearchDialog bind:open={saveSearchDialogOpen} query={searchInput} />
 
 <ConfirmDialog
   bind:open={deleteDialogOpen}
