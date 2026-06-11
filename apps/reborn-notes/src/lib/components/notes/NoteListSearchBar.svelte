@@ -1,17 +1,20 @@
 <script lang="ts">
-  import { Search, X } from '@lucide/svelte';
+  import { Search, X, Bookmark } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
 
   let {
     searchInput = $bindable(''),
     searchInContent = $bindable(false),
     searchInputEl = $bindable<HTMLInputElement | null>(null),
-    searchOnly = false
+    searchOnly = false,
+    onsavesearch
   }: {
     searchInput: string;
     searchInContent: boolean;
     searchInputEl?: HTMLInputElement | null;
     searchOnly?: boolean;
+    /** Optional "save this search" affordance (shown when a query is typed). */
+    onsavesearch?: () => void;
   } = $props();
 
   function handleSearchInput(e: Event) {
@@ -52,23 +55,37 @@
     {/if}
   </div>
   {#if searchInput}
-    <button
-      type="button"
-      onclick={toggleSearchInContent}
-      class="mt-1.5 md:mt-1 flex items-center gap-1.5 md:gap-1 text-xs md:text-[11px] transition-colors
-        {searchInContent
-        ? 'font-medium text-primary'
-        : 'text-muted-foreground hover:text-foreground'}"
-    >
-      <span
-        class="inline-flex h-4 w-4 md:h-3 md:w-3 items-center justify-center rounded border
-        {searchInContent
-          ? 'border-primary bg-primary text-primary-foreground'
-          : 'border-muted-foreground'}"
+    <!-- Mobile: 44px-tall tap targets (HIG minimum) with breathing room from the
+         input; desktop keeps the previous compact text-row look via md:. -->
+    <div class="mt-0.5 md:mt-1 flex items-center justify-between gap-2">
+      <button
+        type="button"
+        onclick={toggleSearchInContent}
+        class="flex min-h-[44px] md:min-h-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-sm md:text-[11px] transition-colors
+          {searchInContent
+          ? 'font-medium text-primary'
+          : 'text-muted-foreground hover:text-foreground'}"
       >
-        {#if searchInContent}✓{/if}
-      </span>
-      {$t('notes.search_in_content')}
-    </button>
+        <span
+          class="inline-flex h-5 w-5 md:h-3 md:w-3 items-center justify-center rounded border
+          {searchInContent
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'border-muted-foreground'}"
+        >
+          {#if searchInContent}✓{/if}
+        </span>
+        {$t('notes.search_in_content')}
+      </button>
+      {#if onsavesearch}
+        <button
+          type="button"
+          onclick={onsavesearch}
+          class="flex min-h-[44px] md:min-h-0 shrink-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-sm md:text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Bookmark class="h-5 w-5 md:h-3 md:w-3" />
+          {$t('saved_searches.save_button')}
+        </button>
+      {/if}
+    </div>
   {/if}
 </div>

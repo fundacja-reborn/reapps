@@ -10,6 +10,7 @@ export * from './subtask.store';
 export * from './note.store';
 export * from './folder.store';
 export * from './tag.store';
+export * from './saved-search.store';
 export * from './note-tag.store';
 export * from './note-history.store';
 
@@ -29,6 +30,7 @@ export { subtaskStore, subtaskQueries } from './subtask.store';
 export { noteStore, noteQueries, noteOperations } from './note.store';
 export { folderStore, folderQueries, folderOperations } from './folder.store';
 export { tagStore, tagQueries, tagOperations } from './tag.store';
+export { savedSearchStore, savedSearchQueries } from './saved-search.store';
 export { noteTagStore, noteTagQueries, noteTagOperations } from './note-tag.store';
 export { noteHistoryStore, noteHistoryQueries, noteHistoryOperations } from './note-history.store';
 

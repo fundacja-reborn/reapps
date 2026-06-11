@@ -36,6 +36,13 @@ export interface SearchEntity {
 export interface SearchContext {
   tagIdByName: Map<string, string>;
   folderIdByPath: Map<string, string>;
+  /**
+   * Inverse of `folderIdByPath` (folder id → lowercased full path). When
+   * provided, `folder:` matches the folder AND its whole subtree via path
+   * prefix - mirroring the folder view, which searches subfolders too.
+   * Optional for callers without folder hierarchies (e.g. the task app).
+   */
+  folderPathById?: Map<string, string>;
   listIdByName: Map<string, string>;
   now: Date;
 }
@@ -123,7 +130,15 @@ function matchFilterPositive(
 
     case 'folder': {
       const folderId = ctx.folderIdByPath.get(filter.value);
-      return folderId ? entity.folderId === folderId : false;
+      if (!folderId) return false;
+      if (entity.folderId === folderId) return true;
+      // Subtree match: an entity inside a descendant folder matches too,
+      // mirroring the folder view (which searches the folder and all its
+      // subfolders). Requires the optional reverse path map; without it the
+      // operator keeps its legacy exact-folder behavior.
+      if (!ctx.folderPathById || !entity.folderId) return false;
+      const entityPath = ctx.folderPathById.get(entity.folderId);
+      return entityPath ? entityPath.startsWith(filter.value + '/') : false;
     }
 
     case 'list': {

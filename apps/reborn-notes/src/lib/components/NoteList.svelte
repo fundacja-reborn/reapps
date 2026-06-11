@@ -37,6 +37,13 @@
   import NoteListSearchBar from './notes/NoteListSearchBar.svelte';
   import NoteListSortMenu from './notes/NoteListSortMenu.svelte';
   import MoveToFolderMenu from './notes/MoveToFolderMenu.svelte';
+  import SaveSearchDialog from './notes/SaveSearchDialog.svelte';
+  import SavedSearchList from './notes/SavedSearchList.svelte';
+  import SavedSearchRow from './notes/SavedSearchRow.svelte';
+  import { savedSearchesStore } from '$lib/stores/saved-searches.store';
+  import { searchHandoff } from '$lib/stores/search-handoff.store';
+  import type { SaveScope } from '$lib/utils/search-scope';
+  import type { SavedSearchDecrypted } from '@reborn/types';
   import SubfolderList from './SubfolderList.svelte';
   import FolderActionMenu from './sidebar/FolderActionMenu.svelte';
   import type { FolderWithChildren } from '@reborn/types';
@@ -121,11 +128,13 @@
     prominentHeader = false,
     autoFocusSearch = false,
     searchOnly = false,
+    saveScope = null,
     subfolders = [],
     onback,
     oncreate,
     onSubfolderSelect,
-    onNewSubfolder
+    onNewSubfolder,
+    onsavedsearchselect
   }: {
     activeFolderName?: string;
     activeSection?: string;
@@ -137,12 +146,16 @@
     prominentHeader?: boolean;
     autoFocusSearch?: boolean;
     searchOnly?: boolean;
+    /** Scope of the current view, composed into the query by the save dialog. */
+    saveScope?: SaveScope | null;
     subfolders?: FolderWithChildren[];
     onback?: () => void;
     oncreate?: () => void | Promise<void>;
     onSubfolderSelect?: (id: string) => void;
     /** Only provided when we're inside a specific folder — renders the "new subfolder" icon. */
     onNewSubfolder?: () => void;
+    /** Clicking a saved search pinned to the current folder - jumps to the search section. */
+    onsavedsearchselect?: (search: SavedSearchDecrypted) => void;
   } = $props();
 
   const isMobileQuery = useIsMobile();
@@ -206,6 +219,38 @@
 
   $effect(() => {
     notesStore.setSearchInContent(searchInContent);
+  });
+
+  // ── Saved searches ─────────────────────────────────────────────
+  let saveSearchDialogOpen = $state(false);
+
+  // Searches pinned to the folder being browsed - shown alongside the
+  // subfolder cards so a pin made from this very view doesn't "vanish"
+  // into the tree (which is the only other place pins render).
+  const pinnedSearches = $derived(
+    activeFolderId ? $savedSearchesStore.filter((s) => s.folder_id === activeFolderId) : []
+  );
+
+  function applySavedSearch(search: SavedSearchDecrypted) {
+    searchInput = search.query;
+    // Restore the body-search toggle the view was saved with - without it a
+    // content-phrase view silently returns a different (usually empty) result
+    // set than the one the user saved.
+    searchInContent = search.search_in_content;
+  }
+
+  // One-shot query handoff (saved search clicked outside the search section,
+  // e.g. a node parked in the folder tree). The sender switches the section
+  // first and sets the store after a tick, so the section-change reset above
+  // has already run - consuming here cannot be clobbered by it.
+  $effect(() => {
+    const pending = $searchHandoff;
+    if (pending === null) return;
+    untrack(() => {
+      searchHandoff.set(null);
+      searchInput = pending.query;
+      searchInContent = pending.searchInContent;
+    });
   });
 
   function onWindowClick() {
@@ -860,12 +905,38 @@
     {/if}
   {/if}
 
-  <!-- Search bar -->
-  <NoteListSearchBar bind:searchInput bind:searchInContent bind:searchInputEl {searchOnly} />
+  <!-- Search bar. No save affordance in trash: the trash bucket has no query
+       operator, so a saved view could never reproduce a trash-scoped result. -->
+  <NoteListSearchBar
+    bind:searchInput
+    bind:searchInContent
+    bind:searchInputEl
+    {searchOnly}
+    onsavesearch={isTrash ? undefined : () => (saveSearchDialogOpen = true)}
+  />
 
   <!-- Notes list -->
   <div class="flex-1 overflow-y-auto px-3">
     {#if !searchInput && !searchOnly}
+      <!-- Pinned searches ABOVE the subfolders: they aggregate the whole
+           subtree (lenses over everything below), and the short curated list
+           stays above the fold even when the folder has many subfolders. -->
+      {#if pinnedSearches.length > 0}
+        <div class="mb-3 flex flex-col gap-1">
+          <h2 class="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {$t('saved_searches.title')}
+          </h2>
+          <ul class="flex flex-col gap-1" role="list">
+            {#each pinnedSearches as search (search.id)}
+              <SavedSearchRow
+                {search}
+                context="tree"
+                onselect={(s) => onsavedsearchselect?.(s)}
+              />
+            {/each}
+          </ul>
+        </div>
+      {/if}
       <SubfolderList
         {subfolders}
         parentId={activeFolderId}
@@ -873,10 +944,14 @@
       />
     {/if}
     {#if searchOnly && !searchInput}
-      <div class="px-4 py-12 text-center">
-        <Search class="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
-        <p class="text-sm text-muted-foreground">{$t('notes.search_hint')}</p>
-      </div>
+      {#if $savedSearchesStore.length > 0}
+        <SavedSearchList onselect={applySavedSearch} />
+      {:else}
+        <div class="px-4 py-12 text-center">
+          <Search class="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
+          <p class="text-sm text-muted-foreground">{$t('notes.search_hint')}</p>
+        </div>
+      {/if}
     {:else if $notesStore.length === 0}
       {#if subfolders.length === 0 || searchInput}
         <div class="px-4 py-8 text-center">
@@ -973,6 +1048,14 @@
     onmove={(folderId, e) => movingNoteId && handleMove(movingNoteId, folderId, e)}
   />
 {/if}
+
+<SaveSearchDialog
+  bind:open={saveSearchDialogOpen}
+  query={searchInput}
+  {searchInContent}
+  scope={saveScope}
+  inSearchSection={searchOnly}
+/>
 
 <ConfirmDialog
   bind:open={deleteDialogOpen}

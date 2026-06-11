@@ -19,11 +19,13 @@ export function buildSearchContext(now: Date = new Date()): SearchContext {
   }
 
   const folderIdByPath = new Map<string, string>();
-  collectFolderPaths(get(foldersStore), [], folderIdByPath);
+  const folderPathById = new Map<string, string>();
+  collectFolderPaths(get(foldersStore), [], folderIdByPath, folderPathById);
 
   return {
     tagIdByName,
     folderIdByPath,
+    folderPathById,
     listIdByName: new Map(),
     now
   };
@@ -32,14 +34,17 @@ export function buildSearchContext(now: Date = new Date()): SearchContext {
 function collectFolderPaths(
   nodes: FolderWithChildren[],
   trail: string[],
-  out: Map<string, string>
+  byPath: Map<string, string>,
+  byId: Map<string, string>
 ): void {
   for (const node of nodes) {
     const segment = node.name.toLowerCase();
     const path = [...trail, segment];
-    out.set(path.join('/'), node.id);
+    const joined = path.join('/');
+    byPath.set(joined, node.id);
+    byId.set(node.id, joined);
     if (node.children?.length) {
-      collectFolderPaths(node.children, path, out);
+      collectFolderPaths(node.children, path, byPath, byId);
     }
   }
 }

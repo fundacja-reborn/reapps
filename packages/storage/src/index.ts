@@ -242,6 +242,7 @@ export async function clearAllUserData(): Promise<void> {
       noteStore,
       folderStore,
       tagStore,
+      savedSearchStore,
       noteTagStore,
       noteHistoryStore,
       userStore,
@@ -262,6 +263,7 @@ export async function clearAllUserData(): Promise<void> {
     if (existingStores.has('notes')) await noteStore.clear();
     if (existingStores.has('folders')) await folderStore.clear();
     if (existingStores.has('tags')) await tagStore.clear();
+    if (existingStores.has('savedSearches')) await savedSearchStore.clear();
     if (existingStores.has('noteTags')) await noteTagStore.clear();
     if (existingStores.has('noteHistory')) await noteHistoryStore.clear();
 

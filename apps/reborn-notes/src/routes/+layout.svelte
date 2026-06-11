@@ -17,6 +17,7 @@
   import { syncedSettings } from '$lib/services/synced-settings.service';
   import { foldersStore } from '$lib/stores/folders.store';
   import { tagsStore } from '$lib/stores/tags.store';
+  import { savedSearchesStore } from '$lib/stores/saved-searches.store';
   import { notesStore } from '$lib/stores/notes.store';
   import { authStore } from '$lib/stores/auth.store';
   import { sharesStore } from '$lib/stores/shares.store';
@@ -105,7 +106,12 @@
         logger.warn('Synced settings pull on E2E unlock failed', err);
       }
       // Build NoteIndex FIRST (in parallel with folders/tags), then refresh notesStore
-      await Promise.all([foldersStore.refresh(), tagsStore.refresh(), noteIndex.build()]);
+      await Promise.all([
+        foldersStore.refresh(),
+        tagsStore.refresh(),
+        savedSearchesStore.refresh(),
+        noteIndex.build()
+      ]);
       notesStore.refresh();
       // Push pending offline edits BEFORE pull - otherwise pullFromServer's
       // version checks could mask unsynced local changes on the next write.
@@ -192,7 +198,7 @@
       appReady = true;
 
       // Refresh stores now that the database is initialized
-      await Promise.all([foldersStore.refresh(), tagsStore.refresh()]);
+      await Promise.all([foldersStore.refresh(), tagsStore.refresh(), savedSearchesStore.refresh()]);
 
       // Pull sync from server (if authenticated and E2E unlocked) - then refresh local stores
       if ($authStore.isAuthenticated && $authStore.hasE2E) {

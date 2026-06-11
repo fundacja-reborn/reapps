@@ -28,7 +28,7 @@
     SheetHeader,
     SheetTitle
   } from '@reborn/ui';
-  import type { FolderWithChildren } from '@reborn/types';
+  import type { FolderWithChildren, SavedSearchDecrypted } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
   import { notesStore } from '$lib/stores/notes.store';
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
@@ -37,6 +37,7 @@
   import type { DeleteFolderMode } from '$lib/services/folder.service';
   import DeleteFolderDialog from './DeleteFolderDialog.svelte';
   import ImportMarkdownToFolderDialog from '$lib/components/import/ImportMarkdownToFolderDialog.svelte';
+  import SavedSearchRow from '$lib/components/notes/SavedSearchRow.svelte';
   import FolderTree from './FolderTree.svelte';
 
   let {
@@ -44,13 +45,18 @@
     depth = 0,
     activeFolderId = null,
     expandedIds,
-    onselect
+    onselect,
+    savedSearchesByFolder = undefined,
+    onsavedsearchselect = undefined
   }: {
     nodes: FolderWithChildren[];
     depth?: number;
     activeFolderId?: string | null;
     expandedIds: Set<string>;
     onselect: (id: string | null) => void;
+    /** Saved searches parked per folder id - rendered as leaf nodes under the folder. */
+    savedSearchesByFolder?: Map<string, SavedSearchDecrypted[]>;
+    onsavedsearchselect?: (search: SavedSearchDecrypted) => void;
   } = $props();
 
   // ── Inline rename state ─────────────────────────────────────────
@@ -301,7 +307,8 @@
   {#each nodes as folder (folder.id)}
     {@const isExpanded = expandedIds.has(folder.id)}
     {@const isActive = activeFolderId === folder.id}
-    {@const hasChildren = (folder.children?.length ?? 0) > 0}
+    {@const parkedSearches = savedSearchesByFolder?.get(folder.id) ?? []}
+    {@const hasChildren = (folder.children?.length ?? 0) > 0 || parkedSearches.length > 0}
     {@const isDragTarget = dragOverId === folder.id}
 
     <li
@@ -427,15 +434,31 @@
         {/if}
       </div>
 
-      <!-- Children (recursive) -->
+      <!-- Children (recursive) + saved searches parked in this folder -->
       {#if isExpanded && hasChildren}
-        <FolderTree
-          nodes={folder.children ?? []}
-          depth={depth + 1}
-          {activeFolderId}
-          {expandedIds}
-          {onselect}
-        />
+        {#if (folder.children?.length ?? 0) > 0}
+          <FolderTree
+            nodes={folder.children ?? []}
+            depth={depth + 1}
+            {activeFolderId}
+            {expandedIds}
+            {onselect}
+            {savedSearchesByFolder}
+            {onsavedsearchselect}
+          />
+        {/if}
+        {#if parkedSearches.length > 0}
+          <ul class="select-none" role="group">
+            {#each parkedSearches as search (search.id)}
+              <SavedSearchRow
+                {search}
+                context="tree"
+                depth={depth + 1}
+                onselect={(s) => onsavedsearchselect?.(s)}
+              />
+            {/each}
+          </ul>
+        {/if}
       {/if}
     </li>
   {/each}

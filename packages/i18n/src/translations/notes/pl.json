@@ -356,6 +356,32 @@
       "tags": "Tagi"
     }
   },
+  "saved_searches": {
+    "title": "Zapisane wyszukiwania",
+    "save_button": "Zapisz wyszukiwanie",
+    "saved_toast": "Zapisano wyszukiwanie \"{name}\"",
+    "saved_toast_hint": "Zapisano wyszukiwanie \"{name}\" - znajdziesz je w widoku wyszukiwania",
+    "saved_toast_pinned": "Zapisano wyszukiwanie \"{name}\" i przypięto do folderu \"{folder}\"",
+    "save_failed_toast": "Nie udało się zapisać wyszukiwania",
+    "dialog": {
+      "title": "Zapisz wyszukiwanie",
+      "description": "Zapisuje bieżące zapytanie jako nazwany widok. Wyniki są zawsze aktualne - widok odzwierciedla bieżący stan notatek.",
+      "name_label": "Nazwa",
+      "name_placeholder": "np. Ważne projekty",
+      "pin_to_folder": "Przypnij do folderu \"{name}\"",
+      "query_label": "Zapytanie",
+      "save": "Zapisz",
+      "cancel": "Anuluj"
+    },
+    "item_label": "Zapisane wyszukiwanie: {name}",
+    "actions": "Akcje zapisanego wyszukiwania",
+    "rename": "Zmień nazwę",
+    "move_to_folder": "Przypnij do folderu…",
+    "unpark": "Odepnij od folderu",
+    "delete": "Usuń",
+    "delete_confirm_title": "Usunąć \"{name}\"?",
+    "delete_confirm_desc": "Usuwany jest tylko zapisany widok - notatki pozostają nietknięte."
+  },
   "sort": {
     "title": "Sortuj według",
     "date_created": "Data utworzenia",

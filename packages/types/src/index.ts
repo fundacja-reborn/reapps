@@ -17,6 +17,7 @@ export * from './entities/list';
 export * from './entities/note';
 export * from './entities/folder';
 export * from './entities/tag';
+export * from './entities/saved-search';
 
 // API types
 export * from './api/requests';
@@ -53,5 +54,5 @@ export * as schemas from './schemas';
  * `docs/architecture/zero-knowledge-architecture.md` for the rationale.
  */
 export const DB_CONFIG = {
-  version: 11 // Bump: per-app schema isolation, removed ghost stores
+  version: 12 // Bump: savedSearches store (notes)
 };

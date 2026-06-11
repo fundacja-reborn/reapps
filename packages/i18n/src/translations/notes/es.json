@@ -356,6 +356,32 @@
       "tags": "Etiquetas"
     }
   },
+  "saved_searches": {
+    "title": "Búsquedas guardadas",
+    "save_button": "Guardar búsqueda",
+    "saved_toast": "Búsqueda guardada como \"{name}\"",
+    "saved_toast_hint": "Búsqueda guardada como \"{name}\": la encontrará en la búsqueda",
+    "saved_toast_pinned": "Búsqueda guardada como \"{name}\" y fijada en \"{folder}\"",
+    "save_failed_toast": "No se pudo guardar la búsqueda",
+    "dialog": {
+      "title": "Guardar búsqueda",
+      "description": "Guarda la consulta actual como una vista con nombre. Los resultados se mantienen al día: la vista siempre refleja el estado actual de sus notas.",
+      "name_label": "Nombre",
+      "name_placeholder": "p. ej. Proyectos importantes",
+      "pin_to_folder": "Fijar en la carpeta \"{name}\"",
+      "query_label": "Consulta",
+      "save": "Guardar",
+      "cancel": "Cancelar"
+    },
+    "item_label": "Búsqueda guardada: {name}",
+    "actions": "Acciones de la búsqueda guardada",
+    "rename": "Renombrar",
+    "move_to_folder": "Fijar en carpeta…",
+    "unpark": "Quitar de la carpeta",
+    "delete": "Eliminar",
+    "delete_confirm_title": "¿Eliminar \"{name}\"?",
+    "delete_confirm_desc": "Solo se elimina la vista guardada: sus notas no se ven afectadas."
+  },
   "sort": {
     "title": "Ordenar por",
     "date_created": "Fecha de creación",

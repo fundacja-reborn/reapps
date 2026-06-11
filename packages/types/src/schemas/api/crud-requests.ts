@@ -13,6 +13,11 @@ import {
 } from '../../entities/task';
 import { MAX_ENCRYPTED_FOLDER_NAME_BYTES } from '../../entities/folder';
 import { MAX_ENCRYPTED_TAG_NAME_BYTES, MAX_ENCRYPTED_TAG_COLOR_BYTES } from '../../entities/tag';
+import {
+  MAX_ENCRYPTED_SAVED_SEARCH_NAME_BYTES,
+  MAX_ENCRYPTED_SAVED_SEARCH_QUERY_BYTES,
+  MAX_ENCRYPTED_SAVED_SEARCH_METADATA_BYTES
+} from '../../entities/saved-search';
 
 // ─── reborn-task: Tasks ──────────────────────────────────────────────
 
@@ -125,6 +130,34 @@ export const UpdateTagRequestSchema = z.object({
   color_encrypted: z.string().max(MAX_ENCRYPTED_TAG_COLOR_BYTES).optional().nullable()
 });
 
+// ─── reborn-notes: Saved searches ────────────────────────────────────
+
+export const CreateSavedSearchRequestSchema = z.object({
+  id: z.string().uuid(),
+  name_encrypted: z.string().min(1).max(MAX_ENCRYPTED_SAVED_SEARCH_NAME_BYTES),
+  query_encrypted: z.string().min(1).max(MAX_ENCRYPTED_SAVED_SEARCH_QUERY_BYTES),
+  metadata_encrypted: z
+    .string()
+    .max(MAX_ENCRYPTED_SAVED_SEARCH_METADATA_BYTES)
+    .optional()
+    .nullable(),
+  folder_id: z.string().uuid().optional().nullable(),
+  position: z.number().int().min(0).optional(),
+  created_at: z.string().optional()
+});
+
+export const UpdateSavedSearchRequestSchema = z.object({
+  name_encrypted: z.string().max(MAX_ENCRYPTED_SAVED_SEARCH_NAME_BYTES).optional(),
+  query_encrypted: z.string().max(MAX_ENCRYPTED_SAVED_SEARCH_QUERY_BYTES).optional(),
+  metadata_encrypted: z
+    .string()
+    .max(MAX_ENCRYPTED_SAVED_SEARCH_METADATA_BYTES)
+    .optional()
+    .nullable(),
+  folder_id: z.string().uuid().optional().nullable(),
+  position: z.number().int().min(0).optional()
+});
+
 // ─── Inferred types ──────────────────────────────────────────────────
 
 export type CreateTaskRequest = z.infer<typeof CreateTaskRequestSchema>;
@@ -140,3 +173,5 @@ export type CreateFolderRequest = z.infer<typeof CreateFolderRequestSchema>;
 export type UpdateFolderRequest = z.infer<typeof UpdateFolderRequestSchema>;
 export type CreateTagRequest = z.infer<typeof CreateTagRequestSchema>;
 export type UpdateTagRequest = z.infer<typeof UpdateTagRequestSchema>;
+export type CreateSavedSearchRequest = z.infer<typeof CreateSavedSearchRequestSchema>;
+export type UpdateSavedSearchRequest = z.infer<typeof UpdateSavedSearchRequestSchema>;

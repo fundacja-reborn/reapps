@@ -3,7 +3,7 @@
   import { beforeNavigate } from '$app/navigation';
   import { base } from '$app/paths';
   import { copyText } from '$lib/utils/clipboard';
-  import { SvelteSet } from 'svelte/reactivity';
+  import { SvelteSet, SvelteMap } from 'svelte/reactivity';
   import { FolderPlus, Plus, ArrowLeft, Lock } from '@lucide/svelte';
 
   // Layout
@@ -54,6 +54,9 @@
   import type { PeriodicKind } from '@reborn/storage';
   import { foldersStore } from '$lib/stores/folders.store';
   import { tagsStore } from '$lib/stores/tags.store';
+  import { savedSearchesStore } from '$lib/stores/saved-searches.store';
+  import { searchHandoff } from '$lib/stores/search-handoff.store';
+  import type { SavedSearchDecrypted } from '@reborn/types';
   import { getSettings } from '$lib/utils/app-settings';
   import {
     appSettings,
@@ -72,8 +75,10 @@
   import {
     flattenFolderTree,
     getAncestorIds,
-    findChildrenOfParent
+    findChildrenOfParent,
+    buildBreadcrumb
   } from '$lib/utils/folder-helpers';
+  import type { SaveScope } from '$lib/utils/search-scope';
   import { goto } from '$lib/utils/navigation';
   import { createScrollSync } from '$lib/utils/scroll-sync';
   import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
@@ -747,6 +752,59 @@
     }
   }
 
+  /**
+   * Scope of the CURRENT list view, composed into the query by the save
+   * dialog so a view saved from a scoped context reproduces what the user
+   * sees (mirrors the filter-sync effect above: trash has no operator and
+   * hides the save affordance instead).
+   */
+  const saveScope = $derived.by((): SaveScope | null => {
+    if (activeSection === 'starred') return { kind: 'starred' };
+    if (activeSection === 'tags' && activeTagId) {
+      const tag = $tagsStore.find((t) => t.id === activeTagId);
+      return tag ? { kind: 'tag', name: tag.name } : null;
+    }
+    const usesFolder = activeSection === 'folders' || isPeriodicSection(activeSection);
+    if (usesFolder && typeof activeFolderId === 'string') {
+      const path = buildBreadcrumb($foldersStore, activeFolderId)
+        .map((c) => c.name)
+        .join('/');
+      if (!path) return null;
+      return { kind: 'folder', folderId: activeFolderId, folderName: activeFolderName, path };
+    }
+    return null;
+  });
+
+  // ── Saved searches in the folder tree ──────────────────────────
+  const savedSearchesByFolder = $derived.by(() => {
+    const map = new SvelteMap<string, SavedSearchDecrypted[]>();
+    for (const search of $savedSearchesStore) {
+      if (!search.folder_id) continue;
+      const parked = map.get(search.folder_id);
+      if (parked) parked.push(search);
+      else map.set(search.folder_id, [search]);
+    }
+    return map;
+  });
+
+  /**
+   * Clicking a parked saved search jumps to the search section and replays
+   * its query. The handoff store is set AFTER a tick so NoteList's
+   * section-change reset (which clears the input) has already run - see
+   * search-handoff.store.ts.
+   */
+  async function handleSavedSearchSelect(search: SavedSearchDecrypted) {
+    await noteDetailService.flushAndSnapshot();
+    activeSection = 'search';
+    activeNoteId.set(null);
+    if (isMobile) {
+      mobileView = 'list';
+      pushMobileHistory();
+    }
+    await tick();
+    searchHandoff.set({ query: search.query, searchInContent: search.search_in_content });
+  }
+
   // ── Autosave (delegated to noteDetailService) ─────────────────
   function handleContentChange(content: string) {
     noteDetailService.setContentDebounced(content);
@@ -1238,6 +1296,8 @@
                       activeFolderId={activeFolderId ?? null}
                       {expandedIds}
                       onselect={handleFolderSelect}
+                      {savedSearchesByFolder}
+                      onsavedsearchselect={handleSavedSearchSelect}
                     />
                   {/if}
                 </div>
@@ -1253,6 +1313,8 @@
                 isPeriodic={isPeriodicSection(activeSection)}
                 subfolders={activeFolderSubfolders}
                 onSubfolderSelect={handleFolderSelect}
+                {saveScope}
+                onsavedsearchselect={handleSavedSearchSelect}
                 autoFocusSearch={activeSection === 'search'}
                 searchOnly={activeSection === 'search'}
                 prominentHeader={noteListOwnsMobileHeader}
@@ -1512,6 +1574,8 @@
                     activeFolderId={activeFolderId ?? null}
                     {expandedIds}
                     onselect={handleFolderSelect}
+                    {savedSearchesByFolder}
+                    onsavedsearchselect={handleSavedSearchSelect}
                   />
                 {/if}
               </div>
@@ -1538,6 +1602,7 @@
               {activeSection}
               isTrash={activeTrash}
               isPeriodic={isPeriodicSection(activeSection)}
+              {saveScope}
               oncreate={handleNewNote}
             />
           {/if}
@@ -1686,6 +1751,8 @@
             showSidebarTrigger
             subfolders={activeFolderSubfolders}
             onSubfolderSelect={handleFolderSelect}
+            {saveScope}
+            onsavedsearchselect={handleSavedSearchSelect}
             onback={activeFolderParentId ? handleFolderBack : undefined}
             onNewSubfolder={activeSection === 'folders' && activeFolderId
               ? handleNewSubfolder

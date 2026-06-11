@@ -356,6 +356,32 @@
       "tags": "Tags"
     }
   },
+  "saved_searches": {
+    "title": "Recherches enregistrées",
+    "save_button": "Enregistrer la recherche",
+    "saved_toast": "Recherche enregistrée sous \"{name}\"",
+    "saved_toast_hint": "Recherche enregistrée sous \"{name}\" - retrouvez-la dans la recherche",
+    "saved_toast_pinned": "Recherche enregistrée sous \"{name}\" et épinglée à \"{folder}\"",
+    "save_failed_toast": "Impossible d'enregistrer la recherche",
+    "dialog": {
+      "title": "Enregistrer la recherche",
+      "description": "Enregistre la requête actuelle comme vue nommée. Les résultats restent dynamiques - la vue reflète toujours l'état actuel de vos notes.",
+      "name_label": "Nom",
+      "name_placeholder": "p. ex. Projets importants",
+      "pin_to_folder": "Épingler au dossier \"{name}\"",
+      "query_label": "Requête",
+      "save": "Enregistrer",
+      "cancel": "Annuler"
+    },
+    "item_label": "Recherche enregistrée : {name}",
+    "actions": "Actions de la recherche enregistrée",
+    "rename": "Renommer",
+    "move_to_folder": "Épingler au dossier…",
+    "unpark": "Détacher du dossier",
+    "delete": "Supprimer",
+    "delete_confirm_title": "Supprimer « {name} » ?",
+    "delete_confirm_desc": "Seule la vue enregistrée est supprimée - vos notes ne sont pas affectées."
+  },
   "sort": {
     "title": "Trier par",
     "date_created": "Date de création",
