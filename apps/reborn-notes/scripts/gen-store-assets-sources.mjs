@@ -27,13 +27,12 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { BRAND_YELLOW, GLYPH_MARKERS, GLYPH_PATHS } from './store-assets-glyph.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const appDir = resolve(here, '..');
 const brandSvgPath = resolve(appDir, 'static/icons/icon.svg');
 const outDir = resolve(appDir, 'assets');
-
-const BRAND_YELLOW = '#FFD43B';
 const SPLASH_LIGHT_BG = '#ffffff';
 // App dark theme --background is oklch(0.145 0 0) (packages/ui global.css);
 // #1B1B1B is its hex neighborhood - close enough for a sub-second splash.
@@ -42,17 +41,13 @@ const SPLASH_SIZE = 2732;
 const SPLASH_LOGO_SIZE = 600;
 const ICON_SIZE = 1024;
 
-// The white glyph paths from icon.svg (viewBox 0 0 1178 1178). Extracted
-// instead of parsed so we can recompose them on different backgrounds; the
-// guard below fails the build if icon.svg ever changes shape.
-const GLYPH_PATHS =
-  '<path d="M411.679,634.45l-0,224.006l-151.603,-0l-0,-224.006l151.603,-0Z"/>' +
-  '<path d="M561.912,538.318l0,96.422l-151.33,0l0,-334.392l151.33,-0l0,52.418c13.84,-14.166 29.82,-26.248 47.941,-36.246c33.501,-18.483 71.43,-27.724 113.787,-27.724c40.816,-0 77.398,10.204 109.743,30.612c32.346,20.409 57.76,46.978 76.243,79.709c18.483,32.73 27.725,67.964 27.725,105.7l-0,353.489l-151.331,0l0,-319.988c0,-33.116 -10.397,-60.07 -31.19,-80.864c-20.794,-20.793 -47.748,-31.19 -80.864,-31.19c-21.563,-0 -40.817,4.621 -57.759,13.862c-16.943,9.242 -30.228,22.334 -39.855,39.277c-9.626,16.943 -14.44,36.581 -14.44,58.915Z"/>';
-
+// The white glyph paths from icon.svg live in store-assets-glyph.mjs (shared
+// with the Android vector-icon postfix); the guard below fails the build if
+// icon.svg ever changes shape without updating them.
 const brandSvg = readFileSync(brandSvgPath, 'utf-8');
-if (!brandSvg.includes('M411.679,634.45') || !brandSvg.includes('M561.912,538.318')) {
+if (!GLYPH_MARKERS.every((m) => brandSvg.includes(m))) {
   throw new Error(
-    'gen-store-assets-sources: static/icons/icon.svg changed - update GLYPH_PATHS here so the store assets keep matching the brand.'
+    'gen-store-assets-sources: static/icons/icon.svg changed - update store-assets-glyph.mjs so the store assets keep matching the brand.'
   );
 }
 

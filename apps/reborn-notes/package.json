@@ -9,7 +9,7 @@
     "test": "vitest",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "gen:store-assets": "node scripts/gen-store-assets-sources.mjs && npx -y @capacitor/assets@3.0.5 generate --android --ios --assetPath assets"
+    "gen:store-assets": "node scripts/gen-store-assets-sources.mjs && npx -y @capacitor/assets@3.0.5 generate --android --ios --assetPath assets && node scripts/postfix-android-adaptive-icon.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "8.4.0",
