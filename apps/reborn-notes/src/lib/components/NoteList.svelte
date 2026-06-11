@@ -918,11 +918,9 @@
   <!-- Notes list -->
   <div class="flex-1 overflow-y-auto px-3">
     {#if !searchInput && !searchOnly}
-      <SubfolderList
-        {subfolders}
-        parentId={activeFolderId}
-        onselect={(id) => onSubfolderSelect?.(id)}
-      />
+      <!-- Pinned searches ABOVE the subfolders: they aggregate the whole
+           subtree (lenses over everything below), and the short curated list
+           stays above the fold even when the folder has many subfolders. -->
       {#if pinnedSearches.length > 0}
         <div class="mb-3 flex flex-col gap-1">
           <h2 class="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -939,6 +937,11 @@
           </ul>
         </div>
       {/if}
+      <SubfolderList
+        {subfolders}
+        parentId={activeFolderId}
+        onselect={(id) => onSubfolderSelect?.(id)}
+      />
     {/if}
     {#if searchOnly && !searchInput}
       {#if $savedSearchesStore.length > 0}
