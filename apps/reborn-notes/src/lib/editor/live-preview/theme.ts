@@ -162,7 +162,11 @@ export const livePreviewTheme = EditorView.theme({
 
   // Bullet list — depth-aware padding + ::before bullet.
   //
-  // Tapered ramp (mirrored in MarkdownPreview.svelte's `[data-d{N}]` rules):
+  // Tapered ramp (mirrored in MarkdownPreview.svelte's `[data-d{N}]` rules,
+  // with one deliberate exception: Preview renders first-level ol at 2em so
+  // Safari doesn't clip 2-digit ::marker numbers at the scroll-container
+  // edge - see the ol[data-d='1'] comment there. Here the number is source
+  // text, never a marker, so 1.5em stays safe):
   //   d1 → 1.5em (preserves the historical first-level indent)
   //   d2 → 4em   (krok +2.5em — a noticeable visual step so a nested item
   //               doesn't sit in the same column as the parent's content)
