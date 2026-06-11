@@ -106,10 +106,34 @@ writeFileSync(resolve(res, 'values/ic_launcher_background.xml'), colorRes);
 writeFileSync(resolve(res, 'mipmap-anydpi-v26/ic_launcher.xml'), adaptive);
 writeFileSync(resolve(res, 'mipmap-anydpi-v26/ic_launcher_round.xml'), adaptive);
 
+// Capacitor's android template ships drawable-v24/ic_launcher_foreground.xml
+// (the generic android-robot vector) and an unused drawable/
+// ic_launcher_background.xml. The -v24 qualifier WINS over the unqualified
+// drawable/ on every API >=24 device, so the leftover robot SHADOWS our
+// foreground - that was the "robot icon" of the 2026-06-11 smoke (survived
+// clean builds, reinstalls and cold boots, because it was in the APK by
+// design). Remove both; guards future `cap add android` scaffolds too.
+let removed = 0;
+for (const leftover of [
+  'drawable-v24/ic_launcher_foreground.xml',
+  'drawable/ic_launcher_background.xml'
+]) {
+  try {
+    rmSync(resolve(res, leftover));
+    removed++;
+  } catch {
+    /* absent - fine */
+  }
+}
+try {
+  rmSync(resolve(res, 'drawable-v24'), { recursive: false });
+} catch {
+  /* non-empty or absent - fine */
+}
+
 // The tool's foreground/background PNG mipmaps are no longer referenced by
 // anything (anydpi-v26 covers API 26+; legacy uses ic_launcher*.png) - drop
 // them so stale bitmaps cannot shadow the vector.
-let removed = 0;
 for (const dir of readdirSync(res)) {
   if (!dir.startsWith('mipmap-') || dir === 'mipmap-anydpi-v26') continue;
   for (const name of ['ic_launcher_foreground.png', 'ic_launcher_background.png']) {
