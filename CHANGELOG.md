@@ -1,3 +1,10 @@
+## 0.29.0 (2026-06-11)
+
+### 🚀 Features
+
+- **notes:** deep links + native share sheet for shares (Faza 3b) ([#258](https://github.com/fundacja-reborn/reapps/pull/258))
+- **notes:** saved searches / smart folders (Travis Tier 2) ([#263](https://github.com/fundacja-reborn/reapps/pull/263))
+
 ## 0.28.0 (2026-06-09)
 
 ### 🚀 Features
