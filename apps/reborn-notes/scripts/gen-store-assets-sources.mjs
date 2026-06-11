@@ -23,7 +23,7 @@
  * ios/ asset catalogs. Re-run only when the brand changes; outputs are
  * committed (the stores build from the repo, not from this script).
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
