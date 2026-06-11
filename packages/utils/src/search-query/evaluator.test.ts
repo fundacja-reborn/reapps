@@ -188,7 +188,43 @@ describe('evaluate — folder and list filters', () => {
     ).toBe(true);
   });
 
-  it('folder does not match parent path (no subtree match in Tier 1)', () => {
+  it('folder matches descendants (subtree) when folderPathById is provided', () => {
+    // Mirrors the folder view, which searches the folder and all subfolders.
+    const ctx = makeCtx({
+      folderIdByPath: new Map([
+        ['projects', 'f-projects'],
+        ['projects/active', 'f-active'],
+        ['projects/active/q2', 'f-q2']
+      ]),
+      folderPathById: new Map([
+        ['f-projects', 'projects'],
+        ['f-active', 'projects/active'],
+        ['f-q2', 'projects/active/q2']
+      ])
+    });
+    const ast = parseQuery('folder:projects');
+    expect(evaluate(ast, makeEntity({ folderId: 'f-projects' }), ctx)).toBe(true);
+    expect(evaluate(ast, makeEntity({ folderId: 'f-active' }), ctx)).toBe(true);
+    expect(evaluate(ast, makeEntity({ folderId: 'f-q2' }), ctx)).toBe(true);
+  });
+
+  it('subtree match respects the path segment boundary (no sibling-prefix bleed)', () => {
+    const ctx = makeCtx({
+      folderIdByPath: new Map([
+        ['projects', 'f-projects'],
+        ['projects-old', 'f-old']
+      ]),
+      folderPathById: new Map([
+        ['f-projects', 'projects'],
+        ['f-old', 'projects-old']
+      ])
+    });
+    expect(
+      evaluate(parseQuery('folder:projects'), makeEntity({ folderId: 'f-old' }), ctx)
+    ).toBe(false);
+  });
+
+  it('folder keeps legacy exact-only behavior without folderPathById', () => {
     const ctx = makeCtx({
       folderIdByPath: new Map([['projects/active', 'f-active']])
     });
