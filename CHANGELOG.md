@@ -1,3 +1,9 @@
+## 0.29.1 (2026-06-11)
+
+### 🩹 Fixes
+
+- **notes:** stop Safari clipping 2-digit ordered-list markers in preview ([#265](https://github.com/fundacja-reborn/reapps/pull/265), [#262](https://github.com/fundacja-reborn/reapps/issues/262))
+
 ## 0.29.0 (2026-06-11)
 
 ### 🚀 Features
