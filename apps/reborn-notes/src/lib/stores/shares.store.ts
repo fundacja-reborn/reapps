@@ -106,6 +106,13 @@ function createSharesStore() {
     state.update((s) => ({ ...s, loading: true, error: null }));
     try {
       const res = await authFetch(`${API_BASE}/shares`);
+      // Guard before parsing: a non-2xx (proxy error page, rate limit) is not
+      // guaranteed to be JSON - res.json() would throw a parse error and mask
+      // the real failure (Faza 1 follow-up, hardened in Faza 5).
+      if (!res.ok) {
+        state.update((s) => ({ ...s, loading: false, error: 'load_failed' }));
+        return;
+      }
       const data = await res.json();
       if (!data.success) {
         state.update((s) => ({ ...s, loading: false, error: 'load_failed' }));
