@@ -526,11 +526,11 @@
     margin-top: 0.25em;
   }
 
-  /* Tapered indent ramp — mirrors the bullet/ordered depth rules in
+  /* Tapered indent ramp - mirrors the bullet/ordered depth rules in
      editor/live-preview/theme.ts so Preview and Live Preview render nested
      lists with the same geometry. The renderer in this component stamps
      data-d="N" on every ul/ol (1..12, clamped). margin-left here is the
-     delta from the parent list's content edge — d2..d12 stack on top of the
+     delta from the parent list's content edge - d2..d12 stack on top of the
      d1 base (1.5em), giving cumulative offsets that match Live Preview's
      absolute paddings. d2 has the larger 2.5em step so a nested item sits
      visibly past the parent's content; d3..d6 keep the 1.5em rhythm; d7..d12
@@ -538,6 +538,23 @@
   .preview :global(ul[data-d='1']),
   .preview :global(ol[data-d='1']) {
     margin-left: 1.5em;
+  }
+  /* First-level ol gets extra room: outside markers hang LEFT of the li
+     content edge, and `.preview` is a scroll container (overflow-auto), so
+     anything past its padding box is clipped. 1.5em fits a 2-digit marker
+     ("10.") with ~1px slack in Blink/Gecko, but WebKit lays the marker out
+     with a wider marker-to-content gap and clips the leading digit (#262,
+     Safari macOS/iOS). 2em covers 2 digits in all engines (GitHub uses the
+     same value); 100+ item lists escalate to 2.75em for the third digit.
+     Only d1 is at risk - nested lists hang markers over ancestor indents,
+     which sit safely inside the clip box. Live Preview is unaffected (the
+     number there is source text, not a ::marker), so this is a deliberate
+     0.5em divergence from .cm-lp-ordered-d1. */
+  .preview :global(ol[data-d='1']) {
+    margin-left: 2em;
+  }
+  .preview :global(ol[data-d='1']:has(> li:nth-child(100))) {
+    margin-left: 2.75em;
   }
   .preview :global(ul[data-d='2']),
   .preview :global(ol[data-d='2']) {
