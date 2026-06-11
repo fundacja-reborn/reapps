@@ -25,6 +25,20 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * so no cookies or server CORS are involved; native auth is token-based
  * (Faza 2).
  */
+// Loud sync-time banner: forgetting CAP_DEV_CLEARTEXT for an emulator/localprod
+// sync produces a shell that refuses the plain-http backend (every API call
+// fails with ERR_CONNECTION_REFUSED -> "Sync error") - tripped on 2026-06-11.
+// The reverse mistake (dev flag in a release sync) is the dangerous one.
+if (process.env.CAP_DEV_CLEARTEXT === '1') {
+  console.warn(
+    '[capacitor.config] DEV cleartext ON - emulator/localprod sync. NEVER ship this sync to a store.'
+  );
+} else {
+  console.warn(
+    '[capacitor.config] cleartext OFF (release mode). For emulator/localprod runs: CAP_DEV_CLEARTEXT=1 npx cap sync android'
+  );
+}
+
 const config: CapacitorConfig = {
   appId: 'eu.reapps.notes',
   appName: 're/notes',
