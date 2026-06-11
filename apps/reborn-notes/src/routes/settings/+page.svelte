@@ -118,7 +118,9 @@
   <title>{$t('settings_page.title')} — re/notes</title>
 </svelte:head>
 
-<div class="h-dvh overflow-y-auto bg-background">
+<!-- height: subtract the session-expired banner so it does not push the page
+     bottom off screen (var is 0 when the banner is hidden) -->
+<div class="h-[calc(100dvh-var(--rn-banner-h,0px))] overflow-y-auto bg-background">
   <!-- pt: keep the header below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
   <div class="sticky top-0 z-10 bg-background border-b pt-[env(safe-area-inset-top,0px)]">
     <div class="container mx-auto max-w-4xl px-4 sm:px-6">

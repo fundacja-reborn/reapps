@@ -28,16 +28,24 @@
  * guarantee by construction). Constant locked to the plugin enum by a unit
  * test.
  *
- * Resilience: the plugin load AND every operation are raced against a
- * timeout. A timeout rejects into the caller's existing degrade path (vault
- * load -> null -> password unlock; token persist -> skip) and resets the
- * memoized load so the next call retries fresh - a transient boot-time wedge
- * can cost one degraded attempt, never the whole session.
+ * Resilience: every operation is raced against a timeout. A timeout rejects
+ * into the caller's existing degrade path (vault load -> null -> password
+ * unlock; token persist -> skip) - a transient wedge can cost one degraded
+ * attempt, never the whole session.
  *
- * The `__REBORN_NATIVE__` guard lives INSIDE the accessor: on the web build
- * it is compile-time `false`, everything below (the `@capacitor/core` import
- * included) is dead code, and none of it reaches the web bundle.
+ * `@capacitor/core` is imported STATICALLY, not dynamically: the cold-start
+ * vault read is the first thing that touches this module, and dynamic chunk
+ * imports during the iOS boot storm are exactly what wedged before (second
+ * occurrence: kill/reopen landed on the password screen because the
+ * boot-time `import('@capacitor/core')` stalled past the timeout, while the
+ * warm refresh-token read later succeeded). On native, core is already in
+ * the boot bundle so the static import adds nothing; on web, `registerPlugin`
+ * is only referenced inside the compile-time-false `__REBORN_NATIVE__` branch,
+ * so the import is tree-shaken and the web bundle stays clean (verified by
+ * the build grep).
  */
+
+import { registerPlugin } from '@capacitor/core';
 
 /** Key prefix the plugin's JS layer applies; baked into existing entries. */
 const KEY_PREFIX = 'capacitor-storage_';
@@ -96,28 +104,17 @@ function withTimeout<T>(operation: Promise<T>, name: string): Promise<T> {
   });
 }
 
-let pluginLoad: Promise<RawSecureStoragePlugin> | null = null;
-
-function loadRawPlugin(): Promise<RawSecureStoragePlugin> {
-  pluginLoad ??= withTimeout(
-    (async () => {
-      const { registerPlugin } = await import('@capacitor/core');
-      return registerPlugin<RawSecureStoragePlugin>('SecureStorage');
-    })(),
-    'init'
-  ).catch((error: unknown) => {
-    pluginLoad = null;
-    throw error;
-  });
-  return pluginLoad;
-}
+let rawPlugin: RawSecureStoragePlugin | null = null;
 
 /** Load the raw secure-storage facade. Rejects on web builds. */
 export async function getSecureStorage(): Promise<NativeSecureStorage> {
   if (!__REBORN_NATIVE__) {
     throw new Error('secure storage is native-only');
   }
-  const raw = await loadRawPlugin();
+  // registerPlugin is synchronous (it builds a proxy over the already-injected
+  // native bridge) - no async init step is left that a boot race could wedge.
+  rawPlugin ??= registerPlugin<RawSecureStoragePlugin>('SecureStorage');
+  const raw = rawPlugin;
   return {
     async setItem(key: string, value: string): Promise<void> {
       await withTimeout(

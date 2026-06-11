@@ -38,6 +38,13 @@
 
   let appReady = $state(false);
   let initTimeout = $state(false);
+  // Measured height of the session-expired banner. Exposed as --rn-banner-h so
+  // the viewport-height containers (main page panels, settings roots) can
+  // subtract it: the banner sits in normal flow ABOVE 100dvh layouts, so
+  // without the correction it pushes the bottom edge (IconNav avatar) off
+  // screen - on iOS the safe-area inset makes the banner taller and the clip
+  // obvious, but the overflow exists on web too. 0 when the banner is hidden.
+  let sessionBannerHeight = $state(0);
   let hasTriggeredInitialSync = $state(false);
 
   // Auth guard - blocked until onMount finishes initialization (appReady).
@@ -386,13 +393,18 @@
   <!-- `svelte-app-ready` lets the inline loading indicator in app.html hide
        itself via `body:has(.svelte-app-ready) #app-loading`. `display: contents`
        keeps the wrapper transparent to the layout flow. -->
-  <div class="svelte-app-ready" style="display: contents">
-    <SessionExpiredBanner
-      visible={$sessionExpired && navigator.onLine}
-      username={$authStore.username ?? ''}
-      onReAuth={reAuthenticate}
-      onVerifyTotp={verifyTotpForReauth}
-    />
+  <div
+    class="svelte-app-ready"
+    style="display: contents; --rn-banner-h: {sessionBannerHeight}px"
+  >
+    <div bind:clientHeight={sessionBannerHeight}>
+      <SessionExpiredBanner
+        visible={$sessionExpired && navigator.onLine}
+        username={$authStore.username ?? ''}
+        onReAuth={reAuthenticate}
+        onVerifyTotp={verifyTotpForReauth}
+      />
+    </div>
     <RequireSessionModal
       username={$authStore.username ?? ''}
       onReAuth={reAuthenticate}
