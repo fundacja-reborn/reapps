@@ -266,11 +266,18 @@
   </div>
 {:else}
   <!-- ── Vertical mode (desktop icon rail) ─────────────────────── -->
+  <!-- padding-top: the 0.5rem base GROWS by the iOS notch inset (calc, not
+       max) so the first icon keeps its web alignment with the list header,
+       which also grows by the inset (env() is 0 elsewhere) -->
+  <!-- overflow-y-auto + children shrink-0: when the Android keyboard resizes
+       the webview (adjustResize), icons keep their size and the rail scrolls
+       instead of squeezing; the flex-1 spacer still collapses first (basis-0),
+       so the keyboard-closed layout is unchanged. -->
   <nav
     class="{alwaysVisible
       ? 'flex'
-      : 'hidden md:flex'} w-14 md:w-12 shrink-0 flex-col items-center gap-1 pt-2 border-r border-sidebar-border"
-    style="background-color: var(--icon-rail); padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));"
+      : 'hidden md:flex'} w-14 md:w-12 shrink-0 flex-col items-center gap-1 overflow-y-auto border-r border-sidebar-border [&>*]:shrink-0"
+    style="background-color: var(--icon-rail); padding-top: calc(0.5rem + env(safe-area-inset-top, 0px)); padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));"
     aria-label={$t('nav.main_navigation')}
   >
     <!-- New note -->

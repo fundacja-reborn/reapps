@@ -193,7 +193,11 @@
       return;
     }
     const tagNames = $tagsStore.filter((tg) => target.tags?.includes(tg.id)).map((tg) => tg.name);
-    exportNoteAsMarkdown(fullNote, tagNames);
+    try {
+      await exportNoteAsMarkdown(fullNote, tagNames);
+    } catch {
+      toastStore.error($t('notes.export_failed'));
+    }
   }
 
   async function handleDetailExportPdf(noteArg?: NoteListItem) {
@@ -1096,8 +1100,8 @@
     <div
       class="relative overflow-hidden bg-sidebar"
       style={$activeNoteId
-        ? 'height: var(--rn-vv-height, 100dvh); transform: translateY(var(--rn-vv-offset-top, 0px));'
-        : 'height: 100dvh;'}
+        ? 'height: calc(var(--rn-vv-height, 100dvh) - var(--rn-banner-h, 0px)); transform: translateY(var(--rn-vv-offset-top, 0px));'
+        : 'height: calc(100dvh - var(--rn-banner-h, 0px));'}
     >
       <!-- ── Panel 1: Icon Rail + List ──────────────────────────────── -->
       <div
@@ -1117,7 +1121,12 @@
         <div class="flex flex-1 flex-col min-w-0 overflow-hidden">
           <!-- Header (hidden when NoteList handles its own header) -->
           {#if !(mobileView === 'list' && noteListOwnsMobileHeader)}
-            <div class="flex h-14 shrink-0 items-center gap-1 border-b border-sidebar-border px-3">
+            <!-- pt + min-h grow together by the iOS notch inset so the content
+                 keeps its full 3.5rem box and stays vertically centered
+                 (env() is 0 elsewhere) -->
+            <div
+              class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-1 border-b border-sidebar-border px-3 pt-[env(safe-area-inset-top,0px)]"
+            >
               {#if mobileView === 'folder-tree' || mobileView === 'tag-list'}
                 <button
                   type="button"
@@ -1440,7 +1449,9 @@
        shrinks the desktop scroll container instead of leaving the bottom of
        the note hidden behind the keyboard. CSS var emitted in +layout.svelte;
        fallback `100vh` covers SSR + browsers without visualViewport. -->
-  <SidebarProvider style="height: var(--rn-vv-height, 100vh); min-height: 0; overflow: hidden; --sidebar-width: 24rem;">
+  <SidebarProvider
+    style="height: calc(var(--rn-vv-height, 100vh) - var(--rn-banner-h, 0px)); min-height: 0; overflow: hidden; --sidebar-width: 24rem;"
+  >
     <Sidebar
       variant="inset"
       collapsible="offcanvas"
@@ -1459,7 +1470,11 @@
       <!-- ── Content panel ───────────────────────────────────────── -->
       <div class="flex flex-1 flex-col min-w-0 overflow-hidden">
         <SidebarHeader class="border-b p-0 gap-0">
-          <div class="flex h-12 items-center gap-2 px-5">
+          <!-- pt + min-h grow together by the iOS notch inset so the content
+               keeps its full 3rem box (env() is 0 elsewhere) -->
+          <div
+            class="flex min-h-[calc(3rem+env(safe-area-inset-top,0px))] items-center gap-2 px-5 pt-[env(safe-area-inset-top,0px)]"
+          >
             <img src="{base}/logo-black.svg" alt="re/notes" class="h-4 w-auto block dark:hidden" />
             <img
               src="{base}/logo-white.svg"
@@ -1659,7 +1674,9 @@
           </div>
         {/if}
       {:else if showNoteListInMain}
-        <div class="mx-auto h-full w-full max-w-4xl px-6 pt-6 flex flex-col">
+        <div
+          class="mx-auto h-full w-full max-w-4xl px-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] flex flex-col"
+        >
           <NoteList
             {activeFolderName}
             {activeSection}
@@ -1677,7 +1694,9 @@
           />
         </div>
       {:else}
-        <header class="flex h-12 shrink-0 items-center gap-2 border-b border-border/60 px-6">
+        <header
+          class="flex min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-border/60 px-6 pt-[env(safe-area-inset-top,0px)]"
+        >
           <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
           <span class="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {activeFolderName}

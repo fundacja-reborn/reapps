@@ -297,7 +297,11 @@
       return;
     }
     const tagNames = $tagsStore.filter((tg) => note.tags?.includes(tg.id)).map((tg) => tg.name);
-    exportNoteAsMarkdown(fullNote, tagNames);
+    try {
+      await exportNoteAsMarkdown(fullNote, tagNames);
+    } catch {
+      toastStore.error($t('notes.export_failed'));
+    }
   }
 
   async function handleCopyNoteLink(note: NoteListItem) {
@@ -635,11 +639,14 @@
        row 1 = back + folder name + (in folder view) new-subfolder
        row 2 = note count + actions, OR selection toolbar when multi-select is on. -->
   {#if !searchOnly}
-    <!-- Row 1: title + folder-level action. Stays visible during selection. -->
+    <!-- Row 1: title + folder-level action. Stays visible during selection.
+         prominentHeader = this row owns the top of the mobile screen, so it
+         also takes the iOS notch inset; min-h grows by the same amount so the
+         content keeps its full 3.5rem box (env() is 0 elsewhere). -->
     <div
-      class="flex shrink-0 items-center gap-1 {prominentHeader ? 'h-14' : 'h-10'} {onback
-        ? 'px-3'
-        : 'px-5'}"
+      class="flex shrink-0 items-center gap-1 {prominentHeader
+        ? 'min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)]'
+        : 'h-10'} {onback ? 'px-3' : 'px-5'}"
     >
       {#if onback}
         <button

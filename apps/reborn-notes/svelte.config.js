@@ -57,6 +57,15 @@ const config = {
     files: {
       appTemplate: isNative ? 'src/app.native.html' : 'src/app.html'
     },
+    // The native shell loads assets from the local bundle - a Service Worker
+    // adds only a cache layer that can serve a stale shell after a store
+    // update, so SvelteKit's auto-registration is off there (the SW file is
+    // still emitted; it just never registers). hooks.client.ts additionally
+    // unregisters SWs left behind by earlier dev builds. Web keeps registering
+    // as before.
+    serviceWorker: {
+      register: !isNative
+    },
     // BASE_PATH controls same-origin deployment path (e.g. "/notes").
     // Empty in dev. Set PUBLIC_BASE_PATH=/notes in production env. Native always
     // loads from the scheme root, so base is forced empty there.

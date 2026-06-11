@@ -236,7 +236,8 @@
   <meta name="referrer" content="no-referrer" />
 </svelte:head>
 
-<div class="flex min-h-screen flex-col bg-background">
+<!-- pt: keep the shared-note chrome below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
+<div class="flex min-h-screen flex-col bg-background pt-[env(safe-area-inset-top,0px)]">
   <div class="mx-auto w-full max-w-4xl flex-1 px-4">
     <!-- Metadata-only header. No brand logo here on purpose: shared content
          belongs to the user, not to re/notes - prominent branding next to

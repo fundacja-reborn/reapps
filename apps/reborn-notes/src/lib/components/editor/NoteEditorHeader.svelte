@@ -81,8 +81,11 @@
   }
 </script>
 
+<!-- pt + min-h grow together by the iOS notch inset so the content keeps its
+     full row box and stays vertically centered (env() is 0 elsewhere). -->
 <header
-  class="flex h-14 md:h-12 shrink-0 items-center gap-2 border-b border-border/60
+  class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-border/60
+    pt-[env(safe-area-inset-top,0px)]
     {isMobile ? 'px-3' : 'px-6'}"
 >
   <button

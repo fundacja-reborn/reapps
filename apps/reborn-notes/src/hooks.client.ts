@@ -29,6 +29,30 @@ const isPublicShareRoute =
 // must still use the vault once the user navigates into the app.
 if (__REBORN_NATIVE__) {
   cryptoManager.setMasterKeyVault(createNativeMasterKeyVault());
+
+  // The shell must not run a Service Worker: assets are bundled locally, so a
+  // SW adds only a cache layer that can serve a stale shell after a store
+  // update. Registration is off for native builds (svelte.config.js
+  // `serviceWorker.register`); this sweep cleans up SWs already registered by
+  // earlier dev builds, which auto-registered one on Android (`http://localhost`
+  // is SW-capable - on iOS the API is absent under `capacitor://`, hence the
+  // feature guard).
+  if ('serviceWorker' in navigator) {
+    void navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) => {
+        for (const registration of registrations) void registration.unregister();
+      })
+      .catch(() => {});
+  }
+
+  // Best-effort storage durability. iOS can evict WKWebView website data
+  // (IndexedDB) under disk pressure; where the Storage API exists this asks
+  // the OS not to. Optional chaining: the API is absent in some webviews.
+  // Eviction stays survivable regardless - the server holds all encrypted
+  // data and the master key / refresh token live in Keychain/Keystore, so
+  // recovery is a silent re-sync (see planning/native-faza4-plan.md, D3).
+  void navigator.storage?.persist?.()?.catch(() => {});
 }
 
 // ---------------------------------------------------------------------------
@@ -65,8 +89,14 @@ if (!isPublicShareRoute) {
   // back at the pre-share-snapshot timing for normal routes.
   void cryptoManager.waitForRestore().catch(() => {});
 
-  startSwUpdateWatcher();
-  startPwaInstallPrompt();
+  // Web-PWA-only flows: the SW update toast is meaningless in the native
+  // shell (code updates arrive via the store, never via a SW swap) and
+  // `beforeinstallprompt` never fires inside a webview. Gated so the native
+  // build drops both watchers.
+  if (!__REBORN_NATIVE__) {
+    startSwUpdateWatcher();
+    startPwaInstallPrompt();
+  }
 
   // Initialize storage early — before SvelteKit layout mounts.
   // This is fire-and-forget: if it fails, +layout.svelte will retry in onMount.

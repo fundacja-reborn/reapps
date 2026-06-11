@@ -26,8 +26,12 @@
   );
 </script>
 
-<div class={cn('h-dvh overflow-y-auto bg-background', className)}>
-  <div class="sticky top-0 z-10 bg-background border-b">
+<!-- height: subtract the session-expired banner (--rn-banner-h, set by the
+     notes layout; 0/unset elsewhere) so it does not push the page bottom off
+     screen when visible -->
+<div class={cn('h-[calc(100dvh-var(--rn-banner-h,0px))] overflow-y-auto bg-background', className)}>
+  <!-- pt: keep the header below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
+  <div class="sticky top-0 z-10 bg-background border-b pt-[env(safe-area-inset-top,0px)]">
     <div class="container mx-auto max-w-4xl px-4 sm:px-6">
       <div class="flex items-center gap-2 h-14">
         <a

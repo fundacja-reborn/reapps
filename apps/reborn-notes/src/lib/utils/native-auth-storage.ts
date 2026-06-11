@@ -4,9 +4,12 @@
  * `@aparajita/capacitor-secure-storage`.
  *
  * The refresh token cannot ride a cross-origin httpOnly cookie in the native
- * shell, so it lives here instead. Every plugin import is gated behind
- * `__REBORN_NATIVE__`, so on the web build the whole branch (and the plugin) is
- * dead-code-eliminated and each function is an inert no-op / null.
+ * shell, so it lives here instead. Plugin access goes through
+ * `getSecureStorage()` (see `native-secure-storage.ts`), which gates on
+ * `__REBORN_NATIVE__` - on the web build the whole branch (and the plugin) is
+ * dead-code-eliminated and each function is an inert no-op / null - and
+ * applies the iOS Keychain access class (`whenUnlockedThisDeviceOnly`, no
+ * backup migration, no iCloud sync) to every operation.
  *
  * This stores the rotating session refresh token only - NOT the master key. The
  * master key never leaves the device unencrypted and is never written here.
@@ -17,6 +20,8 @@
  * keeps a broken secure-storage call from throwing out of the refresh flow.
  */
 
+import { getSecureStorage } from './native-secure-storage';
+
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
 /** Persist the (rotated) refresh token after login / refresh. No-op on web. */
@@ -26,8 +31,8 @@ export async function persistNativeRefreshToken(
   if (!token) return;
   if (__REBORN_NATIVE__) {
     try {
-      const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
-      await SecureStorage.setItem(REFRESH_TOKEN_KEY, token);
+      const storage = await getSecureStorage();
+      await storage.setItem(REFRESH_TOKEN_KEY, token);
     } catch {
       // Write failed (rare OS error). The current access token is still valid for
       // its lifetime; the next refresh will find no usable token and prompt re-login.
@@ -39,8 +44,8 @@ export async function persistNativeRefreshToken(
 export async function readNativeRefreshToken(): Promise<string | null> {
   if (__REBORN_NATIVE__) {
     try {
-      const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
-      return await SecureStorage.getItem(REFRESH_TOKEN_KEY);
+      const storage = await getSecureStorage();
+      return await storage.getItem(REFRESH_TOKEN_KEY);
     } catch {
       return null;
     }
@@ -52,8 +57,8 @@ export async function readNativeRefreshToken(): Promise<string | null> {
 export async function clearNativeRefreshToken(): Promise<void> {
   if (__REBORN_NATIVE__) {
     try {
-      const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
-      await SecureStorage.removeItem(REFRESH_TOKEN_KEY);
+      const storage = await getSecureStorage();
+      await storage.removeItem(REFRESH_TOKEN_KEY);
     } catch {
       // Best-effort on logout - a failed delete must not block the logout flow.
     }

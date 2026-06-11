@@ -133,7 +133,15 @@ function fixEntityUuids(
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function downloadBlob(blob: Blob, filename: string): void {
+async function downloadBlob(blob: Blob, filename: string): Promise<void> {
+  if (__REBORN_NATIVE__) {
+    // WKWebView silently ignores `<a download>` on blob: URLs, so the native
+    // shell routes exports through the app cache + system share sheet instead
+    // (see native-file-export.ts). Dynamic import keeps the web bundle clean.
+    const { exportFileNative } = await import('$lib/utils/native-file-export');
+    await exportFileNative(blob, filename);
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -182,10 +190,13 @@ function buildFolderPathMap(nodes: FolderWithChildren[], prefix = ''): Map<strin
 // ── Export ───────────────────────────────────────────────────────────────────
 
 /** Export a single note as a .md file download. */
-export function exportNoteAsMarkdown(note: NoteDecrypted, tagNames: string[] = []): void {
+export async function exportNoteAsMarkdown(
+  note: NoteDecrypted,
+  tagNames: string[] = []
+): Promise<void> {
   const content = buildMarkdownContent(note, tagNames);
   const blob = new Blob([content], { type: 'text/markdown; charset=utf-8' });
-  downloadBlob(blob, `${sanitizeFilename(note.title)}.md`);
+  await downloadBlob(blob, `${sanitizeFilename(note.title)}.md`);
 }
 
 /**
@@ -488,7 +499,13 @@ export async function exportNoteAsPdf(note: NoteDecrypted): Promise<void> {
       );
     }
 
-    pdf.save(`${filename}.pdf`);
+    if (__REBORN_NATIVE__) {
+      // jspdf's save() uses the same silently-ignored anchor download under
+      // WKWebView - route the bytes through the shared native export path.
+      await downloadBlob(pdf.output('blob'), `${filename}.pdf`);
+    } else {
+      pdf.save(`${filename}.pdf`);
+    }
   } catch (e) {
     logger.error('PDF export failed', e);
     throw e;
@@ -556,7 +573,7 @@ export async function exportNotesAsZip(
   }
 
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-  downloadBlob(blob, `${archiveName}.zip`);
+  await downloadBlob(blob, `${archiveName}.zip`);
 }
 
 /**
@@ -667,7 +684,7 @@ export async function exportJsonBackup(): Promise<void> {
   const json = JSON.stringify(backup, null, 2);
   const blob = new Blob([json], { type: 'application/json; charset=utf-8' });
   const date = new Date().toISOString().slice(0, 10);
-  downloadBlob(blob, `reborn-notes-backup-${date}.json`);
+  await downloadBlob(blob, `reborn-notes-backup-${date}.json`);
 }
 
 /**
@@ -726,7 +743,7 @@ export async function exportEncryptedBackup(password: string): Promise<void> {
     type: 'application/json; charset=utf-8'
   });
   const date = new Date().toISOString().slice(0, 10);
-  downloadBlob(blob, `reborn-notes-backup-encrypted-${date}.json`);
+  await downloadBlob(blob, `reborn-notes-backup-encrypted-${date}.json`);
 }
 
 // ── Backup format detection & types ──────────────────────────────────────────
