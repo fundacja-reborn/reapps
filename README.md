@@ -316,6 +316,8 @@ If you've contributed something that shaped this project - an idea, a substantiv
 
 You are free to use, modify, and self-host. If you modify the server-side code and offer it as a service, you must open-source your changes under the same license.
 
+Bundled third-party components and our dual-license elections are documented in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
 ## Further reading
 
 - [Zero Knowledge Architecture](docs/architecture/zero-knowledge-architecture.md) - how encryption works under the hood
