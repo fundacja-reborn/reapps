@@ -365,7 +365,7 @@
       "title": "Save search",
       "description": "Saves the current query as a named view. Results stay live - the view always reflects the current state of your notes.",
       "name_label": "Name",
-      "name_placeholder": "e.g. German Cars",
+      "name_placeholder": "e.g. Important projects",
       "query_label": "Query",
       "save": "Save",
       "cancel": "Cancel"

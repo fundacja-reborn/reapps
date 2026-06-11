@@ -315,15 +315,16 @@ model Tag {
 // plus the optional folder FK used to "park" the search in the folder tree -
 // query content (operators, tags, phrases) never leaves the client.
 model SavedSearch {
-  id              String   @id @default(uuid())
-  user_id         String
-  folder_id       String?
-  name_encrypted  String   // E2E encrypted
-  query_encrypted String   // E2E encrypted (search query string)
-  position        Int      @default(0)
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-  sync_version    Int      @default(0)
+  id                 String   @id @default(uuid())
+  user_id            String
+  folder_id          String?
+  name_encrypted     String   // E2E encrypted
+  query_encrypted    String   // E2E encrypted (search query string)
+  metadata_encrypted String?  // E2E encrypted (SavedSearchSensitiveMetadata: search_in_content)
+  position           Int      @default(0)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  sync_version       Int      @default(0)
 
   // Relations
   folder          Folder?  @relation(fields: [folder_id], references: [id], onDelete: SetNull)

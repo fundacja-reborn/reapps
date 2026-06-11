@@ -218,6 +218,10 @@
 
   function applySavedSearch(search: SavedSearchDecrypted) {
     searchInput = search.query;
+    // Restore the body-search toggle the view was saved with - without it a
+    // content-phrase view silently returns a different (usually empty) result
+    // set than the one the user saved.
+    searchInContent = search.search_in_content;
   }
 
   // One-shot query handoff (saved search clicked outside the search section,
@@ -229,7 +233,8 @@
     if (pending === null) return;
     untrack(() => {
       searchHandoff.set(null);
-      searchInput = pending;
+      searchInput = pending.query;
+      searchInContent = pending.searchInContent;
     });
   });
 
@@ -1009,7 +1014,7 @@
   />
 {/if}
 
-<SaveSearchDialog bind:open={saveSearchDialogOpen} query={searchInput} />
+<SaveSearchDialog bind:open={saveSearchDialogOpen} query={searchInput} {searchInContent} />
 
 <ConfirmDialog
   bind:open={deleteDialogOpen}

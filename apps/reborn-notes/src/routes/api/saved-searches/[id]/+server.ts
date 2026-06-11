@@ -49,6 +49,7 @@ export const PATCH: RequestHandler = async ({ request, params }) => {
     };
     if (data.name_encrypted !== undefined) updates.name_encrypted = data.name_encrypted;
     if (data.query_encrypted !== undefined) updates.query_encrypted = data.query_encrypted;
+    if ('metadata_encrypted' in data) updates.metadata_encrypted = data.metadata_encrypted ?? null;
     if ('folder_id' in data) updates.folder_id = data.folder_id ?? null;
     if (data.position !== undefined) updates.position = data.position;
 

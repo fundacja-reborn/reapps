@@ -12,7 +12,11 @@
  * not scope the query.
  */
 import { savedSearchStore, savedSearchQueries } from '@reborn/storage';
-import type { SavedSearchDecrypted, SavedSearchEncrypted } from '@reborn/types';
+import type {
+  SavedSearchDecrypted,
+  SavedSearchEncrypted,
+  SavedSearchSensitiveMetadata
+} from '@reborn/types';
 import { MAX_SAVED_SEARCH_NAME_CHARS, MAX_SAVED_SEARCH_QUERY_CHARS } from '@reborn/types';
 import { cryptoManager } from '@reborn/crypto';
 import { get } from 'svelte/store';
@@ -51,11 +55,28 @@ async function decode(stored: string): Promise<string> {
   }
 }
 
+async function decodeMetadata(stored?: string): Promise<SavedSearchSensitiveMetadata> {
+  // Missing or undecryptable metadata degrades to the conservative default
+  // (title-only search) instead of erroring - same posture as the name/query codec.
+  if (!stored) return { search_in_content: false };
+  if (!cryptoManager.isInitialized()) {
+    throw new Error('[E2E] decode saved-search metadata called without master key loaded');
+  }
+  try {
+    const meta = await cryptoManager.decryptObject<SavedSearchSensitiveMetadata>(stored);
+    return { search_in_content: !!meta.search_in_content };
+  } catch {
+    return { search_in_content: false };
+  }
+}
+
 async function toDecrypted(enc: SavedSearchEncrypted): Promise<SavedSearchDecrypted> {
+  const meta = await decodeMetadata(enc.metadata_encrypted);
   return {
     id: enc.id,
     name: await decode(enc.name_encrypted),
     query: await decode(enc.query_encrypted),
+    search_in_content: meta.search_in_content,
     folder_id: enc.folder_id,
     position: enc.position,
     created_at: enc.created_at,
@@ -75,11 +96,15 @@ export async function getAllSavedSearches(): Promise<SavedSearchDecrypted[]> {
 /**
  * Save the given query under a name. Returns the new saved-search ID.
  * The query is stored as typed (trimmed) - no normalization, so what the user
- * sees in the search bar is exactly what re-runs later.
+ * sees in the search bar is exactly what re-runs later. `searchInContent`
+ * captures the body-search toggle so applying the saved view reproduces the
+ * exact result set, not just the query string (stored in the encrypted
+ * metadata bundle - the server must not learn which views scan bodies).
  */
 export async function createSavedSearch(
   name: string,
   query: string,
+  searchInContent: boolean,
   folderId?: string
 ): Promise<string> {
   const trimmedName = name.trim().slice(0, MAX_SAVED_SEARCH_NAME_CHARS);
@@ -87,6 +112,13 @@ export async function createSavedSearch(
   if (!trimmedName) throw new Error('Saved search name must not be empty');
   if (!trimmedQuery) throw new Error('Saved search query must not be empty');
 
+  if (!cryptoManager.isInitialized()) {
+    throw new Error('[E2E] encode saved-search metadata called without master key loaded');
+  }
+  // Always store the bundle, even for the default false - a row where
+  // metadata_encrypted is only present when the toggle is on would leak the
+  // toggle state to the server through the mere existence of the ciphertext.
+  const metadata: SavedSearchSensitiveMetadata = { search_in_content: searchInContent };
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
   const search: SavedSearchEncrypted = {
@@ -94,6 +126,7 @@ export async function createSavedSearch(
     user_id: getUserId(),
     name_encrypted: await encode(trimmedName, 'name'),
     query_encrypted: await encode(trimmedQuery, 'query'),
+    metadata_encrypted: await cryptoManager.encryptObject(metadata),
     folder_id: folderId,
     position: await savedSearchQueries.getNextPosition(),
     sync_version: 0,

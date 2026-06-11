@@ -365,7 +365,7 @@
       "title": "Zapisz wyszukiwanie",
       "description": "Zapisuje bieżące zapytanie jako nazwany widok. Wyniki są zawsze aktualne - widok odzwierciedla bieżący stan notatek.",
       "name_label": "Nazwa",
-      "name_placeholder": "np. Niemieckie auta",
+      "name_placeholder": "np. Ważne projekty",
       "query_label": "Zapytanie",
       "save": "Zapisz",
       "cancel": "Anuluj"

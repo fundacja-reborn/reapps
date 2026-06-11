@@ -22,8 +22,13 @@ function createSavedSearchesStore() {
     }
   }
 
-  async function create(name: string, query: string, folderId?: string): Promise<string> {
-    const id = await SavedSearchService.createSavedSearch(name, query, folderId);
+  async function create(
+    name: string,
+    query: string,
+    searchInContent: boolean,
+    folderId?: string
+  ): Promise<string> {
+    const id = await SavedSearchService.createSavedSearch(name, query, searchInContent, folderId);
     await refresh();
     return id;
   }

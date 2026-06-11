@@ -38,6 +38,7 @@ describe('saved searches - pull sync', () => {
     // field means a silently-failed push never retries (guideline 36, rule 9).
     expect(fn).toMatch(/name_encrypted !== s\.name_encrypted/);
     expect(fn).toMatch(/query_encrypted !== s\.query_encrypted/);
+    expect(fn).toMatch(/metadata_encrypted \?\? null/);
     expect(fn).toMatch(/folder_id \?\? null/);
     expect(fn).toMatch(/position !== s\.position/);
     // Rows hard-deleted on another device disappear locally - but only synced ones.

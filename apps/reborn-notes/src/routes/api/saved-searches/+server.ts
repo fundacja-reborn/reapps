@@ -26,6 +26,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
       id: s.id,
       name_encrypted: s.name_encrypted,
       query_encrypted: s.query_encrypted,
+      metadata_encrypted: s.metadata_encrypted,
       folder_id: s.folder_id,
       position: s.position,
       created_at: s.created_at.toISOString(),
@@ -57,7 +58,7 @@ export const POST: RequestHandler = async ({ request }) => {
         { status: 400 }
       );
     }
-    const { id, name_encrypted, query_encrypted, folder_id, position, created_at } =
+    const { id, name_encrypted, query_encrypted, metadata_encrypted, folder_id, position, created_at } =
       validation.data;
 
     // Ownership check: prevent overwriting another user's record
@@ -95,6 +96,7 @@ export const POST: RequestHandler = async ({ request }) => {
         user_id: userId,
         name_encrypted,
         query_encrypted,
+        metadata_encrypted: metadata_encrypted ?? null,
         folder_id: folder_id ?? null,
         position: position ?? 0,
         created_at: createdAt,
@@ -103,6 +105,7 @@ export const POST: RequestHandler = async ({ request }) => {
       update: {
         name_encrypted,
         query_encrypted,
+        metadata_encrypted: metadata_encrypted ?? null,
         folder_id: folder_id ?? null,
         position: position ?? 0,
         sync_version: { increment: 1 }

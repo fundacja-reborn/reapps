@@ -365,7 +365,7 @@
       "title": "Enregistrer la recherche",
       "description": "Enregistre la requête actuelle comme vue nommée. Les résultats restent dynamiques - la vue reflète toujours l'état actuel de vos notes.",
       "name_label": "Nom",
-      "name_placeholder": "p. ex. Voitures allemandes",
+      "name_placeholder": "p. ex. Projets importants",
       "query_label": "Requête",
       "save": "Enregistrer",
       "cancel": "Annuler"

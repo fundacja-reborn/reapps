@@ -181,13 +181,13 @@ Quoting also works inside operator values: `tag:"side projects"`, `list:"Q2 plan
 
 > **re/notes** (re/task follow-up planned)
 
-Any query you can type, you can save as a named view. With a query in the search box, click **Save search** (next to the *Search in content* toggle), give it a name, and it appears in the search panel - open search with an empty box to see your saved views. Clicking one puts its query back into the search box, so results are always **live**: a saved search is a stored query, not a snapshot.
+Any query you can type, you can save as a named view. With a query in the search box, click **Save search** (next to the *Search in content* toggle), give it a name, and it appears in the search panel - open search with an empty box to see your saved views. Clicking one puts its query back into the search box **and restores the *Search in content* toggle** to the state it was saved with, so the view reproduces the exact result set - always **live**: a saved search is a stored query, not a snapshot.
 
-Saved searches can also be **pinned to a folder** (context menu → *Pin to folder*). A pinned search shows up inside the folder tree as a leaf node - a "smart folder" sitting next to your real folders. Example: pin `folder:Cars tag:DE` to the *Cars* folder as **German Cars**. Pinning is purely presentational; it does not scope the query. Deleting a folder never deletes the searches pinned to it - they just unpin back to the search panel.
+Saved searches can also be **pinned to a folder** (context menu → *Pin to folder*). A pinned search shows up inside the folder tree as a leaf node - a "smart folder" sitting next to your real folders. Example: pin `folder:projects tag:urgent` to the *Projects* folder as **Urgent projects**. Pinning is purely presentational; it does not scope the query. Deleting a folder never deletes the searches pinned to it - they just unpin back to the search panel.
 
 Renaming, re-pinning, and deleting are available from each saved search's context menu (deleting a saved view never touches your notes). Saved searches sync across your devices like folders and tags do.
 
-Privacy note: both the name and the query string are end-to-end encrypted (`name_encrypted`, `query_encrypted`). The server cannot see which operators, tags, or phrases your saved views filter by - it only stores opaque ciphertexts, and all evaluation happens on your device through the same parser as live search.
+Privacy note: the name, the query string, and the behavioral metadata (the content-toggle state) are end-to-end encrypted (`name_encrypted`, `query_encrypted`, `metadata_encrypted`). The server cannot see which operators, tags, or phrases your saved views filter by - nor which of them scan note bodies - it only stores opaque ciphertexts, and all evaluation happens on your device through the same parser as live search.
 
 ---
 

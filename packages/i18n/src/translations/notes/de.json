@@ -365,7 +365,7 @@
       "title": "Suche speichern",
       "description": "Speichert die aktuelle Abfrage als benannte Ansicht. Die Ergebnisse bleiben dynamisch - die Ansicht zeigt immer den aktuellen Stand Ihrer Notizen.",
       "name_label": "Name",
-      "name_placeholder": "z. B. Deutsche Autos",
+      "name_placeholder": "z. B. Wichtige Projekte",
       "query_label": "Abfrage",
       "save": "Speichern",
       "cancel": "Abbrechen"

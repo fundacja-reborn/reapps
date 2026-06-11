@@ -5,6 +5,7 @@ CREATE TABLE "SavedSearch" (
     "folder_id" TEXT,
     "name_encrypted" TEXT NOT NULL,
     "query_encrypted" TEXT NOT NULL,
+    "metadata_encrypted" TEXT,
     "position" INTEGER NOT NULL DEFAULT 0,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,

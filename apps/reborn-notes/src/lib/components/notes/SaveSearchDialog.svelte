@@ -15,11 +15,14 @@
 
   let {
     open = $bindable(false),
-    query
+    query,
+    searchInContent = false
   }: {
     open: boolean;
     /** The query string currently in the search bar - saved verbatim. */
     query: string;
+    /** Current state of the body-search toggle - saved with the view and restored on apply. */
+    searchInContent?: boolean;
   } = $props();
 
   let name = $state('');
@@ -39,7 +42,7 @@
     if (!canSave || isSaving) return;
     isSaving = true;
     try {
-      await savedSearchesStore.create(name, query);
+      await savedSearchesStore.create(name, query, searchInContent);
       toastStore.success($t('saved_searches.saved_toast', { values: { name: name.trim() } }));
       open = false;
     } catch {
@@ -79,6 +82,15 @@
         >
           {query}
         </code>
+        {#if searchInContent}
+          <span class="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span
+              class="inline-flex h-3 w-3 items-center justify-center rounded border border-primary bg-primary text-primary-foreground"
+              >✓</span
+            >
+            {$t('notes.search_in_content')}
+          </span>
+        {/if}
       </div>
     </div>
 

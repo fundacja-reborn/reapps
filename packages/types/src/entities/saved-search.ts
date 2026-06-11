@@ -13,15 +13,27 @@ export interface SavedSearchDecrypted {
   id: string;
   name: string;
   query: string;
+  /** Whether the "search in content" toggle was on when the search was saved. */
+  search_in_content: boolean;
   folder_id?: string;
   position: number;
   created_at: string;
   updated_at: string;
 }
 
+/**
+ * Behavioral metadata bundle, encrypted as one JSON object (same pattern as
+ * NoteSensitiveMetadata). The server must not learn which saved searches scan
+ * note bodies - that correlates with how sensitive the underlying query is.
+ */
+export interface SavedSearchSensitiveMetadata {
+  search_in_content: boolean;
+}
+
 export interface SavedSearchEncrypted extends SyncableEncryptedEntity {
   name_encrypted: string;
   query_encrypted: string;
+  metadata_encrypted?: string;
   folder_id?: string;
   position: number;
 }
@@ -39,3 +51,6 @@ export const MAX_ENCRYPTED_SAVED_SEARCH_NAME_BYTES = 750;
 
 /** Maximum encrypted saved-search query — server Zod. 512 plaintext chars fit with margin. */
 export const MAX_ENCRYPTED_SAVED_SEARCH_QUERY_BYTES = 2_000;
+
+/** Maximum encrypted saved-search metadata bundle — server Zod. Tiny JSON flag object. */
+export const MAX_ENCRYPTED_SAVED_SEARCH_METADATA_BYTES = 500;

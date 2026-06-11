@@ -390,6 +390,7 @@ async function pullSavedSearches(): Promise<void> {
         id: string;
         name_encrypted: string;
         query_encrypted: string;
+        metadata_encrypted?: string | null;
         folder_id: string | null;
         position: number;
         created_at: string;
@@ -415,6 +416,7 @@ async function pullSavedSearches(): Promise<void> {
           local.sync_status === 'synced' &&
           (local.name_encrypted !== s.name_encrypted ||
             local.query_encrypted !== s.query_encrypted ||
+            (local.metadata_encrypted ?? null) !== (s.metadata_encrypted ?? null) ||
             (local.folder_id ?? null) !== (s.folder_id ?? null) ||
             local.position !== s.position)
         ) {
@@ -429,6 +431,7 @@ async function pullSavedSearches(): Promise<void> {
         user_id: userId,
         name_encrypted: s.name_encrypted,
         query_encrypted: s.query_encrypted,
+        metadata_encrypted: s.metadata_encrypted ?? undefined,
         folder_id: s.folder_id ?? undefined,
         position: s.position,
         sync_version: serverVersion,
@@ -1233,13 +1236,20 @@ export function pushTagDelete(id: string): void {
 async function pushSavedSearchPayload(
   search: Pick<
     SavedSearchEncrypted,
-    'id' | 'name_encrypted' | 'query_encrypted' | 'folder_id' | 'position' | 'created_at'
+    | 'id'
+    | 'name_encrypted'
+    | 'query_encrypted'
+    | 'metadata_encrypted'
+    | 'folder_id'
+    | 'position'
+    | 'created_at'
   >,
   idempotencyKey: string
 ): Promise<void> {
   const pushedFields = {
     name_encrypted: search.name_encrypted,
     query_encrypted: search.query_encrypted,
+    metadata_encrypted: search.metadata_encrypted ?? null,
     folder_id: search.folder_id ?? null,
     position: search.position
   };
@@ -1286,7 +1296,13 @@ async function pushSavedSearchPayload(
 export function pushSavedSearch(
   search: Pick<
     SavedSearchEncrypted,
-    'id' | 'name_encrypted' | 'query_encrypted' | 'folder_id' | 'position' | 'created_at'
+    | 'id'
+    | 'name_encrypted'
+    | 'query_encrypted'
+    | 'metadata_encrypted'
+    | 'folder_id'
+    | 'position'
+    | 'created_at'
   >
 ): void {
   void serializePerEntity('savedSearch', search.id, () =>
@@ -1299,6 +1315,7 @@ export function pushSavedSearchUpdate(
   fields: {
     name_encrypted?: string;
     query_encrypted?: string;
+    metadata_encrypted?: string;
     // `null` explicitly unparks the search from the folder tree. Cannot be
     // `undefined` - JSON.stringify drops it and the server's `'folder_id' in
     // data` check would never see the field. Same contract as note moves.

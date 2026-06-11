@@ -12,7 +12,9 @@ vi.mock('@reborn/crypto', () => ({
   cryptoManager: {
     isInitialized: () => true,
     encryptText: async (value: string) => `enc:${value}`,
-    decryptText: async (stored: string) => stored.replace(/^enc:/, '')
+    decryptText: async (stored: string) => stored.replace(/^enc:/, ''),
+    encryptObject: async (value: unknown) => `encobj:${JSON.stringify(value)}`,
+    decryptObject: async (stored: string) => JSON.parse(stored.replace(/^encobj:/, ''))
   }
 }));
 
@@ -86,11 +88,11 @@ describe('createSavedSearch', () => {
   it('encrypts name and query, appends position, saves pending and pushes', async () => {
     seed({ id: 's-0', position: 4 });
 
-    const id = await createSavedSearch('  German Cars  ', ' folder:Cars tag:DE ');
+    const id = await createSavedSearch('  Urgent projects  ', ' folder:projects tag:urgent ', false);
 
     const created = rows.find((r) => r.id === id)!;
-    expect(created.name_encrypted).toBe('enc:German Cars');
-    expect(created.query_encrypted).toBe('enc:folder:Cars tag:DE');
+    expect(created.name_encrypted).toBe('enc:Urgent projects');
+    expect(created.query_encrypted).toBe('enc:folder:projects tag:urgent');
     expect(created.position).toBe(5);
     expect(created.sync_status).toBe('pending');
     expect(created.sync_version).toBe(0);
@@ -100,9 +102,21 @@ describe('createSavedSearch', () => {
     expect(pushSpy).toHaveBeenCalledWith(expect.objectContaining({ id, position: 5 }));
   });
 
+  it('stores the content-toggle in the encrypted metadata bundle - for BOTH states', async () => {
+    // Always-present ciphertext: a bundle that only exists when the toggle is
+    // on would leak the toggle state to the server through its mere presence.
+    const idOn = await createSavedSearch('With content', '"some phrase"', true);
+    const idOff = await createSavedSearch('Titles only', 'tag:x', false);
+
+    const withContent = rows.find((r) => r.id === idOn)!;
+    const titlesOnly = rows.find((r) => r.id === idOff)!;
+    expect(withContent.metadata_encrypted).toBe('encobj:{"search_in_content":true}');
+    expect(titlesOnly.metadata_encrypted).toBe('encobj:{"search_in_content":false}');
+  });
+
   it('rejects empty name or query', async () => {
-    await expect(createSavedSearch('   ', 'tag:x')).rejects.toThrow();
-    await expect(createSavedSearch('Name', '   ')).rejects.toThrow();
+    await expect(createSavedSearch('   ', 'tag:x', false)).rejects.toThrow();
+    await expect(createSavedSearch('Name', '   ', false)).rejects.toThrow();
     expect(pushSpy).not.toHaveBeenCalled();
   });
 });
@@ -117,6 +131,21 @@ describe('getAllSavedSearches', () => {
 
     expect(all.map((s) => s.name)).toEqual(['Alpha', 'Zeta', 'Beta']);
     expect(all[0]!.query).toBe('tag:x');
+  });
+
+  it('round-trips search_in_content and defaults to false for missing/corrupt metadata', async () => {
+    seed({ id: 'on', metadata_encrypted: 'encobj:{"search_in_content":true}' });
+    seed({ id: 'off', metadata_encrypted: 'encobj:{"search_in_content":false}' });
+    seed({ id: 'legacy' }); // no metadata bundle at all
+    seed({ id: 'corrupt', metadata_encrypted: 'encobj:not-json' });
+
+    const all = await getAllSavedSearches();
+    const byId = new Map(all.map((s) => [s.id, s.search_in_content]));
+
+    expect(byId.get('on')).toBe(true);
+    expect(byId.get('off')).toBe(false);
+    expect(byId.get('legacy')).toBe(false);
+    expect(byId.get('corrupt')).toBe(false);
   });
 });
 

@@ -777,7 +777,7 @@
       pushMobileHistory();
     }
     await tick();
-    searchHandoff.set(search.query);
+    searchHandoff.set({ query: search.query, searchInContent: search.search_in_content });
   }
 
   // ── Autosave (delegated to noteDetailService) ─────────────────

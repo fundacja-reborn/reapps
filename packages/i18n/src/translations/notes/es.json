@@ -365,7 +365,7 @@
       "title": "Guardar búsqueda",
       "description": "Guarda la consulta actual como una vista con nombre. Los resultados se mantienen al día: la vista siempre refleja el estado actual de sus notas.",
       "name_label": "Nombre",
-      "name_placeholder": "p. ej. Coches alemanes",
+      "name_placeholder": "p. ej. Proyectos importantes",
       "query_label": "Consulta",
       "save": "Guardar",
       "cancel": "Cancelar"
