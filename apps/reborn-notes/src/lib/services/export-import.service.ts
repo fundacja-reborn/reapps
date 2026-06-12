@@ -1336,7 +1336,10 @@ export async function importMarkdownFiles(
       // tagIds: undefined - the flat .md import does not manage tags (no
       // frontmatter tag resolution), so overwrite must leave the existing
       // note's tags untouched rather than wiping them with an empty set.
-      const { outcome, noteId } = await applyDuplicateStrategy({
+      // Kept un-destructured: narrowing `noteId` to `string` in the final
+      // branch relies on the discriminated union, and TS only tracks that
+      // reliably through property access, not destructured locals.
+      const dedup = await applyDuplicateStrategy({
         baseTitle,
         content: sanitized,
         folderId,
@@ -1346,16 +1349,16 @@ export async function importMarkdownFiles(
         lookup,
         strategy: duplicateStrategy
       });
-      if (outcome === 'skipped') {
+      if (dedup.outcome === 'skipped') {
         result.duplicatesSkipped++;
-      } else if (outcome === 'unchanged') {
+      } else if (dedup.outcome === 'unchanged') {
         result.duplicatesUnchanged++;
       } else {
-        if (outcome === 'overwritten') result.duplicatesOverwritten++;
-        else if (outcome === 'renamed') result.duplicatesRenamed++;
+        if (dedup.outcome === 'overwritten') result.duplicatesOverwritten++;
+        else if (dedup.outcome === 'renamed') result.duplicatesRenamed++;
         result.imported++;
         // Push the freshly-saved note (skipSync was true on the storage write).
-        const note = await noteStore.get(noteId);
+        const note = await noteStore.get(dedup.noteId);
         if (note) pushNote(note);
       }
     } catch (e: unknown) {
@@ -1394,7 +1397,13 @@ export async function importMarkdownFiles(
  */
 type DuplicateOutcomeResult =
   | { outcome: 'created' | 'overwritten' | 'renamed'; noteId: string }
-  | { outcome: 'skipped' | 'unchanged'; noteId: undefined };
+  // The two non-writing outcomes stay SEPARATE constituents (not
+  // `'skipped' | 'unchanged'` in one): control-flow exclusion (`!==` in an
+  // else-chain) only drops a constituent whose discriminant narrows to
+  // never, so a multi-literal constituent would survive both negations and
+  // `noteId` would stay `string | undefined` in the writing branch.
+  | { outcome: 'skipped'; noteId: undefined }
+  | { outcome: 'unchanged'; noteId: undefined };
 
 /**
  * Apply the selected duplicate-handling strategy for a single file.
