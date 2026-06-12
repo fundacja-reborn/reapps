@@ -120,9 +120,11 @@
           {#each statuses as status (status.id)}
             <FolderSyncItem {status} disabled={anyBusy || adding} />
           {:else}
-            <p class="text-sm text-muted-foreground">
-              {$t('settings_page.export_import.folder_sync_empty')}
-            </p>
+            {#if !pendingHandle}
+              <p class="text-sm text-muted-foreground">
+                {$t('settings_page.export_import.folder_sync_empty')}
+              </p>
+            {/if}
           {/each}
 
           {#if pendingHandle}
