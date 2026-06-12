@@ -436,3 +436,19 @@
 {:else}
   <LoadingScreen />
 {/if}
+
+{#if __REBORN_NATIVE__}
+  <!-- Brand strip behind the transparent system status bar (PWA parity: on
+       the installed web app Chrome paints this area from the theme-color
+       meta, #FFD43B). The shells run edge-to-edge (enforced on Android
+       15+/16; iOS always worked this way), so the bar's "background" is
+       whatever the app draws beneath it - this fixed band, sized by the top
+       safe-area inset (0 in landscape), is that background. Icon contrast
+       comes from native-system-bars.ts. Rendered outside the app-ready gate
+       so the bar is branded from first paint, and above UpdateRequiredGate
+       (z-100) because it stands in for a system surface. -->
+  <div
+    class="pointer-events-none fixed inset-x-0 top-0 z-[110] h-[env(safe-area-inset-top,0px)] bg-[#FFD43B]"
+    aria-hidden="true"
+  ></div>
+{/if}
