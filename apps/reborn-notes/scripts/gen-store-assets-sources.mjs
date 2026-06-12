@@ -21,8 +21,9 @@
  * Also renders the Play Store feature graphic (not a @capacitor/assets
  * input - the fan-out only picks up the five names above and ignores it):
  *
- *   feature-graphic.png  1024x500  brand circle centered on near-black,
- *                                  no text (locale-neutral, like the splash)
+ *   feature-graphic.png  1024x500  "re/notes" wordmark on the brand yellow
+ *                                  (locale-neutral - the brand name is the
+ *                                  same in all five locales)
  *
  * Then `pnpm gen:store-assets` (package.json) runs the pinned
  * @capacitor/assets to fan these out into android/ mipmaps+drawables and
@@ -38,6 +39,7 @@ import { BRAND_YELLOW, GLYPH_MARKERS, GLYPH_PATHS } from './store-assets-glyph.m
 const here = dirname(fileURLToPath(import.meta.url));
 const appDir = resolve(here, '..');
 const brandSvgPath = resolve(appDir, 'static/icons/icon.svg');
+const wordmarkSvgPath = resolve(appDir, 'static/logo-black.svg');
 const outDir = resolve(appDir, 'assets');
 const SPLASH_LIGHT_BG = '#ffffff';
 // App dark theme --background is oklch(0.145 0 0) (packages/ui global.css);
@@ -48,7 +50,9 @@ const SPLASH_LOGO_SIZE = 600;
 const ICON_SIZE = 1024;
 const FEATURE_WIDTH = 1024;
 const FEATURE_HEIGHT = 500;
-const FEATURE_LOGO_SIZE = 340;
+// 1417x262 wordmark source -> 700x129 on the canvas: focal point centered,
+// ~162px side / ~185px top-bottom margins keep it inside Play's crop-safe zone.
+const FEATURE_WORDMARK_WIDTH = 700;
 
 // The white glyph paths from icon.svg live in store-assets-glyph.mjs (shared
 // with the Android vector-icon postfix); the guard below fails the build if
@@ -73,11 +77,12 @@ async function renderIcon(name, body) {
 }
 
 async function renderFeatureGraphic(name) {
-  // Play Console wants 1024x500 without alpha; the brand circle on the dark
-  // splash background reads well both standalone and behind the play button
-  // overlay Google puts on it when a promo video is attached.
-  const logo = await sharp(Buffer.from(brandSvg))
-    .resize(FEATURE_LOGO_SIZE, FEATURE_LOGO_SIZE)
+  // The wordmark on brand yellow (not the icon on dark) follows Google's
+  // preview-asset guidelines: avoid white/dark-gray backgrounds (they blend
+  // with the store themes) and don't repeat the app icon - the graphic always
+  // renders next to the icon and app name in featured/collection cards.
+  const wordmark = await sharp(wordmarkSvgPath)
+    .resize({ width: FEATURE_WORDMARK_WIDTH })
     .png()
     .toBuffer();
   await sharp({
@@ -85,10 +90,12 @@ async function renderFeatureGraphic(name) {
       width: FEATURE_WIDTH,
       height: FEATURE_HEIGHT,
       channels: 3,
-      background: SPLASH_DARK_BG
+      background: BRAND_YELLOW
     }
   })
-    .composite([{ input: logo, gravity: 'center' }])
+    .composite([{ input: wordmark, gravity: 'center' }])
+    // composite() promotes to RGBA; Play Console wants 24-bit PNG, no alpha
+    .removeAlpha()
     .png()
     .toFile(resolve(outDir, name));
   console.log(`gen-store-assets-sources: wrote assets/${name}`);
