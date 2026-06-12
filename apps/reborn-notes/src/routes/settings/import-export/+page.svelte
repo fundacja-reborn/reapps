@@ -46,6 +46,7 @@
   import { notesStore } from '$lib/stores/notes.store';
   import MarkdownImportStrategyPicker from '$lib/components/import/MarkdownImportStrategyPicker.svelte';
   import ImportResultSummary from '$lib/components/import/ImportResultSummary.svelte';
+  import FolderSyncCard from '$lib/components/import/FolderSyncCard.svelte';
   import { createLogger } from '@reborn/utils';
 
   const logger = createLogger('notes:import-export');
@@ -753,6 +754,9 @@
             <ImportResultSummary result={folderImportResult} class="mt-3" />
           {/if}
         </div>
+
+        <!-- Live folder sync (File System Access API, Chromium-only) -->
+        <FolderSyncCard />
 
         <!-- Import JSON backup -->
         <div class="p-4 rounded-lg border bg-muted/30">

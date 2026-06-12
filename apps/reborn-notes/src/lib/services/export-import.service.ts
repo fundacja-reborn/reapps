@@ -1602,6 +1602,17 @@ export type ImportFolderOptions = {
 };
 
 /**
+ * A file accepted by {@link importFolder}: either a plain `File` from a
+ * `webkitdirectory` input (path read from `webkitRelativePath`) or a
+ * `{ file, relativePath }` pair for sources where the browser does not stamp
+ * a path on the File object - e.g. files collected from a File System Access
+ * API directory handle by the live folder sync (`folder-sync.service.ts`).
+ * `relativePath` uses the same shape as `webkitRelativePath`:
+ * `<rootDir>/<sub>/<name.md>`, `/`-separated.
+ */
+export type ImportFolderInput = File | { file: File; relativePath: string };
+
+/**
  * Import a folder tree of Markdown files (Obsidian-style vault).
  *
  * Reproduces the directory hierarchy as reborn-notes folders, imports every
@@ -1627,7 +1638,7 @@ export type ImportFolderOptions = {
  * strategy this makes re-importing the same directory an idempotent refresh.
  */
 export async function importFolder(
-  files: File[],
+  files: ImportFolderInput[],
   duplicateStrategy: DuplicateStrategy = 'rename',
   onProgress?: ImportProgressCallback,
   opts?: ImportFolderOptions
@@ -1649,47 +1660,54 @@ export async function importFolder(
   const keepRootFolder = opts?.keepRootFolder ?? false;
   const targetFolderId = opts?.targetFolderId;
 
+  // 0. Normalize inputs to { file, relativePath } pairs. Plain Files carry
+  //    their path in webkitRelativePath ('' when absent → name only, lands
+  //    at the import root, matching the previous behavior).
+  const allEntries = files.map((f) =>
+    'relativePath' in f ? f : { file: f, relativePath: f.webkitRelativePath || f.name }
+  );
+
   // 1. Skip files in hidden directories (.obsidian/, .trash/, etc.).
   //    Applied FIRST so we don't pollute the non-markdown counter with
   //    .json/.css plugin internals — those get their own bucket.
-  const visibleFiles: File[] = [];
-  for (const f of files) {
-    if (containsHiddenSegment(f.webkitRelativePath)) {
+  const visibleEntries: typeof allEntries = [];
+  for (const e of allEntries) {
+    if (containsHiddenSegment(e.relativePath)) {
       result.skippedHidden++;
     } else {
-      visibleFiles.push(f);
+      visibleEntries.push(e);
     }
   }
 
   // 2. Filter non-markdown files.
-  const mdFiles: File[] = [];
-  for (const f of visibleFiles) {
-    if (f.name.toLowerCase().endsWith('.md')) {
-      mdFiles.push(f);
+  const mdEntries: typeof allEntries = [];
+  for (const e of visibleEntries) {
+    if (e.file.name.toLowerCase().endsWith('.md')) {
+      mdEntries.push(e);
     } else {
       result.skippedNonMarkdown++;
     }
   }
 
   // 3. Filter files exceeding the per-note plaintext cap.
-  const sizedFiles: File[] = [];
-  for (const f of mdFiles) {
-    if (f.size > MAX_NOTE_CONTENT_BYTES) {
+  const sizedEntries: typeof allEntries = [];
+  for (const e of mdEntries) {
+    if (e.file.size > MAX_NOTE_CONTENT_BYTES) {
       result.skippedTooLarge++;
     } else {
-      sizedFiles.push(f);
+      sizedEntries.push(e);
     }
   }
 
   // 4. Enforce the shared total-import cap.
-  const totalSize = sizedFiles.reduce((sum, f) => sum + f.size, 0);
+  const totalSize = sizedEntries.reduce((sum, e) => sum + e.file.size, 0);
   if (totalSize > MAX_IMPORT_FILE_SIZE) {
     throw new Error(
       `Łączny rozmiar plików (${Math.round(totalSize / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)} MB.`
     );
   }
 
-  if (sizedFiles.length === 0) return result;
+  if (sizedEntries.length === 0) return result;
 
   // 5. Load existing folders/tags once so find-or-create can dedupe against
   //    both previous state AND items created earlier in this batch.
@@ -1709,8 +1727,8 @@ export async function importFolder(
 
   // 6. Resolve every unique directory path to a folder id up-front.
   const pathToFolderId = new Map<string, string | undefined>();
-  for (const file of sizedFiles) {
-    const segments = extractFolderSegments(file.webkitRelativePath, keepRootFolder);
+  for (const entry of sizedEntries) {
+    const segments = extractFolderSegments(entry.relativePath, keepRootFolder);
     const key = segments.join('/');
     if (pathToFolderId.has(key)) continue;
     try {
@@ -1731,18 +1749,18 @@ export async function importFolder(
   // 7. Import each note via the duplicate strategy helper.
   //    skipSync: true — avoid per-note pushNote/pushNoteUpdate race condition.
   //    Bulk push happens after the loop (step 7b).
-  const total = sizedFiles.length;
+  const total = sizedEntries.length;
   onProgress?.({ phase: 'reading', current: 0, total });
   // Throttle progress events to one per ~50ms so a 1000-file vault doesn't
   // flood the renderer; always report the final count regardless.
   let lastEmit = 0;
 
-  for (let i = 0; i < sizedFiles.length; i++) {
-    const file = sizedFiles[i];
+  for (let i = 0; i < sizedEntries.length; i++) {
+    const { file, relativePath } = sizedEntries[i];
     try {
       const raw = await file.text();
       const parsed = parseMarkdownFile(raw);
-      const segments = extractFolderSegments(file.webkitRelativePath, keepRootFolder);
+      const segments = extractFolderSegments(relativePath, keepRootFolder);
       const folderId = pathToFolderId.get(segments.join('/'));
 
       const fallbackTitle = file.name.replace(/\.md$/i, '') || 'Untitled';
