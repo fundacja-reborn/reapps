@@ -23,7 +23,8 @@
 		Trash2,
 		Settings,
 		LogOut,
-		Share2
+		Share2,
+		Heart
 	} from '@lucide/svelte';
 	import {
 		overdueTasks,
@@ -37,7 +38,7 @@
 	import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@reborn/ui';
 	import { session } from '$lib/stores/auth.store';
 	import { goto } from '$lib/utils/navigation';
-	import { t } from '$lib/stores/i18n.store';
+	import { t, locale as i18nLocale } from '$lib/stores/i18n.store';
 	import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
 	import { activeSharesCount } from '$lib/stores/shares.store';
 	import { requireActiveSession } from '$lib/utils/require-active-session';
@@ -60,6 +61,14 @@
 	const isMobileQuery = useIsMobile();
 	let loggingOut = $state(false);
 	let userSheetOpen = $state(false);
+
+	// Donations page on the foundation site (EN + PL only). Plain <a target="_blank">
+	// leaves the app: new tab on web, SYSTEM browser in the native shell (the
+	// webview origin is localhost, so Capacitor opens external hosts externally) -
+	// Apple 3.2.2(iv) requires collecting donations outside the app.
+	const SITE_URL: string =
+		(import.meta.env.PUBLIC_SITE_URL as string | undefined) ?? 'https://reapps.eu';
+	const supportUrl = $derived(`${SITE_URL}${$i18nLocale === 'pl' ? '/pl' : ''}/support`);
 	let sharesDialogOpen = $state(false);
 
 	async function handleOpenShares() {
@@ -407,6 +416,28 @@
 		</Tooltip.Root>
 
 		<div class="flex-1"></div>
+
+		<!-- Support (donation page, leaves the app) -->
+		<Tooltip.Root>
+			<Tooltip.Trigger>
+				{#snippet child({ props })}
+					<!-- eslint-disable svelte/no-navigation-without-resolve (external URL, leaves the app) -->
+					<a
+						{...props}
+						href={supportUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg text-muted-foreground
+                   hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+						aria-label={$t('nav.support')}
+					>
+						<Heart class="h-6 w-6 md:h-5 md:w-5" />
+					</a>
+					<!-- eslint-enable svelte/no-navigation-without-resolve -->
+				{/snippet}
+			</Tooltip.Trigger>
+			<Tooltip.Content side="right" sideOffset={6}>{$t('nav.support')}</Tooltip.Content>
+		</Tooltip.Root>
 
 		<!-- Settings -->
 		<Tooltip.Root>
