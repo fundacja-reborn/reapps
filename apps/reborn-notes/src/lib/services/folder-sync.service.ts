@@ -36,7 +36,7 @@ import {
   type ImportFolderResult,
   type ImportProgress
 } from './export-import.service';
-import { collectMarkdownEntries, filterEntriesChangedSince } from './folder-sync-utils';
+import { collectMarkdownEntries, filterEntriesToSync } from './folder-sync-utils';
 
 const logger = createLogger('notes:folder-sync');
 
@@ -312,7 +312,14 @@ async function scanAndImport(
     });
   }
 
-  const changed = filterEntriesChangedSince(entries, cfg.last_sync_at);
+  // New-to-the-directory paths always import (copied/moved-in files keep
+  // their old mtime and would never cross the watermark); known paths only
+  // when modified since the last scan.
+  const changed = filterEntriesToSync(
+    entries,
+    cfg.last_sync_at,
+    cfg.known_paths ? new Set(cfg.known_paths) : null
+  );
 
   let result: ImportFolderResult | null = null;
   if (changed.length > 0) {
@@ -347,6 +354,10 @@ async function scanAndImport(
   const updated: FolderSyncConfigRecord = {
     ...latest,
     last_sync_at: scanStartedAt,
+    // Full snapshot of paths seen THIS scan (not a union with the previous
+    // set): paths of deleted files drop out, so a file deleted and later
+    // restored counts as new again and re-imports regardless of its mtime.
+    known_paths: entries.map((e) => e.relativePath),
     last_result: {
       scanned: entries.length,
       imported: result?.imported ?? 0,

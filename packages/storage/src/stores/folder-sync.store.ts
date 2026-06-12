@@ -34,6 +34,18 @@ export interface FolderSyncConfigRecord extends WithId {
    * which is what keeps re-scans of large vaults cheap.
    */
   last_sync_at: string | null;
+  /**
+   * Relative paths (`<root>/<sub>/<file.md>`) of every markdown file seen by
+   * the last completed scan. Complements the mtime watermark: a path NOT in
+   * this set is new to the directory and always imports, regardless of its
+   * mtime - files copied or moved in keep their original (often old)
+   * modification date, which the watermark alone would silently skip.
+   *
+   * Absent on records created before 2026-06-13; absence = "unknown", which
+   * makes the next run consider every file (cheap - the overwrite strategy's
+   * unchanged-skip drops files that already match) and then populates it.
+   */
+  known_paths?: string[];
   /** Compact summary of the last completed run, for the settings UI. */
   last_result: {
     scanned: number;

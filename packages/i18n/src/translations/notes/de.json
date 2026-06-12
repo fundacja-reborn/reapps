@@ -741,6 +741,8 @@
       "folder_sync_pick_btn": "Ordner wählen",
       "folder_sync_unsupported": "Dein Browser unterstützt keinen Ordnerzugriff (File System Access API). Verwende für die Ordner-Synchronisierung einen Chromium-Browser wie Chrome oder Edge.",
       "folder_sync_linked": "Verknüpfter Ordner: {name}",
+      "folder_sync_destination": "Importiert in den Ordner „{name}“ auf der obersten Ebene der App",
+      "folder_sync_no_full_path": "Der Browser gibt nur den Ordnernamen frei, nicht den vollständigen Pfad auf der Festplatte (File System Access API).",
       "folder_sync_last_sync": "Letzte Synchronisierung: {time}",
       "folder_sync_last_result": "{scanned} Datei(en) geprüft, {imported} importiert",
       "folder_sync_syncing": "Synchronisiere…",

@@ -95,6 +95,11 @@
               values: { name: status.rootName ?? '' }
             })}
           </p>
+          <p class="text-muted-foreground truncate">
+            {$t('settings_page.export_import.folder_sync_destination', {
+              values: { name: status.rootName ?? '' }
+            })}
+          </p>
           {#if status.lastSyncAt}
             <p class="text-muted-foreground">
               {$t('settings_page.export_import.folder_sync_last_sync', {
@@ -110,6 +115,9 @@
               {/if}
             </p>
           {/if}
+          <p class="text-[11px] text-muted-foreground/70">
+            {$t('settings_page.export_import.folder_sync_no_full_path')}
+          </p>
         </div>
         <div class="flex shrink-0 gap-2">
           <button

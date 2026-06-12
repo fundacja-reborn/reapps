@@ -741,6 +741,8 @@
       "folder_sync_pick_btn": "Choisir un dossier",
       "folder_sync_unsupported": "Votre navigateur ne prend pas en charge l'accès aux dossiers (File System Access API). Pour synchroniser un dossier local, utilisez un navigateur basé sur Chromium, comme Chrome ou Edge.",
       "folder_sync_linked": "Dossier lié : {name}",
+      "folder_sync_destination": "Importé dans le dossier « {name} » au niveau racine de l'application",
+      "folder_sync_no_full_path": "Le navigateur ne partage que le nom du dossier, pas son chemin complet sur le disque (File System Access API).",
       "folder_sync_last_sync": "Dernière synchronisation : {time}",
       "folder_sync_last_result": "{scanned} fichier(s) vérifié(s), {imported} importé(s)",
       "folder_sync_syncing": "Synchronisation…",

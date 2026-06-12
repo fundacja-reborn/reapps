@@ -91,19 +91,36 @@ async function walkDirectory(
 export const MTIME_FILTER_MARGIN_MS = 2_000;
 
 /**
- * Keep only entries modified since the last completed scan. With
- * `lastSyncAt = null` (first sync after linking) everything passes.
+ * Select the entries a sync run must import: files that are NEW to the
+ * directory (path not in `knownPaths`) plus known files modified since the
+ * last completed scan.
+ *
+ * The path check exists because the mtime watermark alone misses files
+ * copied or moved into the directory: Finder / `cp -p` / `mv` preserve the
+ * original modification date, so a file added yesterday-but-written-last-year
+ * would never cross the watermark on its own.
+ *
+ * Everything passes when `lastSyncAt` is null (first sync after linking) or
+ * `knownPaths` is null (records persisted before path tracking existed -
+ * the run is still cheap thanks to the overwrite strategy's unchanged-skip,
+ * and it populates the path set for the next one).
  *
  * `lastModified === 0` means "no mtime info" (same convention as
  * `pickImportTimestamps`); such files always pass so they are never starved
  * out of the import.
  */
-export function filterEntriesChangedSince(
+export function filterEntriesToSync(
   entries: SyncFileEntry[],
-  lastSyncAt: string | null
+  lastSyncAt: string | null,
+  knownPaths: ReadonlySet<string> | null
 ): SyncFileEntry[] {
-  if (!lastSyncAt) return entries;
+  if (!lastSyncAt || !knownPaths) return entries;
   const cutoff = new Date(lastSyncAt).getTime() - MTIME_FILTER_MARGIN_MS;
   if (Number.isNaN(cutoff)) return entries;
-  return entries.filter((e) => e.file.lastModified === 0 || e.file.lastModified > cutoff);
+  return entries.filter(
+    (e) =>
+      !knownPaths.has(e.relativePath) ||
+      e.file.lastModified === 0 ||
+      e.file.lastModified > cutoff
+  );
 }

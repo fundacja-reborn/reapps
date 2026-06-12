@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   collectMarkdownEntries,
-  filterEntriesChangedSince,
+  filterEntriesToSync,
   MAX_SYNC_DEPTH,
   MTIME_FILTER_MARGIN_MS,
   type DirectoryHandleLike,
@@ -118,36 +118,67 @@ describe('collectMarkdownEntries', () => {
   });
 });
 
-describe('filterEntriesChangedSince', () => {
+describe('filterEntriesToSync', () => {
   const T0 = Date.parse('2026-06-12T12:00:00.000Z');
+
+  /** All paths of `entries` marked as already known to the sync config. */
+  function knownAll(entries: SyncFileEntry[]): Set<string> {
+    return new Set(entries.map((e) => e.relativePath));
+  }
 
   it('passes everything through on first sync (lastSyncAt = null)', () => {
     const entries = [syncEntry('a.md', T0 - 100_000), syncEntry('b.md', T0)];
-    expect(filterEntriesChangedSince(entries, null)).toHaveLength(2);
+    expect(filterEntriesToSync(entries, null, new Set())).toHaveLength(2);
   });
 
-  it('keeps only files modified after lastSyncAt minus the safety margin', () => {
+  it('passes everything through for legacy configs without a known-path set', () => {
+    const entries = [syncEntry('a.md', T0 - 100_000)];
+    expect(filterEntriesToSync(entries, new Date(T0).toISOString(), null)).toHaveLength(1);
+  });
+
+  it('keeps only known files modified after lastSyncAt minus the safety margin', () => {
     const lastSyncAt = new Date(T0).toISOString();
     const oldFile = syncEntry('old.md', T0 - MTIME_FILTER_MARGIN_MS - 1);
     const marginFile = syncEntry('margin.md', T0 - MTIME_FILTER_MARGIN_MS + 1);
     const newFile = syncEntry('new.md', T0 + 5_000);
+    const all = [oldFile, marginFile, newFile];
 
-    const kept = filterEntriesChangedSince([oldFile, marginFile, newFile], lastSyncAt);
+    const kept = filterEntriesToSync(all, lastSyncAt, knownAll(all));
 
     expect(kept.map((e) => e.file.name)).toEqual(['margin.md', 'new.md']);
   });
 
-  it('always keeps files without mtime info (lastModified === 0)', () => {
+  it('always keeps paths NOT in the known set, even with an old mtime (copied/moved-in files)', () => {
+    const lastSyncAt = new Date(T0).toISOString();
+    const known = syncEntry('known-old.md', T0 - 100_000);
+    // Copied into the directory after the last scan, but Finder/cp/mv kept
+    // its original (old) modification date - the watermark alone misses it.
+    const copiedIn = syncEntry('copied-in.md', T0 - 100_000);
+
+    const kept = filterEntriesToSync([known, copiedIn], lastSyncAt, knownAll([known]));
+
+    expect(kept.map((e) => e.file.name)).toEqual(['copied-in.md']);
+  });
+
+  it('treats a deleted-then-restored path as new again (set is a per-scan snapshot)', () => {
+    const lastSyncAt = new Date(T0).toISOString();
+    const restored = syncEntry('restored.md', T0 - 100_000);
+    // The previous scan no longer saw the file, so its path is absent.
+    const kept = filterEntriesToSync([restored], lastSyncAt, new Set(['Vault/other.md']));
+    expect(kept).toHaveLength(1);
+  });
+
+  it('always keeps known files without mtime info (lastModified === 0)', () => {
     const lastSyncAt = new Date(T0).toISOString();
     const noMtime = syncEntry('no-mtime.md', 0);
 
-    const kept = filterEntriesChangedSince([noMtime], lastSyncAt);
+    const kept = filterEntriesToSync([noMtime], lastSyncAt, knownAll([noMtime]));
 
     expect(kept).toHaveLength(1);
   });
 
   it('falls back to a full pass when lastSyncAt is unparsable', () => {
     const entries = [syncEntry('a.md', 123)];
-    expect(filterEntriesChangedSince(entries, 'not-a-date')).toHaveLength(1);
+    expect(filterEntriesToSync(entries, 'not-a-date', knownAll(entries))).toHaveLength(1);
   });
 });

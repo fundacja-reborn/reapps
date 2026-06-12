@@ -741,6 +741,8 @@
       "folder_sync_pick_btn": "Elegir carpeta",
       "folder_sync_unsupported": "Tu navegador no admite el acceso a carpetas (File System Access API). Para sincronizar una carpeta local, usa un navegador basado en Chromium, como Chrome o Edge.",
       "folder_sync_linked": "Carpeta vinculada: {name}",
+      "folder_sync_destination": "Importado a la carpeta \"{name}\" en el nivel raíz de la aplicación",
+      "folder_sync_no_full_path": "El navegador solo comparte el nombre de la carpeta, no su ruta completa en el disco (File System Access API).",
       "folder_sync_last_sync": "Última sincronización: {time}",
       "folder_sync_last_result": "{scanned} archivo(s) comprobado(s), {imported} importado(s)",
       "folder_sync_syncing": "Sincronizando…",
