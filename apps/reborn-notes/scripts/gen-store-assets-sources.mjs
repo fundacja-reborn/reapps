@@ -18,6 +18,12 @@
  *   splash-dark.png      2732  brand circle centered on near-black (#1B1B1B,
  *                              matches the app's dark --background)
  *
+ * Also renders the Play Store feature graphic (not a @capacitor/assets
+ * input - the fan-out only picks up the five names above and ignores it):
+ *
+ *   feature-graphic.png  1024x500  brand circle centered on near-black,
+ *                                  no text (locale-neutral, like the splash)
+ *
  * Then `pnpm gen:store-assets` (package.json) runs the pinned
  * @capacitor/assets to fan these out into android/ mipmaps+drawables and
  * ios/ asset catalogs. Re-run only when the brand changes; outputs are
@@ -40,6 +46,9 @@ const SPLASH_DARK_BG = '#1b1b1b';
 const SPLASH_SIZE = 2732;
 const SPLASH_LOGO_SIZE = 600;
 const ICON_SIZE = 1024;
+const FEATURE_WIDTH = 1024;
+const FEATURE_HEIGHT = 500;
+const FEATURE_LOGO_SIZE = 340;
 
 // The white glyph paths from icon.svg live in store-assets-glyph.mjs (shared
 // with the Android vector-icon postfix); the guard below fails the build if
@@ -60,6 +69,28 @@ const glyphGroup = `<g fill="#ffffff" fill-rule="evenodd">${GLYPH_PATHS}</g>`;
 
 async function renderIcon(name, body) {
   await sharp(svg(ICON_SIZE, body)).png().toFile(resolve(outDir, name));
+  console.log(`gen-store-assets-sources: wrote assets/${name}`);
+}
+
+async function renderFeatureGraphic(name) {
+  // Play Console wants 1024x500 without alpha; the brand circle on the dark
+  // splash background reads well both standalone and behind the play button
+  // overlay Google puts on it when a promo video is attached.
+  const logo = await sharp(Buffer.from(brandSvg))
+    .resize(FEATURE_LOGO_SIZE, FEATURE_LOGO_SIZE)
+    .png()
+    .toBuffer();
+  await sharp({
+    create: {
+      width: FEATURE_WIDTH,
+      height: FEATURE_HEIGHT,
+      channels: 3,
+      background: SPLASH_DARK_BG
+    }
+  })
+    .composite([{ input: logo, gravity: 'center' }])
+    .png()
+    .toFile(resolve(outDir, name));
   console.log(`gen-store-assets-sources: wrote assets/${name}`);
 }
 
@@ -93,3 +124,4 @@ await renderIcon('icon-foreground.png', glyphGroup);
 await renderIcon('icon-background.png', `<rect width="1178" height="1178" fill="${BRAND_YELLOW}"/>`);
 await renderSplash('splash.png', SPLASH_LIGHT_BG);
 await renderSplash('splash-dark.png', SPLASH_DARK_BG);
+await renderFeatureGraphic('feature-graphic.png');
