@@ -75,20 +75,63 @@ export function parseMarkdownFile(raw: string): ParsedMarkdown {
 }
 
 /**
- * Split `file.webkitRelativePath` into folder segments, stripping:
- *  - the first segment (the root vault directory the user selected — its
- *    contents are imported, not the vault itself)
- *  - the last segment (the filename)
+ * Split `file.webkitRelativePath` into folder segments, stripping the last
+ * segment (the filename) and - by default - the first segment (the root
+ * directory the user selected: its contents are imported, not the container).
  *
- * Examples:
+ * `keepRoot: true` preserves that first segment, so the selected directory
+ * itself becomes a folder in the imported tree (used by the "keep top-level
+ * folder" import option).
+ *
+ * Examples (default):
  *   "MyVault/Projects/Web/note.md"  → ["Projects", "Web"]
  *   "MyVault/note.md"               → []
  *   ""                              → []
+ * Examples (keepRoot):
+ *   "MyVault/Projects/Web/note.md"  → ["MyVault", "Projects", "Web"]
+ *   "MyVault/note.md"               → ["MyVault"]
  */
-export function extractFolderSegments(relativePath: string): string[] {
+export function extractFolderSegments(relativePath: string, keepRoot = false): string[] {
   const parts = (relativePath || '').split('/').filter(Boolean);
-  if (parts.length <= 2) return [];
-  return parts.slice(1, -1);
+  const start = keepRoot ? 0 : 1;
+  if (parts.length - 1 <= start) return [];
+  return parts.slice(start, -1);
+}
+
+/** Minimal structural slice of `File` used by the pure pre-filter helpers. */
+export type ImportFileLike = {
+  name: string;
+  webkitRelativePath?: string;
+};
+
+/**
+ * Name of the root directory the user picked, read from the first available
+ * `webkitRelativePath`. Returns `null` when no file carries a relative path
+ * (defensive - a `webkitdirectory` input always populates it in practice).
+ */
+export function getRootFolderName(files: ImportFileLike[]): string | null {
+  for (const f of files) {
+    const first = (f.webkitRelativePath || '').split('/').filter(Boolean)[0];
+    if (first) return first;
+  }
+  return null;
+}
+
+/**
+ * Mirror of the importer's pre-filter pipeline (hidden directories + `.md`
+ * extension), used to show an honest "X notes ready to import" preview
+ * before the user commits to a duplicate strategy. The per-file size cap is
+ * intentionally not mirrored here - the importer reports `skippedTooLarge`
+ * in its result instead.
+ */
+export function countImportableMarkdownFiles(files: ImportFileLike[]): number {
+  let count = 0;
+  for (const f of files) {
+    if (containsHiddenSegment(f.webkitRelativePath ?? '')) continue;
+    if (!f.name.toLowerCase().endsWith('.md')) continue;
+    count++;
+  }
+  return count;
 }
 
 /**

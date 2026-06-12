@@ -3,6 +3,8 @@ import {
   parseMarkdownFile,
   extractFolderSegments,
   containsHiddenSegment,
+  countImportableMarkdownFiles,
+  getRootFolderName,
   normalizeFrontmatterDate,
   pickImportTimestamps
 } from './markdown-import-utils';
@@ -109,6 +111,88 @@ describe('extractFolderSegments', () => {
 
   it('ignores double slashes and leading slash artifacts', () => {
     expect(extractFolderSegments('/Root//a/note.md')).toEqual(['a']);
+  });
+
+  describe('keepRoot', () => {
+    it('preserves the root directory as the first segment', () => {
+      expect(extractFolderSegments('MyVault/Projects/Web/note.md', true)).toEqual([
+        'MyVault',
+        'Projects',
+        'Web'
+      ]);
+    });
+
+    it('maps a file directly in the chosen root to [root]', () => {
+      expect(extractFolderSegments('MyVault/note.md', true)).toEqual(['MyVault']);
+    });
+
+    it('returns [] for an empty path', () => {
+      expect(extractFolderSegments('', true)).toEqual([]);
+    });
+
+    it('returns [] for a bare filename without any directory', () => {
+      expect(extractFolderSegments('note.md', true)).toEqual([]);
+    });
+  });
+});
+
+describe('getRootFolderName', () => {
+  it('reads the first segment of the first file with a relative path', () => {
+    expect(
+      getRootFolderName([
+        { name: 'a.md', webkitRelativePath: 'reapps-docs/guidelines/a.md' },
+        { name: 'b.md', webkitRelativePath: 'reapps-docs/b.md' }
+      ])
+    ).toBe('reapps-docs');
+  });
+
+  it('skips files without a relative path', () => {
+    expect(
+      getRootFolderName([
+        { name: 'pasted.md' },
+        { name: 'a.md', webkitRelativePath: 'Vault/a.md' }
+      ])
+    ).toBe('Vault');
+  });
+
+  it('tolerates leading slash artifacts', () => {
+    expect(getRootFolderName([{ name: 'a.md', webkitRelativePath: '/Vault/a.md' }])).toBe(
+      'Vault'
+    );
+  });
+
+  it('returns null when no file carries a relative path', () => {
+    expect(getRootFolderName([{ name: 'a.md' }, { name: 'b.md', webkitRelativePath: '' }])).toBe(
+      null
+    );
+  });
+
+  it('returns null for an empty list', () => {
+    expect(getRootFolderName([])).toBe(null);
+  });
+});
+
+describe('countImportableMarkdownFiles', () => {
+  it('counts only .md files outside hidden directories', () => {
+    expect(
+      countImportableMarkdownFiles([
+        { name: 'a.md', webkitRelativePath: 'Vault/a.md' },
+        { name: 'B.MD', webkitRelativePath: 'Vault/sub/B.MD' },
+        { name: 'plugin.json', webkitRelativePath: 'Vault/.obsidian/plugin.json' },
+        { name: 'trashed.md', webkitRelativePath: 'Vault/.trash/trashed.md' },
+        { name: 'image.png', webkitRelativePath: 'Vault/image.png' }
+      ])
+    ).toBe(2);
+  });
+
+  it('does not treat a hidden ROOT directory as hidden (user picked it)', () => {
+    expect(
+      countImportableMarkdownFiles([{ name: 'a.md', webkitRelativePath: '.vault/a.md' }])
+    ).toBe(1);
+  });
+
+  it('counts flat files without a relative path by extension only', () => {
+    expect(countImportableMarkdownFiles([{ name: 'a.md' }, { name: 'b.txt' }])).toBe(1);
   });
 });
 

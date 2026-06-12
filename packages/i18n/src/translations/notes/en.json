@@ -239,6 +239,11 @@
       "dialog_description": "The selected Markdown files will be imported into this folder.",
       "dialog_close": "Close"
     },
+    "import_folder": {
+      "action": "Import folder here",
+      "dialog_title": "Import folder into \"{name}\"",
+      "dialog_description": "The .md files from the selected folder will be imported including subfolders. Tags and frontmatter dates are preserved."
+    },
     "errors": {
       "create_failed": "Failed to create folder",
       "update_failed": "Failed to update folder",
@@ -692,6 +697,8 @@
       "import_folder_desc": "Select a folder (e.g. an Obsidian vault) — subfolder structure, tags and frontmatter dates are preserved",
       "import_folder_btn": "Select folder",
       "importing_folder": "Importing folder…",
+      "keep_root_label": "Keep top-level folder \"{name}\"",
+      "keep_root_destination": "Notes will be imported into \"{path}\"",
       "folder_import_summary": "Imported: {imported} notes, {folders} new folders, {tags} new tags",
       "folder_import_skipped_non_md": "Skipped {count} non-markdown file(s)",
       "folder_import_skipped_too_large": "Skipped {count} file(s) larger than 500 KB",
@@ -704,11 +711,12 @@
       "dedup_skip": "Skip duplicates",
       "dedup_skip_desc": "Leave the existing note untouched",
       "dedup_overwrite": "Overwrite existing",
-      "dedup_overwrite_desc": "Replace the existing note's content and tags with the imported version (preserves creation date)",
+      "dedup_overwrite_desc": "Replace the existing note's content and tags with the imported version (preserves creation date; notes that haven't changed are left untouched)",
       "dedup_start": "Start import",
       "dedup_count_overwritten": "Overwrote {count} existing note(s)",
       "dedup_count_renamed": "Imported {count} duplicate(s) under a new name",
       "dedup_count_skipped": "Skipped {count} duplicate(s)",
+      "dedup_count_unchanged": "Left {count} note(s) unchanged (already up to date)",
       "import_backup": "Import backup",
       "import_backup_desc": "Restore from a JSON backup file",
       "import_json": "Import JSON",

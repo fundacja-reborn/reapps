@@ -239,6 +239,11 @@
       "dialog_description": "Wybrane pliki Markdown zostaną zaimportowane do tego folderu.",
       "dialog_close": "Zamknij"
     },
+    "import_folder": {
+      "action": "Importuj folder tutaj",
+      "dialog_title": "Importuj folder do „{name}”",
+      "dialog_description": "Pliki .md z wybranego folderu zostaną zaimportowane wraz z podfolderami. Tagi i daty z frontmattera zostaną zachowane."
+    },
     "errors": {
       "create_failed": "Nie udało się utworzyć folderu",
       "update_failed": "Nie udało się zaktualizować folderu",
@@ -692,6 +697,8 @@
       "import_folder_desc": "Wybierz folder (np. vault Obsidian) — struktura podfolderów, tagi i daty z frontmatter zostaną zachowane",
       "import_folder_btn": "Wybierz folder",
       "importing_folder": "Importowanie folderu…",
+      "keep_root_label": "Zachowaj folder główny „{name}”",
+      "keep_root_destination": "Notatki trafią do „{path}”",
       "folder_import_summary": "Zaimportowano: {imported} notatek, {folders} nowych folderów, {tags} nowych tagów",
       "folder_import_skipped_non_md": "Pominięto {count} plików nie-markdown",
       "folder_import_skipped_too_large": "Pominięto {count} plików przekraczających 500 KB",
@@ -704,11 +711,12 @@
       "dedup_skip": "Pomiń duplikat",
       "dedup_skip_desc": "Zostaw istniejącą notatkę bez zmian",
       "dedup_overwrite": "Zastąp istniejącą",
-      "dedup_overwrite_desc": "Nadpisz treść i tagi importowaną wersją (zachowuje datę utworzenia)",
+      "dedup_overwrite_desc": "Nadpisz treść i tagi importowaną wersją (zachowuje datę utworzenia; notatki bez zmian pozostają nietknięte)",
       "dedup_start": "Rozpocznij import",
       "dedup_count_overwritten": "Zastąpiono {count} istniejących notatek",
       "dedup_count_renamed": "Zaimportowano {count} duplikatów z nową nazwą",
       "dedup_count_skipped": "Pominięto {count} duplikatów",
+      "dedup_count_unchanged": "Pozostawiono {count} notatek bez zmian (już aktualne)",
       "import_backup": "Importuj kopię zapasową",
       "import_backup_desc": "Przywróć z pliku kopii zapasowej JSON",
       "import_json": "Importuj JSON",

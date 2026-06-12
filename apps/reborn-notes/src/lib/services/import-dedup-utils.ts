@@ -60,6 +60,39 @@ export function findExisting(
 }
 
 /**
+ * Decide whether an `overwrite`-strategy import can skip the write entirely
+ * because the incoming file is identical to the already-stored note.
+ *
+ * Comparison is exact (case-sensitive) on title and content - a deliberate
+ * asymmetry with the case-INsensitive duplicate *detection*: "notes.md" is
+ * matched against an existing "Notes.md" (so it doesn't duplicate), but the
+ * title-case change still counts as a real update.
+ *
+ * `incoming.tagIds === undefined` means the import path does not manage tags
+ * (flat .md import) - tags are then excluded from the comparison, mirroring
+ * the overwrite behavior of leaving them untouched. When provided (folder
+ * import, frontmatter as source of truth), tag sets are compared
+ * order-insensitively.
+ */
+export function isImportUnchanged(
+  existing: { title: string; content: string; tagIds: string[] },
+  incoming: { title: string; content: string; tagIds?: string[] }
+): boolean {
+  if (existing.title !== incoming.title) return false;
+  if (existing.content !== incoming.content) return false;
+  if (incoming.tagIds === undefined) return true;
+  // Set semantics on both sides - frontmatter can repeat a tag (`tags: [a, a]`)
+  // and setTagsForNote would collapse it anyway, so duplicates must not count.
+  const existingSet = new Set(existing.tagIds);
+  const incomingSet = new Set(incoming.tagIds);
+  if (existingSet.size !== incomingSet.size) return false;
+  for (const id of incomingSet) {
+    if (!existingSet.has(id)) return false;
+  }
+  return true;
+}
+
+/**
  * Compute a non-colliding renamed title by appending ` (N)` until the slot
  * is free. Trims the base title so that the longest possible suffix
  * (` (999)` ≈ 6 chars; bounded at 9999 here for safety) still fits within

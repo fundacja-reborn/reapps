@@ -39,8 +39,13 @@
     type ImportProgress
   } from '$lib/services/export-import.service';
   import type { DuplicateStrategy } from '$lib/services/import-dedup-utils';
+  import {
+    countImportableMarkdownFiles,
+    getRootFolderName
+  } from '$lib/services/markdown-import-utils';
   import { notesStore } from '$lib/stores/notes.store';
   import MarkdownImportStrategyPicker from '$lib/components/import/MarkdownImportStrategyPicker.svelte';
+  import ImportResultSummary from '$lib/components/import/ImportResultSummary.svelte';
   import { createLogger } from '@reborn/utils';
 
   const logger = createLogger('notes:import-export');
@@ -81,7 +86,18 @@
   let pendingFolderFiles = $state<File[] | null>(null);
   let pendingFolderStrategy = $state<DuplicateStrategy>('rename');
   let pendingFolderMdCount = $state(0);
+  // Name of the directory the user picked (first webkitRelativePath segment)
+  // + whether to recreate it as the top-level folder. Default ON: "I picked
+  // folder X, I get folder X" - and re-imports of the same directory then
+  // refresh that folder in place instead of scattering content at the root.
+  let pendingFolderRootName = $state<string | null>(null);
+  let pendingFolderKeepRoot = $state(true);
   let folderProgress = $state<ImportProgress | null>(null);
+  const folderImportDestination = $derived(
+    pendingFolderKeepRoot && pendingFolderRootName !== null
+      ? pendingFolderRootName
+      : $t('nav.all_notes')
+  );
 
   // Import JSON backup
   let importingBackup = $state(false);
@@ -181,6 +197,7 @@
         duplicatesSkipped: 0,
         duplicatesOverwritten: 0,
         duplicatesRenamed: 0,
+        duplicatesUnchanged: 0,
         strippedCount: 0,
         errors: [err instanceof Error ? err.message : 'Import failed']
       };
@@ -197,31 +214,9 @@
     pendingFolderFiles = null;
     pendingFolderStrategy = 'rename';
     pendingFolderMdCount = 0;
+    pendingFolderRootName = null;
+    pendingFolderKeepRoot = true;
     folderImportInputEl?.click();
-  }
-
-  /**
-   * Mirror the importer's pre-filter logic to give the user an honest
-   * "X notatek do importu" preview before they commit to a strategy.
-   */
-  function countImportableMarkdownFiles(files: File[]): number {
-    let count = 0;
-    for (const f of files) {
-      const path = (f as File & { webkitRelativePath?: string }).webkitRelativePath ?? '';
-      // Skip hidden segments (`.obsidian/`, `.trash/`, etc.) — match service logic.
-      const parts = path.split('/').filter(Boolean);
-      let hidden = false;
-      for (let i = 1; i < parts.length; i++) {
-        if (parts[i].startsWith('.')) {
-          hidden = true;
-          break;
-        }
-      }
-      if (hidden) continue;
-      if (!f.name.toLowerCase().endsWith('.md')) continue;
-      count++;
-    }
-    return count;
   }
 
   function handleFolderFilesSelected(e: Event) {
@@ -230,20 +225,24 @@
     if (files.length === 0) return;
     pendingFolderFiles = files;
     pendingFolderMdCount = countImportableMarkdownFiles(files);
+    pendingFolderRootName = getRootFolderName(files);
   }
 
   function cancelFolderImport() {
     pendingFolderFiles = null;
     pendingFolderMdCount = 0;
+    pendingFolderRootName = null;
   }
 
   async function runFolderImport() {
     if (!pendingFolderFiles) return;
     const files = pendingFolderFiles;
     const strategy = pendingFolderStrategy;
+    const keepRootFolder = pendingFolderKeepRoot && pendingFolderRootName !== null;
     const initialMdCount = pendingFolderMdCount;
     pendingFolderFiles = null;
     pendingFolderMdCount = 0;
+    pendingFolderRootName = null;
 
     importingFolder = true;
     folderImportResult = null;
@@ -251,9 +250,14 @@
     // the importer re-applies its own filters and reports `total` precisely.
     folderProgress = { phase: 'reading', current: 0, total: initialMdCount };
     try {
-      const result = await importFolder(files, strategy, (p) => {
-        folderProgress = p;
-      });
+      const result = await importFolder(
+        files,
+        strategy,
+        (p) => {
+          folderProgress = p;
+        },
+        { keepRootFolder }
+      );
       folderImportResult = result;
       await Promise.all([
         notesStore.refresh(),
@@ -271,6 +275,7 @@
         duplicatesSkipped: 0,
         duplicatesOverwritten: 0,
         duplicatesRenamed: 0,
+        duplicatesUnchanged: 0,
         strippedCount: 0,
         errors: [err instanceof Error ? err.message : 'Import failed']
       };
@@ -640,51 +645,7 @@
           {/if}
 
           {#if importResult}
-            <div
-              class="mt-3 rounded-md px-3 py-2 text-xs space-y-1
-              {importResult.errors.length === 0
-                ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400'
-                : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'}"
-            >
-              {#if importResult.imported > 0}
-                <p>
-                  {$t('settings_page.export_import.imported_count', {
-                    values: { count: importResult.imported }
-                  })}
-                </p>
-              {/if}
-              {#if importResult.duplicatesOverwritten > 0}
-                <p class="text-muted-foreground">
-                  {$t('settings_page.export_import.dedup_count_overwritten', {
-                    values: { count: importResult.duplicatesOverwritten }
-                  })}
-                </p>
-              {/if}
-              {#if importResult.duplicatesRenamed > 0}
-                <p class="text-muted-foreground">
-                  {$t('settings_page.export_import.dedup_count_renamed', {
-                    values: { count: importResult.duplicatesRenamed }
-                  })}
-                </p>
-              {/if}
-              {#if importResult.duplicatesSkipped > 0}
-                <p class="text-muted-foreground">
-                  {$t('settings_page.export_import.dedup_count_skipped', {
-                    values: { count: importResult.duplicatesSkipped }
-                  })}
-                </p>
-              {/if}
-              {#if importResult.strippedCount && importResult.strippedCount > 0}
-                <p>
-                  {$t('settings_page.export_import.unsafe_content_stripped', {
-                    values: { count: importResult.strippedCount }
-                  })}
-                </p>
-              {/if}
-              {#each importResult.errors as err}
-                <p>{err}</p>
-              {/each}
-            </div>
+            <ImportResultSummary result={importResult} class="mt-3" />
           {/if}
         </div>
 
@@ -723,6 +684,23 @@
                 promptVariant="folder"
                 radioGroupName="folder-strategy"
               />
+              {#if pendingFolderRootName !== null}
+                <label class="flex items-start gap-2 text-xs cursor-pointer">
+                  <input type="checkbox" bind:checked={pendingFolderKeepRoot} class="mt-0.5" />
+                  <span>
+                    <span class="font-medium">
+                      {$t('settings_page.export_import.keep_root_label', {
+                        values: { name: pendingFolderRootName }
+                      })}
+                    </span>
+                    <span class="block text-muted-foreground">
+                      {$t('settings_page.export_import.keep_root_destination', {
+                        values: { path: folderImportDestination }
+                      })}
+                    </span>
+                  </span>
+                </label>
+              {/if}
               <div class="flex gap-2">
                 <button
                   type="button"
@@ -772,76 +750,7 @@
           {/if}
 
           {#if folderImportResult}
-            <div
-              class="mt-3 rounded-md px-3 py-2 text-xs space-y-1
-              {folderImportResult.errors.length === 0
-                ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400'
-                : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'}"
-            >
-              {#if folderImportResult.imported > 0}
-                <p>
-                  {$t('settings_page.export_import.folder_import_summary', {
-                    values: {
-                      imported: folderImportResult.imported,
-                      folders: folderImportResult.foldersCreated,
-                      tags: folderImportResult.tagsCreated
-                    }
-                  })}
-                </p>
-              {/if}
-              {#if folderImportResult.skippedHidden > 0}
-                <p class="text-muted-foreground">
-                  {$t('settings_page.export_import.folder_import_skipped_hidden', {
-                    values: { count: folderImportResult.skippedHidden }
-                  })}
-                </p>
-              {/if}
-              {#if folderImportResult.skippedNonMarkdown > 0}
-                <p class="text-muted-foreground">
-                  {$t('settings_page.export_import.folder_import_skipped_non_md', {
-                    values: { count: folderImportResult.skippedNonMarkdown }
-                  })}
-                </p>
-              {/if}
-              {#if folderImportResult.skippedTooLarge > 0}
-                <p class="text-muted-foreground">
-                  {$t('settings_page.export_import.folder_import_skipped_too_large', {
-                    values: { count: folderImportResult.skippedTooLarge }
-                  })}
-                </p>
-              {/if}
-              {#if folderImportResult.duplicatesOverwritten > 0}
-                <p class="text-muted-foreground">
-                  {$t('settings_page.export_import.dedup_count_overwritten', {
-                    values: { count: folderImportResult.duplicatesOverwritten }
-                  })}
-                </p>
-              {/if}
-              {#if folderImportResult.duplicatesRenamed > 0}
-                <p class="text-muted-foreground">
-                  {$t('settings_page.export_import.dedup_count_renamed', {
-                    values: { count: folderImportResult.duplicatesRenamed }
-                  })}
-                </p>
-              {/if}
-              {#if folderImportResult.duplicatesSkipped > 0}
-                <p class="text-muted-foreground">
-                  {$t('settings_page.export_import.dedup_count_skipped', {
-                    values: { count: folderImportResult.duplicatesSkipped }
-                  })}
-                </p>
-              {/if}
-              {#if folderImportResult.strippedCount > 0}
-                <p class="text-muted-foreground">
-                  {$t('settings_page.export_import.unsafe_content_stripped', {
-                    values: { count: folderImportResult.strippedCount }
-                  })}
-                </p>
-              {/if}
-              {#each folderImportResult.errors as err}
-                <p>{err}</p>
-              {/each}
-            </div>
+            <ImportResultSummary result={folderImportResult} class="mt-3" />
           {/if}
         </div>
 

@@ -2,6 +2,7 @@
   import {
     MoreVertical,
     FolderPlus,
+    FolderInput,
     Pencil,
     Trash2,
     Upload
@@ -53,8 +54,10 @@
   let sheetOpen = $state(false);
   let deleteDialogOpen = $state(false);
   let importDialogOpen = $state(false);
+  let importMode = $state<'files' | 'folder'>('files');
   let importPendingFiles = $state<File[] | null>(null);
   let importFileInputEl = $state<HTMLInputElement | null>(null);
+  let importFolderInputEl = $state<HTMLInputElement | null>(null);
 
   function openSheet() {
     sheetOpen = true;
@@ -72,10 +75,19 @@
 
   function handleImportHere() {
     sheetOpen = false;
+    importMode = 'files';
     if (importFileInputEl) importFileInputEl.value = '';
     importFileInputEl?.click();
   }
 
+  function handleImportFolderHere() {
+    sheetOpen = false;
+    importMode = 'folder';
+    if (importFolderInputEl) importFolderInputEl.value = '';
+    importFolderInputEl?.click();
+  }
+
+  // Shared by both hidden inputs - `importMode` was set by the trigger.
   function handleImportFilesSelected(e: Event) {
     const input = e.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
@@ -143,6 +155,10 @@
           <Upload class="h-3.5 w-3.5" />
           {$t('folders.import_markdown.action')}
         </DropdownMenuItem>
+        <DropdownMenuItem onclick={handleImportFolderHere}>
+          <FolderInput class="h-3.5 w-3.5" />
+          {$t('folders.import_folder.action')}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           class="text-destructive focus:text-destructive"
@@ -177,6 +193,10 @@
         <Upload class="mr-2 h-4 w-4" />
         {$t('folders.import_markdown.action')}
       </Button>
+      <Button variant="ghost" class="w-full justify-start" onclick={handleImportFolderHere}>
+        <FolderInput class="mr-2 h-4 w-4" />
+        {$t('folders.import_folder.action')}
+      </Button>
       <Button
         variant="ghost"
         class="w-full justify-start text-destructive hover:text-destructive"
@@ -196,11 +216,19 @@
   onConfirm={confirmDeleteFolder}
 />
 
-<!-- Hidden file input for "Import .md tutaj" — triggered from the menu -->
+<!-- Hidden file inputs for "Import .md here" / "Import folder here" - triggered from the menu -->
 <input
   bind:this={importFileInputEl}
   type="file"
   accept=".md,text/markdown"
+  multiple
+  class="hidden"
+  onchange={handleImportFilesSelected}
+/>
+<input
+  bind:this={importFolderInputEl}
+  type="file"
+  webkitdirectory
   multiple
   class="hidden"
   onchange={handleImportFilesSelected}
@@ -211,4 +239,5 @@
   files={importPendingFiles}
   folderId={folder?.id ?? null}
   folderName={folder?.name ?? ''}
+  mode={importMode}
 />

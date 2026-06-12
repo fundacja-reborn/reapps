@@ -239,6 +239,11 @@
       "dialog_description": "Los archivos Markdown seleccionados se importarán a esta carpeta.",
       "dialog_close": "Cerrar"
     },
+    "import_folder": {
+      "action": "Importar carpeta aquí",
+      "dialog_title": "Importar carpeta en «{name}»",
+      "dialog_description": "Los archivos .md de la carpeta seleccionada se importarán junto con sus subcarpetas. Se conservan las etiquetas y las fechas del frontmatter."
+    },
     "errors": {
       "create_failed": "Error al crear la carpeta",
       "update_failed": "Error al actualizar la carpeta",
@@ -692,6 +697,8 @@
       "import_folder_desc": "Seleccione una carpeta (p. ej., un vault de Obsidian) — se preservan la estructura de subcarpetas, etiquetas y fechas del frontmatter",
       "import_folder_btn": "Seleccionar carpeta",
       "importing_folder": "Importando carpeta…",
+      "keep_root_label": "Mantener la carpeta raíz «{name}»",
+      "keep_root_destination": "Las notas se importarán en «{path}»",
       "folder_import_summary": "Importado: {imported} notas, {folders} carpetas nuevas, {tags} etiquetas nuevas",
       "folder_import_skipped_non_md": "{count} archivo(s) no Markdown omitido(s)",
       "folder_import_skipped_too_large": "{count} archivo(s) de más de 500 KB omitido(s)",
@@ -704,11 +711,12 @@
       "dedup_skip": "Omitir duplicados",
       "dedup_skip_desc": "Dejar la nota existente sin cambios",
       "dedup_overwrite": "Sobrescribir existente",
-      "dedup_overwrite_desc": "Reemplazar el contenido y las etiquetas de la nota existente con la versión importada (se conserva la fecha de creación)",
+      "dedup_overwrite_desc": "Reemplazar el contenido y las etiquetas de la nota existente con la versión importada (se conserva la fecha de creación; las notas sin cambios se dejan intactas)",
       "dedup_start": "Iniciar importación",
       "dedup_count_overwritten": "Se sobrescribieron {count} nota(s) existente(s)",
       "dedup_count_renamed": "Se importaron {count} duplicado(s) con un nuevo nombre",
       "dedup_count_skipped": "Se omitieron {count} duplicado(s)",
+      "dedup_count_unchanged": "Se dejaron {count} nota(s) sin cambios (ya actualizadas)",
       "import_backup": "Importar copia de seguridad",
       "import_backup_desc": "Restaurar desde un archivo de copia de seguridad JSON",
       "import_json": "Importar JSON",
