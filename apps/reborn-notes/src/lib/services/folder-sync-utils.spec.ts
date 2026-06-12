@@ -116,6 +116,29 @@ describe('collectMarkdownEntries', () => {
     expect(entries).toEqual([]);
     expect(skippedTooDeep).toBe(0);
   });
+
+  it('roots paths at a custom rootName instead of the directory name', async () => {
+    // Two sync configs may point at directories that share an on-disk name
+    // ("notes"); the per-config display name keeps their paths - and thus
+    // their top-level target folders - apart.
+    const root = fakeDirHandle('notes', [
+      fakeFileHandle('a.md'),
+      fakeDirHandle('Sub', [fakeFileHandle('b.md')])
+    ]);
+
+    const { entries } = await collectMarkdownEntries(root, 'Notes (work)');
+
+    expect(entries.map((e) => e.relativePath).sort()).toEqual([
+      'Notes (work)/Sub/b.md',
+      'Notes (work)/a.md'
+    ]);
+  });
+
+  it('defaults the path root to the directory name when rootName is omitted', async () => {
+    const root = fakeDirHandle('Vault', [fakeFileHandle('a.md')]);
+    const { entries } = await collectMarkdownEntries(root);
+    expect(entries[0].relativePath).toBe('Vault/a.md');
+  });
 });
 
 describe('filterEntriesToSync', () => {

@@ -42,19 +42,23 @@ export const MAX_SYNC_DEPTH = 20;
  * materialized - so a re-scan touches the minimum of the directory tree.
  * The picked root itself is never treated as hidden (the user chose it).
  *
- * Paths are rooted at `dir.name` (`<root>/<sub>/<file.md>`), matching what a
- * `webkitdirectory` input produces - so the same directory imported either
- * way lands in the same folders.
+ * Paths are rooted at `rootName` (`<root>/<sub>/<file.md>`), the shape a
+ * `webkitdirectory` input produces. It defaults to `dir.name`, but a sync
+ * config passes its user-chosen display name instead - that name is what
+ * `importFolder` turns into the top-level target folder, which is how two
+ * linked directories that share an on-disk name ("notes") land in two
+ * different folders in the app.
  *
  * Subtrees deeper than {@link MAX_SYNC_DEPTH} are skipped and reported in
  * `skippedTooDeep` rather than silently dropped.
  */
 export async function collectMarkdownEntries(
-  dir: DirectoryHandleLike
+  dir: DirectoryHandleLike,
+  rootName?: string
 ): Promise<{ entries: SyncFileEntry[]; skippedTooDeep: number }> {
   const entries: SyncFileEntry[] = [];
   const counters = { skippedTooDeep: 0 };
-  await walkDirectory(dir, dir.name, 0, entries, counters);
+  await walkDirectory(dir, rootName ?? dir.name, 0, entries, counters);
   return { entries, skippedTooDeep: counters.skippedTooDeep };
 }
 

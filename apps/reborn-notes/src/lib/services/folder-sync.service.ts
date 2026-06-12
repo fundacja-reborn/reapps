@@ -1,26 +1,38 @@
 /**
- * Live folder sync - one-way mirror of a local on-disk directory of `.md`
+ * Live folder sync - one-way mirror of local on-disk directories of `.md`
  * files into notes (File System Access API, Chromium-only).
  *
  * The feature is a mechanized version of the manual "re-import folder to
- * refresh" flow: the user links a directory once (`showDirectoryPicker`),
- * the handle is persisted in IndexedDB, and the service re-scans it on app
+ * refresh" flow: the user links a directory (`showDirectoryPicker`), the
+ * handle is persisted in IndexedDB, and the service re-scans it on app
  * open / return-to-foreground / a periodic interval / a manual button,
- * re-importing only files whose mtime changed since the last completed scan
- * (`filterEntriesChangedSince`) with the `overwrite` strategy - whose
- * unchanged-skip makes the whole run idempotent and cheap.
+ * re-importing only files whose path is new or whose mtime changed since
+ * the last completed scan (`filterEntriesToSync`) with the `overwrite`
+ * strategy - whose unchanged-skip makes the whole run idempotent and cheap.
+ *
+ * Multiple directories can be linked (capped at
+ * {@link MAX_FOLDER_SYNC_CONFIGS}). Each config carries a display name
+ * chosen at link time: it labels the entry in settings AND names the
+ * top-level folder the import targets, so two sources that share an on-disk
+ * name end up in two distinct folders. A run iterates configs SEQUENTIALLY
+ * under one cross-tab Web Lock - two concurrent imports would race the
+ * duplicate-title lookup - and isolates errors per config, so one broken
+ * directory never blocks the rest.
  *
  * Semantics (deliberate, see TODO entry "live folder sync"):
  * - One-way disk → app. In-app edits survive until the file on disk
  *   changes again; then disk wins.
  * - Sync NEVER deletes or trashes notes: a file deleted on disk leaves the
  *   note alone; a renamed file imports as a new note (the old one stays).
+ *   The same applies to a config's display name - it is fixed at link time
+ *   (rename = unlink + relink), because renaming would re-target a fresh
+ *   top-level folder and orphan the previous one.
  * - Zero Knowledge untouched: scanning, parsing and encryption all happen
  *   client-side through the same import path as a manual folder import; the
- *   directory handle never leaves the browser profile.
+ *   directory handles never leave the browser profile.
  *
  * On browsers without the API (Safari/Firefox/native shell) the feature
- * reports `unsupported` and stays invisible beyond a hint in settings.
+ * reports unsupported and stays invisible beyond a hint in settings.
  */
 
 import { get, writable } from 'svelte/store';
@@ -40,8 +52,12 @@ import { collectMarkdownEntries, filterEntriesToSync } from './folder-sync-utils
 
 const logger = createLogger('notes:folder-sync');
 
-/** Single-config id - the v1 UI links at most one directory. */
-const SINGLETON_ID = 'default';
+/**
+ * Soft cap on linked directories - every config adds a directory walk to the
+ * periodic auto-run, so the ceiling keeps unattended background work bounded.
+ * Raising it is a one-constant change.
+ */
+export const MAX_FOLDER_SYNC_CONFIGS = 5;
 /** Minimum spacing between automatic runs (focus events can fire in bursts). */
 const AUTO_COOLDOWN_MS = 60_000;
 /** Periodic re-scan while the app stays visible. */
@@ -51,19 +67,16 @@ const PICKER_ID = 'reborn-folder-sync';
 /** Web Locks name guarding against two tabs importing concurrently. */
 const LOCK_NAME = 'reborn-notes-folder-sync';
 
-export type FolderSyncState =
-  | 'unsupported'
-  | 'unconfigured'
-  | 'idle'
-  | 'syncing'
-  | 'needs-permission'
-  | 'error';
-
 export type FolderSyncErrorKey = 'folder_gone' | 'sync_failed' | null;
 
-export type FolderSyncStatus = {
-  state: FolderSyncState;
-  rootName: string | null;
+/** Reactive projection of one linked directory, for the settings UI. */
+export type FolderSyncConfigStatus = {
+  id: string;
+  /** Display name chosen at link time - list label + target root folder. */
+  name: string;
+  /** On-disk directory name; the UI shows it when it differs from `name`. */
+  dirName: string;
+  state: 'idle' | 'syncing' | 'needs-permission' | 'error';
   autoSync: boolean;
   lastSyncAt: string | null;
   lastResult: FolderSyncConfigRecord['last_result'];
@@ -75,28 +88,29 @@ export function isFolderSyncSupported(): boolean {
   return browser && typeof window.showDirectoryPicker === 'function';
 }
 
-const initialStatus: FolderSyncStatus = {
-  state: isFolderSyncSupported() ? 'unconfigured' : 'unsupported',
-  rootName: null,
-  autoSync: false,
-  lastSyncAt: null,
-  lastResult: null,
-  progress: null,
-  errorKey: null
-};
-
-export const folderSyncStatus = writable<FolderSyncStatus>(initialStatus);
+/**
+ * One status entry per linked directory, ordered by link time. Empty while
+ * nothing is linked (or the browser lacks the API - the UI feature-detects
+ * separately via `isFolderSyncSupported`).
+ */
+export const folderSyncStatus = writable<FolderSyncConfigStatus[]>([]);
 
 /** Per-tab single-flight flag; cross-tab exclusion is the Web Lock below. */
-let syncing = false;
+let runnerActive = false;
+/** Config currently being imported - lets a mid-run refresh keep its state. */
+let activeConfigId: string | null = null;
 let lastAutoRunAt = 0;
 
-async function readConfig(): Promise<FolderSyncConfigRecord | null> {
+/** All configs, oldest link first (stable order for the settings list). */
+async function readConfigs(): Promise<FolderSyncConfigRecord[]> {
   try {
-    return await folderSyncStore.get(SINGLETON_ID);
+    const all = await folderSyncStore.getAll();
+    return all.sort(
+      (a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)
+    );
   } catch (e: unknown) {
-    logger.warn('Failed to read folder sync config', e);
-    return null;
+    logger.warn('Failed to read folder sync configs', e);
+    return [];
   }
 }
 
@@ -110,50 +124,66 @@ async function queryReadPermission(handle: FileSystemDirectoryHandle): Promise<P
   }
 }
 
-/**
- * Re-read the persisted config and project it into `folderSyncStatus`.
- * IndexedDB is the source of truth - the in-memory store is only a reactive
- * mirror for the settings UI, so this is safe to call at any time (mount,
- * after logout, after any state-changing operation).
- */
-export async function refreshFolderSyncStatus(): Promise<void> {
-  if (!isFolderSyncSupported()) {
-    folderSyncStatus.set({ ...initialStatus, state: 'unsupported' });
-    return;
-  }
-  const cfg = await readConfig();
-  if (!cfg) {
-    folderSyncStatus.update((s) => ({
-      ...initialStatus,
-      state: 'unconfigured',
-      // A sync still in flight keeps its progress UI (e.g. right after
-      // unlink the syncing flag can't be set, so this is belt-and-braces).
-      progress: syncing ? s.progress : null
-    }));
-    return;
-  }
-  const perm = await queryReadPermission(cfg.handle as FileSystemDirectoryHandle);
-  folderSyncStatus.update((s) => ({
-    ...s,
-    state: syncing ? 'syncing' : perm === 'granted' ? 'idle' : 'needs-permission',
-    rootName: cfg.root_name,
+function patchStatus(id: string, patch: Partial<FolderSyncConfigStatus>): void {
+  folderSyncStatus.update((list) => list.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+}
+
+async function projectConfigStatus(cfg: FolderSyncConfigRecord): Promise<FolderSyncConfigStatus> {
+  const handle = cfg.handle as FileSystemDirectoryHandle;
+  const perm = await queryReadPermission(handle);
+  return {
+    id: cfg.id,
+    name: cfg.root_name,
+    dirName: handle.name,
+    state: perm === 'granted' ? 'idle' : 'needs-permission',
     autoSync: cfg.auto_sync === 1,
     lastSyncAt: cfg.last_sync_at,
     lastResult: cfg.last_result,
-    progress: syncing ? s.progress : null
-  }));
+    progress: null,
+    errorKey: null
+  };
 }
 
 /**
- * Open the directory picker, persist the handle and run the initial full
- * import. Must be called from a user gesture (button click) - the picker
- * and the permission grant both require transient activation.
- *
- * Returns the initial import result, or `null` when the user cancelled the
- * picker / the import could not run.
+ * Re-read the persisted configs and project them into `folderSyncStatus`.
+ * IndexedDB is the source of truth - the in-memory store is only a reactive
+ * mirror for the settings UI, so this is safe to call at any time (mount,
+ * after logout, after any state-changing operation). A config the runner is
+ * importing right now keeps its live syncing state and progress.
  */
-export async function linkFolder(): Promise<ImportFolderResult | null> {
-  if (!isFolderSyncSupported()) return null;
+export async function refreshFolderSyncStatus(): Promise<void> {
+  if (!isFolderSyncSupported()) {
+    folderSyncStatus.set([]);
+    return;
+  }
+  const cfgs = await readConfigs();
+  const fresh = await Promise.all(cfgs.map(projectConfigStatus));
+  folderSyncStatus.update((current) => {
+    if (!runnerActive || activeConfigId === null) return fresh;
+    return fresh.map((f) => {
+      if (f.id !== activeConfigId) return f;
+      const live = current.find((c) => c.id === f.id);
+      return { ...f, state: 'syncing' as const, progress: live?.progress ?? null };
+    });
+  });
+}
+
+/** Outcome of the directory picker step of the add-folder flow. */
+export type PickFolderOutcome =
+  | { kind: 'picked'; handle: FileSystemDirectoryHandle }
+  | { kind: 'cancelled' }
+  | { kind: 'limit-reached' }
+  | { kind: 'already-linked'; name: string };
+
+/**
+ * Open the directory picker and vet the choice against existing configs.
+ * Must be called from a user gesture (button click) - the picker and its
+ * implicit read grant require transient activation. The config is NOT
+ * created yet: the caller collects the display name first and then calls
+ * `addLinkedFolder` with the returned handle.
+ */
+export async function pickFolderToLink(): Promise<PickFolderOutcome> {
+  if (!isFolderSyncSupported()) return { kind: 'cancelled' };
   let handle: FileSystemDirectoryHandle;
   try {
     handle = await window.showDirectoryPicker({ id: PICKER_ID, mode: 'read' });
@@ -162,13 +192,61 @@ export async function linkFolder(): Promise<ImportFolderResult | null> {
     if (!(e instanceof DOMException && e.name === 'AbortError')) {
       logger.warn('showDirectoryPicker failed', e);
     }
-    return null;
+    return { kind: 'cancelled' };
   }
+  const configs = await readConfigs();
+  if (configs.length >= MAX_FOLDER_SYNC_CONFIGS) return { kind: 'limit-reached' };
+  for (const cfg of configs) {
+    if (await isSameDirectory(handle, cfg.handle as FileSystemDirectoryHandle)) {
+      return { kind: 'already-linked', name: cfg.root_name };
+    }
+  }
+  return { kind: 'picked', handle };
+}
 
+async function isSameDirectory(
+  a: FileSystemDirectoryHandle,
+  b: FileSystemDirectoryHandle
+): Promise<boolean> {
+  try {
+    return await a.isSameEntry(b);
+  } catch (e: unknown) {
+    logger.warn('isSameEntry failed', e);
+    return false;
+  }
+}
+
+export type AddFolderOutcome =
+  | { ok: true; id: string }
+  | { ok: false; error: 'name-empty' | 'name-taken' | 'limit-reached' };
+
+/**
+ * Persist a new config for a handle obtained from `pickFolderToLink`.
+ *
+ * `displayName` (default in the UI: the directory name) must be unique
+ * across configs case-insensitively - it is both the label and the target
+ * top-level folder, so a duplicate would silently merge two sources.
+ * Colliding with an EXISTING app folder is fine and deliberate: the import
+ * find-or-creates the folder, letting users target a folder they already
+ * have. Returns fast - the caller kicks off the initial import with
+ * `runFolderSync('manual', id)` so the UI can close the form while the
+ * import streams progress into the new list entry.
+ */
+export async function addLinkedFolder(
+  handle: FileSystemDirectoryHandle,
+  displayName: string
+): Promise<AddFolderOutcome> {
+  const name = displayName.trim();
+  if (!name) return { ok: false, error: 'name-empty' };
+  const configs = await readConfigs();
+  if (configs.length >= MAX_FOLDER_SYNC_CONFIGS) return { ok: false, error: 'limit-reached' };
+  if (configs.some((c) => c.root_name.toLowerCase() === name.toLowerCase())) {
+    return { ok: false, error: 'name-taken' };
+  }
   const record: FolderSyncConfigRecord = {
-    id: SINGLETON_ID,
+    id: crypto.randomUUID(),
     handle,
-    root_name: handle.name,
+    root_name: name,
     auto_sync: 1,
     last_sync_at: null,
     last_result: null,
@@ -176,14 +254,13 @@ export async function linkFolder(): Promise<ImportFolderResult | null> {
   };
   await folderSyncStore.save(record);
   await refreshFolderSyncStatus();
-  // Initial full import right away - the picker click is the user gesture.
-  return runFolderSync('manual');
+  return { ok: true, id: record.id };
 }
 
-/** Remove the link. Imported notes/folders/tags are left untouched. */
-export async function unlinkFolder(): Promise<void> {
+/** Remove one link. Imported notes/folders/tags are left untouched. */
+export async function unlinkFolder(configId: string): Promise<void> {
   try {
-    await folderSyncStore.delete(SINGLETON_ID);
+    await folderSyncStore.delete(configId);
   } catch (e: unknown) {
     logger.warn('Failed to delete folder sync config', e);
   }
@@ -191,87 +268,66 @@ export async function unlinkFolder(): Promise<void> {
 }
 
 /** Toggle automatic runs (focus + interval). Manual "Sync now" always works. */
-export async function setFolderAutoSync(enabled: boolean): Promise<void> {
-  const cfg = await readConfig();
+export async function setFolderAutoSync(configId: string, enabled: boolean): Promise<void> {
+  const cfg = await folderSyncStore.get(configId);
   if (!cfg) return;
   await folderSyncStore.save({ ...cfg, auto_sync: enabled ? 1 : 0 });
   await refreshFolderSyncStatus();
 }
 
 /**
- * Scan the linked directory and import changed files.
+ * Scan linked directories and import changed files.
  *
- * `auto` runs (focus / interval / app open) are fully silent: they bail on
- * missing auth, disabled toggle, hidden tab, cooldown, or a permission that
- * would require a prompt. `manual` runs may call `requestPermission()`
- * (caller guarantees a user gesture) and ignore cooldown/toggle.
+ * `auto` runs (focus / interval / app open) cover every auto-enabled config
+ * and are fully silent: they bail on missing auth, hidden tab or cooldown,
+ * and skip a config whose permission would require a prompt. `manual` runs
+ * target one config (`onlyConfigId`), may call `requestPermission()` (the
+ * caller guarantees a user gesture) and ignore cooldown/toggle.
+ *
+ * Configs run SEQUENTIALLY under one Web Lock - parallel imports would race
+ * the duplicate-title lookup and could double-create notes. A config that
+ * fails (directory gone, permission lost, import error) records its own
+ * error state and the loop continues with the next one.
+ *
+ * Returns the import result of the last config that actually imported -
+ * callers that care about a specific config pass `onlyConfigId`.
  */
 export async function runFolderSync(
-  trigger: 'manual' | 'auto'
+  trigger: 'manual' | 'auto',
+  onlyConfigId?: string
 ): Promise<ImportFolderResult | null> {
-  if (!isFolderSyncSupported() || syncing) return null;
+  if (!isFolderSyncSupported() || runnerActive) return null;
 
   const auth = get(authStore);
   if (!auth.isAuthenticated || !auth.hasE2E) return null;
 
-  const cfg = await readConfig();
-  if (!cfg) return null;
-
   if (trigger === 'auto') {
-    if (cfg.auto_sync !== 1) return null;
     if (document.visibilityState !== 'visible') return null;
     if (Date.now() - lastAutoRunAt < AUTO_COOLDOWN_MS) return null;
   }
 
-  const handle = cfg.handle as FileSystemDirectoryHandle;
-  let perm = await queryReadPermission(handle);
-  if (perm !== 'granted' && trigger === 'manual') {
-    try {
-      perm = await handle.requestPermission({ mode: 'read' });
-    } catch (e: unknown) {
-      logger.warn('requestPermission failed', e);
-      perm = 'denied';
-    }
-  }
-  if (perm !== 'granted') {
-    folderSyncStatus.update((s) => ({ ...s, state: 'needs-permission' }));
-    return null;
-  }
-
-  syncing = true;
+  // Claim the per-tab flag BEFORE the first await: two near-simultaneous
+  // triggers (e.g. visibility + interval) must not both pass the guard.
+  // The cross-tab Web Lock below covers other tabs.
+  runnerActive = true;
   if (trigger === 'auto') lastAutoRunAt = Date.now();
-  folderSyncStatus.update((s) => ({ ...s, state: 'syncing', errorKey: null, progress: null }));
-
   try {
-    const result = await withCrossTabLock(() => scanAndImport(cfg, handle));
-    syncing = false;
-    await refreshFolderSyncStatus();
-    return result;
-  } catch (e: unknown) {
-    syncing = false;
-    const name = e instanceof DOMException ? e.name : '';
-    if (name === 'NotFoundError') {
-      // Directory moved/deleted on disk - keep the config so the user can
-      // restore the directory; surface a targeted message instead.
-      logger.warn('Linked directory not found on disk', e);
-      folderSyncStatus.update((s) => ({
-        ...s,
-        state: 'error',
-        errorKey: 'folder_gone',
-        progress: null
-      }));
-    } else if (name === 'SecurityError' || name === 'NotAllowedError') {
-      folderSyncStatus.update((s) => ({ ...s, state: 'needs-permission', progress: null }));
-    } else {
-      logger.error('Folder sync failed', e);
-      folderSyncStatus.update((s) => ({
-        ...s,
-        state: 'error',
-        errorKey: 'sync_failed',
-        progress: null
-      }));
-    }
-    return null;
+    let configs = await readConfigs();
+    if (onlyConfigId !== undefined) configs = configs.filter((c) => c.id === onlyConfigId);
+    if (trigger === 'auto') configs = configs.filter((c) => c.auto_sync === 1);
+    if (configs.length === 0) return null;
+
+    return await withCrossTabLock(async () => {
+      let lastResult: ImportFolderResult | null = null;
+      for (const cfg of configs) {
+        const result = await syncOneConfig(cfg, trigger);
+        if (result !== null) lastResult = result;
+      }
+      return lastResult;
+    });
+  } finally {
+    runnerActive = false;
+    activeConfigId = null;
   }
 }
 
@@ -296,6 +352,67 @@ async function withCrossTabLock(
   return fn();
 }
 
+/**
+ * Sync a single config end to end, recording its outcome in its own status
+ * entry. Never throws - per-config errors must not break the runner loop.
+ */
+async function syncOneConfig(
+  cfg: FolderSyncConfigRecord,
+  trigger: 'manual' | 'auto'
+): Promise<ImportFolderResult | null> {
+  const handle = cfg.handle as FileSystemDirectoryHandle;
+
+  let perm = await queryReadPermission(handle);
+  if (perm !== 'granted' && trigger === 'manual') {
+    try {
+      perm = await handle.requestPermission({ mode: 'read' });
+    } catch (e: unknown) {
+      logger.warn('requestPermission failed', e);
+      perm = 'denied';
+    }
+  }
+  if (perm !== 'granted') {
+    patchStatus(cfg.id, { state: 'needs-permission', progress: null });
+    return null;
+  }
+
+  activeConfigId = cfg.id;
+  patchStatus(cfg.id, { state: 'syncing', errorKey: null, progress: null });
+
+  try {
+    const result = await scanAndImport(cfg, handle);
+    // Project the post-run record (watermark, last result, a toggle flipped
+    // mid-run) into this config's status entry. No blanket refresh here -
+    // it would wipe the error states other configs recorded this run.
+    const latest = await folderSyncStore.get(cfg.id);
+    if (latest) {
+      patchStatus(cfg.id, {
+        state: 'idle',
+        autoSync: latest.auto_sync === 1,
+        lastSyncAt: latest.last_sync_at,
+        lastResult: latest.last_result,
+        progress: null,
+        errorKey: null
+      });
+    }
+    return result;
+  } catch (e: unknown) {
+    const name = e instanceof DOMException ? e.name : '';
+    if (name === 'NotFoundError') {
+      // Directory moved/deleted on disk - keep the config so the user can
+      // restore the directory; surface a targeted message instead.
+      logger.warn('Linked directory not found on disk', { config: cfg.root_name, error: e });
+      patchStatus(cfg.id, { state: 'error', errorKey: 'folder_gone', progress: null });
+    } else if (name === 'SecurityError' || name === 'NotAllowedError') {
+      patchStatus(cfg.id, { state: 'needs-permission', progress: null });
+    } else {
+      logger.error('Folder sync failed', { config: cfg.root_name, error: e });
+      patchStatus(cfg.id, { state: 'error', errorKey: 'sync_failed', progress: null });
+    }
+    return null;
+  }
+}
+
 async function scanAndImport(
   cfg: FolderSyncConfigRecord,
   handle: FileSystemDirectoryHandle
@@ -305,7 +422,9 @@ async function scanAndImport(
   // absorbs the overlap).
   const scanStartedAt = new Date().toISOString();
 
-  const { entries, skippedTooDeep } = await collectMarkdownEntries(handle);
+  // Root the walk at the config's display name (not the on-disk name): the
+  // first path segment is what importFolder turns into the top-level folder.
+  const { entries, skippedTooDeep } = await collectMarkdownEntries(handle, cfg.root_name);
   if (skippedTooDeep > 0) {
     logger.warn('Folder sync: subtree(s) deeper than the depth cap were skipped', {
       skippedTooDeep
@@ -333,7 +452,7 @@ async function scanAndImport(
     result = await importFolder(
       changed,
       'overwrite',
-      (p) => folderSyncStatus.update((s) => ({ ...s, progress: p })),
+      (p) => patchStatus(cfg.id, { progress: p }),
       { keepRootFolder: true, tagsOnOverwrite: 'merge' }
     );
   }
@@ -368,6 +487,7 @@ async function scanAndImport(
   await folderSyncStore.save(updated);
 
   logger.info('Folder sync run complete', {
+    config: cfg.root_name,
     scanned: entries.length,
     changed: changed.length,
     imported: result?.imported ?? 0,

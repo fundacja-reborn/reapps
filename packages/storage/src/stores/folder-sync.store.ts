@@ -13,8 +13,9 @@ import type { WithId } from '../core/types';
  * IndexedDB (handles are cloneable but NOT JSON-serializable), are never
  * synced to the server, and are cleared on logout like all user data.
  *
- * The schema is a list keyed by `id` for forward-compatibility, but the v1
- * UI maintains at most one record (see `folder-sync.service.ts` in the app).
+ * The list holds one record per linked directory (the app enforces a small
+ * cap and same-directory dedup; see `folder-sync.service.ts`). Records
+ * created by the single-folder v1 (`id = 'default'`) keep working unchanged.
  */
 export interface FolderSyncConfigRecord extends WithId {
   id: string;
@@ -24,7 +25,13 @@ export interface FolderSyncConfigRecord extends WithId {
    * Cloneable into IndexedDB in Chromium (the only engine with the API).
    */
   handle: unknown;
-  /** Directory name at pick time - import root folder name + display label. */
+  /**
+   * Display name chosen at link time (defaults to the directory name, fixed
+   * afterwards - renaming = unlink + relink). Doubles as the list label and
+   * as the name of the top-level folder the import targets, and is unique
+   * across configs (case-insensitive) so two sources named "notes" can be
+   * told apart and land in two different folders.
+   */
   root_name: string;
   /** Auto-sync (on app focus + periodic interval) enabled. */
   auto_sync: 0 | 1;
