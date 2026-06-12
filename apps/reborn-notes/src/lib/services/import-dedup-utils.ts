@@ -11,6 +11,22 @@
 export type DuplicateStrategy = 'skip' | 'overwrite' | 'rename';
 
 /**
+ * How the `overwrite` strategy treats the existing note's tags when the
+ * import path manages tags (folder import with frontmatter resolution):
+ *
+ * - `replace` - frontmatter is the source of truth: the note's tag set
+ *   becomes exactly the file's tags (tags added in the app are dropped).
+ * - `merge`   - frontmatter tags are UNIONED into the note's existing tags:
+ *   in-app curation survives re-imports and live folder sync. The trade-off
+ *   is that removing a tag from frontmatter never removes it from the note -
+ *   remove it in the app instead.
+ *
+ * Stars / pins / other `metadata_encrypted` fields are never touched by
+ * overwrite in either mode (`updateNote` only rewrites title + content).
+ */
+export type TagOverwriteMode = 'replace' | 'merge';
+
+/**
  * Filename length cap for sanitized titles (mirrors `sanitizeFilename` in
  * export-import.service.ts). The rename suffix `" (N)"` must fit within this
  * cap, so the base title is trimmed to leave room before appending the suffix.
@@ -71,12 +87,16 @@ export function findExisting(
  * `incoming.tagIds === undefined` means the import path does not manage tags
  * (flat .md import) - tags are then excluded from the comparison, mirroring
  * the overwrite behavior of leaving them untouched. When provided (folder
- * import, frontmatter as source of truth), tag sets are compared
- * order-insensitively.
+ * import), the tag comparison follows `tagMode`:
+ *
+ * - `replace`: tag sets must be equal (a dropped frontmatter tag is a change).
+ * - `merge`:   incoming tags must be a SUBSET of the existing set - merging
+ *   would add nothing, so extra in-app tags do not count as a difference.
  */
 export function isImportUnchanged(
   existing: { title: string; content: string; tagIds: string[] },
-  incoming: { title: string; content: string; tagIds?: string[] }
+  incoming: { title: string; content: string; tagIds?: string[] },
+  tagMode: TagOverwriteMode = 'replace'
 ): boolean {
   if (existing.title !== incoming.title) return false;
   if (existing.content !== incoming.content) return false;
@@ -85,9 +105,42 @@ export function isImportUnchanged(
   // and setTagsForNote would collapse it anyway, so duplicates must not count.
   const existingSet = new Set(existing.tagIds);
   const incomingSet = new Set(incoming.tagIds);
+  if (tagMode === 'merge') {
+    for (const id of incomingSet) {
+      if (!existingSet.has(id)) return false;
+    }
+    return true;
+  }
   if (existingSet.size !== incomingSet.size) return false;
   for (const id of incomingSet) {
     if (!existingSet.has(id)) return false;
+  }
+  return true;
+}
+
+/**
+ * Union of existing + incoming tag ids, de-duplicated, existing order first.
+ * Used by the `merge` tag mode to compute the final tag set on overwrite.
+ */
+export function mergeTagIds(existing: string[], incoming: string[]): string[] {
+  const out = [...new Set(existing)];
+  const seen = new Set(out);
+  for (const id of incoming) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
+}
+
+/** Order-insensitive tag set equality (duplicates collapse). */
+export function tagSetsEqual(a: string[], b: string[]): boolean {
+  const setA = new Set(a);
+  const setB = new Set(b);
+  if (setA.size !== setB.size) return false;
+  for (const id of setB) {
+    if (!setA.has(id)) return false;
   }
   return true;
 }

@@ -5,6 +5,8 @@ import {
   findExisting,
   computeRenamedTitle,
   isImportUnchanged,
+  mergeTagIds,
+  tagSetsEqual,
   ROOT_FOLDER_KEY,
   MAX_TITLE_LENGTH,
   type TitleLookup
@@ -166,5 +168,79 @@ describe('isImportUnchanged', () => {
         tagIds: ['t1', 't1']
       })
     ).toBe(false);
+  });
+
+  describe('merge tag mode', () => {
+    it('treats incoming tags that are a subset of existing as unchanged (merge adds nothing)', () => {
+      expect(
+        isImportUnchanged(existing, { title: 'Notes', content: '# Hello', tagIds: ['t1'] }, 'merge')
+      ).toBe(true);
+    });
+
+    it('treats an empty incoming tag list as unchanged (in-app tags survive)', () => {
+      expect(
+        isImportUnchanged(existing, { title: 'Notes', content: '# Hello', tagIds: [] }, 'merge')
+      ).toBe(true);
+    });
+
+    it('returns false when the file carries a tag the note does not have yet', () => {
+      expect(
+        isImportUnchanged(
+          existing,
+          { title: 'Notes', content: '# Hello', tagIds: ['t1', 't3'] },
+          'merge'
+        )
+      ).toBe(false);
+    });
+
+    it('still reports content changes as changed regardless of tags', () => {
+      expect(
+        isImportUnchanged(existing, { title: 'Notes', content: '# Hello!', tagIds: [] }, 'merge')
+      ).toBe(false);
+    });
+
+    it('still ignores tags when incoming tagIds is undefined', () => {
+      expect(isImportUnchanged(existing, { title: 'Notes', content: '# Hello' }, 'merge')).toBe(
+        true
+      );
+    });
+  });
+});
+
+describe('mergeTagIds', () => {
+  it('unions existing and incoming, existing order first', () => {
+    expect(mergeTagIds(['a', 'b'], ['c', 'b'])).toEqual(['a', 'b', 'c']);
+  });
+
+  it('returns existing as-is when incoming adds nothing', () => {
+    expect(mergeTagIds(['a', 'b'], ['b'])).toEqual(['a', 'b']);
+    expect(mergeTagIds(['a', 'b'], [])).toEqual(['a', 'b']);
+  });
+
+  it('handles empty existing (plain import case)', () => {
+    expect(mergeTagIds([], ['x', 'y'])).toEqual(['x', 'y']);
+  });
+
+  it('collapses duplicates on both sides', () => {
+    expect(mergeTagIds(['a', 'a'], ['b', 'b', 'a'])).toEqual(['a', 'b']);
+  });
+});
+
+describe('tagSetsEqual', () => {
+  it('is order-insensitive', () => {
+    expect(tagSetsEqual(['a', 'b'], ['b', 'a'])).toBe(true);
+  });
+
+  it('detects added and removed elements', () => {
+    expect(tagSetsEqual(['a'], ['a', 'b'])).toBe(false);
+    expect(tagSetsEqual(['a', 'b'], ['a'])).toBe(false);
+  });
+
+  it('collapses duplicates before comparing', () => {
+    expect(tagSetsEqual(['a', 'a', 'b'], ['b', 'a'])).toBe(true);
+  });
+
+  it('treats two empty lists as equal', () => {
+    expect(tagSetsEqual([], [])).toBe(true);
   });
 });

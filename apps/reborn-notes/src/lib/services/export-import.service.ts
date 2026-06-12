@@ -57,9 +57,12 @@ import {
   computeRenamedTitle,
   findExisting,
   isImportUnchanged,
+  mergeTagIds,
+  tagSetsEqual,
   rememberTitle,
   folderKey,
   type DuplicateStrategy,
+  type TagOverwriteMode,
   type TitleLookup
 } from './import-dedup-utils';
 import { sanitizeMarkdownContent, sanitizeTags } from '$lib/utils/markdown-sanitizer';
@@ -1412,23 +1415,29 @@ type DuplicateOutcomeResult =
  * / just-renamed entry and don't double-collide with it.
  *
  * `tagIds` is the list of tag ids resolved from frontmatter (already
- * find-or-created by the caller). For `overwrite`, this REPLACES the
- * existing note's tag set — frontmatter is treated as the source of truth.
- * `undefined` means the import path does not manage tags at all (flat .md
- * import): tags are then ignored both for the unchanged-comparison and on
- * overwrite (the existing note's tags survive).
+ * find-or-created by the caller). For `overwrite`, `tagMode` decides whether
+ * it REPLACES the existing note's tag set (frontmatter as source of truth)
+ * or is MERGED into it (tags added in the app survive - see
+ * {@link TagOverwriteMode}). `undefined` means the import path does not
+ * manage tags at all (flat .md import): tags are then ignored both for the
+ * unchanged-comparison and on overwrite (the existing note's tags survive).
+ *
+ * Stars / pins live in `metadata_encrypted`, which `updateNote` never
+ * touches - they survive overwrite regardless of `tagMode`.
  */
 async function applyDuplicateStrategy(args: {
   baseTitle: string;
   content: string;
   folderId: string | undefined;
   tagIds: string[] | undefined;
+  tagMode?: TagOverwriteMode;
   createdAt: string | undefined;
   modifiedAt: string | undefined;
   lookup: TitleLookup;
   strategy: DuplicateStrategy;
 }): Promise<DuplicateOutcomeResult> {
   const { baseTitle, content, folderId, tagIds, createdAt, modifiedAt, lookup, strategy } = args;
+  const tagMode = args.tagMode ?? 'replace';
   const existingId = findExisting(lookup, folderId, baseTitle);
 
   if (!existingId) {
@@ -1455,12 +1464,13 @@ async function applyDuplicateStrategy(args: {
     // getNote() returns null for trashed notes, but those never reach this
     // point: the title lookup is built from non-archived index entries only.
     const existingNote = await NoteService.getNote(existingId);
+    const existingTagIds =
+      tagIds === undefined ? [] : await noteTagQueries.getTagsForNote(existingId);
     if (existingNote) {
-      const existingTagIds =
-        tagIds === undefined ? [] : await noteTagQueries.getTagsForNote(existingId);
       const unchanged = isImportUnchanged(
         { title: existingNote.title, content: existingNote.content, tagIds: existingTagIds },
-        { title: baseTitle, content, tagIds }
+        { title: baseTitle, content, tagIds },
+        tagMode
       );
       if (unchanged) {
         return { outcome: 'unchanged', noteId: undefined };
@@ -1471,8 +1481,14 @@ async function applyDuplicateStrategy(args: {
       skipSync: true
     });
     if (tagIds !== undefined) {
-      // Replace tag set with frontmatter tags (source of truth on overwrite).
-      await TagService.setTagsForNote(existingId, tagIds, { skipSync: true });
+      // `replace`: frontmatter is the tag source of truth. `merge`: union -
+      // tags added in the app survive. Skip the write when the final set
+      // already equals the note's tags (setTagsForNote always rewrites the
+      // whole join set, so a no-op call would still churn IDB + sync).
+      const finalTagIds = tagMode === 'merge' ? mergeTagIds(existingTagIds, tagIds) : tagIds;
+      if (!tagSetsEqual(existingTagIds, finalTagIds)) {
+        await TagService.setTagsForNote(existingId, finalTagIds, { skipSync: true });
+      }
     }
     return { outcome: 'overwritten', noteId: existingId };
   }
@@ -1599,6 +1615,14 @@ export type ImportFolderOptions = {
    * level ("import folder here" from a folder's context menu).
    */
   targetFolderId?: string;
+  /**
+   * `overwrite` strategy only: how frontmatter tags interact with the
+   * existing note's tags. `merge` (UI default, hard-coded for live folder
+   * sync) unions them so tags added in the app survive re-imports; `replace`
+   * (API default, pre-2026-06-13 behavior) makes frontmatter the source of
+   * truth. See {@link TagOverwriteMode}.
+   */
+  tagsOnOverwrite?: TagOverwriteMode;
 };
 
 /**
@@ -1659,6 +1683,7 @@ export async function importFolder(
   };
   const keepRootFolder = opts?.keepRootFolder ?? false;
   const targetFolderId = opts?.targetFolderId;
+  const tagsOnOverwrite = opts?.tagsOnOverwrite ?? 'replace';
 
   // 0. Normalize inputs to { file, relativePath } pairs. Plain Files carry
   //    their path in webkitRelativePath ('' when absent → name only, lands
@@ -1791,6 +1816,7 @@ export async function importFolder(
         content: sanitizedContent,
         folderId,
         tagIds,
+        tagMode: tagsOnOverwrite,
         createdAt,
         modifiedAt,
         lookup: titleLookup,

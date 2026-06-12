@@ -45,6 +45,9 @@
 
   let strategy = $state<DuplicateStrategy>('rename');
   let keepRootFolder = $state(true);
+  // Overwrite-only (folder mode): merge frontmatter tags into existing note
+  // tags so in-app curation survives re-imports. Default ON.
+  let preserveTags = $state(true);
   let importing = $state(false);
   let result = $state<ImportMarkdownResult | ImportFolderResult | null>(null);
 
@@ -61,6 +64,7 @@
   $effect(() => {
     if (!open) {
       strategy = 'rename';
+      preserveTags = true;
       importing = false;
       result = null;
     }
@@ -86,7 +90,8 @@
       if (mode === 'folder') {
         const r = await importFolder(files, strategy, undefined, {
           keepRootFolder: keepRootFolder && rootName !== null,
-          targetFolderId: folderId
+          targetFolderId: folderId,
+          tagsOnOverwrite: preserveTags ? 'merge' : 'replace'
         });
         result = r;
         await Promise.all([notesStore.refresh(), foldersStore.refresh(), tagsStore.refresh()]);
@@ -141,6 +146,8 @@
           bind:strategy
           promptVariant="folder"
           radioGroupName="folder-md-import-strategy"
+          showPreserveTags={mode === 'folder'}
+          bind:preserveTags
         />
         {#if mode === 'folder' && rootName}
           <label class="flex items-start gap-2 text-xs cursor-pointer">

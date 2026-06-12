@@ -6,7 +6,9 @@
     count,
     strategy = $bindable<DuplicateStrategy>('rename'),
     promptVariant = 'root',
-    radioGroupName = 'md-strategy'
+    radioGroupName = 'md-strategy',
+    showPreserveTags = false,
+    preserveTags = $bindable(true)
   }: {
     count: number;
     strategy?: DuplicateStrategy;
@@ -14,6 +16,11 @@
     // 'folder' — files land in a specific folder (folder context, vault import)
     promptVariant?: 'root' | 'folder';
     radioGroupName?: string;
+    // Folder imports only (the flat .md path never manages tags): offers the
+    // "keep tags added in the app" choice for the overwrite strategy.
+    // Rendered only while `overwrite` is selected - it has no effect otherwise.
+    showPreserveTags?: boolean;
+    preserveTags?: boolean;
   } = $props();
 
   const promptKey = $derived(
@@ -67,4 +74,17 @@
       </label>
     {/each}
   </div>
+  {#if showPreserveTags && strategy === 'overwrite'}
+    <label class="ml-5 flex items-start gap-2 text-xs cursor-pointer">
+      <input type="checkbox" bind:checked={preserveTags} class="mt-0.5" />
+      <span>
+        <span class="font-medium">
+          {$t('settings_page.export_import.preserve_tags_label')}
+        </span>
+        <span class="block text-muted-foreground">
+          {$t('settings_page.export_import.preserve_tags_desc')}
+        </span>
+      </span>
+    </label>
+  {/if}
 </div>

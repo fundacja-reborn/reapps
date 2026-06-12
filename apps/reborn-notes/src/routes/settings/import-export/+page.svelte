@@ -86,6 +86,10 @@
   let folderImportInputEl = $state<HTMLInputElement | null>(null);
   let pendingFolderFiles = $state<File[] | null>(null);
   let pendingFolderStrategy = $state<DuplicateStrategy>('rename');
+  // Overwrite-only option: merge frontmatter tags into the note's existing
+  // tags instead of replacing them, so tags added in the app survive
+  // re-imports. Default ON - silent tag loss is the worse failure mode.
+  let pendingFolderPreserveTags = $state(true);
   let pendingFolderMdCount = $state(0);
   // Name of the directory the user picked (first webkitRelativePath segment)
   // + whether to recreate it as the top-level folder. Default ON: "I picked
@@ -214,6 +218,7 @@
     folderImportResult = null;
     pendingFolderFiles = null;
     pendingFolderStrategy = 'rename';
+    pendingFolderPreserveTags = true;
     pendingFolderMdCount = 0;
     pendingFolderRootName = null;
     pendingFolderKeepRoot = true;
@@ -240,6 +245,7 @@
     const files = pendingFolderFiles;
     const strategy = pendingFolderStrategy;
     const keepRootFolder = pendingFolderKeepRoot && pendingFolderRootName !== null;
+    const tagsOnOverwrite = pendingFolderPreserveTags ? ('merge' as const) : ('replace' as const);
     const initialMdCount = pendingFolderMdCount;
     pendingFolderFiles = null;
     pendingFolderMdCount = 0;
@@ -257,7 +263,7 @@
         (p) => {
           folderProgress = p;
         },
-        { keepRootFolder }
+        { keepRootFolder, tagsOnOverwrite }
       );
       folderImportResult = result;
       await Promise.all([
@@ -684,6 +690,8 @@
                 bind:strategy={pendingFolderStrategy}
                 promptVariant="folder"
                 radioGroupName="folder-strategy"
+                showPreserveTags={true}
+                bind:preserveTags={pendingFolderPreserveTags}
               />
               {#if pendingFolderRootName !== null}
                 <label class="flex items-start gap-2 text-xs cursor-pointer">

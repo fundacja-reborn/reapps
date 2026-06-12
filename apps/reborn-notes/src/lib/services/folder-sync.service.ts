@@ -319,11 +319,15 @@ async function scanAndImport(
     // Fixed `overwrite` strategy: `rename` would mint "(2)" copies on every
     // run and `skip` would never propagate disk edits. The unchanged-skip
     // inside overwrite keeps no-op refreshes free of writes and sync pushes.
+    // `tagsOnOverwrite: 'merge'` is hard-coded: sync runs unattended, and
+    // silently dropping tags the user added in the app (because the file's
+    // frontmatter doesn't carry them) would be unrecoverable data loss.
+    // Stars / pins live in metadata_encrypted and survive regardless.
     result = await importFolder(
       changed,
       'overwrite',
       (p) => folderSyncStatus.update((s) => ({ ...s, progress: p })),
-      { keepRootFolder: true }
+      { keepRootFolder: true, tagsOnOverwrite: 'merge' }
     );
   }
 
