@@ -72,11 +72,6 @@
     "vaul-svelte": "1.0.0-next.7"
   },
   "pnpm": {
-    "patchedDependencies": {},
-    "auditConfig": {
-      "ignoreGhsas": [
-        "GHSA-gv7w-rqvm-qjhr"
-      ]
-    }
+    "patchedDependencies": {}
   }
 }
