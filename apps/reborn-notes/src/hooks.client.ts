@@ -11,6 +11,7 @@ if (import.meta.hot) {
 import { startSwUpdateWatcher } from '$lib/services/sw-update.service';
 import { startPwaInstallPrompt } from '$lib/services/pwa-install.service';
 import { createNativeMasterKeyVault } from '$lib/utils/native-master-key-vault';
+import { applyNativeStatusBarStyle } from '$lib/utils/native-system-bars';
 
 // Public read-only share view (/s/<slug>) runs before the layout's onMount
 // bypass, so we have to short-circuit storage init here too. Without this
@@ -53,6 +54,10 @@ if (__REBORN_NATIVE__) {
   // data and the master key / refresh token live in Keychain/Keystore, so
   // recovery is a silent re-sync (see planning/native-faza4-plan.md, D3).
   void navigator.storage?.persist?.()?.catch(() => {});
+
+  // Status-bar icons: dark over the brand band the root layout paints behind
+  // the transparent system bar (PWA parity). Cosmetic fire-and-forget.
+  void applyNativeStatusBarStyle();
 }
 
 // ---------------------------------------------------------------------------

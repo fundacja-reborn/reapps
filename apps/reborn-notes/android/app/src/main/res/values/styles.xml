@@ -13,10 +13,22 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- Android <= 14: the status bar is a legacy opaque surface colored
+             by the theme - brand it (dark icons on yellow) like Chrome brands
+             the installed PWA from the theme-color meta. Both attrs are no-ops
+             under the edge-to-edge enforced on Android 15+, where the brand
+             strip is painted by the in-app band + the SystemBars style call
+             instead. -->
+        <item name="android:statusBarColor">@color/brand_status_bar</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <!-- Same branding for the cold-start splash window (BridgeActivity
+             swaps to AppTheme.NoActionBar in onCreate). -->
+        <item name="android:statusBarColor">@color/brand_status_bar</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

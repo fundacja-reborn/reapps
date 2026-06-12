@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand yellow behind the system status bar on Android <= 14, where the
+         bar is a legacy opaque surface colored by the theme (no enforced
+         edge-to-edge yet). Keep in sync with the PWA theme-color meta in
+         src/app.html and the in-app band in +layout.svelte (#FFD43B). -->
+    <color name="brand_status_bar">#FFD43B</color>
+</resources>
