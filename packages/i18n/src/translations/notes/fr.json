@@ -239,6 +239,11 @@
       "dialog_description": "Les fichiers Markdown sélectionnés seront importés dans ce dossier.",
       "dialog_close": "Fermer"
     },
+    "import_folder": {
+      "action": "Importer un dossier ici",
+      "dialog_title": "Importer un dossier dans « {name} »",
+      "dialog_description": "Les fichiers .md du dossier sélectionné seront importés avec leurs sous-dossiers. Les tags et les dates du frontmatter sont préservés."
+    },
     "errors": {
       "create_failed": "Échec de la création du dossier",
       "update_failed": "Échec de la mise à jour du dossier",
@@ -692,6 +697,8 @@
       "import_folder_desc": "Sélectionnez un dossier (par ex. un coffre Obsidian) — la structure des sous-dossiers, les tags et les dates du frontmatter sont préservés",
       "import_folder_btn": "Sélectionner un dossier",
       "importing_folder": "Importation du dossier…",
+      "keep_root_label": "Conserver le dossier racine « {name} »",
+      "keep_root_destination": "Les notes seront importées dans « {path} »",
       "folder_import_summary": "Importé : {imported} notes, {folders} nouveaux dossiers, {tags} nouveaux tags",
       "folder_import_skipped_non_md": "{count} fichier(s) non Markdown ignoré(s)",
       "folder_import_skipped_too_large": "{count} fichier(s) de plus de 500 Ko ignoré(s)",
@@ -704,11 +711,12 @@
       "dedup_skip": "Ignorer les doublons",
       "dedup_skip_desc": "Laisser la note existante intacte",
       "dedup_overwrite": "Remplacer l'existante",
-      "dedup_overwrite_desc": "Remplacer le contenu et les tags de la note existante par la version importée (la date de création est conservée)",
+      "dedup_overwrite_desc": "Remplacer le contenu et les tags de la note existante par la version importée (la date de création est conservée ; les notes inchangées restent intactes)",
       "dedup_start": "Lancer l'import",
       "dedup_count_overwritten": "{count} note(s) existante(s) remplacée(s)",
       "dedup_count_renamed": "{count} doublon(s) importé(s) sous un nouveau nom",
       "dedup_count_skipped": "{count} doublon(s) ignoré(s)",
+      "dedup_count_unchanged": "{count} note(s) inchangée(s) (déjà à jour)",
       "import_backup": "Importer une sauvegarde",
       "import_backup_desc": "Restaurer à partir d'un fichier de sauvegarde JSON",
       "import_json": "Importer JSON",

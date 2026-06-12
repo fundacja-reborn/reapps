@@ -10,6 +10,7 @@
     ChevronRight,
     Folder,
     FolderOpen,
+    FolderInput,
     MoreHorizontal,
     FolderPlus,
     Pencil,
@@ -190,22 +191,36 @@
     folderToDelete = null;
   }
 
-  // ── Import .md to folder ────────────────────────────────────────
+  // ── Import .md files / folder tree to folder ────────────────────
   let importDialogOpen = $state(false);
+  let importMode = $state<'files' | 'folder'>('files');
   let importTargetFolder = $state<FolderWithChildren | null>(null);
   let importPendingFiles = $state<File[] | null>(null);
   let importFileInputEl = $state<HTMLInputElement | null>(null);
+  let importFolderInputEl = $state<HTMLInputElement | null>(null);
 
   function handleImportHere(folder: FolderWithChildren, e?: Event) {
     e?.stopPropagation();
     menuOpenId = null;
     folderActionSheetOpen = false;
+    importMode = 'files';
     importTargetFolder = folder;
     // Reset value so re-selecting the same files re-fires `change`.
     if (importFileInputEl) importFileInputEl.value = '';
     importFileInputEl?.click();
   }
 
+  function handleImportFolderHere(folder: FolderWithChildren, e?: Event) {
+    e?.stopPropagation();
+    menuOpenId = null;
+    folderActionSheetOpen = false;
+    importMode = 'folder';
+    importTargetFolder = folder;
+    if (importFolderInputEl) importFolderInputEl.value = '';
+    importFolderInputEl?.click();
+  }
+
+  // Shared by both hidden inputs - `importMode` was set by the trigger.
   function handleImportFilesSelected(e: Event) {
     const input = e.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
@@ -420,6 +435,10 @@
                   <Upload class="h-3.5 w-3.5" />
                   {$t('folders.import_markdown.action')}
                 </DropdownMenuItem>
+                <DropdownMenuItem onclick={(e) => handleImportFolderHere(folder, e)}>
+                  <FolderInput class="h-3.5 w-3.5" />
+                  {$t('folders.import_folder.action')}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   class="text-destructive focus:text-destructive"
@@ -497,6 +516,14 @@
       </Button>
       <Button
         variant="ghost"
+        class="w-full justify-start"
+        onclick={() => activeMenuFolder && handleImportFolderHere(activeMenuFolder)}
+      >
+        <FolderInput class="mr-2 h-4 w-4" />
+        {$t('folders.import_folder.action')}
+      </Button>
+      <Button
+        variant="ghost"
         class="w-full justify-start text-destructive hover:text-destructive"
         onclick={() => activeMenuFolder && handleDelete(activeMenuFolder)}
       >
@@ -514,11 +541,19 @@
   onConfirm={confirmDeleteFolder}
 />
 
-<!-- Hidden file input for "Import .md tutaj" — triggered from the menu -->
+<!-- Hidden file inputs for "Import .md here" / "Import folder here" - triggered from the menu -->
 <input
   bind:this={importFileInputEl}
   type="file"
   accept=".md,text/markdown"
+  multiple
+  class="hidden"
+  onchange={handleImportFilesSelected}
+/>
+<input
+  bind:this={importFolderInputEl}
+  type="file"
+  webkitdirectory
   multiple
   class="hidden"
   onchange={handleImportFilesSelected}
@@ -529,4 +564,5 @@
   files={importPendingFiles}
   folderId={importTargetFolder?.id ?? null}
   folderName={importTargetFolder?.name ?? ''}
+  mode={importMode}
 />

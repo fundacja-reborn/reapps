@@ -8,32 +8,53 @@
     DialogTitle,
     Button
   } from '@reborn/ui';
-  import { Upload } from '@lucide/svelte';
+  import { Upload, FolderInput } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import {
     importMarkdownFiles,
+    importFolder,
+    type ImportFolderResult,
     type ImportMarkdownResult
   } from '$lib/services/export-import.service';
+  import {
+    countImportableMarkdownFiles,
+    getRootFolderName
+  } from '$lib/services/markdown-import-utils';
   import type { DuplicateStrategy } from '$lib/services/import-dedup-utils';
   import { notesStore } from '$lib/stores/notes.store';
   import { foldersStore } from '$lib/stores/folders.store';
+  import { tagsStore } from '$lib/stores/tags.store';
   import MarkdownImportStrategyPicker from './MarkdownImportStrategyPicker.svelte';
+  import ImportResultSummary from './ImportResultSummary.svelte';
 
   let {
     open = $bindable(false),
     files,
     folderId,
-    folderName
+    folderName,
+    mode = 'files'
   }: {
     open: boolean;
     files: File[] | null;
     folderId: string | null;
     folderName: string;
+    // 'files'  - flat .md file picker ("Import .md here")
+    // 'folder' - webkitdirectory tree import ("Import folder here")
+    mode?: 'files' | 'folder';
   } = $props();
 
   let strategy = $state<DuplicateStrategy>('rename');
+  let keepRootFolder = $state(true);
   let importing = $state(false);
-  let result = $state<ImportMarkdownResult | null>(null);
+  let result = $state<ImportMarkdownResult | ImportFolderResult | null>(null);
+
+  const rootName = $derived(mode === 'folder' && files ? getRootFolderName(files) : null);
+  const importableCount = $derived(
+    !files ? 0 : mode === 'folder' ? countImportableMarkdownFiles(files) : files.length
+  );
+  const destinationPath = $derived(
+    keepRootFolder && rootName ? `${folderName}/${rootName}` : folderName
+  );
 
   // Reset internal state every time the dialog closes — the parent decides
   // when to open it again (with fresh files / target).
@@ -45,20 +66,42 @@
     }
   });
 
+  // Default for "keep top-level folder", chosen when the dialog opens:
+  // ON (mirrors dropping a directory into a folder in a file manager), but
+  // OFF when the target folder already carries the picked directory's name -
+  // that's a re-import refreshing the folder in place, and "reapps-docs/
+  // reapps-docs" is never what the user wants there.
+  $effect(() => {
+    if (open && mode === 'folder') {
+      keepRootFolder =
+        !rootName || rootName.toLowerCase() !== folderName.trim().toLowerCase();
+    }
+  });
+
   async function runImport() {
     if (!files || !folderId) return;
     importing = true;
     result = null;
     try {
-      const r = await importMarkdownFiles(files, folderId, strategy);
-      result = r;
-      await Promise.all([notesStore.refresh(), foldersStore.refresh()]);
+      if (mode === 'folder') {
+        const r = await importFolder(files, strategy, undefined, {
+          keepRootFolder: keepRootFolder && rootName !== null,
+          targetFolderId: folderId
+        });
+        result = r;
+        await Promise.all([notesStore.refresh(), foldersStore.refresh(), tagsStore.refresh()]);
+      } else {
+        const r = await importMarkdownFiles(files, folderId, strategy);
+        result = r;
+        await Promise.all([notesStore.refresh(), foldersStore.refresh()]);
+      }
     } catch (err: unknown) {
       result = {
         imported: 0,
         duplicatesSkipped: 0,
         duplicatesOverwritten: 0,
         duplicatesRenamed: 0,
+        duplicatesUnchanged: 0,
         strippedCount: 0,
         errors: [err instanceof Error ? err.message : 'Import failed']
       };
@@ -76,68 +119,51 @@
   <DialogContent>
     <DialogHeader>
       <DialogTitle>
-        {$t('folders.import_markdown.dialog_title', { values: { name: folderName } })}
+        {#if mode === 'folder'}
+          {$t('folders.import_folder.dialog_title', { values: { name: folderName } })}
+        {:else}
+          {$t('folders.import_markdown.dialog_title', { values: { name: folderName } })}
+        {/if}
       </DialogTitle>
       <DialogDescription>
-        {$t('folders.import_markdown.dialog_description')}
+        {#if mode === 'folder'}
+          {$t('folders.import_folder.dialog_description')}
+        {:else}
+          {$t('folders.import_markdown.dialog_description')}
+        {/if}
       </DialogDescription>
     </DialogHeader>
 
     {#if files && !result}
-      <MarkdownImportStrategyPicker
-        count={files.length}
-        bind:strategy
-        promptVariant="folder"
-        radioGroupName="folder-md-import-strategy"
-      />
+      <div class="space-y-3">
+        <MarkdownImportStrategyPicker
+          count={importableCount}
+          bind:strategy
+          promptVariant="folder"
+          radioGroupName="folder-md-import-strategy"
+        />
+        {#if mode === 'folder' && rootName}
+          <label class="flex items-start gap-2 text-xs cursor-pointer">
+            <input type="checkbox" bind:checked={keepRootFolder} class="mt-0.5" />
+            <span>
+              <span class="font-medium">
+                {$t('settings_page.export_import.keep_root_label', {
+                  values: { name: rootName }
+                })}
+              </span>
+              <span class="block text-muted-foreground">
+                {$t('settings_page.export_import.keep_root_destination', {
+                  values: { path: destinationPath }
+                })}
+              </span>
+            </span>
+          </label>
+        {/if}
+      </div>
     {/if}
 
     {#if result}
-      <div
-        class="rounded-md px-3 py-2 text-xs space-y-1
-        {result.errors.length === 0
-          ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400'
-          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'}"
-      >
-        {#if result.imported > 0}
-          <p>
-            {$t('settings_page.export_import.imported_count', {
-              values: { count: result.imported }
-            })}
-          </p>
-        {/if}
-        {#if result.duplicatesOverwritten > 0}
-          <p class="text-muted-foreground">
-            {$t('settings_page.export_import.dedup_count_overwritten', {
-              values: { count: result.duplicatesOverwritten }
-            })}
-          </p>
-        {/if}
-        {#if result.duplicatesRenamed > 0}
-          <p class="text-muted-foreground">
-            {$t('settings_page.export_import.dedup_count_renamed', {
-              values: { count: result.duplicatesRenamed }
-            })}
-          </p>
-        {/if}
-        {#if result.duplicatesSkipped > 0}
-          <p class="text-muted-foreground">
-            {$t('settings_page.export_import.dedup_count_skipped', {
-              values: { count: result.duplicatesSkipped }
-            })}
-          </p>
-        {/if}
-        {#if result.strippedCount > 0}
-          <p>
-            {$t('settings_page.export_import.unsafe_content_stripped', {
-              values: { count: result.strippedCount }
-            })}
-          </p>
-        {/if}
-        {#each result.errors as err}
-          <p>{err}</p>
-        {/each}
-      </div>
+      <ImportResultSummary {result} />
     {/if}
 
     <DialogFooter>
@@ -145,8 +171,12 @@
         <Button variant="outline" onclick={close} disabled={importing}>
           {$t('settings_page.export_import.cancel')}
         </Button>
-        <Button onclick={runImport} disabled={importing || !files || files.length === 0}>
-          <Upload class="mr-1.5 h-3.5 w-3.5" />
+        <Button onclick={runImport} disabled={importing || !files || importableCount === 0}>
+          {#if mode === 'folder'}
+            <FolderInput class="mr-1.5 h-3.5 w-3.5" />
+          {:else}
+            <Upload class="mr-1.5 h-3.5 w-3.5" />
+          {/if}
           {importing
             ? $t('settings_page.export_import.importing')
             : $t('settings_page.export_import.dedup_start')}

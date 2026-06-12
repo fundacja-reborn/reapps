@@ -4,6 +4,7 @@ import {
   rememberTitle,
   findExisting,
   computeRenamedTitle,
+  isImportUnchanged,
   ROOT_FOLDER_KEY,
   MAX_TITLE_LENGTH,
   type TitleLookup
@@ -110,5 +111,60 @@ describe('computeRenamedTitle', () => {
   it('returns the first free slot, even when only the base is taken (not a sequence)', () => {
     const taken = new Set(['notes', 'notes (5)']);
     expect(computeRenamedTitle('Notes', taken)).toBe('Notes (2)');
+  });
+});
+
+describe('isImportUnchanged', () => {
+  const existing = { title: 'Notes', content: '# Hello', tagIds: ['t1', 't2'] };
+
+  it('returns true when title, content and tag set match', () => {
+    expect(
+      isImportUnchanged(existing, { title: 'Notes', content: '# Hello', tagIds: ['t2', 't1'] })
+    ).toBe(true);
+  });
+
+  it('is case-SENSITIVE on title (a title-case change is a real update)', () => {
+    expect(
+      isImportUnchanged(existing, { title: 'notes', content: '# Hello', tagIds: ['t1', 't2'] })
+    ).toBe(false);
+  });
+
+  it('returns false on any content difference', () => {
+    expect(
+      isImportUnchanged(existing, { title: 'Notes', content: '# Hello!', tagIds: ['t1', 't2'] })
+    ).toBe(false);
+  });
+
+  it('ignores tags entirely when incoming tagIds is undefined (flat .md import)', () => {
+    expect(isImportUnchanged(existing, { title: 'Notes', content: '# Hello' })).toBe(true);
+  });
+
+  it('compares tag sets order-insensitively but exactly', () => {
+    expect(
+      isImportUnchanged(existing, { title: 'Notes', content: '# Hello', tagIds: ['t1'] })
+    ).toBe(false);
+    expect(
+      isImportUnchanged(existing, {
+        title: 'Notes',
+        content: '# Hello',
+        tagIds: ['t1', 't3']
+      })
+    ).toBe(false);
+  });
+
+  it('treats an empty incoming tag list as different from existing tags', () => {
+    expect(
+      isImportUnchanged(existing, { title: 'Notes', content: '# Hello', tagIds: [] })
+    ).toBe(false);
+  });
+
+  it('uses set semantics: repeated incoming tag ids do not fake a length match', () => {
+    expect(
+      isImportUnchanged(existing, {
+        title: 'Notes',
+        content: '# Hello',
+        tagIds: ['t1', 't1']
+      })
+    ).toBe(false);
   });
 });

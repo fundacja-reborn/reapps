@@ -239,6 +239,11 @@
       "dialog_description": "Die ausgewählten Markdown-Dateien werden in diesen Ordner importiert.",
       "dialog_close": "Schließen"
     },
+    "import_folder": {
+      "action": "Ordner hierher importieren",
+      "dialog_title": "Ordner in „{name}“ importieren",
+      "dialog_description": "Die .md-Dateien des ausgewählten Ordners werden samt Unterordnern importiert. Tags und Frontmatter-Daten bleiben erhalten."
+    },
     "errors": {
       "create_failed": "Ordner konnte nicht erstellt werden",
       "update_failed": "Ordner konnte nicht aktualisiert werden",
@@ -692,6 +697,8 @@
       "import_folder_desc": "Wählen Sie einen Ordner (z.B. ein Obsidian-Vault) — Unterordnerstruktur, Tags und Frontmatter-Daten werden beibehalten",
       "import_folder_btn": "Ordner auswählen",
       "importing_folder": "Ordner wird importiert…",
+      "keep_root_label": "Obersten Ordner „{name}“ beibehalten",
+      "keep_root_destination": "Notizen werden nach „{path}“ importiert",
       "folder_import_summary": "Importiert: {imported} Notizen, {folders} neue Ordner, {tags} neue Tags",
       "folder_import_skipped_non_md": "{count} Nicht-Markdown-Datei(en) übersprungen",
       "folder_import_skipped_too_large": "{count} Datei(en) größer als 500 KB übersprungen",
@@ -704,11 +711,12 @@
       "dedup_skip": "Duplikate überspringen",
       "dedup_skip_desc": "Bestehende Notiz unverändert lassen",
       "dedup_overwrite": "Bestehende überschreiben",
-      "dedup_overwrite_desc": "Inhalt und Tags der bestehenden Notiz mit der importierten Version ersetzen (Erstellungsdatum bleibt erhalten)",
+      "dedup_overwrite_desc": "Inhalt und Tags der bestehenden Notiz mit der importierten Version ersetzen (Erstellungsdatum bleibt erhalten; unveränderte Notizen bleiben unangetastet)",
       "dedup_start": "Import starten",
       "dedup_count_overwritten": "{count} bestehende Notiz(en) überschrieben",
       "dedup_count_renamed": "{count} Duplikat(e) unter neuem Namen importiert",
       "dedup_count_skipped": "{count} Duplikat(e) übersprungen",
+      "dedup_count_unchanged": "{count} Notiz(en) unverändert gelassen (bereits aktuell)",
       "import_backup": "Sicherung importieren",
       "import_backup_desc": "Aus einer JSON-Sicherungsdatei wiederherstellen",
       "import_json": "JSON importieren",

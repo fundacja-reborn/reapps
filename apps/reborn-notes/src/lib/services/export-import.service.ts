@@ -56,6 +56,7 @@ import {
 import {
   computeRenamedTitle,
   findExisting,
+  isImportUnchanged,
   rememberTitle,
   folderKey,
   type DuplicateStrategy,
@@ -1257,6 +1258,12 @@ export type ImportMarkdownResult = {
   duplicatesSkipped: number;
   duplicatesOverwritten: number;
   duplicatesRenamed: number;
+  /**
+   * `overwrite` strategy only: duplicates whose stored note already matches
+   * the imported file exactly - no write, no sync push, no `updated_at` bump.
+   * Makes repeated "re-import to refresh" runs cheap and idempotent.
+   */
+  duplicatesUnchanged: number;
   errors: string[];
   strippedCount: number;
 };
@@ -1303,6 +1310,7 @@ export async function importMarkdownFiles(
     duplicatesSkipped: 0,
     duplicatesOverwritten: 0,
     duplicatesRenamed: 0,
+    duplicatesUnchanged: 0,
     errors: [],
     strippedCount: 0
   };
@@ -1325,24 +1333,32 @@ export async function importMarkdownFiles(
       result.strippedCount += stripped.length;
       const baseTitle = title ?? (file.name.replace(/\.md$/i, '') || 'Untitled');
       const { createdAt, modifiedAt } = pickImportTimestamps(parsed, file.lastModified);
-      const { outcome, noteId } = await applyDuplicateStrategy({
+      // tagIds: undefined - the flat .md import does not manage tags (no
+      // frontmatter tag resolution), so overwrite must leave the existing
+      // note's tags untouched rather than wiping them with an empty set.
+      // Kept un-destructured: narrowing `noteId` to `string` in the final
+      // branch relies on the discriminated union, and TS only tracks that
+      // reliably through property access, not destructured locals.
+      const dedup = await applyDuplicateStrategy({
         baseTitle,
         content: sanitized,
         folderId,
-        tagIds: [],
+        tagIds: undefined,
         modifiedAt,
         createdAt,
         lookup,
         strategy: duplicateStrategy
       });
-      if (outcome === 'skipped') {
+      if (dedup.outcome === 'skipped') {
         result.duplicatesSkipped++;
+      } else if (dedup.outcome === 'unchanged') {
+        result.duplicatesUnchanged++;
       } else {
-        if (outcome === 'overwritten') result.duplicatesOverwritten++;
-        else if (outcome === 'renamed') result.duplicatesRenamed++;
+        if (dedup.outcome === 'overwritten') result.duplicatesOverwritten++;
+        else if (dedup.outcome === 'renamed') result.duplicatesRenamed++;
         result.imported++;
         // Push the freshly-saved note (skipSync was true on the storage write).
-        const note = await noteStore.get(noteId);
+        const note = await noteStore.get(dedup.noteId);
         if (note) pushNote(note);
       }
     } catch (e: unknown) {
@@ -1373,14 +1389,21 @@ export async function importMarkdownFiles(
 /**
  * Per-file outcome reported by {@link applyDuplicateStrategy}.
  *
- * `skipped` does not bump the imported counter (existing note left alone);
- * the others all produce a persisted note. `noteId` is `undefined` for
- * `skipped` only — callers that bulk-push on completion should iterate
- * over the populated ids.
+ * `skipped` (existing note left alone by user choice) and `unchanged`
+ * (overwrite requested, but the stored note already matches the file) do not
+ * bump the imported counter; the others all produce a persisted note.
+ * `noteId` is `undefined` for the non-writing outcomes - callers that
+ * bulk-push on completion should iterate over the populated ids.
  */
 type DuplicateOutcomeResult =
   | { outcome: 'created' | 'overwritten' | 'renamed'; noteId: string }
-  | { outcome: 'skipped'; noteId: undefined };
+  // The two non-writing outcomes stay SEPARATE constituents (not
+  // `'skipped' | 'unchanged'` in one): control-flow exclusion (`!==` in an
+  // else-chain) only drops a constituent whose discriminant narrows to
+  // never, so a multi-literal constituent would survive both negations and
+  // `noteId` would stay `string | undefined` in the writing branch.
+  | { outcome: 'skipped'; noteId: undefined }
+  | { outcome: 'unchanged'; noteId: undefined };
 
 /**
  * Apply the selected duplicate-handling strategy for a single file.
@@ -1391,12 +1414,15 @@ type DuplicateOutcomeResult =
  * `tagIds` is the list of tag ids resolved from frontmatter (already
  * find-or-created by the caller). For `overwrite`, this REPLACES the
  * existing note's tag set — frontmatter is treated as the source of truth.
+ * `undefined` means the import path does not manage tags at all (flat .md
+ * import): tags are then ignored both for the unchanged-comparison and on
+ * overwrite (the existing note's tags survive).
  */
 async function applyDuplicateStrategy(args: {
   baseTitle: string;
   content: string;
   folderId: string | undefined;
-  tagIds: string[];
+  tagIds: string[] | undefined;
   createdAt: string | undefined;
   modifiedAt: string | undefined;
   lookup: TitleLookup;
@@ -1411,7 +1437,7 @@ async function applyDuplicateStrategy(args: {
       updatedAt: modifiedAt ?? createdAt,
       skipSync: true
     });
-    if (tagIds.length > 0) {
+    if (tagIds && tagIds.length > 0) {
       await TagService.setTagsForNote(newId, tagIds, { skipSync: true });
     }
     rememberTitle(lookup, folderId, baseTitle, newId);
@@ -1423,12 +1449,31 @@ async function applyDuplicateStrategy(args: {
   }
 
   if (strategy === 'overwrite') {
+    // Skip the write entirely when the stored note already matches the file -
+    // repeated "re-import to refresh" runs stay cheap (no re-encrypt, no sync
+    // push) and don't shuffle every note to the top of `updated_at` ordering.
+    // getNote() returns null for trashed notes, but those never reach this
+    // point: the title lookup is built from non-archived index entries only.
+    const existingNote = await NoteService.getNote(existingId);
+    if (existingNote) {
+      const existingTagIds =
+        tagIds === undefined ? [] : await noteTagQueries.getTagsForNote(existingId);
+      const unchanged = isImportUnchanged(
+        { title: existingNote.title, content: existingNote.content, tagIds: existingTagIds },
+        { title: baseTitle, content, tagIds }
+      );
+      if (unchanged) {
+        return { outcome: 'unchanged', noteId: undefined };
+      }
+    }
     await NoteService.updateNote(existingId, baseTitle, content, {
       updatedAt: modifiedAt ?? new Date().toISOString(),
       skipSync: true
     });
-    // Replace tag set with frontmatter tags (source of truth on overwrite).
-    await TagService.setTagsForNote(existingId, tagIds, { skipSync: true });
+    if (tagIds !== undefined) {
+      // Replace tag set with frontmatter tags (source of truth on overwrite).
+      await TagService.setTagsForNote(existingId, tagIds, { skipSync: true });
+    }
     return { outcome: 'overwritten', noteId: existingId };
   }
 
@@ -1442,7 +1487,7 @@ async function applyDuplicateStrategy(args: {
     updatedAt: modifiedAt ?? createdAt,
     skipSync: true
   });
-  if (tagIds.length > 0) {
+  if (tagIds && tagIds.length > 0) {
     await TagService.setTagsForNote(newId, tagIds, { skipSync: true });
   }
   rememberTitle(lookup, folderId, renamedTitle, newId);
@@ -1472,15 +1517,20 @@ function flattenFolderTree(nodes: FolderWithChildren[]): FolderLookupEntry[] {
  * any missing intermediate folders. Matches existing folders case-insensitively
  * on (parent_id, name). Mutates `lookup` so subsequent calls in the same
  * batch can reuse folders created earlier in this import.
+ *
+ * `startParentId` anchors the walk under an existing folder instead of the
+ * root level ("import folder here" from a folder's context menu). An empty
+ * path resolves to the anchor itself.
  */
 async function findOrCreateFolderByPath(
   pathSegments: string[],
   lookup: FolderLookupEntry[],
-  counter: { count: number }
+  counter: { count: number },
+  startParentId?: string
 ): Promise<string | undefined> {
-  if (pathSegments.length === 0) return undefined;
+  if (pathSegments.length === 0) return startParentId;
 
-  let parentId: string | undefined = undefined;
+  let parentId: string | undefined = startParentId;
   for (const segment of pathSegments) {
     const segmentLower = segment.toLowerCase();
     const existing = lookup.find(
@@ -1530,8 +1580,25 @@ export type ImportFolderResult = {
   duplicatesSkipped: number;
   duplicatesOverwritten: number;
   duplicatesRenamed: number;
+  /** See {@link ImportMarkdownResult.duplicatesUnchanged}. */
+  duplicatesUnchanged: number;
   strippedCount: number;
   errors: string[];
+};
+
+export type ImportFolderOptions = {
+  /**
+   * Recreate the selected directory itself as a folder (find-or-create by
+   * name, case-insensitive) instead of importing only its contents. This is
+   * what makes "import `reapps-docs`, edit locally, re-import to refresh"
+   * land in the same `reapps-docs` folder every time.
+   */
+  keepRootFolder?: boolean;
+  /**
+   * Anchor the imported tree under an existing folder instead of the root
+   * level ("import folder here" from a folder's context menu).
+   */
+  targetFolderId?: string;
 };
 
 /**
@@ -1553,11 +1620,17 @@ export type ImportFolderResult = {
  * mutates as the batch progresses, so two files in the source vault sharing
  * a name within the same directory will also be deduplicated against each
  * other (e.g. `Notes.md` + `notes.md` → `Notes.md` + `Notes (2).md`).
+ *
+ * `opts` (see {@link ImportFolderOptions}) selects where the tree lands:
+ * `keepRootFolder` recreates the selected directory itself; `targetFolderId`
+ * anchors everything under an existing folder. Combined with the `overwrite`
+ * strategy this makes re-importing the same directory an idempotent refresh.
  */
 export async function importFolder(
   files: File[],
   duplicateStrategy: DuplicateStrategy = 'rename',
-  onProgress?: ImportProgressCallback
+  onProgress?: ImportProgressCallback,
+  opts?: ImportFolderOptions
 ): Promise<ImportFolderResult> {
   const result: ImportFolderResult = {
     imported: 0,
@@ -1569,9 +1642,12 @@ export async function importFolder(
     duplicatesSkipped: 0,
     duplicatesOverwritten: 0,
     duplicatesRenamed: 0,
+    duplicatesUnchanged: 0,
     strippedCount: 0,
     errors: []
   };
+  const keepRootFolder = opts?.keepRootFolder ?? false;
+  const targetFolderId = opts?.targetFolderId;
 
   // 1. Skip files in hidden directories (.obsidian/, .trash/, etc.).
   //    Applied FIRST so we don't pollute the non-markdown counter with
@@ -1634,14 +1710,19 @@ export async function importFolder(
   // 6. Resolve every unique directory path to a folder id up-front.
   const pathToFolderId = new Map<string, string | undefined>();
   for (const file of sizedFiles) {
-    const segments = extractFolderSegments(file.webkitRelativePath);
+    const segments = extractFolderSegments(file.webkitRelativePath, keepRootFolder);
     const key = segments.join('/');
     if (pathToFolderId.has(key)) continue;
     try {
-      const folderId = await findOrCreateFolderByPath(segments, folderLookup, foldersCounter);
+      const folderId = await findOrCreateFolderByPath(
+        segments,
+        folderLookup,
+        foldersCounter,
+        targetFolderId
+      );
       pathToFolderId.set(key, folderId);
     } catch (e: unknown) {
-      pathToFolderId.set(key, undefined);
+      pathToFolderId.set(key, targetFolderId);
       result.errors.push(`Folder "${key}": ${e instanceof Error ? e.message : 'błąd'}`);
     }
   }
@@ -1661,7 +1742,7 @@ export async function importFolder(
     try {
       const raw = await file.text();
       const parsed = parseMarkdownFile(raw);
-      const segments = extractFolderSegments(file.webkitRelativePath);
+      const segments = extractFolderSegments(file.webkitRelativePath, keepRootFolder);
       const folderId = pathToFolderId.get(segments.join('/'));
 
       const fallbackTitle = file.name.replace(/\.md$/i, '') || 'Untitled';
@@ -1700,6 +1781,8 @@ export async function importFolder(
 
       if (outcome === 'skipped') {
         result.duplicatesSkipped++;
+      } else if (outcome === 'unchanged') {
+        result.duplicatesUnchanged++;
       } else {
         if (outcome === 'overwritten') result.duplicatesOverwritten++;
         else if (outcome === 'renamed') result.duplicatesRenamed++;
