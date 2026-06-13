@@ -2,7 +2,7 @@
  * Folder service for Reborn Notes.
  *
  * Wraps @reborn/storage folder operations with E2E encryption via CryptoManager.
- * Folder names are always encrypted with the user's master key — E2E must be unlocked before use.
+ * Folder names are always encrypted with the user's master key - E2E must be unlocked before use.
  */
 import {
   folderOperations,
@@ -72,7 +72,7 @@ async function toDecrypted(enc: FolderEncrypted): Promise<Omit<FolderWithChildre
 
 // Locale-aware, case-insensitive alphabetical sort applied after decryption.
 // The storage layer orders by `order_index` (ciphertext-friendly), but users
-// only ever see decrypted names — sort here so the order matches what they read.
+// only ever see decrypted names - sort here so the order matches what they read.
 const folderNameCollator = new Intl.Collator(undefined, {
   sensitivity: 'base',
   numeric: true
@@ -100,7 +100,7 @@ export async function getFolderTree(): Promise<FolderWithChildren[]> {
   return sortFoldersByName(tree as FolderWithChildren[]);
 }
 
-// `options.skipSync` defers the network push to the caller — used by batch
+// `options.skipSync` defers the network push to the caller - used by batch
 // importers (folder/vault import) that must order folder pushes BEFORE note
 // pushes to avoid the server's `folder_id` FK check returning 404.
 export async function createFolder(
@@ -129,7 +129,15 @@ export async function createFolder(
   return id;
 }
 
-export async function renameFolder(id: string, name: string): Promise<void> {
+// `options.skipSync` defers the push to the caller, like createFolder above -
+// callers that mutate several folders at once (e.g. folder-sync re-homing a
+// destination path) batch one ordered pushPendingItems() so a child never
+// PATCHes before its freshly-created parent lands (server 404).
+export async function renameFolder(
+  id: string,
+  name: string,
+  options?: { skipSync?: boolean }
+): Promise<void> {
   const existing = await folderStore.get(id);
   if (!existing) throw new Error('Folder not found');
   const name_encrypted = await encodeName(name.trim());
@@ -139,7 +147,7 @@ export async function renameFolder(id: string, name: string): Promise<void> {
     updated_at: new Date().toISOString(),
     sync_status: 'pending'
   });
-  pushFolderUpdate(id, { name_encrypted });
+  if (!options?.skipSync) pushFolderUpdate(id, { name_encrypted });
 }
 
 export type DeleteFolderMode = 'detach' | 'cascade';
@@ -186,7 +194,7 @@ export async function deleteFolder(
     const notes = await noteQueries.byFolder(fid);
     for (const note of notes) {
       if (mode === 'cascade') {
-        // Soft-delete: same path as deleteNote() — archive locally, push DELETE.
+        // Soft-delete: same path as deleteNote() - archive locally, push DELETE.
         await noteOperations.archive(note.id);
         const archived = await noteStore.get(note.id);
         const wasSynced = note.sync_status !== 'pending';
@@ -246,11 +254,16 @@ export async function deleteFolder(
   pushFolderDelete(id);
 }
 
-export async function moveFolderToParent(id: string, newParentId: string | null): Promise<void> {
+// `options.skipSync` defers the push to the caller (see renameFolder above).
+export async function moveFolderToParent(
+  id: string,
+  newParentId: string | null,
+  options?: { skipSync?: boolean }
+): Promise<void> {
   await folderOperations.moveFolder(id, newParentId);
   const current = await folderStore.get(id);
   if (current) await folderStore.save({ ...current, sync_status: 'pending' });
-  pushFolderUpdate(id, { parent_id: newParentId });
+  if (!options?.skipSync) pushFolderUpdate(id, { parent_id: newParentId });
 }
 
 export async function reorderSiblings(

@@ -34,7 +34,7 @@
   let editing = $state(false);
   let editSourceLabel = $state('');
   let editDestName = $state('');
-  let editError = $state<'name-taken' | 'name-invalid' | null>(null);
+  let editError = $state<'name-taken' | 'name-invalid' | 'name-cycle' | null>(null);
   let savingEdit = $state(false);
 
   const busy = $derived(status.state === 'syncing');
@@ -43,20 +43,28 @@
   // Source line text: the user's label, else the on-disk leaf name.
   const sourceText = $derived(status.sourceLabel ?? status.dirName);
 
-  // Destination is linked by id, so prefer the LIVE folder name (reflects a
-  // rename done in the folder tree) and fall back to the stored label.
-  function findFolderName(nodes: FolderWithChildren[], id: string): string | null {
+  // Destination is linked by id, so prefer the LIVE folder breadcrumb (root →
+  // leaf, reflecting a rename/move in the folder tree) and fall back to the
+  // stored path. The folder can be nested, so this is a path, not a single name.
+  function findFolderBreadcrumb(nodes: FolderWithChildren[], id: string): string[] | null {
     for (const n of nodes) {
-      if (n.id === id) return n.name;
-      const sub = n.children ? findFolderName(n.children, id) : null;
-      if (sub) return sub;
+      if (n.id === id) return [n.name];
+      const sub = n.children ? findFolderBreadcrumb(n.children, id) : null;
+      if (sub) return [n.name, ...sub];
     }
     return null;
   }
-  const displayName = $derived(
-    (status.targetFolderId ? findFolderName($foldersStore, status.targetFolderId) : null) ??
-      status.name
+  // Ancestor names root → leaf. Live tree when resolved, else the stored
+  // "/"-separated path (before the first sync resolves `targetFolderId`).
+  const destSegments = $derived(
+    (status.targetFolderId ? findFolderBreadcrumb($foldersStore, status.targetFolderId) : null) ??
+      status.name.split('/').map((s) => s.trim()).filter(Boolean)
   );
+  // Bold title = the leaf folder; the full path goes on the destination line.
+  const leafName = $derived(destSegments[destSegments.length - 1] ?? status.name);
+  // Breadcrumb for display ("Projekty › Docs") and the editable path ("Projekty/Docs").
+  const destDisplay = $derived(destSegments.join(' › '));
+  const destPathString = $derived(destSegments.join('/'));
 
   async function handleSyncNow() {
     runResult = null;
@@ -70,7 +78,7 @@
 
   function startEdit() {
     editSourceLabel = status.sourceLabel ?? '';
-    editDestName = displayName;
+    editDestName = destPathString;
     editError = null;
     editing = true;
   }
@@ -95,6 +103,7 @@
       if (!outcome.ok) {
         if (outcome.error === 'name-taken') editError = 'name-taken';
         else if (outcome.error === 'name-invalid') editError = 'name-invalid';
+        else if (outcome.error === 'name-cycle') editError = 'name-cycle';
         return;
       }
       editing = false;
@@ -120,7 +129,7 @@
     <div class="flex min-w-0 items-start gap-3">
       <FolderSync class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div class="min-w-0 text-xs">
-        <p class="truncate text-sm font-medium">{displayName}</p>
+        <p class="truncate text-sm font-medium">{leafName}</p>
         <p class="truncate text-muted-foreground">
           {$t('settings_page.export_import.folder_sync_source_dir', {
             values: { name: sourceText }
@@ -128,7 +137,7 @@
         </p>
         <p class="truncate text-muted-foreground">
           {$t('settings_page.export_import.folder_sync_destination', {
-            values: { name: displayName }
+            values: { name: destDisplay }
           })}
         </p>
         {#if status.lastSyncAt}
@@ -233,7 +242,7 @@
           type="text"
           bind:value={editDestName}
           oninput={() => (editError = null)}
-          maxlength="120"
+          maxlength="240"
           disabled={savingEdit}
           class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
         />
@@ -248,6 +257,10 @@
       {:else if editError === 'name-invalid'}
         <p class="text-xs text-destructive">
           {$t('settings_page.export_import.folder_sync_name_invalid')}
+        </p>
+      {:else if editError === 'name-cycle'}
+        <p class="text-xs text-destructive">
+          {$t('settings_page.export_import.folder_sync_name_cycle')}
         </p>
       {/if}
       <div class="flex gap-2">

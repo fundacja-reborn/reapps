@@ -8,7 +8,7 @@ import { getUserFromToken } from '$lib/server/auth';
 const logger = createLogger('Notes-API-Folder');
 
 /**
- * PATCH /api/folders/[id] — update folder name and/or parent.
+ * PATCH /api/folders/[id] - update folder name and/or parent.
  * Body: { name_encrypted?, parent_id?, order_index? }
  */
 export const PATCH: RequestHandler = async ({ request, params }) => {
@@ -67,19 +67,28 @@ export const PATCH: RequestHandler = async ({ request, params }) => {
 };
 
 /**
- * DELETE /api/folders/[id] — delete folder and cascade to children.
+ * DELETE /api/folders/[id] - delete folder and cascade to children.
  *
  * Idempotent: if the folder does not exist (or belongs to another user) we
  * return 200 with `success: true` instead of 404. The client treats folder
  * deletes as fire-and-forget with a short 4-attempt retry window
- * (see `pushFolderDelete` in `notes-sync.service.ts`). A 404 — e.g. when the
+ * (see `pushFolderDelete` in `notes-sync.service.ts`). A 404 - e.g. when the
  * folder was never synced because an earlier `pushFolder` was abandoned, or
  * the row was already removed by an earlier successful DELETE the client did
- * not record — would be retried 4× and then dropped permanently, even though
+ * not record - would be retried 4× and then dropped permanently, even though
  * the desired end state (folder absent server-side) already holds. Returning
  * 200 on a missing row keeps the server view authoritative without leaking
  * existence: an unauthorised caller cannot distinguish "folder absent" from
  * "folder belongs to someone else".
+ *
+ * The delete uses `deleteMany`, not `delete`, for the same idempotency one
+ * level deeper. Deleting a folder fires parallel DELETEs for the parent AND
+ * each descendant (folder.service.ts `deleteFolder`), and the parent's
+ * `onDelete: Cascade` can remove a descendant row before its own explicit
+ * DELETE reaches the delete call. `delete` would then throw P2025 ("record to
+ * delete does not exist") -> caught as a 500; `deleteMany` matches 0 rows and
+ * stays a clean no-op. The cascade fires identically, so children and notes
+ * are still cleaned up.
  */
 export const DELETE: RequestHandler = async ({ request, params }) => {
   try {
@@ -87,12 +96,14 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
     if (!userId) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
     // Ownership-scoped lookup. If the row is missing OR owned by a different
-    // user, treat as a no-op success — same shape as DELETE /api/notes/[id].
+    // user, treat as a no-op success - same shape as DELETE /api/notes/[id].
     const existing = await prisma.folder.findFirst({ where: { id: params.id, user_id: userId } });
     if (!existing) return json({ success: true });
 
-    // Prisma cascade (onDelete: Cascade) handles child folders and notes
-    await prisma.folder.delete({ where: { id: params.id } });
+    // deleteMany (not delete) so a parent-cascade that already removed this row
+    // mid-handler is a no-op rather than a P2025 throw -> 500 (see doc comment).
+    // Ownership stays enforced via user_id; the onDelete:Cascade fires the same.
+    await prisma.folder.deleteMany({ where: { id: params.id, user_id: userId } });
 
     return json({ success: true });
   } catch (err: unknown) {

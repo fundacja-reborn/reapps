@@ -6,6 +6,7 @@ const mockPrisma = {
   folder: {
     findFirst: vi.fn(),
     delete: vi.fn(),
+    deleteMany: vi.fn(),
     update: vi.fn()
   }
 };
@@ -63,7 +64,7 @@ describe('DELETE /api/folders/[id] (idempotency)', () => {
   // (a) Existing folder → 200 + actual delete
   it('deletes an existing folder owned by the caller', async () => {
     mockPrisma.folder.findFirst.mockResolvedValue({ id: FOLDER_ID, user_id: USER_ID });
-    mockPrisma.folder.delete.mockResolvedValue({});
+    mockPrisma.folder.deleteMany.mockResolvedValue({ count: 1 });
 
     const { status, data } = await callDelete(FOLDER_ID);
 
@@ -72,7 +73,11 @@ describe('DELETE /api/folders/[id] (idempotency)', () => {
     expect(mockPrisma.folder.findFirst).toHaveBeenCalledWith({
       where: { id: FOLDER_ID, user_id: USER_ID }
     });
-    expect(mockPrisma.folder.delete).toHaveBeenCalledWith({ where: { id: FOLDER_ID } });
+    // deleteMany (idempotent), scoped by user_id so ownership is enforced.
+    expect(mockPrisma.folder.deleteMany).toHaveBeenCalledWith({
+      where: { id: FOLDER_ID, user_id: USER_ID }
+    });
+    expect(mockPrisma.folder.delete).not.toHaveBeenCalled();
   });
 
   // (b) Folder absent server-side → 200, no delete attempted (idempotent no-op)
@@ -86,7 +91,7 @@ describe('DELETE /api/folders/[id] (idempotency)', () => {
 
     expect(status).toBe(200);
     expect(data).toEqual({ success: true });
-    expect(mockPrisma.folder.delete).not.toHaveBeenCalled();
+    expect(mockPrisma.folder.deleteMany).not.toHaveBeenCalled();
   });
 
   // (c) Folder owned by a different user → 200, but no delete (no existence leak)
@@ -101,10 +106,28 @@ describe('DELETE /api/folders/[id] (idempotency)', () => {
     expect(mockPrisma.folder.findFirst).toHaveBeenCalledWith({
       where: { id: FOLDER_ID, user_id: USER_ID }
     });
-    expect(mockPrisma.folder.delete).not.toHaveBeenCalled();
+    expect(mockPrisma.folder.deleteMany).not.toHaveBeenCalled();
   });
 
-  // (d) No auth → 401 (unchanged behavior)
+  // (d) Concurrent parent-cascade already removed the row → 200, NOT a 500.
+  // Deleting a folder fires parallel DELETEs for the parent and each descendant;
+  // the parent's onDelete:Cascade can win and remove a descendant before its own
+  // explicit DELETE runs. `delete` would throw P2025 -> 500; `deleteMany` matches
+  // 0 rows and is a clean no-op. (Surfaced during folder-sync smoke testing.)
+  it('returns 200 when a parent-cascade already removed the row mid-handler', async () => {
+    mockPrisma.folder.findFirst.mockResolvedValue({ id: FOLDER_ID, user_id: USER_ID });
+    mockPrisma.folder.deleteMany.mockResolvedValue({ count: 0 });
+
+    const { status, data } = await callDelete(FOLDER_ID);
+
+    expect(status).toBe(200);
+    expect(data).toEqual({ success: true });
+    expect(mockPrisma.folder.deleteMany).toHaveBeenCalledWith({
+      where: { id: FOLDER_ID, user_id: USER_ID }
+    });
+  });
+
+  // (e) No auth → 401 (unchanged behavior)
   it('returns 401 when the caller is unauthenticated', async () => {
     mockGetUserFromToken.mockResolvedValue(null);
 
@@ -113,6 +136,6 @@ describe('DELETE /api/folders/[id] (idempotency)', () => {
     expect(status).toBe(401);
     expect(data.success).toBe(false);
     expect(mockPrisma.folder.findFirst).not.toHaveBeenCalled();
-    expect(mockPrisma.folder.delete).not.toHaveBeenCalled();
+    expect(mockPrisma.folder.deleteMany).not.toHaveBeenCalled();
   });
 });

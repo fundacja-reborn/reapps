@@ -54,6 +54,7 @@ import {
   type ImportFolderResult,
   type ImportProgress
 } from './export-import.service';
+import { pushPendingItems } from './notes-sync.service';
 import {
   collectMarkdownEntries,
   filterEntriesToSync,
@@ -77,13 +78,33 @@ const PICKER_ID = 'reborn-folder-sync';
 /** Web Locks name guarding against two tabs importing concurrently. */
 const LOCK_NAME = 'reborn-notes-folder-sync';
 /**
- * Characters forbidden in a destination (app folder) name. The import path
- * walk splits on "/" (`extractFolderSegments`), so a slash would silently
- * nest - "a/b" would create folder "a" containing "b" instead of one folder
- * named "a/b". A backslash reads as a path separator too. The destination
- * must map to exactly one top-level folder, so both are rejected.
+ * Characters forbidden in a destination path. A forward slash "/" is now a
+ * deliberate nesting separator: "Projekty/Docs" targets a folder "Docs" under
+ * "Projekty" (resolved to a stable `target_folder_id` at link time). Only the
+ * backslash is rejected - it reads as a Windows path separator, our folder
+ * names never contain one, and allowing it would be an ambiguous second
+ * separator. Empty segments (leading/trailing/doubled "/") are dropped by
+ * {@link parseDestPath}, not rejected.
  */
-const ILLEGAL_DEST_NAME_CHARS = /[/\\]/;
+const ILLEGAL_DEST_NAME_CHARS = /\\/;
+
+/**
+ * Split a typed destination into clean folder-name segments. Forward slashes
+ * separate nesting levels; empty segments (from leading/trailing/doubled
+ * slashes, e.g. "/a//b/") are dropped and each segment is trimmed. A blank or
+ * slash-only string yields `[]`.
+ */
+function parseDestPath(raw: string): string[] {
+  return raw
+    .split('/')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/** Canonical "A/B/C" form of a typed destination, for storage + comparison. */
+function normalizeDestPath(raw: string): string {
+  return parseDestPath(raw).join('/');
+}
 
 export type FolderSyncErrorKey = 'folder_gone' | 'sync_failed' | null;
 
@@ -91,14 +112,15 @@ export type FolderSyncErrorKey = 'folder_gone' | 'sync_failed' | null;
 export type FolderSyncConfigStatus = {
   id: string;
   /**
-   * Stored creation name / fallback label (the record's `root_name`). The
-   * settings UI prefers the LIVE folder name resolved from `targetFolderId`
-   * when the folder exists, so a tree rename is reflected without editing.
+   * Stored destination path / fallback label (the record's `root_name`, which
+   * may be "/"-separated, e.g. "Projekty/Docs"). The settings UI prefers the
+   * LIVE folder breadcrumb resolved from `targetFolderId` when the folder
+   * exists, so a tree rename/move is reflected without editing.
    */
   name: string;
   /**
-   * Id of the destination top-level folder (the durable link). Null until the
-   * first sync (or load-time name match) resolves it; the folder UI keys its
+   * Id of the destination folder (the durable link, at any nesting level). Null
+   * until the first sync (or load-time path match) resolves it; the folder UI keys its
    * "this folder is synced" marker off this, never off the name.
    */
   targetFolderId: string | null;
@@ -200,22 +222,75 @@ function findFolderInTree(nodes: FolderWithChildren[], id: string): FolderWithCh
   return null;
 }
 
-/** Top-level folder matching `name` case-insensitively, or null. */
-function findTopLevelFolderByName(
+/**
+ * Find the folder a "/"-separated path resolves to, matching each segment
+ * case-insensitively under the previous level (the tree's root array is the
+ * top level). Find-only - never creates; returns null if any segment is
+ * missing or `segments` is empty.
+ */
+function findFolderByPath(
   nodes: FolderWithChildren[],
-  name: string
+  segments: string[]
 ): FolderWithChildren | null {
-  const lower = name.toLowerCase();
-  return nodes.find((n) => !n.parent_id && n.name.toLowerCase() === lower) ?? null;
+  let level = nodes;
+  let found: FolderWithChildren | null = null;
+  for (const seg of segments) {
+    const lower = seg.toLowerCase();
+    const match = level.find((n) => n.name.toLowerCase() === lower) ?? null;
+    if (!match) return null;
+    found = match;
+    level = match.children ?? [];
+  }
+  return found;
 }
 
 /**
- * Resolve the top-level folder this config imports into, as a STABLE id
- * (link-by-id: a folder rename never breaks the link). Tries, in order:
+ * Resolve a "/"-separated destination path to a folder id, find-or-creating
+ * each missing level (case-insensitive per level, mirroring the importer's
+ * `findOrCreateFolderByPath`). `segments` must be non-empty - callers validate
+ * via {@link parseDestPath}. The CALLER must have refreshed `foldersStore`
+ * first; a freshly created level has no children, so no re-read is needed
+ * mid-walk. A single segment reproduces the old top-level-by-name behavior.
+ *
+ * Creates with `skipSync: true` (no immediate push). A nested path creates a
+ * parent then a child in one burst, and the per-entity fire-and-forget push
+ * has no parent-before-child ordering - the child's POST would race ahead of
+ * its parent and the server rejects it with 404 "Parent folder not found"
+ * until a retry. The deferred creates are flushed by the ordered
+ * `pushPendingItems()` the subsequent `importFolder` already runs (BFS by
+ * parent depth via `buildFolderLayers`), so parents land first. An empty
+ * linked directory skips that import and leaves the target folder pending
+ * until the next run - harmless (nothing to sync) and self-correcting.
+ */
+async function resolveFolderPath(segments: string[]): Promise<string> {
+  let level = get(foldersStore);
+  let parentId: string | undefined;
+  for (const seg of segments) {
+    const lower = seg.toLowerCase();
+    const existing = level.find((n) => n.name.toLowerCase() === lower);
+    if (existing) {
+      parentId = existing.id;
+      level = existing.children ?? [];
+    } else {
+      // Omit the parent arg at the top level so the call shape matches the
+      // optional-parentId signature (and the existing top-level create tests).
+      parentId =
+        parentId === undefined
+          ? await foldersStore.create(seg, undefined, { skipSync: true })
+          : await foldersStore.create(seg, parentId, { skipSync: true });
+      level = [];
+    }
+  }
+  return parentId as string;
+}
+
+/**
+ * Resolve the app folder this config imports into, as a STABLE id (link-by-id:
+ * a folder rename never breaks the link). Tries, in order:
  *   1. the persisted `target_folder_id` if that folder still exists,
- *   2. a top-level folder matching `root_name` (migration from the
- *      link-by-name era + re-home when the user recreated it by name),
- *   3. otherwise create a fresh top-level folder named `root_name`.
+ *   2/3. otherwise resolve `root_name` as a "/"-separated path, find-or-creating
+ *        each level (migration from the link-by-name era, re-home when the user
+ *        recreated it by name, and nesting for a multi-segment destination).
  * The resolved id is returned for the caller to persist back on the record.
  */
 async function resolveTargetFolderId(cfg: FolderSyncConfigRecord): Promise<string> {
@@ -224,9 +299,7 @@ async function resolveTargetFolderId(cfg: FolderSyncConfigRecord): Promise<strin
   if (cfg.target_folder_id && findFolderInTree(tree, cfg.target_folder_id)) {
     return cfg.target_folder_id;
   }
-  const byName = findTopLevelFolderByName(tree, cfg.root_name);
-  if (byName) return byName.id;
-  return foldersStore.create(cfg.root_name);
+  return resolveFolderPath(parseDestPath(cfg.root_name));
 }
 
 /**
@@ -244,16 +317,16 @@ export async function refreshFolderSyncStatus(): Promise<void> {
   let cfgs = await readConfigs();
   // One-time migration to link-by-id: configs from the link-by-name era (or
   // created before their first sync) carry no target_folder_id. Back-fill it
-  // from a current-tree name match so the by-id marker/lookup works without a
-  // sync first. Resolve-only (never create) - a missing folder is left for the
-  // next sync's resolveTargetFolderId to create and capture. Folders are only
-  // read while at least one config is unresolved, so the cost is one-time.
+  // from a current-tree path match so the by-id marker/lookup works without a
+  // sync first. Resolve-only (never create) - a missing folder/path is left for
+  // the next sync's resolveTargetFolderId to create and capture. Folders are
+  // only read while at least one config is unresolved, so the cost is one-time.
   if (cfgs.some((c) => !c.target_folder_id)) {
     await foldersStore.refresh();
     const tree = get(foldersStore);
     for (const cfg of cfgs) {
       if (cfg.target_folder_id) continue;
-      const match = findTopLevelFolderByName(tree, cfg.root_name);
+      const match = findFolderByPath(tree, parseDestPath(cfg.root_name));
       if (match) await folderSyncStore.save({ ...cfg, target_folder_id: match.id });
     }
     cfgs = await readConfigs();
@@ -324,31 +397,33 @@ export type AddFolderOutcome =
 /**
  * Persist a new config for a handle obtained from `pickFolderToLink`.
  *
- * `displayName` (default in the UI: the directory name) must be unique
- * across configs case-insensitively - it is both the label and the target
- * top-level folder, so a duplicate would silently merge two sources.
- * Colliding with an EXISTING app folder is fine and deliberate: the import
- * find-or-creates the folder, letting users target a folder they already
- * have. Returns fast - the caller kicks off the initial import with
- * `runFolderSync('manual', id)` so the UI can close the form while the
- * import streams progress into the new list entry.
+ * `displayName` is the destination, which may be a "/"-separated PATH
+ * ("Projekty/Docs" → folder "Docs" under "Projekty"). It is stored normalized
+ * and must be unique across configs case-insensitively, so two sources never
+ * silently merge into the same folder. Colliding with an EXISTING app folder
+ * (or path) is fine and deliberate: the import find-or-creates each level,
+ * letting users target a folder they already have. The folder is NOT created
+ * here - the caller kicks off the initial import with `runFolderSync('manual',
+ * id)`, whose `resolveTargetFolderId` find-or-creates the path and captures the
+ * leaf id, so the UI can close the form while the import streams progress.
  */
 export async function addLinkedFolder(
   handle: FileSystemDirectoryHandle,
   displayName: string
 ): Promise<AddFolderOutcome> {
-  const name = displayName.trim();
-  if (!name) return { ok: false, error: 'name-empty' };
-  if (ILLEGAL_DEST_NAME_CHARS.test(name)) return { ok: false, error: 'name-invalid' };
+  if (ILLEGAL_DEST_NAME_CHARS.test(displayName)) return { ok: false, error: 'name-invalid' };
+  const path = normalizeDestPath(displayName);
+  if (!path) return { ok: false, error: 'name-empty' };
   const configs = await readConfigs();
   if (configs.length >= MAX_FOLDER_SYNC_CONFIGS) return { ok: false, error: 'limit-reached' };
-  if (configs.some((c) => c.root_name.toLowerCase() === name.toLowerCase())) {
+  const pathLower = path.toLowerCase();
+  if (configs.some((c) => normalizeDestPath(c.root_name).toLowerCase() === pathLower)) {
     return { ok: false, error: 'name-taken' };
   }
   const record: FolderSyncConfigRecord = {
     id: crypto.randomUUID(),
     handle,
-    root_name: name,
+    root_name: path,
     auto_sync: 1,
     last_sync_at: null,
     last_result: null,
@@ -361,7 +436,7 @@ export async function addLinkedFolder(
 
 export type UpdateFolderSyncOutcome =
   | { ok: true }
-  | { ok: false; error: 'name-empty' | 'name-invalid' | 'name-taken' };
+  | { ok: false; error: 'name-empty' | 'name-invalid' | 'name-taken' | 'name-cycle' };
 
 /**
  * Edit a linked folder's two user-facing names.
@@ -371,16 +446,17 @@ export type UpdateFolderSyncOutcome =
  *   it (the UI then falls back to the on-disk leaf name). It never affects
  *   which directory is read - dedup is by handle identity, not by name.
  *
- * - `destName` renames the destination folder. Because the link is by id
- *   (`target_folder_id`), this just renames that node BY ID (the import keeps
- *   targeting it) and updates the stored `root_name` (label + creation name).
- *   Notes already imported stay put - they're children of the same folder.
- *   Renaming to a name another top-level folder already uses is now harmless
- *   (the import no longer find-or-creates the target by name), so only the
- *   cross-config label uniqueness is still enforced for a tidy settings list.
- *   The scan watermark and known-paths set are reset on a name change so the
- *   next run reconciles under the new path root; the overwrite strategy's
- *   unchanged-skip keeps that re-scan write-free when content already matches.
+ * - `destName` is the destination, which may be a "/"-separated PATH. Because
+ *   the link is by id (`target_folder_id`), editing it MOVES/renames the
+ *   existing target folder so imported notes travel with it (see
+ *   {@link moveTargetToPath}) and updates the stored `root_name`. Notes already
+ *   imported stay put - they're children of the same (moved) folder. Targeting
+ *   a path/name another top-level folder already uses is harmless (the import
+ *   no longer find-or-creates the target by name); only cross-config path
+ *   uniqueness is enforced, for a tidy settings list. The scan watermark and
+ *   known-paths set are reset on a destination change so the next run
+ *   reconciles under the new path root; the overwrite strategy's unchanged-skip
+ *   keeps that re-scan write-free when content already matches.
  *
  * Call only when this config is idle (the settings UI disables editing while
  * a sync runs) - it mutates the same record and target folder the runner uses.
@@ -392,46 +468,121 @@ export async function updateFolderSyncConfig(
   const cfg = await folderSyncStore.get(configId);
   if (!cfg) return { ok: true }; // already unlinked - nothing to update
 
-  const newName = changes.destName.trim();
-  if (!newName) return { ok: false, error: 'name-empty' };
-  if (ILLEGAL_DEST_NAME_CHARS.test(newName)) return { ok: false, error: 'name-invalid' };
+  if (ILLEGAL_DEST_NAME_CHARS.test(changes.destName)) return { ok: false, error: 'name-invalid' };
+  const newPath = normalizeDestPath(changes.destName);
+  if (!newPath) return { ok: false, error: 'name-empty' };
   const newLabel = changes.sourceLabel?.trim() ? changes.sourceLabel.trim() : null;
 
-  const oldName = cfg.root_name;
-  const destChanged = newName !== oldName;
+  const oldPath = normalizeDestPath(cfg.root_name);
+  const destChanged = newPath.toLowerCase() !== oldPath.toLowerCase();
 
   let targetId = cfg.target_folder_id;
   if (destChanged) {
-    const lower = newName.toLowerCase();
+    const newPathLower = newPath.toLowerCase();
     const others = (await readConfigs()).filter((c) => c.id !== configId);
-    if (others.some((c) => c.root_name.toLowerCase() === lower)) {
+    if (others.some((c) => normalizeDestPath(c.root_name).toLowerCase() === newPathLower)) {
       return { ok: false, error: 'name-taken' };
     }
-    // Rename the target folder BY ID so imported notes travel with it. Resolve
-    // the id from a stale/absent record by the OLD name (a link-by-name record
-    // not migrated yet). A truly missing folder leaves nothing to rename - the
-    // next sync recreates it under the new name via resolveTargetFolderId.
-    await foldersStore.refresh();
-    const tree = get(foldersStore);
-    if (!targetId || !findFolderInTree(tree, targetId)) {
-      targetId = findTopLevelFolderByName(tree, oldName)?.id;
-    }
-    if (targetId) await foldersStore.rename(targetId, newName);
+    const moved = await moveTargetToPath(cfg, targetId, newPath);
+    if (!moved.ok) return moved;
+    targetId = moved.targetId;
   }
 
   const updated: FolderSyncConfigRecord = {
     ...cfg,
     source_label: newLabel,
-    root_name: newName,
+    root_name: newPath,
     target_folder_id: targetId,
-    // A renamed destination invalidates the path-prefixed known set and the
+    // A changed destination invalidates the path-prefixed known set and the
     // mtime watermark; reset both so the next scan reconciles under the new
     // path root (write-free via unchanged-skip when content already matches).
     ...(destChanged ? { known_paths: undefined, last_sync_at: null } : {})
   };
   await folderSyncStore.save(updated);
+  // Flush moveTargetToPath's local folder surgery as one ordered push (BFS by
+  // parent depth via buildFolderLayers), so any new parent lands server-side
+  // before the moved child references it. The per-entity fire-and-forget push
+  // has no such ordering, which is why the child would otherwise 404. Fire-and-
+  // forget like every sync push - the local move already shows in the UI.
+  if (destChanged) void pushPendingItems();
   await refreshFolderSyncStatus();
   return { ok: true };
+}
+
+/**
+ * Re-home this config's destination folder to a new "/"-separated path so an
+ * edit MOVES the existing folder (its notes travel with it - link by id)
+ * rather than orphaning them into a fresh one. Find-or-creates the new parent
+ * chain, moves the target under it if the parent changed, and renames the leaf
+ * if it changed. The folder to move is resolved by id, falling back to the OLD
+ * path for a stale/unmigrated record; a folder that doesn't exist yet leaves
+ * nothing to move (the next sync creates it under the new path). Rejected with
+ * `name-cycle` if the new parent path runs through the target itself (which
+ * would nest the folder in its own subtree) - detected mid-walk, before any
+ * folder is created, so a rejected edit never orphans a stray folder.
+ *
+ * Mutates locally only (every create/move/rename uses `skipSync`); the caller
+ * ({@link updateFolderSyncConfig}) fires one ordered `pushPendingItems()` so a
+ * freshly-created parent lands server-side before the moved child PATCHes to
+ * reference it - otherwise the child races ahead and the server answers 404
+ * "Parent folder not found" until a retry.
+ */
+async function moveTargetToPath(
+  cfg: FolderSyncConfigRecord,
+  currentTargetId: string | undefined,
+  newPath: string
+): Promise<{ ok: true; targetId: string | undefined } | { ok: false; error: 'name-cycle' }> {
+  await foldersStore.refresh();
+  let tree = get(foldersStore);
+
+  let targetId = currentTargetId;
+  if (!targetId || !findFolderInTree(tree, targetId)) {
+    targetId = findFolderByPath(tree, parseDestPath(cfg.root_name))?.id;
+  }
+  if (!targetId) return { ok: true, targetId: undefined };
+
+  const segments = parseDestPath(newPath);
+  const newLeaf = segments[segments.length - 1];
+  const parentSegments = segments.slice(0, -1);
+
+  // Find-or-create the new parent chain, walking top-down. Bail with
+  // `name-cycle` BEFORE any creation the moment the chain reaches the target:
+  // anything below it would nest the folder inside its own subtree, and bailing
+  // first avoids leaving an orphaned folder created under the target.
+  let parentId: string | undefined = undefined;
+  let level: FolderWithChildren[] = tree;
+  for (const seg of parentSegments) {
+    if (parentId === targetId) return { ok: false, error: 'name-cycle' };
+    const lower = seg.toLowerCase();
+    const existing = level.find((n) => n.name.toLowerCase() === lower);
+    if (existing) {
+      parentId = existing.id;
+      level = existing.children ?? [];
+    } else {
+      // skipSync on every mutation here: the caller flushes one ordered
+      // pushPendingItems() so the new parent chain lands before the moved
+      // child references it (see resolveFolderPath + updateFolderSyncConfig).
+      parentId =
+        parentId === undefined
+          ? await foldersStore.create(seg, undefined, { skipSync: true })
+          : await foldersStore.create(seg, parentId, { skipSync: true });
+      level = [];
+    }
+  }
+  if (parentId === targetId) return { ok: false, error: 'name-cycle' };
+  const newParentId = parentId;
+
+  // Re-read: creating parent folders above may have changed the tree.
+  await foldersStore.refresh();
+  tree = get(foldersStore);
+  const node = findFolderInTree(tree, targetId);
+  if (!node) return { ok: true, targetId };
+
+  if ((newParentId ?? undefined) !== (node.parent_id ?? undefined)) {
+    await foldersStore.move(targetId, newParentId ?? null, { skipSync: true });
+  }
+  if (node.name !== newLeaf) await foldersStore.rename(targetId, newLeaf, { skipSync: true });
+  return { ok: true, targetId };
 }
 
 /** Remove one link. Imported notes/folders/tags are left untouched. */
@@ -631,12 +782,15 @@ async function scanAndImport(
   // absorbs the overlap).
   const scanStartedAt = new Date().toISOString();
 
-  // Root the walk's relative paths at root_name (not the on-disk name).
-  // importFolder strips that first segment (keepRootFolder defaults off) and
-  // anchors the subtree under `targetFolderId`, so the result is identical to
-  // the old keep-root-by-name import but linked by id. Rooting at root_name
-  // keeps known_paths stable across tree renames (root_name doesn't move).
-  const { entries, skippedTooDeep } = await collectMarkdownEntries(handle, cfg.root_name);
+  // Root the walk's relative paths at the on-disk dir name (handle.name),
+  // decoupled from root_name now that root_name can be a "/"-separated
+  // destination PATH (a multi-segment root would leak extra levels through
+  // extractFolderSegments). importFolder strips this single first segment
+  // (keepRootFolder defaults off) and anchors the subtree under
+  // `targetFolderId`. handle.name is stable across tree renames so known_paths
+  // don't churn; it only shifts if the on-disk directory itself is renamed (a
+  // one-off, write-free re-reconcile via the overwrite strategy's unchanged-skip).
+  const { entries, skippedTooDeep } = await collectMarkdownEntries(handle);
   if (skippedTooDeep > 0) {
     logger.warn('Folder sync: subtree(s) deeper than the depth cap were skipped', {
       skippedTooDeep
