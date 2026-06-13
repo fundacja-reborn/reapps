@@ -24,7 +24,8 @@
 		Settings,
 		LogOut,
 		Share2,
-		Heart
+		Heart,
+		UserPlus
 	} from '@lucide/svelte';
 	import {
 		overdueTasks,
@@ -43,6 +44,7 @@
 	import { activeSharesCount } from '$lib/stores/shares.store';
 	import { requireActiveSession } from '$lib/utils/require-active-session';
 	import ManageSharesDialog from '$lib/components/tasks/ManageSharesDialog.svelte';
+	import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
 
 	let {
 		activeSection = $bindable<Section>('lists'),
@@ -70,8 +72,14 @@
 		(import.meta.env.PUBLIC_SITE_URL as string | undefined) ?? 'https://reapps.eu';
 	const supportUrl = $derived(`${SITE_URL}${$i18nLocale === 'pl' ? '/pl' : ''}/support`);
 	let sharesDialogOpen = $state(false);
+	let accountRequiredOpen = $state(false);
 
 	async function handleOpenShares() {
+		// Sharing is account-only: in local-only mode, invite to create an account.
+		if ($session.isLocalOnly) {
+			accountRequiredOpen = true;
+			return;
+		}
 		const ok = await requireActiveSession({
 			description: $t('share.session_required.view')
 		});
@@ -503,9 +511,15 @@
 									{getUserInitial($session.user?.username ?? null)}
 								</span>
 								<div class="grid flex-1 text-start text-sm leading-tight">
-									<span class="truncate font-medium">{$session.user?.username ?? '—'}</span>
+									<span class="truncate font-medium"
+										>{$session.isLocalOnly
+											? $t('local_mode.menu_title')
+											: ($session.user?.username ?? '—')}</span
+									>
 									<span class="truncate text-xs text-muted-foreground"
-										>{$t('common.e2ee_account', { default: 'Konto E2EE' })}</span
+										>{$session.isLocalOnly
+											? $t('local_mode.menu_subtitle')
+											: $t('common.e2ee_account', { default: 'Konto E2EE' })}</span
 									>
 								</div>
 							</div>
@@ -517,6 +531,13 @@
 								{$t('settings.app_settings')}
 							</DropdownMenu.Item>
 						</DropdownMenu.Group>
+						{#if $session.isLocalOnly}
+							<DropdownMenu.Separator />
+							<DropdownMenu.Item onclick={() => goto('/auth/register')}>
+								<UserPlus class="h-4 w-4" />
+								{$t('local_mode.create_account')}
+							</DropdownMenu.Item>
+						{/if}
 						{#if $session.isAuthenticated}
 							<DropdownMenu.Separator />
 							<DropdownMenu.Item
@@ -537,6 +558,9 @@
 <!-- Shares manage dialog (mounted once, used by both nav modes) -->
 <ManageSharesDialog bind:open={sharesDialogOpen} sourceId={null} />
 
+<!-- Account-required prompt (shares opened in local-only mode) -->
+<AccountRequiredDialog bind:open={accountRequiredOpen} />
+
 <!-- Mobile: User menu Sheet -->
 <Sheet bind:open={userSheetOpen}>
 	<SheetContent side="bottom" class="h-auto">
@@ -550,9 +574,15 @@
 						{getUserInitial($session.user?.username ?? null)}
 					</span>
 					<div class="grid flex-1 text-start text-sm leading-tight">
-						<span class="truncate font-medium">{$session.user?.username ?? '—'}</span>
+						<span class="truncate font-medium"
+							>{$session.isLocalOnly
+								? $t('local_mode.menu_title')
+								: ($session.user?.username ?? '—')}</span
+						>
 						<span class="truncate text-xs font-normal text-muted-foreground"
-							>{$t('common.e2ee_account', { default: 'Konto E2EE' })}</span
+							>{$session.isLocalOnly
+								? $t('local_mode.menu_subtitle')
+								: $t('common.e2ee_account', { default: 'Konto E2EE' })}</span
 						>
 					</div>
 				</div>
@@ -570,6 +600,19 @@
 				<Settings class="mr-2 h-4 w-4" />
 				{$t('settings.app_settings')}
 			</Button>
+			{#if $session.isLocalOnly}
+				<Button
+					variant="ghost"
+					class="w-full justify-start"
+					onclick={() => {
+						userSheetOpen = false;
+						goto('/auth/register');
+					}}
+				>
+					<UserPlus class="mr-2 h-4 w-4" />
+					{$t('local_mode.create_account')}
+				</Button>
+			{/if}
 			{#if $session.isAuthenticated}
 				<Button
 					variant="ghost"

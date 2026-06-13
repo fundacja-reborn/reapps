@@ -20,6 +20,13 @@ export interface AuthSession {
   error: string | null;
   isLoading: boolean;
   isLoggingOut: boolean;
+  /**
+   * Local-only / no-account mode: the app is usable and encrypted locally, but
+   * there is no server session, so sync never runs. Optional + defaults to
+   * undefined/false, so a real account session stays byte-identical. Distinct
+   * from `isAuthenticated` precisely so the existing sync gates stay no-ops here.
+   */
+  isLocalOnly?: boolean;
 }
 
 export interface LoginResult {

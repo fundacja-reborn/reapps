@@ -4,6 +4,7 @@ import { base } from '$app/paths';
 import { authFetch } from '$lib/utils/auth-fetch';
 import { connectivityStore } from '$lib/stores/connectivity.store';
 import { sessionExpired } from '$lib/stores/session-expired.store';
+import { localOnly } from '$lib/stores/local-mode.store';
 import {
 	cryptoManager,
 	buildShareUrl,
@@ -96,6 +97,14 @@ function createSharesStore() {
 
 	async function refresh(): Promise<void> {
 		if (!browser) return;
+		// Local-only / no-account mode: sharing is account-only and there is no
+		// token, so hitting /api/shares would 401 and trip the session-expired
+		// banner. The crypto key IS loaded locally, so the isInitialized() guard
+		// below is not enough on its own.
+		if (get(localOnly)) {
+			state.update((s) => ({ ...s, loading: false }));
+			return;
+		}
 		if (!cryptoManager.isInitialized()) {
 			state.update((s) => ({ ...s, loading: false }));
 			return;

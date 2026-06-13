@@ -1,0 +1,23 @@
+{
+  "enter_failed": "No se pudo iniciar el modo local. Inténtalo de nuevo.",
+  "replace_title": "¿Reemplazar las tareas locales?",
+  "replace_desc": "Iniciar sesión en una cuenta existente reemplaza las tareas que hay actualmente en este dispositivo. Exporta una copia de seguridad antes si quieres conservarlas.",
+  "replace_confirm": "Iniciar sesión de todos modos",
+  "share_title": "Cuenta necesaria",
+  "account_required_desc": "Compartir requiere una cuenta. Crea una - tus tareas se conservan y empiezan a sincronizarse.",
+  "create_account": "Crear cuenta",
+  "account_invite_desc": "Conserva tus tareas, sincronízalas entre dispositivos y activa el uso compartido. Tus tareas actuales se conservan.",
+  "backup_reminder": "Consejo: exporta una copia de seguridad con regularidad - los datos locales no se pueden recuperar si pierdes este dispositivo.",
+  "menu_title": "Solo local",
+  "menu_subtitle": "Sin cuenta, sin sincronización",
+  "welcome": {
+    "title": "Trabajar sin conexión - sin cuenta",
+    "subtitle": "Tus tareas solo están en este dispositivo.",
+    "point_storage": "Tus datos permanecen en este dispositivo y nunca llegan a nuestros servidores.",
+    "point_encrypted": "Todo se cifra (AES-256) localmente.",
+    "point_no_sync": "Sin sincronización entre dispositivos ni copia en la nube.",
+    "point_no_recovery": "Sin recuperación si pierdes este dispositivo o borras los datos de la aplicación - exporta una copia de seguridad con regularidad.",
+    "point_upgrade": "Puedes crear una cuenta en cualquier momento - tus tareas se conservan y empiezan a sincronizarse.",
+    "cta": "Entendido"
+  }
+}

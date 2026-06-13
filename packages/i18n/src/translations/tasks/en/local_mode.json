@@ -1,0 +1,23 @@
+{
+  "enter_failed": "Couldn't start local mode. Please try again.",
+  "replace_title": "Replace local tasks?",
+  "replace_desc": "Signing in to an existing account replaces the tasks currently on this device. Export a backup first if you want to keep them.",
+  "replace_confirm": "Sign in anyway",
+  "share_title": "Account required",
+  "account_required_desc": "Sharing needs an account. Create one - your tasks are kept and start syncing.",
+  "create_account": "Create account",
+  "account_invite_desc": "Keep your tasks, sync them across devices, and enable sharing. Your current tasks are kept.",
+  "backup_reminder": "Tip: export a backup regularly - local data can't be recovered if you lose this device.",
+  "menu_title": "Local only",
+  "menu_subtitle": "No account, no sync",
+  "welcome": {
+    "title": "Working offline - no account",
+    "subtitle": "Your tasks live only on this device.",
+    "point_storage": "Your data stays on this device and never reaches our servers.",
+    "point_encrypted": "Everything is encrypted (AES-256) locally.",
+    "point_no_sync": "No sync between devices and no cloud backup.",
+    "point_no_recovery": "No recovery if you lose this device or clear app data - export a backup regularly.",
+    "point_upgrade": "You can create an account at any time - your tasks are kept and start syncing.",
+    "cta": "Got it"
+  }
+}

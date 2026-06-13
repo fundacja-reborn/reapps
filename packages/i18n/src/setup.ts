@@ -59,6 +59,7 @@ const TASKS_MODULE_FILES = [
   'e2e',
   'error',
   'home',
+  'local_mode',
   'menu',
   'nav',
   'network',

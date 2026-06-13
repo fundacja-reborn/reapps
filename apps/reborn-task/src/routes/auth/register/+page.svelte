@@ -7,7 +7,9 @@
 	import { page } from '$app/stores';
 	import { t } from '$lib/stores/i18n.store';
 	import { locale } from 'svelte-i18n';
+	import { get } from 'svelte/store';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
+	import { isLocalOnly } from '$lib/stores/auth.store';
 	import { RegisterPage } from '@reborn/ui';
 	import { hashPassword, generateMasterKeyForUser, cryptoManager } from '@reborn/crypto';
 	import { createLogger } from '@reborn/utils';
@@ -85,26 +87,55 @@
 		loading = true;
 		error = null;
 
-		try {
-			// 1. Prepare registration data client-side (hash password, generate keys, encrypt default list)
-			const registrationData = await prepareRegistrationData(detail.username, detail.password);
+		// Upgrade path: a local-only session is creating its first account. Adopt
+		// the existing local master key (wrap it with the new password) instead of
+		// generating a fresh one, so offline tasks - already encrypted with that
+		// key - stay readable and just start syncing. See plan B1.
+		const isUpgrade = get(isLocalOnly) && cryptoManager.isInitialized();
 
-			// 2. Call register API — user + default task list created atomically on server
+		try {
+			// 1. Build the registration payload (client-side, Zero Knowledge).
+			const passwordHash = await hashPassword(detail.password);
+			let encryptedMasterKey: string;
+			let masterKeySalt: string;
+			let defaultTaskList:
+				| { id: string; name_encrypted: string; is_default: true }
+				| undefined;
+
+			if (isUpgrade) {
+				const localKey = cryptoManager.getCurrentKey();
+				if (!localKey) throw new Error('Local master key unavailable for account upgrade');
+				const wrapped = await cryptoManager.encryptMasterKey(localKey, detail.password);
+				encryptedMasterKey = wrapped.encryptedMasterKey;
+				masterKeySalt = wrapped.salt;
+				// No defaultTaskList on upgrade: the user already has local lists that
+				// adopt into the account (the local default list becomes the account
+				// default on push). Sending one would create a duplicate default.
+				defaultTaskList = undefined;
+			} else {
+				const prepared = await prepareRegistrationData(detail.username, detail.password);
+				encryptedMasterKey = prepared.encryptedMasterKey;
+				masterKeySalt = prepared.masterKeySalt;
+				defaultTaskList = prepared.defaultTaskList;
+			}
+
+			// 2. Call register API — user (+ default task list for fresh accounts)
+			//    created atomically on server.
 			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/register`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					username: registrationData.username,
-					passwordHash: registrationData.passwordHash,
-					encryptedMasterKey: registrationData.encryptedMasterKey,
-					masterKeySalt: registrationData.masterKeySalt,
+					username: detail.username,
+					passwordHash,
+					encryptedMasterKey,
+					masterKeySalt,
 					website: detail.website,
 					_t: detail._t,
 					powChallenge: detail.powChallenge,
 					powSolution: detail.powSolution,
-					defaultTaskList: registrationData.defaultTaskList
+					defaultTaskList
 				})
 			});
 
@@ -115,8 +146,19 @@
 				return;
 			}
 
-			// 3. Log the user in automatically
-			if (data.data?.access_token) {
+			if (isUpgrade) {
+				// 3a. Promote the local session to the new account WITHOUT the login
+				//     path (whose onStorageInit clears IndexedDB and would wipe the
+				//     very local tasks we are adopting).
+				await authOperationsService.completeLocalUpgrade({
+					user: data.data.user,
+					accessToken: data.data.access_token,
+					encryptedMasterKey,
+					masterKeySalt
+				});
+				await goto(returnTo);
+			} else if (data.data?.access_token) {
+				// 3b. Fresh account: auto-login (re-loads the key after auth).
 				await authOperationsService.login(detail.username, detail.password);
 				await goto(returnTo);
 			}
@@ -126,6 +168,18 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function handleLocalMode() {
+		loading = true;
+		error = null;
+		const ok = await authOperationsService.enterLocalMode();
+		if (ok) {
+			await goto('/all');
+			return;
+		}
+		error = $t('local_mode.enter_failed');
+		loading = false;
 	}
 </script>
 
@@ -145,11 +199,13 @@
 	header={logoHeader}
 	showLoginLink={true}
 	loginUrl="/auth/login"
+	showLocalModeLink={true}
 	powEndpoint="{PUBLIC_BASE_PATH}/api/auth/pow"
 	{termsUrl}
 	{privacyUrl}
 	themeStorageKey="reborn-task-theme"
 	onregister={handleRegister}
+	onlocalmode={handleLocalMode}
 	onerror={(msg) => {
 		error = msg;
 	}}

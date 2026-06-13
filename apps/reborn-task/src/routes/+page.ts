@@ -3,6 +3,7 @@ import { redirect } from '@sveltejs/kit';
 import { browser } from '$app/environment';
 import { base } from '$app/paths';
 import { authOperationsService } from '$lib/services/auth-operations.service';
+import { LOCAL_MODE_KEY } from '$lib/stores/local-mode.store';
 
 async function waitForSessionReady(timeoutMs = 1500) {
 	const sessionManager = authOperationsService.getSessionManager();
@@ -37,14 +38,21 @@ export const load: PageLoad = async ({ parent }) => {
 		// "/ → /auth/login" even though valid credentials are on disk.
 		if (!navigator.onLine) {
 			const hasCredentials = !!localStorage.getItem('reborn_auth_credentials');
-			if (!hasCredentials) {
+			const isLocalOnly = localStorage.getItem(LOCAL_MODE_KEY) === '1';
+			if (!hasCredentials && !isLocalOnly) {
 				redirect(303, `${base}/auth/login`);
 			}
 			const { cryptoManager } = await import('@reborn/crypto');
 			await cryptoManager.waitForRestore();
+			// Local-only mode has no unlock page: the key lives at-rest in IndexedDB,
+			// so a restored key means straight to the app.
 			redirect(
 				303,
-				cryptoManager.isInitialized() ? `${base}/all` : `${base}/auth/unlock`
+				cryptoManager.isInitialized()
+					? `${base}/all`
+					: isLocalOnly
+						? `${base}/auth/login`
+						: `${base}/auth/unlock`
 			);
 		}
 
@@ -58,6 +66,11 @@ export const load: PageLoad = async ({ parent }) => {
 
 		if (currentSession.isAuthenticated) {
 			redirect(303, currentSession.hasE2E ? `${base}/all` : `${base}/auth/unlock`);
+		}
+
+		// Local-only / no-account mode is a usable state - send it into the app.
+		if (currentSession.isLocalOnly) {
+			redirect(303, `${base}/all`);
 		}
 
 		redirect(303, `${base}/auth/login`);

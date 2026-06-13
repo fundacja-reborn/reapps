@@ -11,6 +11,7 @@ import {
 import { AuthStorageAdapter } from '$lib/auth/adapters/authStorage';
 import { createLogger } from '@reborn/utils';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@reborn/i18n';
+import type { AuthUser } from '@reborn/auth';
 import type { CryptoManager } from '@reborn/crypto';
 import type { ReAuthResult } from '@reborn/ui';
 import { syncService } from './sync.service';
@@ -319,6 +320,160 @@ export class AuthOperationsService {
 			logger.error('Login failed:', error);
 			throw error;
 		}
+	}
+
+	/**
+	 * Enter local-only / no-account mode: usable, encrypted, no server session,
+	 * no sync. Generates a device-scoped user id and a local master key
+	 * (persisted at-rest by CryptoManager - IndexedDB on web, Keychain/Keystore
+	 * vault on native) when one is not already loaded, sets a synthetic local
+	 * session, and bootstraps a default list.
+	 *
+	 * The session's `user.id` is the device id on purpose: every existing
+	 * `session.user.id`-based list/task operation then works unchanged in local
+	 * mode (the username is empty - the UI shows a local-mode label instead).
+	 *
+	 * Returns false (no-op) if a real account session already exists - the
+	 * account always wins. See planning/local-only-no-account-plan.md.
+	 */
+	async enterLocalMode(): Promise<boolean> {
+		if (!browser) return false;
+		// Never shadow a real account session.
+		if (localStorage.getItem('reborn_auth_credentials')) return false;
+
+		this.ensureAuthServiceInitialized();
+
+		try {
+			const { getOrCreateLocalUserId, LOCAL_MODE_KEY, localOnly } = await import(
+				'$lib/stores/local-mode.store'
+			);
+			const { cryptoManager } = await import('@reborn/crypto');
+
+			const localUserId = getOrCreateLocalUserId();
+			localStorage.setItem(LOCAL_MODE_KEY, '1');
+
+			// Generate + persist a local master key unless one is already loaded
+			// (e.g. restored from IndexedDB/vault on a returning local session).
+			if (!cryptoManager.isInitialized()) {
+				const key = await cryptoManager.generateMasterKey();
+				await cryptoManager.setMasterKey(key);
+			}
+
+			// Storage is normally initialized in hooks.client.ts; be defensive on
+			// the entry-page path where it may not be ready yet.
+			const { isDatabaseInitialized, initializeStorage } = await import('@reborn/storage');
+			if (!isDatabaseInitialized()) await initializeStorage('task');
+
+			// Mark local mode BEFORE any list bootstrap so the immediate
+			// scheduleSyncSoon() from ensureDefaultList() no-ops (no server here).
+			localOnly.set(true);
+
+			const now = new Date().toISOString();
+			const sessionManager = this.getSessionManager();
+			sessionManager.setSession({
+				isAuthenticated: false,
+				isLocalOnly: true,
+				isInitialized: true,
+				isLoading: false,
+				hasE2E: cryptoManager.isInitialized(),
+				user: { id: localUserId, username: '', created_at: now, updated_at: now },
+				error: null
+			});
+
+			// Bootstrap a default list so the app has somewhere to put tasks.
+			const { listOperationsService } = await import('./list-operations.service');
+			await listOperationsService.ensureDefaultList(localUserId);
+
+			// Refresh decrypted stores so the default list shows immediately.
+			const { refreshDecryptedLists } = await import('$lib/stores/decrypted-lists.store');
+			await taskListStore.loadLists();
+			await refreshDecryptedLists();
+
+			logger.info('Entered local-only (no-account) mode');
+			return true;
+		} catch (err: unknown) {
+			logger.error('Failed to enter local-only mode:', err);
+			return false;
+		}
+	}
+
+	/**
+	 * Finish a local-only -> account upgrade after a successful register call.
+	 * Promotes the session straight from the register response WITHOUT going
+	 * through login() (whose onStorageInit clears IndexedDB on context='login'
+	 * and would wipe the very local data we are adopting). The adopted master key
+	 * is already in memory, so no unlock is needed: we re-stamp local data with
+	 * the account id + flag it pending, set the session, then push + pull to
+	 * converge. See planning/local-only-no-account-plan.md (decision B1).
+	 */
+	async completeLocalUpgrade(params: {
+		user: AuthUser;
+		accessToken: string;
+		encryptedMasterKey: string;
+		masterKeySalt: string;
+	}): Promise<void> {
+		if (!browser) return;
+		this.ensureAuthServiceInitialized();
+
+		const { user, accessToken, encryptedMasterKey, masterKeySalt } = params;
+
+		// Persist account credentials in the same shape the normal login flow uses
+		// (AuthService.saveAuthCredentials) so the next cold start restores cleanly.
+		const storage = new AuthStorageAdapter();
+		await storage.saveCredentials({
+			id: 'currentUser',
+			encrypted_master_key: encryptedMasterKey,
+			master_key_salt: masterKeySalt,
+			user_profile: user
+		});
+		localStorage.setItem('access_token', accessToken);
+
+		// Leave local-only mode: the account now owns this data.
+		const { clearLocalModeMarkers, localOnly } = await import('$lib/stores/local-mode.store');
+		clearLocalModeMarkers();
+		localOnly.set(false);
+
+		// Re-stamp local data with the account user id + flag pending so it uploads
+		// and is visible under the account immediately (lists query by user_id).
+		const { markAllLocalDataForUpload } = await import('./local-mode.service');
+		await markAllLocalDataForUpload(user.id);
+
+		// Promote the session directly (NOT login() - that clears IndexedDB).
+		syncService.setAuthToken(accessToken);
+		const sessionManager = this.getSessionManager();
+		sessionManager.setSession({
+			isAuthenticated: true,
+			isLocalOnly: false,
+			isInitialized: true,
+			isLoading: false,
+			hasE2E: true,
+			user,
+			error: null
+		});
+		this.clearSessionExpired();
+		this.startBackgroundTokenRefresh();
+
+		// Push the adopted data, then pull to converge user_id / sync_version.
+		// initialSync() flushes the offline-op queue (push) before pulling, so the
+		// adopted local lists/tasks reach the server and come back owned by the
+		// account. Best-effort: a failure just defers to the next periodic sync.
+		try {
+			await syncService.initialSync();
+			const { refreshDecryptedLists } = await import('$lib/stores/decrypted-lists.store');
+			const { refreshDecryptedSubtasks } = await import('$lib/stores/decrypted-subtasks.store');
+			await taskListStore.loadLists();
+			await Promise.all([refreshDecryptedLists(), refreshDecryptedSubtasks()]);
+			await taskTitleIndex.rebuild();
+			const { taskCounts } = await import('$lib/stores/task-counts.store');
+			taskCounts.refresh();
+		} catch (err: unknown) {
+			logger.warn('Initial sync after local-to-account upgrade failed:', err);
+		}
+
+		// Send encrypted device info (non-blocking, non-critical).
+		import('$lib/services/device-info.service').then(({ sendEncryptedDeviceInfo }) =>
+			sendEncryptedDeviceInfo().catch(() => {})
+		);
 	}
 
 	/**
@@ -680,6 +835,28 @@ export class AuthOperationsService {
 			} else if (hasTokens) {
 				// Legacy fallback — access token without a credentials record.
 				sessionManager.setSession({ isAuthenticated: true });
+			} else {
+				// No account session: restore local-only mode if its marker is set.
+				// A real account always wins over the marker, so this branch is
+				// reached only when there are no valid credentials/tokens. The local
+				// master key is restored from IndexedDB by checkE2EStatus() below,
+				// which flips hasE2E once waitForRestore() resolves.
+				const { readLocalModeFromStorage, localOnly } = await import(
+					'$lib/stores/local-mode.store'
+				);
+				const local = readLocalModeFromStorage();
+				if (local.active && local.userId) {
+					logger.info('Restoring local-only (no-account) session');
+					const epoch = new Date(0).toISOString();
+					sessionManager.setSession({
+						isAuthenticated: false,
+						isLocalOnly: true,
+						isInitialized: true,
+						user: { id: local.userId, username: '', created_at: epoch, updated_at: epoch },
+						error: null
+					});
+					localOnly.set(true);
+				}
 			}
 
 			// Restore E2E status from IndexedDB (master key may survive PWA restart).

@@ -61,6 +61,14 @@ export async function authGuard(options: AuthGuardOptions = {}): Promise<boolean
 	// Check if we're already on the target page to prevent redirect loops
 	const currentPath = window.location.pathname;
 
+	// Local-only / no-account mode is a valid, usable state: the app is encrypted
+	// and functional without a server session, so it must pass the guard. The E2E
+	// check below still applies (hasE2E is true once the local key is loaded).
+	if (currentSession.isLocalOnly) {
+		redirectCount = 0;
+		return true;
+	}
+
 	// Check if user is authenticated
 	if (!currentSession.isAuthenticated) {
 		// Don't redirect if already on login page

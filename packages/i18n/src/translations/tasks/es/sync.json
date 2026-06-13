@@ -57,7 +57,8 @@
     "conflict_title": "Datos modificados en otro dispositivo",
     "conflict_message": "Se detectaron datos más recientes en el servidor. Los datos actualizados han sido descargados.",
     "conflict_action": "Actualizar",
-    "session_expired": "Sesión expirada"
+    "session_expired": "Sesión expirada",
+    "local_only": "Solo local"
   },
   "initial": {
     "title": "Sincronizando tus tareas",

@@ -57,7 +57,8 @@
     "conflict_title": "Daten auf einem anderen Ger\u00e4t ge\u00e4ndert",
     "conflict_message": "Neuere Daten wurden auf dem Server erkannt. Aktualisierte Daten wurden heruntergeladen.",
     "conflict_action": "Aktualisieren",
-    "session_expired": "Sitzung abgelaufen"
+    "session_expired": "Sitzung abgelaufen",
+    "local_only": "Nur lokal"
   },
   "initial": {
     "title": "Aufgaben werden synchronisiert",
