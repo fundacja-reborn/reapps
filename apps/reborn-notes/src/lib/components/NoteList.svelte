@@ -6,6 +6,8 @@
     ArrowLeft,
     FilePlus,
     FolderPlus,
+    FolderSync,
+    RefreshCw,
     Trash2,
     Search,
     X,
@@ -48,6 +50,7 @@
   import FolderActionMenu from './sidebar/FolderActionMenu.svelte';
   import type { FolderWithChildren } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
+  import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
   import { buildBreadcrumb } from '$lib/utils/folder-helpers';
   import { bulkRun } from '$lib/utils/bulk';
 
@@ -644,6 +647,24 @@
     activeFolderId ? findFolderNode($foldersStore, activeFolderId) : null
   );
 
+  // Sync marker in the folder header: a synced folder gets a clickable glyph
+  // (link is by folder id, so it follows renames). Tapping runs a manual sync.
+  const activeFolderSyncId = $derived(
+    activeFolder ? ($syncedFolderConfigs.get(activeFolder.id) ?? null) : null
+  );
+  let syncingActiveFolder = $state(false);
+
+  async function handleActiveFolderSync() {
+    if (!activeFolderSyncId || syncingActiveFolder) return;
+    syncingActiveFolder = true;
+    try {
+      await runFolderSync('manual', activeFolderSyncId);
+      toastStore.success($t('folders.sync_done'));
+    } finally {
+      syncingActiveFolder = false;
+    }
+  }
+
   let editingFolderName = $state('');
   let editingActiveFolder = $state(false);
   let editFolderInputEl = $state<HTMLInputElement | undefined>(undefined);
@@ -724,6 +745,23 @@
             ? 'font-medium'
             : 'font-normal'}">{activeFolderName}</span
         >
+      {/if}
+
+      {#if activeFolderSyncId && !editingActiveFolder}
+        <button
+          type="button"
+          onclick={handleActiveFolderSync}
+          disabled={syncingActiveFolder}
+          title={$t('folders.synced_folder')}
+          aria-label={$t('folders.sync_now')}
+          class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-primary transition-colors hover:bg-accent disabled:opacity-60"
+        >
+          {#if syncingActiveFolder}
+            <RefreshCw class="{headerIconClass} animate-spin" />
+          {:else}
+            <FolderSync class={headerIconClass} />
+          {/if}
+        </button>
       {/if}
 
       {#if onNewSubfolder}

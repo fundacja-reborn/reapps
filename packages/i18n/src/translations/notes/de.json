@@ -761,7 +761,6 @@
       "folder_sync_source_label_field": "Bezeichnung des Quellordners",
       "folder_sync_source_label_desc": "Eine Bezeichnung zum Wiedererkennen des Ordners auf der Festplatte - der Browser gibt nur dessen Namen preis, nicht den vollständigen Pfad. Füge z. B. einen Pfad hinzu, um zwei gleichnamige Ordner zu unterscheiden. Nur zur Anzeige - ändert nicht, welcher Ordner synchronisiert wird.",
       "folder_sync_dest_edit_desc": "Der Ordner der obersten Ebene in der App, in den Notizen importiert werden. Beim Umbenennen wird der vorhandene Ordner umbenannt und behält die bereits enthaltenen Notizen.",
-      "folder_sync_dest_folder_exists": "Ein anderer Ordner der obersten Ebene verwendet diesen Namen bereits. Wähle einen anderen Namen.",
       "folder_sync_name_invalid": "Der Ordnername darf keinen Schrägstrich enthalten (/ oder \\).",
       "folder_sync_last_sync": "Letzte Synchronisierung: {time}",
       "folder_sync_last_result": "{scanned} Datei(en) geprüft, {imported} importiert",

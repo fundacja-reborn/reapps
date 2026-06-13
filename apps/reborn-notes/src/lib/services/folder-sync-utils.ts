@@ -44,10 +44,10 @@ export const MAX_SYNC_DEPTH = 20;
  *
  * Paths are rooted at `rootName` (`<root>/<sub>/<file.md>`), the shape a
  * `webkitdirectory` input produces. It defaults to `dir.name`, but a sync
- * config passes its user-chosen display name instead - that name is what
- * `importFolder` turns into the top-level target folder, which is how two
- * linked directories that share an on-disk name ("notes") land in two
- * different folders in the app.
+ * config passes its stored `root_name` instead. Live folder sync strips this
+ * first segment on import (it anchors the subtree under the config's
+ * `target_folder_id` instead) - so `rootName` only roots the relative paths,
+ * kept stable across folder renames so `known_paths` doesn't churn.
  *
  * Subtrees deeper than {@link MAX_SYNC_DEPTH} are skipped and reported in
  * `skippedTooDeep` rather than silently dropped.

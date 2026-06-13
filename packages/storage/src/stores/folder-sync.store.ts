@@ -26,12 +26,28 @@ export interface FolderSyncConfigRecord extends WithId {
    */
   handle: unknown;
   /**
-   * Display name chosen at link time (defaults to the directory name).
-   * Doubles as the list label and as the name of the top-level folder the
-   * import targets, and is unique across configs (case-insensitive) so two
-   * sources named "notes" can be told apart and land in two different
-   * folders. Editable: renaming it renames that existing app folder in place
-   * (see `updateFolderSyncConfig` in `folder-sync.service.ts`).
+   * Stable id of the top-level app folder this config imports into. The
+   * DURABLE link between the on-disk directory and the app folder: because it
+   * is an id, renaming the folder (in the folder tree OR in sync settings)
+   * never breaks sync - the import keeps targeting the same node.
+   *
+   * Absent on records from the link-by-name era (before 2026-06-13) and on a
+   * config whose first sync hasn't run yet. Resolved lazily - by name from the
+   * current tree, then by creation - and persisted by `resolveTargetFolderId`
+   * (`folder-sync.service.ts`); `refreshFolderSyncStatus` back-fills it from a
+   * name match on load so the by-id folder marker works before a sync runs.
+   */
+  target_folder_id?: string;
+  /**
+   * Display label chosen at link time (defaults to the directory name), and
+   * the name used to create/recreate the target folder. Since the link moved
+   * to `target_folder_id`, this is NO LONGER the link: it is the creation name
+   * and the settings fallback label. The live folder name (resolved by
+   * `target_folder_id`) is what the UI shows when the folder exists, so a tree
+   * rename is reflected even though this field stays put. It also roots the
+   * walk's relative paths (`collectMarkdownEntries`), kept stable across tree
+   * renames to avoid churning `known_paths`. Editable in settings, which
+   * renames the target folder by id (see `updateFolderSyncConfig`).
    */
   root_name: string;
   /**

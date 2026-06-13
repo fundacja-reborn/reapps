@@ -761,7 +761,6 @@
       "folder_sync_source_label_field": "Libellé du dossier source",
       "folder_sync_source_label_desc": "Un libellé pour reconnaître le dossier sur le disque - le navigateur n'en partage que le nom, pas le chemin complet. Ajoutez p. ex. un chemin pour distinguer deux dossiers de même nom. Affichage uniquement - cela ne change pas quel dossier est synchronisé.",
       "folder_sync_dest_edit_desc": "Le dossier de premier niveau de l'application où les notes sont importées. Le renommer renomme le dossier existant et conserve les notes qu'il contient déjà.",
-      "folder_sync_dest_folder_exists": "Un autre dossier de premier niveau utilise déjà ce nom. Choisissez un autre nom.",
       "folder_sync_name_invalid": "Le nom du dossier ne peut pas contenir de barre oblique (/ ou \\).",
       "folder_sync_last_sync": "Dernière synchronisation : {time}",
       "folder_sync_last_result": "{scanned} fichier(s) vérifié(s), {imported} importé(s)",

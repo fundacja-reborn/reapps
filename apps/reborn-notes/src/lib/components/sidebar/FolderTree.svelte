@@ -152,12 +152,11 @@
   );
 
   // ── Folder sync ─────────────────────────────────────────────────
-  // Only TOP-LEVEL folders (depth 0) can be sync destinations - the import
-  // roots at the config's name. The mobile sheet reads the active folder's id.
+  // The sync link is by folder id, so the marker follows renames and needs no
+  // top-level/name gate (ids are unique). The mobile sheet reads it for the
+  // active folder; the desktop dropdown reads its per-row `syncConfigId`.
   const activeMenuSyncId = $derived(
-    depth === 0 && activeMenuFolder
-      ? ($syncedFolderConfigs.get(activeMenuFolder.name.toLowerCase()) ?? null)
-      : null
+    activeMenuFolder ? ($syncedFolderConfigs.get(activeMenuFolder.id) ?? null) : null
   );
   let syncingId = $state<string | null>(null);
 
@@ -353,8 +352,7 @@
     {@const parkedSearches = savedSearchesByFolder?.get(folder.id) ?? []}
     {@const hasChildren = (folder.children?.length ?? 0) > 0 || parkedSearches.length > 0}
     {@const isDragTarget = dragOverId === folder.id}
-    {@const syncConfigId =
-      depth === 0 ? ($syncedFolderConfigs.get(folder.name.toLowerCase()) ?? null) : null}
+    {@const syncConfigId = $syncedFolderConfigs.get(folder.id) ?? null}
 
     <li
       role="treeitem"

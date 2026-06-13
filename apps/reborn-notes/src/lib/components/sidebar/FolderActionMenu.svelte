@@ -54,12 +54,11 @@
 
   const isMobileQuery = useIsMobile();
 
-  // Only TOP-LEVEL folders can be sync destinations (the import roots at the
-  // config name). Null otherwise -> the "Sync now" entry stays hidden.
+  // Sync link is by folder id, so this follows a rename and needs no
+  // top-level/name gate. Null when the folder isn't a sync destination ->
+  // the "Sync now" entry stays hidden.
   const syncConfigId = $derived(
-    folder && !folder.parent_id
-      ? ($syncedFolderConfigs.get(folder.name.toLowerCase()) ?? null)
-      : null
+    folder ? ($syncedFolderConfigs.get(folder.id) ?? null) : null
   );
   let syncing = $state(false);
 

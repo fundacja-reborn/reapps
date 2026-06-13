@@ -10,6 +10,8 @@
     type FolderSyncConfigStatus
   } from '$lib/services/folder-sync.service';
   import type { ImportFolderResult } from '$lib/services/export-import.service';
+  import { foldersStore } from '$lib/stores/folders.store';
+  import type { FolderWithChildren } from '@reborn/types';
   import ImportResultSummary from './ImportResultSummary.svelte';
 
   let {
@@ -32,7 +34,7 @@
   let editing = $state(false);
   let editSourceLabel = $state('');
   let editDestName = $state('');
-  let editError = $state<'name-taken' | 'dest-folder-exists' | 'name-invalid' | null>(null);
+  let editError = $state<'name-taken' | 'name-invalid' | null>(null);
   let savingEdit = $state(false);
 
   const busy = $derived(status.state === 'syncing');
@@ -40,6 +42,21 @@
   const actionsDisabled = $derived(controlsDisabled || editing);
   // Source line text: the user's label, else the on-disk leaf name.
   const sourceText = $derived(status.sourceLabel ?? status.dirName);
+
+  // Destination is linked by id, so prefer the LIVE folder name (reflects a
+  // rename done in the folder tree) and fall back to the stored label.
+  function findFolderName(nodes: FolderWithChildren[], id: string): string | null {
+    for (const n of nodes) {
+      if (n.id === id) return n.name;
+      const sub = n.children ? findFolderName(n.children, id) : null;
+      if (sub) return sub;
+    }
+    return null;
+  }
+  const displayName = $derived(
+    (status.targetFolderId ? findFolderName($foldersStore, status.targetFolderId) : null) ??
+      status.name
+  );
 
   async function handleSyncNow() {
     runResult = null;
@@ -53,7 +70,7 @@
 
   function startEdit() {
     editSourceLabel = status.sourceLabel ?? '';
-    editDestName = status.name;
+    editDestName = displayName;
     editError = null;
     editing = true;
   }
@@ -77,7 +94,6 @@
       });
       if (!outcome.ok) {
         if (outcome.error === 'name-taken') editError = 'name-taken';
-        else if (outcome.error === 'dest-folder-exists') editError = 'dest-folder-exists';
         else if (outcome.error === 'name-invalid') editError = 'name-invalid';
         return;
       }
@@ -104,7 +120,7 @@
     <div class="flex min-w-0 items-start gap-3">
       <FolderSync class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div class="min-w-0 text-xs">
-        <p class="truncate text-sm font-medium">{status.name}</p>
+        <p class="truncate text-sm font-medium">{displayName}</p>
         <p class="truncate text-muted-foreground">
           {$t('settings_page.export_import.folder_sync_source_dir', {
             values: { name: sourceText }
@@ -112,7 +128,7 @@
         </p>
         <p class="truncate text-muted-foreground">
           {$t('settings_page.export_import.folder_sync_destination', {
-            values: { name: status.name }
+            values: { name: displayName }
           })}
         </p>
         {#if status.lastSyncAt}
@@ -228,10 +244,6 @@
       {#if editError === 'name-taken'}
         <p class="text-xs text-destructive">
           {$t('settings_page.export_import.folder_sync_name_taken')}
-        </p>
-      {:else if editError === 'dest-folder-exists'}
-        <p class="text-xs text-destructive">
-          {$t('settings_page.export_import.folder_sync_dest_folder_exists')}
         </p>
       {:else if editError === 'name-invalid'}
         <p class="text-xs text-destructive">

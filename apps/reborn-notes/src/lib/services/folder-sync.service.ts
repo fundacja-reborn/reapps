@@ -24,9 +24,9 @@
  *   changes again; then disk wins.
  * - Sync NEVER deletes or trashes notes: a file deleted on disk leaves the
  *   note alone; a renamed file imports as a new note (the old one stays).
- *   The same applies to a config's display name - it is fixed at link time
- *   (rename = unlink + relink), because renaming would re-target a fresh
- *   top-level folder and orphan the previous one.
+ * - The link to the app folder is by id (`target_folder_id`), not by name,
+ *   so renaming the destination folder - in the folder tree OR in sync
+ *   settings - never breaks sync: the import keeps targeting the same node.
  * - Zero Knowledge untouched: scanning, parsing and encryption all happen
  *   client-side through the same import path as a manual folder import; the
  *   directory handles never leave the browser profile.
@@ -38,6 +38,7 @@
 import { get, writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { folderSyncStore, type FolderSyncConfigRecord } from '@reborn/storage';
+import type { FolderWithChildren } from '@reborn/types';
 import { createLogger } from '@reborn/utils';
 import { authStore } from '$lib/stores/auth.store';
 import { notesStore } from '$lib/stores/notes.store';
@@ -80,8 +81,18 @@ export type FolderSyncErrorKey = 'folder_gone' | 'sync_failed' | null;
 /** Reactive projection of one linked directory, for the settings UI. */
 export type FolderSyncConfigStatus = {
   id: string;
-  /** Display name (= target top-level folder); editable via `updateFolderSyncConfig`. */
+  /**
+   * Stored creation name / fallback label (the record's `root_name`). The
+   * settings UI prefers the LIVE folder name resolved from `targetFolderId`
+   * when the folder exists, so a tree rename is reflected without editing.
+   */
   name: string;
+  /**
+   * Id of the destination top-level folder (the durable link). Null until the
+   * first sync (or load-time name match) resolves it; the folder UI keys its
+   * "this folder is synced" marker off this, never off the name.
+   */
+  targetFolderId: string | null;
   /** On-disk directory leaf name; the UI's fallback + placeholder when no `sourceLabel`. */
   dirName: string;
   /** User-set cosmetic label for the source directory; null = fall back to `dirName`. */
@@ -106,17 +117,17 @@ export function isFolderSyncSupported(): boolean {
 export const folderSyncStatus = writable<FolderSyncConfigStatus[]>([]);
 
 /**
- * Map of (lowercased) display name → config id, for the folder UI to mark a
- * folder as a sync destination and offer "Sync now" on it. The destination
- * is always a TOP-LEVEL folder (the import roots at `root_name`), so callers
- * must additionally gate on the folder being top-level - a nested folder that
- * coincidentally shares the name is NOT a sync target. Empty when nothing is
- * linked or the browser lacks the API.
+ * Map of target folder id → config id, for the folder UI to mark a folder as
+ * a sync destination and offer "Sync now" on it. Keyed by id (not name) so the
+ * marker follows a renamed folder and never false-matches a same-named folder;
+ * callers need no extra top-level gate because the id is unique. Configs whose
+ * `targetFolderId` isn't resolved yet (brand-new, pre-first-sync) are absent.
+ * Empty when nothing is linked or the browser lacks the API.
  */
 export const syncedFolderConfigs = derived(folderSyncStatus, ($list) => {
-  const byName = new Map<string, string>();
-  for (const s of $list) byName.set(s.name.toLowerCase(), s.id);
-  return byName;
+  const byId = new Map<string, string>();
+  for (const s of $list) if (s.targetFolderId) byId.set(s.targetFolderId, s.id);
+  return byId;
 });
 
 /** Per-tab single-flight flag; cross-tab exclusion is the Web Lock below. */
@@ -158,6 +169,7 @@ async function projectConfigStatus(cfg: FolderSyncConfigRecord): Promise<FolderS
   return {
     id: cfg.id,
     name: cfg.root_name,
+    targetFolderId: cfg.target_folder_id ?? null,
     dirName: handle.name,
     sourceLabel: cfg.source_label ?? null,
     state: perm === 'granted' ? 'idle' : 'needs-permission',
@@ -167,6 +179,45 @@ async function projectConfigStatus(cfg: FolderSyncConfigRecord): Promise<FolderS
     progress: null,
     errorKey: null
   };
+}
+
+/** Recursively find a folder node by id in the decrypted tree. */
+function findFolderInTree(nodes: FolderWithChildren[], id: string): FolderWithChildren | null {
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    const sub = n.children ? findFolderInTree(n.children, id) : null;
+    if (sub) return sub;
+  }
+  return null;
+}
+
+/** Top-level folder matching `name` case-insensitively, or null. */
+function findTopLevelFolderByName(
+  nodes: FolderWithChildren[],
+  name: string
+): FolderWithChildren | null {
+  const lower = name.toLowerCase();
+  return nodes.find((n) => !n.parent_id && n.name.toLowerCase() === lower) ?? null;
+}
+
+/**
+ * Resolve the top-level folder this config imports into, as a STABLE id
+ * (link-by-id: a folder rename never breaks the link). Tries, in order:
+ *   1. the persisted `target_folder_id` if that folder still exists,
+ *   2. a top-level folder matching `root_name` (migration from the
+ *      link-by-name era + re-home when the user recreated it by name),
+ *   3. otherwise create a fresh top-level folder named `root_name`.
+ * The resolved id is returned for the caller to persist back on the record.
+ */
+async function resolveTargetFolderId(cfg: FolderSyncConfigRecord): Promise<string> {
+  await foldersStore.refresh();
+  const tree = get(foldersStore);
+  if (cfg.target_folder_id && findFolderInTree(tree, cfg.target_folder_id)) {
+    return cfg.target_folder_id;
+  }
+  const byName = findTopLevelFolderByName(tree, cfg.root_name);
+  if (byName) return byName.id;
+  return foldersStore.create(cfg.root_name);
 }
 
 /**
@@ -181,7 +232,23 @@ export async function refreshFolderSyncStatus(): Promise<void> {
     folderSyncStatus.set([]);
     return;
   }
-  const cfgs = await readConfigs();
+  let cfgs = await readConfigs();
+  // One-time migration to link-by-id: configs from the link-by-name era (or
+  // created before their first sync) carry no target_folder_id. Back-fill it
+  // from a current-tree name match so the by-id marker/lookup works without a
+  // sync first. Resolve-only (never create) - a missing folder is left for the
+  // next sync's resolveTargetFolderId to create and capture. Folders are only
+  // read while at least one config is unresolved, so the cost is one-time.
+  if (cfgs.some((c) => !c.target_folder_id)) {
+    await foldersStore.refresh();
+    const tree = get(foldersStore);
+    for (const cfg of cfgs) {
+      if (cfg.target_folder_id) continue;
+      const match = findTopLevelFolderByName(tree, cfg.root_name);
+      if (match) await folderSyncStore.save({ ...cfg, target_folder_id: match.id });
+    }
+    cfgs = await readConfigs();
+  }
   const fresh = await Promise.all(cfgs.map(projectConfigStatus));
   folderSyncStatus.update((current) => {
     if (!runnerActive || activeConfigId === null) return fresh;
@@ -285,7 +352,7 @@ export async function addLinkedFolder(
 
 export type UpdateFolderSyncOutcome =
   | { ok: true }
-  | { ok: false; error: 'name-empty' | 'name-invalid' | 'name-taken' | 'dest-folder-exists' };
+  | { ok: false; error: 'name-empty' | 'name-invalid' | 'name-taken' };
 
 /**
  * Edit a linked folder's two user-facing names.
@@ -295,17 +362,16 @@ export type UpdateFolderSyncOutcome =
  *   it (the UI then falls back to the on-disk leaf name). It never affects
  *   which directory is read - dedup is by handle identity, not by name.
  *
- * - `destName` is the top-level app folder the import targets (the config's
- *   `root_name`). Renaming it renames that existing app folder IN PLACE, so
- *   the notes already imported move with it, and points future syncs at the
- *   new name. Imports match the target folder by name, so:
- *     - a collision with a DIFFERENT existing top-level folder is rejected
- *       (renaming into it would orphan content into a confusing duplicate);
- *     - the name must stay unique across configs (case-insensitive).
- *   The scan watermark and known-paths set are reset on a destination change
- *   so the next run re-homes the tree even when no app folder was found to
- *   rename (e.g. the user deleted it); the overwrite strategy's unchanged-skip
- *   keeps that re-scan write-free when the content already matches.
+ * - `destName` renames the destination folder. Because the link is by id
+ *   (`target_folder_id`), this just renames that node BY ID (the import keeps
+ *   targeting it) and updates the stored `root_name` (label + creation name).
+ *   Notes already imported stay put - they're children of the same folder.
+ *   Renaming to a name another top-level folder already uses is now harmless
+ *   (the import no longer find-or-creates the target by name), so only the
+ *   cross-config label uniqueness is still enforced for a tidy settings list.
+ *   The scan watermark and known-paths set are reset on a name change so the
+ *   next run reconciles under the new path root; the overwrite strategy's
+ *   unchanged-skip keeps that re-scan write-free when content already matches.
  *
  * Call only when this config is idle (the settings UI disables editing while
  * a sync runs) - it mutates the same record and target folder the runner uses.
@@ -325,31 +391,33 @@ export async function updateFolderSyncConfig(
   const oldName = cfg.root_name;
   const destChanged = newName !== oldName;
 
+  let targetId = cfg.target_folder_id;
   if (destChanged) {
     const lower = newName.toLowerCase();
     const others = (await readConfigs()).filter((c) => c.id !== configId);
     if (others.some((c) => c.root_name.toLowerCase() === lower)) {
       return { ok: false, error: 'name-taken' };
     }
-    // Rename the existing top-level app folder so imported notes travel with
-    // it (top-level folders are the root array of the tree). A new name that
-    // collides with a DIFFERENT top-level folder is rejected - find-or-create
-    // by name would otherwise route future imports into a duplicate.
+    // Rename the target folder BY ID so imported notes travel with it. Resolve
+    // the id from a stale/absent record by the OLD name (a link-by-name record
+    // not migrated yet). A truly missing folder leaves nothing to rename - the
+    // next sync recreates it under the new name via resolveTargetFolderId.
     await foldersStore.refresh();
-    const topLevel = get(foldersStore);
-    const own = topLevel.find((f) => f.name.toLowerCase() === oldName.toLowerCase());
-    const collision = topLevel.find((f) => f.name.toLowerCase() === lower && f.id !== own?.id);
-    if (collision) return { ok: false, error: 'dest-folder-exists' };
-    if (own) await foldersStore.rename(own.id, newName);
+    const tree = get(foldersStore);
+    if (!targetId || !findFolderInTree(tree, targetId)) {
+      targetId = findTopLevelFolderByName(tree, oldName)?.id;
+    }
+    if (targetId) await foldersStore.rename(targetId, newName);
   }
 
   const updated: FolderSyncConfigRecord = {
     ...cfg,
     source_label: newLabel,
     root_name: newName,
+    target_folder_id: targetId,
     // A renamed destination invalidates the path-prefixed known set and the
-    // mtime watermark; reset both so the next scan reconciles into the new
-    // folder (write-free via unchanged-skip when content already matches).
+    // mtime watermark; reset both so the next scan reconciles under the new
+    // path root (write-free via unchanged-skip when content already matches).
     ...(destChanged ? { known_paths: undefined, last_sync_at: null } : {})
   };
   await folderSyncStore.save(updated);
@@ -488,6 +556,7 @@ async function syncOneConfig(
     if (latest) {
       patchStatus(cfg.id, {
         state: 'idle',
+        targetFolderId: latest.target_folder_id ?? null,
         autoSync: latest.auto_sync === 1,
         lastSyncAt: latest.last_sync_at,
         lastResult: latest.last_result,
@@ -522,14 +591,22 @@ async function scanAndImport(
   // absorbs the overlap).
   const scanStartedAt = new Date().toISOString();
 
-  // Root the walk at the config's display name (not the on-disk name): the
-  // first path segment is what importFolder turns into the top-level folder.
+  // Root the walk's relative paths at root_name (not the on-disk name).
+  // importFolder strips that first segment (keepRootFolder defaults off) and
+  // anchors the subtree under `targetFolderId`, so the result is identical to
+  // the old keep-root-by-name import but linked by id. Rooting at root_name
+  // keeps known_paths stable across tree renames (root_name doesn't move).
   const { entries, skippedTooDeep } = await collectMarkdownEntries(handle, cfg.root_name);
   if (skippedTooDeep > 0) {
     logger.warn('Folder sync: subtree(s) deeper than the depth cap were skipped', {
       skippedTooDeep
     });
   }
+
+  // Resolve the destination folder by id (link-by-id): rename-proof, and
+  // migrates/recreates as needed. Done AFTER the walk so a directory that's
+  // gone on disk fails fast without first creating an app folder for it.
+  const targetFolderId = await resolveTargetFolderId(cfg);
 
   // New-to-the-directory paths always import (copied/moved-in files keep
   // their old mtime and would never cross the watermark); known paths only
@@ -553,7 +630,7 @@ async function scanAndImport(
       changed,
       'overwrite',
       (p) => patchStatus(cfg.id, { progress: p }),
-      { keepRootFolder: true, tagsOnOverwrite: 'merge' }
+      { targetFolderId, tagsOnOverwrite: 'merge' }
     );
   }
 
@@ -572,6 +649,9 @@ async function scanAndImport(
   if (!latest) return result;
   const updated: FolderSyncConfigRecord = {
     ...latest,
+    // Persist the resolved link so future runs and the folder marker use the
+    // id (migrates a link-by-name record on its first run under this code).
+    target_folder_id: targetFolderId,
     last_sync_at: scanStartedAt,
     // Full snapshot of paths seen THIS scan (not a union with the previous
     // set): paths of deleted files drop out, so a file deleted and later

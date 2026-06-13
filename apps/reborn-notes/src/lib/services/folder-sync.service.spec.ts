@@ -44,6 +44,11 @@ const renameSpy = vi.fn(async (id: string, name: string) => {
   const f = folderRows.find((r) => r.id === id);
   if (f) f.name = name;
 });
+const createSpy = vi.fn(async (name: string, parentId?: string | null) => {
+  const id = `created-${folderRows.length + 1}`;
+  folderRows.push({ id, name, parent_id: parentId ?? null });
+  return id;
+});
 vi.mock('$lib/stores/folders.store', async () => {
   const { writable } = await import('svelte/store');
   const tree = writable<FakeFolder[]>([]);
@@ -51,7 +56,8 @@ vi.mock('$lib/stores/folders.store', async () => {
     foldersStore: {
       subscribe: tree.subscribe,
       refresh: async () => tree.set([...folderRows]),
-      rename: renameSpy
+      rename: renameSpy,
+      create: createSpy
     }
   };
 });
@@ -59,15 +65,23 @@ vi.mock('$lib/stores/folders.store', async () => {
 // Concurrency tracker: the runner must never overlap two imports.
 let activeImports = 0;
 let maxActiveImports = 0;
-type ImportCall = { paths: string[] };
+type ImportCall = { paths: string[]; targetFolderId?: string };
 const importCalls: ImportCall[] = [];
 
 vi.mock('./export-import.service', () => ({
   importFolder: vi.fn(
-    async (entries: Array<{ file: File; relativePath: string }>) => {
+    async (
+      entries: Array<{ file: File; relativePath: string }>,
+      _strategy?: unknown,
+      _onProgress?: unknown,
+      opts?: { targetFolderId?: string }
+    ) => {
       activeImports++;
       maxActiveImports = Math.max(maxActiveImports, activeImports);
-      importCalls.push({ paths: entries.map((e) => e.relativePath) });
+      importCalls.push({
+        paths: entries.map((e) => e.relativePath),
+        targetFolderId: opts?.targetFolderId
+      });
       // Yield twice so an accidentally-parallel runner would overlap here.
       await Promise.resolve();
       await Promise.resolve();
@@ -148,6 +162,7 @@ beforeEach(() => {
   maxActiveImports = 0;
   folderRows.length = 0;
   renameSpy.mockClear();
+  createSpy.mockClear();
   refreshSpy.mockReset();
   vi.stubGlobal('window', { showDirectoryPicker: vi.fn() });
   vi.stubGlobal('document', { visibilityState: 'visible' });
@@ -179,6 +194,41 @@ describe('runFolderSync (multi-config)', () => {
     await svc.runFolderSync('manual');
 
     expect(importCalls[0].paths).toEqual(['Notes (work)/a.md']);
+  });
+
+  it('creates the target folder on first sync and anchors the import by its id', async () => {
+    seedConfig({ id: 'a', root_name: 'Notes (work)', handle: fakeDir('notes', ['a.md']) });
+    const svc = await loadService();
+
+    await svc.runFolderSync('manual');
+
+    // No folder existed -> resolveTargetFolderId created one and the import
+    // anchored under its id (keepRootFolder off), not by name.
+    expect(createSpy).toHaveBeenCalledWith('Notes (work)');
+    expect(importCalls[0].targetFolderId).toBe('created-1');
+    // The resolved link is persisted so future runs reuse the same folder.
+    expect(rows.find((r) => r.id === 'a')?.target_folder_id).toBe('created-1');
+  });
+
+  it('links by folder id - a renamed target folder still syncs into it', async () => {
+    // The on-disk root_name no longer matches the folder name (user renamed it
+    // in the tree), but the id link survives: the import targets f1 regardless.
+    seedConfig({
+      id: 'a',
+      root_name: 'Docs',
+      target_folder_id: 'f1',
+      handle: fakeDir('docs', ['a.md'])
+    });
+    folderRows.push({ id: 'f1', name: 'Renamed by user', parent_id: null });
+    const svc = await loadService();
+    await svc.refreshFolderSyncStatus();
+
+    await svc.runFolderSync('manual', 'a');
+
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(importCalls[0].targetFolderId).toBe('f1');
+    // Marker keys off the id, so it follows the rename.
+    expect(get(svc.syncedFolderConfigs).get('f1')).toBe('a');
   });
 
   it('isolates a broken directory - the remaining configs still sync', async () => {
@@ -438,9 +488,30 @@ describe('updateFolderSyncConfig', () => {
     expect(folderRows[0].name).toBe('Reapps Docs');
     const row = rows.find((r) => r.id === 'a')!;
     expect(row.root_name).toBe('Reapps Docs');
+    // The link is captured by id (migrated from the matched-by-name folder).
+    expect(row.target_folder_id).toBe('f1');
     // Renaming invalidates the path-prefixed known set and the mtime watermark.
     expect(row.last_sync_at).toBeNull();
     expect(row.known_paths).toBeUndefined();
+  });
+
+  it('renames the linked folder by id even when another top-level folder shares the new name', async () => {
+    // Link-by-id makes this safe (the import no longer find-or-creates the
+    // target by name), so the old dest-folder-exists rejection is gone.
+    seedConfig({ id: 'a', root_name: 'Docs', target_folder_id: 'f1', handle: fakeDir('docs', []) });
+    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
+    folderRows.push({ id: 'f2', name: 'Archive', parent_id: null });
+    const svc = await loadService();
+
+    const outcome = await svc.updateFolderSyncConfig('a', {
+      sourceLabel: null,
+      destName: 'Archive'
+    });
+
+    expect(outcome).toEqual({ ok: true });
+    expect(renameSpy).toHaveBeenCalledWith('f1', 'Archive');
+    expect(rows.find((r) => r.id === 'a')?.root_name).toBe('Archive');
+    expect(rows.find((r) => r.id === 'a')?.target_folder_id).toBe('f1');
   });
 
   it('rejects a destination name already used by another config (case-insensitive)', async () => {
@@ -456,22 +527,6 @@ describe('updateFolderSyncConfig', () => {
     expect(outcome).toEqual({ ok: false, error: 'name-taken' });
     expect(rows.find((r) => r.id === 'a')?.root_name).toBe('Docs');
     expect(renameSpy).not.toHaveBeenCalled();
-  });
-
-  it('rejects a destination that collides with a different existing top-level folder', async () => {
-    seedConfig({ id: 'a', root_name: 'Docs', handle: fakeDir('docs', []) });
-    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
-    folderRows.push({ id: 'f2', name: 'Archive', parent_id: null });
-    const svc = await loadService();
-
-    const outcome = await svc.updateFolderSyncConfig('a', {
-      sourceLabel: null,
-      destName: 'Archive'
-    });
-
-    expect(outcome).toEqual({ ok: false, error: 'dest-folder-exists' });
-    expect(renameSpy).not.toHaveBeenCalled();
-    expect(rows.find((r) => r.id === 'a')?.root_name).toBe('Docs');
   });
 
   it('still updates the config and resets scan state when no app folder matches', async () => {
@@ -511,15 +566,38 @@ describe('updateFolderSyncConfig', () => {
 });
 
 describe('syncedFolderConfigs', () => {
-  it('maps lowercased display names to config ids for the folder UI', async () => {
-    seedConfig({ id: 'a', root_name: 'Reapps Docs', handle: fakeDir('docs', []) });
-    seedConfig({ id: 'b', root_name: 'Notes', handle: fakeDir('notes', []) });
+  it('maps target folder ids to config ids for the folder UI', async () => {
+    seedConfig({
+      id: 'a',
+      root_name: 'Reapps Docs',
+      target_folder_id: 'f-docs',
+      handle: fakeDir('docs', [])
+    });
+    seedConfig({
+      id: 'b',
+      root_name: 'Notes',
+      target_folder_id: 'f-notes',
+      handle: fakeDir('notes', [])
+    });
     const svc = await loadService();
     await svc.refreshFolderSyncStatus();
 
     const map = get(svc.syncedFolderConfigs);
-    expect(map.get('reapps docs')).toBe('a');
-    expect(map.get('notes')).toBe('b');
+    expect(map.get('f-docs')).toBe('a');
+    expect(map.get('f-notes')).toBe('b');
     expect(map.get('absent')).toBeUndefined();
+  });
+
+  it('back-fills target_folder_id by name for link-by-name records (migration)', async () => {
+    // Pre-2026-06-13 record: no target_folder_id, but a matching top-level
+    // folder exists. refreshFolderSyncStatus resolves and persists the id so
+    // the by-id marker works before any sync runs.
+    seedConfig({ id: 'a', root_name: 'Reapps Docs', handle: fakeDir('docs', []) });
+    folderRows.push({ id: 'f-docs', name: 'Reapps Docs', parent_id: null });
+    const svc = await loadService();
+    await svc.refreshFolderSyncStatus();
+
+    expect(rows.find((r) => r.id === 'a')?.target_folder_id).toBe('f-docs');
+    expect(get(svc.syncedFolderConfigs).get('f-docs')).toBe('a');
   });
 });
