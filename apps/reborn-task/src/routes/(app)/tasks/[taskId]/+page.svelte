@@ -315,8 +315,8 @@
 		<div class="flex items-center justify-center py-12">
 			<p class="text-lg text-muted-foreground">{$t('common.loading')}</p>
 		</div>
-	{:else if !$session.isAuthenticated}
-		<!-- Not authenticated -->
+	{:else if !$session.isAuthenticated && !$session.isLocalOnly}
+		<!-- Not authenticated (local-only mode is a valid, accountless state and must pass) -->
 		<div class="flex items-center justify-center py-12">
 			<p class="text-lg text-muted-foreground">{$t('auth.login_required')}</p>
 		</div>

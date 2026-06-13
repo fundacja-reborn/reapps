@@ -14,6 +14,8 @@
 	$effect(() => {
 		if (!browser || !$session.isInitialized || $session.isLoading) return;
 		if (isAuthRedirecting) return;
+		// Local-only / no-account mode is a valid state - never bounce it to login/unlock.
+		if ($session.isLocalOnly) return;
 
 		if (!$session.isAuthenticated) {
 			const path = $page.url.pathname;
