@@ -82,6 +82,24 @@ export interface FolderSyncConfigRecord extends WithId {
    * unchanged-skip drops files that already match) and then populates it.
    */
   known_paths?: string[];
+  /**
+   * Map of relative path (`<root>/<sub>/<file.md>`) → id of the note that path
+   * last imported into. The durable file↔note link, and the signal that makes
+   * an in-app deletion re-importable: a one-way disk→app mirror should restore
+   * a note whose source file is still on disk, but the mtime watermark +
+   * `known_paths` skip alone cannot tell "already imported and present" from
+   * "imported then deleted in the app" - both leave the file unchanged. Each
+   * run cross-checks these ids against the notes that still exist; a path whose
+   * note is gone (hard-deleted / trash emptied) is re-imported even though its
+   * mtime never moved. Archived notes still count as present (their id stays in
+   * the store), so archiving never triggers a surprise re-import.
+   *
+   * Maintained incrementally: paths imported this run get their fresh id, paths
+   * skipped-as-unchanged carry their previous id, paths gone from disk drop
+   * out. Absent on records created before 2026-06-13; absence makes the next
+   * run reconcile every file once to populate it (cheap via unchanged-skip).
+   */
+  path_note_ids?: Record<string, string>;
   /** Compact summary of the last completed run, for the settings UI. */
   last_result: {
     scanned: number;

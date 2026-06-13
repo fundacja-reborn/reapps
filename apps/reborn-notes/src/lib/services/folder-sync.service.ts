@@ -20,10 +20,15 @@
  * directory never blocks the rest.
  *
  * Semantics (deliberate, see TODO entry "live folder sync"):
- * - One-way disk → app. In-app edits survive until the file on disk
- *   changes again; then disk wins.
- * - Sync NEVER deletes or trashes notes: a file deleted on disk leaves the
- *   note alone; a renamed file imports as a new note (the old one stays).
+ * - One-way disk → app. In-app CONTENT edits survive until the file on disk
+ *   changes again; then disk wins. EXISTENCE follows disk: deleting a note in
+ *   the app while its source file is still on disk re-imports it on the next
+ *   run (the mirror restores it, via the file↔note manifest). To remove a
+ *   synced note for good, delete the file on disk or unlink the folder.
+ *   Archiving is NOT a deletion - an archived note keeps its id, so it is
+ *   never re-imported.
+ * - Sync NEVER deletes or trashes notes itself: a file deleted on disk leaves
+ *   the note alone; a renamed file imports as a new note (the old one stays).
  * - The link to the app folder is by id (`target_folder_id`), not by name,
  *   so renaming the destination folder - in the folder tree OR in sync
  *   settings - never breaks sync: the import keeps targeting the same node.
@@ -37,7 +42,7 @@
 
 import { get, writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
-import { folderSyncStore, type FolderSyncConfigRecord } from '@reborn/storage';
+import { folderSyncStore, noteStore, type FolderSyncConfigRecord } from '@reborn/storage';
 import type { FolderWithChildren } from '@reborn/types';
 import { createLogger } from '@reborn/utils';
 import { authStore } from '$lib/stores/auth.store';
@@ -49,7 +54,11 @@ import {
   type ImportFolderResult,
   type ImportProgress
 } from './export-import.service';
-import { collectMarkdownEntries, filterEntriesToSync } from './folder-sync-utils';
+import {
+  collectMarkdownEntries,
+  filterEntriesToSync,
+  type SyncFileEntry
+} from './folder-sync-utils';
 
 const logger = createLogger('notes:folder-sync');
 
@@ -582,6 +591,37 @@ async function syncOneConfig(
   }
 }
 
+/**
+ * Ids of every note currently in local storage - the source of truth for
+ * "does this note still exist". Reads the raw encrypted records and keeps only
+ * the plaintext `id` (no decryption), so it is cheap to call each run. Archived
+ * notes are included (their record stays in the store), so only a hard delete /
+ * emptied trash drops an id - exactly when a synced file's note must come back.
+ */
+async function liveNoteIds(): Promise<Set<string>> {
+  const all = await noteStore.getAll();
+  return new Set(all.map((n) => n.id));
+}
+
+/**
+ * Build the next file↔note manifest from this run: the freshly-imported id for
+ * each path the import touched, the carried-over id for paths skipped as
+ * unchanged, and nothing for paths gone from disk (only current `entries` are
+ * walked). `prev` is undefined on the first manifest-populating run.
+ */
+function buildNextManifest(
+  entries: SyncFileEntry[],
+  imported: ImportFolderResult | null,
+  prev: Record<string, string> | undefined
+): Record<string, string> {
+  const next: Record<string, string> = {};
+  for (const e of entries) {
+    const id = imported?.pathToNoteId[e.relativePath] ?? prev?.[e.relativePath];
+    if (id !== undefined) next[e.relativePath] = id;
+  }
+  return next;
+}
+
 async function scanAndImport(
   cfg: FolderSyncConfigRecord,
   handle: FileSystemDirectoryHandle
@@ -611,11 +651,35 @@ async function scanAndImport(
   // New-to-the-directory paths always import (copied/moved-in files keep
   // their old mtime and would never cross the watermark); known paths only
   // when modified since the last scan.
-  const changed = filterEntriesToSync(
+  const incremental = filterEntriesToSync(
     entries,
     cfg.last_sync_at,
     cfg.known_paths ? new Set(cfg.known_paths) : null
   );
+
+  // The incremental filter is blind to IN-APP deletions: deleting a note (or
+  // emptying it from the trash) leaves its source file untouched on disk, so
+  // the mtime + known-path skip would never re-import it - yet a one-way
+  // disk→app mirror should restore it. Cross-check the file↔note manifest
+  // against the notes that still exist and force-import any file whose note is
+  // gone. Archived notes keep their id, so archiving is not a deletion.
+  const prevManifest = cfg.path_note_ids;
+  let changed = incremental;
+  if (prevManifest === undefined) {
+    // Record from before the manifest existed (link-by-name era / pre-first-
+    // sync): reconcile every file once to populate it. Cheap - the overwrite
+    // strategy's unchanged-skip makes the one-off full pass write-free.
+    changed = entries;
+  } else {
+    const liveIds = await liveNoteIds();
+    const included = new Set(incremental.map((e) => e.relativePath));
+    const reimportDeleted = entries.filter((e) => {
+      if (included.has(e.relativePath)) return false;
+      const mappedId = prevManifest[e.relativePath];
+      return mappedId !== undefined && !liveIds.has(mappedId);
+    });
+    if (reimportDeleted.length > 0) changed = [...incremental, ...reimportDeleted];
+  }
 
   let result: ImportFolderResult | null = null;
   if (changed.length > 0) {
@@ -657,6 +721,10 @@ async function scanAndImport(
     // set): paths of deleted files drop out, so a file deleted and later
     // restored counts as new again and re-imports regardless of its mtime.
     known_paths: entries.map((e) => e.relativePath),
+    // File↔note manifest for the next run's in-app-deletion check: fresh id
+    // for paths imported now, carried-over id for paths skipped as unchanged,
+    // and on-disk-gone paths dropped (only current `entries` are mapped).
+    path_note_ids: buildNextManifest(entries, result, prevManifest),
     last_result: {
       scanned: entries.length,
       imported: result?.imported ?? 0,

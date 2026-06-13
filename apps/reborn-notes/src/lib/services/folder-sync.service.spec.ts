@@ -8,6 +8,9 @@ import type { FolderSyncConfigRecord } from '@reborn/storage';
 // slice the service touches (no real File System Access API in vitest).
 
 const rows: FolderSyncConfigRecord[] = [];
+// Live notes in local storage, by id - the existence source the deletion check
+// reads via noteStore.getAll(). A test removes an id to model an in-app delete.
+const noteRows: Array<{ id: string }> = [];
 
 vi.mock('$app/environment', () => ({ browser: true }));
 
@@ -24,6 +27,9 @@ vi.mock('@reborn/storage', () => ({
       const idx = rows.findIndex((r) => r.id === id);
       if (idx >= 0) rows.splice(idx, 1);
     }
+  },
+  noteStore: {
+    getAll: async () => [...noteRows]
   }
 }));
 
@@ -98,7 +104,10 @@ vi.mock('./export-import.service', () => ({
         duplicatesRenamed: 0,
         duplicatesUnchanged: 0,
         strippedCount: 0,
-        errors: []
+        errors: [],
+        // Mirror the real importer: each input path resolves to a note id. A
+        // deterministic id per path lets tests assert the persisted manifest.
+        pathToNoteId: Object.fromEntries(entries.map((e) => [e.relativePath, `note:${e.relativePath}`]))
       };
     }
   )
@@ -157,6 +166,7 @@ async function loadService() {
 beforeEach(() => {
   vi.resetModules();
   rows.length = 0;
+  noteRows.length = 0;
   importCalls.length = 0;
   activeImports = 0;
   maxActiveImports = 0;
@@ -315,6 +325,87 @@ describe('runFolderSync (multi-config)', () => {
     await svc.runFolderSync('auto');
 
     expect(importCalls).toHaveLength(1);
+  });
+});
+
+// ── In-app deletion re-import (disk→app existence mirror) ──────────────────
+
+describe('runFolderSync (in-app deletion)', () => {
+  it('re-imports a file whose note was deleted in the app, despite an unchanged mtime', async () => {
+    // Config already synced once: both files are known, recorded in the
+    // manifest, and their mtime predates the watermark (unchanged on disk).
+    seedConfig({
+      id: 'a',
+      root_name: 'Docs',
+      target_folder_id: 'f1',
+      handle: fakeDir('docs', ['a.md', 'b.md']),
+      last_sync_at: '2026-06-12T00:00:00.000Z',
+      known_paths: ['Docs/a.md', 'Docs/b.md'],
+      path_note_ids: { 'Docs/a.md': 'note-a', 'Docs/b.md': 'note-b' }
+    });
+    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
+    // note-a was deleted in the app (and emptied from trash); note-b survives.
+    noteRows.push({ id: 'note-b' });
+    const svc = await loadService();
+    await svc.refreshFolderSyncStatus();
+
+    await svc.runFolderSync('manual', 'a');
+
+    // Only the orphaned file is re-imported; the still-present note is untouched.
+    expect(importCalls).toHaveLength(1);
+    expect(importCalls[0].paths).toEqual(['Docs/a.md']);
+    // The manifest refreshes a.md to its recreated note and keeps b.md.
+    expect(rows.find((r) => r.id === 'a')?.path_note_ids).toEqual({
+      'Docs/a.md': 'note:Docs/a.md',
+      'Docs/b.md': 'note-b'
+    });
+  });
+
+  it('leaves an unchanged file alone when its note still exists (cheap steady state)', async () => {
+    seedConfig({
+      id: 'a',
+      root_name: 'Docs',
+      target_folder_id: 'f1',
+      handle: fakeDir('docs', ['a.md']),
+      last_sync_at: '2026-06-12T00:00:00.000Z',
+      known_paths: ['Docs/a.md'],
+      path_note_ids: { 'Docs/a.md': 'note-a' }
+    });
+    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
+    noteRows.push({ id: 'note-a' });
+    const svc = await loadService();
+    await svc.refreshFolderSyncStatus();
+
+    await svc.runFolderSync('manual', 'a');
+
+    expect(importCalls).toHaveLength(0);
+    // The manifest carries the existing id across a no-op run.
+    expect(rows.find((r) => r.id === 'a')?.path_note_ids).toEqual({ 'Docs/a.md': 'note-a' });
+  });
+
+  it('reconciles every file once to populate the manifest for a pre-manifest record', async () => {
+    // No path_note_ids (record predates the manifest) but a watermark + known
+    // paths exist: without the one-off full pass the unchanged file would be
+    // skipped and never enter the manifest, leaving the deletion check blind.
+    seedConfig({
+      id: 'a',
+      root_name: 'Docs',
+      target_folder_id: 'f1',
+      handle: fakeDir('docs', ['a.md']),
+      last_sync_at: '2026-06-12T00:00:00.000Z',
+      known_paths: ['Docs/a.md']
+    });
+    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
+    noteRows.push({ id: 'note-a' });
+    const svc = await loadService();
+    await svc.refreshFolderSyncStatus();
+
+    await svc.runFolderSync('manual', 'a');
+
+    expect(importCalls[0].paths).toEqual(['Docs/a.md']);
+    expect(rows.find((r) => r.id === 'a')?.path_note_ids).toEqual({
+      'Docs/a.md': 'note:Docs/a.md'
+    });
   });
 });
 

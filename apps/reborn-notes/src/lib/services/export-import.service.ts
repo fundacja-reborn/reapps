@@ -1400,13 +1400,16 @@ export async function importMarkdownFiles(
  */
 type DuplicateOutcomeResult =
   | { outcome: 'created' | 'overwritten' | 'renamed'; noteId: string }
-  // The two non-writing outcomes stay SEPARATE constituents (not
-  // `'skipped' | 'unchanged'` in one): control-flow exclusion (`!==` in an
-  // else-chain) only drops a constituent whose discriminant narrows to
-  // never, so a multi-literal constituent would survive both negations and
-  // `noteId` would stay `string | undefined` in the writing branch.
+  // `skipped` and `unchanged` stay SEPARATE constituents (not merged into one
+  // `'skipped' | 'unchanged'`): control-flow exclusion (`!==` in an else-chain)
+  // only drops a constituent whose discriminant narrows to never, so a
+  // multi-literal constituent would survive both negations and `noteId` would
+  // stay `string | undefined` in the writing branch. `unchanged` carries the
+  // matched note's id (the file IS linked to an existing note - live folder
+  // sync records it to detect a later in-app deletion); `skipped` (user chose
+  // "skip duplicates") writes nothing and links to nothing.
   | { outcome: 'skipped'; noteId: undefined }
-  | { outcome: 'unchanged'; noteId: undefined };
+  | { outcome: 'unchanged'; noteId: string };
 
 /**
  * Apply the selected duplicate-handling strategy for a single file.
@@ -1473,7 +1476,7 @@ async function applyDuplicateStrategy(args: {
         tagMode
       );
       if (unchanged) {
-        return { outcome: 'unchanged', noteId: undefined };
+        return { outcome: 'unchanged', noteId: existingId };
       }
     }
     await NoteService.updateNote(existingId, baseTitle, content, {
@@ -1600,6 +1603,14 @@ export type ImportFolderResult = {
   duplicatesUnchanged: number;
   strippedCount: number;
   errors: string[];
+  /**
+   * Per-input map of `relativePath` → id of the note it resolved to (created,
+   * overwritten, renamed, or matched-unchanged). Skipped / errored files are
+   * absent. Live folder sync persists this as its file↔note manifest so a
+   * later in-app deletion of a still-on-disk file can be detected and the note
+   * re-imported; other callers ignore it.
+   */
+  pathToNoteId: Record<string, string>;
 };
 
 export type ImportFolderOptions = {
@@ -1679,7 +1690,8 @@ export async function importFolder(
     duplicatesRenamed: 0,
     duplicatesUnchanged: 0,
     strippedCount: 0,
-    errors: []
+    errors: [],
+    pathToNoteId: {}
   };
   const keepRootFolder = opts?.keepRootFolder ?? false;
   const targetFolderId = opts?.targetFolderId;
@@ -1811,7 +1823,7 @@ export async function importFolder(
         }
       }
 
-      const { outcome } = await applyDuplicateStrategy({
+      const dedup = await applyDuplicateStrategy({
         baseTitle: title,
         content: sanitizedContent,
         folderId,
@@ -1823,13 +1835,18 @@ export async function importFolder(
         strategy: duplicateStrategy
       });
 
-      if (outcome === 'skipped') {
+      // Record the file↔note link for every outcome that resolved to a note
+      // (all but `skipped`), so callers like live folder sync can later detect
+      // that an imported note was deleted in the app and re-import its file.
+      if (dedup.noteId !== undefined) result.pathToNoteId[relativePath] = dedup.noteId;
+
+      if (dedup.outcome === 'skipped') {
         result.duplicatesSkipped++;
-      } else if (outcome === 'unchanged') {
+      } else if (dedup.outcome === 'unchanged') {
         result.duplicatesUnchanged++;
       } else {
-        if (outcome === 'overwritten') result.duplicatesOverwritten++;
-        else if (outcome === 'renamed') result.duplicatesRenamed++;
+        if (dedup.outcome === 'overwritten') result.duplicatesOverwritten++;
+        else if (dedup.outcome === 'renamed') result.duplicatesRenamed++;
         result.imported++;
       }
     } catch (e: unknown) {

@@ -286,7 +286,8 @@
         duplicatesRenamed: 0,
         duplicatesUnchanged: 0,
         strippedCount: 0,
-        errors: [err instanceof Error ? err.message : 'Import failed']
+        errors: [err instanceof Error ? err.message : 'Import failed'],
+        pathToNoteId: {}
       };
     } finally {
       importingFolder = false;
