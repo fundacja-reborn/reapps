@@ -34,12 +34,28 @@ const logger = createLogger('Notes-AuthStore');
 export const CREDENTIALS_KEY = 'reborn_auth_credentials';
 export const ACCESS_TOKEN_KEY = 'access_token';
 
+// Local-only mode (no account / offline-only). Shared across Notes and Task on
+// the same origin, exactly like CREDENTIALS_KEY, so entering local mode in one
+// app is visible to the other. `LOCAL_MODE_KEY` is the on/off marker;
+// `LOCAL_USER_ID_KEY` holds a device-scoped UUID used as the `user_id` of local
+// records (keeps FK-shaped fields + shadow-index repair valid before any
+// account exists). See planning/local-only-no-account-plan.md.
+export const LOCAL_MODE_KEY = 'reborn_local_mode';
+export const LOCAL_USER_ID_KEY = 'reborn_local_user_id';
+
 export interface AuthState {
-  /** `null` when unauthenticated (redirected to login). */
+  /** `null` when unauthenticated (redirected to login) or in local-only mode. */
   username: string | null;
   userId: string | null;
   accessToken: string | null;
+  /** True only with a real server account session. False in local-only mode. */
   isAuthenticated: boolean;
+  /**
+   * True in local-only / no-account mode: the app is usable and encrypted
+   * locally, but there is no server session, so sync never runs. Distinct from
+   * `isAuthenticated` precisely so the existing sync gates stay no-ops here.
+   */
+  isLocalOnly: boolean;
   /** ISO date string of account creation. */
   createdAt: string | null;
   /** True when the master key is loaded in CryptoManager (E2E unlocked). */
@@ -53,31 +69,71 @@ function readFromStorage(): AuthState {
     userId: null,
     accessToken: null,
     isAuthenticated: false,
+    isLocalOnly: false,
     createdAt: null,
     hasE2E: false
   };
   if (!browser) return empty;
   try {
     const raw = localStorage.getItem(CREDENTIALS_KEY);
-    if (!raw) return empty;
-    // Duck-type the stored AuthCredentials (avoids adding @reborn/auth dep)
-    const creds = JSON.parse(raw) as {
-      id: string;
-      user_profile: { username: string; created_at?: string };
-    };
-    if (!creds?.id || !creds.user_profile?.username) return empty;
-    return {
-      username: creds.user_profile.username,
-      userId: creds.id,
-      accessToken: localStorage.getItem(ACCESS_TOKEN_KEY),
-      isAuthenticated: true,
-      createdAt: creds.user_profile.created_at ?? null,
-      // Key may already be in memory (restored from sessionStorage by CryptoManager singleton)
-      hasE2E: cryptoManager.isInitialized()
-    };
+    if (raw) {
+      // Duck-type the stored AuthCredentials (avoids adding @reborn/auth dep)
+      const creds = JSON.parse(raw) as {
+        id: string;
+        user_profile: { username: string; created_at?: string };
+      };
+      if (creds?.id && creds.user_profile?.username) {
+        return {
+          username: creds.user_profile.username,
+          userId: creds.id,
+          accessToken: localStorage.getItem(ACCESS_TOKEN_KEY),
+          isAuthenticated: true,
+          isLocalOnly: false,
+          createdAt: creds.user_profile.created_at ?? null,
+          // Key may already be in memory (restored from sessionStorage by CryptoManager singleton)
+          hasE2E: cryptoManager.isInitialized()
+        };
+      }
+    }
+
+    // No account session: fall back to local-only mode if the marker is set.
+    // A real account always wins over the local marker, so this branch is
+    // reached only when there are no valid credentials.
+    if (localStorage.getItem(LOCAL_MODE_KEY) === '1') {
+      const localUserId = localStorage.getItem(LOCAL_USER_ID_KEY);
+      if (localUserId) {
+        return {
+          username: null,
+          userId: localUserId,
+          accessToken: null,
+          isAuthenticated: false,
+          isLocalOnly: true,
+          createdAt: null,
+          hasE2E: cryptoManager.isInitialized()
+        };
+      }
+    }
+
+    return empty;
   } catch {
     return empty;
   }
+}
+
+/** v4-shaped UUID matcher - mirrors the shape idb-cleanup's repairUserId expects. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Read or lazily create the device-scoped local user id. Used as `user_id` for
+ * records created in local-only mode so FK-shaped fields and shadow-index
+ * repair (idb-cleanup) keep working before any server account exists.
+ */
+function getOrCreateLocalUserId(): string {
+  const existing = localStorage.getItem(LOCAL_USER_ID_KEY);
+  if (existing && UUID_RE.test(existing)) return existing;
+  const id = crypto.randomUUID();
+  localStorage.setItem(LOCAL_USER_ID_KEY, id);
+  return id;
 }
 
 function createAuthStore() {
@@ -164,6 +220,46 @@ function createAuthStore() {
         set({ ...readFromStorage(), hasE2E: false });
       }
     });
+  }
+
+  /**
+   * Enter local-only mode: usable, encrypted, no account, no sync. Generates a
+   * device-scoped user id and a local master key (persisted at-rest by
+   * CryptoManager - IndexedDB on web, Keychain/Keystore vault on native) when
+   * one is not already loaded, then flips the store into local-only state.
+   *
+   * Returns false (no-op) if a real account session already exists - the
+   * account always takes precedence. Returns true once local mode is active.
+   */
+  async function enterLocalMode(): Promise<boolean> {
+    if (!browser) return false;
+    // Never shadow a real account session.
+    if (localStorage.getItem(CREDENTIALS_KEY)) return false;
+    try {
+      const localUserId = getOrCreateLocalUserId();
+      localStorage.setItem(LOCAL_MODE_KEY, '1');
+
+      // Generate + persist a local master key unless one is already loaded
+      // (e.g. restored from IndexedDB/vault on a returning local session).
+      if (!cryptoManager.isInitialized()) {
+        const key = await cryptoManager.generateMasterKey();
+        await cryptoManager.setMasterKey(key);
+      }
+
+      set({
+        username: null,
+        userId: localUserId,
+        accessToken: null,
+        isAuthenticated: false,
+        isLocalOnly: true,
+        createdAt: null,
+        hasE2E: cryptoManager.isInitialized()
+      });
+      return true;
+    } catch (err) {
+      logger.error('Failed to enter local-only mode', err);
+      return false;
+    }
   }
 
   /**
@@ -266,7 +362,7 @@ function createAuthStore() {
     window.location.href = `${base}/auth/login`;
   }
 
-  return { subscribe, initialize, unlockE2E, logout, markE2EUnlocked };
+  return { subscribe, initialize, unlockE2E, logout, markE2EUnlocked, enterLocalMode };
 }
 
 export const authStore = createAuthStore();

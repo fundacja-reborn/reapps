@@ -67,7 +67,12 @@
     // Public read-only share view (/s/{slug}) - no account needed.
     const isPublicShareRoute = path.startsWith(`${basePath}/s/`);
 
-    if (!$authStore.isAuthenticated && !isAuthRoute && !isPublicShareRoute) {
+    if (
+      !$authStore.isAuthenticated &&
+      !$authStore.isLocalOnly &&
+      !isAuthRoute &&
+      !isPublicShareRoute
+    ) {
       untrack(() => noteIndex.clear());
       untrack(() => {
         goto('/auth/login');
