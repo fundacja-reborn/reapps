@@ -621,11 +621,6 @@
     "keep_editing": "Keep editing"
   },
   "settings_page": {
-    "account": {
-      "title": "Account",
-      "create": "Create an account",
-      "create_desc": "Keep your notes and sync across devices. Your existing notes are kept."
-    },
     "title": "Settings",
     "description": "Manage your app and account settings",
     "saving": "Saving…",
@@ -641,7 +636,9 @@
       "member_since": "Member since",
       "signed_in_via": "Signed in via re/task",
       "registered": "Registered",
-      "log_out": "Log out"
+      "log_out": "Log out",
+      "create": "Create an account",
+      "create_desc": "Keep your notes and sync across devices. Your existing notes are kept."
     },
     "appearance": {
       "title": "Appearance",

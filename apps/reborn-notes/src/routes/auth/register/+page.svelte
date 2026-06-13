@@ -114,15 +114,17 @@
         })
       });
 
-      const data = await res.json();
+      const body = await res.json();
 
-      if (!res.ok || !data.success) {
-        error = data.error || 'Registration failed';
+      if (!res.ok || !body.success) {
+        error = body.error || 'Registration failed';
         return;
       }
 
       if (isUpgrade) {
-        await finishLocalUpgrade(data, encryptedMasterKey, masterKeySalt);
+        // The endpoint wraps the payload as { success, data } - unwrap before
+        // handing it to finishLocalUpgrade (which reads user / access_token).
+        await finishLocalUpgrade(body.data, encryptedMasterKey, masterKeySalt);
       } else {
         // 6. Auto-login after successful registration (reuses notes-auth.service)
         const loginResult = await loginInNotes(detail.username, detail.password);

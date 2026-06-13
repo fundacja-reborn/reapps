@@ -143,7 +143,8 @@
     <p class="text-sm text-muted-foreground mb-8">{$t('settings_page.about.desc')}</p>
 
     <div class="space-y-8">
-      <!-- Account -->
+      <!-- Account (real server account only; local-only shows the invite below) -->
+      {#if $authStore.isAuthenticated}
       <div class="space-y-1">
         <h2 class="text-lg font-semibold mb-3">{$t('settings_page.account.title')}</h2>
         <div class="space-y-1">
@@ -174,6 +175,7 @@
           </button>
         </div>
       </div>
+      {/if}
       <!-- Preferences -->
       <div class="space-y-1">
         <h2 class="text-lg font-semibold mb-3">{$t('settings_page.preferences')}</h2>

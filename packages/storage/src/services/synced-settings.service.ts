@@ -61,6 +61,13 @@ export interface SyncedSettingsAdapter {
   basePath: string;
   /** Which app's IDB row we are reading/writing. */
   appName: AppName;
+  /**
+   * Optional gate: when it returns false, every server round-trip (pull and
+   * push) is a no-op. Used for local-only / no-account mode, where there is no
+   * session - without this gate the GET/PUT would 401, trigger a refresh that
+   * also 401s, and trip the session-expired banner. Omitted = always enabled.
+   */
+  isSyncEnabled?: () => boolean;
 }
 
 /** How long to wait after the last `update()` before pushing to the server. */
@@ -73,6 +80,11 @@ export class SyncedSettingsService {
 
   constructor(adapter: SyncedSettingsAdapter) {
     this.adapter = adapter;
+  }
+
+  /** Server I/O is disabled (e.g. local-only mode) - every call is a no-op. */
+  private syncDisabled(): boolean {
+    return this.adapter.isSyncEnabled?.() === false;
   }
 
   // ── Public API ────────────────────────────────────────────────────
@@ -88,6 +100,7 @@ export class SyncedSettingsService {
    *   - Local is newer → push up (handled implicitly by the next push).
    */
   async pullAndMerge(): Promise<{ applied: boolean }> {
+    if (this.syncDisabled()) return { applied: false };
     if (!cryptoManager.isInitialized()) {
       logger.debug('Master key not initialized - skipping pull');
       return { applied: false };
@@ -204,6 +217,7 @@ export class SyncedSettingsService {
    * Multiple rapid `update()` calls coalesce into a single network round-trip.
    */
   schedulePush(delayMs: number = DEFAULT_DEBOUNCE_MS): void {
+    if (this.syncDisabled()) return;
     if (this.pushTimer) clearTimeout(this.pushTimer);
     this.pushTimer = setTimeout(() => {
       this.pushTimer = null;
@@ -213,6 +227,7 @@ export class SyncedSettingsService {
 
   /** Flush any pending debounced push and execute one immediately. */
   async pushNow(): Promise<void> {
+    if (this.syncDisabled()) return;
     if (this.pushTimer) {
       clearTimeout(this.pushTimer);
       this.pushTimer = null;

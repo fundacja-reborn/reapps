@@ -621,11 +621,6 @@
     "keep_editing": "Weiter bearbeiten"
   },
   "settings_page": {
-    "account": {
-      "title": "Konto",
-      "create": "Konto erstellen",
-      "create_desc": "Behalte deine Notizen und synchronisiere geräteübergreifend. Deine vorhandenen Notizen bleiben erhalten."
-    },
     "title": "Einstellungen",
     "description": "Verwalten Sie Ihre App- und Kontoeinstellungen",
     "saving": "Speichern…",
@@ -641,7 +636,9 @@
       "member_since": "Mitglied seit",
       "signed_in_via": "Angemeldet über re/task",
       "registered": "Registriert",
-      "log_out": "Abmelden"
+      "log_out": "Abmelden",
+      "create": "Konto erstellen",
+      "create_desc": "Behalte deine Notizen und synchronisiere geräteübergreifend. Deine vorhandenen Notizen bleiben erhalten."
     },
     "appearance": {
       "title": "Erscheinungsbild",

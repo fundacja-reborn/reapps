@@ -621,11 +621,6 @@
     "keep_editing": "Continuer la modification"
   },
   "settings_page": {
-    "account": {
-      "title": "Compte",
-      "create": "Créer un compte",
-      "create_desc": "Conservez vos notes et synchronisez entre appareils. Vos notes actuelles sont conservées."
-    },
     "title": "Paramètres",
     "description": "Gérez les paramètres de votre application et de votre compte",
     "saving": "Enregistrement…",
@@ -641,7 +636,9 @@
       "member_since": "Membre depuis",
       "signed_in_via": "Connecté via re/task",
       "registered": "Inscrit",
-      "log_out": "Se déconnecter"
+      "log_out": "Se déconnecter",
+      "create": "Créer un compte",
+      "create_desc": "Conservez vos notes et synchronisez entre appareils. Vos notes actuelles sont conservées."
     },
     "appearance": {
       "title": "Apparence",
