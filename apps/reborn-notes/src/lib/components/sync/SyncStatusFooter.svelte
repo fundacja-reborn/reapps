@@ -11,7 +11,8 @@
     WifiOff,
     AlertCircle,
     CloudUpload,
-    AlertTriangle
+    AlertTriangle,
+    HardDrive
   } from '@lucide/svelte';
   import { syncStatus, type SyncStatusType } from '$lib/stores/sync-status.store';
   import { pullFromServer, pushPendingItems, refreshStoresAfterPull } from '$lib/services/notes-sync.service';
@@ -20,7 +21,12 @@
   let manualSyncing = $state(false);
 
   async function handleSync() {
-    if (manualSyncing || $syncStatus.status === 'syncing' || $syncStatus.status === 'offline')
+    if (
+      manualSyncing ||
+      $syncStatus.status === 'syncing' ||
+      $syncStatus.status === 'offline' ||
+      $syncStatus.status === 'local_only'
+    )
       return;
 
     manualSyncing = true;
@@ -51,6 +57,8 @@
         return RefreshCw;
       case 'session_expired':
         return AlertTriangle;
+      case 'local_only':
+        return HardDrive;
     }
   }
 
@@ -70,6 +78,8 @@
         return 'text-amber-500 dark:text-amber-400';
       case 'session_expired':
         return 'text-destructive';
+      case 'local_only':
+        return 'text-muted-foreground';
     }
   }
 
@@ -89,6 +99,8 @@
         return $t('sync_status.not_synced');
       case 'session_expired':
         return $t('sync_status.session_expired');
+      case 'local_only':
+        return $t('sync_status.local_only');
     }
   }
 
@@ -108,6 +120,7 @@
     $syncStatus.status !== 'offline' &&
       $syncStatus.status !== 'syncing' &&
       $syncStatus.status !== 'session_expired' &&
+      $syncStatus.status !== 'local_only' &&
       !manualSyncing
   );
   let isSessionExpired = $derived($syncStatus.status === 'session_expired');

@@ -572,6 +572,7 @@
     "badge_tooltip": "Cifrado de extremo a extremo — pulse para ver"
   },
   "sync_status": {
+    "local_only": "Solo local",
     "synced": "Sincronizado",
     "syncing": "Sincronizando…",
     "offline": "Sin conexión",

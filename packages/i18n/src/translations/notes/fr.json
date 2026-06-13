@@ -572,6 +572,7 @@
     "badge_tooltip": "Chiffré de bout en bout — cliquez pour voir"
   },
   "sync_status": {
+    "local_only": "Local uniquement",
     "synced": "Synchronisé",
     "syncing": "Synchronisation…",
     "offline": "Hors ligne",

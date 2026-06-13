@@ -572,6 +572,7 @@
     "badge_tooltip": "Ende-zu-Ende-verschlüsselt — klicken zum Anzeigen"
   },
   "sync_status": {
+    "local_only": "Nur lokal",
     "synced": "Synchronisiert",
     "syncing": "Synchronisierung…",
     "offline": "Offline",

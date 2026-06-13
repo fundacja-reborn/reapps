@@ -26,7 +26,7 @@ import { API_BASE } from '$lib/utils/api-base';
 import { clearNativeRefreshToken } from '$lib/utils/native-auth-storage';
 import { clearNativeSessionId } from '$lib/utils/native-session';
 import { cryptoManager } from '@reborn/crypto';
-import { sessionExpired } from '$lib/stores/sync-status.store';
+import { sessionExpired, localOnly } from '$lib/stores/sync-status.store';
 import { createLogger } from '@reborn/utils';
 
 const logger = createLogger('Notes-AuthStore');
@@ -154,7 +154,9 @@ function createAuthStore() {
   /** Call once from the root layout to hydrate state and watch for cross-tab changes. */
   function initialize(): void {
     if (!browser) return;
-    set(readFromStorage());
+    const initial = readFromStorage();
+    set(initial);
+    localOnly.set(initial.isLocalOnly);
     // Detect login / logout in other tabs on the same origin.
     // The `storage` event fires ONLY in other tabs/windows — never in the tab
     // that changed localStorage. This means:
@@ -255,6 +257,7 @@ function createAuthStore() {
         createdAt: null,
         hasE2E: cryptoManager.isInitialized()
       });
+      localOnly.set(true);
       return true;
     } catch (err) {
       logger.error('Failed to enter local-only mode', err);
@@ -314,6 +317,7 @@ function createAuthStore() {
     if (!browser) return;
     // Reset session expired flag — this is an intentional logout, not expiry
     sessionExpired.set(false);
+    localOnly.set(false);
 
     // Notify server to deactivate session (best-effort, fire-and-forget)
     const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);

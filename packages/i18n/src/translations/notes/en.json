@@ -572,6 +572,7 @@
     "badge_tooltip": "Encrypted end-to-end — click to see"
   },
   "sync_status": {
+    "local_only": "Local only",
     "synced": "Synced",
     "syncing": "Syncing…",
     "offline": "Offline",
