@@ -26,14 +26,22 @@ function createFoldersStore() {
     }
   }
 
-  async function create(name: string, parentId?: string): Promise<string> {
-    const id = await FolderService.createFolder(name, parentId);
+  async function create(
+    name: string,
+    parentId?: string,
+    options?: { skipSync?: boolean }
+  ): Promise<string> {
+    const id = await FolderService.createFolder(name, parentId, options);
     await refresh();
     return id;
   }
 
-  async function rename(id: string, name: string): Promise<void> {
-    await FolderService.renameFolder(id, name);
+  async function rename(
+    id: string,
+    name: string,
+    options?: { skipSync?: boolean }
+  ): Promise<void> {
+    await FolderService.renameFolder(id, name, options);
     await refresh();
   }
 
@@ -46,8 +54,12 @@ function createFoldersStore() {
     return FolderService.getFolderDeleteSummary(id);
   }
 
-  async function move(id: string, newParentId: string | null): Promise<void> {
-    await FolderService.moveFolderToParent(id, newParentId);
+  async function move(
+    id: string,
+    newParentId: string | null,
+    options?: { skipSync?: boolean }
+  ): Promise<void> {
+    await FolderService.moveFolderToParent(id, newParentId, options);
     await refresh();
   }
 

@@ -54,6 +54,7 @@ import {
   type ImportFolderResult,
   type ImportProgress
 } from './export-import.service';
+import { pushPendingItems } from './notes-sync.service';
 import {
   collectMarkdownEntries,
   filterEntriesToSync,
@@ -250,6 +251,16 @@ function findFolderByPath(
  * via {@link parseDestPath}. The CALLER must have refreshed `foldersStore`
  * first; a freshly created level has no children, so no re-read is needed
  * mid-walk. A single segment reproduces the old top-level-by-name behavior.
+ *
+ * Creates with `skipSync: true` (no immediate push). A nested path creates a
+ * parent then a child in one burst, and the per-entity fire-and-forget push
+ * has no parent-before-child ordering - the child's POST would race ahead of
+ * its parent and the server rejects it with 404 "Parent folder not found"
+ * until a retry. The deferred creates are flushed by the ordered
+ * `pushPendingItems()` the subsequent `importFolder` already runs (BFS by
+ * parent depth via `buildFolderLayers`), so parents land first. An empty
+ * linked directory skips that import and leaves the target folder pending
+ * until the next run - harmless (nothing to sync) and self-correcting.
  */
 async function resolveFolderPath(segments: string[]): Promise<string> {
   let level = get(foldersStore);
@@ -265,8 +276,8 @@ async function resolveFolderPath(segments: string[]): Promise<string> {
       // optional-parentId signature (and the existing top-level create tests).
       parentId =
         parentId === undefined
-          ? await foldersStore.create(seg)
-          : await foldersStore.create(seg, parentId);
+          ? await foldersStore.create(seg, undefined, { skipSync: true })
+          : await foldersStore.create(seg, parentId, { skipSync: true });
       level = [];
     }
   }
@@ -488,6 +499,12 @@ export async function updateFolderSyncConfig(
     ...(destChanged ? { known_paths: undefined, last_sync_at: null } : {})
   };
   await folderSyncStore.save(updated);
+  // Flush moveTargetToPath's local folder surgery as one ordered push (BFS by
+  // parent depth via buildFolderLayers), so any new parent lands server-side
+  // before the moved child references it. The per-entity fire-and-forget push
+  // has no such ordering, which is why the child would otherwise 404. Fire-and-
+  // forget like every sync push - the local move already shows in the UI.
+  if (destChanged) void pushPendingItems();
   await refreshFolderSyncStatus();
   return { ok: true };
 }
@@ -503,6 +520,12 @@ export async function updateFolderSyncConfig(
  * `name-cycle` if the new parent path runs through the target itself (which
  * would nest the folder in its own subtree) - detected mid-walk, before any
  * folder is created, so a rejected edit never orphans a stray folder.
+ *
+ * Mutates locally only (every create/move/rename uses `skipSync`); the caller
+ * ({@link updateFolderSyncConfig}) fires one ordered `pushPendingItems()` so a
+ * freshly-created parent lands server-side before the moved child PATCHes to
+ * reference it - otherwise the child races ahead and the server answers 404
+ * "Parent folder not found" until a retry.
  */
 async function moveTargetToPath(
   cfg: FolderSyncConfigRecord,
@@ -536,10 +559,13 @@ async function moveTargetToPath(
       parentId = existing.id;
       level = existing.children ?? [];
     } else {
+      // skipSync on every mutation here: the caller flushes one ordered
+      // pushPendingItems() so the new parent chain lands before the moved
+      // child references it (see resolveFolderPath + updateFolderSyncConfig).
       parentId =
         parentId === undefined
-          ? await foldersStore.create(seg)
-          : await foldersStore.create(seg, parentId);
+          ? await foldersStore.create(seg, undefined, { skipSync: true })
+          : await foldersStore.create(seg, parentId, { skipSync: true });
       level = [];
     }
   }
@@ -553,9 +579,9 @@ async function moveTargetToPath(
   if (!node) return { ok: true, targetId };
 
   if ((newParentId ?? undefined) !== (node.parent_id ?? undefined)) {
-    await foldersStore.move(targetId, newParentId ?? null);
+    await foldersStore.move(targetId, newParentId ?? null, { skipSync: true });
   }
-  if (node.name !== newLeaf) await foldersStore.rename(targetId, newLeaf);
+  if (node.name !== newLeaf) await foldersStore.rename(targetId, newLeaf, { skipSync: true });
   return { ok: true, targetId };
 }
 

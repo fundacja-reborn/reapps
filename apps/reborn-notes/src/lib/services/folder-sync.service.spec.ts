@@ -131,6 +131,13 @@ vi.mock('./export-import.service', () => ({
   )
 }));
 
+// Folder sync defers its folder creates/moves/renames (skipSync) and fires ONE
+// ordered pushPendingItems() so a child folder never pushes before its
+// freshly-created parent (server 404 "Parent folder not found"). Mock it as a
+// spy to assert the flush fires, without loading the real sync transport.
+const pushPendingItemsSpy = vi.fn(async () => {});
+vi.mock('./notes-sync.service', () => ({ pushPendingItems: pushPendingItemsSpy }));
+
 // ── Fakes ────────────────────────────────────────────────────────────────
 
 type FakeDirOptions = {
@@ -192,6 +199,7 @@ beforeEach(() => {
   renameSpy.mockClear();
   createSpy.mockClear();
   moveSpy.mockClear();
+  pushPendingItemsSpy.mockClear();
   refreshSpy.mockReset();
   vi.stubGlobal('window', { showDirectoryPicker: vi.fn() });
   vi.stubGlobal('document', { visibilityState: 'visible' });
@@ -236,7 +244,7 @@ describe('runFolderSync (multi-config)', () => {
 
     // No folder existed -> resolveTargetFolderId created one and the import
     // anchored under its id (keepRootFolder off), not by name.
-    expect(createSpy).toHaveBeenCalledWith('Notes (work)');
+    expect(createSpy).toHaveBeenCalledWith('Notes (work)', undefined, { skipSync: true });
     expect(importCalls[0].targetFolderId).toBe('created-1');
     // The resolved link is persisted so future runs reuse the same folder.
     expect(rows.find((r) => r.id === 'a')?.target_folder_id).toBe('created-1');
@@ -535,8 +543,8 @@ describe('addLinkedFolder', () => {
 
     // Parent created at the top level, then the leaf under it; the import
     // anchors under the leaf id (not the parent), and the link persists.
-    expect(createSpy).toHaveBeenNthCalledWith(1, 'Projekty');
-    expect(createSpy).toHaveBeenNthCalledWith(2, 'Docs', 'created-1');
+    expect(createSpy).toHaveBeenNthCalledWith(1, 'Projekty', undefined, { skipSync: true });
+    expect(createSpy).toHaveBeenNthCalledWith(2, 'Docs', 'created-1', { skipSync: true });
     expect(importCalls[0].targetFolderId).toBe('created-2');
     expect(rows[0].target_folder_id).toBe('created-2');
     expect(folderRows.find((f) => f.id === 'created-2')?.parent_id).toBe('created-1');
@@ -609,6 +617,8 @@ describe('updateFolderSyncConfig', () => {
     expect(row.last_sync_at).toBe('2026-06-12T00:00:00.000Z');
     expect(row.known_paths).toEqual(['Docs/a.md']);
     expect(renameSpy).not.toHaveBeenCalled();
+    // Destination unchanged -> no folder surgery, so no ordered push fires.
+    expect(pushPendingItemsSpy).not.toHaveBeenCalled();
     expect(get(svc.folderSyncStatus).find((s) => s.id === 'a')?.sourceLabel).toBe(
       'fenster-laravel/docs'
     );
@@ -640,7 +650,7 @@ describe('updateFolderSyncConfig', () => {
     });
 
     expect(outcome).toEqual({ ok: true });
-    expect(renameSpy).toHaveBeenCalledWith('f1', 'Reapps Docs');
+    expect(renameSpy).toHaveBeenCalledWith('f1', 'Reapps Docs', { skipSync: true });
     expect(folderRows[0].name).toBe('Reapps Docs');
     const row = rows.find((r) => r.id === 'a')!;
     expect(row.root_name).toBe('Reapps Docs');
@@ -665,7 +675,7 @@ describe('updateFolderSyncConfig', () => {
     });
 
     expect(outcome).toEqual({ ok: true });
-    expect(renameSpy).toHaveBeenCalledWith('f1', 'Archive');
+    expect(renameSpy).toHaveBeenCalledWith('f1', 'Archive', { skipSync: true });
     expect(rows.find((r) => r.id === 'a')?.root_name).toBe('Archive');
     expect(rows.find((r) => r.id === 'a')?.target_folder_id).toBe('f1');
   });
@@ -732,11 +742,14 @@ describe('updateFolderSyncConfig', () => {
 
     expect(outcome).toEqual({ ok: true });
     // Parent created, existing folder moved under it; same leaf -> no rename.
-    expect(createSpy).toHaveBeenCalledWith('Projekty');
+    // All deferred (skipSync) and flushed by one ordered push, so the new
+    // parent lands before the moved child references it (no server 404).
+    expect(createSpy).toHaveBeenCalledWith('Projekty', undefined, { skipSync: true });
     const projekty = folderRows.find((f) => f.name === 'Projekty')!;
-    expect(moveSpy).toHaveBeenCalledWith('f1', projekty.id);
+    expect(moveSpy).toHaveBeenCalledWith('f1', projekty.id, { skipSync: true });
     expect(folderRows.find((f) => f.id === 'f1')?.parent_id).toBe(projekty.id);
     expect(renameSpy).not.toHaveBeenCalled();
+    expect(pushPendingItemsSpy).toHaveBeenCalled();
     const row = rows.find((r) => r.id === 'a')!;
     expect(row.root_name).toBe('Projekty/Docs');
     expect(row.target_folder_id).toBe('f1');
