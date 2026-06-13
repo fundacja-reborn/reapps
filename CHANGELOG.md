@@ -1,3 +1,16 @@
+## 0.30.0 (2026-06-13)
+
+### 🚀 Features
+
+- **notes:** folder import targeting and unchanged-note skip ([#270](https://github.com/fundacja-reborn/reapps/pull/270))
+- **notes:** live folder sync - one-way local directory mirror ([#271](https://github.com/fundacja-reborn/reapps/pull/271), [#270](https://github.com/fundacja-reborn/reapps/issues/270))
+- **notes:** folder sync - nested destination paths ([#273](https://github.com/fundacja-reborn/reapps/pull/273))
+- **ui:** add Support heart link to the icon nav in both apps ([#268](https://github.com/fundacja-reborn/reapps/pull/268))
+
+### 🩹 Fixes
+
+- **notes:** left-align "search in content" label when it wraps ([#274](https://github.com/fundacja-reborn/reapps/pull/274))
+
 ## 0.29.1 (2026-06-11)
 
 ### 🩹 Fixes
