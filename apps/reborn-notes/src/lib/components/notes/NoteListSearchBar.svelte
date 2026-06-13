@@ -61,7 +61,7 @@
       <button
         type="button"
         onclick={toggleSearchInContent}
-        class="flex min-h-[44px] md:min-h-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-sm md:text-[11px] transition-colors
+        class="flex min-h-[44px] md:min-h-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-left text-sm md:text-[11px] transition-colors
           {searchInContent
           ? 'font-medium text-primary'
           : 'text-muted-foreground hover:text-foreground'}"
