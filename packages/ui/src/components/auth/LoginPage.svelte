@@ -10,20 +10,26 @@
     appName = 'Reborn Apps',
     showRegisterLink = true,
     registerUrl = '/register',
+    showLocalModeLink = false,
     themeStorageKey = 'reborn-theme',
     header,
     onlogin,
-    onnavigate
+    onnavigate,
+    onlocalmode
   } = $props<{
     loading?: boolean;
     error?: string | null;
     appName?: string;
     showRegisterLink?: boolean;
     registerUrl?: string;
+    /** Opt-in "use without an account" entry (local-only / offline mode). */
+    showLocalModeLink?: boolean;
     themeStorageKey?: string;
     header?: Snippet;
     onlogin?: (detail: { username: string; password: string; rememberMe: boolean }) => void;
     onnavigate?: (detail: { url: string }) => void;
+    /** Fired when the user chooses to use the app without an account. */
+    onlocalmode?: () => void;
   }>();
 
   function handleLogin(detail: { username: string; password: string; rememberMe: boolean }) {
@@ -47,6 +53,17 @@
       >
         {$t('auth.login.sign_up')}
       </a>
+    </p>
+  {/if}
+  {#if showLocalModeLink}
+    <p class="text-sm text-muted-foreground mt-4 border-t border-border pt-4">
+      <button
+        type="button"
+        class="font-medium text-primary underline underline-offset-4 hover:text-primary/90"
+        onclick={() => onlocalmode?.()}
+      >
+        {$t('auth.use_without_account')}
+      </button>
     </p>
   {/if}
 {/snippet}

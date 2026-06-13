@@ -1,5 +1,17 @@
 {
   "appTitle": "reborn/notes",
+  "local_mode": {
+    "welcome": {
+      "title": "Offline-Modus, ohne Konto",
+      "subtitle": "Du verwendest re/notes ohne Konto. Das bedeutet:",
+      "point_storage": "Deine Notizen bleiben auf diesem Gerät und erreichen nie unsere Server.",
+      "point_encrypted": "Alles wird lokal verschlüsselt (AES-256).",
+      "point_no_sync": "Keine Synchronisierung zwischen Geräten und kein Cloud-Backup.",
+      "point_no_recovery": "Es gibt keine Wiederherstellung, wenn du dieses Gerät verlierst oder die App-Daten löschst - exportiere regelmäßig ein Backup.",
+      "point_upgrade": "Du kannst jederzeit ein Konto erstellen - deine Notizen bleiben erhalten und werden synchronisiert.",
+      "cta": "Verstanden"
+    }
+  },
   "nav": {
     "all_notes": "Alle Notizen",
     "starred": "Markiert",

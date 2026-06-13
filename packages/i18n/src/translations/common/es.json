@@ -33,6 +33,7 @@
     }
   },
   "auth": {
+    "use_without_account": "Usar sin cuenta",
     "login": {
       "title": "Iniciar sesión",
       "description": "¡Bienvenido de nuevo! Introduzca sus credenciales para continuar.",

@@ -1,5 +1,17 @@
 {
   "appTitle": "reborn/notes",
+  "local_mode": {
+    "welcome": {
+      "title": "Mode hors ligne, sans compte",
+      "subtitle": "Vous utilisez re/notes sans compte. Voici ce que cela implique :",
+      "point_storage": "Vos notes restent sur cet appareil et n'atteignent jamais nos serveurs.",
+      "point_encrypted": "Tout est chiffré (AES-256) localement.",
+      "point_no_sync": "Pas de synchronisation entre appareils ni de sauvegarde dans le cloud.",
+      "point_no_recovery": "Aucune récupération n'est possible si vous perdez cet appareil ou effacez les données de l'application - exportez régulièrement une sauvegarde.",
+      "point_upgrade": "Vous pouvez créer un compte à tout moment - vos notes seront conservées et commenceront à se synchroniser.",
+      "cta": "J'ai compris"
+    }
+  },
   "nav": {
     "all_notes": "Toutes les notes",
     "starred": "Favorites",

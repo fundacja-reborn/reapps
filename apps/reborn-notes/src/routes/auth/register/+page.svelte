@@ -6,6 +6,7 @@
   import { RegisterPage } from '@reborn/ui';
   import { hashPassword, generateMasterKeyForUser, cryptoManager } from '@reborn/crypto';
   import { loginInNotes } from '$lib/services/notes-auth.service';
+  import { authStore } from '$lib/stores/auth.store';
   import { t } from '$lib/stores/i18n.store';
   import { locale } from 'svelte-i18n';
   import { API_BASE } from '$lib/utils/api-base';
@@ -101,6 +102,18 @@
       loading = false;
     }
   }
+
+  async function handleLocalMode() {
+    loading = true;
+    error = null;
+    const ok = await authStore.enterLocalMode();
+    if (ok) {
+      await goto('/');
+      return;
+    }
+    error = $t('auth.register.errors.server_error');
+    loading = false;
+  }
 </script>
 
 <svelte:head>
@@ -123,11 +136,13 @@
   header={logoHeader}
   showLoginLink={true}
   loginUrl="/auth/login"
+  showLocalModeLink={true}
   powEndpoint={`${API_BASE}/auth/pow`}
   {termsUrl}
   {privacyUrl}
   themeStorageKey="reborn-notes-theme"
   onregister={handleRegister}
+  onlocalmode={handleLocalMode}
   onerror={(msg) => {
     error = msg;
   }}

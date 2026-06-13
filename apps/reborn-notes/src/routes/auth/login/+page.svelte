@@ -54,6 +54,18 @@
     error = result.message ?? $t('auth.login.errors.invalid_credentials');
     loading = false;
   }
+
+  async function handleLocalMode() {
+    loading = true;
+    error = null;
+    const ok = await authStore.enterLocalMode();
+    if (ok) {
+      await goto('/');
+      return;
+    }
+    error = $t('auth.login.errors.server_error');
+    loading = false;
+  }
 </script>
 
 <svelte:head>
@@ -76,8 +88,10 @@
   header={logoHeader}
   showRegisterLink={true}
   registerUrl="/auth/register"
+  showLocalModeLink={true}
   themeStorageKey="reborn-notes-theme"
   onlogin={handleLogin}
+  onlocalmode={handleLocalMode}
   onnavigate={(e) => {
     if (e.url === '/auth/register' && returnTo && returnTo !== '/') {
       const params = new URLSearchParams({ returnTo });

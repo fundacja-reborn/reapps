@@ -32,6 +32,7 @@
   import { reAuthenticate, verifyTotpForReauth } from '$lib/services/notes-auth.service';
   import { SessionExpiredBanner, RequireSessionModal } from '@reborn/ui';
   import LoadingScreen from '$lib/components/LoadingScreen.svelte';
+  import LocalModeWelcome from '$lib/components/LocalModeWelcome.svelte';
   import UpdateRequiredGate from '$lib/components/layout/UpdateRequiredGate.svelte';
   import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
   import { createLogger } from '@reborn/utils';
@@ -449,6 +450,7 @@
     />
     {@render children()}
     <Toaster />
+    <LocalModeWelcome />
     {#if __REBORN_NATIVE__}
       <UpdateRequiredGate />
     {/if}
