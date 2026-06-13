@@ -54,5 +54,5 @@ export * as schemas from './schemas';
  * `docs/architecture/zero-knowledge-architecture.md` for the rationale.
  */
 export const DB_CONFIG = {
-  version: 12 // Bump: savedSearches store (notes)
+  version: 13 // Bump: folderSyncConfigs store (notes)
 };

@@ -14,13 +14,16 @@
     Upload,
     FolderArchive,
     FolderInput,
+    FolderSync,
     FileJson,
     FileText,
     KeyRound,
     Eye,
     EyeOff,
-    AlertTriangle
+    AlertTriangle,
+    ChevronRight
   } from '@lucide/svelte';
+  import { resolve } from '$app/paths';
   import { t } from '$lib/stores/i18n.store';
   import { foldersStore } from '$lib/stores/folders.store';
   import { tagsStore } from '$lib/stores/tags.store';
@@ -85,6 +88,10 @@
   let folderImportInputEl = $state<HTMLInputElement | null>(null);
   let pendingFolderFiles = $state<File[] | null>(null);
   let pendingFolderStrategy = $state<DuplicateStrategy>('rename');
+  // Overwrite-only option: merge frontmatter tags into the note's existing
+  // tags instead of replacing them, so tags added in the app survive
+  // re-imports. Default ON - silent tag loss is the worse failure mode.
+  let pendingFolderPreserveTags = $state(true);
   let pendingFolderMdCount = $state(0);
   // Name of the directory the user picked (first webkitRelativePath segment)
   // + whether to recreate it as the top-level folder. Default ON: "I picked
@@ -213,6 +220,7 @@
     folderImportResult = null;
     pendingFolderFiles = null;
     pendingFolderStrategy = 'rename';
+    pendingFolderPreserveTags = true;
     pendingFolderMdCount = 0;
     pendingFolderRootName = null;
     pendingFolderKeepRoot = true;
@@ -239,6 +247,7 @@
     const files = pendingFolderFiles;
     const strategy = pendingFolderStrategy;
     const keepRootFolder = pendingFolderKeepRoot && pendingFolderRootName !== null;
+    const tagsOnOverwrite = pendingFolderPreserveTags ? ('merge' as const) : ('replace' as const);
     const initialMdCount = pendingFolderMdCount;
     pendingFolderFiles = null;
     pendingFolderMdCount = 0;
@@ -256,7 +265,7 @@
         (p) => {
           folderProgress = p;
         },
-        { keepRootFolder }
+        { keepRootFolder, tagsOnOverwrite }
       );
       folderImportResult = result;
       await Promise.all([
@@ -277,7 +286,8 @@
         duplicatesRenamed: 0,
         duplicatesUnchanged: 0,
         strippedCount: 0,
-        errors: [err instanceof Error ? err.message : 'Import failed']
+        errors: [err instanceof Error ? err.message : 'Import failed'],
+        pathToNoteId: {}
       };
     } finally {
       importingFolder = false;
@@ -683,6 +693,8 @@
                 bind:strategy={pendingFolderStrategy}
                 promptVariant="folder"
                 radioGroupName="folder-strategy"
+                showPreserveTags={true}
+                bind:preserveTags={pendingFolderPreserveTags}
               />
               {#if pendingFolderRootName !== null}
                 <label class="flex items-start gap-2 text-xs cursor-pointer">
@@ -753,6 +765,23 @@
             <ImportResultSummary result={folderImportResult} class="mt-3" />
           {/if}
         </div>
+
+        <!-- Live folder sync moved to its own settings page (multi-folder) -->
+        <a
+          href={resolve('/settings/folder-sync')}
+          class="flex items-center gap-3 rounded-lg border bg-muted/30 p-4 transition-colors hover:bg-accent/50"
+        >
+          <FolderSync class="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium">
+              {$t('settings_page.export_import.folder_sync_title')}
+            </p>
+            <p class="text-xs text-muted-foreground">
+              {$t('settings_page.export_import.folder_sync_hub_desc')}
+            </p>
+          </div>
+          <ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
+        </a>
 
         <!-- Import JSON backup -->
         <div class="p-4 rounded-lg border bg-muted/30">

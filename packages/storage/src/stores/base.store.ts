@@ -110,6 +110,10 @@ export const NOTES_STORE_DEFINITIONS: StoreDefinition[] = [
       { name: 'folder_id', keyPath: 'folder_id' },
       { name: 'position', keyPath: 'position' }
     ]
+  },
+  {
+    name: 'folderSyncConfigs',
+    primaryKey: 'id'
   }
 ];
 

@@ -5,6 +5,7 @@
     Info,
     CheckSquare,
     FileDown,
+    FolderSync,
     LogOut,
     Lock,
     ShieldCheck,
@@ -322,6 +323,18 @@
               <div class="font-medium">{$t('settings_page.export_import.title')}</div>
               <div class="text-sm text-muted-foreground">
                 {$t('settings_page.export_import.hub_export_desc')}
+              </div>
+            </div>
+            <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
+          </a>
+          <a href={resolve('/settings/folder-sync')} class={itemClasses}>
+            <FolderSync class="h-5 w-5 text-muted-foreground shrink-0" />
+            <div class="flex-1 min-w-0">
+              <div class="font-medium">
+                {$t('settings_page.export_import.folder_sync_title')}
+              </div>
+              <div class="text-sm text-muted-foreground">
+                {$t('settings_page.export_import.folder_sync_hub_desc')}
               </div>
             </div>
             <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />

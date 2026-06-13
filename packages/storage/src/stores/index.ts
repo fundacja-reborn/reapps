@@ -13,6 +13,7 @@ export * from './tag.store';
 export * from './saved-search.store';
 export * from './note-tag.store';
 export * from './note-history.store';
+export * from './folder-sync.store';
 
 // Common stores
 export * from './user.store';
@@ -33,6 +34,8 @@ export { tagStore, tagQueries, tagOperations } from './tag.store';
 export { savedSearchStore, savedSearchQueries } from './saved-search.store';
 export { noteTagStore, noteTagQueries, noteTagOperations } from './note-tag.store';
 export { noteHistoryStore, noteHistoryQueries, noteHistoryOperations } from './note-history.store';
+export { folderSyncStore } from './folder-sync.store';
+export type { FolderSyncConfigRecord } from './folder-sync.store';
 
 // Export the extended NoteTag type from note-tag.store
 export type { NoteTag } from './note-tag.store';

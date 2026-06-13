@@ -245,6 +245,7 @@ export async function clearAllUserData(): Promise<void> {
       savedSearchStore,
       noteTagStore,
       noteHistoryStore,
+      folderSyncStore,
       userStore,
       syncStateStore,
       settingsOperations
@@ -266,6 +267,9 @@ export async function clearAllUserData(): Promise<void> {
     if (existingStores.has('savedSearches')) await savedSearchStore.clear();
     if (existingStores.has('noteTags')) await noteTagStore.clear();
     if (existingStores.has('noteHistory')) await noteHistoryStore.clear();
+    // Folder sync config holds a directory handle granting read access to a
+    // local directory - must not leak to the next account on this browser.
+    if (existingStores.has('folderSyncConfigs')) await folderSyncStore.clear();
 
     // Common stores (always present)
     await offlineOperationsStore.clear();

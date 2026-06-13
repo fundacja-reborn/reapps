@@ -57,9 +57,12 @@ import {
   computeRenamedTitle,
   findExisting,
   isImportUnchanged,
+  mergeTagIds,
+  tagSetsEqual,
   rememberTitle,
   folderKey,
   type DuplicateStrategy,
+  type TagOverwriteMode,
   type TitleLookup
 } from './import-dedup-utils';
 import { sanitizeMarkdownContent, sanitizeTags } from '$lib/utils/markdown-sanitizer';
@@ -1397,13 +1400,16 @@ export async function importMarkdownFiles(
  */
 type DuplicateOutcomeResult =
   | { outcome: 'created' | 'overwritten' | 'renamed'; noteId: string }
-  // The two non-writing outcomes stay SEPARATE constituents (not
-  // `'skipped' | 'unchanged'` in one): control-flow exclusion (`!==` in an
-  // else-chain) only drops a constituent whose discriminant narrows to
-  // never, so a multi-literal constituent would survive both negations and
-  // `noteId` would stay `string | undefined` in the writing branch.
+  // `skipped` and `unchanged` stay SEPARATE constituents (not merged into one
+  // `'skipped' | 'unchanged'`): control-flow exclusion (`!==` in an else-chain)
+  // only drops a constituent whose discriminant narrows to never, so a
+  // multi-literal constituent would survive both negations and `noteId` would
+  // stay `string | undefined` in the writing branch. `unchanged` carries the
+  // matched note's id (the file IS linked to an existing note - live folder
+  // sync records it to detect a later in-app deletion); `skipped` (user chose
+  // "skip duplicates") writes nothing and links to nothing.
   | { outcome: 'skipped'; noteId: undefined }
-  | { outcome: 'unchanged'; noteId: undefined };
+  | { outcome: 'unchanged'; noteId: string };
 
 /**
  * Apply the selected duplicate-handling strategy for a single file.
@@ -1412,23 +1418,29 @@ type DuplicateOutcomeResult =
  * / just-renamed entry and don't double-collide with it.
  *
  * `tagIds` is the list of tag ids resolved from frontmatter (already
- * find-or-created by the caller). For `overwrite`, this REPLACES the
- * existing note's tag set — frontmatter is treated as the source of truth.
- * `undefined` means the import path does not manage tags at all (flat .md
- * import): tags are then ignored both for the unchanged-comparison and on
- * overwrite (the existing note's tags survive).
+ * find-or-created by the caller). For `overwrite`, `tagMode` decides whether
+ * it REPLACES the existing note's tag set (frontmatter as source of truth)
+ * or is MERGED into it (tags added in the app survive - see
+ * {@link TagOverwriteMode}). `undefined` means the import path does not
+ * manage tags at all (flat .md import): tags are then ignored both for the
+ * unchanged-comparison and on overwrite (the existing note's tags survive).
+ *
+ * Stars / pins live in `metadata_encrypted`, which `updateNote` never
+ * touches - they survive overwrite regardless of `tagMode`.
  */
 async function applyDuplicateStrategy(args: {
   baseTitle: string;
   content: string;
   folderId: string | undefined;
   tagIds: string[] | undefined;
+  tagMode?: TagOverwriteMode;
   createdAt: string | undefined;
   modifiedAt: string | undefined;
   lookup: TitleLookup;
   strategy: DuplicateStrategy;
 }): Promise<DuplicateOutcomeResult> {
   const { baseTitle, content, folderId, tagIds, createdAt, modifiedAt, lookup, strategy } = args;
+  const tagMode = args.tagMode ?? 'replace';
   const existingId = findExisting(lookup, folderId, baseTitle);
 
   if (!existingId) {
@@ -1455,15 +1467,16 @@ async function applyDuplicateStrategy(args: {
     // getNote() returns null for trashed notes, but those never reach this
     // point: the title lookup is built from non-archived index entries only.
     const existingNote = await NoteService.getNote(existingId);
+    const existingTagIds =
+      tagIds === undefined ? [] : await noteTagQueries.getTagsForNote(existingId);
     if (existingNote) {
-      const existingTagIds =
-        tagIds === undefined ? [] : await noteTagQueries.getTagsForNote(existingId);
       const unchanged = isImportUnchanged(
         { title: existingNote.title, content: existingNote.content, tagIds: existingTagIds },
-        { title: baseTitle, content, tagIds }
+        { title: baseTitle, content, tagIds },
+        tagMode
       );
       if (unchanged) {
-        return { outcome: 'unchanged', noteId: undefined };
+        return { outcome: 'unchanged', noteId: existingId };
       }
     }
     await NoteService.updateNote(existingId, baseTitle, content, {
@@ -1471,8 +1484,14 @@ async function applyDuplicateStrategy(args: {
       skipSync: true
     });
     if (tagIds !== undefined) {
-      // Replace tag set with frontmatter tags (source of truth on overwrite).
-      await TagService.setTagsForNote(existingId, tagIds, { skipSync: true });
+      // `replace`: frontmatter is the tag source of truth. `merge`: union -
+      // tags added in the app survive. Skip the write when the final set
+      // already equals the note's tags (setTagsForNote always rewrites the
+      // whole join set, so a no-op call would still churn IDB + sync).
+      const finalTagIds = tagMode === 'merge' ? mergeTagIds(existingTagIds, tagIds) : tagIds;
+      if (!tagSetsEqual(existingTagIds, finalTagIds)) {
+        await TagService.setTagsForNote(existingId, finalTagIds, { skipSync: true });
+      }
     }
     return { outcome: 'overwritten', noteId: existingId };
   }
@@ -1584,6 +1603,14 @@ export type ImportFolderResult = {
   duplicatesUnchanged: number;
   strippedCount: number;
   errors: string[];
+  /**
+   * Per-input map of `relativePath` → id of the note it resolved to (created,
+   * overwritten, renamed, or matched-unchanged). Skipped / errored files are
+   * absent. Live folder sync persists this as its file↔note manifest so a
+   * later in-app deletion of a still-on-disk file can be detected and the note
+   * re-imported; other callers ignore it.
+   */
+  pathToNoteId: Record<string, string>;
 };
 
 export type ImportFolderOptions = {
@@ -1599,7 +1626,26 @@ export type ImportFolderOptions = {
    * level ("import folder here" from a folder's context menu).
    */
   targetFolderId?: string;
+  /**
+   * `overwrite` strategy only: how frontmatter tags interact with the
+   * existing note's tags. `merge` (UI default, hard-coded for live folder
+   * sync) unions them so tags added in the app survive re-imports; `replace`
+   * (API default, pre-2026-06-13 behavior) makes frontmatter the source of
+   * truth. See {@link TagOverwriteMode}.
+   */
+  tagsOnOverwrite?: TagOverwriteMode;
 };
+
+/**
+ * A file accepted by {@link importFolder}: either a plain `File` from a
+ * `webkitdirectory` input (path read from `webkitRelativePath`) or a
+ * `{ file, relativePath }` pair for sources where the browser does not stamp
+ * a path on the File object - e.g. files collected from a File System Access
+ * API directory handle by the live folder sync (`folder-sync.service.ts`).
+ * `relativePath` uses the same shape as `webkitRelativePath`:
+ * `<rootDir>/<sub>/<name.md>`, `/`-separated.
+ */
+export type ImportFolderInput = File | { file: File; relativePath: string };
 
 /**
  * Import a folder tree of Markdown files (Obsidian-style vault).
@@ -1627,7 +1673,7 @@ export type ImportFolderOptions = {
  * strategy this makes re-importing the same directory an idempotent refresh.
  */
 export async function importFolder(
-  files: File[],
+  files: ImportFolderInput[],
   duplicateStrategy: DuplicateStrategy = 'rename',
   onProgress?: ImportProgressCallback,
   opts?: ImportFolderOptions
@@ -1644,52 +1690,61 @@ export async function importFolder(
     duplicatesRenamed: 0,
     duplicatesUnchanged: 0,
     strippedCount: 0,
-    errors: []
+    errors: [],
+    pathToNoteId: {}
   };
   const keepRootFolder = opts?.keepRootFolder ?? false;
   const targetFolderId = opts?.targetFolderId;
+  const tagsOnOverwrite = opts?.tagsOnOverwrite ?? 'replace';
+
+  // 0. Normalize inputs to { file, relativePath } pairs. Plain Files carry
+  //    their path in webkitRelativePath ('' when absent → name only, lands
+  //    at the import root, matching the previous behavior).
+  const allEntries = files.map((f) =>
+    'relativePath' in f ? f : { file: f, relativePath: f.webkitRelativePath || f.name }
+  );
 
   // 1. Skip files in hidden directories (.obsidian/, .trash/, etc.).
   //    Applied FIRST so we don't pollute the non-markdown counter with
   //    .json/.css plugin internals — those get their own bucket.
-  const visibleFiles: File[] = [];
-  for (const f of files) {
-    if (containsHiddenSegment(f.webkitRelativePath)) {
+  const visibleEntries: typeof allEntries = [];
+  for (const e of allEntries) {
+    if (containsHiddenSegment(e.relativePath)) {
       result.skippedHidden++;
     } else {
-      visibleFiles.push(f);
+      visibleEntries.push(e);
     }
   }
 
   // 2. Filter non-markdown files.
-  const mdFiles: File[] = [];
-  for (const f of visibleFiles) {
-    if (f.name.toLowerCase().endsWith('.md')) {
-      mdFiles.push(f);
+  const mdEntries: typeof allEntries = [];
+  for (const e of visibleEntries) {
+    if (e.file.name.toLowerCase().endsWith('.md')) {
+      mdEntries.push(e);
     } else {
       result.skippedNonMarkdown++;
     }
   }
 
   // 3. Filter files exceeding the per-note plaintext cap.
-  const sizedFiles: File[] = [];
-  for (const f of mdFiles) {
-    if (f.size > MAX_NOTE_CONTENT_BYTES) {
+  const sizedEntries: typeof allEntries = [];
+  for (const e of mdEntries) {
+    if (e.file.size > MAX_NOTE_CONTENT_BYTES) {
       result.skippedTooLarge++;
     } else {
-      sizedFiles.push(f);
+      sizedEntries.push(e);
     }
   }
 
   // 4. Enforce the shared total-import cap.
-  const totalSize = sizedFiles.reduce((sum, f) => sum + f.size, 0);
+  const totalSize = sizedEntries.reduce((sum, e) => sum + e.file.size, 0);
   if (totalSize > MAX_IMPORT_FILE_SIZE) {
     throw new Error(
       `Łączny rozmiar plików (${Math.round(totalSize / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)} MB.`
     );
   }
 
-  if (sizedFiles.length === 0) return result;
+  if (sizedEntries.length === 0) return result;
 
   // 5. Load existing folders/tags once so find-or-create can dedupe against
   //    both previous state AND items created earlier in this batch.
@@ -1709,8 +1764,8 @@ export async function importFolder(
 
   // 6. Resolve every unique directory path to a folder id up-front.
   const pathToFolderId = new Map<string, string | undefined>();
-  for (const file of sizedFiles) {
-    const segments = extractFolderSegments(file.webkitRelativePath, keepRootFolder);
+  for (const entry of sizedEntries) {
+    const segments = extractFolderSegments(entry.relativePath, keepRootFolder);
     const key = segments.join('/');
     if (pathToFolderId.has(key)) continue;
     try {
@@ -1731,18 +1786,18 @@ export async function importFolder(
   // 7. Import each note via the duplicate strategy helper.
   //    skipSync: true — avoid per-note pushNote/pushNoteUpdate race condition.
   //    Bulk push happens after the loop (step 7b).
-  const total = sizedFiles.length;
+  const total = sizedEntries.length;
   onProgress?.({ phase: 'reading', current: 0, total });
   // Throttle progress events to one per ~50ms so a 1000-file vault doesn't
   // flood the renderer; always report the final count regardless.
   let lastEmit = 0;
 
-  for (let i = 0; i < sizedFiles.length; i++) {
-    const file = sizedFiles[i];
+  for (let i = 0; i < sizedEntries.length; i++) {
+    const { file, relativePath } = sizedEntries[i];
     try {
       const raw = await file.text();
       const parsed = parseMarkdownFile(raw);
-      const segments = extractFolderSegments(file.webkitRelativePath, keepRootFolder);
+      const segments = extractFolderSegments(relativePath, keepRootFolder);
       const folderId = pathToFolderId.get(segments.join('/'));
 
       const fallbackTitle = file.name.replace(/\.md$/i, '') || 'Untitled';
@@ -1768,24 +1823,30 @@ export async function importFolder(
         }
       }
 
-      const { outcome } = await applyDuplicateStrategy({
+      const dedup = await applyDuplicateStrategy({
         baseTitle: title,
         content: sanitizedContent,
         folderId,
         tagIds,
+        tagMode: tagsOnOverwrite,
         createdAt,
         modifiedAt,
         lookup: titleLookup,
         strategy: duplicateStrategy
       });
 
-      if (outcome === 'skipped') {
+      // Record the file↔note link for every outcome that resolved to a note
+      // (all but `skipped`), so callers like live folder sync can later detect
+      // that an imported note was deleted in the app and re-import its file.
+      if (dedup.noteId !== undefined) result.pathToNoteId[relativePath] = dedup.noteId;
+
+      if (dedup.outcome === 'skipped') {
         result.duplicatesSkipped++;
-      } else if (outcome === 'unchanged') {
+      } else if (dedup.outcome === 'unchanged') {
         result.duplicatesUnchanged++;
       } else {
-        if (outcome === 'overwritten') result.duplicatesOverwritten++;
-        else if (outcome === 'renamed') result.duplicatesRenamed++;
+        if (dedup.outcome === 'overwritten') result.duplicatesOverwritten++;
+        else if (dedup.outcome === 'renamed') result.duplicatesRenamed++;
         result.imported++;
       }
     } catch (e: unknown) {

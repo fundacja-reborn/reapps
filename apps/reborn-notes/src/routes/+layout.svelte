@@ -22,6 +22,7 @@
   import { authStore } from '$lib/stores/auth.store';
   import { sharesStore } from '$lib/stores/shares.store';
   import { pullFromServer, pushPendingItems, refreshStoresAfterPull } from '$lib/services/notes-sync.service';
+  import { initFolderSync, runFolderSync } from '$lib/services/folder-sync.service';
   import { verifyAndRebuildLocalShadowIndexes } from '$lib/services/shadow-index-reconciler.service';
   import { noteIndex } from '$lib/services/note-index.svelte';
   import { cleanupNullFkFields } from '$lib/services/idb-cleanup.service';
@@ -127,6 +128,9 @@
         );
         await refreshStoresAfterPull();
       }
+      // Live folder sync: scan the linked local directory once the unlock
+      // sync settled. No-ops unless configured + auto-sync enabled.
+      void runFolderSync('auto');
     };
     // fire-and-forget: initial sync, errors handled by sync service
     runSync().catch(() => {});
@@ -224,6 +228,11 @@
           })
           .catch(() => {
             /* offline - local data remains */
+          })
+          .finally(() => {
+            // Live folder sync: scan the linked local directory after the
+            // boot sync settles (also offline - the import is local-first).
+            void runFolderSync('auto');
           });
       }
 
@@ -264,6 +273,11 @@
 
     // Initialize network monitoring (sets up online/offline listeners)
     const unsubscribeNetwork = isOnline.subscribe(() => {});
+
+    // Live folder sync triggers (visibility + interval). All conditions
+    // (support, config, auth, cooldown) are re-validated inside each run,
+    // so this is safe to wire before storage/auth finish initializing.
+    const cleanupFolderSync = initFolderSync();
 
     // Periodic sync every 5 minutes when online and authenticated
     const syncInterval = setInterval(
@@ -324,6 +338,7 @@
       clearInterval(syncInterval);
       if (updateGateTimer) clearTimeout(updateGateTimer);
       unsubscribeNetwork();
+      cleanupFolderSync();
       offResume?.();
       offDeepLink?.();
       mediaQuery.removeEventListener('change', handleSchemeChange);
