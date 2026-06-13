@@ -1,0 +1,23 @@
+{
+  "enter_failed": "Der lokale Modus konnte nicht gestartet werden. Bitte versuche es erneut.",
+  "replace_title": "Lokale Aufgaben ersetzen?",
+  "replace_desc": "Die Anmeldung bei einem bestehenden Konto ersetzt die Aufgaben, die sich derzeit auf diesem Gerät befinden. Exportiere zuerst eine Sicherung, wenn du sie behalten möchtest.",
+  "replace_confirm": "Trotzdem anmelden",
+  "share_title": "Konto erforderlich",
+  "account_required_desc": "Zum Teilen ist ein Konto nötig. Erstelle eins - deine Aufgaben bleiben erhalten und werden synchronisiert.",
+  "create_account": "Konto erstellen",
+  "account_invite_desc": "Behalte deine Aufgaben, synchronisiere sie geräteübergreifend und aktiviere das Teilen. Deine aktuellen Aufgaben bleiben erhalten.",
+  "backup_reminder": "Tipp: Exportiere regelmäßig eine Sicherung - lokale Daten lassen sich nach Verlust des Geräts nicht wiederherstellen.",
+  "menu_title": "Nur lokal",
+  "menu_subtitle": "Kein Konto, keine Synchronisierung",
+  "welcome": {
+    "title": "Offline arbeiten - ohne Konto",
+    "subtitle": "Deine Aufgaben befinden sich nur auf diesem Gerät.",
+    "point_storage": "Deine Daten bleiben auf diesem Gerät und erreichen niemals unsere Server.",
+    "point_encrypted": "Alles wird lokal verschlüsselt (AES-256).",
+    "point_no_sync": "Keine Synchronisierung zwischen Geräten und keine Cloud-Sicherung.",
+    "point_no_recovery": "Keine Wiederherstellung, wenn du dieses Gerät verlierst oder die App-Daten löschst - exportiere regelmäßig eine Sicherung.",
+    "point_upgrade": "Du kannst jederzeit ein Konto erstellen - deine Aufgaben bleiben erhalten und werden synchronisiert.",
+    "cta": "Verstanden"
+  }
+}

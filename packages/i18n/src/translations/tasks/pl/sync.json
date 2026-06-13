@@ -57,7 +57,8 @@
     "conflict_title": "Dane zmienione na innym urządzeniu",
     "conflict_message": "Wykryto nowsze dane na serwerze. Pobrano zaktualizowane dane.",
     "conflict_action": "Odśwież",
-    "session_expired": "Sesja wygasła"
+    "session_expired": "Sesja wygasła",
+    "local_only": "Tylko lokalnie"
   },
   "initial": {
     "title": "Synchronizujemy Twoje zadania",

@@ -3,10 +3,18 @@ import { isOnline } from './network.store';
 import { syncProgress, lastSyncedAt } from '$lib/services/sync.service';
 import { pendingOperations, failedOperations } from './offline-operations.store';
 import { sessionExpired } from './session-expired.store';
+import { localOnly } from './local-mode.store';
 
 export { lastSyncedAt };
 
-export type SyncStatusType = 'synced' | 'syncing' | 'offline' | 'error' | 'pending' | 'auth-error';
+export type SyncStatusType =
+	| 'synced'
+	| 'syncing'
+	| 'offline'
+	| 'error'
+	| 'pending'
+	| 'auth-error'
+	| 'local_only';
 
 export interface SyncStatusState {
 	status: SyncStatusType;
@@ -19,20 +27,41 @@ export interface SyncStatusState {
 
 /**
  * Unified sync status derived from multiple stores.
- * Priority: auth-error > offline > syncing > error > pending > synced
+ * Priority: local_only > auth-error > offline > syncing > error > pending > synced
  */
 export const syncStatus = derived(
-	[isOnline, syncProgress, pendingOperations, failedOperations, sessionExpired, lastSyncedAt],
+	[
+		isOnline,
+		syncProgress,
+		pendingOperations,
+		failedOperations,
+		sessionExpired,
+		lastSyncedAt,
+		localOnly
+	],
 	([
 		$isOnline,
 		$syncProgress,
 		$pendingOps,
 		$failedOps,
 		$sessionExpired,
-		$lastSyncedAt
+		$lastSyncedAt,
+		$localOnly
 	]): SyncStatusState => {
 		const pendingCount = $pendingOps.length;
 		const failedCount = $failedOps.length;
+
+		if ($localOnly) {
+			// No account, no server: sync never runs, so this overrides everything.
+			return {
+				status: 'local_only',
+				pendingCount,
+				failedCount,
+				message: '',
+				progress: 0,
+				lastSyncedAt: $lastSyncedAt
+			};
+		}
 
 		if ($sessionExpired && $isOnline) {
 			return {

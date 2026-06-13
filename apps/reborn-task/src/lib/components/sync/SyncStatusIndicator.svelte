@@ -7,7 +7,15 @@
 <script lang="ts">
 	import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@reborn/ui';
 	import { toastStore } from '@reborn/ui';
-	import { RefreshCw, Check, WifiOff, AlertCircle, CloudUpload, ShieldAlert } from '@lucide/svelte';
+	import {
+		RefreshCw,
+		Check,
+		WifiOff,
+		AlertCircle,
+		CloudUpload,
+		ShieldAlert,
+		HardDrive
+	} from '@lucide/svelte';
 	import { syncStatus, type SyncStatusType } from '$lib/stores/sync-status.store';
 	import { failedOperations } from '$lib/stores/offline-operations.store';
 	import { offlineOperationsStore } from '$lib/stores/offline-operations.store';
@@ -86,6 +94,8 @@
 				return CloudUpload;
 			case 'auth-error':
 				return ShieldAlert;
+			case 'local_only':
+				return HardDrive;
 		}
 	}
 
@@ -103,6 +113,8 @@
 				return 'text-amber-500';
 			case 'auth-error':
 				return 'text-destructive';
+			case 'local_only':
+				return 'text-muted-foreground';
 		}
 	}
 
@@ -118,13 +130,15 @@
 				return (
 					$t('sync.indicator.error') +
 					($syncStatus.failedCount > 0 ? ` (${$syncStatus.failedCount})` : '') +
-					' — ' +
+					' - ' +
 					$t('sync.indicator.tap_to_retry')
 				);
 			case 'pending':
 				return $t('sync.indicator.pending', { values: { count: $syncStatus.pendingCount } });
 			case 'auth-error':
 				return $t('sync.indicator.session_expired');
+			case 'local_only':
+				return $t('sync.indicator.local_only');
 		}
 	}
 
@@ -134,6 +148,7 @@
 		$syncStatus.status !== 'offline' &&
 			$syncStatus.status !== 'syncing' &&
 			$syncStatus.status !== 'auth-error' &&
+			$syncStatus.status !== 'local_only' &&
 			!isSyncing
 	);
 </script>

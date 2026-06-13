@@ -1,0 +1,23 @@
+{
+  "enter_failed": "Impossible de démarrer le mode local. Veuillez réessayer.",
+  "replace_title": "Remplacer les tâches locales ?",
+  "replace_desc": "Se connecter à un compte existant remplace les tâches actuellement présentes sur cet appareil. Exportez d'abord une sauvegarde si vous souhaitez les conserver.",
+  "replace_confirm": "Se connecter quand même",
+  "share_title": "Compte requis",
+  "account_required_desc": "Le partage nécessite un compte. Créez-en un - vos tâches sont conservées et commencent à se synchroniser.",
+  "create_account": "Créer un compte",
+  "account_invite_desc": "Conservez vos tâches, synchronisez-les entre vos appareils et activez le partage. Vos tâches actuelles sont conservées.",
+  "backup_reminder": "Astuce : exportez régulièrement une sauvegarde - les données locales sont irrécupérables en cas de perte de l'appareil.",
+  "menu_title": "Local uniquement",
+  "menu_subtitle": "Sans compte, sans synchronisation",
+  "welcome": {
+    "title": "Travailler hors ligne - sans compte",
+    "subtitle": "Vos tâches restent uniquement sur cet appareil.",
+    "point_storage": "Vos données restent sur cet appareil et n'atteignent jamais nos serveurs.",
+    "point_encrypted": "Tout est chiffré (AES-256) localement.",
+    "point_no_sync": "Aucune synchronisation entre appareils ni sauvegarde dans le cloud.",
+    "point_no_recovery": "Aucune récupération si vous perdez cet appareil ou effacez les données de l'application - exportez régulièrement une sauvegarde.",
+    "point_upgrade": "Vous pouvez créer un compte à tout moment - vos tâches sont conservées et commencent à se synchroniser.",
+    "cta": "J'ai compris"
+  }
+}

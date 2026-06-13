@@ -1,0 +1,23 @@
+{
+  "enter_failed": "Nie udało się uruchomić trybu lokalnego. Spróbuj ponownie.",
+  "replace_title": "Zastąpić lokalne zadania?",
+  "replace_desc": "Zalogowanie się na istniejące konto zastąpi zadania znajdujące się obecnie na tym urządzeniu. Jeśli chcesz je zachować, najpierw wyeksportuj kopię zapasową.",
+  "replace_confirm": "Zaloguj mimo to",
+  "share_title": "Wymagane konto",
+  "account_required_desc": "Udostępnianie wymaga konta. Załóż je - Twoje zadania zostaną zachowane i zaczną się synchronizować.",
+  "create_account": "Załóż konto",
+  "account_invite_desc": "Zachowaj zadania, synchronizuj je między urządzeniami i włącz udostępnianie. Obecne zadania zostaną zachowane.",
+  "backup_reminder": "Wskazówka: regularnie eksportuj kopię zapasową - danych lokalnych nie da się odzyskać po utracie urządzenia.",
+  "menu_title": "Tylko lokalnie",
+  "menu_subtitle": "Bez konta, bez synchronizacji",
+  "welcome": {
+    "title": "Praca offline - bez konta",
+    "subtitle": "Twoje zadania są tylko na tym urządzeniu.",
+    "point_storage": "Twoje dane zostają na tym urządzeniu i nigdy nie trafiają na nasze serwery.",
+    "point_encrypted": "Wszystko jest szyfrowane (AES-256) lokalnie.",
+    "point_no_sync": "Brak synchronizacji między urządzeniami i brak kopii w chmurze.",
+    "point_no_recovery": "Brak odzyskania, jeśli stracisz to urządzenie lub wyczyścisz dane aplikacji - regularnie eksportuj kopię zapasową.",
+    "point_upgrade": "W każdej chwili możesz założyć konto - zadania zostaną zachowane i zaczną się synchronizować.",
+    "cta": "Rozumiem"
+  }
+}

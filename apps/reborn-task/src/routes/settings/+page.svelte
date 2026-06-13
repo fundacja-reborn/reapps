@@ -22,12 +22,13 @@
 		LogOut,
 		StickyNote,
 		ShieldAlert,
-		Share2
+		Share2,
+		UserPlus
 	} from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { locale } from '$lib/stores/i18n.store';
 	import { cn, SettingsLayout, GithubMark } from '@reborn/ui';
-	import { user } from '$lib/stores/auth.store';
+	import { user, isAuthenticated, isLocalOnly } from '$lib/stores/auth.store';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { resolve } from '$app/paths';
 	import { createLogger } from '@reborn/utils';
@@ -172,8 +173,13 @@
 	let loadingSessions = $state(true);
 
 	async function loadSessionsCount() {
+		const accessToken = localStorage.getItem('access_token');
+		// Local-only mode has no account/token - the sessions UI is hidden anyway.
+		if (!accessToken) {
+			loadingSessions = false;
+			return;
+		}
 		try {
-			const accessToken = localStorage.getItem('access_token');
 			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/sessions`, {
 				headers: { Authorization: `Bearer ${accessToken}` }
 			});
@@ -201,37 +207,56 @@
 	<p class="text-sm text-muted-foreground mb-8">{$t('settings.about.description')}</p>
 
 	<div class="space-y-8">
-		<!-- Account -->
-		<div class="space-y-1">
-			<h2 class="text-lg font-semibold mb-3">{$t('settings.account.title')}</h2>
+		<!-- Account (real account session) -->
+		{#if $isAuthenticated}
 			<div class="space-y-1">
-				<div class={itemClasses}>
-					<User class="h-5 w-5 text-muted-foreground shrink-0" />
-					<div class="flex-1 min-w-0">
-						<div class="font-medium">{$user?.username ?? 'User'}</div>
-						<div class="text-sm text-muted-foreground">
-							{#if $user?.created_at}
-								{$t('profile.member_since')}
-								{new Date($user.created_at).toLocaleDateString(
-									$locale ?? undefined,
-									{ year: 'numeric', month: 'long', day: 'numeric' }
-								)}
-							{/if}
+				<h2 class="text-lg font-semibold mb-3">{$t('settings.account.title')}</h2>
+				<div class="space-y-1">
+					<div class={itemClasses}>
+						<User class="h-5 w-5 text-muted-foreground shrink-0" />
+						<div class="flex-1 min-w-0">
+							<div class="font-medium">{$user?.username ?? 'User'}</div>
+							<div class="text-sm text-muted-foreground">
+								{#if $user?.created_at}
+									{$t('profile.member_since')}
+									{new Date($user.created_at).toLocaleDateString(
+										$locale ?? undefined,
+										{ year: 'numeric', month: 'long', day: 'numeric' }
+									)}
+								{/if}
+							</div>
 						</div>
 					</div>
+					<button
+						type="button"
+						onclick={handleLogout}
+						class={cn(itemClasses, 'w-full text-destructive hover:bg-destructive/5')}
+					>
+						<LogOut class="h-5 w-5 shrink-0" />
+						<div class="flex-1 min-w-0 text-left">
+							<div class="font-medium">{$t('settings.account.log_out')}</div>
+						</div>
+					</button>
 				</div>
-				<button
-					type="button"
-					onclick={handleLogout}
-					class={cn(itemClasses, 'w-full text-destructive hover:bg-destructive/5')}
-				>
-					<LogOut class="h-5 w-5 shrink-0" />
-					<div class="flex-1 min-w-0 text-left">
-						<div class="font-medium">{$t('settings.account.log_out')}</div>
-					</div>
-				</button>
 			</div>
-		</div>
+		{:else if $isLocalOnly}
+			<!-- Local-only mode: invite to create an account (keeps existing tasks) -->
+			<div class="space-y-1">
+				<h2 class="text-lg font-semibold mb-3">{$t('settings.account.title')}</h2>
+				<a href={resolve('/auth/register')} class={itemClasses}>
+					<UserPlus class="h-5 w-5 text-primary shrink-0" />
+					<div class="flex-1 min-w-0">
+						<div class="font-medium">{$t('local_mode.create_account')}</div>
+						<div class="text-sm text-muted-foreground">
+							{$t('local_mode.account_invite_desc')}
+						</div>
+					</div>
+				</a>
+				<div class="px-4 pt-1">
+					<p class="text-xs text-muted-foreground">{$t('local_mode.backup_reminder')}</p>
+				</div>
+			</div>
+		{/if}
 		<!-- Preferences sections -->
 		{#each preferencesSections as section}
 			<div class="space-y-1">
@@ -253,7 +278,8 @@
 			</div>
 		{/each}
 
-		<!-- Security section -->
+		<!-- Security section (account-only - hidden in local-only mode) -->
+		{#if $isAuthenticated}
 		<div class="space-y-1">
 			<h2 class="text-lg font-semibold mb-3">{$t('settings.security.title')}</h2>
 
@@ -320,6 +346,7 @@
 				</a>
 			</div>
 		</div>
+		{/if}
 
 		<!-- Data & Info sections -->
 		{#each dataSections as section}

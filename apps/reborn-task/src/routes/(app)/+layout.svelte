@@ -38,6 +38,7 @@
 	import { CreateListSheet, DeleteListDialog, EditListNameModal, TaskListSheet } from '$lib/components/task-list';
 	import { DeleteTaskDialog, TaskList, TaskFilterBar } from '$lib/components/tasks';
 	import ShareTaskDialog from '$lib/components/tasks/ShareTaskDialog.svelte';
+	import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
 	import { TaskSelectPlaceholder, FilterViewPlaceholder } from '$lib/components/tasks';
 	import { page } from '$app/stores';
 	import { goto } from '$lib/utils/navigation';
@@ -278,9 +279,17 @@
 	// Share dialog state (read-only public snapshot)
 	let shareDialogOpen = $state(false);
 	let shareDialogTask = $state<TaskDecrypted | null>(null);
+	// Shown when sharing is attempted in local-only mode (account required).
+	let accountRequiredOpen = $state(false);
 
 	async function openShareDialogForCurrentTask() {
 		if (!currentTask) return;
+		// Sharing is account-only: in local-only mode, invite to create an account
+		// instead of opening the (server-backed) share flow.
+		if ($session.isLocalOnly) {
+			accountRequiredOpen = true;
+			return;
+		}
 		const ok = await requireActiveSession({
 			description: $t('share.session_required.create')
 		});
@@ -341,7 +350,9 @@
 			taskListStore
 				.loadLists()
 				.then(async () => {
-					if ($activeLists.length === 0 && $session.user?.id) {
+					// Skip the online-setup gate in local-only mode: there is no server
+					// to sync from, and enterLocalMode() already created a default list.
+					if ($activeLists.length === 0 && $session.user?.id && !$session.isLocalOnly) {
 						if (!navigator.onLine) {
 							// First run offline — cannot sync, show blocking UI
 							needsOnlineSetup = true;
@@ -867,8 +878,12 @@
 	// Layout children
 	let { children } = $props<{ children?: Snippet }>();
 
-	// Only render content if user has E2E access
-	let showContent = $derived(browser && $session.isAuthenticated && $session.hasE2E);
+	// Render the app when the master key is loaded and either a real account
+	// session OR local-only / no-account mode is active. Local-only is a fully
+	// usable state (encrypted locally, no server), so it gets the same UI.
+	let showContent = $derived(
+		browser && ($session.isAuthenticated || $session.isLocalOnly === true) && $session.hasE2E
+	);
 
 	// Auth guard — redirect when session check is done and user is not authenticated
 	let isAuthRedirecting = $state(false);
@@ -876,6 +891,8 @@
 	$effect(() => {
 		if (!browser || !$session.isInitialized || $session.isLoading) return;
 		if (isAuthRedirecting) return;
+		// Local-only / no-account mode is a valid state - never bounce it to login/unlock.
+		if ($session.isLocalOnly) return;
 
 		if (!$session.isAuthenticated) {
 			const path = $page.url.pathname;
@@ -1377,6 +1394,9 @@
 
 	<!-- Share read-only snapshot dialog -->
 	<ShareTaskDialog bind:open={shareDialogOpen} task={shareDialogTask} />
+
+	<!-- Account-required prompt (sharing attempted in local-only mode) -->
+	<AccountRequiredDialog bind:open={accountRequiredOpen} />
 {:else}
 	<div class="flex items-center justify-center h-screen bg-background">
 		<div class="flex flex-col items-center gap-3">

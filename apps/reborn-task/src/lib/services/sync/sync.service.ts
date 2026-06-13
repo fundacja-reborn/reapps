@@ -1,6 +1,8 @@
+import { get } from 'svelte/store';
 import { createLogger } from '@reborn/utils';
 import { taskCounts } from '$lib/stores/task-counts.store';
 import { taskStore } from '@reborn/storage';
+import { localOnly } from '$lib/stores/local-mode.store';
 import { taskTitleIndex } from '$lib/services/task-title-index.svelte';
 import { SyncListsService } from './sync-lists.service';
 import { SyncTasksService } from './sync-tasks.service';
@@ -142,6 +144,10 @@ class SyncService {
 	 * post-sync logic (ensureDefaultList) only runs after a real sync.
 	 */
 	async initialSync(): Promise<void> {
+		// Local-only / no-account mode: there is no server session, so every sync
+		// is a no-op. Without this gate the hasE2E effect in +layout would push to
+		// the server with no token, 401, and mark ops failed (which then never retry).
+		if (get(localOnly)) return;
 		if (this._initialSyncPromise) {
 			logger.debug('Sync already in progress, waiting for existing sync');
 			return this._initialSyncPromise;
@@ -298,6 +304,7 @@ class SyncService {
 	 * Multiple calls within the delay window are collapsed into one sync.
 	 */
 	scheduleSyncSoon(): void {
+		if (get(localOnly)) return;
 		if (!checkOnline()) return;
 
 		if (this.syncSoonTimer) {
@@ -318,6 +325,7 @@ class SyncService {
 	 * Unlike initialSync(), no progress callbacks and no soft-delete wait.
 	 */
 	async periodicSync(): Promise<void> {
+		if (get(localOnly)) return;
 		if (!checkOnline()) {
 			logger.debug('Offline - skipping periodic sync');
 			return;
@@ -376,6 +384,7 @@ class SyncService {
 	 * This should be called periodically or after changes
 	 */
 	async syncToServer(): Promise<{ failedCount: number }> {
+		if (get(localOnly)) return { failedCount: 0 };
 		if (!checkOnline()) {
 			logger.info('Offline - skipping sync to server');
 			return { failedCount: 0 };
@@ -420,6 +429,8 @@ class SyncService {
 	}> {
 		const processedOps: StorageOfflineOperation[] = [];
 		let failedCount = 0;
+
+		if (get(localOnly)) return { processedOps, failedCount };
 
 		if (!checkOnline()) {
 			logger.info('Offline - skipping offline operations sync');

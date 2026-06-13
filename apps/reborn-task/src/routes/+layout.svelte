@@ -12,6 +12,7 @@
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { SessionExpiredBanner, RequireSessionModal } from '@reborn/ui';
 	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
+	import LocalModeWelcome from '$lib/components/LocalModeWelcome.svelte';
 	import { Toaster } from '@reborn/ui';
 	import type { Snippet } from 'svelte';
 	import { initializeStorage, isDatabaseInitialized } from '@reborn/storage';
@@ -312,6 +313,7 @@
 			{@render children()}
 		{/if}
 	</div>
+	<LocalModeWelcome />
 	<Toaster />
 {:else}
 	<LoadingScreen />

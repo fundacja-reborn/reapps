@@ -167,6 +167,12 @@ export const session: Readable<AuthSession> = getOrCreateSessionStore();
 
 // Derived stores for convenience
 export const isAuthenticated = derived(session, ($s) => $s?.isAuthenticated ?? false);
+// Local-only / no-account mode. Guarded `&& !isAuthenticated` so a real account
+// session is never treated as local-only even if the flag were left stale.
+export const isLocalOnly = derived(
+	session,
+	($s) => (($s?.isLocalOnly ?? false) && !$s?.isAuthenticated)
+);
 export const hasE2E = derived(session, ($s) => $s?.hasE2E ?? false);
 export const user = derived(session, ($s) => $s?.user ?? null);
 export const isLoading = derived(session, ($s) => $s?.isLoading ?? false);

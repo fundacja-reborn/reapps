@@ -57,7 +57,8 @@
     "conflict_title": "Data changed on another device",
     "conflict_message": "Newer data was detected on the server. Updated data has been downloaded.",
     "conflict_action": "Refresh",
-    "session_expired": "Session expired"
+    "session_expired": "Session expired",
+    "local_only": "Local only"
   },
   "initial": {
     "title": "Syncing your tasks",
