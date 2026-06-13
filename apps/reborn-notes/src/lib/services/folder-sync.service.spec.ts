@@ -339,6 +339,25 @@ describe('addLinkedFolder', () => {
     ).toEqual({ ok: false, error: 'limit-reached' });
   });
 
+  it('rejects a name containing a path separator (would nest on import)', async () => {
+    const svc = await loadService();
+    expect(
+      await svc.addLinkedFolder(
+        fakeDir('docs', []) as unknown as FileSystemDirectoryHandle,
+        'test/reapps-docs'
+      )
+    ).toEqual({ ok: false, error: 'name-invalid' });
+    expect(
+      (
+        await svc.addLinkedFolder(
+          fakeDir('docs', []) as unknown as FileSystemDirectoryHandle,
+          'a\\b'
+        )
+      ).ok
+    ).toBe(false);
+    expect(rows).toHaveLength(0);
+  });
+
   it('saves a trimmed record with auto-sync on and reports it in the status list', async () => {
     const svc = await loadService();
 
@@ -474,5 +493,33 @@ describe('updateFolderSyncConfig', () => {
     const row = rows.find((r) => r.id === 'a')!;
     expect(row.root_name).toBe('Reborn');
     expect(row.last_sync_at).toBeNull();
+  });
+
+  it('rejects a destination name containing a path separator', async () => {
+    seedConfig({ id: 'a', root_name: 'Docs', handle: fakeDir('docs', []) });
+    const svc = await loadService();
+
+    const outcome = await svc.updateFolderSyncConfig('a', {
+      sourceLabel: null,
+      destName: 'test/reapps-docs'
+    });
+
+    expect(outcome).toEqual({ ok: false, error: 'name-invalid' });
+    expect(rows.find((r) => r.id === 'a')?.root_name).toBe('Docs');
+    expect(renameSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('syncedFolderConfigs', () => {
+  it('maps lowercased display names to config ids for the folder UI', async () => {
+    seedConfig({ id: 'a', root_name: 'Reapps Docs', handle: fakeDir('docs', []) });
+    seedConfig({ id: 'b', root_name: 'Notes', handle: fakeDir('notes', []) });
+    const svc = await loadService();
+    await svc.refreshFolderSyncStatus();
+
+    const map = get(svc.syncedFolderConfigs);
+    expect(map.get('reapps docs')).toBe('a');
+    expect(map.get('notes')).toBe('b');
+    expect(map.get('absent')).toBeUndefined();
   });
 });

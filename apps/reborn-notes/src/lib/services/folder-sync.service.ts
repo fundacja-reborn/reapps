@@ -35,7 +35,7 @@
  * reports unsupported and stays invisible beyond a hint in settings.
  */
 
-import { get, writable } from 'svelte/store';
+import { get, writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { folderSyncStore, type FolderSyncConfigRecord } from '@reborn/storage';
 import { createLogger } from '@reborn/utils';
@@ -66,6 +66,14 @@ const AUTO_INTERVAL_MS = 5 * 60_000;
 const PICKER_ID = 'reborn-folder-sync';
 /** Web Locks name guarding against two tabs importing concurrently. */
 const LOCK_NAME = 'reborn-notes-folder-sync';
+/**
+ * Characters forbidden in a destination (app folder) name. The import path
+ * walk splits on "/" (`extractFolderSegments`), so a slash would silently
+ * nest - "a/b" would create folder "a" containing "b" instead of one folder
+ * named "a/b". A backslash reads as a path separator too. The destination
+ * must map to exactly one top-level folder, so both are rejected.
+ */
+const ILLEGAL_DEST_NAME_CHARS = /[/\\]/;
 
 export type FolderSyncErrorKey = 'folder_gone' | 'sync_failed' | null;
 
@@ -96,6 +104,20 @@ export function isFolderSyncSupported(): boolean {
  * separately via `isFolderSyncSupported`).
  */
 export const folderSyncStatus = writable<FolderSyncConfigStatus[]>([]);
+
+/**
+ * Map of (lowercased) display name → config id, for the folder UI to mark a
+ * folder as a sync destination and offer "Sync now" on it. The destination
+ * is always a TOP-LEVEL folder (the import roots at `root_name`), so callers
+ * must additionally gate on the folder being top-level - a nested folder that
+ * coincidentally shares the name is NOT a sync target. Empty when nothing is
+ * linked or the browser lacks the API.
+ */
+export const syncedFolderConfigs = derived(folderSyncStatus, ($list) => {
+  const byName = new Map<string, string>();
+  for (const s of $list) byName.set(s.name.toLowerCase(), s.id);
+  return byName;
+});
 
 /** Per-tab single-flight flag; cross-tab exclusion is the Web Lock below. */
 let runnerActive = false;
@@ -221,7 +243,7 @@ async function isSameDirectory(
 
 export type AddFolderOutcome =
   | { ok: true; id: string }
-  | { ok: false; error: 'name-empty' | 'name-taken' | 'limit-reached' };
+  | { ok: false; error: 'name-empty' | 'name-invalid' | 'name-taken' | 'limit-reached' };
 
 /**
  * Persist a new config for a handle obtained from `pickFolderToLink`.
@@ -241,6 +263,7 @@ export async function addLinkedFolder(
 ): Promise<AddFolderOutcome> {
   const name = displayName.trim();
   if (!name) return { ok: false, error: 'name-empty' };
+  if (ILLEGAL_DEST_NAME_CHARS.test(name)) return { ok: false, error: 'name-invalid' };
   const configs = await readConfigs();
   if (configs.length >= MAX_FOLDER_SYNC_CONFIGS) return { ok: false, error: 'limit-reached' };
   if (configs.some((c) => c.root_name.toLowerCase() === name.toLowerCase())) {
@@ -262,7 +285,7 @@ export async function addLinkedFolder(
 
 export type UpdateFolderSyncOutcome =
   | { ok: true }
-  | { ok: false; error: 'name-empty' | 'name-taken' | 'dest-folder-exists' };
+  | { ok: false; error: 'name-empty' | 'name-invalid' | 'name-taken' | 'dest-folder-exists' };
 
 /**
  * Edit a linked folder's two user-facing names.
@@ -296,6 +319,7 @@ export async function updateFolderSyncConfig(
 
   const newName = changes.destName.trim();
   if (!newName) return { ok: false, error: 'name-empty' };
+  if (ILLEGAL_DEST_NAME_CHARS.test(newName)) return { ok: false, error: 'name-invalid' };
   const newLabel = changes.sourceLabel?.trim() ? changes.sourceLabel.trim() : null;
 
   const oldName = cfg.root_name;

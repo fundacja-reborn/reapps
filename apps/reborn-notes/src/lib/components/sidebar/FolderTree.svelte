@@ -10,10 +10,12 @@
     ChevronRight,
     Folder,
     FolderOpen,
+    FolderSync,
     FolderInput,
     MoreHorizontal,
     FolderPlus,
     Pencil,
+    RefreshCw,
     Trash2,
     Upload
   } from '@lucide/svelte';
@@ -27,8 +29,10 @@
     Sheet,
     SheetContent,
     SheetHeader,
-    SheetTitle
+    SheetTitle,
+    toastStore
   } from '@reborn/ui';
+  import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
   import type { FolderWithChildren, SavedSearchDecrypted } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
   import { notesStore } from '$lib/stores/notes.store';
@@ -146,6 +150,30 @@
   const activeMenuFolder = $derived(
     menuOpenId ? (nodes.find((n) => n.id === menuOpenId) ?? null) : null
   );
+
+  // ── Folder sync ─────────────────────────────────────────────────
+  // Only TOP-LEVEL folders (depth 0) can be sync destinations - the import
+  // roots at the config's name. The mobile sheet reads the active folder's id.
+  const activeMenuSyncId = $derived(
+    depth === 0 && activeMenuFolder
+      ? ($syncedFolderConfigs.get(activeMenuFolder.name.toLowerCase()) ?? null)
+      : null
+  );
+  let syncingId = $state<string | null>(null);
+
+  async function handleSyncNow(configId: string, e?: Event) {
+    e?.stopPropagation();
+    menuOpenId = null;
+    folderActionSheetOpen = false;
+    if (syncingId) return;
+    syncingId = configId;
+    try {
+      await runFolderSync('manual', configId);
+      toastStore.success($t('folders.sync_done'));
+    } finally {
+      syncingId = null;
+    }
+  }
 
   function toggleMenu(id: string, e: Event) {
     e.stopPropagation();
@@ -325,6 +353,8 @@
     {@const parkedSearches = savedSearchesByFolder?.get(folder.id) ?? []}
     {@const hasChildren = (folder.children?.length ?? 0) > 0 || parkedSearches.length > 0}
     {@const isDragTarget = dragOverId === folder.id}
+    {@const syncConfigId =
+      depth === 0 ? ($syncedFolderConfigs.get(folder.name.toLowerCase()) ?? null) : null}
 
     <li
       role="treeitem"
@@ -351,8 +381,13 @@
         onkeydown={(e) => e.key === 'Enter' && handleRowSelect(folder)}
         aria-label={$t('folders.folder_label', { values: { name: folder.name } })}
       >
-        <!-- Folder icon -->
-        {#if isExpanded && hasChildren}
+        <!-- Folder icon (synced top-level folders get a distinct sync glyph) -->
+        {#if syncConfigId}
+          <FolderSync
+            class="h-4 w-4 shrink-0 text-primary"
+            aria-label={$t('folders.synced_folder')}
+          />
+        {:else if isExpanded && hasChildren}
           <FolderOpen class="h-4 w-4 shrink-0 text-muted-foreground" />
         {:else}
           <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -423,6 +458,13 @@
                 {/snippet}
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" class="min-w-36">
+                {#if syncConfigId}
+                  <DropdownMenuItem onclick={(e) => handleSyncNow(syncConfigId, e)}>
+                    <RefreshCw class="h-3.5 w-3.5" />
+                    {$t('folders.sync_now')}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                {/if}
                 <DropdownMenuItem onclick={(e) => handleCreateSub(folder.id, e)}>
                   <FolderPlus class="h-3.5 w-3.5" />
                   {$t('folders.new_subfolder')}
@@ -490,6 +532,16 @@
       <SheetTitle>{activeMenuFolder?.name ?? ''}</SheetTitle>
     </SheetHeader>
     <div class="mt-4 space-y-1">
+      {#if activeMenuSyncId}
+        <Button
+          variant="ghost"
+          class="w-full justify-start"
+          onclick={() => activeMenuSyncId && handleSyncNow(activeMenuSyncId)}
+        >
+          <RefreshCw class="mr-2 h-4 w-4" />
+          {$t('folders.sync_now')}
+        </Button>
+      {/if}
       <Button
         variant="ghost"
         class="w-full justify-start"

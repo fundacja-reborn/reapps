@@ -31,6 +31,7 @@
   let pendingHandle = $state<FileSystemDirectoryHandle | null>(null);
   let pendingName = $state('');
   let nameTaken = $state(false);
+  let nameInvalid = $state(false);
   let adding = $state(false);
   // Errors of the PICK step (shown near the add button, no form open).
   let pickError = $state<'already-linked' | 'limit-reached' | null>(null);
@@ -69,6 +70,7 @@
     pendingHandle = null;
     pendingName = '';
     nameTaken = false;
+    nameInvalid = false;
   }
 
   async function confirmAdd(e: Event) {
@@ -76,10 +78,12 @@
     if (!pendingHandle || !pendingName.trim()) return;
     adding = true;
     nameTaken = false;
+    nameInvalid = false;
     try {
       const added = await addLinkedFolder(pendingHandle, pendingName);
       if (!added.ok) {
         if (added.error === 'name-taken') nameTaken = true;
+        else if (added.error === 'name-invalid') nameInvalid = true;
         else if (added.error === 'limit-reached') {
           cancelAdd();
           pickError = 'limit-reached';
@@ -145,7 +149,10 @@
                   id="folder-sync-name"
                   type="text"
                   bind:value={pendingName}
-                  oninput={() => (nameTaken = false)}
+                  oninput={() => {
+                    nameTaken = false;
+                    nameInvalid = false;
+                  }}
                   disabled={adding}
                   maxlength="120"
                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
@@ -157,6 +164,11 @@
               {#if nameTaken}
                 <p class="text-xs text-destructive">
                   {$t('settings_page.export_import.folder_sync_name_taken')}
+                </p>
+              {/if}
+              {#if nameInvalid}
+                <p class="text-xs text-destructive">
+                  {$t('settings_page.export_import.folder_sync_name_invalid')}
                 </p>
               {/if}
               <div class="flex gap-2">

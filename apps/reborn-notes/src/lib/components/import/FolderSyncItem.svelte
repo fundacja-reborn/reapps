@@ -32,7 +32,7 @@
   let editing = $state(false);
   let editSourceLabel = $state('');
   let editDestName = $state('');
-  let editError = $state<'name-taken' | 'dest-folder-exists' | null>(null);
+  let editError = $state<'name-taken' | 'dest-folder-exists' | 'name-invalid' | null>(null);
   let savingEdit = $state(false);
 
   const busy = $derived(status.state === 'syncing');
@@ -78,6 +78,7 @@
       if (!outcome.ok) {
         if (outcome.error === 'name-taken') editError = 'name-taken';
         else if (outcome.error === 'dest-folder-exists') editError = 'dest-folder-exists';
+        else if (outcome.error === 'name-invalid') editError = 'name-invalid';
         return;
       }
       editing = false;
@@ -231,6 +232,10 @@
       {:else if editError === 'dest-folder-exists'}
         <p class="text-xs text-destructive">
           {$t('settings_page.export_import.folder_sync_dest_folder_exists')}
+        </p>
+      {:else if editError === 'name-invalid'}
+        <p class="text-xs text-destructive">
+          {$t('settings_page.export_import.folder_sync_name_invalid')}
         </p>
       {/if}
       <div class="flex gap-2">

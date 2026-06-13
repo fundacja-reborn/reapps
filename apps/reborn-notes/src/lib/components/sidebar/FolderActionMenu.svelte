@@ -4,6 +4,7 @@
     FolderPlus,
     FolderInput,
     Pencil,
+    RefreshCw,
     Trash2,
     Upload
   } from '@lucide/svelte';
@@ -17,11 +18,13 @@
     Sheet,
     SheetContent,
     SheetHeader,
-    SheetTitle
+    SheetTitle,
+    toastStore
   } from '@reborn/ui';
   import type { FolderWithChildren } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
   import { notesStore } from '$lib/stores/notes.store';
+  import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import type { DeleteFolderMode } from '$lib/services/folder.service';
@@ -50,6 +53,27 @@
   } = $props();
 
   const isMobileQuery = useIsMobile();
+
+  // Only TOP-LEVEL folders can be sync destinations (the import roots at the
+  // config name). Null otherwise -> the "Sync now" entry stays hidden.
+  const syncConfigId = $derived(
+    folder && !folder.parent_id
+      ? ($syncedFolderConfigs.get(folder.name.toLowerCase()) ?? null)
+      : null
+  );
+  let syncing = $state(false);
+
+  async function handleSyncNow() {
+    sheetOpen = false;
+    if (!syncConfigId || syncing) return;
+    syncing = true;
+    try {
+      await runFolderSync('manual', syncConfigId);
+      toastStore.success($t('folders.sync_done'));
+    } finally {
+      syncing = false;
+    }
+  }
 
   let sheetOpen = $state(false);
   let deleteDialogOpen = $state(false);
@@ -141,6 +165,13 @@
         {/snippet}
       </DropdownMenuTrigger>
       <DropdownMenuContent {align} class="min-w-44">
+        {#if syncConfigId}
+          <DropdownMenuItem onclick={handleSyncNow}>
+            <RefreshCw class="h-3.5 w-3.5" />
+            {$t('folders.sync_now')}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+        {/if}
         {#if onNewSubfolder}
           <DropdownMenuItem onclick={handleNewSubfolder}>
             <FolderPlus class="h-3.5 w-3.5" />
@@ -179,6 +210,12 @@
       <SheetTitle>{folder?.name ?? ''}</SheetTitle>
     </SheetHeader>
     <div class="mt-4 space-y-1">
+      {#if syncConfigId}
+        <Button variant="ghost" class="w-full justify-start" onclick={handleSyncNow}>
+          <RefreshCw class="mr-2 h-4 w-4" />
+          {$t('folders.sync_now')}
+        </Button>
+      {/if}
       {#if onNewSubfolder}
         <Button variant="ghost" class="w-full justify-start" onclick={handleNewSubfolder}>
           <FolderPlus class="mr-2 h-4 w-4" />
