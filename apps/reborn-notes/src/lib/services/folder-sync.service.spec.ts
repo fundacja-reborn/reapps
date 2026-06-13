@@ -34,8 +34,27 @@ vi.mock('$lib/stores/auth.store', async () => {
 
 const refreshSpy = vi.fn();
 vi.mock('$lib/stores/notes.store', () => ({ notesStore: { refresh: refreshSpy } }));
-vi.mock('$lib/stores/folders.store', () => ({ foldersStore: { refresh: refreshSpy } }));
 vi.mock('$lib/stores/tags.store', () => ({ tagsStore: { refresh: refreshSpy } }));
+
+// foldersStore is a real-ish fake: updateFolderSyncConfig reads the top-level
+// folder tree via `get(foldersStore)` and renames the matched folder.
+type FakeFolder = { id: string; name: string; parent_id?: string | null };
+const folderRows: FakeFolder[] = [];
+const renameSpy = vi.fn(async (id: string, name: string) => {
+  const f = folderRows.find((r) => r.id === id);
+  if (f) f.name = name;
+});
+vi.mock('$lib/stores/folders.store', async () => {
+  const { writable } = await import('svelte/store');
+  const tree = writable<FakeFolder[]>([]);
+  return {
+    foldersStore: {
+      subscribe: tree.subscribe,
+      refresh: async () => tree.set([...folderRows]),
+      rename: renameSpy
+    }
+  };
+});
 
 // Concurrency tracker: the runner must never overlap two imports.
 let activeImports = 0;
@@ -127,6 +146,8 @@ beforeEach(() => {
   importCalls.length = 0;
   activeImports = 0;
   maxActiveImports = 0;
+  folderRows.length = 0;
+  renameSpy.mockClear();
   refreshSpy.mockReset();
   vi.stubGlobal('window', { showDirectoryPicker: vi.fn() });
   vi.stubGlobal('document', { visibilityState: 'visible' });
@@ -335,5 +356,123 @@ describe('addLinkedFolder', () => {
     expect(statuses).toHaveLength(1);
     expect(statuses[0].name).toBe('My vault');
     expect(statuses[0].dirName).toBe('vault');
+    expect(statuses[0].sourceLabel).toBeNull();
+  });
+});
+
+describe('updateFolderSyncConfig', () => {
+  it('sets a trimmed cosmetic source label without touching the destination or scan state', async () => {
+    seedConfig({
+      id: 'a',
+      root_name: 'Docs',
+      handle: fakeDir('docs', []),
+      last_sync_at: '2026-06-12T00:00:00.000Z',
+      known_paths: ['Docs/a.md']
+    });
+    const svc = await loadService();
+
+    const outcome = await svc.updateFolderSyncConfig('a', {
+      sourceLabel: '  fenster-laravel/docs  ',
+      destName: 'Docs'
+    });
+
+    expect(outcome).toEqual({ ok: true });
+    const row = rows.find((r) => r.id === 'a')!;
+    expect(row.source_label).toBe('fenster-laravel/docs');
+    expect(row.root_name).toBe('Docs');
+    // Destination unchanged -> watermark and known paths survive.
+    expect(row.last_sync_at).toBe('2026-06-12T00:00:00.000Z');
+    expect(row.known_paths).toEqual(['Docs/a.md']);
+    expect(renameSpy).not.toHaveBeenCalled();
+    expect(get(svc.folderSyncStatus).find((s) => s.id === 'a')?.sourceLabel).toBe(
+      'fenster-laravel/docs'
+    );
+  });
+
+  it('clears the source label when blank (UI falls back to the on-disk name)', async () => {
+    seedConfig({ id: 'a', root_name: 'Docs', handle: fakeDir('docs', []), source_label: 'old' });
+    const svc = await loadService();
+
+    await svc.updateFolderSyncConfig('a', { sourceLabel: '   ', destName: 'Docs' });
+
+    expect(rows.find((r) => r.id === 'a')?.source_label).toBeNull();
+  });
+
+  it('renames the existing top-level app folder and resets scan state on a destination change', async () => {
+    seedConfig({
+      id: 'a',
+      root_name: 'Docs',
+      handle: fakeDir('docs', []),
+      last_sync_at: '2026-06-12T00:00:00.000Z',
+      known_paths: ['Docs/a.md']
+    });
+    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
+    const svc = await loadService();
+
+    const outcome = await svc.updateFolderSyncConfig('a', {
+      sourceLabel: null,
+      destName: 'Reapps Docs'
+    });
+
+    expect(outcome).toEqual({ ok: true });
+    expect(renameSpy).toHaveBeenCalledWith('f1', 'Reapps Docs');
+    expect(folderRows[0].name).toBe('Reapps Docs');
+    const row = rows.find((r) => r.id === 'a')!;
+    expect(row.root_name).toBe('Reapps Docs');
+    // Renaming invalidates the path-prefixed known set and the mtime watermark.
+    expect(row.last_sync_at).toBeNull();
+    expect(row.known_paths).toBeUndefined();
+  });
+
+  it('rejects a destination name already used by another config (case-insensitive)', async () => {
+    seedConfig({ id: 'a', root_name: 'Docs', handle: fakeDir('docs', []) });
+    seedConfig({ id: 'b', root_name: 'Notes', handle: fakeDir('notes', []) });
+    const svc = await loadService();
+
+    const outcome = await svc.updateFolderSyncConfig('a', {
+      sourceLabel: null,
+      destName: '  nOtEs '
+    });
+
+    expect(outcome).toEqual({ ok: false, error: 'name-taken' });
+    expect(rows.find((r) => r.id === 'a')?.root_name).toBe('Docs');
+    expect(renameSpy).not.toHaveBeenCalled();
+  });
+
+  it('rejects a destination that collides with a different existing top-level folder', async () => {
+    seedConfig({ id: 'a', root_name: 'Docs', handle: fakeDir('docs', []) });
+    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
+    folderRows.push({ id: 'f2', name: 'Archive', parent_id: null });
+    const svc = await loadService();
+
+    const outcome = await svc.updateFolderSyncConfig('a', {
+      sourceLabel: null,
+      destName: 'Archive'
+    });
+
+    expect(outcome).toEqual({ ok: false, error: 'dest-folder-exists' });
+    expect(renameSpy).not.toHaveBeenCalled();
+    expect(rows.find((r) => r.id === 'a')?.root_name).toBe('Docs');
+  });
+
+  it('still updates the config and resets scan state when no app folder matches', async () => {
+    seedConfig({
+      id: 'a',
+      root_name: 'Ghost',
+      handle: fakeDir('ghost', []),
+      last_sync_at: '2026-06-12T00:00:00.000Z'
+    });
+    const svc = await loadService();
+
+    const outcome = await svc.updateFolderSyncConfig('a', {
+      sourceLabel: null,
+      destName: 'Reborn'
+    });
+
+    expect(outcome).toEqual({ ok: true });
+    expect(renameSpy).not.toHaveBeenCalled();
+    const row = rows.find((r) => r.id === 'a')!;
+    expect(row.root_name).toBe('Reborn');
+    expect(row.last_sync_at).toBeNull();
   });
 });

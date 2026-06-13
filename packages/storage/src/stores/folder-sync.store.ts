@@ -26,13 +26,26 @@ export interface FolderSyncConfigRecord extends WithId {
    */
   handle: unknown;
   /**
-   * Display name chosen at link time (defaults to the directory name, fixed
-   * afterwards - renaming = unlink + relink). Doubles as the list label and
-   * as the name of the top-level folder the import targets, and is unique
-   * across configs (case-insensitive) so two sources named "notes" can be
-   * told apart and land in two different folders.
+   * Display name chosen at link time (defaults to the directory name).
+   * Doubles as the list label and as the name of the top-level folder the
+   * import targets, and is unique across configs (case-insensitive) so two
+   * sources named "notes" can be told apart and land in two different
+   * folders. Editable: renaming it renames that existing app folder in place
+   * (see `updateFolderSyncConfig` in `folder-sync.service.ts`).
    */
   root_name: string;
+  /**
+   * Optional cosmetic label for the on-disk source directory. The File
+   * System Access API exposes only the directory's leaf name (no full path),
+   * so two folders both called "docs" are indistinguishable in the UI; this
+   * lets the user annotate the source (e.g. with a path) to tell them apart.
+   *
+   * Display only - it never affects which directory is read (dedup is by
+   * handle identity, not by name) and, like the rest of this record, never
+   * leaves the browser profile. Absent/null = "use the on-disk leaf name".
+   * Absent on records created before 2026-06-13.
+   */
+  source_label?: string | null;
   /** Auto-sync (on app focus + periodic interval) enabled. */
   auto_sync: 0 | 1;
   /**

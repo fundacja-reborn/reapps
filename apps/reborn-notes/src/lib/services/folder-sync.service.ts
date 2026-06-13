@@ -72,10 +72,12 @@ export type FolderSyncErrorKey = 'folder_gone' | 'sync_failed' | null;
 /** Reactive projection of one linked directory, for the settings UI. */
 export type FolderSyncConfigStatus = {
   id: string;
-  /** Display name chosen at link time - list label + target root folder. */
+  /** Display name (= target top-level folder); editable via `updateFolderSyncConfig`. */
   name: string;
-  /** On-disk directory name; the UI shows it when it differs from `name`. */
+  /** On-disk directory leaf name; the UI's fallback + placeholder when no `sourceLabel`. */
   dirName: string;
+  /** User-set cosmetic label for the source directory; null = fall back to `dirName`. */
+  sourceLabel: string | null;
   state: 'idle' | 'syncing' | 'needs-permission' | 'error';
   autoSync: boolean;
   lastSyncAt: string | null;
@@ -135,6 +137,7 @@ async function projectConfigStatus(cfg: FolderSyncConfigRecord): Promise<FolderS
     id: cfg.id,
     name: cfg.root_name,
     dirName: handle.name,
+    sourceLabel: cfg.source_label ?? null,
     state: perm === 'granted' ? 'idle' : 'needs-permission',
     autoSync: cfg.auto_sync === 1,
     lastSyncAt: cfg.last_sync_at,
@@ -255,6 +258,79 @@ export async function addLinkedFolder(
   await folderSyncStore.save(record);
   await refreshFolderSyncStatus();
   return { ok: true, id: record.id };
+}
+
+export type UpdateFolderSyncOutcome =
+  | { ok: true }
+  | { ok: false; error: 'name-empty' | 'name-taken' | 'dest-folder-exists' };
+
+/**
+ * Edit a linked folder's two user-facing names.
+ *
+ * - `sourceLabel` is a cosmetic, device-local annotation of the on-disk
+ *   directory (see {@link FolderSyncConfigRecord.source_label}). Blank clears
+ *   it (the UI then falls back to the on-disk leaf name). It never affects
+ *   which directory is read - dedup is by handle identity, not by name.
+ *
+ * - `destName` is the top-level app folder the import targets (the config's
+ *   `root_name`). Renaming it renames that existing app folder IN PLACE, so
+ *   the notes already imported move with it, and points future syncs at the
+ *   new name. Imports match the target folder by name, so:
+ *     - a collision with a DIFFERENT existing top-level folder is rejected
+ *       (renaming into it would orphan content into a confusing duplicate);
+ *     - the name must stay unique across configs (case-insensitive).
+ *   The scan watermark and known-paths set are reset on a destination change
+ *   so the next run re-homes the tree even when no app folder was found to
+ *   rename (e.g. the user deleted it); the overwrite strategy's unchanged-skip
+ *   keeps that re-scan write-free when the content already matches.
+ *
+ * Call only when this config is idle (the settings UI disables editing while
+ * a sync runs) - it mutates the same record and target folder the runner uses.
+ */
+export async function updateFolderSyncConfig(
+  configId: string,
+  changes: { sourceLabel: string | null; destName: string }
+): Promise<UpdateFolderSyncOutcome> {
+  const cfg = await folderSyncStore.get(configId);
+  if (!cfg) return { ok: true }; // already unlinked - nothing to update
+
+  const newName = changes.destName.trim();
+  if (!newName) return { ok: false, error: 'name-empty' };
+  const newLabel = changes.sourceLabel?.trim() ? changes.sourceLabel.trim() : null;
+
+  const oldName = cfg.root_name;
+  const destChanged = newName !== oldName;
+
+  if (destChanged) {
+    const lower = newName.toLowerCase();
+    const others = (await readConfigs()).filter((c) => c.id !== configId);
+    if (others.some((c) => c.root_name.toLowerCase() === lower)) {
+      return { ok: false, error: 'name-taken' };
+    }
+    // Rename the existing top-level app folder so imported notes travel with
+    // it (top-level folders are the root array of the tree). A new name that
+    // collides with a DIFFERENT top-level folder is rejected - find-or-create
+    // by name would otherwise route future imports into a duplicate.
+    await foldersStore.refresh();
+    const topLevel = get(foldersStore);
+    const own = topLevel.find((f) => f.name.toLowerCase() === oldName.toLowerCase());
+    const collision = topLevel.find((f) => f.name.toLowerCase() === lower && f.id !== own?.id);
+    if (collision) return { ok: false, error: 'dest-folder-exists' };
+    if (own) await foldersStore.rename(own.id, newName);
+  }
+
+  const updated: FolderSyncConfigRecord = {
+    ...cfg,
+    source_label: newLabel,
+    root_name: newName,
+    // A renamed destination invalidates the path-prefixed known set and the
+    // mtime watermark; reset both so the next scan reconciles into the new
+    // folder (write-free via unchanged-skip when content already matches).
+    ...(destChanged ? { known_paths: undefined, last_sync_at: null } : {})
+  };
+  await folderSyncStore.save(updated);
+  await refreshFolderSyncStatus();
+  return { ok: true };
 }
 
 /** Remove one link. Imported notes/folders/tags are left untouched. */

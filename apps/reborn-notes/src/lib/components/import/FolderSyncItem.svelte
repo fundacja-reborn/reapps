@@ -1,11 +1,12 @@
 <script lang="ts">
   import { LoadingSpinner, Progress } from '@reborn/ui';
-  import { FolderSync, RefreshCw, Unlink, AlertTriangle } from '@lucide/svelte';
+  import { FolderSync, RefreshCw, Unlink, AlertTriangle, Pencil } from '@lucide/svelte';
   import { t, locale } from '$lib/stores/i18n.store';
   import {
     runFolderSync,
     unlinkFolder,
     setFolderAutoSync,
+    updateFolderSyncConfig,
     type FolderSyncConfigStatus
   } from '$lib/services/folder-sync.service';
   import type { ImportFolderResult } from '$lib/services/export-import.service';
@@ -25,8 +26,20 @@
   // last-result line - they must not pop UI the user didn't ask for.
   let runResult = $state<ImportFolderResult | null>(null);
 
+  // Inline edit form (source label + destination folder name). Opened from
+  // the Edit button; while open, the action buttons are locked so a rename
+  // never races a sync that mutates the same record/folder.
+  let editing = $state(false);
+  let editSourceLabel = $state('');
+  let editDestName = $state('');
+  let editError = $state<'name-taken' | 'dest-folder-exists' | null>(null);
+  let savingEdit = $state(false);
+
   const busy = $derived(status.state === 'syncing');
   const controlsDisabled = $derived(busy || disabled);
+  const actionsDisabled = $derived(controlsDisabled || editing);
+  // Source line text: the user's label, else the on-disk leaf name.
+  const sourceText = $derived(status.sourceLabel ?? status.dirName);
 
   async function handleSyncNow() {
     runResult = null;
@@ -36,6 +49,41 @@
   async function handleUnlink() {
     runResult = null;
     await unlinkFolder(status.id);
+  }
+
+  function startEdit() {
+    editSourceLabel = status.sourceLabel ?? '';
+    editDestName = status.name;
+    editError = null;
+    editing = true;
+  }
+
+  function cancelEdit() {
+    editing = false;
+    editError = null;
+  }
+
+  async function handleSaveEdit(e: Event) {
+    e.preventDefault();
+    // Never commit (especially a destination rename) while this config is
+    // mid-sync - the import find-or-creates the target folder by name.
+    if (savingEdit || busy || !editDestName.trim()) return;
+    savingEdit = true;
+    editError = null;
+    try {
+      const outcome = await updateFolderSyncConfig(status.id, {
+        sourceLabel: editSourceLabel,
+        destName: editDestName
+      });
+      if (!outcome.ok) {
+        if (outcome.error === 'name-taken') editError = 'name-taken';
+        else if (outcome.error === 'dest-folder-exists') editError = 'dest-folder-exists';
+        return;
+      }
+      editing = false;
+    } finally {
+      savingEdit = false;
+    }
   }
 
   function formatTime(iso: string): string {
@@ -56,13 +104,11 @@
       <FolderSync class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div class="min-w-0 text-xs">
         <p class="truncate text-sm font-medium">{status.name}</p>
-        {#if status.dirName !== status.name}
-          <p class="truncate text-muted-foreground">
-            {$t('settings_page.export_import.folder_sync_source_dir', {
-              values: { name: status.dirName }
-            })}
-          </p>
-        {/if}
+        <p class="truncate text-muted-foreground">
+          {$t('settings_page.export_import.folder_sync_source_dir', {
+            values: { name: sourceText }
+          })}
+        </p>
         <p class="truncate text-muted-foreground">
           {$t('settings_page.export_import.folder_sync_destination', {
             values: { name: status.name }
@@ -85,11 +131,11 @@
         {/if}
       </div>
     </div>
-    <div class="flex shrink-0 gap-2">
+    <div class="flex shrink-0 flex-wrap gap-2 sm:justify-end">
       <button
         type="button"
         onclick={handleSyncNow}
-        disabled={controlsDisabled}
+        disabled={actionsDisabled}
         class="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
       >
         <RefreshCw class="h-3.5 w-3.5 {busy ? 'animate-spin' : ''}" />
@@ -99,8 +145,17 @@
       </button>
       <button
         type="button"
+        onclick={startEdit}
+        disabled={actionsDisabled}
+        class="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
+      >
+        <Pencil class="h-3.5 w-3.5" />
+        {$t('settings_page.export_import.folder_sync_edit_btn')}
+      </button>
+      <button
+        type="button"
         onclick={handleUnlink}
-        disabled={controlsDisabled}
+        disabled={actionsDisabled}
         class="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
       >
         <Unlink class="h-3.5 w-3.5" />
@@ -113,7 +168,7 @@
     <input
       type="checkbox"
       checked={status.autoSync}
-      disabled={controlsDisabled}
+      disabled={actionsDisabled}
       onchange={(e) => setFolderAutoSync(status.id, (e.target as HTMLInputElement).checked)}
       class="mt-0.5"
     />
@@ -126,6 +181,77 @@
       </span>
     </span>
   </label>
+
+  {#if editing}
+    <form
+      onsubmit={handleSaveEdit}
+      class="space-y-3 rounded-md border border-primary/40 bg-background p-3"
+    >
+      <p class="text-xs font-medium">
+        {$t('settings_page.export_import.folder_sync_edit_heading')}
+      </p>
+      <div class="space-y-1">
+        <label class="text-xs font-medium" for="fs-src-{status.id}">
+          {$t('settings_page.export_import.folder_sync_source_label_field')}
+        </label>
+        <input
+          id="fs-src-{status.id}"
+          type="text"
+          bind:value={editSourceLabel}
+          placeholder={status.dirName}
+          maxlength="200"
+          disabled={savingEdit}
+          class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+        />
+        <p class="text-xs text-muted-foreground">
+          {$t('settings_page.export_import.folder_sync_source_label_desc')}
+        </p>
+      </div>
+      <div class="space-y-1">
+        <label class="text-xs font-medium" for="fs-dst-{status.id}">
+          {$t('settings_page.export_import.folder_sync_name_label')}
+        </label>
+        <input
+          id="fs-dst-{status.id}"
+          type="text"
+          bind:value={editDestName}
+          oninput={() => (editError = null)}
+          maxlength="120"
+          disabled={savingEdit}
+          class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+        />
+        <p class="text-xs text-muted-foreground">
+          {$t('settings_page.export_import.folder_sync_dest_edit_desc')}
+        </p>
+      </div>
+      {#if editError === 'name-taken'}
+        <p class="text-xs text-destructive">
+          {$t('settings_page.export_import.folder_sync_name_taken')}
+        </p>
+      {:else if editError === 'dest-folder-exists'}
+        <p class="text-xs text-destructive">
+          {$t('settings_page.export_import.folder_sync_dest_folder_exists')}
+        </p>
+      {/if}
+      <div class="flex gap-2">
+        <button
+          type="submit"
+          disabled={savingEdit || busy || !editDestName.trim()}
+          class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+        >
+          {$t('settings_page.export_import.folder_sync_save_btn')}
+        </button>
+        <button
+          type="button"
+          onclick={cancelEdit}
+          disabled={savingEdit}
+          class="rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
+        >
+          {$t('settings_page.export_import.cancel')}
+        </button>
+      </div>
+    </form>
+  {/if}
 
   {#if status.state === 'needs-permission'}
     <div class="flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/40 px-3 py-2">
