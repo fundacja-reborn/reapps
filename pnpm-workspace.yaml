@@ -16,6 +16,11 @@ overrides:
   # Dev-only transitive CVE pins (Storybook, nx http-server); absent from prod bundle
   ws: '^8.20.1' # GHSA-58qx-3vcg-4xpx ws uninitialized memory disclosure
   qs: '^6.15.2' # GHSA-q8mj-m7cp-5q26 qs.stringify DoS
+auditConfig:
+  ignoreGhsas:
+    # esbuild Deno-loader RCE; unreachable here (Node-only toolchain). Remove
+    # once the esbuild override above reaches >=0.28.1 (24h maturity gate).
+    - GHSA-gv7w-rqvm-qjhr
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
