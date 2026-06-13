@@ -621,6 +621,11 @@
     "keep_editing": "Seguir editando"
   },
   "settings_page": {
+    "account": {
+      "title": "Cuenta",
+      "create": "Crear una cuenta",
+      "create_desc": "Conserva tus notas y sincroniza entre dispositivos. Tus notas actuales se conservan."
+    },
     "title": "Configuración",
     "description": "Administre la configuración de su aplicación y cuenta",
     "saving": "Guardando…",

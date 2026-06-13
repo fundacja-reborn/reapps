@@ -621,6 +621,11 @@
     "keep_editing": "Kontynuuj edycję"
   },
   "settings_page": {
+    "account": {
+      "title": "Konto",
+      "create": "Załóż konto",
+      "create_desc": "Zachowaj notatki i synchronizuj między urządzeniami. Twoje obecne notatki zostaną zachowane."
+    },
     "title": "Ustawienia",
     "description": "Zarządzaj ustawieniami aplikacji i konta",
     "saving": "Zapisywanie…",

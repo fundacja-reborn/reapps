@@ -201,6 +201,26 @@
         </div>
       </div>
 
+      <!-- Local-only: invite to create an account (adopts the local key, keeps notes) -->
+      {#if $authStore.isLocalOnly}
+        <div class="space-y-1">
+          <h2 class="text-lg font-semibold mb-3">{$t('settings_page.account.title')}</h2>
+          <div class="space-y-1">
+            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+            <a href={resolveHref('/auth/register')} class={itemClasses}>
+              <User class="h-5 w-5 text-muted-foreground shrink-0" />
+              <div class="flex-1 min-w-0">
+                <div class="font-medium">{$t('settings_page.account.create')}</div>
+                <div class="text-sm text-muted-foreground">
+                  {$t('settings_page.account.create_desc')}
+                </div>
+              </div>
+              <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
+            </a>
+          </div>
+        </div>
+      {/if}
+
       <!-- Security -->
       {#if $authStore.isAuthenticated}
         <div class="space-y-1">

@@ -112,6 +112,35 @@ describe('CryptoManager', () => {
     });
   });
 
+  describe('local-only key adoption (account upgrade)', () => {
+    it('adopts the in-memory local key so offline data stays readable after upgrade', async () => {
+      // Local-only session: a random key with no password wrapping, used to
+      // encrypt a note created entirely offline.
+      const localKey = await manager.generateMasterKey();
+      await manager.setMasterKey(localKey);
+      const offlineNote = 'note written before registering';
+      const ciphertext = await manager.encryptString(offlineNote);
+
+      // Upgrade: wrap the CURRENT key with the new account password - no fresh
+      // key is generated (this is what register/+page.svelte does on upgrade).
+      const accountPassword = 'accountPassword123!';
+      const current = manager.getCurrentKey();
+      expect(current).not.toBeNull();
+      const { encryptedMasterKey, salt } = await manager.encryptMasterKey(current!, accountPassword);
+
+      // Simulate logging in later/elsewhere: unwrap with the password, load it.
+      manager.clearMasterKey();
+      const adopted = await manager.decryptMasterKey(encryptedMasterKey, salt, accountPassword);
+      await manager.setMasterKey(adopted);
+
+      // The offline note, encrypted before the account existed, must still
+      // decrypt - proving the adopted key is the same key and no re-encryption
+      // of existing data is required.
+      const decrypted = await manager.decryptString(ciphertext);
+      expect(decrypted).toBe(offlineNote);
+    });
+  });
+
   describe('data encryption/decryption', () => {
     beforeEach(async () => {
       const masterKey = await manager.generateMasterKey();

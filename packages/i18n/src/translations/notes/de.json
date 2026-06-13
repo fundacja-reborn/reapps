@@ -621,6 +621,11 @@
     "keep_editing": "Weiter bearbeiten"
   },
   "settings_page": {
+    "account": {
+      "title": "Konto",
+      "create": "Konto erstellen",
+      "create_desc": "Behalte deine Notizen und synchronisiere geräteübergreifend. Deine vorhandenen Notizen bleiben erhalten."
+    },
     "title": "Einstellungen",
     "description": "Verwalten Sie Ihre App- und Kontoeinstellungen",
     "saving": "Speichern…",

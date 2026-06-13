@@ -5,8 +5,21 @@
   import { page } from '$app/stores';
   import { RegisterPage } from '@reborn/ui';
   import { hashPassword, generateMasterKeyForUser, cryptoManager } from '@reborn/crypto';
+  import { get } from 'svelte/store';
   import { loginInNotes } from '$lib/services/notes-auth.service';
-  import { authStore } from '$lib/stores/auth.store';
+  import {
+    authStore,
+    CREDENTIALS_KEY,
+    ACCESS_TOKEN_KEY,
+    LOCAL_MODE_KEY,
+    LOCAL_USER_ID_KEY
+  } from '$lib/stores/auth.store';
+  import {
+    markAllLocalDataPending,
+    pushPendingItems,
+    pullFromServer,
+    refreshStoresAfterPull
+  } from '$lib/services/notes-sync.service';
   import { t } from '$lib/stores/i18n.store';
   import { locale } from 'svelte-i18n';
   import { API_BASE } from '$lib/utils/api-base';
@@ -40,17 +53,36 @@
     loading = true;
     error = null;
 
+    // Upgrade path: a local-only session is creating its first account. Adopt
+    // the existing local master key (wrap it with the new password) instead of
+    // generating a fresh one, so offline notes - already encrypted with that
+    // key - stay readable and just start syncing. See plan B1.
+    const isUpgrade = get(authStore).isLocalOnly && cryptoManager.isInitialized();
+
     try {
-      // 1. Hash password + generate encrypted master key (client-side, Zero Knowledge)
+      // 1. Hash password (client-side, Zero Knowledge)
       const passwordHash = await hashPassword(detail.password);
-      const { encryptedMasterKey, salt: masterKeySalt } = await generateMasterKeyForUser(
-        detail.password
-      );
 
-      // 2. Load master key into CryptoManager to encrypt default task list name
-      await cryptoManager.loadUserMasterKey(encryptedMasterKey, masterKeySalt, detail.password);
+      // 2. Wrapped master key: adopt the local one on upgrade, otherwise
+      //    generate a fresh key for a brand-new account.
+      let encryptedMasterKey: string;
+      let masterKeySalt: string;
+      if (isUpgrade) {
+        const localKey = cryptoManager.getCurrentKey();
+        if (!localKey) throw new Error('Local master key unavailable for account upgrade');
+        const wrapped = await cryptoManager.encryptMasterKey(localKey, detail.password);
+        encryptedMasterKey = wrapped.encryptedMasterKey;
+        masterKeySalt = wrapped.salt;
+      } else {
+        const generated = await generateMasterKeyForUser(detail.password);
+        encryptedMasterKey = generated.encryptedMasterKey;
+        masterKeySalt = generated.salt;
+        // Load it so the default task list below can be encrypted.
+        await cryptoManager.loadUserMasterKey(encryptedMasterKey, masterKeySalt, detail.password);
+      }
 
-      // 3. Create encrypted default task list (for re/task cross-app compatibility)
+      // 3. Create encrypted default task list (for re/task cross-app compatibility).
+      //    The master key is in memory in both paths.
       const defaultListName = $t('registration.defaultTaskListName') || 'My Tasks';
       const nameEncrypted = await cryptoManager.encryptText(defaultListName);
       const defaultTaskList = {
@@ -59,8 +91,11 @@
         is_default: true as const
       };
 
-      // 4. Clear master key — loginInNotes will re-load it after auth
-      cryptoManager.clearMasterKey();
+      // 4. Fresh account: clear the key - loginInNotes re-loads it after auth.
+      //    Upgrade: keep it loaded - it is the account's key now.
+      if (!isUpgrade) {
+        cryptoManager.clearMasterKey();
+      }
 
       // 5. Register via API with bot protection data + default task list
       const res = await fetch(`${API_BASE}/auth/register`, {
@@ -86,14 +121,17 @@
         return;
       }
 
-      // 6. Auto-login after successful registration (reuses notes-auth.service)
-      const loginResult = await loginInNotes(detail.username, detail.password);
-
-      if (loginResult.success) {
-        await goto(returnTo);
+      if (isUpgrade) {
+        await finishLocalUpgrade(data, encryptedMasterKey, masterKeySalt);
       } else {
-        // Registration succeeded but auto-login failed — redirect to login
-        await goto('/auth/login');
+        // 6. Auto-login after successful registration (reuses notes-auth.service)
+        const loginResult = await loginInNotes(detail.username, detail.password);
+        if (loginResult.success) {
+          await goto(returnTo);
+        } else {
+          // Registration succeeded but auto-login failed — redirect to login
+          await goto('/auth/login');
+        }
       }
     } catch (err: unknown) {
       error = err instanceof Error ? err.message : 'An error occurred. Please try again.';
@@ -101,6 +139,54 @@
     } finally {
       loading = false;
     }
+  }
+
+  /**
+   * Finish a local-only -> account upgrade after a successful register call.
+   * Sets the account session straight from the register response on purpose -
+   * NOT loginInNotes(), which clears IndexedDB and would wipe the very local
+   * notes we are adopting. The adopted master key is already in memory, so no
+   * unlock is needed; we just flag the offline data for upload and converge.
+   */
+  async function finishLocalUpgrade(
+    data: {
+      user: { id: string; username: string; created_at?: string };
+      access_token: string;
+      encryptedMasterKey?: string;
+      masterKeySalt?: string;
+    },
+    encryptedMasterKey: string,
+    masterKeySalt: string
+  ) {
+    const credentials = {
+      id: data.user.id,
+      encrypted_master_key: data.encryptedMasterKey ?? encryptedMasterKey,
+      master_key_salt: data.masterKeySalt ?? masterKeySalt,
+      user_profile: data.user
+    };
+    localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
+    localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+
+    // Leave local-only mode: the account now owns this data.
+    localStorage.removeItem(LOCAL_MODE_KEY);
+    localStorage.removeItem(LOCAL_USER_ID_KEY);
+
+    // Flag every offline-created record for upload, then hydrate the account
+    // session (isAuthenticated -> true, localOnly -> false).
+    await markAllLocalDataPending();
+    authStore.initialize();
+
+    // Push the adopted data, then pull to converge user_id / sync_version.
+    // Best-effort: a failure here just defers to the next periodic sync.
+    try {
+      await pushPendingItems();
+      const synced = await pullFromServer();
+      if (synced) await refreshStoresAfterPull();
+    } catch (err: unknown) {
+      logger.warn('Initial sync after local-to-account upgrade failed:', err);
+    }
+
+    await goto(returnTo);
   }
 
   async function handleLocalMode() {

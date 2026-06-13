@@ -621,6 +621,11 @@
     "keep_editing": "Keep editing"
   },
   "settings_page": {
+    "account": {
+      "title": "Account",
+      "create": "Create an account",
+      "create_desc": "Keep your notes and sync across devices. Your existing notes are kept."
+    },
     "title": "Settings",
     "description": "Manage your app and account settings",
     "saving": "Saving…",
