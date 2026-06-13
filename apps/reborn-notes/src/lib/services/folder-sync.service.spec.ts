@@ -42,10 +42,23 @@ const refreshSpy = vi.fn();
 vi.mock('$lib/stores/notes.store', () => ({ notesStore: { refresh: refreshSpy } }));
 vi.mock('$lib/stores/tags.store', () => ({ tagsStore: { refresh: refreshSpy } }));
 
-// foldersStore is a real-ish fake: updateFolderSyncConfig reads the top-level
-// folder tree via `get(foldersStore)` and renames the matched folder.
+// foldersStore is a real-ish fake: the service reads the folder tree via
+// `get(foldersStore)` and resolves/creates/moves/renames folders by id.
 type FakeFolder = { id: string; name: string; parent_id?: string | null };
+type FakeFolderNode = FakeFolder & { children: FakeFolderNode[] };
 const folderRows: FakeFolder[] = [];
+// Build the nested tree the real getFolderTree returns (the service walks
+// `children` for path resolution) from the flat parent_id rows.
+function buildFolderTree(flat: FakeFolder[]): FakeFolderNode[] {
+  const byId = new Map(flat.map((r) => [r.id, { ...r, children: [] as FakeFolderNode[] }]));
+  const roots: FakeFolderNode[] = [];
+  for (const node of byId.values()) {
+    const parent = node.parent_id ? byId.get(node.parent_id) : undefined;
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+  }
+  return roots;
+}
 const renameSpy = vi.fn(async (id: string, name: string) => {
   const f = folderRows.find((r) => r.id === id);
   if (f) f.name = name;
@@ -55,15 +68,20 @@ const createSpy = vi.fn(async (name: string, parentId?: string | null) => {
   folderRows.push({ id, name, parent_id: parentId ?? null });
   return id;
 });
+const moveSpy = vi.fn(async (id: string, newParentId: string | null) => {
+  const f = folderRows.find((r) => r.id === id);
+  if (f) f.parent_id = newParentId ?? null;
+});
 vi.mock('$lib/stores/folders.store', async () => {
   const { writable } = await import('svelte/store');
-  const tree = writable<FakeFolder[]>([]);
+  const tree = writable<FakeFolderNode[]>([]);
   return {
     foldersStore: {
       subscribe: tree.subscribe,
-      refresh: async () => tree.set([...folderRows]),
+      refresh: async () => tree.set(buildFolderTree(folderRows)),
       rename: renameSpy,
-      create: createSpy
+      create: createSpy,
+      move: moveSpy
     }
   };
 });
@@ -173,6 +191,7 @@ beforeEach(() => {
   folderRows.length = 0;
   renameSpy.mockClear();
   createSpy.mockClear();
+  moveSpy.mockClear();
   refreshSpy.mockReset();
   vi.stubGlobal('window', { showDirectoryPicker: vi.fn() });
   vi.stubGlobal('document', { visibilityState: 'visible' });
@@ -193,17 +212,20 @@ describe('runFolderSync (multi-config)', () => {
     expect(maxActiveImports).toBe(1);
   });
 
-  it('roots import paths at the config display name, not the on-disk name', async () => {
+  it('roots import paths at the on-disk dir name, decoupled from the destination path', async () => {
+    // root_name is now the destination (may be a "/"-path), so the walk roots
+    // at handle.name instead - importFolder strips that single first segment
+    // and anchors the subtree under the resolved target id.
     seedConfig({
       id: 'a',
-      root_name: 'Notes (work)',
+      root_name: 'Notes/Work',
       handle: fakeDir('notes', ['a.md'])
     });
     const svc = await loadService();
 
     await svc.runFolderSync('manual');
 
-    expect(importCalls[0].paths).toEqual(['Notes (work)/a.md']);
+    expect(importCalls[0].paths).toEqual(['notes/a.md']);
   });
 
   it('creates the target folder on first sync and anchors the import by its id', async () => {
@@ -256,7 +278,7 @@ describe('runFolderSync (multi-config)', () => {
 
     await svc.runFolderSync('manual');
 
-    expect(importCalls.map((c) => c.paths[0])).toEqual(['A/a.md', 'C/c.md']);
+    expect(importCalls.map((c) => c.paths[0])).toEqual(['a/a.md', 'c/c.md']);
     const statuses = get(svc.folderSyncStatus);
     expect(statuses.find((s) => s.id === 'b')?.state).toBe('error');
     expect(statuses.find((s) => s.id === 'b')?.errorKey).toBe('folder_gone');
@@ -277,7 +299,7 @@ describe('runFolderSync (multi-config)', () => {
     // Auto runs never prompt - config "a" records needs-permission.
     await svc.runFolderSync('auto');
 
-    expect(importCalls.map((c) => c.paths[0])).toEqual(['B/b.md']);
+    expect(importCalls.map((c) => c.paths[0])).toEqual(['b/b.md']);
     expect(get(svc.folderSyncStatus).find((s) => s.id === 'a')?.state).toBe('needs-permission');
   });
 
@@ -288,7 +310,7 @@ describe('runFolderSync (multi-config)', () => {
 
     await svc.runFolderSync('auto');
 
-    expect(importCalls.map((c) => c.paths[0])).toEqual(['B/b.md']);
+    expect(importCalls.map((c) => c.paths[0])).toEqual(['b/b.md']);
   });
 
   it('manual run with a config id targets only that config', async () => {
@@ -298,7 +320,7 @@ describe('runFolderSync (multi-config)', () => {
 
     const result = await svc.runFolderSync('manual', 'b');
 
-    expect(importCalls.map((c) => c.paths[0])).toEqual(['B/b.md']);
+    expect(importCalls.map((c) => c.paths[0])).toEqual(['b/b.md']);
     expect(result?.imported).toBe(1);
     expect(rows.find((r) => r.id === 'a')?.last_sync_at).toBeNull();
   });
@@ -338,7 +360,7 @@ describe('runFolderSync (in-app deletion)', () => {
       id: 'a',
       root_name: 'Docs',
       target_folder_id: 'f1',
-      handle: fakeDir('docs', ['a.md', 'b.md']),
+      handle: fakeDir('Docs', ['a.md', 'b.md']),
       last_sync_at: '2026-06-12T00:00:00.000Z',
       known_paths: ['Docs/a.md', 'Docs/b.md'],
       path_note_ids: { 'Docs/a.md': 'note-a', 'Docs/b.md': 'note-b' }
@@ -366,7 +388,7 @@ describe('runFolderSync (in-app deletion)', () => {
       id: 'a',
       root_name: 'Docs',
       target_folder_id: 'f1',
-      handle: fakeDir('docs', ['a.md']),
+      handle: fakeDir('Docs', ['a.md']),
       last_sync_at: '2026-06-12T00:00:00.000Z',
       known_paths: ['Docs/a.md'],
       path_note_ids: { 'Docs/a.md': 'note-a' }
@@ -391,7 +413,7 @@ describe('runFolderSync (in-app deletion)', () => {
       id: 'a',
       root_name: 'Docs',
       target_folder_id: 'f1',
-      handle: fakeDir('docs', ['a.md']),
+      handle: fakeDir('Docs', ['a.md']),
       last_sync_at: '2026-06-12T00:00:00.000Z',
       known_paths: ['Docs/a.md']
     });
@@ -480,23 +502,66 @@ describe('addLinkedFolder', () => {
     ).toEqual({ ok: false, error: 'limit-reached' });
   });
 
-  it('rejects a name containing a path separator (would nest on import)', async () => {
+  it('rejects a destination containing a backslash (a forward slash now nests)', async () => {
     const svc = await loadService();
     expect(
       await svc.addLinkedFolder(
         fakeDir('docs', []) as unknown as FileSystemDirectoryHandle,
-        'test/reapps-docs'
+        'a\\b'
       )
     ).toEqual({ ok: false, error: 'name-invalid' });
+    expect(rows).toHaveLength(0);
+  });
+
+  it('accepts a "/"-path and stores it normalized (leading/trailing/doubled slashes dropped)', async () => {
+    const svc = await loadService();
+    const outcome = await svc.addLinkedFolder(
+      fakeDir('docs', []) as unknown as FileSystemDirectoryHandle,
+      '  /Projekty//Docs/  '
+    );
+    expect(outcome.ok).toBe(true);
+    expect(rows[0].root_name).toBe('Projekty/Docs');
+  });
+
+  it('resolves a "/"-path on first sync - find-or-creates the chain, anchors by the leaf id', async () => {
+    const svc = await loadService();
+    const added = await svc.addLinkedFolder(
+      fakeDir('docs-src', ['a.md']) as unknown as FileSystemDirectoryHandle,
+      'Projekty/Docs'
+    );
+    if (!added.ok) throw new Error('add should have succeeded');
+
+    await svc.runFolderSync('manual', added.id);
+
+    // Parent created at the top level, then the leaf under it; the import
+    // anchors under the leaf id (not the parent), and the link persists.
+    expect(createSpy).toHaveBeenNthCalledWith(1, 'Projekty');
+    expect(createSpy).toHaveBeenNthCalledWith(2, 'Docs', 'created-1');
+    expect(importCalls[0].targetFolderId).toBe('created-2');
+    expect(rows[0].target_folder_id).toBe('created-2');
+    expect(folderRows.find((f) => f.id === 'created-2')?.parent_id).toBe('created-1');
+  });
+
+  it('treats same-leaf destinations under different parents as distinct, identical paths as taken', async () => {
+    seedConfig({ id: 'a', root_name: 'Projekty/Docs', handle: fakeDir('p1', []) });
+    const svc = await loadService();
+
+    // Same leaf "Docs" but a different parent path -> a different folder.
     expect(
       (
         await svc.addLinkedFolder(
-          fakeDir('docs', []) as unknown as FileSystemDirectoryHandle,
-          'a\\b'
+          fakeDir('p2', []) as unknown as FileSystemDirectoryHandle,
+          'Other/Docs'
         )
       ).ok
-    ).toBe(false);
-    expect(rows).toHaveLength(0);
+    ).toBe(true);
+    // The exact same path (case-insensitive) -> would target the same folder.
+    expect(
+      await svc.addLinkedFolder(
+        fakeDir('p3', []) as unknown as FileSystemDirectoryHandle,
+        'projekty/docs'
+      )
+    ).toEqual({ ok: false, error: 'name-taken' });
   });
 
   it('saves a trimmed record with auto-sync on and reports it in the status list', async () => {
@@ -641,18 +706,57 @@ describe('updateFolderSyncConfig', () => {
     expect(row.last_sync_at).toBeNull();
   });
 
-  it('rejects a destination name containing a path separator', async () => {
+  it('rejects a destination containing a backslash (a forward slash now nests)', async () => {
     seedConfig({ id: 'a', root_name: 'Docs', handle: fakeDir('docs', []) });
     const svc = await loadService();
 
     const outcome = await svc.updateFolderSyncConfig('a', {
       sourceLabel: null,
-      destName: 'test/reapps-docs'
+      destName: 'a\\b'
     });
 
     expect(outcome).toEqual({ ok: false, error: 'name-invalid' });
     expect(rows.find((r) => r.id === 'a')?.root_name).toBe('Docs');
     expect(renameSpy).not.toHaveBeenCalled();
+  });
+
+  it('moves the destination folder under a new parent path (notes travel by id)', async () => {
+    seedConfig({ id: 'a', root_name: 'Docs', target_folder_id: 'f1', handle: fakeDir('docs', []) });
+    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
+    const svc = await loadService();
+
+    const outcome = await svc.updateFolderSyncConfig('a', {
+      sourceLabel: null,
+      destName: 'Projekty/Docs'
+    });
+
+    expect(outcome).toEqual({ ok: true });
+    // Parent created, existing folder moved under it; same leaf -> no rename.
+    expect(createSpy).toHaveBeenCalledWith('Projekty');
+    const projekty = folderRows.find((f) => f.name === 'Projekty')!;
+    expect(moveSpy).toHaveBeenCalledWith('f1', projekty.id);
+    expect(folderRows.find((f) => f.id === 'f1')?.parent_id).toBe(projekty.id);
+    expect(renameSpy).not.toHaveBeenCalled();
+    const row = rows.find((r) => r.id === 'a')!;
+    expect(row.root_name).toBe('Projekty/Docs');
+    expect(row.target_folder_id).toBe('f1');
+    expect(row.last_sync_at).toBeNull();
+  });
+
+  it('rejects nesting a destination under its own descendant (name-cycle)', async () => {
+    seedConfig({ id: 'a', root_name: 'Docs', target_folder_id: 'f1', handle: fakeDir('docs', []) });
+    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
+    folderRows.push({ id: 'f2', name: 'Sub', parent_id: 'f1' });
+    const svc = await loadService();
+
+    const outcome = await svc.updateFolderSyncConfig('a', {
+      sourceLabel: null,
+      destName: 'Docs/Sub/Docs'
+    });
+
+    expect(outcome).toEqual({ ok: false, error: 'name-cycle' });
+    expect(moveSpy).not.toHaveBeenCalled();
+    expect(rows.find((r) => r.id === 'a')?.root_name).toBe('Docs');
   });
 });
 

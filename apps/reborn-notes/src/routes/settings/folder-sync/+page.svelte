@@ -26,8 +26,9 @@
   const supported = isFolderSyncSupported();
 
   // Add-folder flow: the picker returns a handle, then a small form collects
-  // the display name (defaults to the directory name) before the config is
-  // created - the name is fixed afterwards (rename = unlink + relink).
+  // the destination (defaults to the directory name; may be a "/"-separated
+  // path to nest, e.g. "Projekty/Docs") before the config is created. The
+  // destination is editable later from the list item.
   let pendingHandle = $state<FileSystemDirectoryHandle | null>(null);
   let pendingName = $state('');
   let nameTaken = $state(false);
@@ -154,7 +155,7 @@
                     nameInvalid = false;
                   }}
                   disabled={adding}
-                  maxlength="120"
+                  maxlength="240"
                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
                 />
                 <p class="text-xs text-muted-foreground">

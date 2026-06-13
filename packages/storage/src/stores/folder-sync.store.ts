@@ -39,15 +39,17 @@ export interface FolderSyncConfigRecord extends WithId {
    */
   target_folder_id?: string;
   /**
-   * Display label chosen at link time (defaults to the directory name), and
-   * the name used to create/recreate the target folder. Since the link moved
-   * to `target_folder_id`, this is NO LONGER the link: it is the creation name
-   * and the settings fallback label. The live folder name (resolved by
-   * `target_folder_id`) is what the UI shows when the folder exists, so a tree
-   * rename is reflected even though this field stays put. It also roots the
-   * walk's relative paths (`collectMarkdownEntries`), kept stable across tree
-   * renames to avoid churning `known_paths`. Editable in settings, which
-   * renames the target folder by id (see `updateFolderSyncConfig`).
+   * Destination chosen at link time (defaults to the directory name), used to
+   * create/recreate the target folder and as the settings fallback label. May
+   * be a "/"-separated PATH ("Projekty/Docs" → folder "Docs" under "Projekty"),
+   * resolved to `target_folder_id` (the leaf) on the first sync. Since the link
+   * moved to `target_folder_id`, this is NO LONGER the link: the live folder
+   * breadcrumb (resolved by `target_folder_id`) is what the UI shows when the
+   * folder exists, so a tree rename/move is reflected even though this field
+   * stays put. It NO LONGER roots the walk's relative paths either - the on-disk
+   * dir name (`handle.name`) does, decoupled so a multi-segment path can't leak
+   * extra levels through `extractFolderSegments`. Editable in settings, which
+   * moves/renames the target folder by id (see `updateFolderSyncConfig`).
    */
   root_name: string;
   /**
