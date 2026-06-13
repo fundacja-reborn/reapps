@@ -17,7 +17,8 @@ export type SyncStatusType =
   | 'error'
   | 'pending'
   | 'needs_sync'
-  | 'session_expired';
+  | 'session_expired'
+  | 'local_only';
 
 export interface SyncStatusState {
   status: SyncStatusType;
@@ -65,6 +66,10 @@ if (browser && connectivityStore) {
 export const isSyncing = writable(false);
 export const syncError = writable(false);
 export const sessionExpired = writable(false);
+// True in local-only / no-account mode. Set by the auth store (one-way, like
+// sessionExpired) to avoid an auth.store <-> sync-status.store import cycle.
+// Takes precedence over every other status: there is no server session here.
+export const localOnly = writable(false);
 export const lastSyncedAt = writable<string | null>(null);
 export const pendingCount = writable(0);
 
@@ -91,18 +96,22 @@ export async function refreshPendingCount(): Promise<number> {
 // ── Derived unified status ───────────────────────────────────────
 
 export const syncStatus = derived(
-  [isOnline, isSyncing, syncError, sessionExpired, pendingCount, lastSyncedAt],
+  [isOnline, isSyncing, syncError, sessionExpired, pendingCount, lastSyncedAt, localOnly],
   ([
     $isOnline,
     $isSyncing,
     $syncError,
     $sessionExpired,
     $pendingCount,
-    $lastSyncedAt
+    $lastSyncedAt,
+    $localOnly
   ]): SyncStatusState => {
     let status: SyncStatusType;
 
-    if ($sessionExpired) {
+    if ($localOnly) {
+      // No account, no server: sync never runs, so this overrides everything.
+      status = 'local_only';
+    } else if ($sessionExpired) {
       status = 'session_expired';
     } else if (!$isOnline) {
       status = 'offline';

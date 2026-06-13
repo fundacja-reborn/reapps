@@ -1,5 +1,25 @@
 {
   "appTitle": "reborn/notes",
+  "local_mode": {
+    "welcome": {
+      "title": "Offline-Modus, ohne Konto",
+      "subtitle": "Du verwendest re/notes ohne Konto. Das bedeutet:",
+      "point_storage": "Deine Notizen bleiben auf diesem Gerät und erreichen nie unsere Server.",
+      "point_encrypted": "Alles wird lokal verschlüsselt (AES-256).",
+      "point_no_sync": "Keine Synchronisierung zwischen Geräten und kein Cloud-Backup.",
+      "point_no_recovery": "Es gibt keine Wiederherstellung, wenn du dieses Gerät verlierst oder die App-Daten löschst - exportiere regelmäßig ein Backup.",
+      "point_upgrade": "Du kannst jederzeit ein Konto erstellen - deine Notizen bleiben erhalten und werden synchronisiert.",
+      "cta": "Verstanden"
+    },
+    "register": "Konto erstellen",
+    "menu_title": "Nur lokal",
+    "menu_hint": "Kein Konto, nicht synchronisiert",
+    "share_title": "Zum Teilen ist ein Konto nötig",
+    "backup_hint": "Tipp: Exportiere ein Backup, bevor du ein Konto erstellst oder dich anderswo anmeldest.",
+    "replace_title": "Lokale Notizen ersetzen?",
+    "replace_desc": "Du nutzt re/notes ohne Konto. Beim Anmelden werden die Notizen auf diesem Gerät durch die Kontodaten ersetzt. Exportiere zuerst ein Backup, wenn du sie behalten möchtest.",
+    "replace_confirm": "Trotzdem anmelden"
+  },
   "nav": {
     "all_notes": "Alle Notizen",
     "starred": "Markiert",
@@ -560,6 +580,7 @@
     "badge_tooltip": "Ende-zu-Ende-verschlüsselt — klicken zum Anzeigen"
   },
   "sync_status": {
+    "local_only": "Nur lokal",
     "synced": "Synchronisiert",
     "syncing": "Synchronisierung…",
     "offline": "Offline",
@@ -623,7 +644,9 @@
       "member_since": "Mitglied seit",
       "signed_in_via": "Angemeldet über re/task",
       "registered": "Registriert",
-      "log_out": "Abmelden"
+      "log_out": "Abmelden",
+      "create": "Konto erstellen",
+      "create_desc": "Behalte deine Notizen und synchronisiere geräteübergreifend. Deine vorhandenen Notizen bleiben erhalten."
     },
     "appearance": {
       "title": "Erscheinungsbild",

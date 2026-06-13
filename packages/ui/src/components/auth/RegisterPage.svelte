@@ -11,6 +11,7 @@
     appName = 'Reborn Apps',
     showLoginLink = true,
     loginUrl = '/login',
+    showLocalModeLink = false,
     powEndpoint = '',
     termsUrl = '',
     privacyUrl = '',
@@ -18,13 +19,16 @@
     header,
     onregister,
     onnavigate,
-    onerror
+    onerror,
+    onlocalmode
   } = $props<{
     loading?: boolean;
     error?: string | null;
     appName?: string;
     showLoginLink?: boolean;
     loginUrl?: string;
+    /** Opt-in "use without an account" entry (local-only / offline mode). */
+    showLocalModeLink?: boolean;
     powEndpoint?: string;
     termsUrl?: string;
     privacyUrl?: string;
@@ -40,6 +44,8 @@
     }) => void;
     onnavigate?: (detail: { url: string }) => void;
     onerror?: (message: string) => void;
+    /** Fired when the user chooses to use the app without an account. */
+    onlocalmode?: () => void;
   }>();
 
   function handleRegister(detail: {
@@ -75,6 +81,18 @@
         >
           {$t('auth.register.sign_in')}
         </a>
+      </p>
+    {/if}
+
+    {#if showLocalModeLink}
+      <p class="text-sm text-gray-600 dark:text-gray-400 text-center">
+        <button
+          type="button"
+          class="font-medium text-primary underline underline-offset-4 hover:text-primary/80"
+          onclick={() => onlocalmode?.()}
+        >
+          {$t('auth.use_without_account')}
+        </button>
       </p>
     {/if}
 

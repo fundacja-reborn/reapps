@@ -31,6 +31,8 @@
   import FolderTree from '$lib/components/sidebar/FolderTree.svelte';
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
+  import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
+  import { authStore } from '$lib/stores/auth.store';
   import NoteEditor from '$lib/components/NoteEditor.svelte';
 
   // Extracted components
@@ -238,11 +240,17 @@
   let shareDialogOpen = $state(false);
   let shareNoteId = $state<string | null>(null);
   let shareNoteTitle = $state<string>('');
+  // Local-only mode: sharing needs a server account - nudge to register instead.
+  let accountRequiredOpen = $state(false);
 
   async function handleDetailShare(noteArg?: NoteListItem) {
     detailActionSheetOpen = false;
     const target = noteArg ?? detailMenuNote;
     if (!target) return;
+    if ($authStore.isLocalOnly) {
+      accountRequiredOpen = true;
+      return;
+    }
     const ok = await requireActiveSession({
       description: $t('share.session_required.create')
     });
@@ -1286,7 +1294,7 @@
             {#if mobileView === 'folder-tree'}
               <div class="flex flex-col overflow-hidden h-full">
                 <div class="flex-1 overflow-y-auto px-2 py-2">
-                  {#if $foldersStore.length === 0}
+                  {#if $foldersStore.length === 0 && !$pendingNewFolderDraft}
                     <p class="px-2 py-1 text-xs text-muted-foreground">
                       {$t('folders.no_folders_short')}
                     </p>
@@ -1564,7 +1572,7 @@
               </div>
               <div class="mx-3 border-t"></div>
               <div class="flex-1 overflow-y-auto px-2 py-2">
-                {#if $foldersStore.length === 0}
+                {#if $foldersStore.length === 0 && !$pendingNewFolderDraft}
                   <p class="px-2 py-4 text-center text-xs text-muted-foreground">
                     {$t('folders.no_folders_short')}
                   </p>
@@ -1932,3 +1940,5 @@
 {#if shareNoteId}
   <ShareNoteDialog bind:open={shareDialogOpen} noteId={shareNoteId} noteTitle={shareNoteTitle} />
 {/if}
+
+<AccountRequiredDialog bind:open={accountRequiredOpen} />

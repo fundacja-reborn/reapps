@@ -1,5 +1,25 @@
 {
   "appTitle": "reborn/notes",
+  "local_mode": {
+    "welcome": {
+      "title": "Working offline, no account",
+      "subtitle": "You're using re/notes without an account. Here's what that means:",
+      "point_storage": "Your notes stay on this device and never reach our servers.",
+      "point_encrypted": "Everything is encrypted (AES-256) locally.",
+      "point_no_sync": "No sync across devices and no cloud backup.",
+      "point_no_recovery": "There's no recovery if you lose this device or clear app data - export a backup regularly.",
+      "point_upgrade": "You can create an account anytime - your notes will be kept and start syncing.",
+      "cta": "Got it"
+    },
+    "register": "Register account",
+    "menu_title": "Local only",
+    "menu_hint": "No account, not synced",
+    "share_title": "Sharing needs an account",
+    "backup_hint": "Tip: export a backup before creating an account or signing in elsewhere.",
+    "replace_title": "Replace local notes?",
+    "replace_desc": "You're using re/notes without an account. Signing in replaces the notes on this device with the account's data. Export a backup first if you want to keep them.",
+    "replace_confirm": "Sign in anyway"
+  },
   "nav": {
     "all_notes": "All Notes",
     "starred": "Starred",
@@ -560,6 +580,7 @@
     "badge_tooltip": "Encrypted end-to-end — click to see"
   },
   "sync_status": {
+    "local_only": "Local only",
     "synced": "Synced",
     "syncing": "Syncing…",
     "offline": "Offline",
@@ -623,7 +644,9 @@
       "member_since": "Member since",
       "signed_in_via": "Signed in via re/task",
       "registered": "Registered",
-      "log_out": "Log out"
+      "log_out": "Log out",
+      "create": "Create an account",
+      "create_desc": "Keep your notes and sync across devices. Your existing notes are kept."
     },
     "appearance": {
       "title": "Appearance",

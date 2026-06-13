@@ -32,6 +32,7 @@
   import { reAuthenticate, verifyTotpForReauth } from '$lib/services/notes-auth.service';
   import { SessionExpiredBanner, RequireSessionModal } from '@reborn/ui';
   import LoadingScreen from '$lib/components/LoadingScreen.svelte';
+  import LocalModeWelcome from '$lib/components/LocalModeWelcome.svelte';
   import UpdateRequiredGate from '$lib/components/layout/UpdateRequiredGate.svelte';
   import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
   import { createLogger } from '@reborn/utils';
@@ -67,7 +68,12 @@
     // Public read-only share view (/s/{slug}) - no account needed.
     const isPublicShareRoute = path.startsWith(`${basePath}/s/`);
 
-    if (!$authStore.isAuthenticated && !isAuthRoute && !isPublicShareRoute) {
+    if (
+      !$authStore.isAuthenticated &&
+      !$authStore.isLocalOnly &&
+      !isAuthRoute &&
+      !isPublicShareRoute
+    ) {
       untrack(() => noteIndex.clear());
       untrack(() => {
         goto('/auth/login');
@@ -100,11 +106,15 @@
       }
       // Pull E2E synced settings now that the master key is available.
       // Re-init appSettings so theme/locale reflect the server state.
-      try {
-        const { applied } = await syncedSettings.pullAndMerge();
-        if (applied) await appSettings.refresh();
-      } catch (err: unknown) {
-        logger.warn('Synced settings pull on E2E unlock failed', err);
+      // Local-only mode has no server account: skip the settings pull (it would
+      // just fail auth and log a warning). Local IDB stays the source of truth.
+      if (!get(authStore).isLocalOnly) {
+        try {
+          const { applied } = await syncedSettings.pullAndMerge();
+          if (applied) await appSettings.refresh();
+        } catch (err: unknown) {
+          logger.warn('Synced settings pull on E2E unlock failed', err);
+        }
       }
       // Build NoteIndex FIRST (in parallel with folders/tags), then refresh notesStore
       await Promise.all([
@@ -243,7 +253,7 @@
 
       // Pull E2E synced settings before applying theme/locale so a fresh
       // device sees the user's preferences instead of IDB defaults.
-      if (cryptoManager.isInitialized()) {
+      if (cryptoManager.isInitialized() && !$authStore.isLocalOnly) {
         try {
           await syncedSettings.pullAndMerge();
         } catch (err: unknown) {
@@ -444,6 +454,7 @@
     />
     {@render children()}
     <Toaster />
+    <LocalModeWelcome />
     {#if __REBORN_NATIVE__}
       <UpdateRequiredGate />
     {/if}

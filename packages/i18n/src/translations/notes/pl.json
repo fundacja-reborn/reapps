@@ -1,5 +1,25 @@
 {
   "appTitle": "reborn/notes",
+  "local_mode": {
+    "welcome": {
+      "title": "Tryb offline, bez konta",
+      "subtitle": "Używasz re/notes bez konta. Oto co to oznacza:",
+      "point_storage": "Twoje notatki zostają na tym urządzeniu i nigdy nie trafiają na nasze serwery.",
+      "point_encrypted": "Wszystko jest szyfrowane (AES-256) lokalnie.",
+      "point_no_sync": "Brak synchronizacji między urządzeniami i kopii w chmurze.",
+      "point_no_recovery": "Nie ma odzyskania danych, jeśli stracisz to urządzenie lub wyczyścisz dane aplikacji - regularnie eksportuj kopię zapasową.",
+      "point_upgrade": "W każdej chwili możesz założyć konto - notatki zostaną zachowane i zaczną się synchronizować.",
+      "cta": "Rozumiem"
+    },
+    "register": "Zarejestruj konto",
+    "menu_title": "Tylko lokalnie",
+    "menu_hint": "Bez konta, bez synchronizacji",
+    "share_title": "Udostępnianie wymaga konta",
+    "backup_hint": "Wskazówka: zrób kopię zapasową przed założeniem konta lub zalogowaniem na inne.",
+    "replace_title": "Zastąpić lokalne notatki?",
+    "replace_desc": "Używasz re/notes bez konta. Zalogowanie zastąpi notatki na tym urządzeniu danymi z konta. Najpierw zrób kopię zapasową, jeśli chcesz je zachować.",
+    "replace_confirm": "Zaloguj mimo to"
+  },
   "nav": {
     "all_notes": "Wszystkie notatki",
     "starred": "Ulubione",
@@ -560,6 +580,7 @@
     "badge_tooltip": "Szyfrowane end-to-end — kliknij, aby zobaczyć"
   },
   "sync_status": {
+    "local_only": "Tylko lokalnie",
     "synced": "Zsynchronizowane",
     "syncing": "Synchronizacja…",
     "offline": "Offline",
@@ -623,7 +644,9 @@
       "member_since": "Użytkownik od",
       "signed_in_via": "Zalogowano przez re/task",
       "registered": "Zarejestrowano",
-      "log_out": "Wyloguj się"
+      "log_out": "Wyloguj się",
+      "create": "Załóż konto",
+      "create_desc": "Zachowaj notatki i synchronizuj między urządzeniami. Twoje obecne notatki zostaną zachowane."
     },
     "appearance": {
       "title": "Wygląd",

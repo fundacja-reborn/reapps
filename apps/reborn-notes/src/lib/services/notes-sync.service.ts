@@ -602,6 +602,42 @@ async function pullNotes(): Promise<void> {
 // ── Push helpers - IndexedDB → server ────────────────────────────
 
 /**
+ * Mark every local record (folders, tags, saved searches, notes) as pending so
+ * the next push uploads it. Used when a local-only (no-account) session
+ * upgrades to a real account: everything was created offline and never synced,
+ * so it all has to reach the server. The records keep their existing
+ * master-key ciphertext (the account adopts the same key), so no re-encryption
+ * is needed - only the sync flag changes. Idempotent: rows already pending are
+ * left untouched. The server assigns ownership from the JWT, so user_id is not
+ * rewritten here; the next pull converges it.
+ */
+export async function markAllLocalDataPending(): Promise<void> {
+  const [folders, tags, savedSearches, notes] = await Promise.all([
+    folderStore.getAll() as Promise<FolderEncrypted[]>,
+    tagStore.getAll() as Promise<TagEncrypted[]>,
+    savedSearchStore.getAll() as Promise<SavedSearchEncrypted[]>,
+    noteStore.getAll() as Promise<NoteStoredLocal[]>
+  ]);
+
+  const ops: Promise<unknown>[] = [];
+  for (const f of folders) {
+    if (f.sync_status !== 'pending') ops.push(folderStore.save({ ...f, sync_status: 'pending' }));
+  }
+  for (const t of tags) {
+    if (t.sync_status !== 'pending') ops.push(tagStore.save({ ...t, sync_status: 'pending' }));
+  }
+  for (const s of savedSearches) {
+    if (s.sync_status !== 'pending')
+      ops.push(savedSearchStore.save({ ...s, sync_status: 'pending' }));
+  }
+  for (const n of notes) {
+    if (n.sync_status !== 'pending') ops.push(noteStore.save({ ...n, sync_status: 'pending' }));
+  }
+  await Promise.all(ops);
+  logger.info(`Marked ${ops.length} local records pending for account upload`);
+}
+
+/**
  * Push all locally-pending items (folders, tags, notes) to the server.
  * Called during manual sync to ensure local-only items reach the server.
  */

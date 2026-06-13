@@ -33,6 +33,7 @@
     }
   },
   "auth": {
+    "use_without_account": "Użyj bez konta",
     "login": {
       "title": "Logowanie",
       "description": "Witaj ponownie! Wprowadź swoje dane, aby kontynuować.",

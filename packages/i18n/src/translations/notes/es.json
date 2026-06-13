@@ -1,5 +1,25 @@
 {
   "appTitle": "reborn/notes",
+  "local_mode": {
+    "welcome": {
+      "title": "Modo sin conexión, sin cuenta",
+      "subtitle": "Estás usando re/notes sin cuenta. Esto es lo que significa:",
+      "point_storage": "Tus notas permanecen en este dispositivo y nunca llegan a nuestros servidores.",
+      "point_encrypted": "Todo se cifra (AES-256) localmente.",
+      "point_no_sync": "Sin sincronización entre dispositivos ni copia de seguridad en la nube.",
+      "point_no_recovery": "No hay recuperación si pierdes este dispositivo o borras los datos de la aplicación - exporta una copia de seguridad con regularidad.",
+      "point_upgrade": "Puedes crear una cuenta en cualquier momento: tus notas se conservarán y comenzarán a sincronizarse.",
+      "cta": "Entendido"
+    },
+    "register": "Crear una cuenta",
+    "menu_title": "Solo local",
+    "menu_hint": "Sin cuenta, sin sincronización",
+    "share_title": "Compartir requiere una cuenta",
+    "backup_hint": "Consejo: exporta una copia de seguridad antes de crear una cuenta o iniciar sesión en otra.",
+    "replace_title": "¿Reemplazar las notas locales?",
+    "replace_desc": "Estás usando re/notes sin una cuenta. Iniciar sesión reemplaza las notas de este dispositivo con los datos de la cuenta. Exporta una copia de seguridad primero si quieres conservarlas.",
+    "replace_confirm": "Iniciar sesión de todos modos"
+  },
   "nav": {
     "all_notes": "Todas las notas",
     "starred": "Destacadas",
@@ -560,6 +580,7 @@
     "badge_tooltip": "Cifrado de extremo a extremo — pulse para ver"
   },
   "sync_status": {
+    "local_only": "Solo local",
     "synced": "Sincronizado",
     "syncing": "Sincronizando…",
     "offline": "Sin conexión",
@@ -623,7 +644,9 @@
       "member_since": "Miembro desde",
       "signed_in_via": "Sesión iniciada a través de re/task",
       "registered": "Registrado",
-      "log_out": "Cerrar sesión"
+      "log_out": "Cerrar sesión",
+      "create": "Crear una cuenta",
+      "create_desc": "Conserva tus notas y sincroniza entre dispositivos. Tus notas actuales se conservan."
     },
     "appearance": {
       "title": "Apariencia",
