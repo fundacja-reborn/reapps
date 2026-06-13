@@ -10,7 +10,15 @@
       "point_no_recovery": "There's no recovery if you lose this device or clear app data - export a backup regularly.",
       "point_upgrade": "You can create an account anytime - your notes will be kept and start syncing.",
       "cta": "Got it"
-    }
+    },
+    "register": "Register account",
+    "menu_title": "Local only",
+    "menu_hint": "No account, not synced",
+    "share_title": "Sharing needs an account",
+    "backup_hint": "Tip: export a backup before creating an account or signing in elsewhere.",
+    "replace_title": "Replace local notes?",
+    "replace_desc": "You're using re/notes without an account. Signing in replaces the notes on this device with the account's data. Export a backup first if you want to keep them.",
+    "replace_confirm": "Sign in anyway"
   },
   "nav": {
     "all_notes": "All Notes",

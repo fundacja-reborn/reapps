@@ -10,7 +10,15 @@
       "point_no_recovery": "Nie ma odzyskania danych, jeśli stracisz to urządzenie lub wyczyścisz dane aplikacji - regularnie eksportuj kopię zapasową.",
       "point_upgrade": "W każdej chwili możesz założyć konto - notatki zostaną zachowane i zaczną się synchronizować.",
       "cta": "Rozumiem"
-    }
+    },
+    "register": "Zarejestruj konto",
+    "menu_title": "Tylko lokalnie",
+    "menu_hint": "Bez konta, bez synchronizacji",
+    "share_title": "Udostępnianie wymaga konta",
+    "backup_hint": "Wskazówka: zrób kopię zapasową przed założeniem konta lub zalogowaniem na inne.",
+    "replace_title": "Zastąpić lokalne notatki?",
+    "replace_desc": "Używasz re/notes bez konta. Zalogowanie zastąpi notatki na tym urządzeniu danymi z konta. Najpierw zrób kopię zapasową, jeśli chcesz je zachować.",
+    "replace_confirm": "Zaloguj mimo to"
   },
   "nav": {
     "all_notes": "Wszystkie notatki",

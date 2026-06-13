@@ -10,7 +10,15 @@
       "point_no_recovery": "No hay recuperación si pierdes este dispositivo o borras los datos de la aplicación - exporta una copia de seguridad con regularidad.",
       "point_upgrade": "Puedes crear una cuenta en cualquier momento: tus notas se conservarán y comenzarán a sincronizarse.",
       "cta": "Entendido"
-    }
+    },
+    "register": "Crear una cuenta",
+    "menu_title": "Solo local",
+    "menu_hint": "Sin cuenta, sin sincronización",
+    "share_title": "Compartir requiere una cuenta",
+    "backup_hint": "Consejo: exporta una copia de seguridad antes de crear una cuenta o iniciar sesión en otra.",
+    "replace_title": "¿Reemplazar las notas locales?",
+    "replace_desc": "Estás usando re/notes sin una cuenta. Iniciar sesión reemplaza las notas de este dispositivo con los datos de la cuenta. Exporta una copia de seguridad primero si quieres conservarlas.",
+    "replace_confirm": "Iniciar sesión de todos modos"
   },
   "nav": {
     "all_notes": "Todas las notas",

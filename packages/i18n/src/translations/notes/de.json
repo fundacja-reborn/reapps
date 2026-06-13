@@ -10,7 +10,15 @@
       "point_no_recovery": "Es gibt keine Wiederherstellung, wenn du dieses Gerät verlierst oder die App-Daten löschst - exportiere regelmäßig ein Backup.",
       "point_upgrade": "Du kannst jederzeit ein Konto erstellen - deine Notizen bleiben erhalten und werden synchronisiert.",
       "cta": "Verstanden"
-    }
+    },
+    "register": "Konto erstellen",
+    "menu_title": "Nur lokal",
+    "menu_hint": "Kein Konto, nicht synchronisiert",
+    "share_title": "Zum Teilen ist ein Konto nötig",
+    "backup_hint": "Tipp: Exportiere ein Backup, bevor du ein Konto erstellst oder dich anderswo anmeldest.",
+    "replace_title": "Lokale Notizen ersetzen?",
+    "replace_desc": "Du nutzt re/notes ohne Konto. Beim Anmelden werden die Notizen auf diesem Gerät durch die Kontodaten ersetzt. Exportiere zuerst ein Backup, wenn du sie behalten möchtest.",
+    "replace_confirm": "Trotzdem anmelden"
   },
   "nav": {
     "all_notes": "Alle Notizen",

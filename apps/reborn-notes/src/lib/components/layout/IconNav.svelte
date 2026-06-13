@@ -32,7 +32,8 @@
     CalendarRange,
     CalendarDays,
     Share2,
-    Heart
+    Heart,
+    UserPlus
   } from '@lucide/svelte';
   import * as Tooltip from '@reborn/ui/components/tooltip';
   import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
@@ -48,6 +49,7 @@
   import { activeSharesCount } from '$lib/stores/shares.store';
   import { requireActiveSession } from '$lib/utils/require-active-session';
   import ManageSharesDialog from '../notes/ManageSharesDialog.svelte';
+  import AccountRequiredDialog from '../shared/AccountRequiredDialog.svelte';
 
   let {
     activeSection = $bindable<Section>('all'),
@@ -73,6 +75,8 @@
   let loggingOut = $state(false);
   let userSheetOpen = $state(false);
   let sharesDialogOpen = $state(false);
+  // Local-only mode: sharing needs a server account - nudge to register instead.
+  let accountRequiredOpen = $state(false);
 
   // Donations page on the foundation site (EN + PL only). Plain <a target="_blank">
   // leaves the app: new tab on web, SYSTEM browser in the native shell (the
@@ -83,6 +87,10 @@
   const supportUrl = $derived(`${SITE_URL}${$i18nLocale === 'pl' ? '/pl' : ''}/support`);
 
   async function handleOpenShares() {
+    if ($authStore.isLocalOnly) {
+      accountRequiredOpen = true;
+      return;
+    }
     const ok = await requireActiveSession({
       description: $t('share.session_required.view')
     });
@@ -556,15 +564,25 @@
                   {getUserInitial($authStore.username)}
                 </span>
                 <div class="grid flex-1 text-start text-sm leading-tight">
-                  <span class="truncate font-medium">{$authStore.username ?? '—'}</span>
+                  <span class="truncate font-medium"
+                    >{$authStore.username ?? $t('local_mode.menu_title')}</span
+                  >
                   <span class="truncate text-xs text-muted-foreground"
-                    >{$t('nav.e2ee_account')}</span
+                    >{$authStore.isLocalOnly
+                      ? $t('local_mode.menu_hint')
+                      : $t('nav.e2ee_account')}</span
                   >
                 </div>
               </div>
             </DropdownMenu.Label>
             <DropdownMenu.Separator />
             <DropdownMenu.Group>
+              {#if $authStore.isLocalOnly}
+                <DropdownMenu.Item onclick={() => goto('/auth/register')}>
+                  <UserPlus class="h-4 w-4" />
+                  {$t('local_mode.register')}
+                </DropdownMenu.Item>
+              {/if}
               <DropdownMenu.Item onclick={() => goto('/settings')}>
                 <Settings class="h-4 w-4" />
                 {$t('nav.settings')}
@@ -589,6 +607,7 @@
 
 <!-- Shares manage dialog (mounted once, used by both nav modes) -->
 <ManageSharesDialog bind:open={sharesDialogOpen} sourceId={null} />
+<AccountRequiredDialog bind:open={accountRequiredOpen} />
 
 <!-- Mobile: User menu Sheet -->
 <Sheet bind:open={userSheetOpen}>
@@ -603,15 +622,28 @@
             {getUserInitial($authStore.username)}
           </span>
           <div class="grid flex-1 text-start text-sm leading-tight">
-            <span class="truncate font-medium">{$authStore.username ?? '—'}</span>
+            <span class="truncate font-medium">{$authStore.username ?? $t('local_mode.menu_title')}</span>
             <span class="truncate text-xs font-normal text-muted-foreground"
-              >{$t('nav.e2ee_account')}</span
+              >{$authStore.isLocalOnly ? $t('local_mode.menu_hint') : $t('nav.e2ee_account')}</span
             >
           </div>
         </div>
       </SheetTitle>
     </SheetHeader>
     <div class="mt-4 space-y-1">
+      {#if $authStore.isLocalOnly}
+        <Button
+          variant="ghost"
+          class="w-full justify-start min-h-11"
+          onclick={() => {
+            userSheetOpen = false;
+            goto('/auth/register');
+          }}
+        >
+          <UserPlus class="mr-2 h-5 w-5" />
+          {$t('local_mode.register')}
+        </Button>
+      {/if}
       <Button
         variant="ghost"
         class="w-full justify-start min-h-11"

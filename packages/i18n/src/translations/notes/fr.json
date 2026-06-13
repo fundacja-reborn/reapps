@@ -10,7 +10,15 @@
       "point_no_recovery": "Aucune récupération n'est possible si vous perdez cet appareil ou effacez les données de l'application - exportez régulièrement une sauvegarde.",
       "point_upgrade": "Vous pouvez créer un compte à tout moment - vos notes seront conservées et commenceront à se synchroniser.",
       "cta": "J'ai compris"
-    }
+    },
+    "register": "Créer un compte",
+    "menu_title": "Local uniquement",
+    "menu_hint": "Sans compte, non synchronisé",
+    "share_title": "Le partage nécessite un compte",
+    "backup_hint": "Astuce : exportez une sauvegarde avant de créer un compte ou de vous connecter ailleurs.",
+    "replace_title": "Remplacer les notes locales ?",
+    "replace_desc": "Vous utilisez re/notes sans compte. La connexion remplace les notes de cet appareil par les données du compte. Exportez d'abord une sauvegarde si vous souhaitez les conserver.",
+    "replace_confirm": "Se connecter quand même"
   },
   "nav": {
     "all_notes": "Toutes les notes",

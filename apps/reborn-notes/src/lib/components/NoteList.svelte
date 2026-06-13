@@ -33,6 +33,8 @@
   import { requireActiveSession } from '$lib/utils/require-active-session';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import ConfirmDialog from './shared/ConfirmDialog.svelte';
+  import AccountRequiredDialog from './shared/AccountRequiredDialog.svelte';
+  import { authStore } from '$lib/stores/auth.store';
   import NoteListItemComponent from './notes/NoteListItem.svelte';
   import NoteActionSheet from './notes/NoteActionSheet.svelte';
   import ShareNoteDialog from './notes/ShareNoteDialog.svelte';
@@ -109,9 +111,16 @@
   let shareDialogOpen = $state(false);
   let shareNoteId = $state<string | null>(null);
   let shareNoteTitle = $state<string>('');
+  // Local-only mode has no server session: sharing can't work, so nudge the
+  // user toward an account instead of opening a dialog whose calls would 401.
+  let accountRequiredOpen = $state(false);
 
   async function handleShare(note: NoteListItem, e?: Event) {
     e?.stopPropagation();
+    if ($authStore.isLocalOnly) {
+      accountRequiredOpen = true;
+      return;
+    }
     const ok = await requireActiveSession({
       description: $t('share.session_required.create')
     });
@@ -1161,3 +1170,5 @@
 {#if shareNoteId}
   <ShareNoteDialog bind:open={shareDialogOpen} noteId={shareNoteId} noteTitle={shareNoteTitle} />
 {/if}
+
+<AccountRequiredDialog bind:open={accountRequiredOpen} />

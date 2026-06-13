@@ -9,6 +9,8 @@
   import { sessionExpired } from '$lib/stores/sync-status.store';
   import { loginInNotes } from '$lib/services/notes-auth.service';
   import { t } from '$lib/stores/i18n.store';
+  import { get } from 'svelte/store';
+  import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
 
   let loading = $state(false);
   let error = $state<string | null>(null);
@@ -30,11 +32,26 @@
     }
   });
 
+  // Local-only mode: signing into an existing account runs clearAllUserData
+  // (notes-auth.service), which replaces the on-device notes. Confirm before
+  // that wipe so the user can export a backup instead of losing data silently.
+  let confirmReplaceOpen = $state(false);
+  let pendingLogin = $state<{ username: string; password: string } | null>(null);
+
   async function handleLogin(detail: { username: string; password: string; rememberMe: boolean }) {
+    if (get(authStore).isLocalOnly) {
+      pendingLogin = { username: detail.username, password: detail.password };
+      confirmReplaceOpen = true;
+      return;
+    }
+    await performLogin(detail.username, detail.password);
+  }
+
+  async function performLogin(username: string, password: string) {
     loading = true;
     error = null;
 
-    const result = await loginInNotes(detail.username, detail.password);
+    const result = await loginInNotes(username, password);
 
     if (result.success) {
       await goto(returnTo);
@@ -42,7 +59,7 @@
     }
 
     if (result.twoFactorRequired) {
-      sessionStorage.setItem('2fa_pending_password', detail.password);
+      sessionStorage.setItem('2fa_pending_password', password);
       // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local temp variable
       const params = new URLSearchParams({ userId: result.userId ?? '', returnTo });
       if (result.encryptedMasterKey) params.set('emk', result.encryptedMasterKey);
@@ -99,5 +116,18 @@
     } else {
       goto(e.url);
     }
+  }}
+/>
+
+<!-- Local-only safety: signing in replaces on-device notes - confirm first. -->
+<ConfirmDialog
+  bind:open={confirmReplaceOpen}
+  title={$t('local_mode.replace_title')}
+  description={$t('local_mode.replace_desc')}
+  confirmText={$t('local_mode.replace_confirm')}
+  cancelText={$t('common.cancel')}
+  destructive
+  onConfirm={() => {
+    if (pendingLogin) return performLogin(pendingLogin.username, pendingLogin.password);
   }}
 />
