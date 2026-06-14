@@ -1,5 +1,55 @@
 {
   "appTitle": "reborn/notes",
+  "app_lock": {
+    "settings_item_title": "Verrouillage de l'app",
+    "settings_item_desc": "Exiger la biométrie pour ouvrir l'application",
+    "settings_intro": "Le verrouillage de l'app demande une confirmation biométrique à chaque ouverture de re/notes et après un certain temps en arrière-plan. Vos notes restent chiffrées sur cet appareil dans tous les cas - c'est une protection d'accès rapide, pas un chiffrement supplémentaire.",
+    "unavailable_title": "Biométrie non configurée",
+    "unavailable_desc": "Ajoutez une empreinte digitale ou un déverrouillage facial dans les réglages de l'appareil pour utiliser le verrouillage de l'app.",
+    "enable_title": "Verrouillage de l'app",
+    "enable_desc": "Exiger {biometry} pour ouvrir l'application.",
+    "enable_cta": "Activer le verrouillage",
+    "disable_cta": "Désactiver",
+    "timeout_title": "Reverrouiller après",
+    "timeout_desc": "Combien de temps l'app peut rester en arrière-plan avant de redemander.",
+    "timeout": {
+      "immediate": "Immédiatement",
+      "min1": "Après 1 minute",
+      "min5": "Après 5 minutes",
+      "min15": "Après 15 minutes"
+    },
+    "lock_now_title": "Verrouiller maintenant",
+    "lock_now_desc": "Verrouiller l'application immédiatement.",
+    "lock_now_cta": "Verrouiller maintenant",
+    "success_enabled": "Verrouillage de l'app activé",
+    "success_disabled": "Verrouillage de l'app désactivé",
+    "enable_failed": "Impossible d'activer le verrouillage. Veuillez réessayer.",
+    "locked_title": "Application verrouillée",
+    "locked_desc": "Déverrouillez avec {biometry} pour continuer.",
+    "unlock_cta": "Déverrouiller",
+    "unlocking": "Déverrouillage...",
+    "use_password": "Utiliser le mot de passe à la place",
+    "prompt": {
+      "reason": "Déverrouiller re/notes",
+      "cancel": "Annuler",
+      "android_title": "Déverrouiller re/notes",
+      "android_subtitle": "Confirmez votre identité pour continuer"
+    },
+    "error": {
+      "lockout": "Trop de tentatives. Patientez un instant ou utilisez votre mot de passe.",
+      "unavailable": "La biométrie n'est pas disponible pour le moment. Utilisez votre mot de passe.",
+      "vault": "Impossible de déverrouiller sur cet appareil. Utilisez votre mot de passe pour continuer.",
+      "failed": "Échec du déverrouillage. Réessayez."
+    },
+    "biometry": {
+      "faceId": "Face ID",
+      "touchId": "Touch ID",
+      "fingerprint": "l'empreinte digitale",
+      "face": "la reconnaissance faciale",
+      "iris": "l'iris",
+      "generic": "la biométrie"
+    }
+  },
   "local_mode": {
     "account_features_title": "Disponible avec un compte",
     "welcome": {

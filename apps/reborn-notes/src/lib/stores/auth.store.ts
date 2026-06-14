@@ -345,6 +345,19 @@ function createAuthStore() {
   }
 
   /**
+   * Lock the native App Lock now: drop the in-memory key but KEEP the vault
+   * entry (unlike logout), so a biometric unlock can re-read it. Flips hasE2E
+   * so the guard routes to the biometric lock screen. Used by resume-after-
+   * timeout and the manual "Lock now" action; unlock goes through the App Lock
+   * service + markE2EUnlocked().
+   */
+  function lockAppNow(): void {
+    if (!browser) return;
+    cryptoManager.lockToVault();
+    set({ ...readFromStorage(), hasE2E: false });
+  }
+
+  /**
    * Clear all shared auth tokens and redirect to login.
    * Also clears the master key from memory (logs out of E2E too).
    * Because the tokens are shared, this also effectively logs the user out
@@ -379,6 +392,10 @@ function createAuthStore() {
     }
 
     cryptoManager.clearMasterKey();
+    // Drop the App Lock opt-in on logout: the vault is now empty, so leaving the
+    // gate armed would strand the next account on a biometric lock screen with
+    // no key to unlock. Re-enable is a one-tap opt-in after the next login.
+    cryptoManager.setAppLockEnabled(false);
     localStorage.removeItem(CREDENTIALS_KEY);
     localStorage.removeItem(ACCESS_TOKEN_KEY);
 
@@ -412,6 +429,7 @@ function createAuthStore() {
     unlockE2E,
     unlockLocalPasscode,
     lockLocalNow,
+    lockAppNow,
     logout,
     markE2EUnlocked,
     enterLocalMode

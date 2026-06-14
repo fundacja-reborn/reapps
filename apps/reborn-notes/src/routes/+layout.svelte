@@ -35,6 +35,7 @@
   import LocalModeWelcome from '$lib/components/LocalModeWelcome.svelte';
   import UpdateRequiredGate from '$lib/components/layout/UpdateRequiredGate.svelte';
   import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
+  import { initAppLock, shouldLockOnResume } from '$lib/services/app-lock.service';
   import { createLogger } from '@reborn/utils';
 
   const logger = createLogger('notes:layout');
@@ -64,6 +65,7 @@
       path.startsWith(`${basePath}/auth/register`) ||
       path.startsWith(`${basePath}/auth/unlock`) ||
       path.startsWith(`${basePath}/auth/lock`) ||
+      path.startsWith(`${basePath}/auth/applock`) ||
       path.startsWith(`${basePath}/auth/2fa`);
 
     // Public read-only share view (/s/{slug}) - no account needed.
@@ -92,6 +94,19 @@
       untrack(() => noteIndex.clear());
       untrack(() => {
         goto('/auth/login');
+      });
+      return;
+    }
+
+    // Native App Lock: key is in the vault but gated behind a biometric prompt
+    // (cold start, or resume after the idle timeout). Route to the biometric
+    // lock screen before the password-unlock check below, so an account user
+    // gets Face ID / fingerprint, not the password form. Inert on web (no
+    // vault) and when App Lock is off. See guideline 66.
+    if (cryptoManager.isAppLockLocked() && !isAuthRoute && !isPublicShareRoute) {
+      untrack(() => noteIndex.clear());
+      untrack(() => {
+        goto('/auth/applock');
       });
       return;
     }
@@ -340,7 +355,19 @@
     let offDeepLink: (() => void) | undefined;
     let updateGateTimer: ReturnType<typeof setTimeout> | undefined;
     if (__REBORN_NATIVE__) {
+      // App Lock: start tracking background time so a resume after the idle
+      // timeout re-locks (wires platform.lifecycle.onPause once).
+      initAppLock();
+
       offResume = platform.lifecycle.onResume(() => {
+        // App Lock first: if the app was backgrounded past the idle timeout,
+        // re-lock and show the biometric screen instead of syncing while
+        // unlocked. No-op when App Lock is off.
+        if (shouldLockOnResume()) {
+          authStore.lockAppNow();
+          void goto('/auth/applock');
+          return;
+        }
         // Min-version gate re-check (throttled internally, fail-open).
         void checkNativeUpdateGate();
         if ($authStore.isAuthenticated && $authStore.hasE2E) {
