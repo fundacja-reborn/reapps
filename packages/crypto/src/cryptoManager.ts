@@ -1076,6 +1076,24 @@ export class CryptoManager {
   }
 
   /**
+   * Persist the passcode wrap. The stored value is AES-GCM ciphertext - the
+   * master key wrapped with PBKDF2(passcode) - plus a non-secret salt and a
+   * version tag. Safe at rest: this is the same envelope model as the account's
+   * server-side `encrypted_master_key`, and strictly stronger than the
+   * no-passcode baseline (a raw key in IndexedDB). The plaintext key is never
+   * written here - the wrap cannot be opened without the passcode.
+   */
+  private writeLocalPasscodeWrap(wrapped: string, salt: string): void {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      throw new Error('Local passcode requires a browser environment');
+    }
+    window.localStorage.setItem(
+      this.LOCAL_PASSCODE_WRAP_KEY,
+      JSON.stringify({ wrapped, salt, v: this.PASSCODE_WRAP_VERSION })
+    );
+  }
+
+  /**
    * Whether an optional local passcode is currently set. Synchronous and valid
    * before restore completes (reads localStorage directly), so auth guards and
    * settings UI can branch on it immediately.
@@ -1109,10 +1127,7 @@ export class CryptoManager {
     }
 
     const { encryptedMasterKey, salt } = await this.encryptMasterKey(this.masterKey, passcode);
-    window.localStorage.setItem(
-      this.LOCAL_PASSCODE_WRAP_KEY,
-      JSON.stringify({ wrapped: encryptedMasterKey, salt, v: this.PASSCODE_WRAP_VERSION })
-    );
+    this.writeLocalPasscodeWrap(encryptedMasterKey, salt);
 
     // Purge every cleartext at-rest copy - the wrap is now the only on-disk form.
     await this.clearKeyFromIDB();
@@ -1179,10 +1194,7 @@ export class CryptoManager {
     }
 
     const { encryptedMasterKey, salt } = await this.encryptMasterKey(this.masterKey, newPasscode);
-    window.localStorage.setItem(
-      this.LOCAL_PASSCODE_WRAP_KEY,
-      JSON.stringify({ wrapped: encryptedMasterKey, salt, v: this.PASSCODE_WRAP_VERSION })
-    );
+    this.writeLocalPasscodeWrap(encryptedMasterKey, salt);
     logger.info('Local passcode changed');
     return true;
   }
