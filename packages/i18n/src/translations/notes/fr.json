@@ -1,6 +1,7 @@
 {
   "appTitle": "reborn/notes",
   "local_mode": {
+    "account_features_title": "Disponible avec un compte",
     "welcome": {
       "title": "Mode hors ligne, sans compte",
       "subtitle": "Vous utilisez re/notes sans compte. Voici ce que cela implique :",
@@ -21,8 +22,8 @@
     "replace_confirm": "Se connecter quand même",
     "passcode": {
       "settings_item_title": "Code local",
-      "settings_item_desc": "Verrouiller cet appareil avec un code qui chiffre votre clé locale",
-      "settings_intro": "Un code local chiffre la clé de vos données sur cet appareil. Vous le saisirez à chaque ouverture de l'application après l'avoir fermée. Aucune récupération n'est possible : si vous l'oubliez, les données locales sont perdues.",
+      "settings_item_desc": "Mode local (sans compte) : verrouiller cet appareil avec un code qui chiffre votre clé locale",
+      "settings_intro": "Cette option concerne uniquement le mode local (sans compte). Un code local chiffre la clé de vos données sur cet appareil. Vous le saisirez à chaque ouverture de l'application après l'avoir fermée. Aucune récupération n'est possible : si vous l'oubliez, les données locales sont perdues.",
       "setup_title": "Configurer un code",
       "setup_desc": "Chiffrez votre clé locale avec un code. Sans lui, la clé est stockée sans chiffrement sur cet appareil.",
       "setup_cta": "Définir le code",

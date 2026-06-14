@@ -30,6 +30,22 @@ export const load: PageLoad = async ({ parent }) => {
 		// upstream — it MUST NOT be wrapped in try/catch here or the happy path
 		// gets swallowed and every visit falls through to /auth/unlock.
 
+		// Local passcode gate (online + offline): a wrap means there is local data
+		// locked behind a passcode on this origin. Until it is unlocked into
+		// memory the ONLY valid destination is the lock screen. Decided here -
+		// synchronously, after the shared restore settles - so a still-
+		// bootstrapping session store can never fall through to /auth/login (the
+		// old behaviour, which let "Use without account" regenerate the key and
+		// orphan the data). The wrap is cleared whenever an account key is set, so
+		// its presence unambiguously means local-only + locked.
+		{
+			const { cryptoManager } = await import('@reborn/crypto');
+			await cryptoManager.waitForRestore();
+			if (cryptoManager.isLocalPasscodeLocked()) {
+				redirect(303, `${base}/auth/lock`);
+			}
+		}
+
 		// Offline cold start: decide the redirect target from persisted
 		// credentials directly. The session store may still be mid-bootstrap
 		// at this point (checkE2EStatus can take 5s+ waiting on the crypto
@@ -44,8 +60,10 @@ export const load: PageLoad = async ({ parent }) => {
 			}
 			const { cryptoManager } = await import('@reborn/crypto');
 			await cryptoManager.waitForRestore();
-			// Local-only mode has no unlock page: the key lives at-rest in IndexedDB,
-			// so a restored key means straight to the app.
+			// Passcode-locked local data was already routed to /auth/lock above.
+			// Here the unwrapped key lives at-rest in IndexedDB, so a restored key
+			// means straight to the app; a local-only marker without a key is a
+			// degenerate state - fall back to login so the user can re-enter.
 			redirect(
 				303,
 				cryptoManager.isInitialized()

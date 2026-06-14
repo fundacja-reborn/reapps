@@ -22,8 +22,8 @@
   },
   "passcode": {
     "settings_item_title": "Lokaler Code",
-    "settings_item_desc": "Dieses Gerät mit einem Code sperren, der deinen lokalen Schlüssel verschlüsselt",
-    "settings_intro": "Ein lokaler Code verschlüsselt den Schlüssel zu deinen Daten auf diesem Gerät. Du gibst ihn jedes Mal ein, wenn du die App nach dem Schließen wieder öffnest. Es gibt keine Wiederherstellung - wenn du ihn vergisst, sind die lokalen Daten verloren.",
+    "settings_item_desc": "Lokaler Modus (ohne Konto): dieses Gerät mit einem Code sperren, der deinen lokalen Schlüssel verschlüsselt",
+    "settings_intro": "Diese Option gilt nur für den lokalen Modus (ohne Konto). Ein lokaler Code verschlüsselt den Schlüssel zu deinen Daten auf diesem Gerät. Du gibst ihn jedes Mal ein, wenn du die App nach dem Schließen wieder öffnest. Es gibt keine Wiederherstellung - wenn du ihn vergisst, sind die lokalen Daten verloren.",
     "setup_title": "Code einrichten",
     "setup_desc": "Verschlüssle deinen lokalen Schlüssel mit einem Code. Ohne ihn wird der Schlüssel unverschlüsselt auf diesem Gerät gespeichert.",
     "setup_cta": "Code festlegen",
@@ -60,5 +60,6 @@
     "reset_title": "Zurücksetzen und lokale Daten löschen?",
     "reset_desc": "Ein vergessener Code kann nicht wiederhergestellt werden. Du kannst die App zurücksetzen, dabei werden aber alle lokalen Daten auf diesem Gerät dauerhaft gelöscht.",
     "reset_confirm": "Löschen und zurücksetzen"
-  }
+  },
+  "account_features_title": "Mit einem Konto verfügbar"
 }

@@ -22,8 +22,8 @@
   },
   "passcode": {
     "settings_item_title": "Local passcode",
-    "settings_item_desc": "Lock this device with a passcode that encrypts your local key",
-    "settings_intro": "A local passcode encrypts your data key on this device. You'll enter it each time you open the app after closing it. There is no recovery - if you forget it, the local data is lost.",
+    "settings_item_desc": "Local (no-account) mode: lock this device with a passcode that encrypts your local key",
+    "settings_intro": "This option is only for local (no-account) mode. A local passcode encrypts your data key on this device. You'll enter it each time you open the app after closing it. There is no recovery - if you forget it, the local data is lost.",
     "setup_title": "Set up a passcode",
     "setup_desc": "Encrypt your local key with a passcode. Without one, the key is stored unencrypted on this device.",
     "setup_cta": "Set passcode",
@@ -60,5 +60,6 @@
     "reset_title": "Reset and erase local data?",
     "reset_desc": "There is no way to recover a forgotten passcode. You can reset the app, but this permanently erases all local data on this device.",
     "reset_confirm": "Erase and reset"
-  }
+  },
+  "account_features_title": "Available with an account"
 }

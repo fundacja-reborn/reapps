@@ -1,6 +1,7 @@
 {
   "appTitle": "reborn/notes",
   "local_mode": {
+    "account_features_title": "Available with an account",
     "welcome": {
       "title": "Working offline, no account",
       "subtitle": "You're using re/notes without an account. Here's what that means:",
@@ -21,8 +22,8 @@
     "replace_confirm": "Sign in anyway",
     "passcode": {
       "settings_item_title": "Local passcode",
-      "settings_item_desc": "Lock this device with a passcode that encrypts your local key",
-      "settings_intro": "A local passcode encrypts your data key on this device. You'll enter it each time you open the app after closing it. There is no recovery - if you forget it, the local data is lost.",
+      "settings_item_desc": "Local (no-account) mode: lock this device with a passcode that encrypts your local key",
+      "settings_intro": "This option is only for local (no-account) mode. A local passcode encrypts your data key on this device. You'll enter it each time you open the app after closing it. There is no recovery - if you forget it, the local data is lost.",
       "setup_title": "Set up a passcode",
       "setup_desc": "Encrypt your local key with a passcode. Without one, the key is stored unencrypted on this device.",
       "setup_cta": "Set passcode",

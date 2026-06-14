@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
+	import { onMount } from 'svelte';
 	import { goto } from '$lib/utils/navigation';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
@@ -8,6 +9,7 @@
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { sessionExpired } from '$lib/stores/session-expired.store';
 	import { isLocalOnly } from '$lib/stores/auth.store';
+	import { cryptoManager } from '@reborn/crypto';
 	import { LoginPage } from '@reborn/ui';
 	import ConfirmDialog from '$lib/components/shared/dialogs/ConfirmDialog.svelte';
 	import { createLogger } from '@reborn/utils';
@@ -33,6 +35,15 @@
 			// Belt-and-suspenders cleanup so the banner never lingers when
 			// a non-standard path dropped us here (cross-app logout, etc.).
 			sessionExpired.set(false);
+		}
+	});
+
+	onMount(() => {
+		// A local passcode wrap means there is locked local data on this origin -
+		// never show the login form (its "Use without account" would regenerate
+		// the master key and orphan the data). Send the user to unlock instead.
+		if (cryptoManager.isLocalPasscodeLocked()) {
+			goto('/auth/lock');
 		}
 	});
 
@@ -95,6 +106,13 @@
 	}
 
 	async function handleLocalMode() {
+		// Defense-in-depth: never start a fresh local session while a passcode
+		// wrap exists (enterLocalMode would refuse, but route to unlock here so
+		// the user gets the lock screen rather than an error toast).
+		if (cryptoManager.isLocalPasscodeLocked()) {
+			await goto('/auth/lock');
+			return;
+		}
 		loading = true;
 		error = null;
 		const ok = await authOperationsService.enterLocalMode();

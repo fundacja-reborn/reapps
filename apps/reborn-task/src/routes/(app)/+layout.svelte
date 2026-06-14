@@ -350,17 +350,24 @@
 			taskListStore
 				.loadLists()
 				.then(async () => {
-					// Skip the online-setup gate in local-only mode: there is no server
-					// to sync from, and enterLocalMode() already created a default list.
-					if ($activeLists.length === 0 && $session.user?.id && !$session.isLocalOnly) {
-						if (!navigator.onLine) {
+					if ($activeLists.length === 0 && $session.user?.id) {
+						if ($session.isLocalOnly) {
+							// Local-only: no server to sync from. Unlock paths that bypass
+							// enterLocalMode() (cold-start session restore, local passcode
+							// unlock) land here with no default list - create one so
+							// quick-add has a target (otherwise create silently no-ops with
+							// just a toast). ensureDefaultList is idempotent + mutexed, and
+							// loadLists refreshes the decrypted stores.
+							await listOperationsService.ensureDefaultList($session.user.id);
+							await taskListStore.loadLists();
+						} else if (!navigator.onLine) {
 							// First run offline — cannot sync, show blocking UI
 							needsOnlineSetup = true;
 							isLoading = false;
 							return;
 						}
-						// Online but no lists yet — background sync (initialSync) will
-						// pull them from server and call ensureDefaultList() in its
+						// Online account but no lists yet — background sync (initialSync)
+						// will pull them from server and call ensureDefaultList() in its
 						// post-sync chain. Don't create a list here to avoid duplicates.
 					}
 					needsOnlineSetup = false;
@@ -891,16 +898,24 @@
 	$effect(() => {
 		if (!browser || !$session.isInitialized || $session.isLoading) return;
 		if (isAuthRedirecting) return;
+
+		// A local passcode wrap = local data locked behind a passcode on this
+		// origin. Route to the lock screen first, before any account / local-mode
+		// decision and regardless of how the session store resolved - a sync,
+		// race-free check (the wrap is cleared whenever an account key is set, so
+		// its presence unambiguously means local-only + locked). Without this a
+		// transient/empty session could flash /auth/login or /auth/unlock.
+		if (cryptoManager.isLocalPasscodeLocked()) {
+			isAuthRedirecting = true;
+			goto('/auth/lock', { replaceState: true }).finally(() => {
+				isAuthRedirecting = false;
+			});
+			return;
+		}
+
 		// Local-only / no-account mode is a valid state - never bounce it to
-		// login/unlock. But if an optional local passcode is set and the key is
-		// locked (not in memory), route to the local lock screen.
+		// login/unlock.
 		if ($session.isLocalOnly) {
-			if (!$session.hasE2E && cryptoManager.isLocalPasscodeEnabled()) {
-				isAuthRedirecting = true;
-				goto('/auth/lock', { replaceState: true }).finally(() => {
-					isAuthRedirecting = false;
-				});
-			}
 			return;
 		}
 

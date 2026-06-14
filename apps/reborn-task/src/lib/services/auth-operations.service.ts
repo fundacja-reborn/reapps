@@ -354,7 +354,17 @@ export class AuthOperationsService {
 
 			// Generate + persist a local master key unless one is already loaded
 			// (e.g. restored from IndexedDB/vault on a returning local session).
+			// A local passcode wrap means the key is LOCKED behind a passcode, not
+			// absent: generating a fresh key here would purge the wrap
+			// (setMasterKey) and orphan every record encrypted under the real key.
+			// Refuse so the data is recoverable - the caller routes to /auth/lock.
 			if (!cryptoManager.isInitialized()) {
+				if (cryptoManager.isLocalPasscodeEnabled()) {
+					logger.warn(
+						'Local passcode set but key locked - refusing to start a fresh local session (would orphan encrypted data)'
+					);
+					return false;
+				}
 				const key = await cryptoManager.generateMasterKey();
 				await cryptoManager.setMasterKey(key);
 			}

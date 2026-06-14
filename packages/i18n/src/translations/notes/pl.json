@@ -1,6 +1,7 @@
 {
   "appTitle": "reborn/notes",
   "local_mode": {
+    "account_features_title": "Dostępne z kontem",
     "welcome": {
       "title": "Tryb offline, bez konta",
       "subtitle": "Używasz re/notes bez konta. Oto co to oznacza:",
@@ -21,8 +22,8 @@
     "replace_confirm": "Zaloguj mimo to",
     "passcode": {
       "settings_item_title": "Kod dostępu",
-      "settings_item_desc": "Zablokuj to urządzenie kodem szyfrującym lokalny klucz",
-      "settings_intro": "Kod dostępu szyfruje klucz do Twoich danych na tym urządzeniu. Będziesz go podawać przy każdym otwarciu aplikacji po jej zamknięciu. Nie ma możliwości odzyskania - jeśli go zapomnisz, dane lokalne przepadną.",
+      "settings_item_desc": "Tryb lokalny (bez konta): zablokuj to urządzenie kodem szyfrującym lokalny klucz",
+      "settings_intro": "Ta opcja dotyczy tylko trybu lokalnego (bez konta). Kod dostępu szyfruje klucz do Twoich danych na tym urządzeniu. Będziesz go podawać przy każdym otwarciu aplikacji po jej zamknięciu. Nie ma możliwości odzyskania - jeśli go zapomnisz, dane lokalne przepadną.",
       "setup_title": "Ustaw kod dostępu",
       "setup_desc": "Zaszyfruj lokalny klucz kodem. Bez niego klucz jest przechowywany na tym urządzeniu bez szyfrowania.",
       "setup_cta": "Ustaw kod",

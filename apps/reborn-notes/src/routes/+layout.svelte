@@ -69,6 +69,20 @@
     // Public read-only share view (/s/{slug}) - no account needed.
     const isPublicShareRoute = path.startsWith(`${basePath}/s/`);
 
+    // A local passcode wrap = local data locked behind a passcode on this
+    // origin. Route to the lock screen first, before any account / local-mode
+    // decision - a sync, race-free check (the wrap is cleared whenever an
+    // account key is set, so its presence unambiguously means local-only +
+    // locked) so a still-resolving auth store can't flash the login or unlock
+    // form instead of the lock screen.
+    if (cryptoManager.isLocalPasscodeLocked() && !isAuthRoute && !isPublicShareRoute) {
+      untrack(() => noteIndex.clear());
+      untrack(() => {
+        goto('/auth/lock');
+      });
+      return;
+    }
+
     if (
       !$authStore.isAuthenticated &&
       !$authStore.isLocalOnly &&
@@ -88,20 +102,6 @@
         goto('/auth/unlock');
       });
       return;
-    }
-
-    // Local-only mode with an optional passcode set, key locked → lock screen.
-    if (
-      $authStore.isLocalOnly &&
-      !$authStore.hasE2E &&
-      cryptoManager.isLocalPasscodeEnabled() &&
-      !isAuthRoute &&
-      !isPublicShareRoute
-    ) {
-      untrack(() => noteIndex.clear());
-      untrack(() => {
-        goto('/auth/lock');
-      });
     }
   });
 

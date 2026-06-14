@@ -20,7 +20,7 @@
     DialogTitle,
     toast
   } from '@reborn/ui';
-  import { Lock, LockKeyhole } from '@lucide/svelte';
+  import { Lock, LockKeyhole, Eye, EyeOff } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import { goto } from '$lib/utils/navigation';
   import { authStore } from '$lib/stores/auth.store';
@@ -36,6 +36,7 @@
   let currentPasscode = $state('');
   let newPasscode = $state('');
   let confirmPasscode = $state('');
+  let showPasscode = $state(false);
   let submitAttempted = $state(false);
   let isSaving = $state(false);
   let error = $state<string | null>(null);
@@ -125,6 +126,17 @@
   }
 </script>
 
+{#snippet revealToggle()}
+  <button
+    type="button"
+    class="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+    onclick={() => (showPasscode = !showPasscode)}
+    aria-label={$t('local_mode.passcode.toggle_visibility')}
+  >
+    {#if showPasscode}<EyeOff class="h-4 w-4" />{:else}<Eye class="h-4 w-4" />{/if}
+  </button>
+{/snippet}
+
 <SettingsLayout title={$t('local_mode.passcode.settings_item_title')} backHref="/settings">
   <div class="space-y-6">
     <Alert>
@@ -163,26 +175,33 @@
           {#if enabled}
             <div class="space-y-2">
               <Label for="current-passcode">{$t('local_mode.passcode.current_label')}</Label>
-              <Input
-                id="current-passcode"
-                type="password"
-                bind:value={currentPasscode}
-                autocomplete="off"
-                disabled={isSaving}
-              />
+              <div class="relative">
+                <Input
+                  id="current-passcode"
+                  type={showPasscode ? 'text' : 'password'}
+                  bind:value={currentPasscode}
+                  autocomplete="off"
+                  disabled={isSaving}
+                  class="pr-10"
+                />
+                {@render revealToggle()}
+              </div>
             </div>
           {/if}
 
           <div class="space-y-2">
             <Label for="new-passcode">{$t('local_mode.passcode.new_label')}</Label>
-            <Input
-              id="new-passcode"
-              type="password"
-              bind:value={newPasscode}
-              autocomplete="new-password"
-              disabled={isSaving}
-              class={newError ? 'border-destructive' : ''}
-            />
+            <div class="relative">
+              <Input
+                id="new-passcode"
+                type={showPasscode ? 'text' : 'password'}
+                bind:value={newPasscode}
+                autocomplete="new-password"
+                disabled={isSaving}
+                class="pr-10 {newError ? 'border-destructive' : ''}"
+              />
+              {@render revealToggle()}
+            </div>
             {#if newError}
               <p class="text-sm text-destructive">{newError}</p>
             {:else}
@@ -194,14 +213,17 @@
 
           <div class="space-y-2">
             <Label for="confirm-passcode">{$t('local_mode.passcode.confirm_label')}</Label>
-            <Input
-              id="confirm-passcode"
-              type="password"
-              bind:value={confirmPasscode}
-              autocomplete="new-password"
-              disabled={isSaving}
-              class={confirmError ? 'border-destructive' : ''}
-            />
+            <div class="relative">
+              <Input
+                id="confirm-passcode"
+                type={showPasscode ? 'text' : 'password'}
+                bind:value={confirmPasscode}
+                autocomplete="new-password"
+                disabled={isSaving}
+                class="pr-10 {confirmError ? 'border-destructive' : ''}"
+              />
+              {@render revealToggle()}
+            </div>
             {#if confirmError}
               <p class="text-sm text-destructive">{confirmError}</p>
             {/if}

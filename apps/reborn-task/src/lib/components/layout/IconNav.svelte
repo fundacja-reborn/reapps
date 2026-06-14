@@ -25,7 +25,8 @@
 		LogOut,
 		Share2,
 		Heart,
-		UserPlus
+		UserPlus,
+		Lock
 	} from '@lucide/svelte';
 	import {
 		overdueTasks,
@@ -38,6 +39,8 @@
 	import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
 	import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@reborn/ui';
 	import { session } from '$lib/stores/auth.store';
+	import { cryptoManager } from '@reborn/crypto';
+	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { goto } from '$lib/utils/navigation';
 	import { t, locale as i18nLocale } from '$lib/stores/i18n.store';
 	import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
@@ -94,8 +97,15 @@
 
 	async function handleLogout() {
 		loggingOut = true;
-		const { authOperationsService } = await import('$lib/services/auth-operations.service');
 		await authOperationsService.logout();
+	}
+
+	// Local passcode: lock the app now (clears the in-memory key, keeps the wrap)
+	// and show the lock screen. Mirrors the settings page "Lock now" action.
+	function handleLockNow() {
+		cryptoManager.lockLocal();
+		authOperationsService.getSessionManager().setSession({ hasE2E: false });
+		goto('/auth/lock');
 	}
 
 	const SECTIONS = $derived([
@@ -530,6 +540,12 @@
 								<Settings class="h-4 w-4" />
 								{$t('settings.app_settings')}
 							</DropdownMenu.Item>
+							{#if $session.isLocalOnly && cryptoManager.isLocalPasscodeEnabled()}
+								<DropdownMenu.Item onclick={handleLockNow}>
+									<Lock class="h-4 w-4" />
+									{$t('local_mode.passcode.lock_now_cta')}
+								</DropdownMenu.Item>
+							{/if}
 						</DropdownMenu.Group>
 						{#if $session.isLocalOnly}
 							<DropdownMenu.Separator />
@@ -600,6 +616,19 @@
 				<Settings class="mr-2 h-4 w-4" />
 				{$t('settings.app_settings')}
 			</Button>
+			{#if $session.isLocalOnly && cryptoManager.isLocalPasscodeEnabled()}
+				<Button
+					variant="ghost"
+					class="w-full justify-start"
+					onclick={() => {
+						userSheetOpen = false;
+						handleLockNow();
+					}}
+				>
+					<Lock class="mr-2 h-4 w-4" />
+					{$t('local_mode.passcode.lock_now_cta')}
+				</Button>
+			{/if}
 			{#if $session.isLocalOnly}
 				<Button
 					variant="ghost"

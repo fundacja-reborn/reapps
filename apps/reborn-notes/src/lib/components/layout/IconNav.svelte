@@ -33,12 +33,14 @@
     CalendarDays,
     Share2,
     Heart,
-    UserPlus
+    UserPlus,
+    Lock
   } from '@lucide/svelte';
   import * as Tooltip from '@reborn/ui/components/tooltip';
   import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
   import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@reborn/ui';
   import { authStore, getUserInitial } from '$lib/stores/auth.store';
+  import { cryptoManager } from '@reborn/crypto';
   import { goto } from '$lib/utils/navigation';
   import { base } from '$app/paths';
   import { t, locale as i18nLocale } from '$lib/stores/i18n.store';
@@ -111,6 +113,13 @@
   function handleLogout() {
     loggingOut = true;
     authStore.logout();
+  }
+
+  // Local passcode: lock the app now (clears the in-memory key, keeps the wrap)
+  // and show the lock screen. Mirrors the settings page "Lock now" action.
+  function handleLockNow() {
+    authStore.lockLocalNow();
+    goto('/auth/lock');
   }
 
   const PERIODIC_BUTTONS = $derived(
@@ -587,6 +596,12 @@
                 <Settings class="h-4 w-4" />
                 {$t('nav.settings')}
               </DropdownMenu.Item>
+              {#if $authStore.isLocalOnly && cryptoManager.isLocalPasscodeEnabled()}
+                <DropdownMenu.Item onclick={handleLockNow}>
+                  <Lock class="h-4 w-4" />
+                  {$t('local_mode.passcode.lock_now_cta')}
+                </DropdownMenu.Item>
+              {/if}
             </DropdownMenu.Group>
             {#if $authStore.isAuthenticated}
               <DropdownMenu.Separator />
@@ -655,6 +670,19 @@
         <Settings class="mr-2 h-5 w-5" />
         {$t('nav.settings')}
       </Button>
+      {#if $authStore.isLocalOnly && cryptoManager.isLocalPasscodeEnabled()}
+        <Button
+          variant="ghost"
+          class="w-full justify-start min-h-11"
+          onclick={() => {
+            userSheetOpen = false;
+            handleLockNow();
+          }}
+        >
+          <Lock class="mr-2 h-5 w-5" />
+          {$t('local_mode.passcode.lock_now_cta')}
+        </Button>
+      {/if}
       {#if $authStore.isAuthenticated}
         <Button
           variant="ghost"

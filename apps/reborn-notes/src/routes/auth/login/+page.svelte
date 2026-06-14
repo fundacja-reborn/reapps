@@ -5,6 +5,7 @@
   import { goto } from '$lib/utils/navigation';
   import { page } from '$app/stores';
   import { LoginPage } from '@reborn/ui';
+  import { cryptoManager } from '@reborn/crypto';
   import { authStore } from '$lib/stores/auth.store';
   import { sessionExpired } from '$lib/stores/sync-status.store';
   import { loginInNotes } from '$lib/services/notes-auth.service';
@@ -27,6 +28,13 @@
     // Belt-and-suspenders cleanup so the banner never lingers when a
     // non-standard path dropped us here (cross-app logout, etc.).
     sessionExpired.set(false);
+    // A local passcode wrap means there is locked local data on this origin -
+    // never show the login form (its "Use without account" would regenerate the
+    // master key and orphan the data). Send the user to unlock instead.
+    if (cryptoManager.isLocalPasscodeLocked()) {
+      goto('/auth/lock');
+      return;
+    }
     if ($authStore.isAuthenticated) {
       goto($authStore.hasE2E ? returnTo : '/auth/unlock');
     }
@@ -73,6 +81,13 @@
   }
 
   async function handleLocalMode() {
+    // Defense-in-depth: never start a fresh local session while a passcode wrap
+    // exists (enterLocalMode would refuse, but route to unlock here so the user
+    // gets the lock screen rather than an error).
+    if (cryptoManager.isLocalPasscodeLocked()) {
+      await goto('/auth/lock');
+      return;
+    }
     loading = true;
     error = null;
     const ok = await authStore.enterLocalMode();
