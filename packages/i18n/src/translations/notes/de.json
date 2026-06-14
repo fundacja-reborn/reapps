@@ -1,5 +1,55 @@
 {
   "appTitle": "reborn/notes",
+  "app_lock": {
+    "settings_item_title": "App-Sperre",
+    "settings_item_desc": "Biometrie zum Öffnen der App verlangen",
+    "settings_intro": "Die App-Sperre verlangt bei jedem Öffnen von re/notes und nach längerer Zeit im Hintergrund eine biometrische Bestätigung. Deine Notizen bleiben auf diesem Gerät ohnehin verschlüsselt - das ist ein Schnellzugriffsschutz, keine zusätzliche Verschlüsselung.",
+    "unavailable_title": "Biometrie nicht eingerichtet",
+    "unavailable_desc": "Richte in den Geräteeinstellungen einen Fingerabdruck oder eine Gesichtsentsperrung ein, um die App-Sperre zu nutzen.",
+    "enable_title": "App-Sperre",
+    "enable_desc": "Erfordert {biometry}, um die App zu öffnen.",
+    "enable_cta": "App-Sperre aktivieren",
+    "disable_cta": "Deaktivieren",
+    "timeout_title": "Erneut sperren nach",
+    "timeout_desc": "Wie lange die App im Hintergrund sein darf, bevor erneut gefragt wird.",
+    "timeout": {
+      "immediate": "Sofort",
+      "min1": "Nach 1 Minute",
+      "min5": "Nach 5 Minuten",
+      "min15": "Nach 15 Minuten"
+    },
+    "lock_now_title": "Jetzt sperren",
+    "lock_now_desc": "Die App sofort sperren.",
+    "lock_now_cta": "Jetzt sperren",
+    "success_enabled": "App-Sperre aktiviert",
+    "success_disabled": "App-Sperre deaktiviert",
+    "enable_failed": "App-Sperre konnte nicht aktiviert werden. Bitte erneut versuchen.",
+    "locked_title": "App gesperrt",
+    "locked_desc": "Zum Fortfahren mit {biometry} entsperren.",
+    "unlock_cta": "Entsperren",
+    "unlocking": "Wird entsperrt...",
+    "use_password": "Stattdessen Passwort verwenden",
+    "prompt": {
+      "reason": "re/notes entsperren",
+      "cancel": "Abbrechen",
+      "android_title": "re/notes entsperren",
+      "android_subtitle": "Bestätige, dass du es bist, um fortzufahren"
+    },
+    "error": {
+      "lockout": "Zu viele Versuche. Warte einen Moment oder verwende dein Passwort.",
+      "unavailable": "Biometrie ist gerade nicht verfügbar. Verwende dein Passwort.",
+      "vault": "Entsperren auf diesem Gerät nicht möglich. Verwende dein Passwort, um fortzufahren.",
+      "failed": "Entsperren fehlgeschlagen. Bitte erneut versuchen."
+    },
+    "biometry": {
+      "faceId": "Face ID",
+      "touchId": "Touch ID",
+      "fingerprint": "Fingerabdruck",
+      "face": "Gesichtserkennung",
+      "iris": "Iris",
+      "generic": "Biometrie"
+    }
+  },
   "local_mode": {
     "account_features_title": "Mit einem Konto verfügbar",
     "welcome": {

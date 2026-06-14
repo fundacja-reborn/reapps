@@ -13,6 +13,7 @@
     Trash2,
     LayoutList,
     Share2,
+    Fingerprint,
     ChevronLeft,
     ChevronRight,
     ChevronDown,
@@ -320,6 +321,23 @@
                 <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
               </a>
             {/each}
+
+            {#if __REBORN_NATIVE__}
+              <!-- App Lock (biometric) - native only. The master key must live
+                   in the device vault for the biometric gate to read it back,
+                   which is the account-mode posture on native. -->
+              <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+              <a href={resolveHref('/settings/security/app-lock')} class={itemClasses}>
+                <Fingerprint class="h-5 w-5 text-muted-foreground shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium">{$t('app_lock.settings_item_title')}</div>
+                  <div class="text-sm text-muted-foreground">
+                    {$t('app_lock.settings_item_desc')}
+                  </div>
+                </div>
+                <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
+              </a>
+            {/if}
 
             <!-- Delete account -->
             <a
