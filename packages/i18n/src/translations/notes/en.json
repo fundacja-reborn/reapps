@@ -1,5 +1,55 @@
 {
   "appTitle": "reborn/notes",
+  "app_lock": {
+    "settings_item_title": "App Lock",
+    "settings_item_desc": "Require biometrics to open the app",
+    "settings_intro": "App Lock asks for biometric confirmation each time you open re/notes and after it has been in the background for a while. Your notes stay encrypted on this device either way - this is a quick-access guard, not extra encryption.",
+    "unavailable_title": "Biometrics not set up",
+    "unavailable_desc": "Add a fingerprint or face unlock in your device settings to use App Lock.",
+    "enable_title": "App Lock",
+    "enable_desc": "Require {biometry} to open the app.",
+    "enable_cta": "Enable App Lock",
+    "disable_cta": "Turn off",
+    "timeout_title": "Re-lock after",
+    "timeout_desc": "How long the app can stay in the background before asking again.",
+    "timeout": {
+      "immediate": "Immediately",
+      "min1": "After 1 minute",
+      "min5": "After 5 minutes",
+      "min15": "After 15 minutes"
+    },
+    "lock_now_title": "Lock now",
+    "lock_now_desc": "Lock the app immediately.",
+    "lock_now_cta": "Lock now",
+    "success_enabled": "App Lock enabled",
+    "success_disabled": "App Lock turned off",
+    "enable_failed": "Couldn't enable App Lock. Please try again.",
+    "locked_title": "App locked",
+    "locked_desc": "Unlock with {biometry} to continue.",
+    "unlock_cta": "Unlock",
+    "unlocking": "Unlocking...",
+    "use_password": "Use password instead",
+    "prompt": {
+      "reason": "Unlock re/notes",
+      "cancel": "Cancel",
+      "android_title": "Unlock re/notes",
+      "android_subtitle": "Confirm it's you to continue"
+    },
+    "error": {
+      "lockout": "Too many attempts. Wait a moment, or use your password.",
+      "unavailable": "Biometrics aren't available right now. Use your password.",
+      "vault": "Couldn't unlock on this device. Use your password to continue.",
+      "failed": "Couldn't unlock. Try again."
+    },
+    "biometry": {
+      "faceId": "Face ID",
+      "touchId": "Touch ID",
+      "fingerprint": "fingerprint",
+      "face": "face unlock",
+      "iris": "iris",
+      "generic": "biometrics"
+    }
+  },
   "local_mode": {
     "account_features_title": "Available with an account",
     "welcome": {

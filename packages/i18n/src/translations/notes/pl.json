@@ -1,5 +1,55 @@
 {
   "appTitle": "reborn/notes",
+  "app_lock": {
+    "settings_item_title": "Blokada aplikacji",
+    "settings_item_desc": "Wymagaj biometrii do otwarcia aplikacji",
+    "settings_intro": "Blokada aplikacji prosi o potwierdzenie biometryczne przy każdym otwarciu re/notes oraz po dłuższym pobycie w tle. Twoje notatki i tak pozostają zaszyfrowane na tym urządzeniu - to zabezpieczenie szybkiego dostępu, nie dodatkowe szyfrowanie.",
+    "unavailable_title": "Biometria nie jest skonfigurowana",
+    "unavailable_desc": "Dodaj odcisk palca lub rozpoznawanie twarzy w ustawieniach urządzenia, aby korzystać z blokady aplikacji.",
+    "enable_title": "Blokada aplikacji",
+    "enable_desc": "Wymagaj {biometry} do otwarcia aplikacji.",
+    "enable_cta": "Włącz blokadę aplikacji",
+    "disable_cta": "Wyłącz",
+    "timeout_title": "Ponowna blokada po",
+    "timeout_desc": "Jak długo aplikacja może pozostać w tle, zanim zapyta ponownie.",
+    "timeout": {
+      "immediate": "Natychmiast",
+      "min1": "Po 1 minucie",
+      "min5": "Po 5 minutach",
+      "min15": "Po 15 minutach"
+    },
+    "lock_now_title": "Zablokuj teraz",
+    "lock_now_desc": "Natychmiast zablokuj aplikację.",
+    "lock_now_cta": "Zablokuj teraz",
+    "success_enabled": "Blokada aplikacji włączona",
+    "success_disabled": "Blokada aplikacji wyłączona",
+    "enable_failed": "Nie udało się włączyć blokady aplikacji. Spróbuj ponownie.",
+    "locked_title": "Aplikacja zablokowana",
+    "locked_desc": "Odblokuj za pomocą {biometry}, aby kontynuować.",
+    "unlock_cta": "Odblokuj",
+    "unlocking": "Odblokowywanie...",
+    "use_password": "Użyj zamiast tego hasła",
+    "prompt": {
+      "reason": "Odblokuj re/notes",
+      "cancel": "Anuluj",
+      "android_title": "Odblokuj re/notes",
+      "android_subtitle": "Potwierdź swoją tożsamość, aby kontynuować"
+    },
+    "error": {
+      "lockout": "Zbyt wiele prób. Poczekaj chwilę lub użyj hasła.",
+      "unavailable": "Biometria jest teraz niedostępna. Użyj hasła.",
+      "vault": "Nie udało się odblokować na tym urządzeniu. Użyj hasła, aby kontynuować.",
+      "failed": "Nie udało się odblokować. Spróbuj ponownie."
+    },
+    "biometry": {
+      "faceId": "Face ID",
+      "touchId": "Touch ID",
+      "fingerprint": "odcisku palca",
+      "face": "rozpoznawania twarzy",
+      "iris": "tęczówki",
+      "generic": "biometrii"
+    }
+  },
   "local_mode": {
     "account_features_title": "Dostępne z kontem",
     "welcome": {

@@ -24,6 +24,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>re/notes uses Face ID to unlock the app when App Lock is enabled. Your notes stay encrypted on this device either way.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

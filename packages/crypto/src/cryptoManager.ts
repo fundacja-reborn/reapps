@@ -84,6 +84,19 @@ export class CryptoManager {
    */
   private readonly LOCAL_PASSCODE_WRAP_KEY = 'reborn_local_passcode_wrap';
   private readonly WRAP_FORMAT_VERSION = 1;
+  /**
+   * localStorage flag for the native App Lock (biometric gate). When set on a
+   * native build, the master key is NOT auto-read from the vault at cold start:
+   * the app shows the biometric lock screen and calls `unlockFromVault()` after
+   * a successful prompt. A plain on/off marker (no secret), read synchronously
+   * so the auth guard can branch without awaiting restore - same rationale as
+   * the passcode wrap above. Native-only in practice: the web build never sets
+   * it and has no vault, so the gate in restoreKeyOnStartup stays inert. App
+   * Lock is a UX gate on *reading* the vault, not a re-wrap of the key - the
+   * cryptographic at-rest posture is unchanged (Keystore/Keychain-wrapped). See
+   * planning/native-app-lock-biometric-plan.md.
+   */
+  private readonly APP_LOCK_ENABLED_KEY = 'reborn_app_lock_enabled';
   private restoreKeyAttempted = false;
   private restorePromise: Promise<boolean> | null = null;
   private vault: MasterKeyVault | null = null;
@@ -147,6 +160,19 @@ export class CryptoManager {
       if (this.hasLocalPasscodeWrap()) {
         this.restoreKeyAttempted = true;
         logger.info('Local passcode set - key locked, awaiting passcode unlock');
+        return false;
+      }
+
+      // App Lock (native): the key lives in the vault, but the user opted into a
+      // biometric gate on app open. Do NOT auto-read the vault at cold start -
+      // stay locked and let the biometric lock screen drive unlockFromVault()
+      // after the prompt passes. Mirrors the passcode gate above; the two are
+      // mutually exclusive (a local passcode purges the vault, so an enabled
+      // flag + a populated vault only coexist for an account session). Requires
+      // a vault, so this is inert on web (this.vault === null).
+      if (this.vault && this.hasAppLockEnabled()) {
+        this.restoreKeyAttempted = true;
+        logger.info('App Lock enabled - key locked, awaiting biometric unlock');
         return false;
       }
 
@@ -366,6 +392,81 @@ export class CryptoManager {
     await this.persistKeyToVault();
     await this.clearKeyFromIDB();
     logger.info('Master key migrated from IndexedDB to vault');
+  }
+
+  // ── App Lock (native biometric gate) ─────────────────────────
+  //
+  // Opt-in lock for native shells: require a device biometric (or device
+  // credential) before the vault-backed master key is read, on cold start and
+  // on resume after a configurable idle timeout. This is a UX access gate -
+  // it defends against someone opening the app on an unlocked device - not a
+  // cryptographic upgrade: the key stays Keystore/Keychain-wrapped in the vault
+  // exactly as before, and code running in the app sandbox could still read it.
+  // The cryptographic option (Keystore setUserAuthenticationRequired) is a
+  // documented future hardening; see planning/native-app-lock-biometric-plan.md.
+
+  /** Whether the native App Lock biometric gate is enabled (localStorage flag). */
+  private hasAppLockEnabled(): boolean {
+    if (typeof window === 'undefined' || !window.localStorage) return false;
+    return window.localStorage.getItem(this.APP_LOCK_ENABLED_KEY) === '1';
+  }
+
+  /** Public reader for settings UI / auth guards (synchronous, no restore wait). */
+  public isAppLockEnabled(): boolean {
+    return this.hasAppLockEnabled();
+  }
+
+  /**
+   * Turn the native App Lock on or off. Only writes the flag; the key itself
+   * stays in the vault either way (App Lock gates *reading* the vault, it does
+   * not re-wrap the key). The caller must verify biometry availability before
+   * enabling.
+   */
+  public setAppLockEnabled(enabled: boolean): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    if (enabled) window.localStorage.setItem(this.APP_LOCK_ENABLED_KEY, '1');
+    else window.localStorage.removeItem(this.APP_LOCK_ENABLED_KEY);
+  }
+
+  /**
+   * App Lock is engaged: enabled, a vault is present (native), and the key is
+   * not in memory. The auth guard routes to the biometric lock screen on this -
+   * a check distinct from the password-unlock state so an account user gets the
+   * biometric prompt, not the password form.
+   */
+  public isAppLockLocked(): boolean {
+    return !!this.vault && this.hasAppLockEnabled() && !this.isInitialized();
+  }
+
+  /**
+   * Read the master key from the vault after the App Lock biometric prompt has
+   * passed. Mirrors the cold-start vault path (load → verify, with the one-time
+   * legacy-IndexedDB migration as a fallback). Returns true once the key is in
+   * memory. No-op without an injected vault (web). The biometric prompt itself
+   * lives in the native app layer; crypto only owns the key read.
+   */
+  public async unlockFromVault(): Promise<boolean> {
+    if (!this.vault) return false;
+    const restored = await this.restoreKeyFromVault();
+    if (!restored) {
+      await this.migrateLegacyKeyToVault();
+    }
+    return this.isInitialized();
+  }
+
+  /**
+   * Re-lock for App Lock: drop the in-memory key but KEEP the vault entry, so a
+   * later biometric unlock can re-read it. Unlike clearMasterKey() (logout), the
+   * vault and account credentials are preserved. Used on resume-after-timeout
+   * and the manual "Lock now" action.
+   */
+  public lockToVault(): void {
+    this.masterKey = null;
+    this.initialized = false;
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.removeItem(this.CRYPTO_VERIFIED_KEY);
+    }
+    logger.debug('Master key locked to vault (App Lock)');
   }
 
   /**
