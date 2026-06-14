@@ -109,7 +109,17 @@
   // Also triggers pull from server - covers the case where onMount already ran
   // before authentication completed (login → goto('/') stays within the same SPA session).
   $effect(() => {
-    if (!browser || !$authStore.hasE2E) return;
+    if (!browser) return;
+    if (!$authStore.hasE2E) {
+      // Locked (or not yet unlocked): allow the NEXT unlock to re-hydrate. The
+      // root layout never remounts on a soft lock -> unlock (the lock screen
+      // lives under it), so without resetting this one-shot flag the cleared
+      // noteIndex would stay empty after a local passcode unlock until a hard
+      // reload. Resetting here makes runSync() rebuild on re-unlock. See
+      // guideline 64 (local passcode lock/unlock).
+      hasTriggeredInitialSync = false;
+      return;
+    }
     if (hasTriggeredInitialSync) return; // onMount already kicked off a pull
 
     hasTriggeredInitialSync = true;
