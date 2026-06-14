@@ -366,9 +366,16 @@
     }
   }
 
-  // Check if there are image placeholders to show "Load all" button
+  // Show the "Load all images" button only when the rendered output actually
+  // contains per-image Load buttons. `renderer.image` emits the
+  // `image-placeholder-load` class only for ask-mode external-image tokens, and
+  // marked never calls it for image syntax inside inline code or fenced blocks.
+  // The previous check regex-matched the raw source, so documentation that
+  // mentions `![](https://example.com)` inside backticks lit the banner with no
+  // placeholder beneath it. Deriving from the rendered `html` keeps this
+  // reactive and consistent with what is actually shown.
   const hasImagePlaceholders = $derived(
-    imageLoadMode === 'ask' && content && /!\[.*?\]\(https?:\/\//.test(content)
+    imageLoadMode === 'ask' && html.includes('image-placeholder-load')
   );
 </script>
 
