@@ -310,22 +310,11 @@
         <div class="space-y-1">
           <h2 class="text-lg font-semibold mb-3">{$t('settings_page.security.title')}</h2>
           <div class="space-y-1">
-            {#each securityItems as item}
-            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-            <a href={resolveHref(item.href)} class={itemClasses}>
-                <item.icon class="h-5 w-5 text-muted-foreground shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <div class="font-medium">{item.title}</div>
-                  <div class="text-sm text-muted-foreground">{item.description}</div>
-                </div>
-                <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
-              </a>
-            {/each}
-
             {#if __REBORN_NATIVE__}
-              <!-- App Lock (biometric) - native only. The master key must live
-                   in the device vault for the biometric gate to read it back,
-                   which is the account-mode posture on native. -->
+              <!-- App Lock (biometric) - native only, surfaced first in the
+                   section (UX). The master key must live in the device vault for
+                   the biometric gate to read it back, the account-mode posture
+                   on native. -->
               <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
               <a href={resolveHref('/settings/security/app-lock')} class={itemClasses}>
                 <Fingerprint class="h-5 w-5 text-muted-foreground shrink-0" />
@@ -338,6 +327,18 @@
                 <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
               </a>
             {/if}
+
+            {#each securityItems as item}
+            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+            <a href={resolveHref(item.href)} class={itemClasses}>
+                <item.icon class="h-5 w-5 text-muted-foreground shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium">{item.title}</div>
+                  <div class="text-sm text-muted-foreground">{item.description}</div>
+                </div>
+                <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
+              </a>
+            {/each}
 
             <!-- Delete account -->
             <a
