@@ -146,18 +146,35 @@
     let head: number;
 
     if (selected) {
-      if (
-        selected.startsWith(marker) &&
-        selected.endsWith(marker) &&
-        selected.length > marker.length * 2
+      // Markdown emphasis delimiters must hug non-whitespace: per CommonMark's
+      // flanking rule `** x **` renders literally, only `**x**` is bold. So any
+      // leading/trailing whitespace caught in the selection has to stay OUTSIDE
+      // the markers. Split it off and wrap only the trimmed core; this also
+      // makes toggle-off work when the selection includes surrounding spaces.
+      const leadingWs = (selected.match(/^\s*/) ?? [''])[0];
+      const rest = selected.slice(leadingWs.length);
+      const trailingWs = (rest.match(/\s*$/) ?? [''])[0];
+      const core = rest.slice(0, rest.length - trailingWs.length);
+
+      if (!core) {
+        // Whitespace-only selection: nothing to emphasize. Keep the spaces,
+        // drop empty markers in place, leave the cursor between them to type.
+        insert = `${leadingWs}${marker}${marker}${trailingWs}`;
+        anchor = sel.from + leadingWs.length + marker.length;
+        head = anchor;
+      } else if (
+        core.startsWith(marker) &&
+        core.endsWith(marker) &&
+        core.length > marker.length * 2
       ) {
-        insert = selected.slice(marker.length, -marker.length);
-        anchor = sel.from;
-        head = sel.from + insert.length;
+        const unwrapped = core.slice(marker.length, -marker.length);
+        insert = `${leadingWs}${unwrapped}${trailingWs}`;
+        anchor = sel.from + leadingWs.length;
+        head = anchor + unwrapped.length;
       } else {
-        insert = `${marker}${selected}${marker}`;
-        anchor = sel.from;
-        head = sel.from + insert.length;
+        insert = `${leadingWs}${marker}${core}${marker}${trailingWs}`;
+        anchor = sel.from + leadingWs.length;
+        head = anchor + marker.length * 2 + core.length;
       }
     } else {
       insert = `${marker}${marker}`;
