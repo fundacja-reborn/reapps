@@ -83,7 +83,7 @@ export class CryptoManager {
    * planning/local-only-no-account-plan.md (decision A1).
    */
   private readonly LOCAL_PASSCODE_WRAP_KEY = 'reborn_local_passcode_wrap';
-  private readonly PASSCODE_WRAP_VERSION = 1;
+  private readonly WRAP_FORMAT_VERSION = 1;
   private restoreKeyAttempted = false;
   private restorePromise: Promise<boolean> | null = null;
   private vault: MasterKeyVault | null = null;
@@ -1089,7 +1089,7 @@ export class CryptoManager {
     }
     window.localStorage.setItem(
       this.LOCAL_PASSCODE_WRAP_KEY,
-      JSON.stringify({ wrapped, salt, v: this.PASSCODE_WRAP_VERSION })
+      JSON.stringify({ wrapped, salt, v: this.WRAP_FORMAT_VERSION })
     );
   }
 
