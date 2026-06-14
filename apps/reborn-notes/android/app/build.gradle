@@ -7,14 +7,21 @@ apply plugin: 'com.android.application'
 //   storePassword=...
 //   keyAlias=upload
 //   keyPassword=...
-// Without the file the release build is simply unsigned (safe for CI/dev).
-// Play App Signing holds the actual app signing key; this upload key only
-// authenticates uploads and is recoverable through Play support if lost.
+// Without the file - or while it is still an empty placeholder with no
+// storeFile entry yet - the release build is simply unsigned, and the gradle
+// sync/config of every variant (debug included) still succeeds. Play App
+// Signing holds the actual app signing key; this upload key only authenticates
+// uploads and is recoverable through Play support if lost.
 def keystorePropertiesFile = rootProject.file('keystore.properties')
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
 }
+// Guard release signing on the storeFile actually being set, not just on the
+// file existing: a partial/empty keystore.properties used to make `file(null)`
+// throw "Cannot convert 'null' to File" during configuration, failing the whole
+// project evaluation (so even a debug run broke).
+def hasReleaseSigning = keystorePropertiesFile.exists() && keystoreProperties['storeFile']
 
 android {
     namespace = "eu.reapps.notes"
@@ -37,7 +44,7 @@ android {
     }
     signingConfigs {
         release {
-            if (keystorePropertiesFile.exists()) {
+            if (hasReleaseSigning) {
                 storeFile file(keystoreProperties['storeFile'])
                 storePassword keystoreProperties['storePassword']
                 keyAlias keystoreProperties['keyAlias']
@@ -49,7 +56,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : null
+            signingConfig hasReleaseSigning ? signingConfigs.release : null
         }
     }
 }
