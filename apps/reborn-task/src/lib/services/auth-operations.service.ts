@@ -433,6 +433,15 @@ export class AuthOperationsService {
 		clearLocalModeMarkers();
 		localOnly.set(false);
 
+		// A local passcode (if one was set) protected the local key; the account
+		// password now owns it. Drop the local wrap and re-persist the key at-rest
+		// (base), restoring normal stay-unlocked for the account. The adopted key
+		// is already in memory here, so disableLocalPasscode() can re-wrap it.
+		const { cryptoManager } = await import('@reborn/crypto');
+		if (cryptoManager.isLocalPasscodeEnabled()) {
+			await cryptoManager.disableLocalPasscode();
+		}
+
 		// Re-stamp local data with the account user id + flag pending so it uploads
 		// and is visible under the account immediately (lists query by user_id).
 		const { markAllLocalDataForUpload } = await import('./local-mode.service');

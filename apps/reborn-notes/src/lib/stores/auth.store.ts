@@ -205,6 +205,17 @@ function createAuthStore() {
     // being called without touching credentials — the normal logout path
     // still goes through the storage listener above.
     cryptoManager.subscribeToKeyEvents((event) => {
+      if (event === 'locked') {
+        // Peer app locked the local passcode - lock here too. The key is
+        // memory-only per browsing context, so clear ours and show the lock
+        // screen (unless already on an auth route).
+        cryptoManager.lockLocal({ broadcast: false });
+        set({ ...readFromStorage(), hasE2E: false });
+        if (!window.location.pathname.includes('/auth/')) {
+          window.location.href = `${base}/auth/lock`;
+        }
+        return;
+      }
       if (event === 'unlocked') {
         if (!cryptoManager.isInitialized()) return;
         markE2EUnlocked();
@@ -305,6 +316,25 @@ function createAuthStore() {
   }
 
   /**
+   * Unlock the local master key with the optional local passcode (local-only
+   * mode). Decrypts the localStorage wrap into a memory-only key and flips
+   * hasE2E. Returns false on a wrong passcode.
+   */
+  async function unlockLocalPasscode(passcode: string): Promise<boolean> {
+    if (!browser) return false;
+    const ok = await cryptoManager.unlockWithLocalPasscode(passcode);
+    if (ok) set({ ...readFromStorage(), hasE2E: true });
+    return ok;
+  }
+
+  /** Lock the local passcode now: clears the in-memory key, shows the lock screen. */
+  function lockLocalNow(): void {
+    if (!browser) return;
+    cryptoManager.lockLocal();
+    set({ ...readFromStorage(), hasE2E: false });
+  }
+
+  /**
    * Clear all shared auth tokens and redirect to login.
    * Also clears the master key from memory (logs out of E2E too).
    * Because the tokens are shared, this also effectively logs the user out
@@ -366,7 +396,16 @@ function createAuthStore() {
     window.location.href = `${base}/auth/login`;
   }
 
-  return { subscribe, initialize, unlockE2E, logout, markE2EUnlocked, enterLocalMode };
+  return {
+    subscribe,
+    initialize,
+    unlockE2E,
+    unlockLocalPasscode,
+    lockLocalNow,
+    logout,
+    markE2EUnlocked,
+    enterLocalMode
+  };
 }
 
 export const authStore = createAuthStore();

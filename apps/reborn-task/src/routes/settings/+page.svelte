@@ -278,6 +278,24 @@
 			</div>
 		{/each}
 
+		<!-- Security (local-only mode: optional device passcode) -->
+		{#if $isLocalOnly}
+		<div class="space-y-1">
+			<h2 class="text-lg font-semibold mb-3">{$t('settings.security.title')}</h2>
+			<div class="space-y-1">
+				<a href={resolve('/settings/security/passcode')} class={itemClasses}>
+					<Lock class="h-5 w-5 text-muted-foreground shrink-0" />
+					<div class="flex-1 min-w-0">
+						<div class="font-medium">{$t('local_mode.passcode.settings_item_title')}</div>
+						<div class="text-sm text-muted-foreground">
+							{$t('local_mode.passcode.settings_item_desc')}
+						</div>
+					</div>
+				</a>
+			</div>
+		</div>
+		{/if}
+
 		<!-- Security section (account-only - hidden in local-only mode) -->
 		{#if $isAuthenticated}
 		<div class="space-y-1">

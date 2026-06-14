@@ -63,6 +63,7 @@
       path.startsWith(`${basePath}/auth/login`) ||
       path.startsWith(`${basePath}/auth/register`) ||
       path.startsWith(`${basePath}/auth/unlock`) ||
+      path.startsWith(`${basePath}/auth/lock`) ||
       path.startsWith(`${basePath}/auth/2fa`);
 
     // Public read-only share view (/s/{slug}) - no account needed.
@@ -85,6 +86,21 @@
       untrack(() => noteIndex.clear());
       untrack(() => {
         goto('/auth/unlock');
+      });
+      return;
+    }
+
+    // Local-only mode with an optional passcode set, key locked → lock screen.
+    if (
+      $authStore.isLocalOnly &&
+      !$authStore.hasE2E &&
+      cryptoManager.isLocalPasscodeEnabled() &&
+      !isAuthRoute &&
+      !isPublicShareRoute
+    ) {
+      untrack(() => noteIndex.clear());
+      untrack(() => {
+        goto('/auth/lock');
       });
     }
   });

@@ -891,8 +891,18 @@
 	$effect(() => {
 		if (!browser || !$session.isInitialized || $session.isLoading) return;
 		if (isAuthRedirecting) return;
-		// Local-only / no-account mode is a valid state - never bounce it to login/unlock.
-		if ($session.isLocalOnly) return;
+		// Local-only / no-account mode is a valid state - never bounce it to
+		// login/unlock. But if an optional local passcode is set and the key is
+		// locked (not in memory), route to the local lock screen.
+		if ($session.isLocalOnly) {
+			if (!$session.hasE2E && cryptoManager.isLocalPasscodeEnabled()) {
+				isAuthRedirecting = true;
+				goto('/auth/lock', { replaceState: true }).finally(() => {
+					isAuthRedirecting = false;
+				});
+			}
+			return;
+		}
 
 		if (!$session.isAuthenticated) {
 			const path = $page.url.pathname;

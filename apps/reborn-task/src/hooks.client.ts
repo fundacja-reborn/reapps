@@ -132,6 +132,17 @@ if (!isPublicShareRoute) {
 	// /auth/unlock without a second password prompt. The matching `cleared` event
 	// is defense-in-depth - the primary logout path is the storage listener above.
 	cryptoManager.subscribeToKeyEvents((event) => {
+		if (event === 'locked') {
+			// Peer app locked the local passcode - lock here too (key is memory-only
+			// per context, so we clear ours and show the lock screen).
+			cryptoManager.lockLocal({ broadcast: false });
+			authOperationsService.getSessionManager().setSession({ hasE2E: false });
+			const path = window.location.pathname;
+			if (!path.includes('/auth/')) {
+				window.location.href = `${base}/auth/lock`;
+			}
+			return;
+		}
 		if (event === 'unlocked') {
 			if (!cryptoManager.isInitialized()) return;
 			logger.info('Cross-app E2E unlock detected - flipping hasE2E');

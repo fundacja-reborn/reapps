@@ -173,6 +173,13 @@
     localStorage.removeItem(LOCAL_MODE_KEY);
     localStorage.removeItem(LOCAL_USER_ID_KEY);
 
+    // A local passcode (if one was set) protected the local key; the account
+    // password now owns it. Drop the local wrap and re-persist the key at-rest
+    // (base), restoring normal stay-unlocked for the account.
+    if (cryptoManager.isLocalPasscodeEnabled()) {
+      await cryptoManager.disableLocalPasscode();
+    }
+
     // Flag every offline-created record for upload, then hydrate the account
     // session (isAuthenticated -> true, localOnly -> false).
     await markAllLocalDataPending();
