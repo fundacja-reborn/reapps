@@ -1,3 +1,16 @@
+## 0.31.0 (2026-06-14)
+
+### 🚀 Features
+
+- **crypto:** optional local passcode for local-only mode ([#278](https://github.com/fundacja-reborn/reapps/pull/278))
+- **notes:** local-only / no-account mode + upgrade to account ([#276](https://github.com/fundacja-reborn/reapps/pull/276))
+- **task:** local-only / no-account mode + upgrade to account ([#277](https://github.com/fundacja-reborn/reapps/pull/277), [#276](https://github.com/fundacja-reborn/reapps/issues/276))
+
+### 🩹 Fixes
+
+- **notes:** match folder-sync files to notes by path manifest ([#279](https://github.com/fundacja-reborn/reapps/pull/279))
+- **notes:** suppress "Load all images" on code-span image syntax ([#280](https://github.com/fundacja-reborn/reapps/pull/280))
+
 ## 0.30.0 (2026-06-13)
 
 ### 🚀 Features
