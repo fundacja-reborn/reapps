@@ -7,23 +7,27 @@ import { beforeAll, beforeEach, vi } from 'vitest';
 
 // Setup crypto polyfills for testing
 beforeAll(() => {
-  // Mock window object with sessionStorage
+  // Minimal in-memory Web Storage shim (sessionStorage + localStorage).
+  const makeStorage = () => {
+    let store: Record<string, string> = {};
+    return {
+      getItem: (key: string) => store[key] ?? null,
+      setItem: (key: string, value: string) => {
+        store[key] = value.toString();
+      },
+      removeItem: (key: string) => {
+        delete store[key];
+      },
+      clear: () => {
+        store = {};
+      }
+    };
+  };
+
+  // Mock window object with session + local storage
   const windowMock = {
-    sessionStorage: (() => {
-      let store: Record<string, string> = {};
-      return {
-        getItem: (key: string) => store[key] || null,
-        setItem: (key: string, value: string) => {
-          store[key] = value.toString();
-        },
-        removeItem: (key: string) => {
-          delete store[key];
-        },
-        clear: () => {
-          store = {};
-        }
-      };
-    })()
+    sessionStorage: makeStorage(),
+    localStorage: makeStorage()
   };
 
   // Make window available globally
@@ -41,11 +45,16 @@ beforeAll(() => {
 
 // Reset mocks before each test
 beforeEach(() => {
-  // Clear sessionStorage before each test
+  // Clear session + local storage before each test so passcode wraps and
+  // temporary key exports never leak between tests (the restore path now gates
+  // on a localStorage passcode wrap).
   if ((global as any).window?.sessionStorage) {
     (global as any).window.sessionStorage.clear();
   }
-  
+  if ((global as any).window?.localStorage) {
+    (global as any).window.localStorage.clear();
+  }
+
   // Clear all mocks
   vi.clearAllMocks();
 });

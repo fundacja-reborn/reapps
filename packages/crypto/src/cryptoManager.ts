@@ -35,7 +35,7 @@ const logger = createLogger('CryptoManager');
  */
 const KEY_EVENT_CHANNEL = 'reborn_e2e';
 
-export type CryptoKeyEvent = 'unlocked' | 'cleared';
+export type CryptoKeyEvent = 'unlocked' | 'cleared' | 'locked';
 
 export type KeyEventHandler = (event: CryptoKeyEvent) => void;
 
@@ -73,6 +73,17 @@ export class CryptoManager {
   private readonly IDB_NAME = 'reborn_crypto_keys';
   private readonly IDB_STORE = 'master_key';
   private readonly IDB_KEY_ID = 'current';
+  /**
+   * localStorage key for the optional local-mode passcode wrap:
+   * `{ wrapped, salt, v }` - the local master key encrypted with
+   * PBKDF2(passcode). Kept in localStorage (not IndexedDB) because it is plain
+   * ciphertext+salt (safe at rest), is shared across both same-origin apps like
+   * the other local-mode markers, survives a cold start, and reads
+   * synchronously so `isLocalPasscodeEnabled()` needs no async restore. See
+   * planning/local-only-no-account-plan.md (decision A1).
+   */
+  private readonly LOCAL_PASSCODE_WRAP_KEY = 'reborn_local_passcode_wrap';
+  private readonly WRAP_FORMAT_VERSION = 1;
   private restoreKeyAttempted = false;
   private restorePromise: Promise<boolean> | null = null;
   private vault: MasterKeyVault | null = null;
@@ -128,6 +139,17 @@ export class CryptoManager {
    */
   private async restoreKeyOnStartup(): Promise<boolean> {
     try {
+      // Passcode gate (web + native): if a local passcode wrap exists, the
+      // master key is intentionally NOT at-rest in the clear. Load no key - the
+      // app shows the local lock screen and unlocks via
+      // `unlockWithLocalPasscode()`. Runs before every other source so a stale
+      // raw key can never bypass the passcode.
+      if (this.hasLocalPasscodeWrap()) {
+        this.restoreKeyAttempted = true;
+        logger.info('Local passcode set - key locked, awaiting passcode unlock');
+        return false;
+      }
+
       // 0. Vault (native) - the platform key store is the single source of
       // truth. IndexedDB is only consulted to migrate (then purge) a key
       // persisted by a pre-vault build; the sessionStorage raw-key copy is
@@ -440,7 +462,11 @@ export class CryptoManager {
       this.channel = new BroadcastChannel(KEY_EVENT_CHANNEL);
       this.channel.onmessage = (e: MessageEvent) => {
         const data = e.data as { type?: CryptoKeyEvent } | null;
-        if (!data || (data.type !== 'unlocked' && data.type !== 'cleared')) return;
+        if (
+          !data ||
+          (data.type !== 'unlocked' && data.type !== 'cleared' && data.type !== 'locked')
+        )
+          return;
         for (const handler of this.keyEventHandlers) {
           try {
             handler(data.type);
@@ -600,6 +626,11 @@ export class CryptoManager {
   public async setMasterKey(key: CryptoKey): Promise<void> {
     this.masterKey = key;
     this.initialized = true;
+
+    // Establishing a fresh at-rest key (account login/upgrade, or returning to
+    // base local mode) invalidates any prior local passcode wrap - remove it so
+    // a stale wrap can't lock the user out with an old passcode on next start.
+    this.removeLocalPasscodeWrap();
 
     if (this.vault) {
       // Native: the vault is the ONLY at-rest copy - no extractable
@@ -1006,6 +1037,212 @@ export class CryptoManager {
       logger.error('Failed to load user master key:', error);
       return false;
     }
+  }
+
+  // ── Local-mode passcode (optional at-rest wrap) ──────────────
+  //
+  // Opt-in lock for local-only / no-account mode. The local master key is
+  // wrapped with PBKDF2(passcode) (reusing encryptMasterKey/decryptMasterKey,
+  // 600K iterations) and only the wrap is kept at-rest; the key lives in memory
+  // and must be re-entered after each cold start / hard reload. Mirrors the
+  // Standard Notes "Application Passcode" / Proton PIN model. Web-first; the raw
+  // key is also purged from the native vault on enable so a vault build composes
+  // cleanly. See planning/local-only-no-account-plan.md (decision A1).
+
+  /** Read the persisted passcode wrap record, or null when none/invalid. */
+  private readLocalPasscodeWrapRecord(): { wrapped: string; salt: string; v: number } | null {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const raw = window.localStorage.getItem(this.LOCAL_PASSCODE_WRAP_KEY);
+    if (!raw) return null;
+    try {
+      const rec = JSON.parse(raw) as { wrapped?: string; salt?: string; v?: number };
+      if (!rec?.wrapped || !rec?.salt) return null;
+      return { wrapped: rec.wrapped, salt: rec.salt, v: rec.v ?? 1 };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Whether a local passcode wrap is present (synchronous). */
+  private hasLocalPasscodeWrap(): boolean {
+    if (typeof window === 'undefined' || !window.localStorage) return false;
+    return window.localStorage.getItem(this.LOCAL_PASSCODE_WRAP_KEY) !== null;
+  }
+
+  /** Remove the persisted passcode wrap (best-effort). */
+  private removeLocalPasscodeWrap(): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    window.localStorage.removeItem(this.LOCAL_PASSCODE_WRAP_KEY);
+  }
+
+  /**
+   * Persist the passcode wrap. The stored value is AES-GCM ciphertext - the
+   * master key wrapped with PBKDF2(passcode) - plus a non-secret salt and a
+   * version tag. Safe at rest: this is the same envelope model as the account's
+   * server-side `encrypted_master_key`, and strictly stronger than the
+   * no-passcode baseline (a raw key in IndexedDB). The plaintext key is never
+   * written here - the wrap cannot be opened without the passcode.
+   */
+  private writeLocalPasscodeWrap(wrapped: string, salt: string): void {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      throw new Error('Local passcode requires a browser environment');
+    }
+    window.localStorage.setItem(
+      this.LOCAL_PASSCODE_WRAP_KEY,
+      JSON.stringify({ wrapped, salt, v: this.WRAP_FORMAT_VERSION })
+    );
+  }
+
+  /**
+   * Whether an optional local passcode is currently set. Synchronous and valid
+   * before restore completes (reads localStorage directly), so auth guards and
+   * settings UI can branch on it immediately.
+   */
+  public isLocalPasscodeEnabled(): boolean {
+    return this.hasLocalPasscodeWrap();
+  }
+
+  /**
+   * Whether a local passcode is set but the key is not in memory - i.e. the app
+   * should show the local lock screen (passcode set AND not initialized).
+   */
+  public isLocalPasscodeLocked(): boolean {
+    return this.hasLocalPasscodeWrap() && !this.isInitialized();
+  }
+
+  /**
+   * Enable an optional local passcode. Wraps the in-memory master key with
+   * PBKDF2(passcode), persists only the wrap, and purges every cleartext at-rest
+   * copy of the key (IndexedDB, sessionStorage, native vault). The key stays in
+   * memory so the current session continues unlocked; the lock takes effect on
+   * the next cold start / hard reload. Requires an initialized key.
+   */
+  public async enableLocalPasscode(passcode: string): Promise<void> {
+    if (!this.isInitialized() || !this.masterKey) {
+      throw new Error('Cannot set a local passcode without an unlocked master key');
+    }
+    if (!passcode) throw new Error('Passcode must not be empty');
+    if (typeof window === 'undefined' || !window.localStorage) {
+      throw new Error('Local passcode requires a browser environment');
+    }
+
+    const { encryptedMasterKey, salt } = await this.encryptMasterKey(this.masterKey, passcode);
+    this.writeLocalPasscodeWrap(encryptedMasterKey, salt);
+
+    // Purge every cleartext at-rest copy - the wrap is now the only on-disk form.
+    await this.clearKeyFromIDB();
+    if (this.vault) {
+      await this.vault.clear().catch((err) => {
+        logger.error('Failed to clear vault while enabling local passcode:', err);
+      });
+    }
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.removeItem(this.TEMP_KEY_STORAGE_KEY);
+    }
+
+    logger.info('Local passcode enabled - master key wrapped at-rest');
+  }
+
+  /**
+   * Unlock the local master key with the passcode. Decrypts the wrap into a
+   * memory-only key (no at-rest persistence - the wrap remains the only on-disk
+   * form). Returns false on a wrong passcode or when no passcode is set.
+   */
+  public async unlockWithLocalPasscode(passcode: string): Promise<boolean> {
+    const record = this.readLocalPasscodeWrapRecord();
+    if (!record) {
+      logger.warn('unlockWithLocalPasscode called with no passcode wrap present');
+      return false;
+    }
+    try {
+      const key = await this.decryptMasterKey(record.wrapped, record.salt, passcode);
+      this.masterKey = key;
+      this.initialized = true;
+      // Memory-only on purpose: do NOT persist to IndexedDB/sessionStorage/vault,
+      // and do NOT broadcast `unlocked` (peers have no at-rest key to read).
+      await this.verifyEncryption();
+      logger.info('Local master key unlocked with passcode');
+      return true;
+    } catch {
+      logger.warn('Local passcode unlock failed (wrong passcode or corrupt wrap)');
+      this.masterKey = null;
+      this.initialized = false;
+      return false;
+    }
+  }
+
+  /**
+   * Change the local passcode. Verifies `currentPasscode` against the stored
+   * wrap, then re-wraps the in-memory key with `newPasscode`. Requires an
+   * unlocked key. Returns false if the current passcode is wrong.
+   */
+  public async changeLocalPasscode(
+    currentPasscode: string,
+    newPasscode: string
+  ): Promise<boolean> {
+    if (!this.isInitialized() || !this.masterKey) {
+      throw new Error('Cannot change the local passcode without an unlocked master key');
+    }
+    if (!newPasscode) throw new Error('New passcode must not be empty');
+
+    const record = this.readLocalPasscodeWrapRecord();
+    if (!record) throw new Error('No local passcode is set');
+    try {
+      await this.decryptMasterKey(record.wrapped, record.salt, currentPasscode);
+    } catch {
+      return false; // current passcode wrong
+    }
+
+    const { encryptedMasterKey, salt } = await this.encryptMasterKey(this.masterKey, newPasscode);
+    this.writeLocalPasscodeWrap(encryptedMasterKey, salt);
+    logger.info('Local passcode changed');
+    return true;
+  }
+
+  /**
+   * Disable the local passcode and return to base local mode: removes the wrap
+   * and re-persists the (in-memory) key at-rest in the clear, exactly like a
+   * no-passcode local session. Requires an unlocked key.
+   */
+  public async disableLocalPasscode(): Promise<void> {
+    if (!this.isInitialized() || !this.masterKey) {
+      throw new Error('Cannot disable the local passcode without an unlocked master key');
+    }
+    const key = this.masterKey;
+    // setMasterKey removes the wrap + clears passcodeMode and re-persists the
+    // raw key (IndexedDB/sessionStorage/vault), restoring cross-app auto-unlock.
+    await this.setMasterKey(key);
+    logger.info('Local passcode disabled - returned to base local mode');
+  }
+
+  /**
+   * Lock the app now: clear the in-memory key while keeping the wrap, so the
+   * lock screen reappears. Broadcasts `locked` so a peer app on the same origin
+   * locks too. No cleartext key is left anywhere. Pass `{ broadcast: false }`
+   * when reacting to a peer's `locked` event to avoid an echo.
+   */
+  public lockLocal(opts: { broadcast?: boolean } = {}): void {
+    const { broadcast = true } = opts;
+    this.masterKey = null;
+    this.initialized = false;
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.removeItem(this.CRYPTO_VERIFIED_KEY);
+    }
+    if (broadcast) this.postKeyEvent('locked');
+    logger.debug('Local key locked (passcode required to unlock)');
+  }
+
+  /**
+   * Forget the local passcode without an unlocked key - the "forgot passcode"
+   * reset path. Removes the wrap and any in-memory key. The caller is
+   * responsible for wiping local data (the wrapped data is unrecoverable
+   * without the passcode). Does not broadcast.
+   */
+  public forgetLocalPasscode(): void {
+    this.removeLocalPasscodeWrap();
+    this.masterKey = null;
+    this.initialized = false;
+    logger.info('Local passcode forgotten (reset path)');
   }
 
   // Expose utility methods from encryption module

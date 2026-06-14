@@ -354,7 +354,17 @@ export class AuthOperationsService {
 
 			// Generate + persist a local master key unless one is already loaded
 			// (e.g. restored from IndexedDB/vault on a returning local session).
+			// A local passcode wrap means the key is LOCKED behind a passcode, not
+			// absent: generating a fresh key here would purge the wrap
+			// (setMasterKey) and orphan every record encrypted under the real key.
+			// Refuse so the data is recoverable - the caller routes to /auth/lock.
 			if (!cryptoManager.isInitialized()) {
+				if (cryptoManager.isLocalPasscodeEnabled()) {
+					logger.warn(
+						'Local passcode set but key locked - refusing to start a fresh local session (would orphan encrypted data)'
+					);
+					return false;
+				}
 				const key = await cryptoManager.generateMasterKey();
 				await cryptoManager.setMasterKey(key);
 			}
@@ -432,6 +442,15 @@ export class AuthOperationsService {
 		const { clearLocalModeMarkers, localOnly } = await import('$lib/stores/local-mode.store');
 		clearLocalModeMarkers();
 		localOnly.set(false);
+
+		// A local passcode (if one was set) protected the local key; the account
+		// password now owns it. Drop the local wrap and re-persist the key at-rest
+		// (base), restoring normal stay-unlocked for the account. The adopted key
+		// is already in memory here, so disableLocalPasscode() can re-wrap it.
+		const { cryptoManager } = await import('@reborn/crypto');
+		if (cryptoManager.isLocalPasscodeEnabled()) {
+			await cryptoManager.disableLocalPasscode();
+		}
 
 		// Re-stamp local data with the account user id + flag pending so it uploads
 		// and is visible under the account immediately (lists query by user_id).

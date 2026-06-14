@@ -63,10 +63,25 @@
       path.startsWith(`${basePath}/auth/login`) ||
       path.startsWith(`${basePath}/auth/register`) ||
       path.startsWith(`${basePath}/auth/unlock`) ||
+      path.startsWith(`${basePath}/auth/lock`) ||
       path.startsWith(`${basePath}/auth/2fa`);
 
     // Public read-only share view (/s/{slug}) - no account needed.
     const isPublicShareRoute = path.startsWith(`${basePath}/s/`);
+
+    // A local passcode wrap = local data locked behind a passcode on this
+    // origin. Route to the lock screen first, before any account / local-mode
+    // decision - a sync, race-free check (the wrap is cleared whenever an
+    // account key is set, so its presence unambiguously means local-only +
+    // locked) so a still-resolving auth store can't flash the login or unlock
+    // form instead of the lock screen.
+    if (cryptoManager.isLocalPasscodeLocked() && !isAuthRoute && !isPublicShareRoute) {
+      untrack(() => noteIndex.clear());
+      untrack(() => {
+        goto('/auth/lock');
+      });
+      return;
+    }
 
     if (
       !$authStore.isAuthenticated &&
@@ -86,6 +101,7 @@
       untrack(() => {
         goto('/auth/unlock');
       });
+      return;
     }
   });
 
@@ -93,7 +109,17 @@
   // Also triggers pull from server - covers the case where onMount already ran
   // before authentication completed (login → goto('/') stays within the same SPA session).
   $effect(() => {
-    if (!browser || !$authStore.hasE2E) return;
+    if (!browser) return;
+    if (!$authStore.hasE2E) {
+      // Locked (or not yet unlocked): allow the NEXT unlock to re-hydrate. The
+      // root layout never remounts on a soft lock -> unlock (the lock screen
+      // lives under it), so without resetting this one-shot flag the cleared
+      // noteIndex would stay empty after a local passcode unlock until a hard
+      // reload. Resetting here makes runSync() rebuild on re-unlock. See
+      // guideline 64 (local passcode lock/unlock).
+      hasTriggeredInitialSync = false;
+      return;
+    }
     if (hasTriggeredInitialSync) return; // onMount already kicked off a pull
 
     hasTriggeredInitialSync = true;

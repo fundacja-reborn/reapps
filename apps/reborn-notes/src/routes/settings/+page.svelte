@@ -31,6 +31,7 @@
   import { locale } from '$lib/stores/i18n.store';
   import { cn, GithubMark } from '@reborn/ui';
   import { authStore } from '$lib/stores/auth.store';
+  import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
   import { onMount } from 'svelte';
   import {
     quotaUsedBytes,
@@ -113,6 +114,31 @@
       href: '/settings/security/shares'
     }
   ];
+
+  // Account-only security features, surfaced as locked rows in local-only mode
+  // so users see what registering unlocks (clicking opens the account-required
+  // prompt, mirroring the Share affordance). Curated to genuine account *value* -
+  // management-only items (password change, sessions, delete account) are
+  // meaningless without an account and stay hidden.
+  const lockedAccountSecurityItems = [
+    {
+      icon: Shield,
+      title: $t('settings_page.security.two_factor'),
+      description: $t('settings_page.security.two_factor_desc')
+    },
+    {
+      icon: ShieldCheck,
+      title: $t('settings_page.security.recovery_codes'),
+      description: $t('settings_page.security.recovery_codes_desc')
+    },
+    {
+      icon: Share2,
+      title: $t('share.list.settings_title'),
+      description: $t('share.list.settings_desc')
+    }
+  ];
+
+  let accountRequiredOpen = $state(false);
 </script>
 
 <svelte:head>
@@ -235,6 +261,48 @@
           </a>
         </div>
       </div>
+
+      <!-- Security (local-only mode: device passcode + locked account features) -->
+      {#if $authStore.isLocalOnly}
+        <div class="space-y-1">
+          <h2 class="text-lg font-semibold mb-3">{$t('settings_page.security.title')}</h2>
+          <div class="space-y-1">
+            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+            <a href={resolveHref('/settings/security/passcode')} class={itemClasses}>
+              <Lock class="h-5 w-5 text-muted-foreground shrink-0" />
+              <div class="flex-1 min-w-0">
+                <div class="font-medium">{$t('local_mode.passcode.settings_item_title')}</div>
+                <div class="text-sm text-muted-foreground">
+                  {$t('local_mode.passcode.settings_item_desc')}
+                </div>
+              </div>
+              <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
+            </a>
+          </div>
+
+          <!-- Account-only features, shown locked to surface what registering
+               unlocks. Each opens the account-required prompt (like Share). -->
+          <h3 class="text-sm font-medium text-muted-foreground mt-5 mb-2 px-4">
+            {$t('local_mode.account_features_title')}
+          </h3>
+          <div class="space-y-1">
+            {#each lockedAccountSecurityItems as item (item.title)}
+              <button
+                type="button"
+                onclick={() => (accountRequiredOpen = true)}
+                class={cn(itemClasses, 'w-full text-left opacity-60')}
+              >
+                <item.icon class="h-5 w-5 text-muted-foreground shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium">{item.title}</div>
+                  <div class="text-sm text-muted-foreground">{item.description}</div>
+                </div>
+                <Lock class="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/if}
 
       <!-- Security -->
       {#if $authStore.isAuthenticated}
@@ -514,3 +582,6 @@
     </div>
   </div>
 </div>
+
+<!-- Account-required prompt (locked security feature tapped in local-only mode) -->
+<AccountRequiredDialog bind:open={accountRequiredOpen} />

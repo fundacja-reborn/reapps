@@ -30,6 +30,7 @@
 	import { cn, SettingsLayout, GithubMark } from '@reborn/ui';
 	import { user, isAuthenticated, isLocalOnly } from '$lib/stores/auth.store';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
+	import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
 	import { resolve } from '$app/paths';
 	import { createLogger } from '@reborn/utils';
 
@@ -168,6 +169,35 @@
 		}
 	];
 
+	// Account-only security features, surfaced as locked rows in local-only mode
+	// so users see what registering unlocks (clicking opens the account-required
+	// prompt, mirroring the Share affordance). Curated to genuine account *value* -
+	// management-only items (password change, sessions, delete account) are
+	// meaningless without an account and stay hidden.
+	const lockedAccountSecurityItems = [
+		{
+			icon: Shield,
+			title: $t('settings.security.two_factor.title', { default: 'Weryfikacja dwuetapowa' }),
+			description: $t('settings.security.two_factor.description', {
+				default: 'Dodatkowe zabezpieczenie konta'
+			})
+		},
+		{
+			icon: ShieldCheck,
+			title: $t('settings.security.backup_codes.title', { default: 'Kody zapasowe' }),
+			description: $t('settings.security.backup_codes.description', {
+				default: 'Jednorazowe kody dostępu awaryjnego'
+			})
+		},
+		{
+			icon: Share2,
+			title: $t('share.list.settings_title'),
+			description: $t('share.list.settings_desc')
+		}
+	];
+
+	let accountRequiredOpen = $state(false);
+
 	// Sessions count
 	let sessionsCount = $state<number | null>(null);
 	let loadingSessions = $state(true);
@@ -277,6 +307,46 @@
 				</div>
 			</div>
 		{/each}
+
+		<!-- Security (local-only mode: device passcode + locked account features) -->
+		{#if $isLocalOnly}
+		<div class="space-y-1">
+			<h2 class="text-lg font-semibold mb-3">{$t('settings.security.title')}</h2>
+			<div class="space-y-1">
+				<a href={resolve('/settings/security/passcode')} class={itemClasses}>
+					<Lock class="h-5 w-5 text-muted-foreground shrink-0" />
+					<div class="flex-1 min-w-0">
+						<div class="font-medium">{$t('local_mode.passcode.settings_item_title')}</div>
+						<div class="text-sm text-muted-foreground">
+							{$t('local_mode.passcode.settings_item_desc')}
+						</div>
+					</div>
+				</a>
+			</div>
+
+			<!-- Account-only features, shown locked to surface what registering
+			     unlocks. Each opens the account-required prompt (like Share). -->
+			<h3 class="text-sm font-medium text-muted-foreground mt-5 mb-2 px-4">
+				{$t('local_mode.account_features_title')}
+			</h3>
+			<div class="space-y-1">
+				{#each lockedAccountSecurityItems as item (item.title)}
+					<button
+						type="button"
+						onclick={() => (accountRequiredOpen = true)}
+						class={cn(itemClasses, 'w-full text-left opacity-60')}
+					>
+						<item.icon class="h-5 w-5 text-muted-foreground shrink-0" />
+						<div class="flex-1 min-w-0">
+							<div class="font-medium">{item.title}</div>
+							<div class="text-sm text-muted-foreground">{item.description}</div>
+						</div>
+						<Lock class="h-4 w-4 text-muted-foreground shrink-0" />
+					</button>
+				{/each}
+			</div>
+		</div>
+		{/if}
 
 		<!-- Security section (account-only - hidden in local-only mode) -->
 		{#if $isAuthenticated}
@@ -427,3 +497,6 @@
 		</div>
 	</div>
 </SettingsLayout>
+
+<!-- Account-required prompt (locked security feature tapped in local-only mode) -->
+<AccountRequiredDialog bind:open={accountRequiredOpen} />
