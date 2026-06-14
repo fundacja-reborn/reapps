@@ -122,6 +122,22 @@
   // management-only items (password change, sessions, delete account) are
   // meaningless without an account and stay hidden.
   const lockedAccountSecurityItems = [
+    // App Lock (biometric) is native-only. Surfaced first so a local-mode user
+    // on a device with biometrics sees it as an account perk: the gate needs
+    // the master key in the device vault (the account-mode posture), whereas
+    // local mode locks with the passcode - a real at-rest crypto wrap that
+    // purges the vault. So biometric unlock and the local passcode stay
+    // separate, and biometrics belong here under "available with an account".
+    // Reuses the App Lock copy; the compile-time guard drops it from web.
+    ...(__REBORN_NATIVE__
+      ? [
+          {
+            icon: Fingerprint,
+            title: $t('app_lock.settings_item_title'),
+            description: $t('app_lock.settings_item_desc')
+          }
+        ]
+      : []),
     {
       icon: Shield,
       title: $t('settings_page.security.two_factor'),
