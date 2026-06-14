@@ -1,6 +1,6 @@
 {
   "name": "@reborn-apps/source",
-  "version": "0.30.0",
+  "version": "0.31.0",
   "license": "AGPL-3.0-only",
   "scripts": {
     "clean": "chmod +x ./scripts/clean-all.sh && ./scripts/clean-all.sh",
