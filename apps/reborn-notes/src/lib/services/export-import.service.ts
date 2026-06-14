@@ -55,7 +55,7 @@ import {
 } from './markdown-import-utils';
 import {
   computeRenamedTitle,
-  findExisting,
+  pickOverwriteTarget,
   isImportUnchanged,
   mergeTagIds,
   tagSetsEqual,
@@ -1438,10 +1438,33 @@ async function applyDuplicateStrategy(args: {
   modifiedAt: string | undefined;
   lookup: TitleLookup;
   strategy: DuplicateStrategy;
+  /**
+   * Live folder sync only: the note id this file's path mapped to on the
+   * previous run (from the persisted `path_note_ids` manifest). When it still
+   * resolves to a live note it overrides the title lookup, so a file already
+   * linked to a note updates THAT note even if this tab's in-memory title index
+   * is stale - see {@link pickOverwriteTarget}. Undefined for manual / flat .md
+   * imports, which stay on pure title matching.
+   */
+  manifestNoteId?: string;
 }): Promise<DuplicateOutcomeResult> {
   const { baseTitle, content, folderId, tagIds, createdAt, modifiedAt, lookup, strategy } = args;
   const tagMode = args.tagMode ?? 'replace';
-  const existingId = findExisting(lookup, folderId, baseTitle);
+
+  // Resolve the note to overwrite. The path→note manifest (folder sync) wins
+  // over the title lookup when it points at a still-live note: the lookup comes
+  // from the per-tab in-memory note index, which can be stale, and trusting it
+  // alone minted duplicate notes on re-sync. getNote() returns null for
+  // missing/trashed notes, so a stale manifest link falls through to title
+  // matching below (which re-creates the note - the mirror's "disk wins" rule).
+  const manifestNote =
+    args.manifestNoteId !== undefined ? await NoteService.getNote(args.manifestNoteId) : null;
+  const existingId = pickOverwriteTarget(
+    { noteId: args.manifestNoteId, live: manifestNote !== null },
+    lookup,
+    folderId,
+    baseTitle
+  );
 
   if (!existingId) {
     const newId = await NoteService.createNote(baseTitle, content, folderId, {
@@ -1456,6 +1479,14 @@ async function applyDuplicateStrategy(args: {
     return { outcome: 'created', noteId: newId };
   }
 
+  // A manifest match can resolve a note whose title was NOT in the lookup (the
+  // stale-index case). Claim the (folder, title) slot now so a later same-
+  // titled file in this same batch dedupes against it instead of minting yet
+  // another copy. A title-lookup match already occupies the slot - no-op.
+  if (manifestNote !== null) {
+    rememberTitle(lookup, folderId, baseTitle, existingId);
+  }
+
   if (strategy === 'skip') {
     return { outcome: 'skipped', noteId: undefined };
   }
@@ -1464,9 +1495,12 @@ async function applyDuplicateStrategy(args: {
     // Skip the write entirely when the stored note already matches the file -
     // repeated "re-import to refresh" runs stay cheap (no re-encrypt, no sync
     // push) and don't shuffle every note to the top of `updated_at` ordering.
-    // getNote() returns null for trashed notes, but those never reach this
-    // point: the title lookup is built from non-archived index entries only.
-    const existingNote = await NoteService.getNote(existingId);
+    // Reuse the note already fetched for the manifest check (same id) to avoid
+    // a second decrypt; a title-lookup match re-fetches here. getNote() returns
+    // null for trashed notes - a title match never points at one (the lookup is
+    // built from non-archived entries) and a trashed manifest link already fell
+    // through to title matching above.
+    const existingNote = manifestNote ?? (await NoteService.getNote(existingId));
     const existingTagIds =
       tagIds === undefined ? [] : await noteTagQueries.getTagsForNote(existingId);
     if (existingNote) {
@@ -1634,6 +1668,15 @@ export type ImportFolderOptions = {
    * truth. See {@link TagOverwriteMode}.
    */
   tagsOnOverwrite?: TagOverwriteMode;
+  /**
+   * Live folder sync only: the previous run's durable `relativePath → note id`
+   * manifest (persisted as `path_note_ids`). Lets the importer overwrite the
+   * note a file is already linked to even when this tab's in-memory title index
+   * is stale - the fix for duplicate notes on re-sync (see
+   * {@link pickOverwriteTarget}). Absent for manual folder imports, which stay
+   * on pure title-based dedup.
+   */
+  pathManifest?: Record<string, string>;
 };
 
 /**
@@ -1696,6 +1739,7 @@ export async function importFolder(
   const keepRootFolder = opts?.keepRootFolder ?? false;
   const targetFolderId = opts?.targetFolderId;
   const tagsOnOverwrite = opts?.tagsOnOverwrite ?? 'replace';
+  const pathManifest = opts?.pathManifest;
 
   // 0. Normalize inputs to { file, relativePath } pairs. Plain Files carry
   //    their path in webkitRelativePath ('' when absent → name only, lands
@@ -1832,7 +1876,10 @@ export async function importFolder(
         createdAt,
         modifiedAt,
         lookup: titleLookup,
-        strategy: duplicateStrategy
+        strategy: duplicateStrategy,
+        // Authoritative for folder sync: a file already linked to a live note
+        // overwrites it regardless of the (possibly stale) title lookup.
+        manifestNoteId: pathManifest?.[relativePath]
       });
 
       // Record the file↔note link for every outcome that resolved to a note

@@ -3,6 +3,7 @@ import {
   folderKey,
   rememberTitle,
   findExisting,
+  pickOverwriteTarget,
   computeRenamedTitle,
   isImportUnchanged,
   mergeTagIds,
@@ -56,6 +57,56 @@ describe('rememberTitle / findExisting', () => {
     rememberTitle(lookup, 'folder-1', 'Notes', 'note-1');
     rememberTitle(lookup, 'folder-1', 'Notes', 'note-2');
     expect(findExisting(lookup, 'folder-1', 'notes')).toBe('note-2');
+  });
+});
+
+describe('pickOverwriteTarget', () => {
+  // A title lookup where "Title A" in folder f1 resolves to note-by-title.
+  const lookup: TitleLookup = new Map();
+  rememberTitle(lookup, 'f1', 'Title A', 'note-by-title');
+
+  it('prefers a live manifest match over the title lookup (path link is authoritative)', () => {
+    expect(
+      pickOverwriteTarget({ noteId: 'note-by-manifest', live: true }, lookup, 'f1', 'Title A')
+    ).toBe('note-by-manifest');
+  });
+
+  it('uses the manifest id even when the title is absent from the lookup (stale index)', () => {
+    // This is the duplicate-note bug: the index lacks the note, so a title-only
+    // match would miss and create a copy. The manifest still links the file.
+    expect(pickOverwriteTarget({ noteId: 'note-x', live: true }, lookup, 'f1', 'Not Indexed')).toBe(
+      'note-x'
+    );
+  });
+
+  it('falls back to the title lookup when the manifest id is no longer live (deleted/trashed)', () => {
+    expect(pickOverwriteTarget({ noteId: 'gone', live: false }, lookup, 'f1', 'Title A')).toBe(
+      'note-by-title'
+    );
+  });
+
+  it('falls back to the title lookup when there is no manifest entry (manual import / new path)', () => {
+    expect(pickOverwriteTarget({ noteId: undefined, live: false }, lookup, 'f1', 'Title A')).toBe(
+      'note-by-title'
+    );
+  });
+
+  it('returns undefined (→ create) when neither a live manifest nor the title matches', () => {
+    expect(
+      pickOverwriteTarget({ noteId: undefined, live: false }, lookup, 'f1', 'Brand New')
+    ).toBeUndefined();
+    // A dead manifest id with no title match is also a create.
+    expect(
+      pickOverwriteTarget({ noteId: 'dead', live: false }, lookup, 'f1', 'Brand New')
+    ).toBeUndefined();
+  });
+
+  it('ignores a manifest id flagged not-live even if it would otherwise match the title slot', () => {
+    // live=false means the caller could not confirm the note exists; never
+    // trust the id, regardless of what the title lookup holds.
+    expect(
+      pickOverwriteTarget({ noteId: 'note-by-title', live: false }, lookup, 'f1', 'Title A')
+    ).toBe('note-by-title');
   });
 });
 

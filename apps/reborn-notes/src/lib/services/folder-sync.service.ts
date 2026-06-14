@@ -848,7 +848,14 @@ async function scanAndImport(
       changed,
       'overwrite',
       (p) => patchStatus(cfg.id, { progress: p }),
-      { targetFolderId, tagsOnOverwrite: 'merge' }
+      // Pass the previous run's path↔note manifest so a file already linked to a
+      // live note overwrites THAT note even when this tab's in-memory title
+      // index is stale (e.g. the note was imported in another tab/window this
+      // context hasn't pulled yet) - the index-miss that minted duplicate notes.
+      // New paths and stale links (note hard-deleted) fall back to title
+      // matching inside the importer. `prevManifest` is undefined on the first
+      // manifest-populating run; the importer then uses title matching alone.
+      { targetFolderId, tagsOnOverwrite: 'merge', pathManifest: prevManifest }
     );
   }
 
