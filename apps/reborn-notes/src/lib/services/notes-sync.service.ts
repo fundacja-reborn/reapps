@@ -48,6 +48,7 @@ import { validateEncryptedPayload } from '@reborn/crypto';
 import { refreshQuota } from '$lib/stores/storage-quota.store';
 import { connectivityStore } from '$lib/stores/connectivity.store';
 import { buildFolderLayers } from './folder-push-order';
+import { settleInBatches } from './sync-batch';
 
 const logger = createLogger('Notes-Sync');
 
@@ -640,6 +641,11 @@ export async function markAllLocalDataPending(): Promise<void> {
 /**
  * Push all locally-pending items (folders, tags, notes) to the server.
  * Called during manual sync to ensure local-only items reach the server.
+ *
+ * Every fan-out below goes through `settleInBatches` (cap `SYNC_BATCH_SIZE`)
+ * rather than a flat `Promise.allSettled`, so a mass push (a folder import can
+ * leave ~200 notes pending at once) never fires the whole burst concurrently
+ * and saturates the server's shared pg pool. See `sync-batch.ts`.
  */
 export async function pushPendingItems(): Promise<void> {
   if (!isAuthenticated()) return;
@@ -682,39 +688,37 @@ export async function pushPendingItems(): Promise<void> {
 
   // Push folders BFS-by-layer so parents land before children. Server's
   // POST /api/folders rejects with 404 "Parent folder not found" when
-  // parent_id references a folder not yet on the server - flat
-  // Promise.allSettled would 404-spam mid-batch on vault imports with
-  // nested hierarchies. Siblings within a layer push in parallel.
+  // parent_id references a folder not yet on the server - a flat fan-out
+  // would 404-spam mid-batch on vault imports with nested hierarchies.
+  // Siblings within a layer push in parallel, capped by settleInBatches.
   for (const layer of buildFolderLayers(pendingFolders)) {
-    await Promise.allSettled(
-      layer.map((f) =>
-        serializePerEntity('folder', f.id, () =>
-          pushSilently(async (idempotencyKey) => {
-            const pushedFields = {
-              name_encrypted: f.name_encrypted,
-              parent_id: f.parent_id ?? null,
-              order_index: f.order_index
-            };
-            const payload = { id: f.id, ...pushedFields, created_at: f.created_at };
-            validateEncryptedPayload(payload as Record<string, unknown>);
-            const res = await authFetch(`${API_BASE}/folders`, {
-              method: 'POST',
-              headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-              body: JSON.stringify(payload)
+    await settleInBatches(layer, (f) =>
+      serializePerEntity('folder', f.id, () =>
+        pushSilently(async (idempotencyKey) => {
+          const pushedFields = {
+            name_encrypted: f.name_encrypted,
+            parent_id: f.parent_id ?? null,
+            order_index: f.order_index
+          };
+          const payload = { id: f.id, ...pushedFields, created_at: f.created_at };
+          validateEncryptedPayload(payload as Record<string, unknown>);
+          const res = await authFetch(`${API_BASE}/folders`, {
+            method: 'POST',
+            headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error(`POST /api/folders: ${res.status}`);
+          const { data: resData } = await res.json();
+          const current = await folderStore.get(f.id);
+          if (current) {
+            const stillDirty = pushedFieldsDiffer(current, pushedFields);
+            await folderStore.save({
+              ...current,
+              sync_status: stillDirty ? 'pending' : 'synced',
+              sync_version: resData?.sync_version ?? 1
             });
-            if (!res.ok) throw new Error(`POST /api/folders: ${res.status}`);
-            const { data: resData } = await res.json();
-            const current = await folderStore.get(f.id);
-            if (current) {
-              const stillDirty = pushedFieldsDiffer(current, pushedFields);
-              await folderStore.save({
-                ...current,
-                sync_status: stillDirty ? 'pending' : 'synced',
-                sync_version: resData?.sync_version ?? 1
-              });
-            }
-          })
-        )
+          }
+        })
       )
     );
   }
@@ -722,83 +726,77 @@ export async function pushPendingItems(): Promise<void> {
   // Tags don't reference folders - push in parallel after folders are
   // settled. Notes' metadata_encrypted may embed tag ids, so tags must
   // land before the notes layer below.
-  await Promise.allSettled(
-    pendingTags.map((t) =>
-      serializePerEntity('tag', t.id, () =>
-        pushSilently(async (idempotencyKey) => {
-          const pushedFields = {
-            name_encrypted: t.name_encrypted,
-            color_encrypted: t.color_encrypted ?? null
-          };
-          const payload = { id: t.id, ...pushedFields, created_at: t.created_at };
-          validateEncryptedPayload(payload as Record<string, unknown>);
-          const res = await authFetch(`${API_BASE}/tags`, {
-            method: 'POST',
-            headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-            body: JSON.stringify(payload)
+  await settleInBatches(pendingTags, (t) =>
+    serializePerEntity('tag', t.id, () =>
+      pushSilently(async (idempotencyKey) => {
+        const pushedFields = {
+          name_encrypted: t.name_encrypted,
+          color_encrypted: t.color_encrypted ?? null
+        };
+        const payload = { id: t.id, ...pushedFields, created_at: t.created_at };
+        validateEncryptedPayload(payload as Record<string, unknown>);
+        const res = await authFetch(`${API_BASE}/tags`, {
+          method: 'POST',
+          headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error(`POST /api/tags: ${res.status}`);
+        const { data: resData } = await res.json();
+        const current = await tagStore.get(t.id);
+        if (current) {
+          const stillDirty = pushedFieldsDiffer(current, pushedFields);
+          await tagStore.save({
+            ...current,
+            sync_status: stillDirty ? 'pending' : 'synced',
+            sync_version: resData?.sync_version ?? 1
           });
-          if (!res.ok) throw new Error(`POST /api/tags: ${res.status}`);
-          const { data: resData } = await res.json();
-          const current = await tagStore.get(t.id);
-          if (current) {
-            const stillDirty = pushedFieldsDiffer(current, pushedFields);
-            await tagStore.save({
-              ...current,
-              sync_status: stillDirty ? 'pending' : 'synced',
-              sync_version: resData?.sync_version ?? 1
-            });
-          }
-        })
-      )
+        }
+      })
     )
   );
 
   // Saved searches reference folders (parking FK), so they go after the
   // folder layers, like notes. No other entity depends on them.
-  await Promise.allSettled(
-    pendingSavedSearches.map((s) =>
-      serializePerEntity('savedSearch', s.id, () =>
-        pushSilently((idempotencyKey) => pushSavedSearchPayload(s, idempotencyKey))
-      )
+  await settleInBatches(pendingSavedSearches, (s) =>
+    serializePerEntity('savedSearch', s.id, () =>
+      pushSilently((idempotencyKey) => pushSavedSearchPayload(s, idempotencyKey))
     )
   );
 
   // Then push notes (POST for creates/updates)
-  await Promise.allSettled(
-    pendingNotes.map((n) =>
-      serializePerEntity('note', n.id, () =>
-        pushSilently(async (idempotencyKey) => {
-          const pushedFields = {
-            title_encrypted: n.title_encrypted,
-            content_encrypted: n.content_encrypted,
-            folder_id: n.folder_id ?? null,
-            metadata_encrypted: n.metadata_encrypted ?? null
-          };
-          const payload = {
-            id: n.id,
-            ...pushedFields,
-            metadata_encrypted: n.metadata_encrypted ?? undefined,
-            created_at: n.created_at
-          };
-          validateEncryptedPayload(payload as Record<string, unknown>);
-          const res = await authFetch(`${API_BASE}/notes`, {
-            method: 'POST',
-            headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-            body: JSON.stringify(payload)
+  await settleInBatches(pendingNotes, (n) =>
+    serializePerEntity('note', n.id, () =>
+      pushSilently(async (idempotencyKey) => {
+        const pushedFields = {
+          title_encrypted: n.title_encrypted,
+          content_encrypted: n.content_encrypted,
+          folder_id: n.folder_id ?? null,
+          metadata_encrypted: n.metadata_encrypted ?? null
+        };
+        const payload = {
+          id: n.id,
+          ...pushedFields,
+          metadata_encrypted: n.metadata_encrypted ?? undefined,
+          created_at: n.created_at
+        };
+        validateEncryptedPayload(payload as Record<string, unknown>);
+        const res = await authFetch(`${API_BASE}/notes`, {
+          method: 'POST',
+          headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error(`POST /api/notes: ${res.status}`);
+        const { data: resData } = await res.json();
+        const current = await noteStore.get(n.id);
+        if (current) {
+          const stillDirty = pushedFieldsDiffer(current, pushedFields);
+          await noteStore.save({
+            ...current,
+            sync_status: stillDirty ? 'pending' : 'synced',
+            sync_version: resData?.sync_version ?? 1
           });
-          if (!res.ok) throw new Error(`POST /api/notes: ${res.status}`);
-          const { data: resData } = await res.json();
-          const current = await noteStore.get(n.id);
-          if (current) {
-            const stillDirty = pushedFieldsDiffer(current, pushedFields);
-            await noteStore.save({
-              ...current,
-              sync_status: stillDirty ? 'pending' : 'synced',
-              sync_version: resData?.sync_version ?? 1
-            });
-          }
-        })
-      )
+        }
+      })
     )
   );
 
@@ -811,17 +809,23 @@ export async function pushPendingItems(): Promise<void> {
   // pushNoteUpdate + pushNoteDelete are serialized per-entity, so DELETE waits
   // for PATCH to land. Notes with sync_version === 0 never reached the server,
   // so there is nothing to update or delete remotely - skip both.
-  for (const n of pendingArchivedNotes) {
-    if ((n.sync_version ?? 0) > 0) {
-      pushNoteUpdate(n.id, {
-        title_encrypted: n.title_encrypted,
-        content_encrypted: n.content_encrypted,
-        folder_id: n.folder_id ?? null,
-        metadata_encrypted: n.metadata_encrypted ?? undefined
-      });
-      pushNoteDelete(n.id);
-    }
-  }
+  const retriableArchivedNotes = pendingArchivedNotes.filter((n) => (n.sync_version ?? 0) > 0);
+  await settleInBatches(retriableArchivedNotes, async (n) => {
+    pushNoteUpdate(n.id, {
+      title_encrypted: n.title_encrypted,
+      content_encrypted: n.content_encrypted,
+      folder_id: n.folder_id ?? null,
+      metadata_encrypted: n.metadata_encrypted ?? undefined
+    });
+    pushNoteDelete(n.id);
+    // pushNoteUpdate/pushNoteDelete are fire-and-forget (void), so without a
+    // join the loop would enqueue every archived note at once and the cap would
+    // be a no-op. Await a trailing no-op on the same per-entity chain: it runs
+    // FIFO after the queued PATCH+DELETE, so this task only settles once they
+    // have - giving settleInBatches real backpressure (<= SYNC_BATCH_SIZE notes
+    // mid-PATCH/DELETE at a time).
+    await serializePerEntity('note', n.id, () => Promise.resolve());
+  });
 
   // Push pending note versions
   await pushPendingVersions();
@@ -1449,38 +1453,31 @@ export function pushNoteVersion(entry: NoteHistoryEntry): void {
   });
 }
 
-const PULL_VERSIONS_BATCH_SIZE = 10;
-
-/** Pull versions for all notes from server and upsert locally (batched, max 10 concurrent). */
+/** Pull versions for all notes from server and upsert locally (batched, max SYNC_BATCH_SIZE concurrent). */
 async function pullNoteVersions(noteIds: string[]): Promise<void> {
-  for (let i = 0; i < noteIds.length; i += PULL_VERSIONS_BATCH_SIZE) {
-    const batch = noteIds.slice(i, i + PULL_VERSIONS_BATCH_SIZE);
-    await Promise.allSettled(
-      batch.map(async (noteId) => {
-        const res = await authFetch(`${API_BASE}/notes/${noteId}/versions`);
-        if (!res.ok) return;
-        const { data } = await res.json();
-        if (!Array.isArray(data)) return;
+  await settleInBatches(noteIds, async (noteId) => {
+    const res = await authFetch(`${API_BASE}/notes/${noteId}/versions`);
+    if (!res.ok) return;
+    const { data } = await res.json();
+    if (!Array.isArray(data)) return;
 
-        for (const v of data as Array<{
-          id: string;
-          note_id: string;
-          title_encrypted: string;
-          content_encrypted: string;
-          created_at: string;
-        }>) {
-          await noteHistoryStore.save({
-            id: v.id,
-            note_id: v.note_id,
-            title_encrypted: v.title_encrypted,
-            content_encrypted: v.content_encrypted,
-            sync_status: 'synced',
-            created_at: v.created_at
-          });
-        }
-      })
-    );
-  }
+    for (const v of data as Array<{
+      id: string;
+      note_id: string;
+      title_encrypted: string;
+      content_encrypted: string;
+      created_at: string;
+    }>) {
+      await noteHistoryStore.save({
+        id: v.id,
+        note_id: v.note_id,
+        title_encrypted: v.title_encrypted,
+        content_encrypted: v.content_encrypted,
+        sync_status: 'synced',
+        created_at: v.created_at
+      });
+    }
+  });
 }
 
 /** Push all pending (unsynced) note versions to server. */
@@ -1490,25 +1487,23 @@ async function pushPendingVersions(): Promise<void> {
   if (pending.length === 0) return;
 
   logger.info(`Pushing ${pending.length} pending note versions`);
-  await Promise.allSettled(
-    pending.map((entry) =>
-      pushSilently(async (idempotencyKey) => {
-        const res = await authFetch(`${API_BASE}/notes/${entry.note_id}/versions`, {
-          method: 'POST',
-          headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-          body: JSON.stringify({
-            id: entry.id,
-            title_encrypted: entry.title_encrypted,
-            content_encrypted: entry.content_encrypted,
-            created_at: entry.created_at
-          })
-        });
-        if (!res.ok) throw new Error(`POST versions: ${res.status}`);
-        const current = await noteHistoryStore.get(entry.id);
-        if (current) {
-          await noteHistoryStore.save({ ...current, sync_status: 'synced' });
-        }
-      })
-    )
+  await settleInBatches(pending, (entry) =>
+    pushSilently(async (idempotencyKey) => {
+      const res = await authFetch(`${API_BASE}/notes/${entry.note_id}/versions`, {
+        method: 'POST',
+        headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({
+          id: entry.id,
+          title_encrypted: entry.title_encrypted,
+          content_encrypted: entry.content_encrypted,
+          created_at: entry.created_at
+        })
+      });
+      if (!res.ok) throw new Error(`POST versions: ${res.status}`);
+      const current = await noteHistoryStore.get(entry.id);
+      if (current) {
+        await noteHistoryStore.save({ ...current, sync_status: 'synced' });
+      }
+    })
   );
 }

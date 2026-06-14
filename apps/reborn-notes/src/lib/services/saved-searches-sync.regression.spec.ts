@@ -57,7 +57,9 @@ describe('saved searches - push sync', () => {
     );
     expect(fn).toMatch(/pendingSavedSearches\s*=\s*allSavedSearches\.filter/);
     const folderLayersIdx = fn.indexOf('buildFolderLayers');
-    const savedSearchPushIdx = fn.search(/pendingSavedSearches\.map/);
+    // The push sweep (distinct from the partition filter above) must come after
+    // the folder layers - a parked saved search FK-references its folder.
+    const savedSearchPushIdx = fn.search(/settleInBatches\(\s*pendingSavedSearches\b/);
     expect(folderLayersIdx).toBeGreaterThan(-1);
     expect(savedSearchPushIdx).toBeGreaterThan(folderLayersIdx);
   });

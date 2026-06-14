@@ -245,9 +245,9 @@ describe('notes-sync - regression (offline data loss)', () => {
 
   it('pushPendingItems pushes folders BFS-by-layer (parent before child)', () => {
     // Server's POST /api/folders FK-checks parent_id and 404s if the parent
-    // isn't on the server yet. Flat Promise.allSettled would 404-spam mid-batch
-    // on nested vault imports - pushPendingItems must use buildFolderLayers
-    // and await each layer before starting the next.
+    // isn't on the server yet. A flat fan-out would 404-spam mid-batch on
+    // nested vault imports - pushPendingItems must use buildFolderLayers and
+    // await each layer (via settleInBatches) before starting the next.
     const src = readSource('./notes-sync.service.ts');
     const fn = src.slice(
       src.indexOf('export async function pushPendingItems'),
@@ -258,13 +258,13 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(fn).toMatch(/buildFolderLayers\s*\(\s*pendingFolders\s*\)/);
 
     // The folder push must live inside `for (const layer of …)` with an
-    // `await Promise.allSettled` per iteration. Loose match: `for` block
-    // appears, and within the file, the `/api/folders` POST is reachable
-    // only through that loop.
+    // awaited per-layer sweep. Loose match: `for` block appears, and within
+    // the file, the `/api/folders` POST is reachable only through that loop.
     expect(fn).toMatch(/for\s*\(\s*const\s+layer\s+of\s+buildFolderLayers/);
 
-    // Sanity: the old flat folder-and-tag combined Promise.allSettled is gone.
-    // (If both were in one settle, layering wouldn't matter.)
+    // Sanity: folders and tags push in SEPARATE sweeps (if they shared one,
+    // layering wouldn't matter). Between the folders POST and the tags POST
+    // there must be a fresh `await settleInBatches(pendingTags, …)`.
     const foldersPostIdx = fn.indexOf("'/api/folders'") >= 0
       ? fn.indexOf("'/api/folders'")
       : fn.indexOf('/api/folders');
@@ -273,10 +273,8 @@ describe('notes-sync - regression (offline data loss)', () => {
       : fn.indexOf('/api/tags');
     expect(foldersPostIdx).toBeGreaterThan(-1);
     expect(tagsPostIdx).toBeGreaterThan(-1);
-    // Between folders POST and tags POST there must be a `})` closing the
-    // folder for-loop, then a fresh `await Promise.allSettled` for tags.
     const between = fn.slice(foldersPostIdx, tagsPostIdx);
-    expect(between).toMatch(/await\s+Promise\.allSettled/);
+    expect(between).toMatch(/await\s+settleInBatches\(\s*pendingTags\b/);
   });
 
   it('pushPendingItems sends PATCH before DELETE for archived notes with server-side history', () => {
@@ -294,10 +292,13 @@ describe('notes-sync - regression (offline data loss)', () => {
       src.indexOf('/** Retry a function with exponential backoff')
     );
 
-    // Locate the archived-pending loop and assert it gates on sync_version.
-    const loopIdx = fn.search(/for\s*\(\s*const\s+n\s+of\s+pendingArchivedNotes\s*\)/);
-    expect(loopIdx).toBeGreaterThan(-1);
-    const loopBody = fn.slice(loopIdx);
+    // Locate the archived-pending retry sweep and assert it gates on
+    // sync_version (notes that never reached the server are skipped).
+    const anchorIdx = fn.search(
+      /const\s+retriableArchivedNotes\s*=\s*pendingArchivedNotes\.filter/
+    );
+    expect(anchorIdx).toBeGreaterThan(-1);
+    const loopBody = fn.slice(anchorIdx);
     expect(loopBody).toMatch(/n\.sync_version\s*\?\?\s*0\)?\s*>\s*0/);
 
     // PATCH (pushNoteUpdate) must appear before DELETE (pushNoteDelete).
@@ -306,6 +307,63 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(patchIdx).toBeGreaterThan(-1);
     expect(deleteIdx).toBeGreaterThan(-1);
     expect(patchIdx).toBeLessThan(deleteIdx);
+  });
+
+  it('pushPendingItems caps every fan-out via settleInBatches (no flat Promise.allSettled)', () => {
+    // Regression for the mass-push burst (Michał's ~195-note folder import,
+    // 2026-06-14): a flat Promise.allSettled over every pending item fired the
+    // whole burst at once, saturating the server's shared pg pool (node-pg
+    // default max 10, connectionTimeoutMillis 0 → queries queue forever instead
+    // of erroring). Every sweep must route through settleInBatches (cap
+    // SYNC_BATCH_SIZE), never a bare allSettled. See sync-batch.ts.
+    const src = readSource('./notes-sync.service.ts');
+    const fn = src.slice(
+      src.indexOf('export async function pushPendingItems'),
+      src.indexOf('/** Retry a function with exponential backoff')
+    );
+
+    // Each in-function sweep goes through the helper.
+    expect(fn).toMatch(/settleInBatches\(\s*layer\b/); // folders, per BFS layer
+    expect(fn).toMatch(/settleInBatches\(\s*pendingTags\b/);
+    expect(fn).toMatch(/settleInBatches\(\s*pendingSavedSearches\b/);
+    expect(fn).toMatch(/settleInBatches\(\s*pendingNotes\b/);
+    expect(fn).toMatch(/settleInBatches\(\s*retriableArchivedNotes\b/);
+
+    // No bare Promise.allSettled CALL left in the function body - those WERE
+    // the unbounded bursts. The bounded one now lives inside settleInBatches.
+    // (Matches a call `Promise.allSettled(`, not the word in a comment.)
+    expect(fn).not.toMatch(/Promise\.allSettled\s*\(/);
+
+    // The tail version push and the pull-side version fetch share the cap too.
+    const versionsFn = src.slice(src.indexOf('async function pushPendingVersions'));
+    expect(versionsFn.slice(0, 900)).toMatch(/settleInBatches\(\s*pending\b/);
+    const pullVersions = src.slice(src.indexOf('async function pullNoteVersions'));
+    expect(pullVersions.slice(0, 400)).toMatch(/settleInBatches\(\s*noteIds\b/);
+    // The bespoke pull-versions batch constant is gone (unified onto the helper).
+    expect(src).not.toMatch(/PULL_VERSIONS_BATCH_SIZE/);
+  });
+
+  it('archived-pending retry joins the per-entity chain so the cap is real', () => {
+    // pushNoteUpdate/pushNoteDelete are fire-and-forget (void). If the sweep
+    // didn't await something, settleInBatches would enqueue every archived note
+    // at once and the cap would be a no-op. The task must await a trailing
+    // serializePerEntity('note', …) so it only settles after the queued
+    // PATCH+DELETE run - that's what gives the batch real backpressure.
+    const src = readSource('./notes-sync.service.ts');
+    const fn = src.slice(
+      src.indexOf('export async function pushPendingItems'),
+      src.indexOf('/** Retry a function with exponential backoff')
+    );
+    const anchorIdx = fn.search(
+      /const\s+retriableArchivedNotes\s*=\s*pendingArchivedNotes\.filter/
+    );
+    expect(anchorIdx).toBeGreaterThan(-1);
+    const sweep = fn.slice(anchorIdx);
+    expect(sweep).toMatch(/await\s+settleInBatches\(\s*retriableArchivedNotes\b/);
+    // The trailing join: a no-op chained on the same note entity, awaited.
+    expect(sweep).toMatch(
+      /await\s+serializePerEntity\(\s*'note',\s*n\.id,\s*\(\)\s*=>\s*Promise\.resolve\(\)\s*\)/
+    );
   });
 
   it('importJsonBackup defers all pushes to pushPendingItems (ordering)', () => {
