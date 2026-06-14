@@ -89,7 +89,11 @@ vi.mock('$lib/stores/folders.store', async () => {
 // Concurrency tracker: the runner must never overlap two imports.
 let activeImports = 0;
 let maxActiveImports = 0;
-type ImportCall = { paths: string[]; targetFolderId?: string };
+type ImportCall = {
+  paths: string[];
+  targetFolderId?: string;
+  pathManifest?: Record<string, string>;
+};
 const importCalls: ImportCall[] = [];
 
 vi.mock('./export-import.service', () => ({
@@ -98,13 +102,14 @@ vi.mock('./export-import.service', () => ({
       entries: Array<{ file: File; relativePath: string }>,
       _strategy?: unknown,
       _onProgress?: unknown,
-      opts?: { targetFolderId?: string }
+      opts?: { targetFolderId?: string; pathManifest?: Record<string, string> }
     ) => {
       activeImports++;
       maxActiveImports = Math.max(maxActiveImports, activeImports);
       importCalls.push({
         paths: entries.map((e) => e.relativePath),
-        targetFolderId: opts?.targetFolderId
+        targetFolderId: opts?.targetFolderId,
+        pathManifest: opts?.pathManifest
       });
       // Yield twice so an accidentally-parallel runner would overlap here.
       await Promise.resolve();
@@ -436,6 +441,32 @@ describe('runFolderSync (in-app deletion)', () => {
     expect(rows.find((r) => r.id === 'a')?.path_note_ids).toEqual({
       'Docs/a.md': 'note:Docs/a.md'
     });
+  });
+
+  it('passes the prior path-to-note manifest to importFolder so a stale title index cannot duplicate', async () => {
+    // a.md is known and already linked to note-a. Its mtime (fakeDir stamps
+    // 1000ms) is past the watermark, so it re-enters the incremental set and
+    // reaches importFolder - which must receive the manifest to overwrite
+    // note-a in place rather than trust the volatile in-memory title index.
+    seedConfig({
+      id: 'a',
+      root_name: 'Docs',
+      target_folder_id: 'f1',
+      handle: fakeDir('Docs', ['a.md']),
+      last_sync_at: '1970-01-01T00:00:00.000Z',
+      known_paths: ['Docs/a.md'],
+      path_note_ids: { 'Docs/a.md': 'note-a' }
+    });
+    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
+    noteRows.push({ id: 'note-a' });
+    const svc = await loadService();
+    await svc.refreshFolderSyncStatus();
+
+    await svc.runFolderSync('manual', 'a');
+
+    expect(importCalls).toHaveLength(1);
+    expect(importCalls[0].paths).toEqual(['Docs/a.md']);
+    expect(importCalls[0].pathManifest).toEqual({ 'Docs/a.md': 'note-a' });
   });
 });
 

@@ -76,6 +76,35 @@ export function findExisting(
 }
 
 /**
+ * Pick the existing note an imported file should overwrite, preferring the
+ * durable path→note manifest over the volatile in-memory title index.
+ *
+ * Live folder sync persists a `relativePath → note id` manifest in IndexedDB
+ * (`path_note_ids`). When a file is already linked to a still-live note that
+ * link is AUTHORITATIVE: the file overwrites THAT note regardless of the title
+ * lookup. The lookup is built from the per-tab, RAM-only `noteIndex`, which can
+ * be stale (e.g. a note imported in another tab the current context hasn't
+ * pulled yet) - trusting it alone minted a duplicate note on the next sync
+ * (`findExisting` missed → a second copy was created). Falling back to the
+ * title lookup only when the manifest has no usable entry keeps manual imports
+ * (no manifest) and brand-new files on the original case-insensitive matching.
+ *
+ * `manifest.live` is the caller's confirmation that `manifest.noteId` still
+ * exists AND is active (`NoteService.getNote` returns null for missing/trashed
+ * notes); a stale id pointing at a deleted note therefore falls through to the
+ * title lookup, which re-creates it - the one-way mirror's "disk wins" intent.
+ */
+export function pickOverwriteTarget(
+  manifest: { noteId: string | undefined; live: boolean },
+  lookup: TitleLookup,
+  folderId: string | undefined,
+  title: string
+): string | undefined {
+  if (manifest.noteId !== undefined && manifest.live) return manifest.noteId;
+  return findExisting(lookup, folderId, title);
+}
+
+/**
  * Decide whether an `overwrite`-strategy import can skip the write entirely
  * because the incoming file is identical to the already-stored note.
  *
