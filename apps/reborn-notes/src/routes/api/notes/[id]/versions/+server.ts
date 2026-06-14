@@ -4,6 +4,7 @@ import { prisma } from '@reborn/database';
 import { createLogger } from '@reborn/utils';
 import { getUserFromToken } from '$lib/server/auth';
 import { checkQuota } from '$lib/server/storage-quota';
+import { apiErrorResponse } from '$lib/server/api-error';
 import {
   MAX_NOTE_VERSIONS,
   MAX_ENCRYPTED_CONTENT_BYTES,
@@ -49,8 +50,7 @@ export const GET: RequestHandler = async ({ request, params }) => {
       }))
     });
   } catch (err: unknown) {
-    logger.error('GET /api/notes/[id]/versions error:', err);
-    return json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiErrorResponse(err, logger, 'GET /api/notes/[id]/versions');
   }
 };
 
@@ -138,8 +138,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
 
     return json({ success: true });
   } catch (err: unknown) {
-    logger.error('POST /api/notes/[id]/versions error:', err);
-    return json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiErrorResponse(err, logger, 'POST /api/notes/[id]/versions');
   }
 };
 
@@ -155,7 +154,6 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
 
     return json({ success: true });
   } catch (err: unknown) {
-    logger.error('DELETE /api/notes/[id]/versions error:', err);
-    return json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiErrorResponse(err, logger, 'DELETE /api/notes/[id]/versions');
   }
 };

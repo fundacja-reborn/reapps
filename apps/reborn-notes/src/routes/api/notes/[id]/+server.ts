@@ -5,6 +5,7 @@ import { createLogger } from '@reborn/utils';
 import { validateBody, schemas } from '@reborn/types';
 import { getUserFromToken } from '$lib/server/auth';
 import { checkQuota } from '$lib/server/storage-quota';
+import { apiErrorResponse } from '$lib/server/api-error';
 
 const logger = createLogger('Notes-API-Note');
 
@@ -34,8 +35,7 @@ export const GET: RequestHandler = async ({ request, params }) => {
       }
     });
   } catch (err: unknown) {
-    logger.error('GET /api/notes/[id] error:', err);
-    return json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiErrorResponse(err, logger, 'GET /api/notes/[id]');
   }
 };
 
@@ -105,8 +105,7 @@ export const PATCH: RequestHandler = async ({ request, params }) => {
       data: { updated_at: note.updated_at.toISOString(), sync_version: note.sync_version }
     });
   } catch (err: unknown) {
-    logger.error('PATCH /api/notes/[id] error:', err);
-    return json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiErrorResponse(err, logger, 'PATCH /api/notes/[id]');
   }
 };
 
@@ -143,7 +142,6 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
       }
     });
   } catch (err: unknown) {
-    logger.error('DELETE /api/notes/[id] error:', err);
-    return json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiErrorResponse(err, logger, 'DELETE /api/notes/[id]');
   }
 };
