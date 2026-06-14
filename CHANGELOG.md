@@ -1,3 +1,9 @@
+## 0.31.1 (2026-06-14)
+
+### 🩹 Fixes
+
+- **notes:** keep whitespace outside emphasis markers when formatting ([#284](https://github.com/fundacja-reborn/reapps/pull/284))
+
 ## 0.31.0 (2026-06-14)
 
 ### 🚀 Features
