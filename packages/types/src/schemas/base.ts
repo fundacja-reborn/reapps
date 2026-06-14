@@ -16,7 +16,7 @@ export const EncryptedEntitySchema = z.object({
  */
 export const SyncableSchema = z.object({
   sync_version: z.number().int().min(0),
-  sync_status: z.enum(['pending', 'synced', 'conflict']),
+  sync_status: z.enum(['pending', 'synced', 'conflict', 'sync_error']),
   last_sync_at: z.string().datetime().nullable().optional(),
   device_id: z.string().optional()
 });

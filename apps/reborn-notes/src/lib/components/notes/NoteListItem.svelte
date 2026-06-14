@@ -12,8 +12,11 @@
     Share2,
     Trash2,
     RotateCcw,
-    Trash
+    Trash,
+    AlertTriangle
   } from '@lucide/svelte';
+  import { MAX_NOTE_CONTENT_BYTES } from '@reborn/types';
+  import { syncErrorMap } from '$lib/stores/sync-status.store';
   import {
     Checkbox,
     DropdownMenu,
@@ -84,6 +87,28 @@
   // Display the date matching the active sort key so the visible value matches the sort.
   // For 'title' sort fall back to updated_at (most recent activity).
   const displayDate = $derived($sortByStore === 'created_at' ? note.created_at : note.updated_at);
+
+  // Per-note hard-rejection state (sync_status: 'sync_error'). Read from the
+  // reactive map so the badge appears/clears as soon as a push is rejected or a
+  // later edit re-syncs the note - no need to thread sync_status through the
+  // decrypted note index.
+  const syncErrorCode = $derived($syncErrorMap.get(note.id));
+  const syncErrorTitle = $derived.by(() => {
+    switch (syncErrorCode) {
+      case 'too_large':
+        return $t('sync_status.errors.too_large', {
+          values: { max: Math.round(MAX_NOTE_CONTENT_BYTES / 1000) }
+        });
+      case 'quota_exceeded':
+        return $t('sync_status.errors.quota_exceeded');
+      case 'invalid':
+        return $t('sync_status.errors.invalid');
+      case 'rejected':
+        return $t('sync_status.errors.rejected');
+      default:
+        return '';
+    }
+  });
 
   function handleItemClick(e: MouseEvent) {
     if (selectionMode) {
@@ -168,6 +193,15 @@
         <!-- Star indicator -->
         {#if note.is_starred}
           <Star class="mt-1.5 h-3.5 w-3.5 md:mt-1 md:h-3 md:w-3 shrink-0 fill-amber-400 text-amber-400" />
+        {/if}
+        <!-- Sync-error indicator: server permanently rejected this note's push. -->
+        {#if syncErrorCode}
+          <span title={syncErrorTitle} class="mt-1.5 shrink-0 md:mt-1">
+            <AlertTriangle
+              class="h-3.5 w-3.5 md:h-3 md:w-3 text-destructive"
+              aria-label={syncErrorTitle}
+            />
+          </span>
         {/if}
       </div>
       {#if breadcrumb}

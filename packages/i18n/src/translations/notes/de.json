@@ -685,6 +685,15 @@
     "initial": {
       "title": "Notizen werden synchronisiert",
       "message": "Das Herunterladen Ihrer verschlüsselten Daten vom Server kann einen Moment dauern."
+    },
+    "errors": {
+      "count": "{count} nicht synchronisiert",
+      "too_large": "Zu groß, nicht synchronisiert (Limit {max} KB)",
+      "quota_exceeded": "Speicher voll - nicht synchronisiert",
+      "invalid": "Ungültige Daten - nicht synchronisiert",
+      "rejected": "Nicht synchronisiert",
+      "toast_single": "Notiz nicht synchronisiert",
+      "toast_batch": "{count} Notizen nicht synchronisiert"
     }
   },
   "view_mode": {

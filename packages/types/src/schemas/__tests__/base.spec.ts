@@ -69,7 +69,7 @@ describe('Base Schemas', () => {
     });
 
     it('should validate all sync statuses', () => {
-      const statuses = ['pending', 'synced', 'conflict'] as const;
+      const statuses = ['pending', 'synced', 'conflict', 'sync_error'] as const;
       
       statuses.forEach(status => {
         const syncable = {

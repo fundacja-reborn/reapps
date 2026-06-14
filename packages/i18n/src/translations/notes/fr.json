@@ -685,6 +685,15 @@
     "initial": {
       "title": "Synchronisation de vos notes",
       "message": "Le téléchargement de vos données chiffrées depuis le serveur peut prendre un instant."
+    },
+    "errors": {
+      "count": "{count} non synchronisé(s)",
+      "too_large": "Trop volumineuse, non synchronisée (limite {max} KB)",
+      "quota_exceeded": "Stockage plein - non synchronisée",
+      "invalid": "Données invalides - non synchronisée",
+      "rejected": "Non synchronisée",
+      "toast_single": "Note non synchronisée",
+      "toast_batch": "{count} notes non synchronisées"
     }
   },
   "view_mode": {

@@ -685,6 +685,15 @@
     "initial": {
       "title": "Syncing your notes",
       "message": "Downloading your encrypted data from the server may take a moment."
+    },
+    "errors": {
+      "count": "{count} not synced",
+      "too_large": "Too large to sync (limit {max} KB)",
+      "quota_exceeded": "Storage full - not synced",
+      "invalid": "Invalid data - not synced",
+      "rejected": "Not synced",
+      "toast_single": "Note not synced",
+      "toast_batch": "{count} notes not synced"
     }
   },
   "view_mode": {

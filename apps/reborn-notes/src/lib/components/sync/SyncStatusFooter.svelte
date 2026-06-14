@@ -51,6 +51,8 @@
         return WifiOff;
       case 'error':
         return AlertCircle;
+      case 'sync_error':
+        return AlertTriangle;
       case 'pending':
         return CloudUpload;
       case 'needs_sync':
@@ -71,6 +73,8 @@
       case 'offline':
         return 'text-muted-foreground';
       case 'error':
+        return 'text-destructive';
+      case 'sync_error':
         return 'text-destructive';
       case 'pending':
         return 'text-amber-500 dark:text-amber-400';
@@ -93,6 +97,8 @@
         return $t('sync_status.offline');
       case 'error':
         return $t('sync_status.error');
+      case 'sync_error':
+        return $t('sync_status.errors.count', { values: { count: $syncStatus.errorCount } });
       case 'pending':
         return $t('sync_status.pending', { values: { count: $syncStatus.pendingCount } });
       case 'needs_sync':

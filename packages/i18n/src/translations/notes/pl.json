@@ -685,6 +685,15 @@
     "initial": {
       "title": "Synchronizujemy Twoje notatki",
       "message": "Pobieranie zaszyfrowanych danych z serwera może chwilę potrwać."
+    },
+    "errors": {
+      "count": "{count} niezsynchronizowanych",
+      "too_large": "Za duża, nie zsynchronizowano (limit {max} KB)",
+      "quota_exceeded": "Brak miejsca - nie zsynchronizowano",
+      "invalid": "Nieprawidłowe dane - nie zsynchronizowano",
+      "rejected": "Nie zsynchronizowano",
+      "toast_single": "Notatka nie została zsynchronizowana",
+      "toast_batch": "{count} notatek nie zsynchronizowano"
     }
   },
   "view_mode": {
