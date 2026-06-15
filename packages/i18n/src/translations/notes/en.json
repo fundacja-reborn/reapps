@@ -829,7 +829,7 @@
       "keep_root_destination": "Notes will be imported into \"{path}\"",
       "folder_import_summary": "Imported: {imported} notes, {folders} new folders, {tags} new tags",
       "folder_import_skipped_non_md": "Skipped {count} non-markdown file(s)",
-      "folder_import_skipped_too_large": "Skipped {count} file(s) larger than 500 KB",
+      "folder_import_skipped_too_large": "Skipped {count} file(s) larger than {max} KB",
       "folder_import_skipped_hidden": "Skipped {count} file(s) in hidden folders (.obsidian, .trash, etc.)",
       "dedup_files_found": "{count} note(s) ready to import",
       "dedup_prompt_root": "What should happen when a note with the same name already exists in \"All Notes\"?",
