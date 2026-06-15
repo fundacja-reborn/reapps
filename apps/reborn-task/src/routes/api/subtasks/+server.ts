@@ -4,6 +4,7 @@ import { prisma } from '@reborn/database';
 import { createLogger } from '@reborn/utils';
 import { validateBody, schemas, type SubtaskEncrypted } from '@reborn/types';
 import { getUserFromToken } from '$lib/server/auth';
+import { apiErrorResponse } from '$lib/server/api-error';
 
 const logger = createLogger('SubtasksAPI');
 
@@ -118,14 +119,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			data: subtasksResponse
 		});
 	} catch (error: unknown) {
-		logger.error('Get subtasks error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'GET /api/subtasks');
 	}
 };
 
@@ -217,13 +211,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			{ status: 201 }
 		);
 	} catch (error: unknown) {
-		logger.error('Create subtask error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'POST /api/subtasks');
 	}
 };
