@@ -685,6 +685,16 @@
     "initial": {
       "title": "Notizen werden synchronisiert",
       "message": "Das Herunterladen Ihrer verschlüsselten Daten vom Server kann einen Moment dauern."
+    },
+    "errors": {
+      "count": "{count} nicht synchronisiert",
+      "too_large": "Zu groß - über {max} KB",
+      "quota_exceeded": "Speicherlimit erreicht",
+      "invalid": "Ungültige Daten",
+      "rejected": "Vom Server abgelehnt",
+      "toast_single": "Notiz nicht synchronisiert",
+      "toast_batch": "{count} Notizen nicht synchronisiert",
+      "toast_marked": "Diese Notizen sind in der Liste markiert."
     }
   },
   "view_mode": {
@@ -819,7 +829,7 @@
       "keep_root_destination": "Notizen werden nach „{path}“ importiert",
       "folder_import_summary": "Importiert: {imported} Notizen, {folders} neue Ordner, {tags} neue Tags",
       "folder_import_skipped_non_md": "{count} Nicht-Markdown-Datei(en) übersprungen",
-      "folder_import_skipped_too_large": "{count} Datei(en) größer als 500 KB übersprungen",
+      "folder_import_skipped_too_large": "{count} Datei(en) größer als {max} KB übersprungen",
       "folder_import_skipped_hidden": "{count} Datei(en) in versteckten Ordnern übersprungen (.obsidian, .trash usw.)",
       "dedup_files_found": "{count} Notiz(en) zum Importieren gefunden",
       "dedup_prompt_root": "Was soll passieren, wenn eine Notiz mit demselben Namen bereits in „Alle Notizen“ existiert?",

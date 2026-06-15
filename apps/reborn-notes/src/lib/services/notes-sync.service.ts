@@ -28,7 +28,8 @@ import type {
   NoteHistoryEntry,
   FolderEncrypted,
   TagEncrypted,
-  SavedSearchEncrypted
+  SavedSearchEncrypted,
+  SyncErrorCode
 } from '@reborn/types';
 import { cryptoManager } from '@reborn/crypto';
 import { extractShadowIndexes } from './shadow-index-extractor';
@@ -49,6 +50,8 @@ import { refreshQuota } from '$lib/stores/storage-quota.store';
 import { connectivityStore } from '$lib/stores/connectivity.store';
 import { buildFolderLayers } from './folder-push-order';
 import { settleInBatches } from './sync-batch';
+import { notifyNoteSyncError, notifyBatchSyncErrors } from './sync-error-notify';
+import { ensureOk, HttpPushError } from './push-error';
 
 const logger = createLogger('Notes-Sync');
 
@@ -73,6 +76,21 @@ function isNetworkError(e: unknown): boolean {
  */
 function reportSyncError(e: unknown): void {
   if (isNetworkError(e)) connectivityStore?.markFailure();
+}
+
+// Push-error classification (HttpPushError / ensureOk / isPermanentStatus) lives
+// in ./push-error so it can be unit-tested without this file's browser deps.
+
+/**
+ * Mark a note as permanently rejected: it leaves the 'pending' retry set and
+ * the UI surfaces it (red footer count + per-note badge). A later local edit
+ * re-marks it 'pending' (rule 9), which clears the error and retries the push.
+ */
+async function markNoteSyncError(id: string, code: SyncErrorCode): Promise<void> {
+  const current = (await noteStore.get(id)) as NoteStoredLocal | undefined;
+  if (current) {
+    await noteStore.save({ ...current, sync_status: 'sync_error', sync_error_code: code });
+  }
 }
 
 function isAuthenticated(): boolean {
@@ -479,10 +497,18 @@ async function pullNotes(): Promise<void> {
         sync_version?: number;
       }>
     ).map(async (n) => {
-      // Skip if local note has pending changes - don't overwrite offline edits
+      // Skip if local note has unsynced local state - don't overwrite offline
+      // edits. 'sync_error' is included on purpose: a note rejected as
+      // too-large/invalid still holds the user's local edit, so a newer server
+      // version (from another device) must not silently clobber it. The user
+      // resolves it by shrinking the note, which re-marks it 'pending' and
+      // re-pushes. See guideline 36, rule 14.
       const localNote = (await noteStore.get(n.id)) as NoteStoredLocal | undefined;
-      if (localNote && localNote.sync_status === 'pending') {
-        logger.debug(`Skipping pull for note ${n.id} - has pending local changes`);
+      if (
+        localNote &&
+        (localNote.sync_status === 'pending' || localNote.sync_status === 'sync_error')
+      ) {
+        logger.debug(`Skipping pull for note ${n.id} - has unsynced local changes`);
         return;
       }
 
@@ -763,42 +789,54 @@ export async function pushPendingItems(): Promise<void> {
     )
   );
 
-  // Then push notes (POST for creates/updates)
+  // Then push notes (POST for creates/updates). A permanent rejection (4xx)
+  // marks the note sync_error and drops it from the retry set; we tally those
+  // and raise ONE aggregated toast after the batch (a folder import can leave
+  // several oversized notes at once - per-note toasts would spam).
+  let newNoteSyncErrors = 0;
   await settleInBatches(pendingNotes, (n) =>
     serializePerEntity('note', n.id, () =>
-      pushSilently(async (idempotencyKey) => {
-        const pushedFields = {
-          title_encrypted: n.title_encrypted,
-          content_encrypted: n.content_encrypted,
-          folder_id: n.folder_id ?? null,
-          metadata_encrypted: n.metadata_encrypted ?? null
-        };
-        const payload = {
-          id: n.id,
-          ...pushedFields,
-          metadata_encrypted: n.metadata_encrypted ?? undefined,
-          created_at: n.created_at
-        };
-        validateEncryptedPayload(payload as Record<string, unknown>);
-        const res = await authFetch(`${API_BASE}/notes`, {
-          method: 'POST',
-          headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error(`POST /api/notes: ${res.status}`);
-        const { data: resData } = await res.json();
-        const current = await noteStore.get(n.id);
-        if (current) {
-          const stillDirty = pushedFieldsDiffer(current, pushedFields);
-          await noteStore.save({
-            ...current,
-            sync_status: stillDirty ? 'pending' : 'synced',
-            sync_version: resData?.sync_version ?? 1
+      pushSilently(
+        async (idempotencyKey) => {
+          const pushedFields = {
+            title_encrypted: n.title_encrypted,
+            content_encrypted: n.content_encrypted,
+            folder_id: n.folder_id ?? null,
+            metadata_encrypted: n.metadata_encrypted ?? null
+          };
+          const payload = {
+            id: n.id,
+            ...pushedFields,
+            metadata_encrypted: n.metadata_encrypted ?? undefined,
+            created_at: n.created_at
+          };
+          validateEncryptedPayload(payload as Record<string, unknown>);
+          const res = await authFetch(`${API_BASE}/notes`, {
+            method: 'POST',
+            headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+            body: JSON.stringify(payload)
           });
+          await ensureOk(res, 'POST /api/notes');
+          const { data: resData } = await res.json();
+          const current = await noteStore.get(n.id);
+          if (current) {
+            const stillDirty = pushedFieldsDiffer(current, pushedFields);
+            await noteStore.save({
+              ...current,
+              sync_status: stillDirty ? 'pending' : 'synced',
+              sync_error_code: undefined,
+              sync_version: resData?.sync_version ?? 1
+            });
+          }
+        },
+        async (err) => {
+          await markNoteSyncError(n.id, err.code);
+          newNoteSyncErrors++;
         }
-      })
+      )
     )
   );
+  if (newNoteSyncErrors > 0) notifyBatchSyncErrors(newNoteSyncErrors);
 
   // Retry archived-pending notes. For notes that exist on the server
   // (sync_version > 0) we PATCH the content first, then DELETE. Without the
@@ -845,6 +883,10 @@ async function retryWithBackoff<T>(
       return await fn();
     } catch (error: unknown) {
       lastError = error;
+      // Permanent rejection (4xx that won't change on retry): short-circuit so
+      // we don't waste three backoff rounds re-sending an oversized or invalid
+      // payload. pushSilently turns this into a sync_error mark.
+      if (error instanceof HttpPushError) throw error;
       if (attempt === maxRetries) throw error;
       const delay = initialDelay * Math.pow(2, attempt);
       logger.warn(`Push attempt ${attempt + 1} failed, retrying in ${delay}ms…`);
@@ -854,15 +896,38 @@ async function retryWithBackoff<T>(
   throw lastError;
 }
 
-/** Fire-and-forget push after a local write. Retries up to 3× with exponential backoff. */
-async function pushSilently(fn: (idempotencyKey: string) => Promise<void>): Promise<void> {
+/**
+ * Fire-and-forget push after a local write. Transient failures retry up to 3×
+ * with exponential backoff and leave the entity 'pending' (retried on the next
+ * periodic/manual sync). A permanent rejection (`HttpPushError`) skips retry and
+ * invokes `onPermanentFailure` so the caller can record a per-entity sync_error
+ * instead of re-pushing the doomed payload forever.
+ */
+async function pushSilently(
+  fn: (idempotencyKey: string) => Promise<void>,
+  onPermanentFailure?: (err: HttpPushError) => Promise<void>
+): Promise<void> {
   if (!isAuthenticated()) return;
   const idempotencyKey = crypto.randomUUID();
   try {
     await retryWithBackoff(() => fn(idempotencyKey));
   } catch (err: unknown) {
-    reportSyncError(err);
-    logger.error('Push sync failed after retries (will retry on next periodic sync):', err);
+    if (err instanceof HttpPushError) {
+      logger.warn(
+        `Push permanently rejected (status ${err.status}, code ${err.code}) - dropping from retry:`,
+        err.message
+      );
+      if (onPermanentFailure) {
+        try {
+          await onPermanentFailure(err);
+        } catch (e) {
+          logger.error('onPermanentFailure handler threw', e);
+        }
+      }
+    } else {
+      reportSyncError(err);
+      logger.error('Push sync failed after retries (will retry on next periodic sync):', err);
+    }
   } finally {
     void refreshPendingCount();
   }
@@ -922,40 +987,47 @@ function pushedFieldsDiffer(current: object, pushed: Record<string, unknown>): b
 
 export function pushNote(note: NoteEncrypted | NoteStoredLocal): void {
   void serializePerEntity('note', note.id, () =>
-    pushSilently(async (idempotencyKey) => {
-      const pushedFields = {
-        title_encrypted: note.title_encrypted,
-        content_encrypted: note.content_encrypted,
-        folder_id: note.folder_id ?? null,
-        metadata_encrypted: note.metadata_encrypted ?? null
-      };
-      const payload = {
-        id: note.id,
-        ...pushedFields,
-        metadata_encrypted: note.metadata_encrypted ?? undefined,
-        created_at: note.created_at
-      };
-      validateEncryptedPayload(payload as Record<string, unknown>);
-      const res = await authFetch(`${API_BASE}/notes`, {
-        method: 'POST',
-        headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error(`POST /api/notes: ${res.status}`);
-      const { data } = await res.json();
-      const current = await noteStore.get(note.id);
-      if (current) {
-        const stillDirty = pushedFieldsDiffer(current, pushedFields);
-        if (stillDirty) {
-          logger.debug(`Note ${note.id} changed during push - keeping sync_status=pending`);
-        }
-        await noteStore.save({
-          ...current,
-          sync_status: stillDirty ? 'pending' : 'synced',
-          sync_version: data?.sync_version ?? 1
+    pushSilently(
+      async (idempotencyKey) => {
+        const pushedFields = {
+          title_encrypted: note.title_encrypted,
+          content_encrypted: note.content_encrypted,
+          folder_id: note.folder_id ?? null,
+          metadata_encrypted: note.metadata_encrypted ?? null
+        };
+        const payload = {
+          id: note.id,
+          ...pushedFields,
+          metadata_encrypted: note.metadata_encrypted ?? undefined,
+          created_at: note.created_at
+        };
+        validateEncryptedPayload(payload as Record<string, unknown>);
+        const res = await authFetch(`${API_BASE}/notes`, {
+          method: 'POST',
+          headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+          body: JSON.stringify(payload)
         });
+        await ensureOk(res, 'POST /api/notes');
+        const { data } = await res.json();
+        const current = await noteStore.get(note.id);
+        if (current) {
+          const stillDirty = pushedFieldsDiffer(current, pushedFields);
+          if (stillDirty) {
+            logger.debug(`Note ${note.id} changed during push - keeping sync_status=pending`);
+          }
+          await noteStore.save({
+            ...current,
+            sync_status: stillDirty ? 'pending' : 'synced',
+            sync_error_code: undefined,
+            sync_version: data?.sync_version ?? 1
+          });
+        }
+      },
+      async (err) => {
+        await markNoteSyncError(note.id, err.code);
+        notifyNoteSyncError(err.code);
       }
-    })
+    )
   );
 }
 
@@ -972,28 +1044,35 @@ export function pushNoteUpdate(
   }
 ): void {
   void serializePerEntity('note', id, () =>
-    pushSilently(async (idempotencyKey) => {
-      validateEncryptedPayload(fields as Record<string, unknown>);
-      const res = await authFetch(`${API_BASE}/notes/${id}`, {
-        method: 'PATCH',
-        headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-        body: JSON.stringify(fields)
-      });
-      if (!res.ok) throw new Error(`PATCH /api/notes/${id}: ${res.status}`);
-      const { data } = await res.json();
-      const current = await noteStore.get(id);
-      if (current) {
-        const stillDirty = pushedFieldsDiffer(current, fields);
-        if (stillDirty) {
-          logger.debug(`Note ${id} changed during push - keeping sync_status=pending`);
-        }
-        await noteStore.save({
-          ...current,
-          sync_status: stillDirty ? 'pending' : 'synced',
-          sync_version: data?.sync_version ?? current.sync_version ?? 1
+    pushSilently(
+      async (idempotencyKey) => {
+        validateEncryptedPayload(fields as Record<string, unknown>);
+        const res = await authFetch(`${API_BASE}/notes/${id}`, {
+          method: 'PATCH',
+          headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+          body: JSON.stringify(fields)
         });
+        await ensureOk(res, `PATCH /api/notes/${id}`);
+        const { data } = await res.json();
+        const current = await noteStore.get(id);
+        if (current) {
+          const stillDirty = pushedFieldsDiffer(current, fields);
+          if (stillDirty) {
+            logger.debug(`Note ${id} changed during push - keeping sync_status=pending`);
+          }
+          await noteStore.save({
+            ...current,
+            sync_status: stillDirty ? 'pending' : 'synced',
+            sync_error_code: undefined,
+            sync_version: data?.sync_version ?? current.sync_version ?? 1
+          });
+        }
+      },
+      async (err) => {
+        await markNoteSyncError(id, err.code);
+        notifyNoteSyncError(err.code);
       }
-    })
+    )
   );
 }
 

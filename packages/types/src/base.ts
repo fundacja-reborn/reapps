@@ -14,7 +14,11 @@ export interface EncryptedEntity {
  */
 export interface Syncable {
   sync_version: number;
-  sync_status: 'pending' | 'synced' | 'conflict';
+  // 'sync_error' marks an entity whose push was permanently rejected by the
+  // server (a 4xx the client cannot fix by retrying). It is dropped from the
+  // periodic-push retry set so a poisoned record stops re-sending forever.
+  // Currently produced only by reborn-notes (per-note hard rejections).
+  sync_status: 'pending' | 'synced' | 'conflict' | 'sync_error';
   last_sync_at?: string | null;
   synced_at?: string | null; // Legacy compatibility
   server_id?: string;

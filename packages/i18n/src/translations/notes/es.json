@@ -685,6 +685,16 @@
     "initial": {
       "title": "Sincronizando tus notas",
       "message": "La descarga de tus datos cifrados desde el servidor puede tardar un momento."
+    },
+    "errors": {
+      "count": "{count} sin sincronizar",
+      "too_large": "Demasiado grande - más de {max} KB",
+      "quota_exceeded": "Cuota de almacenamiento alcanzada",
+      "invalid": "Datos no válidos",
+      "rejected": "Rechazada por el servidor",
+      "toast_single": "Nota sin sincronizar",
+      "toast_batch": "{count} notas sin sincronizar",
+      "toast_marked": "Estas notas están marcadas en la lista."
     }
   },
   "view_mode": {
@@ -819,7 +829,7 @@
       "keep_root_destination": "Las notas se importarán en «{path}»",
       "folder_import_summary": "Importado: {imported} notas, {folders} carpetas nuevas, {tags} etiquetas nuevas",
       "folder_import_skipped_non_md": "{count} archivo(s) no Markdown omitido(s)",
-      "folder_import_skipped_too_large": "{count} archivo(s) de más de 500 KB omitido(s)",
+      "folder_import_skipped_too_large": "{count} archivo(s) de más de {max} KB omitido(s)",
       "folder_import_skipped_hidden": "{count} archivo(s) en carpetas ocultas omitido(s) (.obsidian, .trash, etc.)",
       "dedup_files_found": "{count} nota(s) listas para importar",
       "dedup_prompt_root": "¿Qué hacer cuando ya existe una nota con el mismo nombre en «Todas las notas»?",

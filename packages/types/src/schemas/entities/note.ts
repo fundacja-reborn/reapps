@@ -57,7 +57,10 @@ export const NoteEncryptedSchema = SyncableEncryptedEntitySchema.extend({
  */
 export const NoteStoredLocalSchema = NoteEncryptedSchema.extend({
   is_pinned: z.boolean().optional(),
-  is_starred: z.boolean().optional()
+  is_starred: z.boolean().optional(),
+  // Local-only: reason the last push was permanently rejected (paired with
+  // sync_status: 'sync_error'). Never sent to the server. See SyncErrorCode.
+  sync_error_code: z.enum(['too_large', 'quota_exceeded', 'invalid', 'rejected']).optional()
 });
 
 // Export inferred types

@@ -5,6 +5,7 @@ import { createLogger } from '@reborn/utils';
 import { validateBody, schemas } from '@reborn/types';
 import { getUserFromToken } from '$lib/server/auth';
 import { checkQuota } from '$lib/server/storage-quota';
+import { apiErrorResponse } from '$lib/server/api-error';
 
 const logger = createLogger('Notes-API-Notes');
 
@@ -51,8 +52,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 
     return json({ success: true, data });
   } catch (err: unknown) {
-    logger.error('GET /api/notes error:', err);
-    return json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiErrorResponse(err, logger, 'GET /api/notes');
   }
 };
 
@@ -133,7 +133,6 @@ export const POST: RequestHandler = async ({ request }) => {
       }
     });
   } catch (err: unknown) {
-    logger.error('POST /api/notes error:', err);
-    return json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiErrorResponse(err, logger, 'POST /api/notes');
   }
 };

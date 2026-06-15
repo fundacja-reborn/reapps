@@ -685,6 +685,16 @@
     "initial": {
       "title": "Synchronizujemy Twoje notatki",
       "message": "Pobieranie zaszyfrowanych danych z serwera może chwilę potrwać."
+    },
+    "errors": {
+      "count": "{count} niezsynchronizowanych",
+      "too_large": "Za duża - ponad {max} KB",
+      "quota_exceeded": "Osiągnięto limit miejsca",
+      "invalid": "Nieprawidłowe dane",
+      "rejected": "Odrzucona przez serwer",
+      "toast_single": "Notatka nie została zsynchronizowana",
+      "toast_batch": "{count} notatek nie zsynchronizowano",
+      "toast_marked": "Te notatki są oznaczone na liście."
     }
   },
   "view_mode": {
@@ -819,7 +829,7 @@
       "keep_root_destination": "Notatki trafią do „{path}”",
       "folder_import_summary": "Zaimportowano: {imported} notatek, {folders} nowych folderów, {tags} nowych tagów",
       "folder_import_skipped_non_md": "Pominięto {count} plików nie-markdown",
-      "folder_import_skipped_too_large": "Pominięto {count} plików przekraczających 500 KB",
+      "folder_import_skipped_too_large": "Pominięto {count} plików przekraczających {max} KB",
       "folder_import_skipped_hidden": "Pominięto {count} plików z ukrytych folderów (.obsidian, .trash itp.)",
       "dedup_files_found": "Znaleziono {count} notatek do importu",
       "dedup_prompt_root": "Co zrobić, gdy notatka o tej samej nazwie już istnieje w „Wszystkich notatkach”?",

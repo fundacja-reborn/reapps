@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '$lib/stores/i18n.store';
+  import { MAX_NOTE_CONTENT_BYTES } from '@reborn/types';
   import type {
     ImportFolderResult,
     ImportMarkdownResult
@@ -59,7 +60,10 @@
     {#if folderResult.skippedTooLarge > 0}
       <p class="text-muted-foreground">
         {$t('settings_page.export_import.folder_import_skipped_too_large', {
-          values: { count: folderResult.skippedTooLarge }
+          values: {
+            count: folderResult.skippedTooLarge,
+            max: Math.round(MAX_NOTE_CONTENT_BYTES / 1000)
+          }
         })}
       </p>
     {/if}
