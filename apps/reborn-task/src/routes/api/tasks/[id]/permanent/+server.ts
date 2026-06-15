@@ -3,6 +3,7 @@ import { json } from '@sveltejs/kit';
 import { prisma } from '@reborn/database';
 import { createLogger } from '@reborn/utils';
 import { getUserFromToken } from '$lib/server/auth';
+import { apiErrorResponse } from '$lib/server/api-error';
 
 const logger = createLogger('TaskPermanentDeleteAPI');
 
@@ -166,13 +167,6 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
 			message: 'Task permanently deleted'
 		});
 	} catch (error: unknown) {
-		logger.error('Permanent delete task error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'DELETE /api/tasks/[id]/permanent');
 	}
 };

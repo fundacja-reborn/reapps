@@ -60,6 +60,15 @@
     "session_expired": "Session expired",
     "local_only": "Local only"
   },
+  "errors": {
+    "count": "{count} not synced",
+    "too_large": "Too large to sync",
+    "quota_exceeded": "Storage limit reached",
+    "invalid": "Invalid data - rejected by the server",
+    "rejected": "Rejected by the server",
+    "toast_batch": "{count} not synced",
+    "toast_marked": "These items are marked in the list."
+  },
   "initial": {
     "title": "Syncing your tasks",
     "message": "Downloading your encrypted data from the server may take a moment."

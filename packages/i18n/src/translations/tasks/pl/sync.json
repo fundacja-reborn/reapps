@@ -60,6 +60,15 @@
     "session_expired": "Sesja wygasła",
     "local_only": "Tylko lokalnie"
   },
+  "errors": {
+    "count": "{count} niezsynchronizowanych",
+    "too_large": "Za duże, aby zsynchronizować",
+    "quota_exceeded": "Osiągnięto limit miejsca",
+    "invalid": "Nieprawidłowe dane - odrzucone przez serwer",
+    "rejected": "Odrzucone przez serwer",
+    "toast_batch": "{count} niezsynchronizowanych",
+    "toast_marked": "Te elementy są oznaczone na liście."
+  },
   "initial": {
     "title": "Synchronizujemy Twoje zadania",
     "message": "Pobieranie zaszyfrowanych danych z serwera może chwilę potrwać."

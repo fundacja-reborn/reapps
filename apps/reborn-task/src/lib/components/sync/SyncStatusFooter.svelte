@@ -9,6 +9,7 @@
 		Check,
 		WifiOff,
 		AlertCircle,
+		AlertTriangle,
 		CloudUpload,
 		ShieldAlert,
 		HardDrive
@@ -80,6 +81,8 @@
 				return WifiOff;
 			case 'error':
 				return AlertCircle;
+			case 'sync_error':
+				return AlertTriangle;
 			case 'pending':
 				return CloudUpload;
 			case 'auth-error':
@@ -98,6 +101,8 @@
 			case 'offline':
 				return 'text-muted-foreground';
 			case 'error':
+				return 'text-destructive';
+			case 'sync_error':
 				return 'text-destructive';
 			case 'pending':
 				return 'text-amber-500 dark:text-amber-400';
@@ -118,6 +123,8 @@
 				return $t('sync.indicator.offline');
 			case 'error':
 				return $t('sync.indicator.error');
+			case 'sync_error':
+				return $t('sync.errors.count', { values: { count: $syncStatus.errorCount } });
 			case 'pending':
 				return $t('sync.indicator.pending', { values: { count: $syncStatus.pendingCount } });
 			case 'auth-error':

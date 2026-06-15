@@ -60,6 +60,15 @@
     "session_expired": "Sitzung abgelaufen",
     "local_only": "Nur lokal"
   },
+  "errors": {
+    "count": "{count} nicht synchronisiert",
+    "too_large": "Zu groß zum Synchronisieren",
+    "quota_exceeded": "Speicherlimit erreicht",
+    "invalid": "Ungültige Daten - vom Server abgelehnt",
+    "rejected": "Vom Server abgelehnt",
+    "toast_batch": "{count} nicht synchronisiert",
+    "toast_marked": "Diese Einträge sind in der Liste markiert."
+  },
   "initial": {
     "title": "Aufgaben werden synchronisiert",
     "message": "Das Herunterladen Ihrer verschlüsselten Daten vom Server kann einen Moment dauern."

@@ -4,6 +4,7 @@ import { prisma, type Task } from '@reborn/database';
 import { createLogger } from '@reborn/utils';
 import { validateBody, schemas } from '@reborn/types';
 import { getUserFromToken } from '$lib/server/auth';
+import { apiErrorResponse } from '$lib/server/api-error';
 
 const logger = createLogger('TasksAPI');
 
@@ -161,14 +162,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			data: tasksResponse
 		});
 	} catch (error: unknown) {
-		logger.error('Get tasks error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'GET /api/tasks');
 	}
 };
 
@@ -271,13 +265,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			{ status: 201 }
 		);
 	} catch (error: unknown) {
-		logger.error('Create task error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'POST /api/tasks');
 	}
 };

@@ -1,16 +1,19 @@
 import { get } from 'svelte/store';
 import { createLogger } from '@reborn/utils';
 import { taskCounts } from '$lib/stores/task-counts.store';
-import { taskStore } from '@reborn/storage';
+import { taskStore, listStore, subtaskStore } from '@reborn/storage';
 import { localOnly } from '$lib/stores/local-mode.store';
 import { taskTitleIndex } from '$lib/services/task-title-index.svelte';
 import { SyncListsService } from './sync-lists.service';
 import { SyncTasksService } from './sync-tasks.service';
 import { SyncSubtasksService } from './sync-subtasks.service';
 import { SyncOfflineService } from './sync-offline.service';
+import { PermanentOperationError } from './operation-error';
 import { connectivityStore, checkOnline } from '$lib/stores/connectivity.store';
 import { isNetworkError } from '$lib/stores/network.store';
-import type { StorageOfflineOperation, TaskEncryptedBooleans } from '@reborn/types';
+import { refreshSyncErrors } from '$lib/stores/sync-errors.store';
+import { notifyTaskSyncErrors } from '$lib/services/sync-error-notify';
+import type { StorageOfflineOperation, TaskEncryptedBooleans, SyncErrorCode } from '@reborn/types';
 
 const logger = createLogger('SyncService');
 
@@ -429,6 +432,10 @@ class SyncService {
 	}> {
 		const processedOps: StorageOfflineOperation[] = [];
 		let failedCount = 0;
+		// Operations the server permanently rejected this run (4xx the client can't
+		// fix). Dead-lettered out of the queue + entity marked sync_error; tallied
+		// so we raise ONE aggregated toast after the batch instead of per-op spam.
+		let newSyncErrors = 0;
 
 		if (get(localOnly)) return { processedOps, failedCount };
 
@@ -492,10 +499,38 @@ class SyncService {
 					processedOps.push(operation);
 				} catch (error: unknown) {
 					reportIfNetwork(error);
+
+					if (error instanceof PermanentOperationError) {
+						// Permanent 4xx (e.g. server Zod rejection or a 413 body-limit):
+						// this op can never succeed. Dead-letter it - drop it from the
+						// queue so it stops shielding the entity from pulls and re-failing
+						// forever - and mark the entity sync_error so the user sees which
+						// one and why. A later local edit re-queues a push, clearing it.
+						logger.warn(
+							`Operation ${operation.id} permanently rejected (status ${error.status}, code ${error.code}) - dead-lettering:`,
+							error.message
+						);
+						try {
+							await this.markEntitySyncError(
+								operation.entityType,
+								operation.entityId,
+								error.code
+							);
+						} catch (markErr: unknown) {
+							logger.error(
+								`Failed to mark ${operation.entityType} ${operation.entityId} sync_error:`,
+								markErr
+							);
+						}
+						await this.offlineService.removeOperation(operation.id);
+						newSyncErrors++;
+						continue;
+					}
+
 					logger.error(`Failed to sync operation ${operation.id}:`, error);
 					failedCount++;
 
-					// Update operation status with error
+					// Transient failure: leave the op queued (status 'failed') as before.
 					await this.offlineService.updateOperationStatus(
 						operation.id,
 						'failed',
@@ -515,6 +550,13 @@ class SyncService {
 			reportIfNetwork(error);
 			logger.error('Failed to sync offline operations:', error);
 		}
+
+		// Surface permanent rejections: one aggregated toast for this run, and
+		// rescan IndexedDB so the footer count + per-task badges reflect the new
+		// (or cleared) sync_error entities. Runs even on the happy path so a
+		// previously-errored task that just synced clears its badge.
+		if (newSyncErrors > 0) notifyTaskSyncErrors(newSyncErrors);
+		void refreshSyncErrors();
 
 		return { processedOps, failedCount };
 	}
@@ -551,6 +593,43 @@ class SyncService {
 				break;
 			default:
 				logger.warn(`Unknown entity type: ${operation.entityType}`);
+		}
+	}
+
+	/**
+	 * Mark an entity as permanently rejected after its operation was dead-lettered.
+	 * The entity keeps the user's local edit but leaves the push retry loop; the UI
+	 * surfaces it (footer count + per-task badge). A later local edit re-marks it
+	 * 'pending' and re-queues a push, which clears the error on success.
+	 *
+	 * Only tasks store a `sync_error_code` (the only entity with a list badge and
+	 * the only realistic 413/400 case). Lists/subtasks are marked sync_error so the
+	 * footer count is complete; their reason defaults to 'rejected'.
+	 */
+	private async markEntitySyncError(
+		entityType: string,
+		entityId: string,
+		code: SyncErrorCode
+	): Promise<void> {
+		if (entityType === 'task') {
+			const current = await taskStore.get(entityId);
+			if (current) {
+				await taskStore.save({
+					...current,
+					sync_status: 'sync_error',
+					sync_error_code: code
+				} as unknown as TaskEncryptedBooleans);
+			}
+		} else if (entityType === 'task_list') {
+			const current = await listStore.get(entityId);
+			if (current) {
+				await listStore.save({ ...current, sync_status: 'sync_error' });
+			}
+		} else if (entityType === 'sub_task') {
+			const current = await subtaskStore.get(entityId);
+			if (current) {
+				await subtaskStore.save({ ...current, sync_status: 'sync_error' });
+			}
 		}
 	}
 }

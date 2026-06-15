@@ -1,4 +1,4 @@
-import type { SyncableEncryptedEntity } from '../base';
+import type { SyncableEncryptedEntity, SyncErrorCode } from '../base';
 
 // ─── Sensitive metadata bundle (encrypted, never sent as plaintext) ──
 
@@ -63,16 +63,8 @@ export interface NoteEncrypted extends SyncableEncryptedEntity {
 
 // ─── Local storage type (IndexedDB — shadow indexes for queries) ─────
 
-/**
- * Reason a note's push was permanently rejected by the server (a 4xx the client
- * cannot fix by retrying). Stored only in IndexedDB alongside
- * `sync_status: 'sync_error'`; never sent to the server.
- *  - `too_large`: encrypted body exceeded the request size limit (413).
- *  - `quota_exceeded`: per-user storage quota is full (413 QUOTA_EXCEEDED).
- *  - `invalid`: server-side Zod validation rejected the payload (400).
- *  - `rejected`: other permanent rejection (e.g. 403 ownership).
- */
-export type SyncErrorCode = 'too_large' | 'quota_exceeded' | 'invalid' | 'rejected';
+// `SyncErrorCode` moved to `../base` (both apps produce it now); re-exported
+// there. NoteStoredLocal still pairs it with `sync_status: 'sync_error'`.
 
 /** Extended with local-only shadow indexes extracted from decrypted metadata. */
 export interface NoteStoredLocal extends NoteEncrypted {

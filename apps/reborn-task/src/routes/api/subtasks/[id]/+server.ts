@@ -4,6 +4,7 @@ import { prisma, type Prisma } from '@reborn/database';
 import { createLogger } from '@reborn/utils';
 import { validateBody, schemas, type SubtaskEncrypted } from '@reborn/types';
 import { getUserFromToken } from '$lib/server/auth';
+import { apiErrorResponse } from '$lib/server/api-error';
 
 const logger = createLogger('SubtaskAPI');
 
@@ -114,14 +115,7 @@ export const PUT: RequestHandler = async ({ request, params }) => {
 			data: subtaskResponse
 		});
 	} catch (error: unknown) {
-		logger.error('Update subtask error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'PUT /api/subtasks/[id]');
 	}
 };
 
@@ -193,14 +187,7 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
 			message: 'Subtask deleted successfully'
 		});
 	} catch (error: unknown) {
-		logger.error('Delete subtask error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'DELETE /api/subtasks/[id]');
 	}
 };
 
@@ -278,13 +265,6 @@ export const GET: RequestHandler = async ({ request, params }) => {
 			data: subtaskResponse
 		});
 	} catch (error: unknown) {
-		logger.error('Get subtask error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'GET /api/subtasks/[id]');
 	}
 };

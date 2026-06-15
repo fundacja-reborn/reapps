@@ -60,6 +60,15 @@
     "session_expired": "Session expir\u00e9e",
     "local_only": "Local uniquement"
   },
+  "errors": {
+    "count": "{count} non synchronis\u00e9(s)",
+    "too_large": "Trop volumineux pour la synchronisation",
+    "quota_exceeded": "Quota de stockage atteint",
+    "invalid": "Donn\u00e9es invalides - rejet\u00e9es par le serveur",
+    "rejected": "Rejet\u00e9 par le serveur",
+    "toast_batch": "{count} non synchronis\u00e9(s)",
+    "toast_marked": "Ces \u00e9l\u00e9ments sont signal\u00e9s dans la liste."
+  },
   "initial": {
     "title": "Synchronisation de vos t\u00e2ches",
     "message": "Le t\u00e9l\u00e9chargement de vos donn\u00e9es chiffr\u00e9es depuis le serveur peut prendre un instant."

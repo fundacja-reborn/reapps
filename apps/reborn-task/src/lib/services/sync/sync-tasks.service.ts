@@ -1,5 +1,6 @@
 import { SyncBaseService } from './sync-base.service';
 import { rebuildShadowIndexes } from './shadow-indexes';
+import { ensureOperationOk } from './operation-error';
 import { taskStore } from '@reborn/storage';
 import type {
 	TaskEncrypted,
@@ -85,6 +86,17 @@ export class SyncTasksService extends SyncBaseService {
 					// If task has pending operations in the queue, don't overwrite with server data
 					if (localTask && pendingTaskOps.has(task.id)) {
 						this.logger.debug(`Skipping sync for task ${task.id} - has pending operations in queue`);
+						continue;
+					}
+
+					// A task whose push was permanently rejected (sync_error) was
+					// dead-lettered out of the queue, so pendingTaskOps no longer guards
+					// it. Skip it anyway: it still holds the user's local edit (e.g. a
+					// too-large description), so a newer server version must not silently
+					// clobber it. The user resolves it by shrinking the task, which
+					// re-queues a push. See guideline 36, rule 14.
+					if (localTask && localTask.sync_status === 'sync_error') {
+						this.logger.debug(`Skipping sync for task ${task.id} - has unsynced sync_error edit`);
 						continue;
 					}
 
@@ -382,6 +394,14 @@ export class SyncTasksService extends SyncBaseService {
 						continue;
 					}
 
+					// Permanently-rejected (dead-lettered) task: keep the local edit.
+					if (localTask && localTask.sync_status === 'sync_error') {
+						this.logger.debug(
+							`Skipping sync for deleted task ${task.id} - has unsynced sync_error edit`
+						);
+						continue;
+					}
+
 					// CRITICAL: Check if this is an instance of a locally deleted template
 					// This ensures all instances stay in trash if template is in trash
 					if (task.parent_task_id && deletedTemplateIds.has(task.parent_task_id)) {
@@ -475,9 +495,10 @@ export class SyncTasksService extends SyncBaseService {
 			case 'create': {
 				// Create task on server
 				const createResponse = await this.apiClient.post<TaskEncrypted>('tasks', taskData);
-				if (!createResponse.success) {
-					throw new Error(createResponse.error || 'Failed to create task');
-				}
+				// Permanent 4xx (413/400/403) -> PermanentOperationError; the queue
+				// dead-letters the op and marks the task sync_error. Transient -> plain
+				// Error, left in the queue as today.
+				ensureOperationOk(createResponse, 'POST /api/tasks');
 
 				// Update local task with server response
 				if (createResponse.data) {
@@ -494,9 +515,7 @@ export class SyncTasksService extends SyncBaseService {
 					`tasks/${taskData.id}`,
 					taskData
 				);
-				if (!updateResponse.success) {
-					throw new Error(updateResponse.error || 'Failed to update task');
-				}
+				ensureOperationOk(updateResponse, `PUT /api/tasks/${taskData.id}`);
 
 				// Save server response to IndexedDB (resets sync_status, updates sync_version)
 				if (updateResponse.data) {
@@ -552,18 +571,14 @@ export class SyncTasksService extends SyncBaseService {
 						return;
 					}
 
-					// For other errors, throw
-					if (!deleteResponse.success) {
-						throw new Error(deleteResponse.error || 'Failed to permanently delete task');
-					}
+					// For other errors, throw (404 already handled as success above).
+					ensureOperationOk(deleteResponse, `DELETE /api/tasks/${taskData.id}/permanent`);
 				} else {
 					// This shouldn't happen anymore as soft deletes are handled as updates
 					// But keep it for backward compatibility with old operations
 					this.logger.warn('Unexpected delete operation without permanent flag', { taskData });
 					const deleteResponse = await this.apiClient.delete(`tasks/${taskData.id}`);
-					if (!deleteResponse.success) {
-						throw new Error(deleteResponse.error || 'Failed to delete task');
-					}
+					ensureOperationOk(deleteResponse, `DELETE /api/tasks/${taskData.id}`);
 				}
 				break;
 			}

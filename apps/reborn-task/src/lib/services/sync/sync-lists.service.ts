@@ -1,4 +1,5 @@
 import { SyncBaseService } from './sync-base.service';
+import { ensureOperationOk } from './operation-error';
 import { listStore } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
 import type { ListEncrypted, StorageOfflineOperation } from '@reborn/types';
@@ -55,8 +56,10 @@ export class SyncListsService extends SyncBaseService {
 			for (const list of lists) {
 				try {
 					const localList = await listStore.get(list.id);
-					if (localList?.sync_status === 'pending') {
-						this.logger.debug(`Skipping list ${list.id} — pending local changes exist`);
+					// 'sync_error' = a permanently-rejected (dead-lettered) local edit;
+					// keep it for the same reason as 'pending' - don't clobber it.
+					if (localList?.sync_status === 'pending' || localList?.sync_status === 'sync_error') {
+						this.logger.debug(`Skipping list ${list.id} — unsynced local changes exist`);
 						continue;
 					}
 					// Detect server-side updates (existing local entity overwritten by newer server data)
@@ -156,9 +159,7 @@ export class SyncListsService extends SyncBaseService {
 			case 'create': {
 				// Create list on server
 				const createResponse = await this.apiClient.post<ListEncrypted>('tasklists', listData);
-				if (!createResponse.success) {
-					throw new Error(createResponse.error || 'Failed to create list');
-				}
+				ensureOperationOk(createResponse, 'POST /api/tasklists');
 
 				// Update local list with server response (might have different ID or timestamps)
 				if (createResponse.data) {
@@ -173,9 +174,7 @@ export class SyncListsService extends SyncBaseService {
 					`tasklists/${listData.id}`,
 					listData
 				);
-				if (!updateResponse.success) {
-					throw new Error(updateResponse.error || 'Failed to update list');
-				}
+				ensureOperationOk(updateResponse, `PUT /api/tasklists/${listData.id}`);
 				// Mark local entity as synced so the next pull doesn't skip it
 				await listStore.save({ ...listData, sync_status: 'synced' });
 				break;
@@ -201,9 +200,7 @@ export class SyncListsService extends SyncBaseService {
 					? await this.apiClient.delete(`tasklists/${listData.id}`, deleteBody)
 					: await this.apiClient.delete(`tasklists/${listData.id}`);
 
-				if (!deleteResponse.success) {
-					throw new Error(deleteResponse.error || 'Failed to delete list');
-				}
+				ensureOperationOk(deleteResponse, `DELETE /api/tasklists/${listData.id}`);
 				break;
 			}
 		}

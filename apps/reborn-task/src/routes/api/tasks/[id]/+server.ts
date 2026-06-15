@@ -4,6 +4,7 @@ import { prisma, type Prisma } from '@reborn/database';
 import { createLogger } from '@reborn/utils';
 import { validateBody, schemas } from '@reborn/types';
 import { getUserFromToken } from '$lib/server/auth';
+import { apiErrorResponse } from '$lib/server/api-error';
 
 const logger = createLogger('TaskAPI');
 
@@ -150,14 +151,7 @@ export const PUT: RequestHandler = async ({ request, params }) => {
 			data: taskResponse
 		});
 	} catch (error: unknown) {
-		logger.error('Update task error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'PUT /api/tasks/[id]');
 	}
 };
 
@@ -237,14 +231,7 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
 			message: 'Task deleted successfully'
 		});
 	} catch (error: unknown) {
-		logger.error('Delete task error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'DELETE /api/tasks/[id]');
 	}
 };
 
@@ -319,13 +306,6 @@ export const GET: RequestHandler = async ({ request, params }) => {
 			data: taskResponse
 		});
 	} catch (error: unknown) {
-		logger.error('Get task error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'GET /api/tasks/[id]');
 	}
 };

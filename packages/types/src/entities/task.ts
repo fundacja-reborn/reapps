@@ -1,4 +1,4 @@
-import type { SyncableEncryptedEntity } from '../base';
+import type { SyncableEncryptedEntity, SyncErrorCode } from '../base';
 import type { BooleanInt } from '../common';
 
 // ─── Size limits ────────────────────────────────────────────────────
@@ -116,6 +116,13 @@ export interface TaskStoredLocal extends TaskEncrypted {
   is_starred: BooleanInt;
   is_recurring?: BooleanInt;
   due_date?: string | null;
+  /**
+   * Set when the last push of this task's operation was permanently rejected
+   * (see `SyncErrorCode`). Always paired with `sync_status: 'sync_error'`.
+   * Local-only, never sent to the server. Cleared on a successful push, or
+   * whenever a local edit re-marks the task 'pending'.
+   */
+  sync_error_code?: SyncErrorCode;
 }
 
 /** Extended with local-only shadow index for subtask completion. */

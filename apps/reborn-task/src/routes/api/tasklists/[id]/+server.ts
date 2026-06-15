@@ -4,6 +4,7 @@ import { prisma } from '@reborn/database';
 import { createLogger } from '@reborn/utils';
 import { validateBody, schemas } from '@reborn/types';
 import { getUserFromToken } from '$lib/server/auth';
+import { apiErrorResponse } from '$lib/server/api-error';
 
 const logger = createLogger('TaskListAPI');
 
@@ -109,14 +110,7 @@ export const PUT: RequestHandler = async ({ request, params }) => {
 			data: listResponse
 		});
 	} catch (error: unknown) {
-		logger.error('Update task list error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'PUT /api/tasklists/[id]');
 	}
 };
 
@@ -274,13 +268,6 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
 			message: 'List deleted successfully'
 		});
 	} catch (error: unknown) {
-		logger.error('Delete task list error:', error);
-		return json(
-			{
-				success: false,
-				error: 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return apiErrorResponse(error, logger, 'DELETE /api/tasklists/[id]');
 	}
 };
