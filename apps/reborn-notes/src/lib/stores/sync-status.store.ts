@@ -1,4 +1,4 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { noteStore, folderStore, tagStore } from '@reborn/storage';
 import type { SyncErrorCode } from '@reborn/types';
@@ -37,7 +37,7 @@ export interface SyncStatusState {
 // Re-export the active-probe connectivity store under the legacy `isOnline`
 // name so consumers don't need to change. `navigator.onLine` is unreliable
 // with a VPN tunnel (e.g. Proton in airplane mode), so we back this with a
-// real HTTP probe — see `connectivity.store.ts`.
+// real HTTP probe - see `connectivity.store.ts`.
 export const isOnline = connectivityIsOnline;
 
 /** Synchronous helper to check current online status (probe-backed). */
@@ -45,7 +45,7 @@ export const checkOnline = checkConnectivityOnline;
 
 // When connectivity transitions offline → online, kick off a sync just like
 // the old `window.addEventListener('online')` handler did. CRITICAL: push
-// BEFORE pull — parallel runs let pull overwrite still-pending offline edits.
+// BEFORE pull - parallel runs let pull overwrite still-pending offline edits.
 if (browser && connectivityStore) {
   let wasOnline = connectivityStore.getState().status === 'online';
   connectivity.subscribe(($c) => {
@@ -91,6 +91,18 @@ export const syncErrorMap = writable<Map<string, SyncErrorCode>>(new Map());
 
 // ── Count pending / errored items across all stores ──────────────
 
+/** Content equality for the per-note error map (sizes first, then entries). */
+function sameErrorCodes(
+  a: Map<string, SyncErrorCode>,
+  b: Map<string, SyncErrorCode>
+): boolean {
+  if (a.size !== b.size) return false;
+  for (const [id, code] of a) {
+    if (b.get(id) !== code) return false;
+  }
+  return true;
+}
+
 export async function refreshPendingCount(): Promise<number> {
   try {
     const stores = [noteStore, folderStore, tagStore] as Array<{
@@ -107,7 +119,13 @@ export async function refreshPendingCount(): Promise<number> {
     }
     pendingCount.set(pending);
     errorCount.set(errors.size);
-    syncErrorMap.set(errors);
+    // syncErrorMap is read by a $derived in every visible NoteListItem. A
+    // writable re-emits on every object set (new ref !== old), so publishing it
+    // unconditionally would recompute every row's badge on each sync even when
+    // nothing changed - wasted work, and it widens the window for Svelte's
+    // benign `derived_inert` warning on a row that is mid-teardown. Publish only
+    // when the error set actually changed.
+    if (!sameErrorCodes(get(syncErrorMap), errors)) syncErrorMap.set(errors);
     return pending;
   } catch {
     return 0;
