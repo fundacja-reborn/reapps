@@ -42,6 +42,7 @@
 	import { TaskSelectPlaceholder, FilterViewPlaceholder } from '$lib/components/tasks';
 	import { page } from '$app/stores';
 	import { goto } from '$lib/utils/navigation';
+	import { goBackFromTaskDetail } from '$lib/utils/task-detail-nav';
 	import { requireActiveSession } from '$lib/utils/require-active-session';
 	import { session } from '$lib/stores/auth.store';
 	import { t } from '$lib/stores/i18n.store';
@@ -555,29 +556,11 @@
 	function handleMobileBack() {
 		const routeId = $page.route.id ?? '';
 
-		// For task detail, navigate based on current section
+		// Task detail: return to the section/list the user came from. Section
+		// changes use replaceState, so a plain history.back() might skip sections -
+		// goBackFromTaskDetail() resolves the target from the persisted section.
 		if (routeId.includes('/tasks/')) {
-			const sectionRouteMap: Partial<Record<Section, string>> = {
-				all: '/all',
-				starred: '/starred',
-				overdue: '/overdue',
-				today: '/today',
-				upcoming: '/upcoming',
-				no_date: '/no-date',
-				trash: '/trash'
-			};
-			const target = sectionRouteMap[activeSection];
-			if (target) {
-				goto(target, { replaceState: true });
-			} else if (
-				activeSection === 'lists' &&
-				selectedListId &&
-				!['starred', 'completed', 'trash'].includes(selectedListId)
-			) {
-				goto(`/lists/${selectedListId}`, { replaceState: true });
-			} else {
-				history.back();
-			}
+			goBackFromTaskDetail(selectedListId, { replace: true });
 		} else {
 			// For search, settings — history.back() works fine
 			history.back();

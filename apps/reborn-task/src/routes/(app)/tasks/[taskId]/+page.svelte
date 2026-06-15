@@ -29,6 +29,7 @@
 	import { taskDetailService } from '$lib/services/task-detail.service';
 	import { trashManagementService } from '$lib/services/trash-management.service';
 	import { taskIndex } from '$lib/services/task-title-index.svelte';
+	import { goBackFromTaskDetail } from '$lib/utils/task-detail-nav';
 	import { decryptedLists } from '$lib/stores/decrypted-lists.store';
 	import { session } from '$lib/stores/auth.store';
 	import { createLogger } from '@reborn/utils';
@@ -207,11 +208,10 @@
 	// Leave the detail view when the currently-open ACTIVE task gets soft-deleted
 	// elsewhere - e.g. "empty completed" while this task is open. The task then
 	// lives in trash and is only reachable (read-only) from the trash view, so the
-	// stale, still-interactive detail must not linger. Mirrors single-delete, which
-	// already navigates to the task's list. A task opened directly from trash
-	// (isTrashed at load) is exempt: we gate on `task` being loaded so the freshly
-	// mounted trash view - where isTrashed only flips true once loadTask resolves -
-	// is never mistaken for an active task that just got trashed.
+	// stale, still-interactive detail must not linger. A task opened directly from
+	// trash (isTrashed at load) is exempt: we gate on `task` being loaded so the
+	// freshly mounted trash view - where isTrashed only flips true once loadTask
+	// resolves - is never mistaken for an active task that just got trashed.
 	let hasLeftTrashedTask = false;
 	$effect(() => {
 		if (!browser) return;
@@ -220,10 +220,9 @@
 		void taskIndex.version; // subscribe to in-memory index mutations
 		if (taskIndex.get(id)?.isDeleted) {
 			hasLeftTrashedTask = true;
-			const listId = task.task_list_id;
-			goto(listId ? `/lists/${listId}` : '/').catch((err) =>
-				logger.error('Failed to navigate after open task was trashed:', err)
-			);
+			// Return to the view the user came from (e.g. /all), NOT the task's
+			// own list - jumping to an unrelated list panel is disorienting.
+			goBackFromTaskDetail(task.task_list_id, { replace: true });
 		}
 	});
 
