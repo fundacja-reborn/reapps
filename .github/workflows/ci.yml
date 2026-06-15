@@ -30,13 +30,13 @@ jobs:
       # Setup pnpm
       - uses: pnpm/action-setup@v6.0.8
         with:
-          version: 11.1.2
+          version: 11.6.0
           run_install: false
 
       # Setup Node.js with pnpm cache
       - uses: actions/setup-node@v6.4.0
         with:
-          node-version: 24.15.0
+          node-version: 24.16.0
           cache: 'pnpm'
 
       # Install dependencies

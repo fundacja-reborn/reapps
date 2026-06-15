@@ -40,7 +40,7 @@ services:
       retries: 10
 
   app:
-    image: node:24.15.0-alpine
+    image: node:24.16.0-alpine
     working_dir: /app
     depends_on:
       db:
@@ -80,7 +80,7 @@ services:
   # Reborn Notes — uruchamiany opcjonalnie z profilem: docker compose --profile with-notes up
   # Korzysta z tej samej bazy PostgreSQL i tego samego node_modules co reborn-task
   notes:
-    image: node:24.15.0-alpine
+    image: node:24.16.0-alpine
     working_dir: /app
     depends_on:
       app:
