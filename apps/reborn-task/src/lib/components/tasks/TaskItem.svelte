@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { Checkbox, cn } from '@reborn/ui';
-	import { Star, Calendar, RotateCw, Clock, AlertCircle, Folder } from '@lucide/svelte';
+	import { Star, Calendar, RotateCw, Clock, AlertCircle, AlertTriangle, Folder } from '@lucide/svelte';
 	import type { TaskListItem } from '$lib/services/task-title-index.svelte';
 	import { createLogger } from '@reborn/utils';
 	import { t, locale } from '$lib/stores/i18n.store';
 	import { dateFormat } from '$lib/stores/app-settings.store';
 	import { formatDueDate, truncateListName } from '$lib/services/task-formatting.service';
+	import { syncErrorMap } from '$lib/stores/sync-errors.store';
 
 	const logger = createLogger('TaskItem');
 
@@ -60,6 +61,26 @@
 	const dueDate = $derived(
 		formatDueDate(task.due_date, task.has_time, $locale || 'en', $t, $dateFormat)
 	);
+
+	// Per-task hard-rejection state (sync_status: 'sync_error'). Read from the
+	// reactive map so the marker appears/clears as soon as a push is rejected or a
+	// later edit re-syncs the task - no need to thread sync_status through the
+	// decrypted title index. See guideline 36, rule 14.
+	const syncErrorCode = $derived($syncErrorMap.get(task.id));
+	const syncErrorTitle = $derived.by(() => {
+		switch (syncErrorCode) {
+			case 'too_large':
+				return $t('sync.errors.too_large');
+			case 'quota_exceeded':
+				return $t('sync.errors.quota_exceeded');
+			case 'invalid':
+				return $t('sync.errors.invalid');
+			case 'rejected':
+				return $t('sync.errors.rejected');
+			default:
+				return '';
+		}
+	});
 
 	const hasMetadata = $derived(
 		(!!dueDate && !task.is_completed) ||
@@ -118,6 +139,19 @@
 		>
 			{task.title}
 		</h3>
+
+		<!-- Sync-error reason: the server permanently rejected this task's push.
+		     Rendered as a visible red line (not just a hover tooltip), so the user
+		     knows WHY it won't sync and it works on touch. -->
+		{#if syncErrorCode}
+			<p
+				class="mt-0.5 flex items-center gap-1 text-sm md:text-xs font-medium text-destructive"
+				aria-label={syncErrorTitle}
+			>
+				<AlertTriangle class="h-3.5 w-3.5 md:h-3 md:w-3 shrink-0" aria-hidden="true" />
+				<span class="line-clamp-2">{syncErrorTitle}</span>
+			</p>
+		{/if}
 
 		<!-- Metadata -->
 		{#if hasMetadata}

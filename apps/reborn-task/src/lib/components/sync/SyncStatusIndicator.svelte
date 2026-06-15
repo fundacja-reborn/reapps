@@ -12,6 +12,7 @@
 		Check,
 		WifiOff,
 		AlertCircle,
+		AlertTriangle,
 		CloudUpload,
 		ShieldAlert,
 		HardDrive
@@ -90,6 +91,8 @@
 				return WifiOff;
 			case 'error':
 				return AlertCircle;
+			case 'sync_error':
+				return AlertTriangle;
 			case 'pending':
 				return CloudUpload;
 			case 'auth-error':
@@ -108,6 +111,8 @@
 			case 'offline':
 				return 'text-muted-foreground';
 			case 'error':
+				return 'text-destructive';
+			case 'sync_error':
 				return 'text-destructive';
 			case 'pending':
 				return 'text-amber-500';
@@ -132,6 +137,12 @@
 					($syncStatus.failedCount > 0 ? ` (${$syncStatus.failedCount})` : '') +
 					' - ' +
 					$t('sync.indicator.tap_to_retry')
+				);
+			case 'sync_error':
+				return (
+					$t('sync.errors.count', { values: { count: $syncStatus.errorCount } }) +
+					' - ' +
+					$t('sync.indicator.tap_to_sync')
 				);
 			case 'pending':
 				return $t('sync.indicator.pending', { values: { count: $syncStatus.pendingCount } });
@@ -182,6 +193,13 @@
 							class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white"
 						>
 							{$syncStatus.failedCount > 9 ? '9+' : $syncStatus.failedCount}
+						</span>
+					{/if}
+					{#if $syncStatus.status === 'sync_error' && $syncStatus.errorCount > 0}
+						<span
+							class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white"
+						>
+							{$syncStatus.errorCount > 9 ? '9+' : $syncStatus.errorCount}
 						</span>
 					{/if}
 				</button>

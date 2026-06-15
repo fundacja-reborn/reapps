@@ -60,6 +60,15 @@
     "session_expired": "Sesión expirada",
     "local_only": "Solo local"
   },
+  "errors": {
+    "count": "{count} sin sincronizar",
+    "too_large": "Demasiado grande para sincronizar",
+    "quota_exceeded": "Cuota de almacenamiento alcanzada",
+    "invalid": "Datos no válidos - rechazados por el servidor",
+    "rejected": "Rechazado por el servidor",
+    "toast_batch": "{count} sin sincronizar",
+    "toast_marked": "Estos elementos están marcados en la lista."
+  },
   "initial": {
     "title": "Sincronizando tus tareas",
     "message": "La descarga de tus datos cifrados desde el servidor puede tardar un momento."
