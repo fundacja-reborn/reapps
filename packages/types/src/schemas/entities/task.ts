@@ -91,7 +91,10 @@ export const TaskStoredLocalSchema = TaskEncryptedSchema.extend({
   is_completed: BooleanIntSchema,
   is_starred: BooleanIntSchema,
   is_recurring: BooleanIntSchema.optional(),
-  due_date: z.string().nullable().optional()
+  due_date: z.string().nullable().optional(),
+  // Local-only: reason the last push was permanently rejected (paired with
+  // sync_status: 'sync_error'). Never sent to the server. See SyncErrorCode.
+  sync_error_code: z.enum(['too_large', 'quota_exceeded', 'invalid', 'rejected']).optional()
 });
 
 /**

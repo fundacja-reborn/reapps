@@ -1,4 +1,5 @@
 import { SyncBaseService } from './sync-base.service';
+import { ensureOperationOk } from './operation-error';
 import { subtaskStore } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
 import type {
@@ -50,9 +51,14 @@ export class SyncSubtasksService extends SyncBaseService {
 				try {
 					// Check if local subtask has pending changes — don't overwrite
 					const localSubtask = await subtaskStore.get(subtask.id);
-					if (localSubtask && localSubtask.sync_status === 'pending') {
+					// 'sync_error' = a permanently-rejected (dead-lettered) local edit;
+					// keep it for the same reason as 'pending' - don't clobber it.
+					if (
+						localSubtask &&
+						(localSubtask.sync_status === 'pending' || localSubtask.sync_status === 'sync_error')
+					) {
 						this.logger.debug(
-							`Skipping pull for subtask ${subtask.id} — has pending local changes`
+							`Skipping pull for subtask ${subtask.id} — has unsynced local changes`
 						);
 						continue;
 					}
@@ -118,9 +124,7 @@ export class SyncSubtasksService extends SyncBaseService {
 			case 'create': {
 				// Create subtask on server
 				const createResponse = await this.apiClient.post<SubtaskEncrypted>('subtasks', subtaskData);
-				if (!createResponse.success) {
-					throw new Error(createResponse.error || 'Failed to create subtask');
-				}
+				ensureOperationOk(createResponse, 'POST /api/subtasks');
 
 				// Update local subtask with server response
 				if (createResponse.data) {
@@ -140,9 +144,7 @@ export class SyncSubtasksService extends SyncBaseService {
 					`subtasks/${subtaskData.id}`,
 					subtaskData
 				);
-				if (!updateResponse.success) {
-					throw new Error(updateResponse.error || 'Failed to update subtask');
-				}
+				ensureOperationOk(updateResponse, `PUT /api/subtasks/${subtaskData.id}`);
 
 				// Update local subtask with server's sync_version
 				if (updateResponse.data) {
@@ -159,9 +161,7 @@ export class SyncSubtasksService extends SyncBaseService {
 			case 'delete': {
 				// Delete subtask on server
 				const deleteResponse = await this.apiClient.delete(`subtasks/${subtaskData.id}`);
-				if (!deleteResponse.success) {
-					throw new Error(deleteResponse.error || 'Failed to delete subtask');
-				}
+				ensureOperationOk(deleteResponse, `DELETE /api/subtasks/${subtaskData.id}`);
 				break;
 			}
 		}
