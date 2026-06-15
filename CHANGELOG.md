@@ -1,3 +1,22 @@
+## 0.32.0 (2026-06-15)
+
+### 🚀 Features
+
+- **notes:** surface hard push rejections as per-note sync_error ([#288](https://github.com/fundacja-reborn/reapps/pull/288))
+- **task:** surface hard push rejections as per-task sync_error ([#293](https://github.com/fundacja-reborn/reapps/pull/293))
+
+### 🩹 Fixes
+
+- **deps:** update dependency esbuild to v0.28.1 [security] ([#291](https://github.com/fundacja-reborn/reapps/pull/291))
+- **deps:** update codemirror to v6.43.1 ([#292](https://github.com/fundacja-reborn/reapps/pull/292))
+- **deps:** update patch-updates ([#294](https://github.com/fundacja-reborn/reapps/pull/294))
+- **notes:** sync large notes blocked by 512K server body limit ([#286](https://github.com/fundacja-reborn/reapps/pull/286))
+- **task:** trash-aware detail view + bigger mobile search toggle ([#296](https://github.com/fundacja-reborn/reapps/pull/296))
+
+### 🔥 Performance
+
+- **notes:** cap concurrency of bulk push sync (settleInBatches) ([#287](https://github.com/fundacja-reborn/reapps/pull/287))
+
 ## 0.31.1 (2026-06-14)
 
 ### 🩹 Fixes
