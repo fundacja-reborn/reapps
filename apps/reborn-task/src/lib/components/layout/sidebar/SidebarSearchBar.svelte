@@ -60,27 +60,32 @@
 		{/if}
 	</div>
 	{#if searchInput}
-		<button
-			type="button"
-			onclick={toggleSearchInDescription}
-			class={cn(
-				'mt-1.5 md:mt-1 flex items-center gap-1.5 md:gap-1 text-xs md:text-[11px] transition-colors',
-				searchInDescription
-					? 'font-medium text-primary'
-					: 'text-muted-foreground hover:text-foreground'
-			)}
-		>
-			<span
+		<!-- Mobile: 44px-tall tap target (HIG minimum) with breathing room from the
+		     input; desktop keeps the compact text-row look via md:. Mirrors the Notes
+		     app's NoteListSearchBar. -->
+		<div class="mt-0.5 md:mt-1 flex items-center justify-between gap-2">
+			<button
+				type="button"
+				onclick={toggleSearchInDescription}
 				class={cn(
-					'inline-flex h-4 w-4 md:h-3 md:w-3 items-center justify-center rounded border',
+					'flex min-h-[44px] md:min-h-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-left text-sm md:text-[11px] transition-colors',
 					searchInDescription
-						? 'border-primary bg-primary text-primary-foreground'
-						: 'border-muted-foreground'
+						? 'font-medium text-primary'
+						: 'text-muted-foreground hover:text-foreground'
 				)}
 			>
-				{#if searchInDescription}✓{/if}
-			</span>
-			{$t('search.search_in_descriptions')}
-		</button>
+				<span
+					class={cn(
+						'inline-flex h-5 w-5 md:h-3 md:w-3 items-center justify-center rounded border',
+						searchInDescription
+							? 'border-primary bg-primary text-primary-foreground'
+							: 'border-muted-foreground'
+					)}
+				>
+					{#if searchInDescription}✓{/if}
+				</span>
+				{$t('search.search_in_descriptions')}
+			</button>
+		</div>
 	{/if}
 </div>
