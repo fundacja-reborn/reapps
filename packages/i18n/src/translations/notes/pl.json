@@ -688,12 +688,13 @@
     },
     "errors": {
       "count": "{count} niezsynchronizowanych",
-      "too_large": "Za duża, nie zsynchronizowano (limit {max} KB)",
-      "quota_exceeded": "Brak miejsca - nie zsynchronizowano",
-      "invalid": "Nieprawidłowe dane - nie zsynchronizowano",
-      "rejected": "Nie zsynchronizowano",
+      "too_large": "Za duża - ponad {max} KB",
+      "quota_exceeded": "Osiągnięto limit miejsca",
+      "invalid": "Nieprawidłowe dane",
+      "rejected": "Odrzucona przez serwer",
       "toast_single": "Notatka nie została zsynchronizowana",
-      "toast_batch": "{count} notatek nie zsynchronizowano"
+      "toast_batch": "{count} notatek nie zsynchronizowano",
+      "toast_marked": "Te notatki są oznaczone na liście."
     }
   },
   "view_mode": {

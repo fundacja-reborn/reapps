@@ -688,12 +688,13 @@
     },
     "errors": {
       "count": "{count} nicht synchronisiert",
-      "too_large": "Zu groß, nicht synchronisiert (Limit {max} KB)",
-      "quota_exceeded": "Speicher voll - nicht synchronisiert",
-      "invalid": "Ungültige Daten - nicht synchronisiert",
-      "rejected": "Nicht synchronisiert",
+      "too_large": "Zu groß - über {max} KB",
+      "quota_exceeded": "Speicherlimit erreicht",
+      "invalid": "Ungültige Daten",
+      "rejected": "Vom Server abgelehnt",
       "toast_single": "Notiz nicht synchronisiert",
-      "toast_batch": "{count} Notizen nicht synchronisiert"
+      "toast_batch": "{count} Notizen nicht synchronisiert",
+      "toast_marked": "Diese Notizen sind in der Liste markiert."
     }
   },
   "view_mode": {

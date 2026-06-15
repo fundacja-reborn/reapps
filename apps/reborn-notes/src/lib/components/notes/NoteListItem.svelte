@@ -223,6 +223,13 @@
       <p class="mt-0.5 text-[13px] md:text-xs text-muted-foreground line-clamp-2">
         {formatNoteDate(displayDate, $dateFormat, $t)}
       </p>
+      <!-- Visible per-note rejection reason - not just the badge/hover tooltip,
+           so the user knows WHY a note won't sync (and it works on touch). -->
+      {#if syncErrorCode}
+        <p class="mt-0.5 text-[13px] md:text-xs font-medium text-destructive line-clamp-2">
+          {syncErrorTitle}
+        </p>
+      {/if}
     </div>
 
     <!-- Kebab menu button (hidden in selection mode — bulk actions live in the selection bar) -->

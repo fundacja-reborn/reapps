@@ -688,12 +688,13 @@
     },
     "errors": {
       "count": "{count} not synced",
-      "too_large": "Too large to sync (limit {max} KB)",
-      "quota_exceeded": "Storage full - not synced",
-      "invalid": "Invalid data - not synced",
-      "rejected": "Not synced",
+      "too_large": "Too large - over {max} KB",
+      "quota_exceeded": "Storage quota reached",
+      "invalid": "Invalid data",
+      "rejected": "Rejected by the server",
       "toast_single": "Note not synced",
-      "toast_batch": "{count} notes not synced"
+      "toast_batch": "{count} notes not synced",
+      "toast_marked": "These notes are marked in the list."
     }
   },
   "view_mode": {

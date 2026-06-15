@@ -688,12 +688,13 @@
     },
     "errors": {
       "count": "{count} non synchronisé(s)",
-      "too_large": "Trop volumineuse, non synchronisée (limite {max} KB)",
-      "quota_exceeded": "Stockage plein - non synchronisée",
-      "invalid": "Données invalides - non synchronisée",
-      "rejected": "Non synchronisée",
+      "too_large": "Trop volumineuse - plus de {max} KB",
+      "quota_exceeded": "Quota de stockage atteint",
+      "invalid": "Données invalides",
+      "rejected": "Rejetée par le serveur",
       "toast_single": "Note non synchronisée",
-      "toast_batch": "{count} notes non synchronisées"
+      "toast_batch": "{count} notes non synchronisées",
+      "toast_marked": "Ces notes sont signalées dans la liste."
     }
   },
   "view_mode": {

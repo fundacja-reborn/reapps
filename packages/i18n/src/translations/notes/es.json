@@ -688,12 +688,13 @@
     },
     "errors": {
       "count": "{count} sin sincronizar",
-      "too_large": "Demasiado grande, sin sincronizar (límite {max} KB)",
-      "quota_exceeded": "Almacenamiento lleno - sin sincronizar",
-      "invalid": "Datos no válidos - sin sincronizar",
-      "rejected": "Sin sincronizar",
+      "too_large": "Demasiado grande - más de {max} KB",
+      "quota_exceeded": "Cuota de almacenamiento alcanzada",
+      "invalid": "Datos no válidos",
+      "rejected": "Rechazada por el servidor",
       "toast_single": "Nota sin sincronizar",
-      "toast_batch": "{count} notas sin sincronizar"
+      "toast_batch": "{count} notas sin sincronizar",
+      "toast_marked": "Estas notas están marcadas en la lista."
     }
   },
   "view_mode": {

@@ -39,9 +39,17 @@ export function notifyNoteSyncError(code: SyncErrorCode): void {
   });
 }
 
-/** One aggregated toast after a batch push left `count` notes rejected. */
+/**
+ * One aggregated toast after a batch push left `count` notes rejected.
+ *
+ * Intentionally a count + pointer, not a list: a batch can reject many notes,
+ * and a toast is transient. The per-note reason is shown inline on each marked
+ * row (NoteListItem), which is where the user goes to act.
+ */
 export function notifyBatchSyncErrors(count: number): void {
   if (count <= 0) return;
   const $t = get(t);
-  toastStore.error($t('sync_status.errors.toast_batch', { values: { count } }));
+  toastStore.error($t('sync_status.errors.toast_batch', { values: { count } }), {
+    description: $t('sync_status.errors.toast_marked')
+  });
 }
