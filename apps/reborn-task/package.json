@@ -34,7 +34,7 @@
     "otpauth": "9.5.1",
     "postcss": "8.5.15",
     "postcss-import": "16.1.1",
-    "prettier": "3.8.3",
+    "prettier": "3.8.4",
     "prettier-plugin-svelte": "3.5.2",
     "qrcode": "1.5.4",
     "svelte": "5.56.3",
@@ -44,7 +44,7 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.59.3",
     "vite": "8.0.16",
-    "vitest": "4.1.8"
+    "vitest": "4.1.9"
   },
   "type": "module",
   "dependencies": {
