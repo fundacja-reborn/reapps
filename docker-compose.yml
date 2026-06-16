@@ -64,7 +64,7 @@ services:
       CI: 'true'
     command: >
       sh -c "
-        npm install -g pnpm@10 --quiet &&
+        npm install -g pnpm@11.1.2 --quiet &&
         pnpm install &&
         pnpm --filter @reborn/database exec prisma migrate deploy &&
         pnpm nx build @reborn/database &&
@@ -100,7 +100,7 @@ services:
       CI: 'true'
     command: >
       sh -c "
-        npm install -g pnpm@10 --quiet &&
+        npm install -g pnpm@11.1.2 --quiet &&
         pnpm nx dev-host reborn-notes
       "
     healthcheck:
