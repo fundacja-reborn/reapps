@@ -2,6 +2,7 @@
   "name": "@reborn-apps/source",
   "version": "0.32.0",
   "license": "AGPL-3.0-only",
+  "packageManager": "pnpm@11.1.2",
   "scripts": {
     "clean": "chmod +x ./scripts/clean-all.sh && ./scripts/clean-all.sh",
     "clean:install": "pnpm clean && pnpm install && pnpm nx reset",
