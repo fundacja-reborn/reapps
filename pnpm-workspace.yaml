@@ -11,7 +11,8 @@ overrides:
   esbuild: 0.28.1
   '@hono/node-server': 1.19.14
   devalue: 5.8.1
-  tmp@<0.2.6: '0.2.7'
+  tmp@<0.2.7: '0.2.7' # GHSA-7c78-jf6q-g5cm tmp path traversal via non-string template (nx-transitive, dev-only)
+  form-data@<4.0.6: '4.0.6' # GHSA-hmw2-7cc7-3qxx form-data CRLF injection in multipart field names (nx-transitive, dev-only)
   joi: 18.2.1 # GHSA-q7cg-457f-vx79 nested-input RangeError; superforms optional peer, unused (we use the Zod adapter)
   # Dev-only transitive CVE pins (Storybook, nx http-server); absent from prod bundle
   ws: '8.21.0' # GHSA-58qx-3vcg-4xpx ws uninitialized memory disclosure
