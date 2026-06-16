@@ -16,6 +16,11 @@
   let inputEl = $state<HTMLInputElement | null>(null);
   let creating = $state(false);
   let newTagColor = $state<(typeof TAG_COLORS)[number]>(TAG_COLORS[4]); // blue default
+  let listEl = $state<HTMLDivElement | null>(null);
+  // Obsidian-like: target the first match as soon as the user types so Enter
+  // confirms it; an empty query targets nothing (-1). Writable derived - arrow-key
+  // navigation reassigns it and the value holds until the query changes again.
+  let highlightedIndex = $derived(query.trim().length > 0 ? 0 : -1);
 
   // Load current tags for this note when noteId changes
   $effect(() => {
@@ -41,6 +46,18 @@
       $tagsStore.some((t) => t.name.toLowerCase() === query.trim().toLowerCase())
   );
 
+  // Whether the "create new tag" row is offered (always the last navigable option).
+  const showCreate = $derived(query.trim().length > 0 && !hasExactMatch);
+  // Navigable options = matching tags + optional create row.
+  const optionCount = $derived(filteredTags.length + (showCreate ? 1 : 0));
+
+  // Keep the highlighted option scrolled into view while navigating by keyboard.
+  $effect(() => {
+    const idx = highlightedIndex;
+    if (idx < 0 || !listEl) return;
+    listEl.querySelector(`[data-option-index="${idx}"]`)?.scrollIntoView({ block: 'nearest' });
+  });
+
   async function openPicker(e?: MouseEvent) {
     e?.stopPropagation(); // prevent window handler from firing before DOM settles
     open = true;
@@ -63,6 +80,10 @@
     await TagService.setTagsForNote(noteId, newIds);
     selectedTagIds = newIds;
     await notesStore.refresh();
+    // Clear the field so the next tag starts from a clean input (no carry-over).
+    query = '';
+    creating = false;
+    inputEl?.focus();
   }
 
   async function removeTag(tagId: string) {
@@ -85,12 +106,37 @@
     inputEl?.focus();
   }
 
+  // Confirm whatever option is currently highlighted (existing tag or create row).
+  function selectHighlighted() {
+    if (highlightedIndex < 0 || highlightedIndex >= optionCount) return;
+    if (highlightedIndex < filteredTags.length) {
+      toggleTag(filteredTags[highlightedIndex].id);
+    } else if (showCreate) {
+      createAndAdd();
+    }
+  }
+
+  function moveHighlight(delta: number) {
+    if (optionCount === 0) return;
+    if (highlightedIndex < 0) {
+      highlightedIndex = delta > 0 ? 0 : optionCount - 1;
+      return;
+    }
+    highlightedIndex = (highlightedIndex + delta + optionCount) % optionCount;
+  }
+
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       closePicker();
-    } else if (e.key === 'Enter' && query.trim() && !hasExactMatch) {
+    } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      createAndAdd();
+      moveHighlight(1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      moveHighlight(-1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      selectHighlighted();
     }
   }
 </script>
@@ -143,14 +189,16 @@
       >
         <!-- Tag list -->
         {#if filteredTags.length > 0}
-          <div class="max-h-48 overflow-y-auto py-1">
-            {#each filteredTags as tag (tag.id)}
+          <div bind:this={listEl} class="max-h-48 overflow-y-auto py-1">
+            {#each filteredTags as tag, i (tag.id)}
               {@const isSelected = selectedTagIds.includes(tag.id)}
               <button
                 type="button"
                 class="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent"
+                class:bg-accent={highlightedIndex === i}
                 role="option"
                 aria-selected={isSelected}
+                data-option-index={i}
                 onclick={() => toggleTag(tag.id)}
               >
                 <span
@@ -170,12 +218,13 @@
         {/if}
 
         <!-- Create new tag option -->
-        {#if query.trim() && !hasExactMatch}
+        {#if showCreate}
           <div class="border-t">
             {#if !creating}
               <button
                 type="button"
                 class="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent"
+                class:bg-accent={highlightedIndex === filteredTags.length}
                 onclick={(e) => {
                   e.stopPropagation();
                   creating = true;
