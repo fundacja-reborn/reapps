@@ -15,7 +15,10 @@
     annotateTopLevelLines,
     applySourceLineAttrs
   } from '$lib/utils/source-line';
-  import { createMarkdownListRenderers } from '$lib/utils/markdown-to-html';
+  import {
+    createMarkdownListRenderers,
+    createMarkdownImageRenderer
+  } from '$lib/utils/markdown-to-html';
 
   const NOTE_LINK_RE = /^note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 
@@ -136,48 +139,26 @@
     createMarkdownListRenderers();
   const renderer: RendererObject = { ...listRenderers };
 
-  // "Pinned" snapshot of the prop, synced at the start of every $derived html
-  // recomputation. The renderer.image closure reads this regular variable
-  // instead of `imageLoadMode` directly because:
-  //   1. Reading a Svelte 5 prop at script init (outside any reactive scope)
-  //      captures only the *initial* value, not the reactive binding —
-  //      svelte-check explicitly warns about this. The renderer is set up at
-  //      script init, so a direct closure over `imageLoadMode` would freeze
-  //      to 'ask' forever (the bug fixed in this commit).
-  //   2. `marked.parser()` calls renderer.image from a third-party call stack
-  //      with no reactive context; there's nothing for Svelte to attach the
-  //      read to even if it happened lazily.
-  // Initial value is a literal placeholder; the real value is assigned inside
-  // the `$derived html` block before each parse.
-  let imageModeSnapshot: ImageLoadMode = 'ask';
-
-  const IMAGE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
-  const BLOCKED_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
-
-  renderer.image = ({ href, title, text }: Tokens.Image) => {
-    const isDataUri = href.startsWith('data:');
-    const escapedHref = href.replace(/"/g, '&quot;');
-    const escapedAlt = (text || '').replace(/"/g, '&quot;');
-    const escapedTitle = (title || '').replace(/"/g, '&quot;');
-
-    if (isDataUri) {
-      return `<div class="image-placeholder image-placeholder--blocked">
-      <div class="image-placeholder-icon">${BLOCKED_ICON_SVG}</div>
-      <div class="image-placeholder-url">${$t('editor.image_base64_blocked')}</div>
-    </div>`;
-    }
-
-    if (imageModeSnapshot === 'always') {
-      return `<img src="${escapedHref}" alt="${escapedAlt}" title="${escapedTitle}" loading="lazy" />`;
-    }
-
-    const showLoadBtn = imageModeSnapshot === 'ask';
-    return `<div class="image-placeholder" data-src="${escapedHref}" data-alt="${escapedAlt}" data-title="${escapedTitle}">
-      <div class="image-placeholder-icon">${IMAGE_ICON_SVG}</div>
-      <div class="image-placeholder-url">${escapedHref}</div>
-      ${showLoadBtn ? `<button class="image-placeholder-load" type="button">${$t('editor.image_load')}</button>` : ''}
-    </div>`;
-  };
+  // Image renderer lives in markdown-to-html.ts so its mode/placeholder logic is
+  // unit-tested without mounting this component (markdown-to-html.spec.ts). It
+  // owns `askPlaceholderCount` — the structural count of ask-mode Load buttons
+  // emitted, which gates the "Load all images" banner. Two reasons the mode is
+  // pushed in via setImageMode() rather than the renderer closing over the
+  // reactive `imageLoadMode` prop directly:
+  //   1. A Svelte 5 prop read at script init captures only the initial value,
+  //      not the reactive binding (svelte-check warns about this); the renderer
+  //      is built once at init, so a direct closure would freeze to 'ask'.
+  //   2. marked calls renderImage from a third-party call stack with no reactive
+  //      context, so there's nothing for Svelte to attach a lazy read to anyway.
+  // `(key) => $t(key)` resolves labels at render time so they follow locale —
+  // same call-time `$t` resolution the previous inline closure used.
+  const {
+    renderImage,
+    setMode: setImageMode,
+    reset: resetImageRenderer,
+    getAskPlaceholderCount
+  } = createMarkdownImageRenderer((key) => $t(key));
+  renderer.image = renderImage;
 
   // Fenced code blocks — share the highlight pipeline with Live Preview's
   // CodeBlockWidget (`highlightCodeToHtml`). Output is escaped text + safe
@@ -214,14 +195,15 @@
     //  - `langLoadTick` re-runs the derivation when a fenced-code language
     //    chunk has loaded so plaintext fallbacks get replaced with
     //    highlighted spans.
-    //  - `imageLoadMode` is read explicitly via assignment. The assignment
-    //    can't be DCE'd (it has a side effect), guaranteeing the prop is
-    //    tracked as a dep even if the compiler ever optimises plain reads.
-    //    The snapshot is consumed by `renderer.image` via the regular
-    //    variable `imageModeSnapshot`, sidestepping any uncertainty about
-    //    whether Svelte tracks reads inside a closure invoked from marked.
+    //  - `imageLoadMode` is read explicitly by passing it to setImageMode().
+    //    The call can't be DCE'd, guaranteeing the prop is tracked as a dep
+    //    even if the compiler ever optimises plain reads, and pushes the mode
+    //    into the renderer (which runs from marked's non-reactive call stack).
     void langLoadTick;
-    imageModeSnapshot = imageLoadMode;
+    setImageMode(imageLoadMode);
+    // Reset before parse — renderImage re-increments askPlaceholderCount for
+    // each ask-mode external image it emits during md.parser() below.
+    resetImageRenderer();
     // Defensive reset — renderer.list decrements after each list, so under
     // normal flow listDepth is already 0; resetting guards against a thrown
     // sanitize/parse leaving the counters stuck, and starts taskCounter at 0
@@ -366,17 +348,20 @@
     }
   }
 
-  // Show the "Load all images" button only when the rendered output actually
-  // contains per-image Load buttons. `renderer.image` emits the
-  // `image-placeholder-load` class only for ask-mode external-image tokens, and
-  // marked never calls it for image syntax inside inline code or fenced blocks.
-  // The previous check regex-matched the raw source, so documentation that
-  // mentions `![](https://example.com)` inside backticks lit the banner with no
-  // placeholder beneath it. Deriving from the rendered `html` keeps this
-  // reactive and consistent with what is actually shown.
-  const hasImagePlaceholders = $derived(
-    imageLoadMode === 'ask' && html.includes('image-placeholder-load')
-  );
+  // Show the "Load all images" button only when the render actually emitted
+  // per-image Load buttons. `renderImage` increments its placeholder counter
+  // exactly once per ask-mode external image, and marked never calls it for
+  // image syntax inside inline code or fenced blocks — so the count mirrors
+  // what is shown beneath the banner. Reading `html` registers the parse as a
+  // dependency and forces it to run first, populating the counter before we
+  // read it. We deliberately do NOT scan the rendered HTML for the placeholder
+  // class: a note can put that literal string into its own text (e.g. a note
+  // documenting this very class), which a substring check false-positives on;
+  // a counter driven by the renderer cannot be spoofed by content.
+  const hasImagePlaceholders = $derived.by(() => {
+    void html;
+    return getAskPlaceholderCount() > 0;
+  });
 </script>
 
 <!-- `data-sveltekit-preload-*="off"` stops SvelteKit's hover/touch preload

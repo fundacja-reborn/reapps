@@ -1,5 +1,5 @@
 /**
- * Shared marked renderer overrides for list / task-list rendering.
+ * Shared marked renderer overrides for list / task-list / image rendering.
  *
  * Used by:
  *  - `MarkdownPreview.svelte` (interactive — checkbox click toggles source via
@@ -9,12 +9,13 @@
  *    output, and reusing the same shape keeps the export visually in step
  *    with what the user sees while editing)
  *
- * State (`listDepth`, `taskCounter`) is captured per factory call so two
- * concurrent renders don't interleave; call `reset()` at the start of each
- * parse so `data-task-index` ordinals start at 0 and `data-d` depth attrs
- * match Live Preview's geometry.
+ * State (`listDepth`, `taskCounter`, the image renderer's `askPlaceholderCount`)
+ * is captured per factory call so two concurrent renders don't interleave; call
+ * `reset()` at the start of each parse so `data-task-index` ordinals start at 0
+ * and `data-d` depth attrs match Live Preview's geometry.
  */
 import type { RendererObject, Tokens } from 'marked';
+import type { ImageLoadMode } from '@reborn/storage';
 
 /** Visual cap mirroring MAX_LIST_DEPTH in editor/live-preview/decorations.ts. */
 export const PREVIEW_MAX_LIST_DEPTH = 12;
@@ -115,5 +116,78 @@ export function createMarkdownListRenderers(): {
       listDepth = 0;
       taskCounter = 0;
     }
+  };
+}
+
+const IMAGE_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
+const BLOCKED_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+
+/**
+ * Image renderer for Preview. Behaviour by `ImageLoadMode`:
+ *  - `always` — emit a plain lazy `<img>`.
+ *  - `ask`    — emit a click-to-load placeholder *with* a Load button.
+ *  - `never`  — emit the placeholder *without* a Load button.
+ * `data:` URIs are always blocked (base64 isn't supported) regardless of mode.
+ *
+ * `getAskPlaceholderCount()` returns how many ask-mode Load buttons the last
+ * parse emitted — the single source of truth for whether the "Load all images"
+ * banner should show. The count is structural (the renderer bumps it only when
+ * it actually runs the ask-mode branch), so unlike scanning the output HTML for
+ * the `.image-placeholder-load` class it cannot be tripped by a note whose own
+ * text happens to contain that class name or `![](…)` syntax inside a code span
+ * — marked never calls this renderer for image syntax inside inline code or
+ * fenced blocks. (That false positive is exactly what the prior source-regex
+ * and HTML-substring gates suffered from; see markdown-to-html.spec.ts.)
+ *
+ * `translate(key)` resolves an i18n key at render time — the caller wraps its
+ * reactive `$t` so placeholder labels follow locale changes. Call `setMode()`
+ * and `reset()` before each parse, then read `getAskPlaceholderCount()` after.
+ */
+export function createMarkdownImageRenderer(translate: (key: string) => string): {
+  renderImage: NonNullable<RendererObject['image']>;
+  setMode: (mode: ImageLoadMode) => void;
+  reset: () => void;
+  getAskPlaceholderCount: () => number;
+} {
+  let mode: ImageLoadMode = 'ask';
+  let askPlaceholderCount = 0;
+
+  const renderImage = ({ href, title, text }: Tokens.Image): string => {
+    const isDataUri = href.startsWith('data:');
+    const escapedHref = href.replace(/"/g, '&quot;');
+    const escapedAlt = (text || '').replace(/"/g, '&quot;');
+    const escapedTitle = (title || '').replace(/"/g, '&quot;');
+
+    if (isDataUri) {
+      return `<div class="image-placeholder image-placeholder--blocked">
+      <div class="image-placeholder-icon">${BLOCKED_ICON_SVG}</div>
+      <div class="image-placeholder-url">${translate('editor.image_base64_blocked')}</div>
+    </div>`;
+    }
+
+    if (mode === 'always') {
+      return `<img src="${escapedHref}" alt="${escapedAlt}" title="${escapedTitle}" loading="lazy" />`;
+    }
+
+    const showLoadBtn = mode === 'ask';
+    if (showLoadBtn) askPlaceholderCount++;
+    return `<div class="image-placeholder" data-src="${escapedHref}" data-alt="${escapedAlt}" data-title="${escapedTitle}">
+      <div class="image-placeholder-icon">${IMAGE_ICON_SVG}</div>
+      <div class="image-placeholder-url">${escapedHref}</div>
+      ${showLoadBtn ? `<button class="image-placeholder-load" type="button">${translate('editor.image_load')}</button>` : ''}
+    </div>`;
+  };
+
+  return {
+    renderImage,
+    setMode: (m: ImageLoadMode) => {
+      mode = m;
+    },
+    reset: () => {
+      askPlaceholderCount = 0;
+    },
+    getAskPlaceholderCount: () => askPlaceholderCount
   };
 }
