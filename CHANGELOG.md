@@ -1,3 +1,9 @@
+## 0.32.2 (2026-06-17)
+
+### 🩹 Fixes
+
+- **notes:** gate "Load all images" banner on a render counter, not an HTML scan ([#303](https://github.com/fundacja-reborn/reapps/pull/303))
+
 ## 0.32.1 (2026-06-17)
 
 ### 🩹 Fixes
