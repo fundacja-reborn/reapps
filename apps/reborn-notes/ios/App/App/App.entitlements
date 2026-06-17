@@ -10,9 +10,11 @@
 	     assetlinks.json; template in guideline 61). Harmless in simulator
 	     builds, where associated domains are not validated. -->
 	<key>com.apple.developer.associated-domains</key>
+	<!-- Production ships reapps.eu ONLY: a TestFlight build can be promoted to
+	     release as-is, so the release entitlements must not claim a staging
+	     Universal Links association. Do not re-add applinks:staging.reapps.eu. -->
 	<array>
 		<string>applinks:reapps.eu</string>
-		<string>applinks:staging.reapps.eu</string>
 	</array>
 </dict>
 </plist>
