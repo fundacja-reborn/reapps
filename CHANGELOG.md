@@ -1,3 +1,10 @@
+## 0.32.1 (2026-06-17)
+
+### 🩹 Fixes
+
+- **docker:** align container pnpm to packageManager (11.1.2) ([#301](https://github.com/fundacja-reborn/reapps/pull/301), [#300](https://github.com/fundacja-reborn/reapps/issues/300))
+- **notes:** Obsidian-style tag autocomplete keyboard nav + clear input on select ([#298](https://github.com/fundacja-reborn/reapps/pull/298))
+
 ## 0.32.0 (2026-06-15)
 
 ### 🚀 Features
