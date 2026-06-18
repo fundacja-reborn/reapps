@@ -3,11 +3,12 @@
   "app_lock": {
     "settings_item_title": "App Lock",
     "settings_item_desc": "Require biometrics to open the app",
-    "settings_intro": "App Lock asks for biometric confirmation each time you open re/notes and after it has been in the background for a while. Your notes stay encrypted on this device either way - this is a quick-access guard, not extra encryption.",
+    "settings_intro": "App Lock asks for biometric confirmation - or your device password if biometrics aren't set up - each time you open re/notes and after it has been in the background for a while. Your notes stay encrypted on this device either way - this is a quick-access guard, not extra encryption.",
     "unavailable_title": "Biometrics not set up",
     "unavailable_desc": "Add a fingerprint or face unlock in your device settings to use App Lock.",
     "enable_title": "App Lock",
     "enable_desc": "Require {biometry} to open the app.",
+    "enable_desc_device_credential": "Require your device password to open the app.",
     "enable_cta": "Enable App Lock",
     "disable_cta": "Turn off",
     "timeout_title": "Re-lock after",

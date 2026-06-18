@@ -141,7 +141,11 @@
             {$t('app_lock.enable_title')}
           </CardTitle>
           <CardDescription>
-            {$t('app_lock.enable_desc', { values: { biometry: biometryLabel } })}
+            {#if biometryKind === 'none'}
+              {$t('app_lock.enable_desc_device_credential')}
+            {:else}
+              {$t('app_lock.enable_desc', { values: { biometry: biometryLabel } })}
+            {/if}
           </CardDescription>
         </CardHeader>
         <CardContent>
