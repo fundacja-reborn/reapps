@@ -215,21 +215,32 @@ async function runPullFromServer(): Promise<boolean> {
         success = false;
       })
     ]);
-    // Notes after folders/tags (they reference them)
-    await pullNotes().catch((e) => {
+    // Notes after folders/tags (they reference them). pullNotes returns the IDs
+    // it actually wrote (new, or server sync_version newer) - the only notes
+    // whose server-side version history can have grown since the last sync.
+    const changedNoteIds = await pullNotes().catch((e) => {
       reportSyncError(e);
       logger.error('Pull notes failed:', e);
       success = false;
+      return [] as string[];
     });
 
-    // Pull note versions after notes
-    const allNotes = (await noteStore.getAll()) as NoteEncrypted[];
-    const noteIds = allNotes.map((n) => n.id);
-    await pullNoteVersions(noteIds).catch((e) => {
-      reportSyncError(e);
-      logger.error('Pull note versions failed:', e);
-      // Non-critical - don't set success=false
-    });
+    // Pull versions only for changed notes, not all of them. A note's version
+    // list grows only when the note is edited (which bumps its sync_version), so
+    // an unchanged note cannot have new server-side versions. Cold start treats
+    // every note as new → full backfill. This removes the per-note GET storm
+    // (1 request/note/sync) that dominated native CapacitorHttp sync time. The
+    // tradeoff (a snapshot created without a sync_version bump - e.g. opening the
+    // history panel - may lag on other devices until the note's next edit) is
+    // acceptable: that content equals the live note and each device regenerates
+    // its own such snapshot locally. History is non-critical. See guideline 36.
+    if (changedNoteIds.length > 0) {
+      await pullNoteVersions(changedNoteIds).catch((e) => {
+        reportSyncError(e);
+        logger.error('Pull note versions failed:', e);
+        // Non-critical - don't set success=false
+      });
+    }
 
     if (success) {
       logger.info('Pull sync completed');
@@ -474,15 +485,15 @@ async function pullSavedSearches(): Promise<void> {
   }
 }
 
-async function pullNotes(): Promise<void> {
+async function pullNotes(): Promise<string[]> {
   // See pullFolders() for rationale on the userId guard.
   const userId = get(authStore).userId;
-  if (!userId) return;
+  if (!userId) return [];
   const res = await authFetch(`${API_BASE}/notes?include_archived=true`);
   if (!res.ok) throw new Error(`GET /api/notes: ${res.status}`);
   const { data } = await res.json();
 
-  await Promise.all(
+  const changedResults = await Promise.all(
     (
       data as Array<{
         id: string;
@@ -509,7 +520,7 @@ async function pullNotes(): Promise<void> {
         (localNote.sync_status === 'pending' || localNote.sync_status === 'sync_error')
       ) {
         logger.debug(`Skipping pull for note ${n.id} - has unsynced local changes`);
-        return;
+        return null;
       }
 
       // Skip if server version is not newer than local (sync_version conflict detection)
@@ -547,7 +558,7 @@ async function pullNotes(): Promise<void> {
           logger.warn(`Reconciling orphaned note edit ${n.id} - marking pending`);
           await noteStore.save({ ...localNote, sync_status: 'pending' });
         }
-        return;
+        return null;
       }
 
       // Rebuild shadow indexes from metadata_encrypted. extractShadowIndexes throws when
@@ -569,7 +580,7 @@ async function pullNotes(): Promise<void> {
           `Skipping save of note ${n.id} - shadow indexes could not be derived. Will retry on next successful sync.`,
           err
         );
-        return;
+        return null;
       }
 
       const note: NoteStoredLocal = {
@@ -607,6 +618,10 @@ async function pullNotes(): Promise<void> {
           )
         ]);
       }
+
+      // This note's server state advanced (new, or newer sync_version) → its
+      // version list may have grown. Return its id for the targeted version pull.
+      return n.id;
     })
   );
 
@@ -624,6 +639,10 @@ async function pullNotes(): Promise<void> {
     await noteStore.deleteMany(orphanNoteIds);
     logger.debug(`Removed ${orphanNoteIds.length} locally-synced notes no longer on server`);
   }
+
+  // Notes whose server state advanced this pull - the only ones whose
+  // server-side version history can have grown. Drives the targeted version pull.
+  return changedResults.filter((id): id is string => id !== null);
 }
 
 // ── Push helpers - IndexedDB → server ────────────────────────────

@@ -343,6 +343,41 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(src).not.toMatch(/PULL_VERSIONS_BATCH_SIZE/);
   });
 
+  it('pulls versions only for notes pullNotes actually changed, not all notes (native GET storm)', () => {
+    // Native CapacitorHttp does ~1 GET/note for versions; pulling versions for
+    // EVERY note on EVERY sync dominated native sync time (e.g. 122 notes ×
+    // ~700ms). A note's server-side version list grows only when the note is
+    // edited (which bumps its sync_version), so an unchanged note cannot have
+    // new versions. pullNotes therefore reports the ids it wrote and the
+    // orchestrator pulls versions for only those. Cold start still backfills:
+    // every note is new → "changed". Guards the optimization from regressing
+    // back to the all-notes pull.
+    const src = readSource('./notes-sync.service.ts');
+
+    // pullNotes reports the changed set instead of returning void.
+    expect(src).toMatch(/async function pullNotes\(\): Promise<string\[\]>/);
+    const pullNotes = src.slice(
+      src.indexOf('async function pullNotes'),
+      src.indexOf('// ── Push helpers')
+    );
+    // Main write path returns the id; skip paths return null; result filtered.
+    expect(pullNotes).toMatch(/return n\.id;/);
+    expect(pullNotes).toMatch(/return null;/);
+    expect(pullNotes).toMatch(/return changedResults\.filter\(/);
+
+    // The orchestrator feeds pullNotes' result into pullNoteVersions - it must
+    // NOT re-derive the version target from a fresh getAll() of every note.
+    const orchestrator = src.slice(
+      src.indexOf('async function runPullFromServer'),
+      src.indexOf('async function pullFolders')
+    );
+    expect(orchestrator).toMatch(/const changedNoteIds = await pullNotes\(/);
+    expect(orchestrator).toMatch(/pullNoteVersions\(changedNoteIds\)/);
+    // The old all-notes version pull is gone.
+    expect(orchestrator).not.toMatch(/pullNoteVersions\(noteIds\)/);
+    expect(orchestrator).not.toMatch(/noteStore\.getAll\(\) as NoteEncrypted/);
+  });
+
   it('archived-pending retry joins the per-entity chain so the cap is real', () => {
     // pushNoteUpdate/pushNoteDelete are fire-and-forget (void). If the sweep
     // didn't await something, settleInBatches would enqueue every archived note
@@ -475,9 +510,10 @@ describe('notes-sync - regression (offline data loss)', () => {
       expect(body, `${fnName} must capture userId at top`).toMatch(
         /const\s+userId\s*=\s*get\(authStore\)\.userId/
       );
-      // Bail out when userId is absent.
+      // Bail out when userId is absent. (pullNotes returns string[] so its
+      // guard is `return []`; the void pull helpers use bare `return;`.)
       expect(body, `${fnName} must early-return on missing userId`).toMatch(
-        /if\s*\(\s*!userId\s*\)\s*return\s*;/
+        /if\s*\(\s*!userId\s*\)\s*return\b[^;]*;/
       );
       // No more non-null assertions on authStore.userId inside the body.
       expect(body, `${fnName} must not use \`get(authStore).userId!\``).not.toMatch(
@@ -565,7 +601,9 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(callMatch).not.toBeNull();
     const window = pullNotes.slice(callMatch!.index, callMatch!.index + 600);
     expect(window).toMatch(/catch\s*\(/);
-    expect(window).toMatch(/return;/);
+    // Skip path returns `null` from the map callback (pullNotes collects the
+    // ids it actually wrote; skipped notes contribute null and are filtered).
+    expect(window).toMatch(/return null;/);
   });
 
   it('post-pull reconciler runs in +layout.svelte runSync and onMount paths', () => {
