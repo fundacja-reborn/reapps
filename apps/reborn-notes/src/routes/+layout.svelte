@@ -458,10 +458,16 @@
 
     update();
     window.addEventListener('scroll', update, { passive: true });
+    // window 'resize' too: in a desktop browser visualViewport.resize fires on a
+    // window resize, but the macOS "Designed for iPad" shell (and iPad Stage
+    // Manager) can resize the window WITHOUT a reliable vv 'resize', leaving
+    // --rn-keyboard-inset / --rn-vv-* stale. Refresh on the window event as well.
+    window.addEventListener('resize', update);
     vv?.addEventListener('resize', update);
     vv?.addEventListener('scroll', update);
     return () => {
       window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
       vv?.removeEventListener('resize', update);
       vv?.removeEventListener('scroll', update);
     };

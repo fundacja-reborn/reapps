@@ -1515,12 +1515,17 @@
   <!-- ══════════════════════════════════════════════════════════════════
      DESKTOP: Original 3-column layout
      ══════════════════════════════════════════════════════════════════ -->
-  <!-- height tracks visualViewport so the soft keyboard (iPad PWA Safari etc.)
-       shrinks the desktop scroll container instead of leaving the bottom of
-       the note hidden behind the keyboard. CSS var emitted in +layout.svelte;
-       fallback `100vh` covers SSR + browsers without visualViewport. -->
+  <!-- Base the height on 100dvh, NOT on the measured visualViewport height: dvh
+       is engine-tracked, so it follows a freely-resized window - the macOS
+       "Designed for iPad" shell and iPad Stage Manager / Split View - whereas
+       --rn-vv-height only refreshes on scroll / visualViewport events and goes
+       stale on a window resize (editor then leaves empty space below / clips).
+       The soft keyboard (iPad PWA Safari, iPad portrait <835px native) is still
+       handled: --rn-keyboard-inset (emitted in +layout.svelte) is the overlay
+       keyboard's height, 0 when closed, so the scroll container shrinks to the
+       visible area exactly as the old vv.height pin did. -->
   <SidebarProvider
-    style="height: calc(var(--rn-vv-height, 100vh) - var(--rn-banner-h, 0px)); min-height: 0; overflow: hidden; --sidebar-width: 24rem;"
+    style="height: calc(100dvh - var(--rn-banner-h, 0px) - var(--rn-keyboard-inset, 0px)); min-height: 0; overflow: hidden; --sidebar-width: 24rem;"
   >
     <Sidebar
       variant="inset"
