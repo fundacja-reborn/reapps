@@ -2,6 +2,7 @@
   import '../app.css';
   import { onMount, untrack } from 'svelte';
   import { installNativeAuthProbe } from '$lib/utils/native-auth-probe';
+  import { installNativeFolderFsProbe } from '$lib/utils/native-folder-fs-probe';
   import { get } from 'svelte/store';
   import { Toaster } from '@reborn/ui';
   import { browser } from '$app/environment';
@@ -190,8 +191,9 @@
   onMount(() => {
     if (!browser) return;
 
-    // Native-only dev probe for refresh-token rotation validation (no-op on web).
+    // Native-only dev probes (no-op + DCE on web).
     installNativeAuthProbe();
+    installNativeFolderFsProbe();
 
     // Timeout fallback - show app even if initialization stalls (e.g. slow IndexedDB)
     const timeoutId = setTimeout(() => {

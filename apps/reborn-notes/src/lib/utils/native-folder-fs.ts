@@ -1,0 +1,59 @@
+/**
+ * Raw-bridge access to the app-local FolderFs native plugin (native folder sync).
+ *
+ * FolderFs gives the native shell persistent read access to a user-picked directory
+ * OUTSIDE the app sandbox - the capability WKWebView/Android WebView lack (no File
+ * System Access API). It is the native counterpart of the web
+ * `FileSystemDirectoryHandle`: an opaque, persistable reference (a base64
+ * security-scoped bookmark on iOS) plus recursive `.md` enumeration and lazy file
+ * reads. See `planning/native-folder-sync-plan.md`.
+ *
+ * Talks DIRECTLY to the natively-registered plugin via `registerPlugin('FolderFs')`
+ * - the same raw-proxy pattern as `native-secure-storage.ts` / `native-system-bars.ts`
+ * (no JS convenience layer, no nested dynamic import that could wedge boot). This is
+ * NOT a boot-path module, but the pattern is kept for consistency and DCE.
+ *
+ * `@capacitor/core` is imported statically; on web, `registerPlugin` is referenced
+ * only behind the compile-time-false `__REBORN_NATIVE__` guard, so the whole module
+ * tree-shakes out of the web bundle.
+ */
+
+import { registerPlugin } from '@capacitor/core';
+
+/** One file found by a native directory walk (metadata only; bytes read lazily). */
+export interface NativeFsEntry {
+  /** `<leaf>/<sub>/<file>.md`, rooted at the directory leaf name (web walk shape). */
+  path: string;
+  /** Last-modified, ms epoch. 0 = unknown (treated as "always changed"). */
+  mtime: number;
+  /** File size in bytes. */
+  size: number;
+}
+
+/** Native FolderFs plugin method surface (see FolderFsPlugin.swift). */
+export interface FolderFsPlugin {
+  /** Present the system folder picker (user gesture). Resolves a base64 bookmark. */
+  pickDirectory(): Promise<{ bookmark?: string; name?: string; cancelled?: boolean }>;
+  /**
+   * Recursively list files matching `extensions` (default `['md']`). Returns a
+   * refreshed `staleBookmark` when the OS reported the stored bookmark stale -
+   * persist it over the old one.
+   */
+  listFiles(options: {
+    bookmark: string;
+    extensions?: string[];
+  }): Promise<{ files: NativeFsEntry[]; staleBookmark?: string }>;
+  /** Read one file's UTF-8 content (downloads iCloud placeholders first). */
+  readFile(options: { bookmark: string; path: string }): Promise<{ content: string; mtime: number }>;
+  /** Same on-disk directory? (dedup at link time). */
+  isSameDirectory(options: { a: string; b: string }): Promise<{ same: boolean }>;
+}
+
+let plugin: FolderFsPlugin | null = null;
+
+/** The FolderFs plugin proxy. Throws on web builds (native-only capability). */
+export function getFolderFs(): FolderFsPlugin {
+  if (!__REBORN_NATIVE__) throw new Error('FolderFs is native-only');
+  plugin ??= registerPlugin<FolderFsPlugin>('FolderFs');
+  return plugin;
+}
