@@ -78,7 +78,7 @@
     "@reborn/utils": "workspace:*",
     "@replit/codemirror-lang-svelte": "6.0.0",
     "diff": "9.0.0",
-    "dompurify": "3.4.10",
+    "dompurify": "3.4.11",
     "html2canvas-pro": "2.0.4",
     "jspdf": "4.2.1",
     "jszip": "3.10.1",

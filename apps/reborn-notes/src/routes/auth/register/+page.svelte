@@ -7,6 +7,9 @@
   import { hashPassword, generateMasterKeyForUser, cryptoManager } from '@reborn/crypto';
   import { get } from 'svelte/store';
   import { loginInNotes } from '$lib/services/notes-auth.service';
+  import { nativeAuthHeaders } from '$lib/utils/native-client';
+  import { persistNativeRefreshToken } from '$lib/utils/native-auth-storage';
+  import { persistNativeSessionId } from '$lib/utils/native-session';
   import {
     authStore,
     CREDENTIALS_KEY,
@@ -97,10 +100,13 @@
         cryptoManager.clearMasterKey();
       }
 
-      // 5. Register via API with bot protection data + default task list
+      // 5. Register via API with bot protection data + default task list.
+      //    Native sends the client header so the server returns the refresh token
+      //    in the body (the local->account upgrade below persists it to secure
+      //    storage). Empty on web -> request stays byte-identical (cookie path).
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
         body: JSON.stringify({
           username: detail.username,
           passwordHash,
@@ -156,6 +162,10 @@
       access_token: string;
       encryptedMasterKey?: string;
       masterKeySalt?: string;
+      /** Present only for native clients (sent the native header). */
+      refresh_token?: string;
+      /** Present only for native clients - names the current session. */
+      session_id?: string;
     },
     encryptedMasterKey: string,
     masterKeySalt: string
@@ -168,6 +178,16 @@
     };
     localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
     localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+    // Native: persist the body-delivered refresh token to secure storage. The
+    // local->account upgrade deliberately does NOT call loginInNotes (that would
+    // clear the IndexedDB notes we are adopting), so it must replicate the token
+    // persistence loginInNotes does - without it the native refresh path finds no
+    // token and the session dies at the 15-min access-token TTL. No-op on web,
+    // where the refresh token rides the httpOnly cookie set by the register
+    // endpoint. session_id is currently absent here (register creates no
+    // UserSession), so persistNativeSessionId is a no-op until that changes.
+    await persistNativeRefreshToken(data.refresh_token);
+    persistNativeSessionId(data.session_id);
 
     // Leave local-only mode: the account now owns this data.
     localStorage.removeItem(LOCAL_MODE_KEY);
