@@ -66,43 +66,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             String(describing: type(of: $0)).hasPrefix("WKContent")
         }) else { return }
 
-        // Override on the content view's CLASS (not the instance): focusing a form
-        // <input> makes WebKit recreate the content view, which would drop a
-        // per-instance override; a class override is shared by every present and
-        // future instance. "@@:" = object getter (id self, SEL _cmd).
+        // Override inputAccessoryView on the content view's CLASS (not the
+        // instance): focusing a form <input> makes WebKit recreate the content
+        // view, which would drop a per-instance override; a class override is
+        // shared by every present and future instance. This hides the bar for
+        // contenteditable (note editor) and on plain window focus. The iPad
+        // keyboard "assistant/shortcut" bar that a form <input> shows is a
+        // separate mechanism (inputAssistantItem) that public API can't fully
+        // remove - left as-is (see guideline 61 / cluster diagnosis).
+        // "@@:" = object getter (id self, SEL _cmd).
         let cls: AnyClass = type(of: contentView)
-        NSLog("[Reborn] hiding macOS keyboard bar on \(NSStringFromClass(cls))")
-
-        // (1) Custom accessory view - the contenteditable / window-focus path.
-        let accSel = #selector(getter: UIResponder.inputAccessoryView)
+        let selector = #selector(getter: UIResponder.inputAccessoryView)
         let nilView: @convention(block) (AnyObject) -> UIView? = { _ in nil }
         let nilViewIMP = imp_implementationWithBlock(nilView)
-        if !class_addMethod(cls, accSel, nilViewIMP, "@@:"),
-           let accMethod = class_getInstanceMethod(cls, accSel) {
-            method_setImplementation(accMethod, nilViewIMP)
+        if !class_addMethod(cls, selector, nilViewIMP, "@@:"),
+           let method = class_getInstanceMethod(cls, selector) {
+            method_setImplementation(method, nilViewIMP)
         }
-
-        // (2) iPad keyboard "assistant"/shortcuts bar - the form <input> path
-        //     (sidebar search, folder rename). Driven by inputAssistantItem, NOT
-        //     inputAccessoryView, so (1) alone leaves it. Wrap the existing getter
-        //     to empty its bar-button groups so the bar collapses. The original
-        //     IMP is captured once (didStripAccessory guard) to avoid recursion.
-        let asSel = #selector(getter: UIResponder.inputAssistantItem)
-        if let asMethod = class_getInstanceMethod(cls, asSel) {
-            typealias AssistantGetter = @convention(c) (AnyObject, Selector) -> UITextInputAssistantItem
-            let original = unsafeBitCast(method_getImplementation(asMethod), to: AssistantGetter.self)
-            let emptied: @convention(block) (AnyObject) -> UITextInputAssistantItem = { receiver in
-                let item = original(receiver, asSel)
-                item.leadingBarButtonGroups = []
-                item.trailingBarButtonGroups = []
-                return item
-            }
-            let emptiedIMP = imp_implementationWithBlock(emptied)
-            if !class_addMethod(cls, asSel, emptiedIMP, "@@:") {
-                method_setImplementation(asMethod, emptiedIMP)
-            }
-        }
-
         didStripAccessory = true
     }
 
