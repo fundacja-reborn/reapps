@@ -61,6 +61,7 @@
     onviewdestroy,
     onnotelinkrequest,
     onnotelinkclick,
+    ontoolbarheight,
     availableNotes = [],
     currentNoteId = null,
     imageLoadMode = 'ask' as ImageLoadMode
@@ -88,6 +89,13 @@
     onnotelinkrequest?: () => void;
     /** Called when a rendered note-link widget is clicked (Live Preview mode) */
     onnotelinkclick?: (noteId: string) => void;
+    /**
+     * Split view only - reports the formatting toolbar's measured height
+     * (border-box, px) whenever it changes. The toolbar wraps to 1-2 rows by
+     * pane width, so the preview pane uses this to match its header height and
+     * keep the first line of both columns aligned. Measured, never hardcoded.
+     */
+    ontoolbarheight?: (height: number) => void;
     /** Notes available for [[ autocomplete */
     availableNotes?: NoteLinkItem[];
     /** Current note id (excluded from autocomplete suggestions) */
@@ -98,6 +106,8 @@
 
   let editorRootEl: HTMLDivElement;
   let editorContainer: HTMLDivElement;
+  /** Split-view formatting toolbar element - measured to align the preview header. */
+  let toolbarEl = $state<HTMLDivElement | null>(null);
   let view: EditorView | undefined;
   let isExternalUpdate = false;
   const themeCompartment = new Compartment();
@@ -616,6 +626,23 @@
     });
   });
 
+  // Split view: the formatting toolbar wraps to 1 or 2 rows depending on pane
+  // width, so its height is variable. Measure it (ResizeObserver - never a
+  // hardcoded constant) and report upward so the preview pane can match its
+  // header height; that keeps the first line of both columns aligned. Inert
+  // outside split view and when readonly (no toolbar element rendered). No
+  // feedback loop: the reported height drives the *preview* header in the other
+  // column, which can't change this column's width, so the toolbar never rewraps.
+  $effect(() => {
+    const el = toolbarEl;
+    if (!splitView || !el) return;
+    const report = () => ontoolbarheight?.(el.getBoundingClientRect().height);
+    const ro = new ResizeObserver(report);
+    ro.observe(el);
+    report();
+    return () => ro.disconnect();
+  });
+
   onDestroy(() => {
     onviewdestroy?.();
     view?.destroy();
@@ -832,7 +859,7 @@
         </div>
       </div>
     {:else}
-      <div class="flex flex-wrap items-center gap-0.5 border-b bg-background px-2 py-1.5">
+      <div bind:this={toolbarEl} class="flex flex-wrap items-center gap-0.5 border-b bg-background px-2 py-1.5">
         {@render toolbarButtons()}
       </div>
     {/if}
