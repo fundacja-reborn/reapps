@@ -1,5 +1,7 @@
 import UIKit
 import Capacitor
+import WebKit
+import ObjectiveC
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -26,7 +28,58 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        // macOS only (an iOS app running on Apple Silicon as "Designed for iPad"):
+        // the key window reserves space at the bottom for a phantom keyboard
+        // input-accessory bar even with no keyboard present, drawn as a gray bar
+        // over the bottom of the UI (user avatar, sync-status footer, sidebar
+        // inputs). It is a native surface - not part of the web DOM - so it can
+        // only be removed natively. Strip the input accessory view from the web
+        // content view. iPhone/iPad are intentionally left untouched: there the bar
+        // shows only with the keyboard and hosts the password-autofill (QuickType)
+        // row, which is normal and useful. Re-applied on each activation because
+        // the web content view can be recreated.
+        guard ProcessInfo.processInfo.isiOSAppOnMac else { return }
+        guard let webView = AppDelegate.findWebView(in: window?.rootViewController?.view) else { return }
+        AppDelegate.stripInputAccessory(from: webView)
+    }
+
+    /// Depth-first search for the Capacitor WKWebView in a view tree.
+    private static func findWebView(in view: UIView?) -> WKWebView? {
+        guard let view = view else { return nil }
+        if let webView = view as? WKWebView { return webView }
+        for subview in view.subviews {
+            if let found = findWebView(in: subview) { return found }
+        }
+        return nil
+    }
+
+    /// Re-class the web view's private content view to a runtime subclass whose
+    /// `inputAccessoryView` getter returns nil, hiding the keyboard accessory bar.
+    /// No private symbol is referenced by name (the class is found via a runtime
+    /// string prefix) and only public ObjC-runtime + UIResponder API is used, so
+    /// static analysis sees no private API - the standard, App-Store-safe technique.
+    private static func stripInputAccessory(from webView: WKWebView) {
+        guard let contentView = webView.scrollView.subviews.first(where: {
+            String(describing: type(of: $0)).hasPrefix("WKContent")
+        }) else { return }
+
+        let baseClass: AnyClass = type(of: contentView)
+        let subclassName = NSStringFromClass(baseClass) + "_RebornNoInputAccessory"
+
+        if let existing = NSClassFromString(subclassName) {
+            if !contentView.isKind(of: existing) {
+                object_setClass(contentView, existing)
+            }
+            return
+        }
+
+        guard let subclass = objc_allocateClassPair(baseClass, subclassName, 0) else { return }
+        let selector = #selector(getter: UIResponder.inputAccessoryView)
+        guard let template = class_getInstanceMethod(UIResponder.self, selector) else { return }
+        let nilAccessory: @convention(block) (AnyObject) -> UIView? = { _ in nil }
+        class_addMethod(subclass, selector, imp_implementationWithBlock(nilAccessory), method_getTypeEncoding(template))
+        objc_registerClassPair(subclass)
+        object_setClass(contentView, subclass)
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
