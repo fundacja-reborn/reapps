@@ -58,29 +58,52 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     /// No private symbol is referenced by name (the class is found via a runtime
     /// string prefix) and only public ObjC-runtime + UIResponder API is used, so
     /// static analysis sees no private API - the standard, App-Store-safe technique.
+    private static var didStripAccessory = false
+
     private static func stripInputAccessory(from webView: WKWebView) {
+        guard !didStripAccessory else { return }
         guard let contentView = webView.scrollView.subviews.first(where: {
             String(describing: type(of: $0)).hasPrefix("WKContent")
         }) else { return }
 
-        // Override the getter on the content view's CLASS, not the instance.
-        // Focusing a form <input> (e.g. the sidebar search field) makes WebKit
-        // recreate the content view, which would drop a per-instance override and
-        // bring the bar back for good; a class-level override survives because
-        // every present and future instance shares the same method.
+        // Override on the content view's CLASS (not the instance): focusing a form
+        // <input> makes WebKit recreate the content view, which would drop a
+        // per-instance override; a class override is shared by every present and
+        // future instance. "@@:" = object getter (id self, SEL _cmd).
         let cls: AnyClass = type(of: contentView)
-        let selector = #selector(getter: UIResponder.inputAccessoryView)
-        let nilAccessory: @convention(block) (AnyObject) -> UIView? = { _ in nil }
-        let imp = imp_implementationWithBlock(nilAccessory)
+        NSLog("[Reborn] hiding macOS keyboard bar on \(NSStringFromClass(cls))")
 
-        // class_addMethod returns false when the class already implements the
-        // getter (WKContentView does) - then swap the existing IMP. Either way the
-        // class returns nil afterwards. "@@:" = object getter (id self, SEL _cmd).
-        if !class_addMethod(cls, selector, imp, "@@:") {
-            if let method = class_getInstanceMethod(cls, selector) {
-                method_setImplementation(method, imp)
+        // (1) Custom accessory view - the contenteditable / window-focus path.
+        let accSel = #selector(getter: UIResponder.inputAccessoryView)
+        let nilView: @convention(block) (AnyObject) -> UIView? = { _ in nil }
+        let nilViewIMP = imp_implementationWithBlock(nilView)
+        if !class_addMethod(cls, accSel, nilViewIMP, "@@:"),
+           let accMethod = class_getInstanceMethod(cls, accSel) {
+            method_setImplementation(accMethod, nilViewIMP)
+        }
+
+        // (2) iPad keyboard "assistant"/shortcuts bar - the form <input> path
+        //     (sidebar search, folder rename). Driven by inputAssistantItem, NOT
+        //     inputAccessoryView, so (1) alone leaves it. Wrap the existing getter
+        //     to empty its bar-button groups so the bar collapses. The original
+        //     IMP is captured once (didStripAccessory guard) to avoid recursion.
+        let asSel = #selector(getter: UIResponder.inputAssistantItem)
+        if let asMethod = class_getInstanceMethod(cls, asSel) {
+            typealias AssistantGetter = @convention(c) (AnyObject, Selector) -> UITextInputAssistantItem
+            let original = unsafeBitCast(method_getImplementation(asMethod), to: AssistantGetter.self)
+            let emptied: @convention(block) (AnyObject) -> UITextInputAssistantItem = { receiver in
+                let item = original(receiver, asSel)
+                item.leadingBarButtonGroups = []
+                item.trailingBarButtonGroups = []
+                return item
+            }
+            let emptiedIMP = imp_implementationWithBlock(emptied)
+            if !class_addMethod(cls, asSel, emptiedIMP, "@@:") {
+                method_setImplementation(asMethod, emptiedIMP)
             }
         }
+
+        didStripAccessory = true
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
