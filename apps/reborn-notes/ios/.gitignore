@@ -5,6 +5,11 @@ App/App/public
 DerivedData
 xcuserdata
 
+# Xcode workspace IDE settings - regenerated locally by Xcode, not source
+# (an empty <dict/> appears on first open; keep it out of the tree)
+**/xcshareddata/WorkspaceSettings.xcsettings
+**/xcshareddata/IDEWorkspaceChecks.plist
+
 # Cordova plugins for Capacitor
 capacitor-cordova-ios-plugins
 
