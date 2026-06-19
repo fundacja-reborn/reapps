@@ -72,6 +72,12 @@
   // the parent scroll (parent grows with content, sticky toolbar/header work).
   const isParentScrollActive = $derived(parentScroll && effectiveViewMode !== 'split');
 
+  // Split view: the editor's formatting toolbar wraps to 1-2 rows by pane width
+  // (variable height). NoteEditor measures it and reports here; we mirror it onto
+  // the preview header's min-height so both panes' first line stays aligned
+  // regardless of how the toolbar wraps. Measured upstream, never hardcoded.
+  let splitToolbarHeight = $state(0);
+
   const placeholderText = $derived(
     noteKind ? $t(`notes.periodic.${noteKind}.placeholder`) : $t('editor.placeholder')
   );
@@ -182,12 +188,16 @@
               currentNoteId={noteId}
               parentScroll={false}
               splitView
+              ontoolbarheight={(h) => (splitToolbarHeight = h)}
               {isMobile}
               {imageLoadMode}
             />
           </div>
           <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <div class="flex shrink-0 items-center border-b bg-background/95 backdrop-blur-sm px-4 py-1.5">
+            <div
+              class="flex shrink-0 items-center border-b bg-background/95 backdrop-blur-sm px-4 py-1.5"
+              style:min-height={splitToolbarHeight ? `${splitToolbarHeight}px` : null}
+            >
               <span class="flex h-7 items-center text-xs font-medium text-muted-foreground">{$t('editor.preview')}</span>
             </div>
             <MarkdownPreview
