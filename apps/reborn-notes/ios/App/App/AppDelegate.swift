@@ -63,23 +63,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             String(describing: type(of: $0)).hasPrefix("WKContent")
         }) else { return }
 
-        let baseClass: AnyClass = type(of: contentView)
-        let subclassName = NSStringFromClass(baseClass) + "_RebornNoInputAccessory"
-
-        if let existing = NSClassFromString(subclassName) {
-            if !contentView.isKind(of: existing) {
-                object_setClass(contentView, existing)
-            }
-            return
-        }
-
-        guard let subclass = objc_allocateClassPair(baseClass, subclassName, 0) else { return }
+        // Override the getter on the content view's CLASS, not the instance.
+        // Focusing a form <input> (e.g. the sidebar search field) makes WebKit
+        // recreate the content view, which would drop a per-instance override and
+        // bring the bar back for good; a class-level override survives because
+        // every present and future instance shares the same method.
+        let cls: AnyClass = type(of: contentView)
         let selector = #selector(getter: UIResponder.inputAccessoryView)
-        guard let template = class_getInstanceMethod(UIResponder.self, selector) else { return }
         let nilAccessory: @convention(block) (AnyObject) -> UIView? = { _ in nil }
-        class_addMethod(subclass, selector, imp_implementationWithBlock(nilAccessory), method_getTypeEncoding(template))
-        objc_registerClassPair(subclass)
-        object_setClass(contentView, subclass)
+        let imp = imp_implementationWithBlock(nilAccessory)
+
+        // class_addMethod returns false when the class already implements the
+        // getter (WKContentView does) - then swap the existing IMP. Either way the
+        // class returns nil afterwards. "@@:" = object getter (id self, SEL _cmd).
+        if !class_addMethod(cls, selector, imp, "@@:") {
+            if let method = class_getInstanceMethod(cls, selector) {
+                method_setImplementation(method, imp)
+            }
+        }
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
