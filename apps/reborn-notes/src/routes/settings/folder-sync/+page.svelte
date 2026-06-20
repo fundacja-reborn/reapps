@@ -30,7 +30,13 @@
   // form collects the destination (defaults to the directory name; may be a
   // "/"-separated path to nest, e.g. "Projekty/Docs") before the config is
   // created. The destination is editable later from the list item.
-  let pendingRef = $state<DirectoryRef | null>(null);
+  // $state.raw, NOT $state: the directory ref must reach IndexedDB UN-proxied.
+  // Svelte deep-proxies a plain $state object, and a reactive proxy is not
+  // structured-cloneable - storing the native ref ({bookmark,name}) then throws
+  // DataCloneError in folderSyncStore.save. (Web's ref is a FileSystemDirectoryHandle,
+  // a host object Svelte does not proxy, which is why this only bit native.) We only
+  // ever reassign pendingRef wholesale, so raw state is the right tool anyway.
+  let pendingRef = $state.raw<DirectoryRef | null>(null);
   // On-disk leaf name, kept separately for the hint (pendingName is the editable
   // destination and may diverge from the directory's actual name).
   let pendingDirName = $state('');
