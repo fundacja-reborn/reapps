@@ -217,6 +217,14 @@ export async function createNote(
     updatedAt?: string;
     skipSync?: boolean;
     /**
+     * Pre-assign the note id instead of minting a fresh one. The folder
+     * importer resolves every file's target id up-front (so inter-note links
+     * can be rewritten before the content is written), then creates each note
+     * with the id it pre-assigned. Must be a UUID. Defaults to a fresh
+     * `crypto.randomUUID()`.
+     */
+    id?: string;
+    /**
      * Tag this note as belonging to a Periodic Notes series (Daily/Weekly/Monthly).
      * Stored inside `metadata_encrypted` so the server never sees the kind/anchor
      * - this is how the Periodic feature matches existing notes for a given period
@@ -228,7 +236,7 @@ export async function createNote(
   const now = new Date().toISOString();
   const createdAt = options?.createdAt ?? now;
   const updatedAt = options?.updatedAt ?? now;
-  const id = crypto.randomUUID();
+  const id = options?.id ?? crypto.randomUUID();
   const metadata: NoteSensitiveMetadata = {
     is_pinned: false,
     is_starred: false,
