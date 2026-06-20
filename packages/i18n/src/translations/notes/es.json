@@ -866,7 +866,7 @@
       "export_status_backup": "Creando archivo de copia de seguridad…",
       "export_status_encrypted": "Cifrando copia de seguridad…",
       "folder_sync_title": "Sincronización de carpetas",
-      "folder_sync_desc": "Vincula carpetas con archivos Markdown de tu disco - los cambios se reimportan automáticamente. Unidireccional (disco → aplicación); funciona en navegadores Chromium como Chrome y Edge. En Brave, primero activa la File System Access API en brave://flags.",
+      "folder_sync_desc": "Vincula carpetas con archivos Markdown de tu disco - los cambios se reimportan automáticamente. Unidireccional (disco → aplicación).",
       "folder_sync_hub_desc": "Refleja carpetas locales de archivos Markdown en tus notas",
       "folder_sync_add_btn": "Añadir carpeta",
       "folder_sync_empty": "Aún no hay carpetas vinculadas.",

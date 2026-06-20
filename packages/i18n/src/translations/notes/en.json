@@ -866,7 +866,7 @@
       "export_status_backup": "Building backup file…",
       "export_status_encrypted": "Encrypting backup…",
       "folder_sync_title": "Folder sync",
-      "folder_sync_desc": "Link folders of Markdown files on your disk - changes are re-imported automatically. One-way (disk → app); works in Chromium browsers like Chrome and Edge. In Brave, first enable the File System Access API in brave://flags.",
+      "folder_sync_desc": "Link folders of Markdown files on your disk - changes are re-imported automatically. One-way (disk → app).",
       "folder_sync_hub_desc": "Mirror local folders of Markdown files into your notes",
       "folder_sync_add_btn": "Add folder",
       "folder_sync_empty": "No folders linked yet.",

@@ -866,7 +866,7 @@
       "export_status_backup": "Sicherungsdatei wird erstellt…",
       "export_status_encrypted": "Sicherung wird verschlüsselt…",
       "folder_sync_title": "Ordner-Synchronisierung",
-      "folder_sync_desc": "Verknüpfe Ordner mit Markdown-Dateien auf deiner Festplatte - Änderungen werden automatisch importiert. Einseitig (Festplatte → App); funktioniert in Chromium-Browsern wie Chrome und Edge. In Brave zuerst die File System Access API unter brave://flags aktivieren.",
+      "folder_sync_desc": "Verknüpfe Ordner mit Markdown-Dateien auf deiner Festplatte - Änderungen werden automatisch importiert. Einseitig (Festplatte → App).",
       "folder_sync_hub_desc": "Lokale Ordner mit Markdown-Dateien in deine Notizen spiegeln",
       "folder_sync_add_btn": "Ordner hinzufügen",
       "folder_sync_empty": "Noch keine Ordner verknüpft.",

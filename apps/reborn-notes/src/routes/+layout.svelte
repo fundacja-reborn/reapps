@@ -2,7 +2,6 @@
   import '../app.css';
   import { onMount, untrack } from 'svelte';
   import { installNativeAuthProbe } from '$lib/utils/native-auth-probe';
-  import { installNativeFolderFsProbe } from '$lib/utils/native-folder-fs-probe';
   import { get } from 'svelte/store';
   import { Toaster } from '@reborn/ui';
   import { browser } from '$app/environment';
@@ -191,9 +190,8 @@
   onMount(() => {
     if (!browser) return;
 
-    // Native-only dev probes (no-op + DCE on web).
+    // Native-only dev probe for refresh-token rotation validation (no-op on web).
     installNativeAuthProbe();
-    installNativeFolderFsProbe();
 
     // Timeout fallback - show app even if initialization stalls (e.g. slow IndexedDB)
     const timeoutId = setTimeout(() => {
@@ -380,6 +378,11 @@
             })
             .catch(() => {});
         }
+        // Folder sync on return-to-foreground: native has no SW-driven foreground
+        // sync and may not fire visibilitychange reliably under capacitor://, so
+        // the lifecycle resume is the dependable signal. runFolderSync re-validates
+        // support/auth/cooldown/single-flight internally, so firing blind is safe.
+        void runFolderSync('auto');
       });
 
       // Inbound App Links to a public share (https://<host>/notes/s/<slug>#k=...):

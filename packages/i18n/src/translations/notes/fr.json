@@ -866,7 +866,7 @@
       "export_status_backup": "Création du fichier de sauvegarde…",
       "export_status_encrypted": "Chiffrement de la sauvegarde…",
       "folder_sync_title": "Synchronisation de dossiers",
-      "folder_sync_desc": "Liez des dossiers de fichiers Markdown sur votre disque - les modifications sont réimportées automatiquement. Sens unique (disque → application) ; fonctionne dans les navigateurs Chromium comme Chrome et Edge. Dans Brave, activez d'abord la File System Access API dans brave://flags.",
+      "folder_sync_desc": "Liez des dossiers de fichiers Markdown sur votre disque - les modifications sont réimportées automatiquement. Sens unique (disque → application).",
       "folder_sync_hub_desc": "Refléter des dossiers locaux de fichiers Markdown dans vos notes",
       "folder_sync_add_btn": "Ajouter un dossier",
       "folder_sync_empty": "Aucun dossier lié pour le moment.",
