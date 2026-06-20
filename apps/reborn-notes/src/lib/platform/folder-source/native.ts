@@ -1,12 +1,13 @@
 /**
- * Native (Capacitor, iOS) FolderSource - the app-local FolderFs plugin.
+ * Native (Capacitor: iOS + Android) FolderSource - the app-local FolderFs plugin.
  *
- * The `DirectoryRef` is `{ bookmark, name }`: a base64 security-scoped bookmark
- * (persistent read access to a user-picked out-of-sandbox directory, survives
- * relaunch + reboot - validated on device) plus the on-disk leaf name for
- * display. The plugin enumerates `.md` files (path + mtime + size, no content)
- * and reads one file's content on demand, so a sync run only reads the files
- * that changed - the same laziness the web File has.
+ * The `DirectoryRef` is `{ bookmark, name }`: persistent read access to a
+ * user-picked out-of-sandbox directory (iOS: a base64 security-scoped bookmark;
+ * Android: a SAF tree-Uri string + takePersistableUriPermission) that survives
+ * relaunch + reboot, plus the on-disk leaf name for display. The plugin
+ * enumerates `.md` files (path + mtime + size, no content) and reads one file's
+ * content on demand, so a sync run only reads the files that changed - the same
+ * laziness the web File has.
  *
  * Loaded only on the native build (the selector in `./index.ts` picks this when
  * `__REBORN_NATIVE__` is true); on web this whole module - and the plugin behind
@@ -86,7 +87,9 @@ export function createNativeFolderSource(): FolderSource {
         relativePath: f.path,
         lastModified: f.mtime,
         getFile: async () => {
-          const { content } = await getFolderFs().readFile({ bookmark, path: f.path });
+          // Pass the opaque handle through (Android SAF documentId -> O(1) read;
+          // undefined on iOS, which resolves from `path`).
+          const { content } = await getFolderFs().readFile({ bookmark, path: f.path, id: f.id });
           const name = f.path.split('/').pop() ?? f.path;
           return new File([content], name, { lastModified: f.mtime });
         }

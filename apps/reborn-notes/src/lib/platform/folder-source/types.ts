@@ -5,10 +5,11 @@
  *
  * Web (PWA, Chromium) implements it with the File System Access API
  * (`showDirectoryPicker` + `FileSystemDirectoryHandle`); the native shell
- * (Capacitor, iOS) implements it with the app-local FolderFs plugin (a
- * security-scoped bookmark). The folder-sync service talks only to this
- * interface, so the multi-config runner, manifest, watermark, dedup and import
- * engine are shared verbatim across platforms.
+ * (Capacitor: iOS + Android) implements it with the app-local FolderFs plugin
+ * (iOS: a security-scoped bookmark; Android: a Storage Access Framework tree
+ * Uri). The folder-sync service talks only to this interface, so the
+ * multi-config runner, manifest, watermark, dedup and import engine are shared
+ * verbatim across platforms.
  *
  * App-local (not in `@reborn/platform`) on purpose: Notes is the only consumer,
  * the web impl pulls in WICG File System Access typings, and the native walker
@@ -22,7 +23,8 @@
  * service treats it as a black box and stores it in the config record's `handle`
  * field; only the FolderSource impl knows its real shape:
  *  - Web: a `FileSystemDirectoryHandle` (structured-cloneable into IndexedDB).
- *  - Native: `{ bookmark: string (base64 security-scoped bookmark), name: string }`.
+ *  - Native: `{ bookmark: string, name: string }`, where `bookmark` is a base64
+ *    security-scoped bookmark (iOS) or a SAF tree-Uri string (Android).
  *
  * Web and native never share a browser profile / install, so the same field
  * holding two shapes needs no migration.
