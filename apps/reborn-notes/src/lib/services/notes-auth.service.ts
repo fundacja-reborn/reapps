@@ -9,7 +9,13 @@ import { API_BASE } from '$lib/utils/api-base';
 import { nativeAuthHeaders } from '$lib/utils/native-client';
 import { persistNativeRefreshToken } from '$lib/utils/native-auth-storage';
 import { persistNativeSessionId } from '$lib/utils/native-session';
-import { authStore, CREDENTIALS_KEY, ACCESS_TOKEN_KEY } from '$lib/stores/auth.store';
+import {
+  authStore,
+  CREDENTIALS_KEY,
+  ACCESS_TOKEN_KEY,
+  LOCAL_MODE_KEY,
+  LOCAL_USER_ID_KEY
+} from '$lib/stores/auth.store';
 import { sessionExpired } from '$lib/stores/sync-status.store';
 import { clearAllUserData, isDatabaseInitialized } from '@reborn/storage';
 import { createLogger } from '@reborn/utils';
@@ -118,6 +124,8 @@ export async function loginInNotes(username: string, password: string): Promise<
 
     // Hydrate auth store with the new session
     authStore.initialize();
+    // Leave local-only mode + run the first sync (see startAccountSessionSync).
+    startAccountSessionSync();
     return { success: true };
   } catch (err: unknown) {
     return {
@@ -125,6 +133,42 @@ export async function loginInNotes(username: string, password: string): Promise<
       message: err instanceof Error ? err.message : 'An error occurred. Please try again.'
     };
   }
+}
+
+/**
+ * Tail shared by the password login ({@link loginInNotes}) and the 2FA second
+ * step (`auth/2fa/+page.svelte`): drop the local-only markers - a real account
+ * session owns this device now - and, when this login REPLACED a local-only
+ * session, kick off the first pull so the UI leaves the "Local only" footer,
+ * shows the syncing indicator, and loads the account's notes immediately.
+ *
+ * The explicit pull is gated on the local -> account transition on purpose: a
+ * fresh login from a logged-out state toggles `hasE2E` false -> true, which the
+ * `+layout` initial-sync effect already reacts to. On a local -> account switch
+ * the master key never leaves memory (`hasE2E` stays true), so that effect
+ * never fires and we must trigger the first sync here. Mirrors the local ->
+ * account upgrade in `auth/register/+page.svelte`. Fire-and-forget so
+ * navigation proceeds immediately; the pull is coalesced (single-flight) with
+ * any other trigger.
+ */
+export function startAccountSessionSync(): void {
+  const wasLocalOnly = localStorage.getItem(LOCAL_MODE_KEY) === '1';
+  // Leaving local-only mode: the account session owns this device now.
+  localStorage.removeItem(LOCAL_MODE_KEY);
+  localStorage.removeItem(LOCAL_USER_ID_KEY);
+  if (!wasLocalOnly) return; // logged-out -> account: +layout effect handles the pull
+  void (async () => {
+    try {
+      const { pullFromServer, pushPendingItems, refreshStoresAfterPull } = await import(
+        '$lib/services/notes-sync.service'
+      );
+      await pushPendingItems();
+      const synced = await pullFromServer();
+      if (synced) await refreshStoresAfterPull();
+    } catch {
+      // Offline / transient failure - the periodic + resume sync converges later.
+    }
+  })();
 }
 
 /** Pull fresh data from server and refresh in-memory stores after re-auth. */

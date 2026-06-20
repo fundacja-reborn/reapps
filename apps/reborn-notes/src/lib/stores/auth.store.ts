@@ -140,6 +140,20 @@ function createAuthStore() {
   const { subscribe, set } = writable<AuthState>(readFromStorage());
 
   /**
+   * Single write-path for the auth state. Mirrors `isLocalOnly` into the
+   * `localOnly` sync-status store on EVERY update, so the footer ("Local only"
+   * vs syncing) can never drift from the session. Without this, paths that call
+   * `set()` but not `initialize()` - notably the 2FA login step, which only runs
+   * `unlockE2E()` - left `localOnly` stuck `true` and the footer showed
+   * "Local only" after a real login. One-way write (auth.store -> sync-status)
+   * keeps the no-import-cycle invariant noted on `localOnly`.
+   */
+  function commit(next: AuthState): void {
+    set(next);
+    localOnly.set(next.isLocalOnly);
+  }
+
+  /**
    * Mark E2E as unlocked when the master key was loaded by another path —
    * cross-app SSO (peer Task/Notes already unlocked the shared origin IDB
    * key) or fast-path on `/auth/unlock`. Re-reads the auth credentials from
@@ -148,15 +162,14 @@ function createAuthStore() {
   function markE2EUnlocked(): void {
     if (!browser) return;
     if (!cryptoManager.isInitialized()) return;
-    set({ ...readFromStorage(), hasE2E: true });
+    commit({ ...readFromStorage(), hasE2E: true });
   }
 
   /** Call once from the root layout to hydrate state and watch for cross-tab changes. */
   function initialize(): void {
     if (!browser) return;
     const initial = readFromStorage();
-    set(initial);
-    localOnly.set(initial.isLocalOnly);
+    commit(initial);
     // Detect login / logout in other tabs on the same origin.
     // The `storage` event fires ONLY in other tabs/windows — never in the tab
     // that changed localStorage. This means:
@@ -195,7 +208,7 @@ function createAuthStore() {
       }
 
       // Token refresh or other update — update store reactively
-      set(newState);
+      commit(newState);
     });
 
     // Cross-app E2E unlock — peer app (Task) just unlocked the master key in
@@ -210,7 +223,7 @@ function createAuthStore() {
         // memory-only per browsing context, so clear ours and show the lock
         // screen (unless already on an auth route).
         cryptoManager.lockLocal({ broadcast: false });
-        set({ ...readFromStorage(), hasE2E: false });
+        commit({ ...readFromStorage(), hasE2E: false });
         if (!window.location.pathname.includes('/auth/')) {
           window.location.href = `${base}/auth/lock`;
         }
@@ -230,7 +243,7 @@ function createAuthStore() {
       const stillAuthenticated = !!localStorage.getItem(CREDENTIALS_KEY);
       if (stillAuthenticated && !cryptoManager.isInitialized()) {
         logger.info('Cross-app key cleared without logout — flipping hasE2E to false');
-        set({ ...readFromStorage(), hasE2E: false });
+        commit({ ...readFromStorage(), hasE2E: false });
       }
     });
   }
@@ -269,7 +282,7 @@ function createAuthStore() {
         await cryptoManager.setMasterKey(key);
       }
 
-      set({
+      commit({
         username: null,
         userId: localUserId,
         accessToken: null,
@@ -278,7 +291,6 @@ function createAuthStore() {
         createdAt: null,
         hasE2E: cryptoManager.isInitialized()
       });
-      localOnly.set(true);
       return true;
     } catch (err) {
       logger.error('Failed to enter local-only mode', err);
@@ -312,7 +324,7 @@ function createAuthStore() {
         // before this call (e.g. 2FA page saves credentials, then calls unlockE2E).
         // Using readFromStorage() ensures isAuthenticated, username, userId etc.
         // are up-to-date, not stale from initial module import.
-        set({ ...readFromStorage(), hasE2E: true });
+        commit({ ...readFromStorage(), hasE2E: true });
         // Send encrypted device info to server (non-blocking, non-critical)
         import('$lib/services/device-info.service').then(({ sendEncryptedDeviceInfo }) =>
           // fire-and-forget: device info is non-critical
@@ -333,7 +345,7 @@ function createAuthStore() {
   async function unlockLocalPasscode(passcode: string): Promise<boolean> {
     if (!browser) return false;
     const ok = await cryptoManager.unlockWithLocalPasscode(passcode);
-    if (ok) set({ ...readFromStorage(), hasE2E: true });
+    if (ok) commit({ ...readFromStorage(), hasE2E: true });
     return ok;
   }
 
@@ -341,7 +353,7 @@ function createAuthStore() {
   function lockLocalNow(): void {
     if (!browser) return;
     cryptoManager.lockLocal();
-    set({ ...readFromStorage(), hasE2E: false });
+    commit({ ...readFromStorage(), hasE2E: false });
   }
 
   /**
@@ -354,7 +366,7 @@ function createAuthStore() {
   function lockAppNow(): void {
     if (!browser) return;
     cryptoManager.lockToVault();
-    set({ ...readFromStorage(), hasE2E: false });
+    commit({ ...readFromStorage(), hasE2E: false });
   }
 
   /**

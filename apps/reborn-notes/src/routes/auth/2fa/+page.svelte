@@ -9,6 +9,9 @@
 	import { page } from '$app/stores';
 	import { t } from '$lib/stores/i18n.store';
 	import { authStore, CREDENTIALS_KEY, ACCESS_TOKEN_KEY } from '$lib/stores/auth.store';
+	import { sessionExpired } from '$lib/stores/sync-status.store';
+	import { startAccountSessionSync } from '$lib/services/notes-auth.service';
+	import { clearAllUserData, isDatabaseInitialized } from '@reborn/storage';
 	import {
 		Card,
 		CardContent,
@@ -102,7 +105,24 @@
 			const savedPassword = sessionStorage.getItem('2fa_pending_password');
 			if (savedPassword) {
 				sessionStorage.removeItem('2fa_pending_password');
-				await authStore.unlockE2E(savedPassword);
+				// Replace any previous (local-only or other-account) on-device data
+				// before the new session's key + pull. Mirrors loginInNotes, which 2FA
+				// users skip: login() returns early at the twoFactorRequired branch,
+				// so this page owns the full session finalization.
+				if (isDatabaseInitialized()) {
+					try {
+						await clearAllUserData();
+					} catch {
+						/* best-effort - the pull below repopulates from the server */
+					}
+				}
+				sessionExpired.set(false);
+				const unlocked = await authStore.unlockE2E(savedPassword);
+				// Leave local-only mode + run the first sync so the footer drops
+				// "Local only" and the account's notes load now. The +layout one-shot
+				// initial-sync effect won't re-fire on a local -> account switch (the
+				// master key never leaves memory, so hasE2E never toggles).
+				if (unlocked) startAccountSessionSync();
 			} else {
 				// No saved password - hydrate auth state and let unlock page handle E2E
 				authStore.initialize();
