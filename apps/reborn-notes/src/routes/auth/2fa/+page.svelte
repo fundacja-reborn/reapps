@@ -81,7 +81,7 @@
 
 			const { data } = body;
 
-			// Save credentials to localStorage (same format as reborn-task — SSO-compatible)
+			// Save credentials to localStorage (same format as reborn-task - SSO-compatible)
 			const credentials = {
 				id: data.user.id,
 				// refresh_token is managed exclusively via httpOnly cookie (set by server)
@@ -98,13 +98,13 @@
 			// session_id arrives in this response - stash it for device-info + list highlight.
 			persistNativeSessionId(data.session_id);
 
-			// Unlock E2E — use password saved by login page before redirect
+			// Unlock E2E - use password saved by login page before redirect
 			const savedPassword = sessionStorage.getItem('2fa_pending_password');
 			if (savedPassword) {
 				sessionStorage.removeItem('2fa_pending_password');
 				await authStore.unlockE2E(savedPassword);
 			} else {
-				// No saved password — hydrate auth state and let unlock page handle E2E
+				// No saved password - hydrate auth state and let unlock page handle E2E
 				authStore.initialize();
 			}
 
