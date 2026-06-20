@@ -1027,6 +1027,7 @@
   "security": {
     "password": {
       "title": "Change password",
+      "toggle_visibility": "Toggle password visibility",
       "warning": "After changing the password, you will be logged out on all devices and will need to sign in again.",
       "card_title": "Change password",
       "card_desc": "Password must be at least 8 characters. The encryption key will be re-encrypted with the new password.",
@@ -1139,6 +1140,7 @@
     },
     "delete_account": {
       "title": "Delete account",
+      "toggle_visibility": "Toggle password visibility",
       "irreversible_title": "This action is irreversible!",
       "irreversible_desc": "Deleting your account will permanently remove all your data, notes, folders and settings. This action cannot be undone.",
       "card_title": "Permanently delete account",

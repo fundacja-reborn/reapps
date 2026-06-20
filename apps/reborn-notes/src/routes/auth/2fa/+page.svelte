@@ -81,7 +81,7 @@
 
 			const { data } = body;
 
-			// Save credentials to localStorage (same format as reborn-task — SSO-compatible)
+			// Save credentials to localStorage (same format as reborn-task - SSO-compatible)
 			const credentials = {
 				id: data.user.id,
 				// refresh_token is managed exclusively via httpOnly cookie (set by server)
@@ -98,13 +98,13 @@
 			// session_id arrives in this response - stash it for device-info + list highlight.
 			persistNativeSessionId(data.session_id);
 
-			// Unlock E2E — use password saved by login page before redirect
+			// Unlock E2E - use password saved by login page before redirect
 			const savedPassword = sessionStorage.getItem('2fa_pending_password');
 			if (savedPassword) {
 				sessionStorage.removeItem('2fa_pending_password');
 				await authStore.unlockE2E(savedPassword);
 			} else {
-				// No saved password — hydrate auth state and let unlock page handle E2E
+				// No saved password - hydrate auth state and let unlock page handle E2E
 				authStore.initialize();
 			}
 
@@ -120,8 +120,11 @@
 	<title>{$t('auth.two_factor.title')} - re/notes</title>
 </svelte:head>
 
-<div class="h-dvh overflow-y-auto">
-<div class="flex min-h-dvh items-center justify-center px-4 py-12">
+<!-- height/min-height subtract --rn-keyboard-inset (set on :root by the layout's
+     visual-viewport tracker) so the soft keyboard does not cover the focused
+     code field on iOS native - matches AuthLayout (this page predates it). -->
+<div class="h-[calc(100dvh-var(--rn-keyboard-inset,0px))] overflow-y-auto">
+<div class="flex min-h-[calc(100dvh-var(--rn-keyboard-inset,0px))] items-center justify-center px-4 py-12">
 	<div class="w-full max-w-md space-y-6">
 		<!-- Header -->
 		<div class="text-center space-y-2">

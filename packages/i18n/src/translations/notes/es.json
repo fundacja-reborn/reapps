@@ -1027,6 +1027,7 @@
   "security": {
     "password": {
       "title": "Cambiar contraseña",
+      "toggle_visibility": "Mostrar u ocultar la contraseña",
       "warning": "Después de cambiar la contraseña, se cerrará la sesión en todos los dispositivos y deberá iniciar sesión de nuevo.",
       "card_title": "Cambiar contraseña",
       "card_desc": "La contraseña debe tener al menos 8 caracteres. La clave de cifrado se volverá a cifrar con la nueva contraseña.",
@@ -1139,6 +1140,7 @@
     },
     "delete_account": {
       "title": "Eliminar cuenta",
+      "toggle_visibility": "Mostrar u ocultar la contraseña",
       "irreversible_title": "¡Esta acción es irreversible!",
       "irreversible_desc": "Eliminar su cuenta borrará permanentemente todos sus datos, notas, carpetas y configuración. Esta acción no se puede deshacer.",
       "card_title": "Eliminar cuenta permanentemente",

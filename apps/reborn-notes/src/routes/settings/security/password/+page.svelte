@@ -1,7 +1,7 @@
 <script lang="ts">
   import { API_BASE } from '$lib/utils/api-base';
   import { authFetch } from '$lib/utils/auth-fetch';
-  import { Lock, AlertTriangle } from '@lucide/svelte';
+  import { Lock, AlertTriangle, Eye, EyeOff } from '@lucide/svelte';
   import {
     SettingsLayout,
     Card,
@@ -26,6 +26,7 @@
   let currentPassword = $state('');
   let newPassword = $state('');
   let confirmPassword = $state('');
+  let showPassword = $state(false);
   let isLoading = $state(false);
   let error = $state<string | null>(null);
   let submitAttempted = $state(false);
@@ -97,7 +98,7 @@
 
       toast.success($t('security.password.changed_toast'));
 
-      // Logout — all tokens invalidated
+      // Logout - all tokens invalidated
       authStore.logout();
     } catch (err: unknown) {
       logger.error('Failed to change password:', err);
@@ -109,8 +110,20 @@
 </script>
 
 <svelte:head>
-  <title>{$t('security.password.title')} — re/notes</title>
+  <title>{$t('security.password.title')} - re/notes</title>
 </svelte:head>
+
+{#snippet revealToggle()}
+  <button
+    type="button"
+    class="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+    onclick={() => (showPassword = !showPassword)}
+    tabindex={-1}
+    aria-label={$t('security.password.toggle_visibility')}
+  >
+    {#if showPassword}<EyeOff class="h-4 w-4" />{:else}<Eye class="h-4 w-4" />{/if}
+  </button>
+{/snippet}
 
 <SettingsLayout title={$t('security.password.title')} backHref="/settings">
   <div class="space-y-6">
@@ -141,14 +154,17 @@
           <!-- Current password -->
           <div class="space-y-2">
             <Label for="current-password">{$t('security.password.current')}</Label>
-            <Input
-              id="current-password"
-              type="password"
-              bind:value={currentPassword}
-              autocomplete="current-password"
-              disabled={isLoading}
-              class={currentPasswordError ? 'border-destructive' : ''}
-            />
+            <div class="relative">
+              <Input
+                id="current-password"
+                type={showPassword ? 'text' : 'password'}
+                bind:value={currentPassword}
+                autocomplete="current-password"
+                disabled={isLoading}
+                class="pr-10 {currentPasswordError ? 'border-destructive' : ''}"
+              />
+              {@render revealToggle()}
+            </div>
             {#if currentPasswordError}
               <p class="text-sm text-destructive">{currentPasswordError}</p>
             {/if}
@@ -157,14 +173,17 @@
           <!-- New password -->
           <div class="space-y-2">
             <Label for="new-password">{$t('security.password.new_pwd')}</Label>
-            <Input
-              id="new-password"
-              type="password"
-              bind:value={newPassword}
-              autocomplete="new-password"
-              disabled={isLoading}
-              class={newPasswordError ? 'border-destructive' : ''}
-            />
+            <div class="relative">
+              <Input
+                id="new-password"
+                type={showPassword ? 'text' : 'password'}
+                bind:value={newPassword}
+                autocomplete="new-password"
+                disabled={isLoading}
+                class="pr-10 {newPasswordError ? 'border-destructive' : ''}"
+              />
+              {@render revealToggle()}
+            </div>
             {#if newPasswordError}
               <p class="text-sm text-destructive">{newPasswordError}</p>
             {/if}
@@ -173,14 +192,17 @@
           <!-- Confirm password -->
           <div class="space-y-2">
             <Label for="confirm-password">{$t('security.password.confirm')}</Label>
-            <Input
-              id="confirm-password"
-              type="password"
-              bind:value={confirmPassword}
-              autocomplete="new-password"
-              disabled={isLoading}
-              class={confirmPasswordError ? 'border-destructive' : ''}
-            />
+            <div class="relative">
+              <Input
+                id="confirm-password"
+                type={showPassword ? 'text' : 'password'}
+                bind:value={confirmPassword}
+                autocomplete="new-password"
+                disabled={isLoading}
+                class="pr-10 {confirmPasswordError ? 'border-destructive' : ''}"
+              />
+              {@render revealToggle()}
+            </div>
             {#if confirmPasswordError}
               <p class="text-sm text-destructive">{confirmPasswordError}</p>
             {/if}
