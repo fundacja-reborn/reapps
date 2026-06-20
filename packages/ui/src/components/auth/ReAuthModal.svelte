@@ -300,7 +300,7 @@
               type="text"
               inputmode="numeric"
               autocomplete="one-time-code"
-              maxlength={6}
+              oninput={(e) => { const next = e.currentTarget.value.replace(/\D/g, '').slice(0, 6); if (e.currentTarget.value !== next) e.currentTarget.value = next; totpCode = next; }}
               pattern="[0-9]*"
               required
               bind:value={totpCode}
