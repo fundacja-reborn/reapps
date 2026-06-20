@@ -880,7 +880,7 @@
       "folder_sync_unsupported": "Tu navegador no admite el acceso a carpetas (File System Access API). Usa Chrome o Edge. En Brave está desactivado de forma predeterminada - activa la File System Access API en brave://flags y luego reinicia el navegador.",
       "folder_sync_source_dir": "Directorio en el disco: {name}",
       "folder_sync_destination": "Importado en: {name}",
-      "folder_sync_no_full_path": "El navegador solo comparte el nombre de la carpeta, no su ruta completa en el disco (File System Access API).",
+      "folder_sync_no_full_path": "Por privacidad, solo está disponible el nombre de la carpeta, no su ruta completa en el disco.",
       "folder_sync_edit_btn": "Editar",
       "folder_sync_save_btn": "Guardar",
       "folder_sync_edit_heading": "Editar vínculo de carpeta",

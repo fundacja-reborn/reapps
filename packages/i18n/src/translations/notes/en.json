@@ -880,7 +880,7 @@
       "folder_sync_unsupported": "Your browser doesn't support folder access (File System Access API). Use Chrome or Edge. In Brave it's off by default - enable the File System Access API in brave://flags, then restart the browser.",
       "folder_sync_source_dir": "On-disk directory: {name}",
       "folder_sync_destination": "Imported into: {name}",
-      "folder_sync_no_full_path": "The browser shares only the folder's name, not its full path on disk (File System Access API).",
+      "folder_sync_no_full_path": "For privacy, only the folder's name is available - not its full path on disk.",
       "folder_sync_edit_btn": "Edit",
       "folder_sync_save_btn": "Save",
       "folder_sync_edit_heading": "Edit folder link",
