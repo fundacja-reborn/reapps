@@ -120,8 +120,11 @@
 	<title>{$t('auth.two_factor.title')} - re/notes</title>
 </svelte:head>
 
-<div class="h-dvh overflow-y-auto">
-<div class="flex min-h-dvh items-center justify-center px-4 py-12">
+<!-- height/min-height subtract --rn-keyboard-inset (set on :root by the layout's
+     visual-viewport tracker) so the soft keyboard does not cover the focused
+     code field on iOS native - matches AuthLayout (this page predates it). -->
+<div class="h-[calc(100dvh-var(--rn-keyboard-inset,0px))] overflow-y-auto">
+<div class="flex min-h-[calc(100dvh-var(--rn-keyboard-inset,0px))] items-center justify-center px-4 py-12">
 	<div class="w-full max-w-md space-y-6">
 		<!-- Header -->
 		<div class="text-center space-y-2">

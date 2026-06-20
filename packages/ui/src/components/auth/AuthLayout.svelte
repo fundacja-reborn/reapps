@@ -26,8 +26,15 @@
   }>();
 </script>
 
-<div class="h-dvh overflow-y-auto">
-  <div class="min-h-dvh flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 relative">
+<!-- height/min-height subtract --rn-keyboard-inset (set on :root by the app
+     layout's visual-viewport tracker; 0/unset elsewhere) so the soft keyboard
+     does not overlap the focused field on iOS native: the scroll viewport
+     shrinks to the area above the keyboard, re-centering a short card there and
+     letting a tall form scroll its focused input into view. -->
+<div class="h-[calc(100dvh-var(--rn-keyboard-inset,0px))] overflow-y-auto">
+  <div
+    class="min-h-[calc(100dvh-var(--rn-keyboard-inset,0px))] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 relative"
+  >
     {#if showLocaleSwitcher || showThemeSwitcher}
       <!-- top: max() keeps the switchers below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
       <div

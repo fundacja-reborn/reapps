@@ -1027,6 +1027,7 @@
   "security": {
     "password": {
       "title": "Zmiana hasła",
+      "toggle_visibility": "Pokaż lub ukryj hasło",
       "warning": "Po zmianie hasła zostaniesz wylogowany na wszystkich urządzeniach i będziesz musiał zalogować się ponownie.",
       "card_title": "Zmień hasło",
       "card_desc": "Hasło musi mieć co najmniej 8 znaków. Klucz szyfrujący zostanie ponownie zaszyfrowany nowym hasłem.",
@@ -1139,6 +1140,7 @@
     },
     "delete_account": {
       "title": "Usuń konto",
+      "toggle_visibility": "Pokaż lub ukryj hasło",
       "irreversible_title": "Ta operacja jest nieodwracalna!",
       "irreversible_desc": "Usunięcie konta spowoduje trwałe usunięcie wszystkich Twoich danych, notatek, folderów i ustawień. Tej operacji nie można cofnąć.",
       "card_title": "Trwałe usunięcie konta",

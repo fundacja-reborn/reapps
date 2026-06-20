@@ -1027,6 +1027,7 @@
   "security": {
     "password": {
       "title": "Changer le mot de passe",
+      "toggle_visibility": "Afficher ou masquer le mot de passe",
       "warning": "Après le changement de mot de passe, vous serez déconnecté de tous les appareils et devrez vous reconnecter.",
       "card_title": "Changer le mot de passe",
       "card_desc": "Le mot de passe doit comporter au moins 8 caractères. La clé de chiffrement sera rechiffrée avec le nouveau mot de passe.",
@@ -1139,6 +1140,7 @@
     },
     "delete_account": {
       "title": "Supprimer le compte",
+      "toggle_visibility": "Afficher ou masquer le mot de passe",
       "irreversible_title": "Cette action est irréversible !",
       "irreversible_desc": "La suppression de votre compte effacera définitivement toutes vos données, notes, dossiers et paramètres. Cette action ne peut pas être annulée.",
       "card_title": "Supprimer définitivement le compte",

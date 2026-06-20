@@ -1,7 +1,7 @@
 <script lang="ts">
   import { authFetch } from '$lib/utils/auth-fetch';
   import { API_BASE } from '$lib/utils/api-base';
-  import { AlertTriangle, Trash2 } from '@lucide/svelte';
+  import { AlertTriangle, Trash2, Eye, EyeOff } from '@lucide/svelte';
   import {
     SettingsLayout,
     Card,
@@ -22,6 +22,7 @@
   const logger = createLogger('Notes-DeleteAccountPage');
 
   let password = $state('');
+  let showPassword = $state(false);
   let isLoading = $state(false);
   let error = $state<string | null>(null);
   let submitAttempted = $state(false);
@@ -70,6 +71,18 @@
   <title>{$t('security.delete_account.title')} - re/notes</title>
 </svelte:head>
 
+{#snippet revealToggle()}
+  <button
+    type="button"
+    class="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+    onclick={() => (showPassword = !showPassword)}
+    tabindex={-1}
+    aria-label={$t('security.delete_account.toggle_visibility')}
+  >
+    {#if showPassword}<EyeOff class="h-4 w-4" />{:else}<Eye class="h-4 w-4" />{/if}
+  </button>
+{/snippet}
+
 <SettingsLayout title={$t('security.delete_account.title')} backHref="/settings">
   <div class="space-y-6">
     <!-- Danger warning -->
@@ -99,15 +112,18 @@
         <form onsubmit={handleDelete} class="space-y-4">
           <div class="space-y-2">
             <Label for="confirm-password">{$t('security.delete_account.password')}</Label>
-            <Input
-              id="confirm-password"
-              type="password"
-              bind:value={password}
-              placeholder={$t('security.delete_account.password_placeholder')}
-              autocomplete="current-password"
-              disabled={isLoading}
-              class={passwordError ? 'border-destructive' : ''}
-            />
+            <div class="relative">
+              <Input
+                id="confirm-password"
+                type={showPassword ? 'text' : 'password'}
+                bind:value={password}
+                placeholder={$t('security.delete_account.password_placeholder')}
+                autocomplete="current-password"
+                disabled={isLoading}
+                class="pr-10 {passwordError ? 'border-destructive' : ''}"
+              />
+              {@render revealToggle()}
+            </div>
             {#if passwordError}
               <p class="text-sm text-destructive">{passwordError}</p>
             {/if}
