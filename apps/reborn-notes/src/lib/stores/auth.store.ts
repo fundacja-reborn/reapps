@@ -282,6 +282,10 @@ function createAuthStore() {
         await cryptoManager.setMasterKey(key);
       }
 
+      // No server session in local mode: clear any stale "session expired"
+      // flag left by a 401 from a previous account session, so the re-auth
+      // banner doesn't linger into local mode (it is also gated on !localOnly).
+      sessionExpired.set(false);
       commit({
         username: null,
         userId: localUserId,

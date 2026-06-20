@@ -4,7 +4,7 @@ import { API_BASE } from '$lib/utils/api-base';
 import { getShareBase } from '$lib/utils/share-base';
 import { authFetch } from '$lib/utils/auth-fetch';
 import { connectivityStore } from '$lib/stores/connectivity.store';
-import { sessionExpired } from '$lib/stores/sync-status.store';
+import { sessionExpired, localOnly } from '$lib/stores/sync-status.store';
 import { refreshQuota } from '$lib/stores/storage-quota.store';
 import {
   cryptoManager,
@@ -99,6 +99,14 @@ function createSharesStore() {
 
   async function refresh(): Promise<void> {
     if (!browser) return;
+    // Sharing is account-only. In local-only mode there is no server session,
+    // so hitting /api/shares would 401, authFetch's refresh would 401 too, and
+    // onSessionExpired would raise a false "session expired" banner. Skip it -
+    // mirrors the synced-settings !localOnly gate (see guideline 65).
+    if (get(localOnly)) {
+      state.update((s) => ({ ...s, loading: false }));
+      return;
+    }
     if (!cryptoManager.isInitialized()) {
       state.update((s) => ({ ...s, loading: false }));
       return;
