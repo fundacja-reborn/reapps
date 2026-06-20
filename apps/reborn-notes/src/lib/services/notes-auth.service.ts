@@ -16,7 +16,7 @@ import {
   LOCAL_MODE_KEY,
   LOCAL_USER_ID_KEY
 } from '$lib/stores/auth.store';
-import { sessionExpired } from '$lib/stores/sync-status.store';
+import { sessionExpired, isInitialSync } from '$lib/stores/sync-status.store';
 import { noteIndex } from '$lib/services/note-index.svelte';
 import { notesStore } from '$lib/stores/notes.store';
 import { clearAllUserData, isDatabaseInitialized } from '@reborn/storage';
@@ -159,13 +159,16 @@ export function startAccountSessionSync(): void {
   localStorage.removeItem(LOCAL_MODE_KEY);
   localStorage.removeItem(LOCAL_USER_ID_KEY);
   if (!wasLocalOnly) return; // logged-out -> account: +layout effect handles the pull
+  // Show the first-load placeholder immediately and hold it across the whole
+  // arc (this pre-pull window + the pull + the post-pull store hydration), so
+  // the list never flashes the stale local notes or the empty state. The pull's
+  // refreshStoresAfterPull clears it once the account data is in memory.
+  isInitialSync.set(true);
   // The caller already ran clearAllUserData(), so IndexedDB is empty - but the
   // in-memory noteIndex + notesStore still hold the LOCAL session's notes. Reset
   // them now, synchronously, before the post-login goto renders, so the list
-  // shows the InitialSyncState placeholder during the pull instead of the
-  // just-deleted local notes (which would otherwise linger until the pull's
-  // refreshStoresAfterPull lands at the very end). clear() is synchronous;
-  // refresh() re-reads the now-empty index.
+  // shows the placeholder (not the just-deleted local notes). clear() is
+  // synchronous; refresh() re-reads the now-empty index.
   noteIndex.clear();
   void notesStore.refresh();
   void (async () => {
@@ -173,14 +176,12 @@ export function startAccountSessionSync(): void {
       const { pullFromServer, pushPendingItems, refreshStoresAfterPull } = await import(
         '$lib/services/notes-sync.service'
       );
-      // Reset folders/tags/saved-searches from the empty IDB too, so the sidebar
-      // doesn't show stale local entries during the pull (mirrors +layout runSync).
-      await refreshStoresAfterPull();
       await pushPendingItems();
       const synced = await pullFromServer();
       if (synced) await refreshStoresAfterPull();
     } catch {
       // Offline / transient failure - the periodic + resume sync converges later.
+      isInitialSync.set(false);
     }
   })();
 }

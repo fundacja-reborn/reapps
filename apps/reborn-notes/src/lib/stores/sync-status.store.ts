@@ -180,10 +180,15 @@ export const syncStatus = derived(
   }
 );
 
-// True only during the very first pull after a fresh login (IndexedDB empty,
-// `lastSyncedAt` not yet written). Used to swap empty-list placeholders for a
-// reassuring loading state so users don't think their notes were lost.
-export const isInitialSync = derived(
-  [isSyncing, lastSyncedAt],
-  ([$isSyncing, $lastSyncedAt]) => $isSyncing && $lastSyncedAt === null
-);
+// Shows the "syncing your notes" placeholder in the empty main area during the
+// FIRST load (IndexedDB empty after a fresh login), so users don't think their
+// notes were lost. A plain writable, NOT a derived on `isSyncing && lastSyncedAt
+// === null`: that derived flipped false the instant the pull wrote `lastSyncedAt`
+// - i.e. BEFORE refreshStoresAfterPull repopulated the in-memory stores - so the
+// list flashed the empty "no notes" state for a beat between "pull done" and
+// "notes rendered". Lifecycle (notes-sync.service): runPullFromServer sets it
+// true at the start of a first-ever pull and clears it if that pull fails;
+// refreshStoresAfterPull clears it once the stores actually hold the pulled
+// data. A local -> account login sets it true up-front (notes-auth.service) to
+// also cover the pre-pull window.
+export const isInitialSync = writable(false);
