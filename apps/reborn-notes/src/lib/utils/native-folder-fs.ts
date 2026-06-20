@@ -5,8 +5,8 @@
  * OUTSIDE the app sandbox - the capability WKWebView/Android WebView lack (no File
  * System Access API). It is the native counterpart of the web
  * `FileSystemDirectoryHandle`: an opaque, persistable reference (a base64
- * security-scoped bookmark on iOS) plus recursive `.md` enumeration and lazy file
- * reads. See `planning/native-folder-sync-plan.md`.
+ * security-scoped bookmark on iOS, a SAF tree-Uri string on Android) plus recursive
+ * `.md` enumeration and lazy file reads. See `planning/native-folder-sync-plan.md`.
  *
  * Talks DIRECTLY to the natively-registered plugin via `registerPlugin('FolderFs')`
  * - the same raw-proxy pattern as `native-secure-storage.ts` / `native-system-bars.ts`
@@ -28,6 +28,14 @@ export interface NativeFsEntry {
   mtime: number;
   /** File size in bytes. */
   size: number;
+  /**
+   * Opaque platform handle to the file, threaded back into `readFile` so the
+   * lazy read is O(1). Android: the SAF documentId (SAF Uris are NOT
+   * path-addressable, so a documentId is the only cheap way back to the file).
+   * iOS omits it - its URLs are path-addressable, so `readFile` resolves from
+   * `path` alone.
+   */
+  id?: string;
 }
 
 /** Native FolderFs plugin method surface (see FolderFsPlugin.swift). */
@@ -43,8 +51,16 @@ export interface FolderFsPlugin {
     bookmark: string;
     extensions?: string[];
   }): Promise<{ files: NativeFsEntry[]; staleBookmark?: string }>;
-  /** Read one file's UTF-8 content (downloads iCloud placeholders first). */
-  readFile(options: { bookmark: string; path: string }): Promise<{ content: string; mtime: number }>;
+  /**
+   * Read one file's UTF-8 content (iOS downloads iCloud placeholders first).
+   * `id` is the optional opaque handle from `listFiles` (Android SAF documentId);
+   * iOS ignores it and resolves the file from `path`.
+   */
+  readFile(options: {
+    bookmark: string;
+    path: string;
+    id?: string;
+  }): Promise<{ content: string; mtime: number }>;
   /** Same on-disk directory? (dedup at link time). */
   isSameDirectory(options: { a: string; b: string }): Promise<{ same: boolean }>;
 }
