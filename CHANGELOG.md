@@ -1,3 +1,20 @@
+## 0.33.0 (2026-06-20)
+
+### 🚀 Features
+
+- **notes:** native folder sync (FolderSource + FolderFs plugin) ([#310](https://github.com/fundacja-reborn/reapps/pull/310))
+- **notes:** native folder sync on Android (FolderFs Java/SAF plugin) ([#312](https://github.com/fundacja-reborn/reapps/pull/312))
+
+### 🩹 Fixes
+
+- **auth:** allow entering all 6 2FA digits on iOS native ([#313](https://github.com/fundacja-reborn/reapps/pull/313))
+- **notes:** persist native refresh token on local-to-account upgrade ([#306](https://github.com/fundacja-reborn/reapps/pull/306))
+- **notes:** layout height tracks window resize ([#3](https://github.com/fundacja-reborn/reapps/pull/3), [#307](https://github.com/fundacja-reborn/reapps/pull/307))
+- **notes:** align split preview header with the variable-height editor toolbar ([#308](https://github.com/fundacja-reborn/reapps/pull/308))
+- **notes:** pull note versions only for changed notes (native sync speed) ([#309](https://github.com/fundacja-reborn/reapps/pull/309))
+- **notes:** keep iOS keyboard off auth & settings password fields ([#311](https://github.com/fundacja-reborn/reapps/pull/311))
+- **notes:** account login from local-only mode (state + sync + UX) ([#314](https://github.com/fundacja-reborn/reapps/pull/314))
+
 ## 0.32.2 (2026-06-17)
 
 ### 🩹 Fixes
