@@ -12,6 +12,7 @@ overrides:
   '@hono/node-server': 1.19.14
   devalue: 5.8.1
   dompurify@<3.4.11: '3.4.11' # GHSA-cmwh-pvxp-8882 DOMPurify ALLOWED_ATTR pollution via setConfig - PROD bundle (notes direct + jspdf-transitive)
+  ts-deepmerge@<8.0.0: '8.0.0' # GHSA-87mf-gv2c-c62c ts-deepmerge prototype method override DoS; PROD bundle (sveltekit-superforms + formsnap transitive)
   tmp@<0.2.7: '0.2.7' # GHSA-7c78-jf6q-g5cm tmp path traversal via non-string template (nx-transitive, dev-only)
   form-data@<4.0.6: '4.0.6' # GHSA-hmw2-7cc7-3qxx form-data CRLF injection in multipart field names (nx-transitive, dev-only)
   joi: 18.2.1 # GHSA-q7cg-457f-vx79 nested-input RangeError; superforms optional peer, unused (we use the Zod adapter)
