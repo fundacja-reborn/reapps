@@ -10,6 +10,7 @@
   } from '@reborn/ui';
   import { FolderOpen, FolderPlus, AlertTriangle } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
+  import { IS_NATIVE } from '$lib/utils/native-client';
   import {
     folderSyncStatus,
     isFolderSyncSupported,
@@ -20,16 +21,26 @@
     MAX_FOLDER_SYNC_CONFIGS
   } from '$lib/services/folder-sync.service';
   import type { ImportFolderResult } from '$lib/services/export-import.service';
+  import type { DirectoryRef } from '$lib/platform/folder-source';
   import FolderSyncItem from '$lib/components/import/FolderSyncItem.svelte';
   import ImportResultSummary from '$lib/components/import/ImportResultSummary.svelte';
 
   const supported = isFolderSyncSupported();
 
-  // Add-folder flow: the picker returns a handle, then a small form collects
-  // the destination (defaults to the directory name; may be a "/"-separated
-  // path to nest, e.g. "Projekty/Docs") before the config is created. The
-  // destination is editable later from the list item.
-  let pendingHandle = $state<FileSystemDirectoryHandle | null>(null);
+  // Add-folder flow: the picker returns an opaque directory ref, then a small
+  // form collects the destination (defaults to the directory name; may be a
+  // "/"-separated path to nest, e.g. "Projekty/Docs") before the config is
+  // created. The destination is editable later from the list item.
+  // $state.raw, NOT $state: the directory ref must reach IndexedDB UN-proxied.
+  // Svelte deep-proxies a plain $state object, and a reactive proxy is not
+  // structured-cloneable - storing the native ref ({bookmark,name}) then throws
+  // DataCloneError in folderSyncStore.save. (Web's ref is a FileSystemDirectoryHandle,
+  // a host object Svelte does not proxy, which is why this only bit native.) We only
+  // ever reassign pendingRef wholesale, so raw state is the right tool anyway.
+  let pendingRef = $state.raw<DirectoryRef | null>(null);
+  // On-disk leaf name, kept separately for the hint (pendingName is the editable
+  // destination and may diverge from the directory's actual name).
+  let pendingDirName = $state('');
   let pendingName = $state('');
   let nameTaken = $state(false);
   let nameInvalid = $state(false);
@@ -62,13 +73,15 @@
       alreadyLinkedName = outcome.name;
       return;
     }
-    pendingHandle = outcome.handle;
-    pendingName = outcome.handle.name;
+    pendingRef = outcome.ref;
+    pendingDirName = outcome.name;
+    pendingName = outcome.name;
     nameTaken = false;
   }
 
   function cancelAdd() {
-    pendingHandle = null;
+    pendingRef = null;
+    pendingDirName = '';
     pendingName = '';
     nameTaken = false;
     nameInvalid = false;
@@ -76,12 +89,12 @@
 
   async function confirmAdd(e: Event) {
     e.preventDefault();
-    if (!pendingHandle || !pendingName.trim()) return;
+    if (!pendingRef || !pendingName.trim()) return;
     adding = true;
     nameTaken = false;
     nameInvalid = false;
     try {
-      const added = await addLinkedFolder(pendingHandle, pendingName);
+      const added = await addLinkedFolder(pendingRef, pendingName);
       if (!added.ok) {
         if (added.error === 'name-taken') nameTaken = true;
         else if (added.error === 'name-invalid') nameInvalid = true;
@@ -102,7 +115,7 @@
 </script>
 
 <svelte:head>
-  <title>{$t('settings_page.export_import.folder_sync_title')} — re/notes</title>
+  <title>{$t('settings_page.export_import.folder_sync_title')} - re/notes</title>
 </svelte:head>
 
 <SettingsLayout title={$t('settings_page.export_import.folder_sync_title')} backHref="/settings">
@@ -125,21 +138,21 @@
           {#each statuses as status (status.id)}
             <FolderSyncItem {status} disabled={anyBusy || adding} />
           {:else}
-            {#if !pendingHandle}
+            {#if !pendingRef}
               <p class="text-sm text-muted-foreground">
                 {$t('settings_page.export_import.folder_sync_empty')}
               </p>
             {/if}
           {/each}
 
-          {#if pendingHandle}
+          {#if pendingRef}
             <form
               onsubmit={confirmAdd}
               class="space-y-3 rounded-lg border border-primary/40 bg-muted/30 p-4"
             >
               <p class="text-xs text-muted-foreground">
                 {$t('settings_page.export_import.folder_sync_picked_dir', {
-                  values: { name: pendingHandle.name }
+                  values: { name: pendingDirName }
                 })}
               </p>
               <div class="space-y-1">
@@ -235,7 +248,9 @@
               {$t('settings_page.export_import.folder_sync_safety_note')}
             </p>
             <p class="text-[11px] text-muted-foreground/70">
-              {$t('settings_page.export_import.folder_sync_no_full_path')}
+              {IS_NATIVE
+                ? $t('settings_page.export_import.folder_sync_no_full_path_native')
+                : $t('settings_page.export_import.folder_sync_no_full_path')}
             </p>
           </div>
         {/if}

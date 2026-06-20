@@ -113,18 +113,16 @@ export const MTIME_FILTER_MARGIN_MS = 2_000;
  * `pickImportTimestamps`); such files always pass so they are never starved
  * out of the import.
  */
-export function filterEntriesToSync(
-  entries: SyncFileEntry[],
+export function filterEntriesToSync<T extends { relativePath: string; lastModified: number }>(
+  entries: T[],
   lastSyncAt: string | null,
   knownPaths: ReadonlySet<string> | null
-): SyncFileEntry[] {
+): T[] {
   if (!lastSyncAt || !knownPaths) return entries;
   const cutoff = new Date(lastSyncAt).getTime() - MTIME_FILTER_MARGIN_MS;
   if (Number.isNaN(cutoff)) return entries;
   return entries.filter(
     (e) =>
-      !knownPaths.has(e.relativePath) ||
-      e.file.lastModified === 0 ||
-      e.file.lastModified > cutoff
+      !knownPaths.has(e.relativePath) || e.lastModified === 0 || e.lastModified > cutoff
   );
 }

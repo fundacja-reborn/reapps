@@ -34,6 +34,26 @@ export class IndexedDBStore<TStored extends WithId, TPublic extends WithId = TSt
   }
 
   /**
+   * Live DB connection for a write, reconnecting once if it was dropped.
+   *
+   * `databaseManager` nulls its connection out from under us in two cases: a
+   * `blocking` upgrade requested by another tab, and `terminated` - which fires
+   * when the platform tears the IndexedDB connection down (a Capacitor WKWebView
+   * does this when the app is backgrounded / under memory pressure). After that
+   * `getDatabase()` throws until the next `initialize()`, so a write issued
+   * before any re-init would fail even though the database is perfectly healthy
+   * on disk (a fresh `indexedDB.open` still works - exactly the asymmetry that
+   * surfaced as folder-sync "Failed to save item" on iOS). Reconnect on the spot
+   * using the last known config rather than dropping the write.
+   */
+  private async requireDb(): Promise<IDBPDatabase> {
+    if (databaseManager.isInitialized()) return databaseManager.getDatabase();
+    await databaseManager.reconnect();
+    if (databaseManager.isInitialized()) return databaseManager.getDatabase();
+    throw new Error('Database not initialized (reconnect failed).');
+  }
+
+  /**
    * Transform item for storage if transformer is configured
    */
   private toStorage(item: TPublic): TStored {
@@ -190,10 +210,7 @@ export class IndexedDBStore<TStored extends WithId, TPublic extends WithId = TSt
    */
   async save(item: TPublic): Promise<void> {
     try {
-      const db = this.getDb();
-      if (!db) {
-        throw new Error('Database not initialized. Cannot save item.');
-      }
+      const db = await this.requireDb();
       const stored = this.toStorage(item);
 
       // Pre-save encryption guard: validate all *_encrypted fields
@@ -212,7 +229,12 @@ export class IndexedDBStore<TStored extends WithId, TPublic extends WithId = TSt
       logger.debug('Item saved', { id: item.id, store: this.config.storeName });
       await this.refreshItems();
     } catch (error) {
-      logger.error('Failed to save item', { id: item.id, store: this.config.storeName, error });
+      logger.error('Failed to save item', {
+        id: item.id,
+        store: this.config.storeName,
+        errorName: error instanceof Error ? error.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
       throw error;
     }
   }
@@ -228,10 +250,7 @@ export class IndexedDBStore<TStored extends WithId, TPublic extends WithId = TSt
     };
 
     try {
-      const db = this.getDb();
-      if (!db) {
-        throw new Error('Database not initialized. Cannot save items.');
-      }
+      const db = await this.requireDb();
       const tx = db.transaction(this.config.storeName, 'readwrite');
       const store = tx.objectStore(this.config.storeName);
 
@@ -268,10 +287,7 @@ export class IndexedDBStore<TStored extends WithId, TPublic extends WithId = TSt
    */
   async delete(id: string): Promise<void> {
     try {
-      const db = this.getDb();
-      if (!db) {
-        throw new Error('Database not initialized. Cannot delete item.');
-      }
+      const db = await this.requireDb();
       await db.delete(this.config.storeName, id);
       logger.debug('Item deleted', { id, store: this.config.storeName });
       await this.refreshItems();
@@ -292,10 +308,7 @@ export class IndexedDBStore<TStored extends WithId, TPublic extends WithId = TSt
     };
 
     try {
-      const db = this.getDb();
-      if (!db) {
-        throw new Error('Database not initialized. Cannot delete items.');
-      }
+      const db = await this.requireDb();
       const tx = db.transaction(this.config.storeName, 'readwrite');
       const store = tx.objectStore(this.config.storeName);
 
@@ -567,10 +580,7 @@ export class IndexedDBStore<TStored extends WithId, TPublic extends WithId = TSt
    */
   async clear(): Promise<void> {
     try {
-      const db = this.getDb();
-      if (!db) {
-        throw new Error('Database not initialized. Cannot clear store.');
-      }
+      const db = await this.requireDb();
       await db.clear(this.config.storeName);
       logger.info('Store cleared', { store: this.config.storeName });
       await this.refreshItems();

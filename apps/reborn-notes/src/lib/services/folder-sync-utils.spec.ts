@@ -34,10 +34,13 @@ function fakeDirHandle(
   };
 }
 
-function syncEntry(name: string, lastModified: number): SyncFileEntry {
+// filterEntriesToSync now reads a top-level `lastModified` (the lazy-entry
+// shape), so carry it alongside the File the assertions still inspect.
+function syncEntry(name: string, lastModified: number): SyncFileEntry & { lastModified: number } {
   return {
     file: new File(['x'], name, { lastModified }),
-    relativePath: `Vault/${name}`
+    relativePath: `Vault/${name}`,
+    lastModified
   };
 }
 

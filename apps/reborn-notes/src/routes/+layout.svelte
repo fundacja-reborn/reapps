@@ -378,6 +378,11 @@
             })
             .catch(() => {});
         }
+        // Folder sync on return-to-foreground: native has no SW-driven foreground
+        // sync and may not fire visibilitychange reliably under capacitor://, so
+        // the lifecycle resume is the dependable signal. runFolderSync re-validates
+        // support/auth/cooldown/single-flight internally, so firing blind is safe.
+        void runFolderSync('auto');
       });
 
       // Inbound App Links to a public share (https://<host>/notes/s/<slug>#k=...):
