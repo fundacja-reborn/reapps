@@ -70,7 +70,7 @@
     "toast_marked": "Te elementy są oznaczone na liście."
   },
   "initial": {
-    "title": "Synchronizujemy Twoje zadania",
+    "title": "Trwa synchronizacja Twoich zadań",
     "message": "Pobieranie zaszyfrowanych danych z serwera może chwilę potrwać."
   }
 }
