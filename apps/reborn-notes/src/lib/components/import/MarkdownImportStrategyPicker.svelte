@@ -8,7 +8,9 @@
     promptVariant = 'root',
     radioGroupName = 'md-strategy',
     showPreserveTags = false,
-    preserveTags = $bindable(true)
+    preserveTags = $bindable(true),
+    showRewriteLinks = false,
+    rewriteLinks = $bindable(false)
   }: {
     count: number;
     strategy?: DuplicateStrategy;
@@ -21,6 +23,11 @@
     // Rendered only while `overwrite` is selected - it has no effect otherwise.
     showPreserveTags?: boolean;
     preserveTags?: boolean;
+    // Folder imports only: offers converting relative `.md` links between the
+    // imported files into internal note links. Applies to every strategy, so
+    // (unlike preserveTags) it is not gated on the selected option. Default off.
+    showRewriteLinks?: boolean;
+    rewriteLinks?: boolean;
   } = $props();
 
   const promptKey = $derived(
@@ -83,6 +90,19 @@
         </span>
         <span class="block text-muted-foreground">
           {$t('settings_page.export_import.preserve_tags_desc')}
+        </span>
+      </span>
+    </label>
+  {/if}
+  {#if showRewriteLinks}
+    <label class="flex items-start gap-2 text-xs cursor-pointer">
+      <input type="checkbox" bind:checked={rewriteLinks} class="mt-0.5" />
+      <span>
+        <span class="font-medium">
+          {$t('settings_page.export_import.rewrite_links_label')}
+        </span>
+        <span class="block text-muted-foreground">
+          {$t('settings_page.export_import.rewrite_links_desc')}
         </span>
       </span>
     </label>

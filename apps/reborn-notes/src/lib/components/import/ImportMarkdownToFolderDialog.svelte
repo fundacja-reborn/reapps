@@ -48,6 +48,9 @@
   // Overwrite-only (folder mode): merge frontmatter tags into existing note
   // tags so in-app curation survives re-imports. Default ON.
   let preserveTags = $state(true);
+  // Folder mode: convert relative .md links between the imported files into
+  // internal note links. Opt-in, default OFF.
+  let rewriteLinks = $state(false);
   let importing = $state(false);
   let result = $state<ImportMarkdownResult | ImportFolderResult | null>(null);
 
@@ -65,6 +68,7 @@
     if (!open) {
       strategy = 'rename';
       preserveTags = true;
+      rewriteLinks = false;
       importing = false;
       result = null;
     }
@@ -91,7 +95,8 @@
         const r = await importFolder(files, strategy, undefined, {
           keepRootFolder: keepRootFolder && rootName !== null,
           targetFolderId: folderId,
-          tagsOnOverwrite: preserveTags ? 'merge' : 'replace'
+          tagsOnOverwrite: preserveTags ? 'merge' : 'replace',
+          rewriteInterNoteLinks: rewriteLinks
         });
         result = r;
         await Promise.all([notesStore.refresh(), foldersStore.refresh(), tagsStore.refresh()]);
@@ -148,6 +153,8 @@
           radioGroupName="folder-md-import-strategy"
           showPreserveTags={mode === 'folder'}
           bind:preserveTags
+          showRewriteLinks={mode === 'folder'}
+          bind:rewriteLinks
         />
         {#if mode === 'folder' && rootName}
           <label class="flex items-start gap-2 text-xs cursor-pointer">

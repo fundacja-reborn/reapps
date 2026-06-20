@@ -103,6 +103,13 @@
       })}
     </p>
   {/if}
+  {#if folderResult && folderResult.linksRewritten > 0}
+    <p class="text-muted-foreground">
+      {$t('settings_page.export_import.links_rewritten_count', {
+        values: { count: folderResult.linksRewritten }
+      })}
+    </p>
+  {/if}
   {#each result.errors as err}
     <p>{err}</p>
   {/each}

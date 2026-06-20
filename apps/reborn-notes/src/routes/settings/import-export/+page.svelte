@@ -92,6 +92,9 @@
   // tags instead of replacing them, so tags added in the app survive
   // re-imports. Default ON - silent tag loss is the worse failure mode.
   let pendingFolderPreserveTags = $state(true);
+  // Convert relative .md links between the imported files into internal note
+  // links. Opt-in, default OFF (it diverges the app copy from the source files).
+  let pendingFolderRewriteLinks = $state(false);
   let pendingFolderMdCount = $state(0);
   // Name of the directory the user picked (first webkitRelativePath segment)
   // + whether to recreate it as the top-level folder. Default ON: "I picked
@@ -221,6 +224,7 @@
     pendingFolderFiles = null;
     pendingFolderStrategy = 'rename';
     pendingFolderPreserveTags = true;
+    pendingFolderRewriteLinks = false;
     pendingFolderMdCount = 0;
     pendingFolderRootName = null;
     pendingFolderKeepRoot = true;
@@ -248,6 +252,7 @@
     const strategy = pendingFolderStrategy;
     const keepRootFolder = pendingFolderKeepRoot && pendingFolderRootName !== null;
     const tagsOnOverwrite = pendingFolderPreserveTags ? ('merge' as const) : ('replace' as const);
+    const rewriteInterNoteLinks = pendingFolderRewriteLinks;
     const initialMdCount = pendingFolderMdCount;
     pendingFolderFiles = null;
     pendingFolderMdCount = 0;
@@ -265,7 +270,7 @@
         (p) => {
           folderProgress = p;
         },
-        { keepRootFolder, tagsOnOverwrite }
+        { keepRootFolder, tagsOnOverwrite, rewriteInterNoteLinks }
       );
       folderImportResult = result;
       await Promise.all([
@@ -287,7 +292,8 @@
         duplicatesUnchanged: 0,
         strippedCount: 0,
         errors: [err instanceof Error ? err.message : 'Import failed'],
-        pathToNoteId: {}
+        pathToNoteId: {},
+        linksRewritten: 0
       };
     } finally {
       importingFolder = false;
@@ -695,6 +701,8 @@
                 radioGroupName="folder-strategy"
                 showPreserveTags={true}
                 bind:preserveTags={pendingFolderPreserveTags}
+                showRewriteLinks={true}
+                bind:rewriteLinks={pendingFolderRewriteLinks}
               />
               {#if pendingFolderRootName !== null}
                 <label class="flex items-start gap-2 text-xs cursor-pointer">
