@@ -20,16 +20,20 @@
     MAX_FOLDER_SYNC_CONFIGS
   } from '$lib/services/folder-sync.service';
   import type { ImportFolderResult } from '$lib/services/export-import.service';
+  import type { DirectoryRef } from '$lib/platform/folder-source';
   import FolderSyncItem from '$lib/components/import/FolderSyncItem.svelte';
   import ImportResultSummary from '$lib/components/import/ImportResultSummary.svelte';
 
   const supported = isFolderSyncSupported();
 
-  // Add-folder flow: the picker returns a handle, then a small form collects
-  // the destination (defaults to the directory name; may be a "/"-separated
-  // path to nest, e.g. "Projekty/Docs") before the config is created. The
-  // destination is editable later from the list item.
-  let pendingHandle = $state<FileSystemDirectoryHandle | null>(null);
+  // Add-folder flow: the picker returns an opaque directory ref, then a small
+  // form collects the destination (defaults to the directory name; may be a
+  // "/"-separated path to nest, e.g. "Projekty/Docs") before the config is
+  // created. The destination is editable later from the list item.
+  let pendingRef = $state<DirectoryRef | null>(null);
+  // On-disk leaf name, kept separately for the hint (pendingName is the editable
+  // destination and may diverge from the directory's actual name).
+  let pendingDirName = $state('');
   let pendingName = $state('');
   let nameTaken = $state(false);
   let nameInvalid = $state(false);
@@ -62,13 +66,15 @@
       alreadyLinkedName = outcome.name;
       return;
     }
-    pendingHandle = outcome.handle;
-    pendingName = outcome.handle.name;
+    pendingRef = outcome.ref;
+    pendingDirName = outcome.name;
+    pendingName = outcome.name;
     nameTaken = false;
   }
 
   function cancelAdd() {
-    pendingHandle = null;
+    pendingRef = null;
+    pendingDirName = '';
     pendingName = '';
     nameTaken = false;
     nameInvalid = false;
@@ -76,12 +82,12 @@
 
   async function confirmAdd(e: Event) {
     e.preventDefault();
-    if (!pendingHandle || !pendingName.trim()) return;
+    if (!pendingRef || !pendingName.trim()) return;
     adding = true;
     nameTaken = false;
     nameInvalid = false;
     try {
-      const added = await addLinkedFolder(pendingHandle, pendingName);
+      const added = await addLinkedFolder(pendingRef, pendingName);
       if (!added.ok) {
         if (added.error === 'name-taken') nameTaken = true;
         else if (added.error === 'name-invalid') nameInvalid = true;
@@ -125,21 +131,21 @@
           {#each statuses as status (status.id)}
             <FolderSyncItem {status} disabled={anyBusy || adding} />
           {:else}
-            {#if !pendingHandle}
+            {#if !pendingRef}
               <p class="text-sm text-muted-foreground">
                 {$t('settings_page.export_import.folder_sync_empty')}
               </p>
             {/if}
           {/each}
 
-          {#if pendingHandle}
+          {#if pendingRef}
             <form
               onsubmit={confirmAdd}
               class="space-y-3 rounded-lg border border-primary/40 bg-muted/30 p-4"
             >
               <p class="text-xs text-muted-foreground">
                 {$t('settings_page.export_import.folder_sync_picked_dir', {
-                  values: { name: pendingHandle.name }
+                  values: { name: pendingDirName }
                 })}
               </p>
               <div class="space-y-1">

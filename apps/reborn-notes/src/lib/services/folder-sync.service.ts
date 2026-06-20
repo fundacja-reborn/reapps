@@ -1,10 +1,11 @@
 /**
  * Live folder sync - one-way mirror of local on-disk directories of `.md`
- * files into notes (File System Access API, Chromium-only).
+ * files into notes, over the `FolderSource` abstraction (web: File System
+ * Access API, Chromium-only; native: the FolderFs Capacitor plugin).
  *
  * The feature is a mechanized version of the manual "re-import folder to
- * refresh" flow: the user links a directory (`showDirectoryPicker`), the
- * handle is persisted in IndexedDB, and the service re-scans it on app
+ * refresh" flow: the user links a directory (the FolderSource picker), an
+ * opaque ref is persisted in IndexedDB, and the service re-scans it on app
  * open / return-to-foreground / a periodic interval / a manual button,
  * re-importing only files whose path is new or whose mtime changed since
  * the last completed scan (`filterEntriesToSync`) with the `overwrite`
@@ -36,12 +37,11 @@
  *   client-side through the same import path as a manual folder import; the
  *   directory handles never leave the browser profile.
  *
- * On browsers without the API (Safari/Firefox/native shell) the feature
+ * Where the platform lacks folder access (Safari/Firefox on web) the feature
  * reports unsupported and stays invisible beyond a hint in settings.
  */
 
 import { get, writable, derived } from 'svelte/store';
-import { browser } from '$app/environment';
 import { folderSyncStore, noteStore, type FolderSyncConfigRecord } from '@reborn/storage';
 import type { FolderWithChildren } from '@reborn/types';
 import { createLogger } from '@reborn/utils';
@@ -51,15 +51,17 @@ import { foldersStore } from '$lib/stores/folders.store';
 import { tagsStore } from '$lib/stores/tags.store';
 import {
   importFolder,
+  type ImportFolderInput,
   type ImportFolderResult,
   type ImportProgress
 } from './export-import.service';
 import { pushPendingItems } from './notes-sync.service';
+import { filterEntriesToSync } from './folder-sync-utils';
 import {
-  collectMarkdownEntries,
-  filterEntriesToSync,
-  type SyncFileEntry
-} from './folder-sync-utils';
+  folderSource,
+  type DirectoryRef,
+  type LazyMarkdownEntry
+} from '$lib/platform/folder-source';
 
 const logger = createLogger('notes:folder-sync');
 
@@ -73,8 +75,6 @@ export const MAX_FOLDER_SYNC_CONFIGS = 5;
 const AUTO_COOLDOWN_MS = 60_000;
 /** Periodic re-scan while the app stays visible. */
 const AUTO_INTERVAL_MS = 5 * 60_000;
-/** Picker memory key - reopens the chooser near the previously picked dir. */
-const PICKER_ID = 'reborn-folder-sync';
 /** Web Locks name guarding against two tabs importing concurrently. */
 const LOCK_NAME = 'reborn-notes-folder-sync';
 /**
@@ -137,7 +137,7 @@ export type FolderSyncConfigStatus = {
 };
 
 export function isFolderSyncSupported(): boolean {
-  return browser && typeof window.showDirectoryPicker === 'function';
+  return folderSource.isSupported();
 }
 
 /**
@@ -180,28 +180,18 @@ async function readConfigs(): Promise<FolderSyncConfigRecord[]> {
   }
 }
 
-/** Non-prompting permission probe; treats probe failure as "needs re-grant". */
-async function queryReadPermission(handle: FileSystemDirectoryHandle): Promise<PermissionState> {
-  try {
-    return await handle.queryPermission({ mode: 'read' });
-  } catch (e: unknown) {
-    logger.warn('queryPermission failed', e);
-    return 'prompt';
-  }
-}
-
 function patchStatus(id: string, patch: Partial<FolderSyncConfigStatus>): void {
   folderSyncStatus.update((list) => list.map((s) => (s.id === id ? { ...s, ...patch } : s)));
 }
 
 async function projectConfigStatus(cfg: FolderSyncConfigRecord): Promise<FolderSyncConfigStatus> {
-  const handle = cfg.handle as FileSystemDirectoryHandle;
-  const perm = await queryReadPermission(handle);
+  const ref = cfg.handle as DirectoryRef;
+  const perm = await folderSource.queryAccess(ref);
   return {
     id: cfg.id,
     name: cfg.root_name,
     targetFolderId: cfg.target_folder_id ?? null,
-    dirName: handle.name,
+    dirName: folderSource.dirName(ref),
     sourceLabel: cfg.source_label ?? null,
     state: perm === 'granted' ? 'idle' : 'needs-permission',
     autoSync: cfg.auto_sync === 1,
@@ -344,7 +334,7 @@ export async function refreshFolderSyncStatus(): Promise<void> {
 
 /** Outcome of the directory picker step of the add-folder flow. */
 export type PickFolderOutcome =
-  | { kind: 'picked'; handle: FileSystemDirectoryHandle }
+  | { kind: 'picked'; ref: DirectoryRef; name: string }
   | { kind: 'cancelled' }
   | { kind: 'limit-reached' }
   | { kind: 'already-linked'; name: string };
@@ -357,37 +347,17 @@ export type PickFolderOutcome =
  * `addLinkedFolder` with the returned handle.
  */
 export async function pickFolderToLink(): Promise<PickFolderOutcome> {
-  if (!isFolderSyncSupported()) return { kind: 'cancelled' };
-  let handle: FileSystemDirectoryHandle;
-  try {
-    handle = await window.showDirectoryPicker({ id: PICKER_ID, mode: 'read' });
-  } catch (e: unknown) {
-    // AbortError = user dismissed the picker - not an error.
-    if (!(e instanceof DOMException && e.name === 'AbortError')) {
-      logger.warn('showDirectoryPicker failed', e);
-    }
-    return { kind: 'cancelled' };
-  }
+  const picked = await folderSource.pick();
+  // 'cancelled' (user dismissed) and 'unsupported' both surface as a plain cancel.
+  if (picked.kind !== 'picked') return { kind: 'cancelled' };
   const configs = await readConfigs();
   if (configs.length >= MAX_FOLDER_SYNC_CONFIGS) return { kind: 'limit-reached' };
   for (const cfg of configs) {
-    if (await isSameDirectory(handle, cfg.handle as FileSystemDirectoryHandle)) {
+    if (await folderSource.isSame(picked.ref, cfg.handle as DirectoryRef)) {
       return { kind: 'already-linked', name: cfg.root_name };
     }
   }
-  return { kind: 'picked', handle };
-}
-
-async function isSameDirectory(
-  a: FileSystemDirectoryHandle,
-  b: FileSystemDirectoryHandle
-): Promise<boolean> {
-  try {
-    return await a.isSameEntry(b);
-  } catch (e: unknown) {
-    logger.warn('isSameEntry failed', e);
-    return false;
-  }
+  return { kind: 'picked', ref: picked.ref, name: picked.name };
 }
 
 export type AddFolderOutcome =
@@ -408,7 +378,7 @@ export type AddFolderOutcome =
  * leaf id, so the UI can close the form while the import streams progress.
  */
 export async function addLinkedFolder(
-  handle: FileSystemDirectoryHandle,
+  ref: DirectoryRef,
   displayName: string
 ): Promise<AddFolderOutcome> {
   if (ILLEGAL_DEST_NAME_CHARS.test(displayName)) return { ok: false, error: 'name-invalid' };
@@ -422,7 +392,7 @@ export async function addLinkedFolder(
   }
   const record: FolderSyncConfigRecord = {
     id: crypto.randomUUID(),
-    handle,
+    handle: ref,
     root_name: path,
     auto_sync: 1,
     last_sync_at: null,
@@ -688,16 +658,13 @@ async function syncOneConfig(
   cfg: FolderSyncConfigRecord,
   trigger: 'manual' | 'auto'
 ): Promise<ImportFolderResult | null> {
-  const handle = cfg.handle as FileSystemDirectoryHandle;
+  let ref = cfg.handle as DirectoryRef;
 
-  let perm = await queryReadPermission(handle);
+  let perm = await folderSource.queryAccess(ref);
   if (perm !== 'granted' && trigger === 'manual') {
-    try {
-      perm = await handle.requestPermission({ mode: 'read' });
-    } catch (e: unknown) {
-      logger.warn('requestPermission failed', e);
-      perm = 'denied';
-    }
+    const requested = await folderSource.requestAccess(ref);
+    perm = requested.state;
+    if (requested.refreshedRef) ref = requested.refreshedRef;
   }
   if (perm !== 'granted') {
     patchStatus(cfg.id, { state: 'needs-permission', progress: null });
@@ -708,7 +675,7 @@ async function syncOneConfig(
   patchStatus(cfg.id, { state: 'syncing', errorKey: null, progress: null });
 
   try {
-    const result = await scanAndImport(cfg, handle);
+    const result = await scanAndImport(cfg, ref);
     // Project the post-run record (watermark, last result, a toggle flipped
     // mid-run) into this config's status entry. No blanket refresh here -
     // it would wipe the error states other configs recorded this run.
@@ -761,7 +728,7 @@ async function liveNoteIds(): Promise<Set<string>> {
  * walked). `prev` is undefined on the first manifest-populating run.
  */
 function buildNextManifest(
-  entries: SyncFileEntry[],
+  entries: LazyMarkdownEntry[],
   imported: ImportFolderResult | null,
   prev: Record<string, string> | undefined
 ): Record<string, string> {
@@ -775,23 +742,25 @@ function buildNextManifest(
 
 async function scanAndImport(
   cfg: FolderSyncConfigRecord,
-  handle: FileSystemDirectoryHandle
+  ref: DirectoryRef
 ): Promise<ImportFolderResult | null> {
   // Watermark is captured BEFORE the walk: files modified mid-scan get an
   // mtime newer than this and are re-picked next run (the unchanged-skip
   // absorbs the overlap).
   const scanStartedAt = new Date().toISOString();
 
-  // Root the walk's relative paths at the on-disk dir name (handle.name),
-  // decoupled from root_name now that root_name can be a "/"-separated
-  // destination PATH (a multi-segment root would leak extra levels through
-  // extractFolderSegments). importFolder strips this single first segment
-  // (keepRootFolder defaults off) and anchors the subtree under
-  // `targetFolderId`. handle.name is stable across tree renames so known_paths
-  // don't churn; it only shifts if the on-disk directory itself is renamed (a
-  // one-off, write-free re-reconcile via the overwrite strategy's unchanged-skip).
-  const { entries, skippedTooDeep } = await collectMarkdownEntries(handle);
-  if (skippedTooDeep > 0) {
+  // The FolderSource roots the walk's relative paths at the on-disk dir leaf
+  // name (decoupled from root_name, which can be a "/"-separated destination
+  // PATH whose extra levels would leak through extractFolderSegments).
+  // importFolder strips that single first segment (keepRootFolder defaults off)
+  // and anchors the subtree under `targetFolderId`. The leaf name is stable
+  // across tree renames so known_paths don't churn; it only shifts if the
+  // on-disk directory itself is renamed (a one-off, write-free re-reconcile via
+  // the overwrite strategy's unchanged-skip). Entries are lazy: content is read
+  // (getFile) only for the changed set materialized below. `refreshedRef` is a
+  // re-issued ref the source asks us to persist (native: a stale bookmark).
+  const { entries, refreshedRef, skippedTooDeep } = await folderSource.listMarkdown(ref);
+  if (skippedTooDeep && skippedTooDeep > 0) {
     logger.warn('Folder sync: subtree(s) deeper than the depth cap were skipped', {
       skippedTooDeep
     });
@@ -844,8 +813,15 @@ async function scanAndImport(
     // silently dropping tags the user added in the app (because the file's
     // frontmatter doesn't carry them) would be unrecoverable data loss.
     // Stars / pins live in metadata_encrypted and survive regardless.
+    //
+    // Read content NOW, only for the changed set: web hands back the File it
+    // already holds; native does a one-shot bridge read per file. This is where
+    // the walk's laziness pays off - a no-op run materializes nothing.
+    const inputs: ImportFolderInput[] = await Promise.all(
+      changed.map(async (e) => ({ file: await e.getFile(), relativePath: e.relativePath }))
+    );
     result = await importFolder(
-      changed,
+      inputs,
       'overwrite',
       (p) => patchStatus(cfg.id, { progress: p }),
       // Pass the previous run's path↔note manifest so a file already linked to a
@@ -874,6 +850,9 @@ async function scanAndImport(
   if (!latest) return result;
   const updated: FolderSyncConfigRecord = {
     ...latest,
+    // Persist a ref the source re-issued this run (native: a stale security-
+    // scoped bookmark recreated while access was held). Web never refreshes.
+    ...(refreshedRef ? { handle: refreshedRef } : {}),
     // Persist the resolved link so future runs and the folder marker use the
     // id (migrates a link-by-name record on its first run under this code).
     target_folder_id: targetFolderId,
