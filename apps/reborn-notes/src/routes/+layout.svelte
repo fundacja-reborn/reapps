@@ -26,7 +26,7 @@
   import { verifyAndRebuildLocalShadowIndexes } from '$lib/services/shadow-index-reconciler.service';
   import { noteIndex } from '$lib/services/note-index.svelte';
   import { cleanupNullFkFields } from '$lib/services/idb-cleanup.service';
-  import { refreshPendingCount, isOnline, sessionExpired } from '$lib/stores/sync-status.store';
+  import { refreshPendingCount, isOnline, sessionExpired, localOnly } from '$lib/stores/sync-status.store';
   import { platform } from '$lib/platform';
   import { initI18n, setLocale, locale } from '$lib/stores/i18n.store';
   import { reAuthenticate, verifyTotpForReauth } from '$lib/services/notes-auth.service';
@@ -505,7 +505,7 @@
   >
     <div bind:clientHeight={sessionBannerHeight}>
       <SessionExpiredBanner
-        visible={$sessionExpired && navigator.onLine}
+        visible={$sessionExpired && navigator.onLine && !$localOnly}
         username={$authStore.username ?? ''}
         onReAuth={reAuthenticate}
         onVerifyTotp={verifyTotpForReauth}

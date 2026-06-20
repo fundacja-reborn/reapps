@@ -42,6 +42,7 @@ import {
   isSyncing,
   syncError,
   lastSyncedAt,
+  isInitialSync,
   refreshPendingCount
 } from '$lib/stores/sync-status.store';
 import { authFetch } from '$lib/utils/auth-fetch';
@@ -123,6 +124,10 @@ export async function refreshStoresAfterPull(): Promise<void> {
   ]);
   notesStore.refresh();
   await noteDetailService.refreshFromStorage();
+  // First-load placeholder stays up until the stores actually hold the pulled
+  // data (here), not just until the pull set lastSyncedAt - otherwise the list
+  // flashes the empty state in the gap. No-op on later (periodic) refreshes.
+  isInitialSync.set(false);
 
   // Surface multi-device periodic-note duplicates (guideline 57). Fire-and-forget
   // so it never blocks the UI refresh; cheap when there are none (title-prefix
@@ -179,6 +184,12 @@ async function runPullFromServer(): Promise<boolean> {
       return false;
     }
   }
+
+  // First-ever pull (nothing synced yet): show the loading placeholder. Cleared
+  // by refreshStoresAfterPull on success (once notes are in memory) or by the
+  // finally below if this pull fails - never left stuck. Placed after the
+  // storage-init early-return above so a failed re-init can't strand it true.
+  if (get(lastSyncedAt) === null) isInitialSync.set(true);
 
   isSyncing.set(true);
   syncError.set(false);
@@ -254,6 +265,10 @@ async function runPullFromServer(): Promise<boolean> {
     success = false;
   } finally {
     isSyncing.set(false);
+    // Drop the first-load placeholder if this pull failed (e.g. offline): the
+    // success path leaves it for refreshStoresAfterPull to clear once the stores
+    // are hydrated. No-op when it was never set (periodic pulls).
+    if (!success) isInitialSync.set(false);
     void refreshPendingCount();
     void refreshQuota();
   }

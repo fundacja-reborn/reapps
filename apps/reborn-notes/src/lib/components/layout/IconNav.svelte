@@ -34,6 +34,7 @@
     Share2,
     Heart,
     UserPlus,
+    LogIn,
     Lock
   } from '@lucide/svelte';
   import * as Tooltip from '@reborn/ui/components/tooltip';
@@ -587,6 +588,10 @@
             <DropdownMenu.Separator />
             <DropdownMenu.Group>
               {#if $authStore.isLocalOnly}
+                <DropdownMenu.Item onclick={() => goto('/auth/login')}>
+                  <LogIn class="h-4 w-4" />
+                  {$t('nav.sign_in')}
+                </DropdownMenu.Item>
                 <DropdownMenu.Item onclick={() => goto('/auth/register')}>
                   <UserPlus class="h-4 w-4" />
                   {$t('local_mode.register')}
@@ -647,6 +652,17 @@
     </SheetHeader>
     <div class="mt-4 space-y-1">
       {#if $authStore.isLocalOnly}
+        <Button
+          variant="ghost"
+          class="w-full justify-start min-h-11"
+          onclick={() => {
+            userSheetOpen = false;
+            goto('/auth/login');
+          }}
+        >
+          <LogIn class="mr-2 h-5 w-5" />
+          {$t('nav.sign_in')}
+        </Button>
         <Button
           variant="ghost"
           class="w-full justify-start min-h-11"

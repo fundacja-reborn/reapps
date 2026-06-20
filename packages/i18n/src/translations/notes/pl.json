@@ -684,7 +684,7 @@
     "session_expired": "Sesja wygasła",
     "re_login": "Zaloguj ponownie",
     "initial": {
-      "title": "Synchronizujemy Twoje notatki",
+      "title": "Trwa synchronizacja Twoich notatek",
       "message": "Pobieranie zaszyfrowanych danych z serwera może chwilę potrwać."
     },
     "errors": {
