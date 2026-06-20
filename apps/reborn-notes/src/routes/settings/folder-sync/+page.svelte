@@ -10,6 +10,7 @@
   } from '@reborn/ui';
   import { FolderOpen, FolderPlus, AlertTriangle } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
+  import { IS_NATIVE } from '$lib/utils/native-client';
   import {
     folderSyncStatus,
     isFolderSyncSupported,
@@ -114,7 +115,7 @@
 </script>
 
 <svelte:head>
-  <title>{$t('settings_page.export_import.folder_sync_title')} — re/notes</title>
+  <title>{$t('settings_page.export_import.folder_sync_title')} - re/notes</title>
 </svelte:head>
 
 <SettingsLayout title={$t('settings_page.export_import.folder_sync_title')} backHref="/settings">
@@ -247,7 +248,9 @@
               {$t('settings_page.export_import.folder_sync_safety_note')}
             </p>
             <p class="text-[11px] text-muted-foreground/70">
-              {$t('settings_page.export_import.folder_sync_no_full_path')}
+              {IS_NATIVE
+                ? $t('settings_page.export_import.folder_sync_no_full_path_native')
+                : $t('settings_page.export_import.folder_sync_no_full_path')}
             </p>
           </div>
         {/if}
