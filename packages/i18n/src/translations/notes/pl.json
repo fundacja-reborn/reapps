@@ -631,6 +631,15 @@
     "edited": "Edytowano",
     "created": "Utworzono"
   },
+  "linked_notes": {
+    "title": "Powiązane notatki",
+    "incoming": "Linki przychodzące",
+    "outgoing": "Linki wychodzące",
+    "incoming_empty": "Żadna notatka tu nie linkuje.",
+    "outgoing_empty": "Ta notatka nie ma linków wychodzących.",
+    "empty": "Brak powiązanych notatek.",
+    "loading": "Szukam powiązań…"
+  },
   "history": {
     "title": "Historia wersji",
     "close": "Zamknij historię",

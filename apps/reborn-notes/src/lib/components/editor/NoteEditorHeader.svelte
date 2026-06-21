@@ -4,6 +4,7 @@
     Columns2,
     Eye,
     Clock,
+    Waypoints,
     ArrowLeft,
     Lock,
     Loader2,
@@ -29,6 +30,8 @@
     viewMode = $bindable('edit'),
     effectiveViewMode,
     historyMode = $bindable<HistoryMode>('closed'),
+    linkedNotesActive = false,
+    ontogglelinkednotes,
     onback,
     onshowxray,
     onrestore,
@@ -45,6 +48,10 @@
     viewMode: ViewMode;
     effectiveViewMode: ViewMode;
     historyMode: HistoryMode;
+    /** Whether the Linked notes panel is open (drives the toggle's pressed state). */
+    linkedNotesActive?: boolean;
+    /** Toggle the Linked notes panel (desktop only - mobile uses the kebab menu). */
+    ontogglelinkednotes?: () => void;
     onback: () => void;
     onshowxray: () => void;
     onrestore: () => void;
@@ -218,6 +225,22 @@
         {/if}
       {/each}
     </div>
+
+    <!-- Linked notes toggle (desktop only - on mobile it's in kebab menu) -->
+    {#if !isMobile && ontogglelinkednotes}
+      <button
+        type="button"
+        onclick={ontogglelinkednotes}
+        title={$t('linked_notes.title')}
+        aria-label={$t('linked_notes.title')}
+        aria-pressed={linkedNotesActive}
+        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground
+           transition-colors hover:bg-accent hover:text-accent-foreground
+           {linkedNotesActive ? 'bg-accent text-accent-foreground' : ''}"
+      >
+        <Waypoints class="h-4 w-4" />
+      </button>
+    {/if}
 
     <!-- History toggle (desktop only — on mobile it's in kebab menu) -->
     {#if !isMobile}

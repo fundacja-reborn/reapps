@@ -18,6 +18,7 @@ import { cryptoManager } from '@reborn/crypto';
 import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
 import { noteIndex } from '$lib/services/note-index.svelte';
+import { noteLinkGraph } from '$lib/services/note-link-graph.svelte';
 import {
   pushNote,
   pushNoteUpdate,
@@ -274,6 +275,7 @@ export async function createNote(
     updatedAt,
     tagIds: []
   });
+  noteLinkGraph.onNoteSaved(id, content);
   return id;
 }
 
@@ -312,6 +314,7 @@ export async function updateNote(
     title,
     updatedAt
   });
+  noteLinkGraph.onNoteSaved(id, content);
 }
 
 /** Rename note title only. */
@@ -500,6 +503,7 @@ export async function permanentlyDeleteNote(id: string): Promise<void> {
   await noteHistoryOperations.deleteAllForNote(id);
   await noteStore.delete(id);
   noteIndex.remove(id);
+  noteLinkGraph.onNoteRemoved(id);
   pushNoteDelete(id, true);
 }
 
@@ -517,6 +521,7 @@ export async function emptyTrash(): Promise<number> {
   // Remove from index cache
   for (const n of archived) {
     noteIndex.remove(n.id);
+    noteLinkGraph.onNoteRemoved(n.id);
   }
 
   // Push permanent deletes to server (fire-and-forget, skip never-synced notes)

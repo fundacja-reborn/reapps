@@ -631,6 +631,15 @@
     "edited": "Modifiée",
     "created": "Créée"
   },
+  "linked_notes": {
+    "title": "Notes liées",
+    "incoming": "Liens entrants",
+    "outgoing": "Liens sortants",
+    "incoming_empty": "Aucune note ne pointe ici pour le moment.",
+    "outgoing_empty": "Cette note n'a aucun lien sortant.",
+    "empty": "Aucune note liée pour le moment.",
+    "loading": "Recherche des liens…"
+  },
   "history": {
     "title": "Historique des versions",
     "close": "Fermer l'historique",
