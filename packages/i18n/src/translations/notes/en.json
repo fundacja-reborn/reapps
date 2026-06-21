@@ -631,6 +631,19 @@
     "edited": "Edited",
     "created": "Created"
   },
+  "linked_notes": {
+    "title": "Linked notes",
+    "incoming": "Incoming links",
+    "outgoing": "Outgoing links",
+    "incoming_empty": "No notes link here yet.",
+    "outgoing_empty": "This note has no outgoing links.",
+    "empty": "No linked notes yet.",
+    "loading": "Finding links…",
+    "mutual": "Linked both ways",
+    "missing": "Missing note",
+    "incoming_count": "Incoming links: {count}",
+    "outgoing_count": "Outgoing links: {count}"
+  },
   "history": {
     "title": "Version history",
     "close": "Close history",

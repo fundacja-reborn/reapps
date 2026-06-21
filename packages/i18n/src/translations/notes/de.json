@@ -631,6 +631,19 @@
     "edited": "Bearbeitet",
     "created": "Erstellt"
   },
+  "linked_notes": {
+    "title": "Verknüpfte Notizen",
+    "incoming": "Eingehende Links",
+    "outgoing": "Ausgehende Links",
+    "incoming_empty": "Noch verweist keine Notiz hierher.",
+    "outgoing_empty": "Diese Notiz hat keine ausgehenden Links.",
+    "empty": "Noch keine verknüpften Notizen.",
+    "loading": "Verknüpfungen werden gesucht…",
+    "mutual": "In beide Richtungen verknüpft",
+    "missing": "Fehlende Notiz",
+    "incoming_count": "Eingehende Links: {count}",
+    "outgoing_count": "Ausgehende Links: {count}"
+  },
   "history": {
     "title": "Versionsverlauf",
     "close": "Verlauf schließen",

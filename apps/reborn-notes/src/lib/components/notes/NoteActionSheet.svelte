@@ -13,7 +13,8 @@
     Trash2,
     RotateCcw,
     Trash,
-    Clock
+    Clock,
+    Waypoints
   } from '@lucide/svelte';
   import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@reborn/ui';
   import { t } from '$lib/stores/i18n.store';
@@ -34,6 +35,7 @@
     onrestore,
     onpermanentdelete,
     onhistory,
+    onlinkednotes,
     onshowxray
   }: {
     open: boolean;
@@ -53,6 +55,8 @@
     onpermanentdelete: (id: string) => void;
     /** Opens version history panel (mobile only) */
     onhistory?: () => void;
+    /** Opens Linked notes panel (mobile only) */
+    onlinkednotes?: () => void;
     /** Opens Encryption X-Ray panel */
     onshowxray?: () => void;
   } = $props();
@@ -168,6 +172,19 @@
           >
             <Clock class="mr-2 h-4 w-4" />
             {$t('history.title')}
+          </Button>
+        {/if}
+        {#if onlinkednotes}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => {
+              open = false;
+              onlinkednotes?.();
+            }}
+          >
+            <Waypoints class="mr-2 h-4 w-4" />
+            {$t('linked_notes.title')}
           </Button>
         {/if}
         {#if onshowxray}

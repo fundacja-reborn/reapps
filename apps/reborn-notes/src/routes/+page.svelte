@@ -28,6 +28,7 @@
   import NotePicker from '$lib/components/NotePicker.svelte';
 
   import VersionHistorySheet from '$lib/components/VersionHistorySheet.svelte';
+  import LinkedNotesSheet from '$lib/components/LinkedNotesSheet.svelte';
   import FolderTree from '$lib/components/sidebar/FolderTree.svelte';
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
@@ -273,6 +274,19 @@
     }
   }
 
+  function toggleLinkedNotes() {
+    linkedNotesOpen = !linkedNotesOpen;
+    if (linkedNotesOpen && historyMode !== 'closed') {
+      closeHistory();
+    }
+  }
+
+  function handleDetailLinkedNotes() {
+    detailActionSheetOpen = false;
+    if (historyMode !== 'closed') closeHistory();
+    linkedNotesOpen = true;
+  }
+
   async function confirmDetailDelete() {
     if (!$activeNoteId) return;
     const id = $activeNoteId;
@@ -288,6 +302,16 @@
   let viewMode = $state<ViewMode>('edit');
   type HistoryMode = 'closed' | 'list' | 'diff';
   let historyMode = $state<HistoryMode>('closed');
+  let linkedNotesOpen = $state(false);
+
+  // The Linked notes panel is mutually exclusive with version history (both are
+  // right-side sheets) and resets when returning to the list, so opening another
+  // note never auto-reopens it.
+  $effect(() => {
+    if (historyMode !== 'closed' || $activeNoteId == null) {
+      linkedNotesOpen = false;
+    }
+  });
   let selectedVersion = $state<import('@reborn/types').NoteHistoryDecrypted | null>(null);
   let previousVersion = $state<import('@reborn/types').NoteHistoryDecrypted | null>(null);
   let historyViewMode = $state<'preview' | 'diff'>('preview');
@@ -1419,6 +1443,8 @@
               bind:viewMode
               {effectiveViewMode}
               bind:historyMode
+              linkedNotesActive={linkedNotesOpen}
+              ontogglelinkednotes={toggleLinkedNotes}
               onback={() => {
                 if (isMobile && mobileHistoryDepth > 0) {
                   history.back();
@@ -1672,6 +1698,8 @@
             bind:viewMode
             {effectiveViewMode}
             bind:historyMode
+            linkedNotesActive={linkedNotesOpen}
+            ontogglelinkednotes={toggleLinkedNotes}
             onback={() => activeNoteId.set(null)}
             onshowxray={() => {
               showEncryptionXRay = true;
@@ -1879,6 +1907,20 @@
   />
 {/if}
 
+{#if $activeNoteId}
+  <LinkedNotesSheet
+    noteId={$activeNoteId}
+    open={linkedNotesOpen}
+    onnavigate={(id) => {
+      void handleNoteLink(id);
+      if (isMobile) linkedNotesOpen = false;
+    }}
+    onclose={() => {
+      linkedNotesOpen = false;
+    }}
+  />
+{/if}
+
 <ConfirmDialog
   bind:open={restoreDialogOpen}
   title={$t('history.restore_title')}
@@ -1907,6 +1949,7 @@
   onshare={(note) => handleDetailShare(note)}
   ondelete={() => handleDetailDelete()}
   onhistory={handleDetailHistory}
+  onlinkednotes={handleDetailLinkedNotes}
   onshowxray={() => { showEncryptionXRay = true; }}
   onrestore={() => {}}
   onpermanentdelete={() => {}}

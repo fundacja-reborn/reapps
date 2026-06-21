@@ -631,6 +631,19 @@
     "edited": "Editada",
     "created": "Creada"
   },
+  "linked_notes": {
+    "title": "Notas enlazadas",
+    "incoming": "Enlaces entrantes",
+    "outgoing": "Enlaces salientes",
+    "incoming_empty": "Ninguna nota enlaza aquí todavía.",
+    "outgoing_empty": "Esta nota no tiene enlaces salientes.",
+    "empty": "Aún no hay notas enlazadas.",
+    "loading": "Buscando enlaces…",
+    "mutual": "Enlazada en ambos sentidos",
+    "missing": "Nota faltante",
+    "incoming_count": "Enlaces entrantes: {count}",
+    "outgoing_count": "Enlaces salientes: {count}"
+  },
   "history": {
     "title": "Historial de versiones",
     "close": "Cerrar historial",

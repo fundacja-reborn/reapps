@@ -14,6 +14,7 @@
 import { noteStore, noteTagStore } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
 import { decryptTitleOnly } from './note.service';
+import { noteLinkGraph } from './note-link-graph.svelte';
 import type { NoteDecrypted } from '@reborn/types';
 import { evaluate, type QueryAST, type SearchContext, type SearchEntity } from '@reborn/utils';
 
@@ -89,6 +90,9 @@ class NoteIndex {
   /** Build the cache from scratch (after unlock). Non-blocking — processes in batches. */
   async build(): Promise<void> {
     if (!cryptoManager.isInitialized()) return;
+    // The link graph shadows the same note set; invalidate it so it rebuilds
+    // lazily against the fresh data (covers unlock + post-import refresh).
+    noteLinkGraph.clear();
     this._building = true;
     try {
       const allEncrypted = await noteStore.getAll();
@@ -142,6 +146,7 @@ class NoteIndex {
   clear(): void {
     this._map.clear();
     this._version++;
+    noteLinkGraph.clear();
   }
 
   // ── Incremental updates ────────────────────────────────────────
