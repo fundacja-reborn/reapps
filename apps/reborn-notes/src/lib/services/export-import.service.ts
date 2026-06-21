@@ -66,6 +66,7 @@ import {
   type TitleLookup
 } from './import-dedup-utils';
 import { sanitizeMarkdownContent, sanitizeTags } from '$lib/utils/markdown-sanitizer';
+import { rewriteInterNoteLinks } from './internal-link-rewrite-utils';
 import { shouldRestoreFromTrash, shouldRelinkToBackupFolder } from './export-import-trash-utils';
 import {
   normalizeNullToUndefined,
@@ -1428,14 +1429,34 @@ type DuplicateOutcomeResult =
  * Stars / pins live in `metadata_encrypted`, which `updateNote` never
  * touches - they survive overwrite regardless of `tagMode`.
  */
-async function applyDuplicateStrategy(args: {
+/**
+ * A duplicate-strategy decision made WITHOUT looking at content. `create` /
+ * `rename` carry a freshly-minted UUID (passed to {@link NoteService.createNote}
+ * via `options.id`); `overwrite` / `skip` carry the existing note's id.
+ */
+type ResolvedImportTarget =
+  | { kind: 'create'; noteId: string; title: string }
+  | { kind: 'rename'; noteId: string; title: string }
+  | { kind: 'overwrite'; noteId: string; title: string }
+  | { kind: 'skip'; noteId: string; title: string };
+
+/**
+ * Resolve which note an imported file maps to, WITHOUT touching its content.
+ *
+ * This is the identity half of the duplicate strategy: an existing note to
+ * overwrite/skip, or a freshly-minted id for a brand-new (or renamed) note.
+ * Splitting it from the write lets {@link importFolder} resolve every file's id
+ * up-front and build a complete `relativePath → note id` map BEFORE any content
+ * is written - the precondition for rewriting inter-note links, since a file can
+ * link to another file imported later in the same batch.
+ *
+ * Mutates `lookup` exactly as the old single-pass did (claims the title slot for
+ * new/renamed notes and for stale-index manifest matches), so resolving the
+ * whole batch up-front yields the same dedup outcomes as resolving inline.
+ */
+async function resolveImportTarget(args: {
   baseTitle: string;
-  content: string;
   folderId: string | undefined;
-  tagIds: string[] | undefined;
-  tagMode?: TagOverwriteMode;
-  createdAt: string | undefined;
-  modifiedAt: string | undefined;
   lookup: TitleLookup;
   strategy: DuplicateStrategy;
   /**
@@ -1447,16 +1468,15 @@ async function applyDuplicateStrategy(args: {
    * imports, which stay on pure title matching.
    */
   manifestNoteId?: string;
-}): Promise<DuplicateOutcomeResult> {
-  const { baseTitle, content, folderId, tagIds, createdAt, modifiedAt, lookup, strategy } = args;
-  const tagMode = args.tagMode ?? 'replace';
+}): Promise<ResolvedImportTarget> {
+  const { baseTitle, folderId, lookup, strategy } = args;
 
-  // Resolve the note to overwrite. The path→note manifest (folder sync) wins
-  // over the title lookup when it points at a still-live note: the lookup comes
-  // from the per-tab in-memory note index, which can be stale, and trusting it
-  // alone minted duplicate notes on re-sync. getNote() returns null for
-  // missing/trashed notes, so a stale manifest link falls through to title
-  // matching below (which re-creates the note - the mirror's "disk wins" rule).
+  // The path→note manifest (folder sync) wins over the title lookup when it
+  // points at a still-live note: the lookup comes from the per-tab in-memory
+  // note index, which can be stale, and trusting it alone minted duplicate notes
+  // on re-sync. getNote() returns null for missing/trashed notes, so a stale
+  // manifest link falls through to title matching (which re-creates the note -
+  // the mirror's "disk wins" rule).
   const manifestNote =
     args.manifestNoteId !== undefined ? await NoteService.getNote(args.manifestNoteId) : null;
   const existingId = pickOverwriteTarget(
@@ -1467,84 +1487,151 @@ async function applyDuplicateStrategy(args: {
   );
 
   if (!existingId) {
-    const newId = await NoteService.createNote(baseTitle, content, folderId, {
-      createdAt,
-      updatedAt: modifiedAt ?? createdAt,
-      skipSync: true
-    });
-    if (tagIds && tagIds.length > 0) {
-      await TagService.setTagsForNote(newId, tagIds, { skipSync: true });
-    }
-    rememberTitle(lookup, folderId, baseTitle, newId);
-    return { outcome: 'created', noteId: newId };
+    const noteId = crypto.randomUUID();
+    rememberTitle(lookup, folderId, baseTitle, noteId);
+    return { kind: 'create', noteId, title: baseTitle };
   }
 
   // A manifest match can resolve a note whose title was NOT in the lookup (the
-  // stale-index case). Claim the (folder, title) slot now so a later same-
-  // titled file in this same batch dedupes against it instead of minting yet
-  // another copy. A title-lookup match already occupies the slot - no-op.
+  // stale-index case). Claim the (folder, title) slot now so a later same-titled
+  // file in this batch dedupes against it. A title-lookup match already occupies
+  // the slot - no-op.
   if (manifestNote !== null) {
     rememberTitle(lookup, folderId, baseTitle, existingId);
   }
 
-  if (strategy === 'skip') {
-    return { outcome: 'skipped', noteId: undefined };
-  }
-
-  if (strategy === 'overwrite') {
-    // Skip the write entirely when the stored note already matches the file -
-    // repeated "re-import to refresh" runs stay cheap (no re-encrypt, no sync
-    // push) and don't shuffle every note to the top of `updated_at` ordering.
-    // Reuse the note already fetched for the manifest check (same id) to avoid
-    // a second decrypt; a title-lookup match re-fetches here. getNote() returns
-    // null for trashed notes - a title match never points at one (the lookup is
-    // built from non-archived entries) and a trashed manifest link already fell
-    // through to title matching above.
-    const existingNote = manifestNote ?? (await NoteService.getNote(existingId));
-    const existingTagIds =
-      tagIds === undefined ? [] : await noteTagQueries.getTagsForNote(existingId);
-    if (existingNote) {
-      const unchanged = isImportUnchanged(
-        { title: existingNote.title, content: existingNote.content, tagIds: existingTagIds },
-        { title: baseTitle, content, tagIds },
-        tagMode
-      );
-      if (unchanged) {
-        return { outcome: 'unchanged', noteId: existingId };
-      }
-    }
-    await NoteService.updateNote(existingId, baseTitle, content, {
-      updatedAt: modifiedAt ?? new Date().toISOString(),
-      skipSync: true
-    });
-    if (tagIds !== undefined) {
-      // `replace`: frontmatter is the tag source of truth. `merge`: union -
-      // tags added in the app survive. Skip the write when the final set
-      // already equals the note's tags (setTagsForNote always rewrites the
-      // whole join set, so a no-op call would still churn IDB + sync).
-      const finalTagIds = tagMode === 'merge' ? mergeTagIds(existingTagIds, tagIds) : tagIds;
-      if (!tagSetsEqual(existingTagIds, finalTagIds)) {
-        await TagService.setTagsForNote(existingId, finalTagIds, { skipSync: true });
-      }
-    }
-    return { outcome: 'overwritten', noteId: existingId };
-  }
+  if (strategy === 'skip') return { kind: 'skip', noteId: existingId, title: baseTitle };
+  if (strategy === 'overwrite') return { kind: 'overwrite', noteId: existingId, title: baseTitle };
 
   // strategy === 'rename'
   const takenLower = new Set<string>();
   const bucket = lookup.get(folderKey(folderId));
   if (bucket) for (const k of bucket.keys()) takenLower.add(k);
   const renamedTitle = computeRenamedTitle(baseTitle, takenLower);
-  const newId = await NoteService.createNote(renamedTitle, content, folderId, {
-    createdAt,
-    updatedAt: modifiedAt ?? createdAt,
+  const noteId = crypto.randomUUID();
+  rememberTitle(lookup, folderId, renamedTitle, noteId);
+  return { kind: 'rename', noteId, title: renamedTitle };
+}
+
+/**
+ * Write a note for a previously {@link resolveImportTarget | resolved} target.
+ *
+ * The content half of the duplicate strategy: creates the note (with the
+ * pre-assigned id), overwrites an existing one (skipping the write entirely when
+ * the stored note already matches - the `unchanged` outcome), or does nothing
+ * (`skip`). `content` is the FINAL content to store: the folder importer applies
+ * the inter-note link rewrite before calling this, so the unchanged comparison
+ * sees exactly what will be persisted - which keeps re-imports idempotent.
+ *
+ * `tagIds === undefined` means the import path does not manage tags (flat .md
+ * import): tags are then excluded from the comparison and left untouched on
+ * overwrite. When provided, `tagMode` decides replace vs merge (see
+ * {@link TagOverwriteMode}). Stars / pins live in `metadata_encrypted`, which
+ * `updateNote` never touches - they survive overwrite regardless.
+ */
+async function writeResolvedNote(args: {
+  target: ResolvedImportTarget;
+  content: string;
+  folderId: string | undefined;
+  tagIds: string[] | undefined;
+  tagMode?: TagOverwriteMode;
+  createdAt: string | undefined;
+  modifiedAt: string | undefined;
+}): Promise<DuplicateOutcomeResult> {
+  const { target, content, folderId, tagIds, createdAt, modifiedAt } = args;
+  const tagMode = args.tagMode ?? 'replace';
+
+  if (target.kind === 'create' || target.kind === 'rename') {
+    await NoteService.createNote(target.title, content, folderId, {
+      id: target.noteId,
+      createdAt,
+      updatedAt: modifiedAt ?? createdAt,
+      skipSync: true
+    });
+    if (tagIds && tagIds.length > 0) {
+      await TagService.setTagsForNote(target.noteId, tagIds, { skipSync: true });
+    }
+    return target.kind === 'create'
+      ? { outcome: 'created', noteId: target.noteId }
+      : { outcome: 'renamed', noteId: target.noteId };
+  }
+
+  if (target.kind === 'skip') {
+    return { outcome: 'skipped', noteId: undefined };
+  }
+
+  // target.kind === 'overwrite'
+  // Skip the write entirely when the stored note already matches - repeated
+  // "re-import to refresh" runs stay cheap (no re-encrypt, no sync push) and
+  // don't shuffle every note to the top of `updated_at` ordering. getNote()
+  // returns null for trashed notes; resolveImportTarget never returns an
+  // overwrite target pointing at one (both a stale manifest link and a title
+  // lookup exclude trashed notes), so the guard is defensive.
+  const existingNote = await NoteService.getNote(target.noteId);
+  const existingTagIds =
+    tagIds === undefined ? [] : await noteTagQueries.getTagsForNote(target.noteId);
+  if (existingNote) {
+    const unchanged = isImportUnchanged(
+      { title: existingNote.title, content: existingNote.content, tagIds: existingTagIds },
+      { title: target.title, content, tagIds },
+      tagMode
+    );
+    if (unchanged) {
+      return { outcome: 'unchanged', noteId: target.noteId };
+    }
+  }
+  await NoteService.updateNote(target.noteId, target.title, content, {
+    updatedAt: modifiedAt ?? new Date().toISOString(),
     skipSync: true
   });
-  if (tagIds && tagIds.length > 0) {
-    await TagService.setTagsForNote(newId, tagIds, { skipSync: true });
+  if (tagIds !== undefined) {
+    // `replace`: frontmatter is the tag source of truth. `merge`: union - tags
+    // added in the app survive. Skip the write when the final set already equals
+    // the note's tags (setTagsForNote always rewrites the whole join set, so a
+    // no-op call would still churn IDB + sync).
+    const finalTagIds = tagMode === 'merge' ? mergeTagIds(existingTagIds, tagIds) : tagIds;
+    if (!tagSetsEqual(existingTagIds, finalTagIds)) {
+      await TagService.setTagsForNote(target.noteId, finalTagIds, { skipSync: true });
+    }
   }
-  rememberTitle(lookup, folderId, renamedTitle, newId);
-  return { outcome: 'renamed', noteId: newId };
+  return { outcome: 'overwritten', noteId: target.noteId };
+}
+
+/**
+ * Apply the selected duplicate strategy for a single file in one pass: resolve
+ * the target, then write. Used by the flat `.md` importer and by the folder
+ * importer when inter-note link rewriting is OFF (the default). With rewriting
+ * ON, {@link importFolder} calls {@link resolveImportTarget} for the whole batch
+ * first, rewrites, then {@link writeResolvedNote} - see there.
+ */
+async function applyDuplicateStrategy(args: {
+  baseTitle: string;
+  content: string;
+  folderId: string | undefined;
+  tagIds: string[] | undefined;
+  tagMode?: TagOverwriteMode;
+  createdAt: string | undefined;
+  modifiedAt: string | undefined;
+  lookup: TitleLookup;
+  strategy: DuplicateStrategy;
+  manifestNoteId?: string;
+}): Promise<DuplicateOutcomeResult> {
+  const target = await resolveImportTarget({
+    baseTitle: args.baseTitle,
+    folderId: args.folderId,
+    lookup: args.lookup,
+    strategy: args.strategy,
+    manifestNoteId: args.manifestNoteId
+  });
+  return writeResolvedNote({
+    target,
+    content: args.content,
+    folderId: args.folderId,
+    tagIds: args.tagIds,
+    tagMode: args.tagMode,
+    createdAt: args.createdAt,
+    modifiedAt: args.modifiedAt
+  });
 }
 
 // ── Folder Import (Obsidian-style vault) ────────────────────────────────────
@@ -1645,6 +1732,12 @@ export type ImportFolderResult = {
    * re-imported; other callers ignore it.
    */
   pathToNoteId: Record<string, string>;
+  /**
+   * Relative Markdown links between imported files rewritten to internal
+   * `note:UUID` links. Always 0 unless `rewriteInterNoteLinks` is enabled (see
+   * {@link ImportFolderOptions}).
+   */
+  linksRewritten: number;
 };
 
 export type ImportFolderOptions = {
@@ -1677,6 +1770,18 @@ export type ImportFolderOptions = {
    * on pure title-based dedup.
    */
   pathManifest?: Record<string, string>;
+  /**
+   * Rewrite relative Markdown links between imported files (`[x](../b.md)`) into
+   * reborn-notes internal note links (`[x](note:UUID)`) so they navigate inside
+   * the app. Opt-in (default OFF). Requires the two-phase import: every file's
+   * target id is resolved up-front (so a file can link to one imported later in
+   * the same batch), the link rewrite is applied to each file's content BEFORE
+   * the unchanged-comparison (keeping re-imports idempotent), then the notes are
+   * written. Targets that don't resolve to an imported note, images, external /
+   * anchor links, and code spans are left untouched. See
+   * {@link rewriteInterNoteLinks}.
+   */
+  rewriteInterNoteLinks?: boolean;
 };
 
 /**
@@ -1715,6 +1820,92 @@ export type ImportFolderInput = File | { file: File; relativePath: string };
  * anchors everything under an existing folder. Combined with the `overwrite`
  * strategy this makes re-importing the same directory an idempotent refresh.
  */
+/** A single import entry read, parsed, sanitized, and tag-resolved. */
+type PreparedImportFile = {
+  relativePath: string;
+  folderId: string | undefined;
+  title: string;
+  sanitizedContent: string;
+  tagIds: string[];
+  createdAt: string | undefined;
+  modifiedAt: string | undefined;
+};
+
+/**
+ * Read + parse + sanitize a single import entry and resolve its frontmatter
+ * tags. Mutates `result.strippedCount` and pushes per-tag failures to
+ * `result.errors` (matching the original inline loop); a fatal read/parse error
+ * throws so the caller records it against the file and skips it.
+ */
+async function prepareImportFile(
+  entry: { file: File; relativePath: string },
+  keepRootFolder: boolean,
+  pathToFolderId: Map<string, string | undefined>,
+  tagLookup: Array<{ id: string; name: string }>,
+  tagsCounter: { count: number },
+  result: ImportFolderResult
+): Promise<PreparedImportFile> {
+  const { file, relativePath } = entry;
+  const raw = await file.text();
+  const parsed = parseMarkdownFile(raw);
+  const segments = extractFolderSegments(relativePath, keepRootFolder);
+  const folderId = pathToFolderId.get(segments.join('/'));
+
+  const fallbackTitle = file.name.replace(/\.md$/i, '') || 'Untitled';
+  const title = (parsed.title ?? '').trim() || fallbackTitle;
+
+  const { sanitized, stripped } = sanitizeMarkdownContent(parsed.content);
+  result.strippedCount += stripped.length;
+
+  const { createdAt, modifiedAt } = pickImportTimestamps(parsed, file.lastModified);
+
+  // Frontmatter tags are global — find-or-create is independent of the per-note
+  // duplicate strategy.
+  const tagIds: string[] = [];
+  if (parsed.tags.length > 0) {
+    const { sanitized: safeTags } = sanitizeTags(parsed.tags);
+    for (const tagName of safeTags) {
+      try {
+        tagIds.push(await findOrCreateTagByName(tagName, tagLookup, tagsCounter));
+      } catch (e: unknown) {
+        result.errors.push(`Tag "${tagName}": ${e instanceof Error ? e.message : 'błąd'}`);
+      }
+    }
+  }
+
+  return {
+    relativePath,
+    folderId,
+    title,
+    sanitizedContent: sanitized,
+    tagIds,
+    createdAt,
+    modifiedAt
+  };
+}
+
+/** Fold a single file's dedup outcome into the running result counters. */
+function recordImportOutcome(
+  result: ImportFolderResult,
+  relativePath: string,
+  dedup: DuplicateOutcomeResult
+): void {
+  // Record the file↔note link for every outcome that resolved to a note (all
+  // but `skipped`), so live folder sync can later detect an in-app deletion and
+  // re-import the file.
+  if (dedup.noteId !== undefined) result.pathToNoteId[relativePath] = dedup.noteId;
+
+  if (dedup.outcome === 'skipped') {
+    result.duplicatesSkipped++;
+  } else if (dedup.outcome === 'unchanged') {
+    result.duplicatesUnchanged++;
+  } else {
+    if (dedup.outcome === 'overwritten') result.duplicatesOverwritten++;
+    else if (dedup.outcome === 'renamed') result.duplicatesRenamed++;
+    result.imported++;
+  }
+}
+
 export async function importFolder(
   files: ImportFolderInput[],
   duplicateStrategy: DuplicateStrategy = 'rename',
@@ -1734,7 +1925,8 @@ export async function importFolder(
     duplicatesUnchanged: 0,
     strippedCount: 0,
     errors: [],
-    pathToNoteId: {}
+    pathToNoteId: {},
+    linksRewritten: 0
   };
   const keepRootFolder = opts?.keepRootFolder ?? false;
   const targetFolderId = opts?.targetFolderId;
@@ -1827,86 +2019,131 @@ export async function importFolder(
   }
   result.foldersCreated = foldersCounter.count;
 
-  // 7. Import each note via the duplicate strategy helper.
-  //    skipSync: true — avoid per-note pushNote/pushNoteUpdate race condition.
-  //    Bulk push happens after the loop (step 7b).
+  // 7. Import each note. skipSync: true on every write — one ordered bulk push
+  //    runs after (step 7b). Two code paths share the resolve/write split:
+  //
+  //    - Default (no link rewrite): a single streaming pass, resolve → write
+  //      per file (one file's content held at a time) — the original behavior.
+  //    - Link rewrite ON: TWO passes. First resolve EVERY file's target id (so a
+  //      complete relativePath → note id map exists, including ids minted for
+  //      brand-new files), then rewrite each file's links against it and write.
+  //      Required because a file may link to another imported later in the same
+  //      batch; the rewrite runs BEFORE the unchanged-comparison so re-imports
+  //      stay idempotent. Holds the changed set's content in memory (bounded by
+  //      the 50 MB import cap).
   const total = sizedEntries.length;
   onProgress?.({ phase: 'reading', current: 0, total });
   // Throttle progress events to one per ~50ms so a 1000-file vault doesn't
   // flood the renderer; always report the final count regardless.
   let lastEmit = 0;
-
-  for (let i = 0; i < sizedEntries.length; i++) {
-    const { file, relativePath } = sizedEntries[i];
-    try {
-      const raw = await file.text();
-      const parsed = parseMarkdownFile(raw);
-      const segments = extractFolderSegments(relativePath, keepRootFolder);
-      const folderId = pathToFolderId.get(segments.join('/'));
-
-      const fallbackTitle = file.name.replace(/\.md$/i, '') || 'Untitled';
-      const title = (parsed.title ?? '').trim() || fallbackTitle;
-
-      const { sanitized: sanitizedContent, stripped } = sanitizeMarkdownContent(parsed.content);
-      result.strippedCount += stripped.length;
-
-      const { createdAt, modifiedAt } = pickImportTimestamps(parsed, file.lastModified);
-
-      // Resolve frontmatter tags up-front — tags are global, so find-or-create
-      // is independent of the per-note duplicate strategy.
-      const tagIds: string[] = [];
-      if (parsed.tags.length > 0) {
-        const { sanitized: safeTags } = sanitizeTags(parsed.tags);
-        for (const tagName of safeTags) {
-          try {
-            const tagId = await findOrCreateTagByName(tagName, tagLookup, tagsCounter);
-            tagIds.push(tagId);
-          } catch (e: unknown) {
-            result.errors.push(`Tag "${tagName}": ${e instanceof Error ? e.message : 'błąd'}`);
-          }
-        }
-      }
-
-      const dedup = await applyDuplicateStrategy({
-        baseTitle: title,
-        content: sanitizedContent,
-        folderId,
-        tagIds,
-        tagMode: tagsOnOverwrite,
-        createdAt,
-        modifiedAt,
-        lookup: titleLookup,
-        strategy: duplicateStrategy,
-        // Authoritative for folder sync: a file already linked to a live note
-        // overwrites it regardless of the (possibly stale) title lookup.
-        manifestNoteId: pathManifest?.[relativePath]
-      });
-
-      // Record the file↔note link for every outcome that resolved to a note
-      // (all but `skipped`), so callers like live folder sync can later detect
-      // that an imported note was deleted in the app and re-import its file.
-      if (dedup.noteId !== undefined) result.pathToNoteId[relativePath] = dedup.noteId;
-
-      if (dedup.outcome === 'skipped') {
-        result.duplicatesSkipped++;
-      } else if (dedup.outcome === 'unchanged') {
-        result.duplicatesUnchanged++;
-      } else {
-        if (dedup.outcome === 'overwritten') result.duplicatesOverwritten++;
-        else if (dedup.outcome === 'renamed') result.duplicatesRenamed++;
-        result.imported++;
-      }
-    } catch (e: unknown) {
-      result.errors.push(`${file.name}: ${e instanceof Error ? e.message : 'Unknown error'}`);
-    }
-
-    const current = i + 1;
+  const emitProgress = (current: number) => {
     const now = Date.now();
     if (current === total || now - lastEmit >= 50) {
       onProgress?.({ phase: 'reading', current, total });
       lastEmit = now;
     }
+  };
+
+  if (!opts?.rewriteInterNoteLinks) {
+    for (let i = 0; i < sizedEntries.length; i++) {
+      const entry = sizedEntries[i];
+      try {
+        const prepared = await prepareImportFile(
+          entry,
+          keepRootFolder,
+          pathToFolderId,
+          tagLookup,
+          tagsCounter,
+          result
+        );
+        const dedup = await applyDuplicateStrategy({
+          baseTitle: prepared.title,
+          content: prepared.sanitizedContent,
+          folderId: prepared.folderId,
+          tagIds: prepared.tagIds,
+          tagMode: tagsOnOverwrite,
+          createdAt: prepared.createdAt,
+          modifiedAt: prepared.modifiedAt,
+          lookup: titleLookup,
+          strategy: duplicateStrategy,
+          // Authoritative for folder sync: a file already linked to a live note
+          // overwrites it regardless of the (possibly stale) title lookup.
+          manifestNoteId: pathManifest?.[entry.relativePath]
+        });
+        recordImportOutcome(result, entry.relativePath, dedup);
+      } catch (e: unknown) {
+        result.errors.push(`${entry.file.name}: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      }
+      emitProgress(i + 1);
+    }
+  } else {
+    // Pass 1 (6b): prepare + resolve every file, building the link map. Seed it
+    // with the previous run's manifest so links pointing at files left unchanged
+    // this run (folder sync's incremental set) still resolve.
+    const linkMap = new Map<string, string>(Object.entries(pathManifest ?? {}));
+    const prepared: Array<{ file: PreparedImportFile; target: ResolvedImportTarget }> = [];
+    for (const entry of sizedEntries) {
+      try {
+        const file = await prepareImportFile(
+          entry,
+          keepRootFolder,
+          pathToFolderId,
+          tagLookup,
+          tagsCounter,
+          result
+        );
+        const target = await resolveImportTarget({
+          baseTitle: file.title,
+          folderId: file.folderId,
+          lookup: titleLookup,
+          strategy: duplicateStrategy,
+          manifestNoteId: pathManifest?.[entry.relativePath]
+        });
+        // Every resolved file is a link target — including `skip` (the existing
+        // note stays, links to it must still resolve). this-run id overrides any
+        // carried-over manifest id (note deleted + re-created gets the fresh id).
+        linkMap.set(entry.relativePath, target.noteId);
+        prepared.push({ file, target });
+      } catch (e: unknown) {
+        result.errors.push(
+          `${entry.file.name}: ${e instanceof Error ? e.message : 'Unknown error'}`
+        );
+      }
+    }
+
+    // Pass 2 (7c): rewrite links against the complete map, then write.
+    for (let i = 0; i < prepared.length; i++) {
+      const { file, target } = prepared[i];
+      try {
+        const rewrite = rewriteInterNoteLinks(file.sanitizedContent, file.relativePath, linkMap);
+        const dedup = await writeResolvedNote({
+          target,
+          content: rewrite.content,
+          folderId: file.folderId,
+          tagIds: file.tagIds,
+          tagMode: tagsOnOverwrite,
+          createdAt: file.createdAt,
+          modifiedAt: file.modifiedAt
+        });
+        // Count only links in notes actually (re)written - an idempotent no-op
+        // re-sync (`unchanged`) rewrote nothing observable.
+        if (
+          dedup.outcome === 'created' ||
+          dedup.outcome === 'overwritten' ||
+          dedup.outcome === 'renamed'
+        ) {
+          result.linksRewritten += rewrite.rewritten;
+        }
+        recordImportOutcome(result, file.relativePath, dedup);
+      } catch (e: unknown) {
+        result.errors.push(`${file.relativePath}: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      }
+      emitProgress(i + 1);
+    }
   }
+  // Force the final 100% tick: the two-phase write loop iterates the prepared
+  // set, which is shorter than `total` when some files failed in pass 1.
+  onProgress?.({ phase: 'reading', current: total, total });
   result.tagsCreated = tagsCounter.count;
 
   // 7b. Trigger one ordered bulk push (folders → tags → notes). All items in

@@ -42,6 +42,9 @@
   // destination and may diverge from the directory's actual name).
   let pendingDirName = $state('');
   let pendingName = $state('');
+  // Convert relative .md links between synced files into internal note links.
+  // Opt-in, default OFF.
+  let pendingRewriteLinks = $state(false);
   let nameTaken = $state(false);
   let nameInvalid = $state(false);
   let adding = $state(false);
@@ -83,6 +86,7 @@
     pendingRef = null;
     pendingDirName = '';
     pendingName = '';
+    pendingRewriteLinks = false;
     nameTaken = false;
     nameInvalid = false;
   }
@@ -94,7 +98,7 @@
     nameTaken = false;
     nameInvalid = false;
     try {
-      const added = await addLinkedFolder(pendingRef, pendingName);
+      const added = await addLinkedFolder(pendingRef, pendingName, pendingRewriteLinks);
       if (!added.ok) {
         if (added.error === 'name-taken') nameTaken = true;
         else if (added.error === 'name-invalid') nameInvalid = true;
@@ -175,6 +179,22 @@
                   {$t('settings_page.export_import.folder_sync_name_desc')}
                 </p>
               </div>
+              <label class="flex items-start gap-2 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  bind:checked={pendingRewriteLinks}
+                  disabled={adding}
+                  class="mt-0.5"
+                />
+                <span>
+                  <span class="font-medium">
+                    {$t('settings_page.export_import.rewrite_links_label')}
+                  </span>
+                  <span class="block text-muted-foreground">
+                    {$t('settings_page.export_import.rewrite_links_desc')}
+                  </span>
+                </span>
+              </label>
               {#if nameTaken}
                 <p class="text-xs text-destructive">
                   {$t('settings_page.export_import.folder_sync_name_taken')}

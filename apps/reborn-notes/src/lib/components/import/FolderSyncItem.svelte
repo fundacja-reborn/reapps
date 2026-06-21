@@ -34,6 +34,7 @@
   let editing = $state(false);
   let editSourceLabel = $state('');
   let editDestName = $state('');
+  let editRewriteLinks = $state(false);
   let editError = $state<'name-taken' | 'name-invalid' | 'name-cycle' | null>(null);
   let savingEdit = $state(false);
 
@@ -79,6 +80,7 @@
   function startEdit() {
     editSourceLabel = status.sourceLabel ?? '';
     editDestName = destPathString;
+    editRewriteLinks = status.rewriteLinks;
     editError = null;
     editing = true;
   }
@@ -98,7 +100,8 @@
     try {
       const outcome = await updateFolderSyncConfig(status.id, {
         sourceLabel: editSourceLabel,
-        destName: editDestName
+        destName: editDestName,
+        rewriteLinks: editRewriteLinks
       });
       if (!outcome.ok) {
         if (outcome.error === 'name-taken') editError = 'name-taken';
@@ -250,6 +253,22 @@
           {$t('settings_page.export_import.folder_sync_dest_edit_desc')}
         </p>
       </div>
+      <label class="flex items-start gap-2 text-xs cursor-pointer">
+        <input
+          type="checkbox"
+          bind:checked={editRewriteLinks}
+          disabled={savingEdit}
+          class="mt-0.5"
+        />
+        <span>
+          <span class="font-medium">
+            {$t('settings_page.export_import.rewrite_links_label')}
+          </span>
+          <span class="block text-muted-foreground">
+            {$t('settings_page.export_import.rewrite_links_desc')}
+          </span>
+        </span>
+      </label>
       {#if editError === 'name-taken'}
         <p class="text-xs text-destructive">
           {$t('settings_page.export_import.folder_sync_name_taken')}

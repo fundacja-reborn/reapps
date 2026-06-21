@@ -130,6 +130,8 @@ export type FolderSyncConfigStatus = {
   sourceLabel: string | null;
   state: 'idle' | 'syncing' | 'needs-permission' | 'error';
   autoSync: boolean;
+  /** Rewrite inter-note Markdown links to `note:` links on import (opt-in). */
+  rewriteLinks: boolean;
   lastSyncAt: string | null;
   lastResult: FolderSyncConfigRecord['last_result'];
   progress: ImportProgress | null;
@@ -195,6 +197,7 @@ async function projectConfigStatus(cfg: FolderSyncConfigRecord): Promise<FolderS
     sourceLabel: cfg.source_label ?? null,
     state: perm === 'granted' ? 'idle' : 'needs-permission',
     autoSync: cfg.auto_sync === 1,
+    rewriteLinks: cfg.rewrite_links === 1,
     lastSyncAt: cfg.last_sync_at,
     lastResult: cfg.last_result,
     progress: null,
@@ -379,7 +382,8 @@ export type AddFolderOutcome =
  */
 export async function addLinkedFolder(
   ref: DirectoryRef,
-  displayName: string
+  displayName: string,
+  rewriteLinks = false
 ): Promise<AddFolderOutcome> {
   if (ILLEGAL_DEST_NAME_CHARS.test(displayName)) return { ok: false, error: 'name-invalid' };
   const path = normalizeDestPath(displayName);
@@ -395,6 +399,7 @@ export async function addLinkedFolder(
     handle: ref,
     root_name: path,
     auto_sync: 1,
+    rewrite_links: rewriteLinks ? 1 : 0,
     last_sync_at: null,
     last_result: null,
     created_at: new Date().toISOString()
@@ -433,7 +438,7 @@ export type UpdateFolderSyncOutcome =
  */
 export async function updateFolderSyncConfig(
   configId: string,
-  changes: { sourceLabel: string | null; destName: string }
+  changes: { sourceLabel: string | null; destName: string; rewriteLinks?: boolean }
 ): Promise<UpdateFolderSyncOutcome> {
   const cfg = await folderSyncStore.get(configId);
   if (!cfg) return { ok: true }; // already unlinked - nothing to update
@@ -445,6 +450,16 @@ export async function updateFolderSyncConfig(
 
   const oldPath = normalizeDestPath(cfg.root_name);
   const destChanged = newPath.toLowerCase() !== oldPath.toLowerCase();
+  // `rewriteLinks` omitted = preserve the current setting (the settings edit
+  // form always sends it; other callers leave it untouched).
+  const newRewrite = changes.rewriteLinks ?? cfg.rewrite_links === 1;
+  // Turning rewrite ON must re-reconcile every file: an unchanged-on-disk file
+  // is skipped by the mtime pre-filter, so its links would never get rewritten
+  // until the file itself changed. Resetting the watermark + known set forces
+  // the next run to re-read all files (write-free via unchanged-skip for those
+  // whose rewritten content already matches). Turning it OFF needs no reset -
+  // existing `note:` links stay valid; we just stop rewriting future imports.
+  const rewriteToggledOn = newRewrite && cfg.rewrite_links !== 1;
 
   let targetId = cfg.target_folder_id;
   if (destChanged) {
@@ -463,10 +478,12 @@ export async function updateFolderSyncConfig(
     source_label: newLabel,
     root_name: newPath,
     target_folder_id: targetId,
-    // A changed destination invalidates the path-prefixed known set and the
-    // mtime watermark; reset both so the next scan reconciles under the new
-    // path root (write-free via unchanged-skip when content already matches).
-    ...(destChanged ? { known_paths: undefined, last_sync_at: null } : {})
+    rewrite_links: newRewrite ? 1 : 0,
+    // A changed destination OR newly-enabled rewrite invalidates the path-
+    // prefixed known set and the mtime watermark; reset both so the next scan
+    // reconciles every file (write-free via unchanged-skip when content already
+    // matches).
+    ...(destChanged || rewriteToggledOn ? { known_paths: undefined, last_sync_at: null } : {})
   };
   await folderSyncStore.save(updated);
   // Flush moveTargetToPath's local folder surgery as one ordered push (BFS by
@@ -831,7 +848,12 @@ async function scanAndImport(
       // New paths and stale links (note hard-deleted) fall back to title
       // matching inside the importer. `prevManifest` is undefined on the first
       // manifest-populating run; the importer then uses title matching alone.
-      { targetFolderId, tagsOnOverwrite: 'merge', pathManifest: prevManifest }
+      {
+        targetFolderId,
+        tagsOnOverwrite: 'merge',
+        pathManifest: prevManifest,
+        rewriteInterNoteLinks: cfg.rewrite_links === 1
+      }
     );
   }
 

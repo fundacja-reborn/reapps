@@ -67,6 +67,14 @@ export interface FolderSyncConfigRecord extends WithId {
   /** Auto-sync (on app focus + periodic interval) enabled. */
   auto_sync: 0 | 1;
   /**
+   * Rewrite relative Markdown links between synced files (`[x](../b.md)`) into
+   * internal `note:UUID` links so they navigate inside the app. Opt-in per
+   * config. Absent on records created before this option existed = OFF. The
+   * rewrite is reapplied on every run (idempotent - it runs before the
+   * unchanged-comparison), so toggling it on takes effect on the next sync.
+   */
+  rewrite_links?: 0 | 1;
+  /**
    * ISO timestamp of the start of the last completed scan. Next scan only
    * reads files with `lastModified` newer than this (minus a safety margin),
    * which is what keeps re-scans of large vaults cheap.

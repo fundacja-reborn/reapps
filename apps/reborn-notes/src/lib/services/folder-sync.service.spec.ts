@@ -93,6 +93,7 @@ type ImportCall = {
   paths: string[];
   targetFolderId?: string;
   pathManifest?: Record<string, string>;
+  rewriteInterNoteLinks?: boolean;
 };
 const importCalls: ImportCall[] = [];
 
@@ -102,14 +103,19 @@ vi.mock('./export-import.service', () => ({
       entries: Array<{ file: File; relativePath: string }>,
       _strategy?: unknown,
       _onProgress?: unknown,
-      opts?: { targetFolderId?: string; pathManifest?: Record<string, string> }
+      opts?: {
+        targetFolderId?: string;
+        pathManifest?: Record<string, string>;
+        rewriteInterNoteLinks?: boolean;
+      }
     ) => {
       activeImports++;
       maxActiveImports = Math.max(maxActiveImports, activeImports);
       importCalls.push({
         paths: entries.map((e) => e.relativePath),
         targetFolderId: opts?.targetFolderId,
-        pathManifest: opts?.pathManifest
+        pathManifest: opts?.pathManifest,
+        rewriteInterNoteLinks: opts?.rewriteInterNoteLinks
       });
       // Yield twice so an accidentally-parallel runner would overlap here.
       await Promise.resolve();
@@ -801,6 +807,72 @@ describe('updateFolderSyncConfig', () => {
     expect(outcome).toEqual({ ok: false, error: 'name-cycle' });
     expect(moveSpy).not.toHaveBeenCalled();
     expect(rows.find((r) => r.id === 'a')?.root_name).toBe('Docs');
+  });
+});
+
+describe('rewrite-links setting', () => {
+  it('addLinkedFolder defaults the flag off and stores it on when opted in', async () => {
+    const svc = await loadService();
+    const off = await svc.addLinkedFolder(
+      fakeDir('d1', []) as unknown as FileSystemDirectoryHandle,
+      'Off'
+    );
+    const on = await svc.addLinkedFolder(
+      fakeDir('d2', []) as unknown as FileSystemDirectoryHandle,
+      'On',
+      true
+    );
+    if (!off.ok || !on.ok) throw new Error('add should succeed');
+    expect(rows.find((r) => r.id === off.id)?.rewrite_links).toBe(0);
+    expect(rows.find((r) => r.id === on.id)?.rewrite_links).toBe(1);
+  });
+
+  it('passes rewriteInterNoteLinks to importFolder per the config flag', async () => {
+    seedConfig({ id: 'on', handle: fakeDir('on', ['a.md']), rewrite_links: 1 });
+    seedConfig({ id: 'off', handle: fakeDir('off', ['b.md']) });
+    const svc = await loadService();
+
+    await svc.runFolderSync('manual', 'on');
+    expect(importCalls.at(-1)?.rewriteInterNoteLinks).toBe(true);
+
+    await svc.runFolderSync('manual', 'off');
+    expect(importCalls.at(-1)?.rewriteInterNoteLinks).toBe(false);
+  });
+
+  it('toggling rewrite on resets the watermark; omitting it preserves the flag', async () => {
+    seedConfig({
+      id: 'a',
+      root_name: 'Docs',
+      target_folder_id: 'f1',
+      handle: fakeDir('docs', []),
+      rewrite_links: 0,
+      last_sync_at: '2026-06-10T00:00:00.000Z',
+      known_paths: ['docs/a.md']
+    });
+    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
+    const svc = await loadService();
+
+    // Toggle ON (same destination) → watermark + known set reset so the next
+    // run re-reads every file and rewrites their links.
+    const on = await svc.updateFolderSyncConfig('a', {
+      sourceLabel: null,
+      destName: 'Docs',
+      rewriteLinks: true
+    });
+    expect(on).toEqual({ ok: true });
+    let row = rows.find((r) => r.id === 'a')!;
+    expect(row.rewrite_links).toBe(1);
+    expect(row.last_sync_at).toBeNull();
+    expect(row.known_paths).toBeUndefined();
+
+    // A later edit that omits rewriteLinks preserves the flag and (no dest
+    // change) does not reset a freshly-advanced watermark.
+    row.last_sync_at = '2026-06-11T00:00:00.000Z';
+    const keep = await svc.updateFolderSyncConfig('a', { sourceLabel: 'note', destName: 'Docs' });
+    expect(keep).toEqual({ ok: true });
+    row = rows.find((r) => r.id === 'a')!;
+    expect(row.rewrite_links).toBe(1);
+    expect(row.last_sync_at).toBe('2026-06-11T00:00:00.000Z');
   });
 });
 
