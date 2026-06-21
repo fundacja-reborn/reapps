@@ -125,10 +125,10 @@
                   <button
                     type="button"
                     onclick={() => onnavigate(item.id)}
-                    class="group flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-colors hover:bg-accent/50 active:bg-accent"
+                    class="group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-accent/50 active:bg-accent"
                   >
                     <span
-                      class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40 transition-colors group-hover:bg-foreground/60"
+                      class="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/30 transition-colors group-hover:bg-muted-foreground/60"
                     ></span>
                     <span
                       class="truncate text-sm text-muted-foreground transition-colors group-hover:text-foreground"
@@ -164,10 +164,10 @@
                   <button
                     type="button"
                     onclick={() => onnavigate(item.id)}
-                    class="group flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-colors hover:bg-accent/50 active:bg-accent"
+                    class="group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-accent/50 active:bg-accent"
                   >
                     <span
-                      class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40 transition-colors group-hover:bg-foreground/60"
+                      class="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/30 transition-colors group-hover:bg-muted-foreground/60"
                     ></span>
                     <span
                       class="truncate text-sm text-muted-foreground transition-colors group-hover:text-foreground"
