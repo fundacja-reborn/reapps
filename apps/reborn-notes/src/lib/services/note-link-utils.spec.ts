@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractNoteLinkTargets } from './note-link-utils';
+import { extractNoteLinkTargets, intersectIds } from './note-link-utils';
 
 const A = '550e8400-e29b-41d4-a716-446655440000';
 const B = '123e4567-e89b-12d3-a456-426614174000';
@@ -50,5 +50,33 @@ describe('extractNoteLinkTargets', () => {
   it('returns an empty set for empty or link-free content', () => {
     expect(extractNoteLinkTargets('').size).toBe(0);
     expect(extractNoteLinkTargets('Plain text, no links.').size).toBe(0);
+  });
+});
+
+describe('intersectIds (mutual links)', () => {
+  it('returns the ids present in both lists', () => {
+    expect(intersectIds([A, B, C], [B, C])).toEqual(new Set([B, C]));
+  });
+
+  it('returns an empty set when there is no overlap', () => {
+    expect(intersectIds([A], [B, C]).size).toBe(0);
+  });
+
+  it('is case-insensitive and lowercases the result', () => {
+    expect(intersectIds([A.toUpperCase()], [A])).toEqual(new Set([A]));
+    expect(intersectIds([A], [A.toUpperCase()])).toEqual(new Set([A]));
+  });
+
+  it('de-duplicates repeated ids in either input', () => {
+    expect([...intersectIds([A, A, B], [A, A])]).toEqual([A]);
+  });
+
+  it('returns an empty set when either side is empty', () => {
+    expect(intersectIds([], [A, B]).size).toBe(0);
+    expect(intersectIds([A, B], []).size).toBe(0);
+  });
+
+  it('accepts Set inputs (the graph passes id sets)', () => {
+    expect(intersectIds(new Set([A, B]), new Set([B, C]))).toEqual(new Set([B]));
   });
 });

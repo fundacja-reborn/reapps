@@ -638,7 +638,11 @@
     "incoming_empty": "Aucune note ne pointe ici pour le moment.",
     "outgoing_empty": "Cette note n'a aucun lien sortant.",
     "empty": "Aucune note liée pour le moment.",
-    "loading": "Recherche des liens…"
+    "loading": "Recherche des liens…",
+    "mutual": "Lié dans les deux sens",
+    "missing": "Note introuvable",
+    "incoming_count": "Liens entrants : {count}",
+    "outgoing_count": "Liens sortants : {count}"
   },
   "history": {
     "title": "Historique des versions",

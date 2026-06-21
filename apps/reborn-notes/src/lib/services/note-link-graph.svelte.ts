@@ -22,7 +22,7 @@
  */
 import { noteStore } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
-import { extractNoteLinkTargets } from './note-link-utils';
+import { extractNoteLinkTargets, intersectIds } from './note-link-utils';
 
 const BATCH_SIZE = 100;
 
@@ -202,6 +202,14 @@ class NoteLinkGraph {
     void this._version;
     const set = this._incoming.get(id);
     return set ? Array.from(set) : [];
+  }
+
+  /**
+   * Ids linked in both directions - notes this note links to that also link
+   * back (incoming ∩ outgoing). Reactive (via the two reads it composes).
+   */
+  mutualIds(id: string): Set<string> {
+    return intersectIds(this.incomingIds(id), this.outgoingIds(id));
   }
 }
 

@@ -24,3 +24,21 @@ export function extractNoteLinkTargets(content: string, selfId?: string): Set<st
   }
   return targets;
 }
+
+/**
+ * Ids present in BOTH lists - the mutual (bidirectional) links of a note: the
+ * notes it links to that also link back. Powers the "↔" badge in the panel.
+ *
+ * Case-insensitive (ids are lowercased before comparing and in the result), so
+ * it stays correct regardless of how a given id was cased upstream.
+ */
+export function intersectIds(a: Iterable<string>, b: Iterable<string>): Set<string> {
+  const other = new Set<string>();
+  for (const id of b) other.add(id.toLowerCase());
+  const both = new Set<string>();
+  for (const id of a) {
+    const low = id.toLowerCase();
+    if (other.has(low)) both.add(low);
+  }
+  return both;
+}
