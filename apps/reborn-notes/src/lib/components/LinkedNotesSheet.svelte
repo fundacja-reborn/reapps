@@ -81,14 +81,16 @@
         <!-- Backlinks (incoming) -->
         <section>
           <h3
-            class="flex items-center gap-1.5 px-4 pb-2 pt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            class="sticky top-0 z-10 flex items-center gap-2 border-b bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
           >
             <ArrowDownLeft class="h-3.5 w-3.5" />
             {$t('linked_notes.incoming')}
-            <span class="ml-auto tabular-nums">{backlinks.length}</span>
+            <span
+              class="ml-auto rounded bg-background px-1.5 py-0.5 text-[11px] font-medium tabular-nums"
+            >{backlinks.length}</span>
           </h3>
           {#if backlinks.length === 0}
-            <p class="px-4 pb-3 text-sm text-muted-foreground">
+            <p class="px-4 py-3 text-sm text-muted-foreground">
               {$t('linked_notes.incoming_empty')}
             </p>
           {:else}
@@ -109,16 +111,18 @@
         </section>
 
         <!-- Outgoing -->
-        <section class="border-t">
+        <section class="mt-2 border-t">
           <h3
-            class="flex items-center gap-1.5 px-4 pb-2 pt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            class="sticky top-0 z-10 flex items-center gap-2 border-b bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
           >
             <ArrowUpRight class="h-3.5 w-3.5" />
             {$t('linked_notes.outgoing')}
-            <span class="ml-auto tabular-nums">{outgoing.length}</span>
+            <span
+              class="ml-auto rounded bg-background px-1.5 py-0.5 text-[11px] font-medium tabular-nums"
+            >{outgoing.length}</span>
           </h3>
           {#if outgoing.length === 0}
-            <p class="px-4 pb-3 text-sm text-muted-foreground">
+            <p class="px-4 py-3 text-sm text-muted-foreground">
               {$t('linked_notes.outgoing_empty')}
             </p>
           {:else}
