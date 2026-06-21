@@ -66,7 +66,7 @@ import {
   type TitleLookup
 } from './import-dedup-utils';
 import { sanitizeMarkdownContent, sanitizeTags } from '$lib/utils/markdown-sanitizer';
-import { rewriteInterNoteLinks } from './internal-link-rewrite-utils';
+import { rewriteInterNoteLinks, buildWikilinkIndex } from './internal-link-rewrite-utils';
 import { shouldRestoreFromTrash, shouldRelinkToBackupFolder } from './export-import-trash-utils';
 import {
   normalizeNullToUndefined,
@@ -1733,9 +1733,9 @@ export type ImportFolderResult = {
    */
   pathToNoteId: Record<string, string>;
   /**
-   * Relative Markdown links between imported files rewritten to internal
-   * `note:UUID` links. Always 0 unless `rewriteInterNoteLinks` is enabled (see
-   * {@link ImportFolderOptions}).
+   * Links between imported files rewritten to internal `note:UUID` links -
+   * relative Markdown path links and Obsidian wikilinks combined. Always 0
+   * unless `rewriteInterNoteLinks` is enabled (see {@link ImportFolderOptions}).
    */
   linksRewritten: number;
 };
@@ -1771,15 +1771,18 @@ export type ImportFolderOptions = {
    */
   pathManifest?: Record<string, string>;
   /**
-   * Rewrite relative Markdown links between imported files (`[x](../b.md)`) into
-   * reborn-notes internal note links (`[x](note:UUID)`) so they navigate inside
-   * the app. Opt-in (default OFF). Requires the two-phase import: every file's
-   * target id is resolved up-front (so a file can link to one imported later in
-   * the same batch), the link rewrite is applied to each file's content BEFORE
-   * the unchanged-comparison (keeping re-imports idempotent), then the notes are
-   * written. Targets that don't resolve to an imported note, images, external /
-   * anchor links, and code spans are left untouched. See
-   * {@link rewriteInterNoteLinks}.
+   * Rewrite links between imported files into reborn-notes internal note links
+   * (`[x](note:UUID)`) so they navigate inside the app. Covers both relative
+   * Markdown path links (`[x](../b.md)`) and Obsidian wikilinks (`[[Note]]`,
+   * `[[Note|alias]]`, with `#heading`/`^block` subpaths dropped). Opt-in
+   * (default OFF). Requires the two-phase import: every file's target id is
+   * resolved up-front (so a file can link to one imported later in the same
+   * batch), the rewrite is applied to each file's content BEFORE the
+   * unchanged-comparison (keeping re-imports idempotent), then the notes are
+   * written. Targets that don't resolve to an imported note (and, for bare
+   * wikilinks, ambiguous basenames), images, `![[embeds]]`, external / anchor
+   * links, and code spans are left untouched. See {@link rewriteInterNoteLinks}
+   * and {@link buildWikilinkIndex}.
    */
   rewriteInterNoteLinks?: boolean;
 };
@@ -2111,11 +2114,16 @@ export async function importFolder(
       }
     }
 
-    // Pass 2 (7c): rewrite links against the complete map, then write.
+    // Pass 2 (7c): rewrite links against the complete map, then write. The
+    // wikilink index (basename / vault-relative path → note id) is derived once
+    // from the same complete map and shared across every file's rewrite.
+    const wikilinkIndex = buildWikilinkIndex(linkMap);
     for (let i = 0; i < prepared.length; i++) {
       const { file, target } = prepared[i];
       try {
-        const rewrite = rewriteInterNoteLinks(file.sanitizedContent, file.relativePath, linkMap);
+        const rewrite = rewriteInterNoteLinks(file.sanitizedContent, file.relativePath, linkMap, {
+          wikilinks: wikilinkIndex
+        });
         const dedup = await writeResolvedNote({
           target,
           content: rewrite.content,

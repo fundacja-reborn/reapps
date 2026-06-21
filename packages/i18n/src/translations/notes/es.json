@@ -844,7 +844,7 @@
       "preserve_tags_label": "Conservar las etiquetas añadidas en la aplicación",
       "preserve_tags_desc": "Las etiquetas del archivo se combinan con las etiquetas existentes de la nota en lugar de reemplazarlas. Las estrellas y los pines nunca se modifican durante la importación.",
       "rewrite_links_label": "Convertir enlaces entre notas",
-      "rewrite_links_desc": "Los enlaces Markdown relativos entre los archivos importados (p. ej. [texto](../otra.md)) se convierten en enlaces internos que abren la nota en la aplicación. Los enlaces a archivos fuera de esta importación no se modifican.",
+      "rewrite_links_desc": "Los enlaces Markdown relativos y los wikilinks de Obsidian entre los archivos importados (p. ej. [texto](../otra.md) o [[Nota]]) se convierten en enlaces internos que abren la nota en la aplicación. Los enlaces a archivos fuera de esta importación no se modifican.",
       "links_rewritten_count": "Se convirtieron {count} enlace(s) entre notas",
       "dedup_start": "Iniciar importación",
       "dedup_count_overwritten": "Se sobrescribieron {count} nota(s) existente(s)",

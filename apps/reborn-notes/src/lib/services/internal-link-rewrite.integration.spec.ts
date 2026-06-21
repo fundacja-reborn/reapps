@@ -160,3 +160,58 @@ describe('importFolder inter-note link rewriting', () => {
     expect(notes.get(idA)?.content).toBe(`Go [B](note:${idB}) now.`);
   });
 });
+
+describe('importFolder Obsidian wikilink rewriting', () => {
+  it('leaves wikilinks untouched when the flag is off (default)', async () => {
+    const files: ImportFolderInput[] = [
+      input('a.md', 'vault/a.md', '---\ntitle: A\n---\nSee [[B]].'),
+      input('b.md', 'vault/b.md', '---\ntitle: B\n---\nHi.')
+    ];
+    const res = await importFolder(files, 'rename');
+    expect(res.linksRewritten).toBe(0);
+    const idA = res.pathToNoteId['vault/a.md'];
+    expect(notes.get(idA)?.content).toBe('See [[B]].');
+  });
+
+  it('rewrites [[wikilinks]] (with alias) to note: links when the flag is on', async () => {
+    const files: ImportFolderInput[] = [
+      input('a.md', 'vault/a.md', '---\ntitle: A\n---\nSee [[B]] and [[B|the bee]].'),
+      input('b.md', 'vault/b.md', '---\ntitle: B\n---\nHi.')
+    ];
+    const res = await importFolder(files, 'rename', undefined, { rewriteInterNoteLinks: true });
+    expect(res.imported).toBe(2);
+    expect(res.linksRewritten).toBe(2);
+    const idA = res.pathToNoteId['vault/a.md'];
+    const idB = res.pathToNoteId['vault/b.md'];
+    expect(notes.get(idA)?.content).toBe(`See [B](note:${idB}) and [the bee](note:${idB}).`);
+  });
+
+  it('resolves a wikilink by FILE basename, not by frontmatter title', async () => {
+    const files: ImportFolderInput[] = [
+      input('a.md', 'vault/a.md', '---\ntitle: Alpha\n---\nGo to [[target]].'),
+      // File basename is "target", but the note title is "Renamed". Obsidian
+      // wikilinks address the file, so resolution must use the basename.
+      input('target.md', 'vault/target.md', '---\ntitle: Renamed\n---\nHere.')
+    ];
+    const res = await importFolder(files, 'rename', undefined, { rewriteInterNoteLinks: true });
+    const idA = res.pathToNoteId['vault/a.md'];
+    const idTarget = res.pathToNoteId['vault/target.md'];
+    expect(notes.get(idTarget)?.title).toBe('Renamed');
+    expect(notes.get(idA)?.content).toBe(`Go to [target](note:${idTarget}).`);
+    expect(res.linksRewritten).toBe(1);
+  });
+
+  it('leaves an ambiguous bare [[wikilink]] untouched but resolves the path form', async () => {
+    const files: ImportFolderInput[] = [
+      input('a.md', 'vault/a.md', '---\ntitle: A\n---\nBare [[Dup]] vs path [[x/Dup]].'),
+      input('Dup.md', 'vault/x/Dup.md', 'one'),
+      input('Dup.md', 'vault/y/Dup.md', 'two')
+    ];
+    const res = await importFolder(files, 'rename', undefined, { rewriteInterNoteLinks: true });
+    const idA = res.pathToNoteId['vault/a.md'];
+    const idDupX = res.pathToNoteId['vault/x/Dup.md'];
+    // Bare [[Dup]] is ambiguous → untouched; [[x/Dup]] names one file → resolved.
+    expect(notes.get(idA)?.content).toBe(`Bare [[Dup]] vs path [x/Dup](note:${idDupX}).`);
+    expect(res.linksRewritten).toBe(1);
+  });
+});
