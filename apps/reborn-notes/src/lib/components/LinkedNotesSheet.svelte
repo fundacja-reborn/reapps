@@ -78,18 +78,22 @@
 </script>
 
 {#snippet linkRow(item: LinkItem)}
-  <!-- Inset divider: starts at the text's left edge, padded from the right. -->
-  <li
-    class="relative after:pointer-events-none after:absolute after:bottom-0 after:left-4 after:right-4 after:h-px after:bg-border/60 after:content-[''] last:after:hidden"
-  >
+  <!-- No dividers: rows are separated by spacing + an inset, rounded hover.
+       Every row reserves a fixed-width trailing slot (w-6) so the "↔" badges
+       form a clean column and the title's ellipsis never runs under the icon.
+       The button is inset 8px (ul px-2) so its hover is inset + rounded; text
+       lands at 16px from the panel edge (aligned with the section header), and
+       the slot ends 16px from the right (matching the left inset). -->
+  <li>
     {#if item.missing}
       <div
-        class="flex w-full items-center gap-2 px-4 py-2"
+        class="flex w-full items-center gap-2 rounded-lg px-2 py-2"
         title={$t('linked_notes.missing')}
       >
         <span class="min-w-0 flex-1 truncate text-sm italic text-muted-foreground/50"
           >{$t('linked_notes.missing')}</span
         >
+        <span class="w-6 shrink-0" aria-hidden="true"></span>
       </div>
     {:else}
       <button
@@ -99,17 +103,19 @@
         aria-label={mutual.has(item.id)
           ? `${item.title}, ${$t('linked_notes.mutual')}`
           : undefined}
-        class="group flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-accent"
+        class="group flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-accent"
       >
         <span
           class="min-w-0 flex-1 truncate text-sm text-muted-foreground transition-colors group-hover:text-foreground"
           >{item.title}</span
         >
-        {#if mutual.has(item.id)}
-          <span class="shrink-0 text-muted-foreground/70" title={$t('linked_notes.mutual')}>
-            <ArrowLeftRight class="h-3.5 w-3.5" aria-hidden="true" />
-          </span>
-        {/if}
+        <span class="flex w-6 shrink-0 items-center justify-center">
+          {#if mutual.has(item.id)}
+            <span title={$t('linked_notes.mutual')} class="text-muted-foreground/70">
+              <ArrowLeftRight class="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
+          {/if}
+        </span>
       </button>
     {/if}
   </li>
@@ -173,7 +179,7 @@
               {$t('linked_notes.incoming_empty')}
             </p>
           {:else}
-            <ul role="list" aria-labelledby="linked-notes-incoming" class="pt-1">
+            <ul role="list" aria-labelledby="linked-notes-incoming" class="space-y-0.5 px-2 py-1">
               {#each backlinks as item (item.id)}
                 {@render linkRow(item)}
               {/each}
@@ -201,7 +207,7 @@
               {$t('linked_notes.outgoing_empty')}
             </p>
           {:else}
-            <ul role="list" aria-labelledby="linked-notes-outgoing" class="pt-1">
+            <ul role="list" aria-labelledby="linked-notes-outgoing" class="space-y-0.5 px-2 py-1">
               {#each outgoing as item (item.id)}
                 {@render linkRow(item)}
               {/each}
