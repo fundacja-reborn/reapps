@@ -51,13 +51,19 @@
     open && noteLinkGraph.isBuilt && backlinks.length === 0 && outgoing.length === 0
   );
 
+  // Build progress - only meaningful while the first build runs on a large vault.
+  const progress = $derived(noteLinkGraph.buildProgress);
+  const progressPct = $derived(
+    progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0
+  );
+
   function handleOpenChange(isOpen: boolean) {
     if (!isOpen) onclose();
   }
 </script>
 
 <Sheet {open} onOpenChange={handleOpenChange}>
-  <SheetContent side="right" class="flex w-80 flex-col p-0 sm:max-w-sm">
+  <SheetContent side="right" class="flex w-80 flex-col gap-0 p-0 sm:max-w-sm">
     <SheetHeader class="shrink-0 border-b px-4 py-3">
       <SheetTitle class="flex items-center gap-2 text-sm">
         <Waypoints class="h-4 w-4 text-muted-foreground" />
@@ -67,9 +73,24 @@
 
     <div class="flex-1 overflow-y-auto">
       {#if loading}
-        <div class="flex items-center justify-center py-12 text-sm text-muted-foreground">
-          <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-          {$t('linked_notes.loading')}
+        <div
+          class="flex flex-col items-center justify-center gap-3 px-6 py-12 text-sm text-muted-foreground"
+        >
+          <Loader2 class="h-5 w-5 animate-spin" />
+          <span>{$t('linked_notes.loading')}</span>
+          {#if progress.total > 0}
+            <div class="w-full max-w-[12rem]">
+              <div class="h-1 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  class="h-full bg-primary transition-[width] duration-200"
+                  style="width: {progressPct}%"
+                ></div>
+              </div>
+              <div class="mt-1.5 text-center text-xs tabular-nums">
+                {progress.done} / {progress.total}
+              </div>
+            </div>
+          {/if}
         </div>
       {:else if isEmpty}
         <div
@@ -110,10 +131,10 @@
           {/if}
         </section>
 
-        <!-- Outgoing -->
-        <section class="mt-2 border-t">
+        <!-- Outgoing (clear empty-row gap above, fully bordered band) -->
+        <section class="mt-6">
           <h3
-            class="sticky top-0 z-10 flex items-center gap-2 border-b bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            class="sticky top-0 z-10 flex items-center gap-2 border-y bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
           >
             <ArrowUpRight class="h-3.5 w-3.5" />
             {$t('linked_notes.outgoing')}

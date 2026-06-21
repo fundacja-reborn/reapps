@@ -38,6 +38,9 @@ class NoteLinkGraph {
   private _built = false;
   /** Generation guard - a clear() mid-build cancels the in-flight build's commit. */
   private _gen = 0;
+  /** Progress of the lazy first build, so the panel can show a bar on big vaults. */
+  private _progressDone = $state(0);
+  private _progressTotal = $state(0);
 
   // ── State ───────────────────────────────────────────────────────
 
@@ -50,6 +53,14 @@ class NoteLinkGraph {
   /** Whether a build() is currently running. Reactive. */
   get isBuilding(): boolean {
     return this._building;
+  }
+
+  /**
+   * Progress of the in-flight build as {done, total}. `total` is 0 until the
+   * note set is loaded / when idle. Reactive - drives the panel's progress bar.
+   */
+  get buildProgress(): { done: number; total: number } {
+    return { done: this._progressDone, total: this._progressTotal };
   }
 
   // ── Build / maintain ────────────────────────────────────────────
@@ -71,6 +82,8 @@ class NoteLinkGraph {
     this._building = true;
     try {
       const all = await noteStore.getAll();
+      this._progressTotal = all.length;
+      this._progressDone = 0;
       // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local temp, not reactive state
       const outgoing = new Map<string, Set<string>>();
       // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local temp, not reactive state
@@ -98,6 +111,7 @@ class NoteLinkGraph {
             sources.add(id);
           }
         }
+        this._progressDone = Math.min(i + batch.length, all.length);
         await new Promise((r) => setTimeout(r, 0)); // yield to event loop
       }
 
@@ -169,6 +183,8 @@ class NoteLinkGraph {
     this._incoming = new Map();
     this._built = false;
     this._building = false;
+    this._progressDone = 0;
+    this._progressTotal = 0;
     this._version++;
   }
 
