@@ -99,15 +99,16 @@
           {$t('linked_notes.empty')}
         </div>
       {:else}
-        <!-- Backlinks (incoming) -->
+        <!-- Backlinks (incoming). Header: bold/uppercase type, no gray band
+             (opaque bg-background only so the sticky label stays readable). -->
         <section>
           <h3
-            class="sticky top-0 z-10 flex items-center gap-2 border-b bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            class="sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-foreground/80"
           >
-            <ArrowDownLeft class="h-3.5 w-3.5" />
+            <ArrowDownLeft class="h-3.5 w-3.5 text-muted-foreground" />
             {$t('linked_notes.incoming')}
             <span
-              class="ml-auto rounded bg-background px-1.5 py-0.5 text-[11px] font-medium tabular-nums"
+              class="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground"
             >{backlinks.length}</span>
           </h3>
           {#if backlinks.length === 0}
@@ -115,15 +116,23 @@
               {$t('linked_notes.incoming_empty')}
             </p>
           {:else}
-            <ul>
+            <ul class="pt-2">
               {#each backlinks as item (item.id)}
-                <li>
+                <!-- Inset divider (aligned with the title, padded from both edges). -->
+                <li
+                  class="relative after:pointer-events-none after:absolute after:bottom-0 after:left-8 after:right-4 after:h-px after:bg-border/60 after:content-[''] last:after:hidden"
+                >
                   <button
                     type="button"
                     onclick={() => onnavigate(item.id)}
-                    class="block w-full truncate px-4 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent/50 active:bg-accent"
+                    class="group flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-colors hover:bg-accent/50 active:bg-accent"
                   >
-                    {item.title}
+                    <span
+                      class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40 transition-colors group-hover:bg-foreground/60"
+                    ></span>
+                    <span
+                      class="truncate text-sm text-muted-foreground transition-colors group-hover:text-foreground"
+                    >{item.title}</span>
                   </button>
                 </li>
               {/each}
@@ -131,15 +140,15 @@
           {/if}
         </section>
 
-        <!-- Outgoing (clear empty-row gap above, fully bordered band) -->
+        <!-- Outgoing (clear empty-row gap above). -->
         <section class="mt-6">
           <h3
-            class="sticky top-0 z-10 flex items-center gap-2 border-y bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            class="sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-foreground/80"
           >
-            <ArrowUpRight class="h-3.5 w-3.5" />
+            <ArrowUpRight class="h-3.5 w-3.5 text-muted-foreground" />
             {$t('linked_notes.outgoing')}
             <span
-              class="ml-auto rounded bg-background px-1.5 py-0.5 text-[11px] font-medium tabular-nums"
+              class="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground"
             >{outgoing.length}</span>
           </h3>
           {#if outgoing.length === 0}
@@ -147,15 +156,22 @@
               {$t('linked_notes.outgoing_empty')}
             </p>
           {:else}
-            <ul>
+            <ul class="pt-2">
               {#each outgoing as item (item.id)}
-                <li>
+                <li
+                  class="relative after:pointer-events-none after:absolute after:bottom-0 after:left-8 after:right-4 after:h-px after:bg-border/60 after:content-[''] last:after:hidden"
+                >
                   <button
                     type="button"
                     onclick={() => onnavigate(item.id)}
-                    class="block w-full truncate px-4 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent/50 active:bg-accent"
+                    class="group flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-colors hover:bg-accent/50 active:bg-accent"
                   >
-                    {item.title}
+                    <span
+                      class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40 transition-colors group-hover:bg-foreground/60"
+                    ></span>
+                    <span
+                      class="truncate text-sm text-muted-foreground transition-colors group-hover:text-foreground"
+                    >{item.title}</span>
                   </button>
                 </li>
               {/each}
