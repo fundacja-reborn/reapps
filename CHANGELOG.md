@@ -1,3 +1,11 @@
+## 0.34.0 (2026-06-21)
+
+### 🚀 Features
+
+- **notes:** convert inter-note links on Markdown import (opt-in) ([#317](https://github.com/fundacja-reborn/reapps/pull/317))
+- **notes:** convert Obsidian wikilinks on Markdown import (opt-in) ([#318](https://github.com/fundacja-reborn/reapps/pull/318), [#317](https://github.com/fundacja-reborn/reapps/issues/317))
+- **notes:** linked-notes panel (backlinks + outgoing links) ([#319](https://github.com/fundacja-reborn/reapps/pull/319))
+
 ## 0.33.0 (2026-06-20)
 
 ### 🚀 Features
