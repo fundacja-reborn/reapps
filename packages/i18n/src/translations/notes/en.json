@@ -844,7 +844,7 @@
       "preserve_tags_label": "Keep tags added in the app",
       "preserve_tags_desc": "Tags from the file are merged with the note's existing tags instead of replacing them. Stars and pins are never affected by import.",
       "rewrite_links_label": "Convert links between notes",
-      "rewrite_links_desc": "Relative Markdown links between the imported files (e.g. [text](../other.md)) become internal note links that open in the app. Links to files outside this import are left unchanged.",
+      "rewrite_links_desc": "Relative Markdown links and Obsidian wikilinks between the imported files (e.g. [text](../other.md) or [[Note]]) become internal note links that open in the app. Links to files outside this import are left unchanged.",
       "links_rewritten_count": "Converted {count} link(s) between notes",
       "dedup_start": "Start import",
       "dedup_count_overwritten": "Overwrote {count} existing note(s)",

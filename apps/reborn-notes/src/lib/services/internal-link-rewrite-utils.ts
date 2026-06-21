@@ -19,8 +19,11 @@
  *    scheme, so a second pass skips it (scheme check below). This is what lets
  *    live folder sync re-apply the rewrite on every run without thrashing.
  *
- * Scope (v1): relative path links only. Obsidian `[[wikilinks]]` and
- * reference-style `[label][ref]` definitions are intentionally left untouched.
+ * Scope: relative path links `[x](../b.md)` and, when a wikilink index is
+ * supplied (see {@link buildWikilinkIndex}), Obsidian `[[wikilinks]]` -
+ * resolved by vault-relative path or unique basename. Reference-style
+ * `[label][ref]` definitions and `![[embeds]]` (transclusions - reborn-notes
+ * has no include semantics) are intentionally left untouched.
  */
 
 /** Result of a rewrite pass: the new content and how many links were rewritten. */
@@ -32,13 +35,22 @@ export type LinkRewriteResult = { content: string; rewritten: number };
  *     `(`+)[\s\S]*?\1` - the backreference forces a matching run length, so it
  *     covers both inline code and fenced blocks. Left untouched.
  *  2. A tilde-fenced code block (`~~~ ... ~~~`). Left untouched.
- *  3. An inline Markdown link or image: `(!?)[label](dest)`. The `!` marks an
+ *  3. An Obsidian wikilink: `(!?)[[inner]]`. The `!` marks an embed
+ *     (transclusion) - left untouched; only plain `[[..]]` is a candidate, and
+ *     only when a wikilink index was supplied. Matched BEFORE the inline-link
+ *     alternative so `[[x]]` is not mis-read as `[label]` + stray `[x]`.
+ *  4. An inline Markdown link or image: `(!?)[label](dest)`. The `!` marks an
  *     image (embed) - left untouched; only real links are candidates.
+ *
+ * Capture groups: 1 = code fence, 2 = wikilink bang, 3 = wikilink inner,
+ * 4 = link bang, 5 = link label, 6 = link dest. The alternative that did not
+ * match leaves its groups `undefined`, which the callback uses to dispatch.
  *
  * Negated character classes only (no nested quantifiers over overlapping
  * classes), so there is no catastrophic-backtracking risk on note-sized input.
  */
-const TOKEN_RE = /(`+)[\s\S]*?\1|~~~[\s\S]*?~~~|(!?)\[([^\]]*)\]\(([^)]+)\)/g;
+const TOKEN_RE =
+  /(`+)[\s\S]*?\1|~~~[\s\S]*?~~~|(!?)\[\[([^[\]\n]+)\]\]|(!?)\[([^\]]*)\]\(([^)]+)\)/g;
 
 /** A destination has a URI scheme (`http:`, `mailto:`, `note:`, …). */
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
@@ -72,6 +84,116 @@ function stripAngleBrackets(url: string): string {
   return url.startsWith('<') && url.endsWith('>') ? url.slice(1, -1) : url;
 }
 
+// ── Obsidian wikilinks (`[[Target]]`) ───────────────────────────────────────
+
+/**
+ * Resolution index for Obsidian `[[wikilinks]]`, built once per import from the
+ * importer's `relativePath → note id` map by {@link buildWikilinkIndex}.
+ *
+ *  - `byPath` - vault-relative path without extension (lowercased) → note id.
+ *    Resolves the path form Obsidian emits to disambiguate (`[[folder/Note]]`,
+ *    its "shortest unique path"). A full path names exactly one file, so this
+ *    map is never ambiguous.
+ *  - `byBasename` - file basename without extension (lowercased) → note id, but
+ *    ONLY for basenames unique across the vault. A basename shared by two
+ *    distinct notes is absent, so a bare ambiguous `[[Note]]` is left untouched
+ *    (the agreed fallback) instead of guessing.
+ */
+export type WikilinkIndex = {
+  byPath: Map<string, string>;
+  byBasename: Map<string, string>;
+};
+
+/** First `/`-separated segment of a path (`a/b/c` → `a`; `c` → ''). */
+function firstSegment(path: string): string {
+  const idx = path.indexOf('/');
+  return idx === -1 ? '' : path.slice(0, idx);
+}
+
+/**
+ * Build a {@link WikilinkIndex} from the importer's `relativePath → note id`
+ * map. Obsidian resolves wikilinks against the VAULT ROOT (not the linking
+ * file's directory), so paths are made vault-relative by stripping the common
+ * root segment - the single selected directory of a folder import / folder
+ * sync. When the keys don't share a first segment they are treated as already
+ * vault-relative and nothing is stripped.
+ *
+ * Basenames are de-duplicated by note id first: one note carried under two
+ * paths (a folder-sync manifest entry plus this run's path) is a single target,
+ * not a collision. Only genuinely shared basenames (two distinct ids) drop out
+ * of `byBasename`.
+ */
+export function buildWikilinkIndex(
+  pathToNoteId: Map<string, string> | Record<string, string>
+): WikilinkIndex {
+  const map = pathToNoteId instanceof Map ? pathToNoteId : new Map(Object.entries(pathToNoteId));
+  const keys = [...map.keys()];
+
+  // Vault root = shared first segment, only when ALL keys share it.
+  let root = '';
+  if (keys.length > 0) {
+    const candidate = firstSegment(keys[0]);
+    if (candidate && keys.every((k) => firstSegment(k) === candidate)) root = candidate;
+  }
+  const toVaultRelative = (p: string): string =>
+    root && (p === root || p.startsWith(`${root}/`)) ? p.slice(root.length + 1) : p;
+
+  const byPath = new Map<string, string>();
+  const basenameIds = new Map<string, Set<string>>();
+  for (const [path, id] of map) {
+    const rel = toVaultRelative(path)
+      .replace(/\.md$/i, '')
+      .toLowerCase();
+    if (rel === '') continue;
+    if (!byPath.has(rel)) byPath.set(rel, id);
+    const base = rel.slice(rel.lastIndexOf('/') + 1);
+    const ids = basenameIds.get(base) ?? new Set<string>();
+    ids.add(id);
+    basenameIds.set(base, ids);
+  }
+
+  const byBasename = new Map<string, string>();
+  for (const [base, ids] of basenameIds) {
+    if (ids.size === 1) byBasename.set(base, [...ids][0]);
+  }
+
+  return { byPath, byBasename };
+}
+
+/**
+ * Split a wikilink body (`Target#sub|alias`) into the resolvable target and the
+ * display label. `target` is the text before the first `#` (subpath) and first
+ * `|` (alias); the label is the alias when present, else the target as written.
+ * The `#heading` / `#^block` subpath is dropped - `note:` links have no
+ * intra-note anchors yet, so the link lands on the note.
+ */
+function parseWikilink(inner: string): { target: string; label: string } {
+  const pipeIdx = inner.indexOf('|');
+  const beforePipe = pipeIdx === -1 ? inner : inner.slice(0, pipeIdx);
+  const alias = (pipeIdx === -1 ? '' : inner.slice(pipeIdx + 1)).trim();
+  const hashIdx = beforePipe.indexOf('#');
+  const target = (hashIdx === -1 ? beforePipe : beforePipe.slice(0, hashIdx)).trim();
+  return { target, label: alias || target };
+}
+
+/**
+ * Resolve a wikilink target to a note id against a {@link WikilinkIndex}. A
+ * target containing `/` is a path form → exact vault-relative match only
+ * (Obsidian does not basename-fall-back a path that doesn't exist). A bare
+ * basename resolves via the unique-basename map (ambiguous → undefined → the
+ * caller leaves the link untouched).
+ */
+function resolveWikilink(target: string, index: WikilinkIndex): string | undefined {
+  const norm = target
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.?\//, '')
+    .replace(/\.md$/i, '')
+    .toLowerCase();
+  if (norm === '') return undefined;
+  return norm.includes('/') ? index.byPath.get(norm) : index.byBasename.get(norm);
+}
+
 /**
  * Rewrite relative `.md` links in `content` to `note:UUID` links using the
  * importer's path→note-id map.
@@ -89,14 +211,23 @@ function stripAngleBrackets(url: string): string {
  * (`![..](..)`), external/`note:`/anchor-only/absolute destinations, non-`.md`
  * targets, code spans, and unresolved targets are left untouched. Any
  * `#fragment` is dropped (the `note:` scheme has no heading anchors yet).
+ *
+ * @param opts.wikilinks Optional {@link WikilinkIndex}. When supplied, Obsidian
+ *                       `[[Target]]` / `[[Target|alias]]` links are also
+ *                       rewritten (target resolved by vault-relative path or
+ *                       unique basename; `#heading`/`^block` subpaths dropped).
+ *                       `![[embeds]]` stay untouched. Without it, every `[[..]]`
+ *                       is left as-is (the path-link-only behavior).
  */
 export function rewriteInterNoteLinks(
   content: string,
   currentRelativePath: string,
-  pathToNoteId: Map<string, string> | Record<string, string>
+  pathToNoteId: Map<string, string> | Record<string, string>,
+  opts?: { wikilinks?: WikilinkIndex }
 ): LinkRewriteResult {
   const map = pathToNoteId instanceof Map ? pathToNoteId : new Map(Object.entries(pathToNoteId));
-  if (map.size === 0) return { content, rewritten: 0 };
+  const wikilinks = opts?.wikilinks;
+  if (map.size === 0 && wikilinks === undefined) return { content, rewritten: 0 };
 
   // Case-insensitive fallback index, built once. Exact match wins so a vault
   // with case-distinct files on a case-sensitive FS still resolves precisely.
@@ -117,10 +248,31 @@ export function rewriteInterNoteLinks(
 
   const newContent = content.replace(
     TOKEN_RE,
-    (match, codeFence: string | undefined, bang: string | undefined, label: string, dest: string): string => {
+    (
+      match,
+      codeFence: string | undefined,
+      wikiBang: string | undefined,
+      wikiInner: string | undefined,
+      bang: string | undefined,
+      label: string,
+      dest: string
+    ): string => {
       // Group 1 set → backtick code span/fence; tilde fence has no capture but
       // starts with `~~~`. Either way it is code: leave verbatim.
       if (codeFence !== undefined || match.startsWith('~~~')) return match;
+
+      // Obsidian wikilink `[[Target]]` / `[[Target|alias]]` (group 3 set). Only
+      // rewritten when an index was supplied; `![[embed]]` (transclusion) and
+      // unresolved/ambiguous targets are left as-is.
+      if (wikiInner !== undefined) {
+        if (wikilinks === undefined || wikiBang === '!') return match;
+        const { target, label: wikiLabel } = parseWikilink(wikiInner);
+        const noteId = resolveWikilink(target, wikilinks);
+        if (noteId === undefined) return match;
+        rewritten++;
+        return `[${wikiLabel}](note:${noteId})`;
+      }
+
       // Image / embed (`![..](..)`): not a navigable link.
       if (bang === '!') return match;
 
