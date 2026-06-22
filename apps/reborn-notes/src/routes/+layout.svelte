@@ -3,7 +3,7 @@
   import { onMount, untrack } from 'svelte';
   import { installNativeAuthProbe } from '$lib/utils/native-auth-probe';
   import { get } from 'svelte/store';
-  import { Toaster } from '@reborn/ui';
+  import { Toaster, WhatsNewDialog } from '@reborn/ui';
   import { browser } from '$app/environment';
   import type { Snippet } from 'svelte';
   import { goto } from '$lib/utils/navigation';
@@ -37,10 +37,20 @@
   import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
   import { initAppLock, shouldLockOnResume } from '$lib/services/app-lock.service';
   import { createLogger } from '@reborn/utils';
+  import type { ReleasePlatform } from '@reborn/i18n';
+  import { whatsNew } from '$lib/stores/whats-new.svelte';
+  import { resolveWhatsNewPlatform } from '$lib/utils/whats-new-platform';
+  import { startWhatsNewWatcher } from '$lib/services/whats-new.service';
 
   const logger = createLogger('notes:layout');
 
   let { children }: { children: Snippet } = $props();
+
+  // What's new dialog: platform drives release-notes filtering; the website
+  // changelog (English + /pl only) backs the "Full changelog" link.
+  const SITE_URL = (import.meta.env.PUBLIC_SITE_URL as string | undefined) ?? 'https://reapps.eu';
+  const changelogHref = $derived(`${SITE_URL}${$locale === 'pl' ? '/pl' : ''}/changelog`);
+  let wnPlatform = $state<ReleasePlatform>('web');
 
   let appReady = $state(false);
   let initTimeout = $state(false);
@@ -322,6 +332,16 @@
       logger.error('Initialization failed:', e);
     });
 
+    // What's new: resolve the platform now (so the Settings dialog filters
+    // correctly the moment it is opened), then check for post-update notes a few
+    // seconds later so the toast never competes with the boot path.
+    void resolveWhatsNewPlatform().then((p) => {
+      wnPlatform = p;
+    });
+    const whatsNewTimer = setTimeout(() => {
+      void startWhatsNewWatcher('notes', wnPlatform);
+    }, 3000);
+
     // Initialize network monitoring (sets up online/offline listeners)
     const unsubscribeNetwork = isOnline.subscribe(() => {});
 
@@ -404,6 +424,7 @@
     return () => {
       clearTimeout(timeoutId);
       clearInterval(syncInterval);
+      clearTimeout(whatsNewTimer);
       if (updateGateTimer) clearTimeout(updateGateTimer);
       unsubscribeNetwork();
       cleanupFolderSync();
@@ -518,6 +539,12 @@
     />
     {@render children()}
     <Toaster />
+    <WhatsNewDialog
+      bind:open={whatsNew.open}
+      app="notes"
+      platform={wnPlatform}
+      fullChangelogHref={changelogHref}
+    />
     <LocalModeWelcome />
     {#if __REBORN_NATIVE__}
       <UpdateRequiredGate />

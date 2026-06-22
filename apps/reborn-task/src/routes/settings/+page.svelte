@@ -23,7 +23,9 @@
 		StickyNote,
 		ShieldAlert,
 		Share2,
-		UserPlus
+		UserPlus,
+		Sparkles,
+		ChevronRight
 	} from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { locale } from '$lib/stores/i18n.store';
@@ -31,6 +33,7 @@
 	import { user, isAuthenticated, isLocalOnly } from '$lib/stores/auth.store';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
+	import { openWhatsNew } from '$lib/stores/whats-new.svelte';
 	import { resolve } from '$app/paths';
 	import { createLogger } from '@reborn/utils';
 
@@ -453,6 +456,18 @@
 						</div>
 					</div>
 				</div>
+				<button
+					type="button"
+					onclick={() => openWhatsNew()}
+					class={cn(itemClasses, 'w-full text-left')}
+				>
+					<Sparkles class="h-5 w-5 text-muted-foreground shrink-0" />
+					<div class="flex-1 min-w-0">
+						<div class="font-medium">{$t('whats_new.settings_row')}</div>
+						<div class="text-sm text-muted-foreground">{$t('whats_new.settings_row_desc')}</div>
+					</div>
+					<ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
+				</button>
 				<div class={itemClasses}>
 					<Scale class="h-5 w-5 text-muted-foreground shrink-0" />
 					<div class="flex-1 min-w-0">
