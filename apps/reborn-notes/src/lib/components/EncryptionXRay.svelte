@@ -265,15 +265,24 @@
         class="absolute inset-0 overflow-auto bg-zinc-900"
         style="clip-path: inset(0 0 0 {sliderPosition}%);"
       >
-        <div class="min-h-full px-6 py-5 pl-10">
-          <div
-            class="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400"
-          >
-            <Server class="h-3.5 w-3.5" />
-            {$t('encryption.server_view')}
+        <div class="min-h-full py-5">
+          <!-- Badge mirrors the left pane's, pinned to the panel's RIGHT edge
+               (right-aligned) so it stays visible the moment X-Ray opens,
+               regardless of the split position. -->
+          <div class="mb-3 flex justify-end px-6">
+            <span
+              class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400"
+            >
+              <Server class="h-3.5 w-3.5" />
+              {$t('encryption.server_view')}
+            </span>
           </div>
+          <!-- Ciphertext starts just past the seam: the left padding tracks the
+               split position, so line starts are never tucked under the clipped
+               left edge when the handle is dragged far left. -->
           <pre
-            class="whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-emerald-400/90">{formatCipher(
+            class="whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-emerald-400/90"
+            style="padding-left: calc({sliderPosition}% + 2.5rem); padding-right: 1.5rem;">{formatCipher(
               'title_encrypted',
               titleEncrypted
             )}
