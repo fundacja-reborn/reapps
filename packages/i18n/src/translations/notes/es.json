@@ -672,13 +672,14 @@
   },
   "encryption": {
     "title": "Radiografía del cifrado",
-    "server_view_desc": "Esto es lo que ve el servidor — nadie puede leer sus notas sin su contraseña",
+    "server_view_desc": "Esto es lo que ve el servidor - nadie puede leer sus notas sin su contraseña",
     "close": "Cerrar",
     "loading": "Leyendo datos cifrados…",
     "your_view": "Su vista (descifrada)",
     "server_view": "Vista del servidor (cifrada)",
     "empty_note": "(nota vacía)",
-    "slider_label": "Arrastre para ver la versión cifrada/descifrada"
+    "slider_label": "Arrastre para ver la versión cifrada/descifrada",
+    "reset_hint": "Doble clic para restablecer a 50/50"
   },
   "e2e": {
     "badge": "Cifrado de extremo a extremo",

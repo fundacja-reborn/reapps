@@ -672,13 +672,14 @@
   },
   "encryption": {
     "title": "Encryption X-Ray",
-    "server_view_desc": "This is what the server sees — nobody can read your notes without your password",
+    "server_view_desc": "This is what the server sees - nobody can read your notes without your password",
     "close": "Close",
     "loading": "Reading encrypted data…",
     "your_view": "Your view (decrypted)",
     "server_view": "Server view (encrypted)",
     "empty_note": "(empty note)",
-    "slider_label": "Drag to see encrypted/decrypted version"
+    "slider_label": "Drag to see encrypted/decrypted version",
+    "reset_hint": "Double-click to reset to 50/50"
   },
   "e2e": {
     "badge": "Encrypted end-to-end",

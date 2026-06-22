@@ -40,6 +40,7 @@
   import NoteEditorHeader from '$lib/components/editor/NoteEditorHeader.svelte';
   import HistoryHeader from '$lib/components/editor/HistoryHeader.svelte';
   import NoteContentArea from '$lib/components/editor/NoteContentArea.svelte';
+  import EncryptionXRay from '$lib/components/EncryptionXRay.svelte';
   import NoteDetailActions from '$lib/components/editor/NoteDetailActions.svelte';
   import NoteMetadataBar from '$lib/components/editor/NoteMetadataBar.svelte';
   import NoteActionSheet from '$lib/components/notes/NoteActionSheet.svelte';
@@ -1417,7 +1418,6 @@
             <NoteContentArea
               noteId={$activeNoteId}
               {effectiveViewMode}
-              bind:showEncryptionXRay
               {historyMode}
               {historyViewMode}
               {selectedVersion}
@@ -1485,46 +1485,59 @@
               {/snippet}
             </NoteEditorHeader>
 
-            <!-- Scrollable: metadata + content scroll away -->
-            <div bind:this={mobileScrollContainer} class="flex flex-1 flex-col overflow-y-auto">
-              <div bind:this={mobileTitleSentinel} class="h-0 w-0 shrink-0"></div>
+            <!-- Scroll container + X-Ray overlay share one positioned box so the
+                 overlay pins to the visible editor region, not the scroll
+                 content (which grows with note length under parentScroll). -->
+            <div class="relative flex flex-1 flex-col min-h-0">
+              <!-- Scrollable: metadata + content scroll away -->
+              <div bind:this={mobileScrollContainer} class="flex flex-1 flex-col overflow-y-auto">
+                <div bind:this={mobileTitleSentinel} class="h-0 w-0 shrink-0"></div>
 
-              <NoteMetadataBar
-                {isMobile}
-                {activeTrash}
-                title={noteDetailService.title}
-                folderName={activeNoteFolderName}
-                noteId={$activeNoteId}
-                updatedAt={detailMenuNote?.updated_at ?? null}
-                createdAt={detailMenuNote?.created_at ?? null}
-                ontitleinput={handleTitleInput}
-                onfolderclick={navigateToNoteFolder}
-              />
+                <NoteMetadataBar
+                  {isMobile}
+                  {activeTrash}
+                  title={noteDetailService.title}
+                  folderName={activeNoteFolderName}
+                  noteId={$activeNoteId}
+                  updatedAt={detailMenuNote?.updated_at ?? null}
+                  createdAt={detailMenuNote?.created_at ?? null}
+                  ontitleinput={handleTitleInput}
+                  onfolderclick={navigateToNoteFolder}
+                />
 
-              <NoteContentArea
-                noteId={$activeNoteId}
-                {effectiveViewMode}
-                bind:showEncryptionXRay
-                {historyMode}
-                {historyViewMode}
-                {selectedVersion}
-                {previousVersion}
-                bind:editorRef
-                bind:previewScrollEl
-                bind:previewContentEl
-                {autocompleteNotes}
-                {isMobile}
-                parentScroll={true}
-                oncontentchange={handleContentChange}
-                onviewinit={handleEditorViewInit}
-                onviewdestroy={handleEditorViewDestroy}
-                onpreviewrender={handlePreviewRender}
-                onnotelinkrequest={openNotePicker}
-                onnotelink={handleNoteLink}
-                {resolveNoteTitle}
-                imageLoadMode={$imageLoadMode}
-                noteKind={currentNoteKind}
-              />
+                <NoteContentArea
+                  noteId={$activeNoteId}
+                  {effectiveViewMode}
+                  {historyMode}
+                  {historyViewMode}
+                  {selectedVersion}
+                  {previousVersion}
+                  bind:editorRef
+                  bind:previewScrollEl
+                  bind:previewContentEl
+                  {autocompleteNotes}
+                  {isMobile}
+                  parentScroll={true}
+                  oncontentchange={handleContentChange}
+                  onviewinit={handleEditorViewInit}
+                  onviewdestroy={handleEditorViewDestroy}
+                  onpreviewrender={handlePreviewRender}
+                  onnotelinkrequest={openNotePicker}
+                  onnotelink={handleNoteLink}
+                  {resolveNoteTitle}
+                  imageLoadMode={$imageLoadMode}
+                  noteKind={currentNoteKind}
+                />
+              </div>
+
+              {#if showEncryptionXRay && historyMode === 'closed'}
+                <EncryptionXRay
+                  noteId={$activeNoteId}
+                  plainTitle={noteDetailService.title}
+                  plainContent={noteDetailService.content}
+                  onclose={() => (showEncryptionXRay = false)}
+                />
+              {/if}
             </div>
           {/if}
         {:else if $isInitialSync}
@@ -1672,7 +1685,6 @@
           <NoteContentArea
             noteId={$activeNoteId}
             {effectiveViewMode}
-            bind:showEncryptionXRay
             {historyMode}
             {historyViewMode}
             {selectedVersion}
@@ -1734,49 +1746,62 @@
             {/snippet}
           </NoteEditorHeader>
 
-          <!-- Scrollable area: metadata + toolbar + editor scroll together -->
-          <div
-            bind:this={desktopEditorScrollContainer}
-            class="flex flex-1 flex-col min-h-0 overflow-y-auto"
-          >
-            <div bind:this={desktopTitleSentinel} class="h-0 w-0 shrink-0"></div>
+          <!-- Scroll container + X-Ray overlay share one positioned box so the
+               overlay pins to the visible editor region (not the scroll
+               content) and fills it regardless of note length / scroll pos. -->
+          <div class="relative flex flex-1 flex-col min-h-0">
+            <!-- Scrollable area: metadata + toolbar + editor scroll together -->
+            <div
+              bind:this={desktopEditorScrollContainer}
+              class="flex flex-1 flex-col min-h-0 overflow-y-auto"
+            >
+              <div bind:this={desktopTitleSentinel} class="h-0 w-0 shrink-0"></div>
 
-            <NoteMetadataBar
-              {isMobile}
-              {activeTrash}
-              title={noteDetailService.title}
-              folderName={activeNoteFolderName}
-              noteId={$activeNoteId}
-              updatedAt={detailMenuNote?.updated_at ?? null}
-              createdAt={detailMenuNote?.created_at ?? null}
-              {effectiveViewMode}
-              ontitleinput={handleTitleInput}
-              onfolderclick={navigateToNoteFolder}
-            />
+              <NoteMetadataBar
+                {isMobile}
+                {activeTrash}
+                title={noteDetailService.title}
+                folderName={activeNoteFolderName}
+                noteId={$activeNoteId}
+                updatedAt={detailMenuNote?.updated_at ?? null}
+                createdAt={detailMenuNote?.created_at ?? null}
+                {effectiveViewMode}
+                ontitleinput={handleTitleInput}
+                onfolderclick={navigateToNoteFolder}
+              />
 
-            <NoteContentArea
-              noteId={$activeNoteId}
-              {effectiveViewMode}
-              bind:showEncryptionXRay
-              {historyMode}
-              {historyViewMode}
-              {selectedVersion}
-              {previousVersion}
-              bind:editorRef
-              bind:previewScrollEl
-              bind:previewContentEl
-              {autocompleteNotes}
-              parentScroll={true}
-              oncontentchange={handleContentChange}
-              onviewinit={handleEditorViewInit}
-              onviewdestroy={handleEditorViewDestroy}
-              onpreviewrender={handlePreviewRender}
-              onnotelinkrequest={openNotePicker}
-              onnotelink={handleNoteLink}
-              {resolveNoteTitle}
-              imageLoadMode={$imageLoadMode}
-              noteKind={currentNoteKind}
-            />
+              <NoteContentArea
+                noteId={$activeNoteId}
+                {effectiveViewMode}
+                {historyMode}
+                {historyViewMode}
+                {selectedVersion}
+                {previousVersion}
+                bind:editorRef
+                bind:previewScrollEl
+                bind:previewContentEl
+                {autocompleteNotes}
+                parentScroll={true}
+                oncontentchange={handleContentChange}
+                onviewinit={handleEditorViewInit}
+                onviewdestroy={handleEditorViewDestroy}
+                onpreviewrender={handlePreviewRender}
+                onnotelinkrequest={openNotePicker}
+                onnotelink={handleNoteLink}
+                {resolveNoteTitle}
+                imageLoadMode={$imageLoadMode}
+                noteKind={currentNoteKind}
+              />
+            </div>
+
+            {#if showEncryptionXRay && historyMode === 'closed'}
+              <EncryptionXRay
+                noteId={$activeNoteId}
+                plainTitle={noteDetailService.title}
+                plainContent={noteDetailService.content}
+                onclose={() => (showEncryptionXRay = false)}
+              />
+            {/if}
           </div>
         {/if}
       {:else if showNoteListInMain}

@@ -672,13 +672,14 @@
   },
   "encryption": {
     "title": "Verschlüsselungs-Röntgen",
-    "server_view_desc": "Dies sieht der Server — niemand kann Ihre Notizen ohne Ihr Passwort lesen",
+    "server_view_desc": "Dies sieht der Server - niemand kann Ihre Notizen ohne Ihr Passwort lesen",
     "close": "Schließen",
     "loading": "Verschlüsselte Daten werden gelesen…",
     "your_view": "Ihre Ansicht (entschlüsselt)",
     "server_view": "Server-Ansicht (verschlüsselt)",
     "empty_note": "(leere Notiz)",
-    "slider_label": "Ziehen, um die verschlüsselte/entschlüsselte Version zu sehen"
+    "slider_label": "Ziehen, um die verschlüsselte/entschlüsselte Version zu sehen",
+    "reset_hint": "Doppelklick setzt auf 50/50 zurück"
   },
   "e2e": {
     "badge": "Ende-zu-Ende-verschlüsselt",
