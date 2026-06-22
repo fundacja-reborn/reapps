@@ -671,14 +671,15 @@
     "close_history": "Zamknij podgląd"
   },
   "encryption": {
-    "title": "Szyfrowanie — podgląd",
-    "server_view_desc": "To widzi serwer — nikt nie odczyta Twoich notatek bez hasła",
+    "title": "Szyfrowanie - podgląd",
+    "server_view_desc": "To widzi serwer - nikt nie odczyta Twoich notatek bez hasła",
     "close": "Zamknij",
     "loading": "Odczytywanie zaszyfrowanych danych…",
     "your_view": "Twój widok (odszyfrowany)",
     "server_view": "Widok serwera (zaszyfrowany)",
     "empty_note": "(pusta notatka)",
-    "slider_label": "Przeciągnij, aby zobaczyć zaszyfrowaną/odszyfrowaną wersję"
+    "slider_label": "Przeciągnij, aby zobaczyć zaszyfrowaną/odszyfrowaną wersję",
+    "reset_hint": "Kliknij dwukrotnie, aby przywrócić 50/50"
   },
   "e2e": {
     "badge": "Szyfrowane end-to-end",

@@ -3,7 +3,6 @@
   import NoteEditor from '$lib/components/NoteEditor.svelte';
   import MarkdownPreview from '$lib/components/MarkdownPreview.svelte';
   import MarkdownDiffView from '$lib/components/MarkdownDiffView.svelte';
-  import EncryptionXRay from '$lib/components/EncryptionXRay.svelte';
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import { t } from '$lib/stores/i18n.store';
   import type { ImageLoadMode, PeriodicKind } from '@reborn/storage';
@@ -13,7 +12,6 @@
   let {
     noteId,
     effectiveViewMode,
-    showEncryptionXRay = $bindable(false),
     historyMode,
     historyViewMode,
     selectedVersion,
@@ -36,7 +34,6 @@
   }: {
     noteId: string;
     effectiveViewMode: ViewMode;
-    showEncryptionXRay: boolean;
     historyMode: 'closed' | 'list' | 'diff';
     historyViewMode: 'preview' | 'diff';
     selectedVersion: import('@reborn/types').NoteHistoryDecrypted | null;
@@ -134,17 +131,6 @@
 </script>
 
 <div class="relative {isParentScrollActive ? '' : 'flex min-h-0 flex-1 overflow-hidden'}">
-  {#if showEncryptionXRay && historyMode === 'closed'}
-    <EncryptionXRay
-      {noteId}
-      plainTitle={noteDetailService.title}
-      plainContent={noteDetailService.content}
-      onclose={() => {
-        showEncryptionXRay = false;
-      }}
-    />
-  {/if}
-
   {#if historyMode === 'diff' && selectedVersion}
     <!-- History content -->
     {#if historyViewMode === 'diff' && previousVersion}

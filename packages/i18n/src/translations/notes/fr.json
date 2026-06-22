@@ -672,13 +672,14 @@
   },
   "encryption": {
     "title": "Radiographie du chiffrement",
-    "server_view_desc": "Voici ce que le serveur voit — personne ne peut lire vos notes sans votre mot de passe",
+    "server_view_desc": "Voici ce que le serveur voit - personne ne peut lire vos notes sans votre mot de passe",
     "close": "Fermer",
     "loading": "Lecture des données chiffrées…",
     "your_view": "Votre vue (déchiffrée)",
     "server_view": "Vue du serveur (chiffrée)",
     "empty_note": "(note vide)",
-    "slider_label": "Faites glisser pour voir la version chiffrée/déchiffrée"
+    "slider_label": "Faites glisser pour voir la version chiffrée/déchiffrée",
+    "reset_hint": "Double-cliquez pour réinitialiser à 50/50"
   },
   "e2e": {
     "badge": "Chiffré de bout en bout",
