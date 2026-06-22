@@ -19,9 +19,6 @@
     "title": "What's new",
     "settings_row": "What's new",
     "settings_row_desc": "See what changed in recent updates",
-    "updated_toast_title": "Updated to v{version}",
-    "updated_toast_desc": "See what's new in this version.",
-    "updated_toast_button": "What's new",
     "category_new": "New",
     "category_improved": "Improved",
     "category_fixed": "Fixed",
@@ -101,7 +98,7 @@
       "error": "An error occurred while logging out"
     },
     "session": {
-      "expired_banner": "Session expired — click to sign in again",
+      "expired_banner": "Session expired - click to sign in again",
       "reauth_title": "Session expired",
       "reauth_description": "Your session has expired. Enter your password to continue without losing your data.",
       "username_label": "Username",
@@ -112,7 +109,7 @@
       "error_auth_failed": "Authentication failed. Please check your password.",
       "error_unknown": "Authentication failed",
       "error_locked": "Account temporarily locked. Too many failed attempts. Try again in {seconds}s.",
-      "empty_no_data": "No data available — session expired. Sign in again to sync your data.",
+      "empty_no_data": "No data available - session expired. Sign in again to sync your data.",
       "totp_title": "Two-factor verification",
       "totp_description": "Enter the code from your authenticator app to finish re-authenticating.",
       "totp_label": "2FA code",

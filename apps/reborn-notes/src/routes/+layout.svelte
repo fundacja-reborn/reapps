@@ -40,7 +40,7 @@
   import type { ReleasePlatform } from '@reborn/i18n';
   import { whatsNew } from '$lib/stores/whats-new.svelte';
   import { resolveWhatsNewPlatform } from '$lib/utils/whats-new-platform';
-  import { startWhatsNewWatcher } from '$lib/services/whats-new.service';
+  import { maybeShowWhatsNew } from '$lib/services/whats-new.service';
 
   const logger = createLogger('notes:layout');
 
@@ -51,6 +51,7 @@
   const SITE_URL = (import.meta.env.PUBLIC_SITE_URL as string | undefined) ?? 'https://reapps.eu';
   const changelogHref = $derived(`${SITE_URL}${$locale === 'pl' ? '/pl' : ''}/changelog`);
   let wnPlatform = $state<ReleasePlatform>('web');
+  let wnPlatformReady = $state(false);
 
   let appReady = $state(false);
   let initTimeout = $state(false);
@@ -128,6 +129,19 @@
       });
       return;
     }
+  });
+
+  // What's new: auto-open the dialog once the app is unlocked and showing
+  // content - never over a lock/auth screen. Mirrors the guard above: account
+  // user with the E2E key, or local-only, and not gated behind a passcode /
+  // App Lock. maybeShowWhatsNew acts at most once and only advances its baseline
+  // when it actually runs, so a still-locked session never burns the prompt.
+  $effect(() => {
+    if (!browser || !appReady || !wnPlatformReady) return;
+    const unlocked = ($authStore.isAuthenticated && $authStore.hasE2E) || $authStore.isLocalOnly;
+    if (!unlocked) return;
+    if (cryptoManager.isLocalPasscodeLocked() || cryptoManager.isAppLockLocked()) return;
+    maybeShowWhatsNew('notes', wnPlatform);
   });
 
   // Re-decrypt all stores when E2E key becomes available (e.g. after unlock/login flow).
@@ -332,15 +346,13 @@
       logger.error('Initialization failed:', e);
     });
 
-    // What's new: resolve the platform now (so the Settings dialog filters
-    // correctly the moment it is opened), then check for post-update notes a few
-    // seconds later so the toast never competes with the boot path.
+    // What's new: resolve the platform so both the Settings dialog and the
+    // auto-open effect filter release notes correctly. The dialog itself is
+    // opened by the unlock-gated $effect above, never on a fixed timer.
     void resolveWhatsNewPlatform().then((p) => {
       wnPlatform = p;
+      wnPlatformReady = true;
     });
-    const whatsNewTimer = setTimeout(() => {
-      void startWhatsNewWatcher('notes', wnPlatform);
-    }, 3000);
 
     // Initialize network monitoring (sets up online/offline listeners)
     const unsubscribeNetwork = isOnline.subscribe(() => {});
@@ -424,7 +436,6 @@
     return () => {
       clearTimeout(timeoutId);
       clearInterval(syncInterval);
-      clearTimeout(whatsNewTimer);
       if (updateGateTimer) clearTimeout(updateGateTimer);
       unsubscribeNetwork();
       cleanupFolderSync();

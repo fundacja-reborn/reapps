@@ -19,9 +19,6 @@
     "title": "Neuigkeiten",
     "settings_row": "Neuigkeiten",
     "settings_row_desc": "Sieh, was sich in den letzten Updates geändert hat",
-    "updated_toast_title": "Auf v{version} aktualisiert",
-    "updated_toast_desc": "Sieh, was in dieser Version neu ist.",
-    "updated_toast_button": "Neuigkeiten",
     "category_new": "Neu",
     "category_improved": "Verbessert",
     "category_fixed": "Behoben",
@@ -101,7 +98,7 @@
       "error": "Beim Abmelden ist ein Fehler aufgetreten"
     },
     "session": {
-      "expired_banner": "Sitzung abgelaufen — klicken Sie, um sich erneut anzumelden",
+      "expired_banner": "Sitzung abgelaufen - klicken Sie, um sich erneut anzumelden",
       "reauth_title": "Sitzung abgelaufen",
       "reauth_description": "Ihre Sitzung ist abgelaufen. Geben Sie Ihr Passwort ein, um fortzufahren, ohne Ihre Daten zu verlieren.",
       "username_label": "Benutzername",
@@ -112,7 +109,7 @@
       "error_auth_failed": "Authentifizierung fehlgeschlagen. Bitte überprüfen Sie Ihr Passwort.",
       "error_unknown": "Authentifizierung fehlgeschlagen",
       "error_locked": "Konto vorübergehend gesperrt. Zu viele fehlgeschlagene Versuche. Erneut versuchen in {seconds}s.",
-      "empty_no_data": "Keine Daten verfügbar — Sitzung abgelaufen. Melden Sie sich erneut an, um Ihre Daten zu synchronisieren.",
+      "empty_no_data": "Keine Daten verfügbar - Sitzung abgelaufen. Melden Sie sich erneut an, um Ihre Daten zu synchronisieren.",
       "totp_title": "Zwei-Faktor-Verifizierung",
       "totp_description": "Geben Sie den Code aus Ihrer Authenticator-App ein, um die erneute Anmeldung abzuschließen.",
       "totp_label": "2FA-Code",

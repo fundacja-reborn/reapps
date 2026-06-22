@@ -19,9 +19,6 @@
     "title": "Co nowego",
     "settings_row": "Co nowego",
     "settings_row_desc": "Zobacz, co zmieniło się w ostatnich aktualizacjach",
-    "updated_toast_title": "Zaktualizowano do v{version}",
-    "updated_toast_desc": "Zobacz, co nowego w tej wersji.",
-    "updated_toast_button": "Co nowego",
     "category_new": "Nowość",
     "category_improved": "Ulepszenia",
     "category_fixed": "Poprawki",
@@ -101,7 +98,7 @@
       "error": "Wystąpił błąd podczas wylogowywania"
     },
     "session": {
-      "expired_banner": "Sesja wygasła — kliknij, aby zalogować się ponownie",
+      "expired_banner": "Sesja wygasła - kliknij, aby zalogować się ponownie",
       "reauth_title": "Sesja wygasła",
       "reauth_description": "Twoja sesja wygasła. Wprowadź hasło, aby kontynuować bez utraty danych.",
       "username_label": "Nazwa użytkownika",
@@ -112,7 +109,7 @@
       "error_auth_failed": "Uwierzytelnianie nie powiodło się. Sprawdź swoje hasło.",
       "error_unknown": "Uwierzytelnianie nie powiodło się",
       "error_locked": "Konto tymczasowo zablokowane. Zbyt wiele nieudanych prób. Spróbuj ponownie za {seconds} s.",
-      "empty_no_data": "Brak danych — sesja wygasła. Zaloguj się ponownie, aby zsynchronizować dane.",
+      "empty_no_data": "Brak danych - sesja wygasła. Zaloguj się ponownie, aby zsynchronizować dane.",
       "totp_title": "Weryfikacja dwuetapowa",
       "totp_description": "Wprowadź kod z aplikacji uwierzytelniającej, aby dokończyć ponowne logowanie.",
       "totp_label": "Kod 2FA",

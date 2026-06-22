@@ -24,7 +24,7 @@
 	import { taskCounts } from '$lib/stores/task-counts.store';
 	import { sharesStore } from '$lib/stores/shares.store';
 	import { whatsNew } from '$lib/stores/whats-new.svelte';
-	import { startWhatsNewWatcher } from '$lib/services/whats-new.service';
+	import { maybeShowWhatsNew } from '$lib/services/whats-new.service';
 
 	const logger = createLogger('Layout');
 
@@ -106,6 +106,15 @@
 		runSync().catch((err) => {
 			logger.error('Sync-on-E2E-unlock failed:', err);
 		});
+	});
+
+	// What's new: auto-open the dialog once the app is unlocked (the E2E key is
+	// available, so the user is past login/unlock and looking at content), never
+	// over a lock/auth screen. Web-only app -> platform 'web'. maybeShowWhatsNew
+	// acts at most once and only advances its baseline when it actually runs.
+	$effect(() => {
+		if (!browser || !$session?.hasE2E) return;
+		maybeShowWhatsNew('task', 'web');
 	});
 
 	// Initialize dark mode based on user preference or system setting
@@ -288,16 +297,9 @@
 			logger.error('Initialization failed:', error);
 		});
 
-		// What's new: check for post-update notes a few seconds after mount so the
-		// toast never competes with the boot path. Web-only app -> platform 'web'.
-		const whatsNewTimer = setTimeout(() => {
-			void startWhatsNewWatcher('task', 'web');
-		}, 3000);
-
 		return () => {
 			clearTimeout(timeoutId);
 			clearInterval(syncInterval);
-			clearTimeout(whatsNewTimer);
 			document.removeEventListener('visibilitychange', handleVisibilityChange);
 			unsubscribe();
 		};
