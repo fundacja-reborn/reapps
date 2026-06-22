@@ -7,9 +7,10 @@
  *   - the public /changelog page on the website (full, unfiltered, with badges)
  *
  * Structure (language-neutral: version / date / tags) lives in `manifest.json`;
- * the human text (title + optional description) lives per-locale in `text/<locale>.json`,
- * keyed by the stable item `id`. A Vitest integrity test enforces that every id
- * has text in all 5 locales and that tags use valid enum values.
+ * the human text - a single user-facing sentence or two per item - lives
+ * per-locale in `text/<locale>.json`, keyed by the stable item `id`. A Vitest
+ * integrity test enforces that every id has text in all 5 locales and that tags
+ * use valid enum values.
  */
 
 /** Which app(s) an item is relevant to. The monorepo ships one version, but
@@ -41,16 +42,15 @@ export interface ReleaseEntry {
   items: ReleaseItem[];
 }
 
-/** Per-locale text for a single item, keyed by item id in `text/<locale>.json`. */
-export interface ReleaseItemText {
-  title: string;
-  description?: string;
-}
-
-export type ReleaseNotesText = Record<string, ReleaseItemText>;
+/**
+ * Per-locale text for a single item, keyed by item id in `text/<locale>.json`.
+ * One self-contained description per item (no separate title): the "What's new"
+ * dialog and the public changelog both render it as a single bullet line.
+ */
+export type ReleaseNotesText = Record<string, string>;
 
 /** An item joined with its localized text, ready to render. */
-export type LocalizedReleaseItem = ReleaseItem & ReleaseItemText;
+export type LocalizedReleaseItem = ReleaseItem & { text: string };
 
 export interface LocalizedRelease {
   version: string;

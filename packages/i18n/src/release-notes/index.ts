@@ -95,7 +95,7 @@ export function selectReleases(
       if (!itemMatches(item, app, platform)) continue;
       const localized = text[item.id];
       if (!localized) continue;
-      items.push({ ...item, ...localized });
+      items.push({ ...item, text: localized });
     }
     if (items.length > 0) out.push({ version: release.version, date: release.date, items });
   }

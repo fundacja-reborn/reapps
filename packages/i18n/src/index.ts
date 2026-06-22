@@ -52,7 +52,6 @@ export type {
   ReleaseCategory,
   ReleaseItem,
   ReleaseEntry,
-  ReleaseItemText,
   ReleaseNotesText,
   ReleaseFilter,
   LocalizedReleaseItem,

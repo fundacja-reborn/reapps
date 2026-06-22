@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ExternalLink, Sparkles } from '@lucide/svelte';
+  import { ExternalLink } from '@lucide/svelte';
   import {
     t,
     locale,
@@ -11,9 +11,8 @@
     type ReleasePlatform,
     type SupportedLocale
   } from '@reborn/i18n';
-  import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../dialog';
+  import { Dialog, DialogContent, DialogTitle } from '../dialog';
   import { Button } from '../button';
-  import { cn } from '../../utils/cn';
 
   let {
     open = $bindable(false),
@@ -33,11 +32,6 @@
   // How many releases to show before the "Show older updates" affordance.
   const INITIAL_COUNT = 8;
   const CATEGORY_ORDER: ReleaseCategory[] = ['new', 'improved', 'fixed'];
-  const CATEGORY_CLASS: Record<ReleaseCategory, string> = {
-    new: 'text-emerald-600 dark:text-emerald-400',
-    improved: 'text-blue-600 dark:text-blue-400',
-    fixed: 'text-amber-600 dark:text-amber-400'
-  };
 
   let releases = $state<LocalizedRelease[]>([]);
   let loading = $state(false);
@@ -91,82 +85,77 @@
 </script>
 
 <Dialog bind:open>
-  <DialogContent class="sm:max-w-[560px]">
-    <DialogHeader>
-      <DialogTitle class="flex items-center gap-2">
-        <Sparkles class="h-5 w-5 text-primary" />
+  <DialogContent class="flex flex-col gap-0 overflow-y-hidden p-0 sm:max-w-[560px]">
+    <!-- Sticky header: stays pinned while the body scrolls underneath. -->
+    <header class="shrink-0 border-b px-6 py-4 pr-12">
+      <DialogTitle class="text-xl font-semibold tracking-tight">
         {$t('whats_new.title')}
       </DialogTitle>
-    </DialogHeader>
+    </header>
 
-    {#if loading && releases.length === 0}
-      <p class="py-6 text-center text-sm text-muted-foreground">{$t('common.loading')}</p>
-    {:else if releases.length === 0}
-      <p class="py-6 text-center text-sm text-muted-foreground">{$t('whats_new.empty')}</p>
-    {:else}
-      <div class="space-y-6">
-        {#each visible as release (release.version)}
-          <section class="space-y-3">
-            <div class="flex items-baseline justify-between gap-3 border-b pb-1.5">
-              <h3 class="text-sm font-semibold">{fmtDate(release.date)}</h3>
-              <span
-                class="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground"
-              >
-                v{release.version}
-              </span>
-            </div>
-
-            {#each groups(release.items) as group (group.category)}
-              <div class="space-y-1.5">
-                <p
-                  class={cn(
-                    'text-xs font-semibold uppercase tracking-wide',
-                    CATEGORY_CLASS[group.category]
-                  )}
+    <div class="flex-1 overflow-y-auto px-6 py-5">
+      {#if loading && releases.length === 0}
+        <p class="py-6 text-center text-sm text-muted-foreground">{$t('common.loading')}</p>
+      {:else if releases.length === 0}
+        <p class="py-6 text-center text-sm text-muted-foreground">{$t('whats_new.empty')}</p>
+      {:else}
+        <div class="divide-y divide-border">
+          {#each visible as release (release.version)}
+            <section class="space-y-3 py-5 first:pt-0 last:pb-0">
+              <div class="flex items-baseline justify-between gap-3">
+                <h3 class="text-base font-semibold">{fmtDate(release.date)}</h3>
+                <span
+                  class="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground"
                 >
-                  {$t(`whats_new.category_${group.category}`)}
-                </p>
-                <ul class="space-y-1.5">
-                  {#each group.items as item (item.id)}
-                    <li class="flex gap-2">
-                      <span aria-hidden="true" class="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/60"></span>
-                      <div class="min-w-0">
-                        <span class="text-sm font-medium text-foreground">{item.title}</span>
-                        {#if item.description}
-                          <p class="text-sm text-muted-foreground">{item.description}</p>
-                        {/if}
-                      </div>
-                    </li>
-                  {/each}
-                </ul>
+                  v{release.version}
+                </span>
               </div>
-            {/each}
-          </section>
-        {/each}
-      </div>
 
-      {#if hasMore || fullChangelogHref}
-        <div class="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-          {#if hasMore}
-            <Button variant="ghost" size="sm" onclick={() => (showAll = true)}>
-              {$t('whats_new.show_older')}
-            </Button>
-          {:else}
-            <span></span>
-          {/if}
-          {#if fullChangelogHref}
-            <a
-              href={fullChangelogHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-            >
-              {$t('whats_new.full_changelog')}
-              <ExternalLink class="h-3.5 w-3.5" />
-            </a>
-          {/if}
+              {#each groups(release.items) as group (group.category)}
+                <div class="space-y-1.5">
+                  <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {$t(`whats_new.category_${group.category}`)}
+                  </p>
+                  <ul class="space-y-2">
+                    {#each group.items as item (item.id)}
+                      <li class="flex gap-2.5">
+                        <span
+                          aria-hidden="true"
+                          class="mt-2 size-1.5 shrink-0 rounded-full bg-muted-foreground/40"
+                        ></span>
+                        <p class="text-sm leading-relaxed text-foreground">{item.text}</p>
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/each}
+            </section>
+          {/each}
         </div>
       {/if}
+    </div>
+
+    {#if hasMore || fullChangelogHref}
+      <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-6 py-3">
+        {#if hasMore}
+          <Button variant="ghost" size="sm" onclick={() => (showAll = true)}>
+            {$t('whats_new.show_older')}
+          </Button>
+        {:else}
+          <span></span>
+        {/if}
+        {#if fullChangelogHref}
+          <a
+            href={fullChangelogHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            {$t('whats_new.full_changelog')}
+            <ExternalLink class="h-3.5 w-3.5" />
+          </a>
+        {/if}
+      </div>
     {/if}
   </DialogContent>
 </Dialog>

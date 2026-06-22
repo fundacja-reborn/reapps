@@ -1,174 +1,45 @@
 {
-  "0.34.1-xray-overlay": {
-    "title": "Encryption X-Ray nie ucieka z miejsca",
-    "description": "Nakładka szyfrowania podąża teraz za edytorem podczas przewijania."
-  },
-  "0.34.0-linked-notes": {
-    "title": "Panel połączonych notatek",
-    "description": "Zobacz linki przychodzące i wychodzące notatki w jednym panelu."
-  },
-  "0.34.0-import-links": {
-    "title": "Zachowaj linki przy imporcie Markdown",
-    "description": "Opcjonalnie zamień odnośniki między notatkami i wikilinki Obsidian na działające linki podczas importu."
-  },
-  "0.33.0-native-folder-sync": {
-    "title": "Synchronizacja folderu na telefonie",
-    "description": "Odzwierciedlaj folder z urządzenia w swoich notatkach na Android i iOS."
-  },
-  "0.33.0-native-sync-speed": {
-    "title": "Szybsza synchronizacja na telefonie",
-    "description": "Synchronizacja pobiera historię tylko dla notatek, które faktycznie się zmieniły."
-  },
-  "0.33.0-ios-2fa": {
-    "title": "Wszystkie sześć cyfr 2FA na iOS",
-    "description": "Naprawiliśmy wpisywanie pełnego kodu dwuetapowego w aplikacji iOS."
-  },
-  "0.32.1-tag-autocomplete": {
-    "title": "Płynniejsze podpowiadanie tagów",
-    "description": "Podpowiedzi tagów obsługują nawigację klawiaturą i czyszczą pole po wybraniu jednego z nich."
-  },
-  "0.32.0-sync-errors": {
-    "title": "Czytelniejsze błędy synchronizacji",
-    "description": "Gdy serwer odrzuci zmianę, dana notatka lub zadanie pokazuje wyraźny błąd zamiast cicho zawodzić."
-  },
-  "0.32.0-large-notes": {
-    "title": "Synchronizacja bardzo dużych notatek",
-    "description": "Limit rozmiaru po stronie serwera nie blokuje już synchronizacji dużych notatek."
-  },
-  "0.32.0-task-trash": {
-    "title": "Widok zadań świadomy kosza",
-    "description": "Widok szczegółów zadania poprawnie obsługuje zadania w koszu, z większym przełącznikiem wyszukiwania na telefonie."
-  },
-  "0.31.0-local-only": {
-    "title": "Korzystaj bez konta",
-    "description": "Zacznij w pełni offline bez konta, a gdy zechcesz, przejdź na konto z synchronizacją."
-  },
-  "0.31.0-local-passcode": {
-    "title": "Lokalny kod dostępu",
-    "description": "Chroń dane przechowywane tylko na urządzeniu opcjonalnym kodem dostępu."
-  },
-  "0.30.0-folder-sync-desktop": {
-    "title": "Synchronizacja folderu na żywo na komputerze",
-    "description": "Odzwierciedlaj swoje notatki jednokierunkowo do lokalnego folderu na komputerze, razem ze ścieżkami zagnieżdżonymi."
-  },
-  "0.30.0-support-link": {
-    "title": "Wesprzyj projekt",
-    "description": "Ikona serca w nawigacji prowadzi do sposobów, w jakie możesz wesprzeć rozwój."
-  },
-  "0.29.0-saved-searches": {
-    "title": "Zapisane wyszukiwania i inteligentne foldery",
-    "description": "Zapisz wyszukiwanie jako inteligentny folder, który otworzysz ponownie w każdej chwili."
-  },
-  "0.29.0-native-share": {
-    "title": "Systemowy panel udostępniania i linki bezpośrednie",
-    "description": "Otwieraj udostępnione linki od razu w aplikacji i udostępniaj notatki przez panel udostępniania urządzenia."
-  },
-  "0.28.0-periodic-dedup": {
-    "title": "Porządek w notatkach okresowych",
-    "description": "Zduplikowane notatki dzienne, tygodniowe lub miesięczne utworzone na różnych urządzeniach są wykrywane i scalane."
-  },
-  "0.28.0-live-hr": {
-    "title": "Linie podziału w Live Preview",
-    "description": "Linia --- jest teraz renderowana jako pozioma linia podziału w Live Preview."
-  },
-  "0.28.0-code-copy": {
-    "title": "Kopiowanie bloków kodu",
-    "description": "Bloki kodu mają przycisk kopiowania, a ostatnią linię można zaznaczyć."
-  },
-  "0.27.0-longer-sessions": {
-    "title": "Pozostań zalogowany dłużej",
-    "description": "Sesje trwają teraz do 30 dni, zanim trzeba zalogować się ponownie."
-  },
-  "0.26.0-push": {
-    "title": "Przypomnienia i powiadomienia push",
-    "description": "Otrzymuj powiadomienia push o przypomnieniach do zadań."
-  },
-  "0.25.0-forced-colors": {
-    "title": "Obsługa trybu wysokiego kontrastu Windows",
-    "description": "Zaznaczone elementy pozostają widoczne w trybie wymuszonych kolorów / wysokiego kontrastu Windows."
-  },
-  "0.24.0-share-markdown": {
-    "title": "Kopiuj lub pobierz udostępnioną treść jako Markdown",
-    "description": "Osoby przeglądające udostępnioną treść tylko do odczytu mogą ją skopiować lub pobrać jako plik .md."
-  },
-  "0.23.0-shares": {
-    "title": "Udostępniaj migawki tylko do odczytu",
-    "description": "Opublikuj zaszyfrowaną od końca do końca migawkę notatki lub listy zadań tylko do odczytu poprzez prywatny link."
-  },
-  "0.22.0-multiselect": {
-    "title": "Zaznaczanie wielu notatek",
-    "description": "Zaznacz kilka notatek naraz, aby je przenieść, usunąć lub uporządkować."
-  },
-  "0.20.0-sso-unlock": {
-    "title": "Jedno odblokowanie dla obu aplikacji",
-    "description": "Odblokuj re/notes i re/task jednocześnie wspólnym kluczem szyfrowania."
-  },
-  "0.19.0-task-lists": {
-    "title": "Listy zadań w notatkach",
-    "description": "Dodawaj interaktywne pola wyboru (listy zadań) wewnątrz swoich notatek."
-  },
-  "0.18.0-periodic-notes": {
-    "title": "Notatki okresowe",
-    "description": "Notatki dzienne, tygodniowe i miesięczne z dedykowanym widokiem kalendarza."
-  },
-  "0.18.0-settings-sync": {
-    "title": "Szyfrowana synchronizacja ustawień",
-    "description": "Twoje preferencje synchronizują się między urządzeniami, zaszyfrowane od końca do końca."
-  },
-  "0.17.0-search-operators": {
-    "title": "Zaawansowane operatory wyszukiwania",
-    "description": "Wyszukuj za pomocą operatorów, fraz w cudzysłowie, negacji i grupowania logicznego OR."
-  },
-  "0.15.0-reminder-timing": {
-    "title": "Własny czas przypomnień",
-    "description": "Wybierz, z jakim wyprzedzeniem uruchamiają się przypomnienia oraz domyślną godzinę dla przypomnień bez wyznaczonej pory."
-  },
-  "0.14.0-inline-images": {
-    "title": "Obrazy w treści w Live Preview",
-    "description": "Obrazy wyświetlają się w treści w Live Preview, z ładowaniem po kliknięciu dla ochrony Twojej prywatności."
-  },
-  "0.13.0-live-default": {
-    "title": "Live Preview domyślnie",
-    "description": "Live Preview jest teraz domyślnym trybem edytora, z wprowadzeniem przy pierwszym uruchomieniu, abyś mógł wybrać."
-  },
-  "0.12.0-editable-tables": {
-    "title": "Edytowalne tabele",
-    "description": "Edytuj tabele Markdown w treści, w stylu Obsidian, bezpośrednio w Live Preview."
-  },
-  "0.11.0-live-code": {
-    "title": "Bloki kodu w Live Preview",
-    "description": "Bloki kodu renderują się z podświetlaniem składni w Live Preview."
-  },
-  "0.10.0-live-preview": {
-    "title": "Edytor Live Preview",
-    "description": "Nowy tryb edycji, który renderuje formatowanie Markdown w trakcie pisania."
-  },
-  "0.9.0-subfolder-search": {
-    "title": "Wyszukiwanie obejmuje podfoldery",
-    "description": "Wyszukiwanie w folderze obejmuje teraz także jego podfoldery."
-  },
-  "0.8.0-initial-sync": {
-    "title": "Postęp pierwszej synchronizacji",
-    "description": "Widok główny pokazuje postęp synchronizacji przy pierwszym logowaniu na urządzeniu."
-  },
-  "0.6.0-pdf-export": {
-    "title": "Eksport notatek do PDF",
-    "description": "Eksportuj dowolną notatkę do PDF przez systemowe okno drukowania."
-  },
-  "0.5.0-subfolders": {
-    "title": "Podfoldery",
-    "description": "Porządkuj swoje notatki w zagnieżdżonych folderach."
-  },
-  "0.4.0-markdown-import": {
-    "title": "Import folderów Markdown",
-    "description": "Importuj folder plików Markdown, z wyborem folderu docelowego i obsługą duplikatów."
-  },
-  "0.2.0-offline-reliability": {
-    "title": "Bardziej niezawodny tryb offline",
-    "description": "Sesje offline przywracają się poprawnie, a wskaźnik synchronizacji odzwierciedla rzeczywiste połączenie."
-  },
-  "0.1.0-first-release": {
-    "title": "Pierwsze publiczne wydanie",
-    "description": "re/notes i re/task stają się publiczne na licencji AGPL-3.0 po niemal roku prywatnego rozwoju - zaszyfrowane od końca do końca notatki i zadania, otwarte od teraz."
-  }
+  "0.34.1-xray-overlay": "Encryption X-Ray - widok dzielony pokazujący Twoją czytelną notatkę obok dokładnego szyfrogramu przechowywanego na serwerze - był zakotwiczony do pełnej długości notatki, więc w długich notatkach uchwyt podziału uciekał poza ekran, a w krótkich panel wystawał poza jego dół. Teraz pozostaje przypięty do widocznego obszaru edytora i zapamiętuje pozycję podziału, z punktami przyciągania i obsługą klawiatury. Otworzysz go ikoną kłódki w pasku narzędzi notatki.",
+  "0.34.0-linked-notes": "Panel połączonych notatek zbiera w jednym miejscu linki przychodzące (każdą notatkę, która linkuje do bieżącej) oraz linki wychodzące, więc możesz poruszać się między powiązanymi notatkami w obie strony.",
+  "0.34.0-import-links": "Import Markdown może teraz opcjonalnie zamienić odnośniki między notatkami - zarówno standardowe linki Markdown, jak i wikilinki [[w stylu Obsidian]] - na działające linki w aplikacji, dzięki czemu zaimportowany zbiór notatek pozostaje nawigowalny.",
+  "0.33.0-native-folder-sync": "Na Androidzie i iOS możesz odzwierciedlić folder plików z urządzenia w swoich notatkach, utrzymując go w zgodzie w miarę zmian.",
+  "0.33.0-native-sync-speed": "Synchronizacja na telefonie pobiera teraz historię wersji tylko dla notatek, które faktycznie się zmieniły, zamiast dla wszystkich - mniej danych i krótszy czas synchronizacji.",
+  "0.33.0-ios-2fa": "Na iOS pole kodu dwuetapowego przyjmowało tylko pięć z sześciu cyfr; teraz wpiszesz pełny kod.",
+  "0.32.1-tag-autocomplete": "Podpowiadanie tagów obsługuje teraz nawigację klawiaturą - strzałki przewijają podpowiedzi, Enter wybiera - i czyści wpisany tekst po wybraniu tagu.",
+  "0.32.0-sync-errors": "Gdy serwer odrzuci zmianę (na przykład z powodu błędu walidacji lub limitu rozmiaru), dana notatka lub zadanie pokazuje teraz wyraźny błąd synchronizacji dla tego elementu, zamiast cicho zawodzić - nic nie przepadnie bez Twojej wiedzy.",
+  "0.32.0-large-notes": "Notatki większe niż serwerowy limit rozmiaru żądania nie mogły się synchronizować. Limit został podniesiony, więc duże notatki wysyłają się niezawodnie.",
+  "0.32.0-task-trash": "Widok szczegółów zadania poprawnie obsługuje teraz zadania w koszu zamiast się zawieszać, a przełącznik wyszukiwania jest większy i łatwiejszy do trafienia na telefonie.",
+  "0.31.0-local-only": "Możesz teraz korzystać z aplikacji w pełni offline, bez konta - dane zostają na urządzeniu - a później przejść na konto z synchronizacją i szyfrowaniem end-to-end, nic nie tracąc.",
+  "0.31.0-local-passcode": "Dane przechowywane tylko lokalnie możesz chronić opcjonalnym kodem dostępu, dokładając blokadę na pamięć urządzenia, gdy nie używasz konta.",
+  "0.30.0-folder-sync-desktop": "W przeglądarkach na komputerze Twoje notatki mogą być odzwierciedlane jednokierunkowo do lokalnego folderu na dysku, razem ze ścieżkami zagnieżdżonymi - żywa kopia Markdown na dysku, którą kontrolujesz.",
+  "0.30.0-support-link": "Ikona serca na pasku nawigacji prowadzi do sposobów, w jakie możesz wesprzeć rozwój projektu.",
+  "0.29.0-saved-searches": "Zapisz dowolne wyszukiwanie jako inteligentny folder, który ponawia zapytanie przy każdym otwarciu - przefiltrowany widok zawsze o jedno dotknięcie.",
+  "0.29.0-native-share": "Na Androidzie i iOS udostępnione linki otwierają się teraz od razu w aplikacji, a notatkę wyślesz przez systemowy panel udostępniania urządzenia.",
+  "0.28.0-periodic-dedup": "Jeśli ta sama notatka dzienna, tygodniowa lub miesięczna powstała na dwóch urządzeniach offline, synchronizacja wykrywa teraz duplikaty i scala je w jedną.",
+  "0.28.0-live-hr": "Linia z trzech myślników renderuje się teraz jako pozioma linia podziału w edytorze Live Preview.",
+  "0.28.0-code-copy": "Bloki kodu mają teraz przycisk kopiowania jednym dotknięciem, a ich ostatnią linię można zaznaczyć.",
+  "0.27.0-longer-sessions": "Sesje po zalogowaniu trwają teraz do 30 dni, zanim trzeba ponownie wpisać hasło.",
+  "0.26.0-push": "Przypomnienia o zadaniach mogą teraz docierać jako powiadomienia push, nawet gdy aplikacja jest zamknięta.",
+  "0.25.0-forced-colors": "Zaznaczone elementy pozostają widoczne w trybie wysokiego kontrastu Windows (wymuszone kolory) zamiast zlewać się z tłem.",
+  "0.24.0-share-markdown": "Każdy, kto przegląda udostępnioną treść tylko do odczytu, może teraz skopiować jej zawartość lub pobrać ją jako plik Markdown (.md).",
+  "0.23.0-shares": "Opublikuj migawkę notatki lub listy zadań tylko do odczytu pod prywatnym linkiem. Pozostaje zaszyfrowana end-to-end: klucz deszyfrujący znajduje się we fragmencie linku po znaku #, którego przeglądarki nigdy nie wysyłają na serwer, więc serwer przechowuje wyłącznie szyfrogram.",
+  "0.22.0-multiselect": "Zaznacz kilka notatek naraz, aby je przenieść, usunąć lub uporządkować w jednej operacji.",
+  "0.20.0-sso-unlock": "Odblokowanie jednej aplikacji odblokowuje teraz drugą: re/notes i re/task współdzielą jeden klucz szyfrowania end-to-end, więc jedno wpisanie hasła obejmuje obie.",
+  "0.19.0-task-lists": "Dodawaj interaktywne pola wyboru wewnątrz notatki i odhaczaj pozycje na miejscu.",
+  "0.18.0-periodic-notes": "Notatki dzienne, tygodniowe i miesięczne, z widokiem kalendarza do przechodzenia między nimi.",
+  "0.18.0-settings-sync": "Twoje preferencje aplikacji synchronizują się teraz między urządzeniami, zaszyfrowane end-to-end jak reszta danych.",
+  "0.17.0-search-operators": "Wyszukiwanie zyskało prawdziwy język zapytań: operatory pól, frazy w cudzysłowie, negację i grupowanie OR, więc precyzyjnie zawęzisz wyniki.",
+  "0.15.0-reminder-timing": "Wybierz, z jakim wyprzedzeniem uruchamia się przypomnienie, i ustaw domyślną porę dnia dla przypomnień, które mają tylko datę.",
+  "0.14.0-inline-images": "Obrazy wyświetlają się w treści w edytorze Live Preview, z ładowaniem po kliknięciu - zdalny obraz nie jest pobierany, a Twój adres IP nie trafia do jego serwera, dopóki sam o to nie poprosisz.",
+  "0.13.0-live-default": "Live Preview jest teraz domyślnym trybem edytora, z jednorazowym wprowadzeniem pozwalającym wrócić do czystego Markdown, jeśli wolisz.",
+  "0.12.0-editable-tables": "Edytuj tabele Markdown wizualnie, komórka po komórce, bezpośrednio w edytorze Live Preview.",
+  "0.11.0-live-code": "Bloki kodu renderują się z podświetlaniem składni w edytorze Live Preview.",
+  "0.10.0-live-preview": "Nowy tryb edycji Live Preview renderuje formatowanie Markdown w treści w trakcie pisania, zamiast pokazywać surową składnię.",
+  "0.9.0-subfolder-search": "Wyszukiwanie w obrębie folderu obejmuje teraz także wszystko w jego podfolderach.",
+  "0.8.0-initial-sync": "Pierwsze logowanie na urządzeniu pokazuje teraz wyraźny postęp, gdy pobierane są Twoje zaszyfrowane dane.",
+  "0.6.0-pdf-export": "Eksportuj dowolną notatkę do PDF przez systemowe okno drukowania.",
+  "0.5.0-subfolders": "Porządkuj notatki w zagnieżdżonych folderach.",
+  "0.4.0-markdown-import": "Zaimportuj folder plików Markdown, wybierając, gdzie trafią i jak obsłużyć powtarzające się nazwy.",
+  "0.2.0-offline-reliability": "Sesje offline przywracają się teraz niezawodnie po ponownym uruchomieniu, a wskaźnik synchronizacji odzwierciedla rzeczywiste połączenie, a nie tylko flagę online przeglądarki.",
+  "0.1.0-first-release": "re/notes i re/task stały się publiczne na licencji AGPL-3.0 po niemal roku prywatnego rozwoju: zaszyfrowane end-to-end notatki i zadania, od teraz open source."
 }

@@ -57,26 +57,14 @@ describe('release-notes manifest', () => {
 
 describe('release-notes translations', () => {
   for (const locale of LOCALES) {
-    it(`${locale}: every manifest id has title (+ no orphan keys)`, () => {
+    it(`${locale}: every manifest id has a non-empty string (+ no orphan keys)`, () => {
       const text = readText(locale);
       for (const id of allIds) {
-        expect(text[id], `${locale} missing "${id}"`).toBeTruthy();
-        expect(typeof text[id].title, `${locale} "${id}" title`).toBe('string');
-        expect(text[id].title.length, `${locale} "${id}" title empty`).toBeGreaterThan(0);
+        expect(typeof text[id], `${locale} "${id}" must be a string`).toBe('string');
+        expect(text[id].length, `${locale} "${id}" empty`).toBeGreaterThan(0);
       }
       for (const key of Object.keys(text)) {
         expect(allIds.includes(key), `${locale} orphan key "${key}"`).toBe(true);
-      }
-    });
-
-    it(`${locale}: description presence matches en`, () => {
-      const en = readText('en');
-      const text = readText(locale);
-      for (const id of allIds) {
-        expect(
-          Boolean(text[id]?.description),
-          `${locale} "${id}" description presence should match en`
-        ).toBe(Boolean(en[id]?.description));
       }
     });
   }

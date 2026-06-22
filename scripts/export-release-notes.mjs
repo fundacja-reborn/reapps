@@ -53,7 +53,7 @@ for (const release of manifest) {
   for (const item of release.items) {
     for (const locale of LOCALES) {
       const entry = text[locale][item.id];
-      if (!entry || !entry.title) missing.push(`${locale}:${item.id}`);
+      if (typeof entry !== 'string' || entry.length === 0) missing.push(`${locale}:${item.id}`);
     }
   }
 }
