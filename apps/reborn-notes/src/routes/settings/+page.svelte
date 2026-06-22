@@ -28,6 +28,10 @@
     CalendarDays
   } from '@lucide/svelte';
   import { goto } from '$lib/utils/navigation';
+  import {
+    getNativeVersionInfo,
+    type NativeVersionInfo
+  } from '$lib/utils/native-version-info';
   import { t } from '$lib/stores/i18n.store';
   import { locale } from '$lib/stores/i18n.store';
   import { cn, GithubMark } from '@reborn/ui';
@@ -52,10 +56,17 @@
 
   let storageInfoExpanded = $state(false);
 
+  // Native-only: store-installed version + live backend version (drift detail).
+  // Null on web - the single __APP_VERSION__ line stays unchanged there.
+  let versionInfo = $state<NativeVersionInfo | null>(null);
+
   onMount(() => {
     if ($authStore.isAuthenticated) {
       void refreshQuota();
     }
+    void getNativeVersionInfo().then((info) => {
+      versionInfo = info;
+    });
   });
 
   function formatBytes(bytes: number): string {
@@ -488,10 +499,28 @@
             <Info class="h-5 w-5 text-muted-foreground shrink-0" />
             <div class="flex-1 min-w-0">
               <div class="font-medium">{$t('settings_page.about.name')}</div>
-              <div class="text-sm text-muted-foreground">
-                {$t('settings_page.about.version')}
-                {__APP_VERSION__}
-              </div>
+              {#if versionInfo}
+                <!-- Native: store-installed version, then the frozen bundled
+                     frontend vs the live backend so the drift is visible. -->
+                <div class="text-sm text-muted-foreground">
+                  {$t('settings_page.about.version')}
+                  {$t('settings_page.about.native_app_version', {
+                    values: { version: versionInfo.appVersion, build: versionInfo.appBuild }
+                  })}
+                </div>
+                <div class="text-xs text-muted-foreground">
+                  {$t('settings_page.about.frontend_version')}
+                  {__APP_VERSION__}
+                  <span aria-hidden="true" class="px-0.5">·</span>
+                  {$t('settings_page.about.backend_version')}
+                  {versionInfo.backendVersion ?? '-'}
+                </div>
+              {:else}
+                <div class="text-sm text-muted-foreground">
+                  {$t('settings_page.about.version')}
+                  {__APP_VERSION__}
+                </div>
+              {/if}
             </div>
           </div>
           <div class={itemClasses}>
