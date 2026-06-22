@@ -93,7 +93,7 @@
       </DialogTitle>
     </header>
 
-    <div class="flex-1 overflow-y-auto px-6 py-5">
+    <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
       {#if loading && releases.length === 0}
         <p class="py-6 text-center text-sm text-muted-foreground">{$t('common.loading')}</p>
       {:else if releases.length === 0}
