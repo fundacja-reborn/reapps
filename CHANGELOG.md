@@ -1,3 +1,9 @@
+## 0.34.1 (2026-06-22)
+
+### 🩹 Fixes
+
+- **notes:** pin Encryption X-Ray overlay to the editor viewport ([#321](https://github.com/fundacja-reborn/reapps/pull/321))
+
 ## 0.34.0 (2026-06-21)
 
 ### 🚀 Features
