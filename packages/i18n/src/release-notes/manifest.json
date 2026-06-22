@@ -1,0 +1,237 @@
+[
+  {
+    "version": "0.34.1",
+    "date": "2026-06-22",
+    "items": [
+      { "id": "0.34.1-xray-overlay", "category": "fixed", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.34.0",
+    "date": "2026-06-21",
+    "items": [
+      { "id": "0.34.0-linked-notes", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.34.0-import-links", "category": "new", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.33.0",
+    "date": "2026-06-20",
+    "items": [
+      { "id": "0.33.0-native-folder-sync", "category": "new", "apps": ["notes"], "platforms": ["android", "ios"] },
+      { "id": "0.33.0-native-sync-speed", "category": "improved", "apps": ["notes"], "platforms": ["android", "ios"] },
+      { "id": "0.33.0-ios-2fa", "category": "fixed", "apps": ["notes"], "platforms": ["ios"] }
+    ]
+  },
+  {
+    "version": "0.32.1",
+    "date": "2026-06-17",
+    "items": [
+      { "id": "0.32.1-tag-autocomplete", "category": "improved", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.32.0",
+    "date": "2026-06-15",
+    "items": [
+      { "id": "0.32.0-sync-errors", "category": "improved", "apps": ["notes", "task"], "platforms": "all" },
+      { "id": "0.32.0-large-notes", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.32.0-task-trash", "category": "fixed", "apps": ["task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.31.0",
+    "date": "2026-06-14",
+    "items": [
+      { "id": "0.31.0-local-only", "category": "new", "apps": ["notes", "task"], "platforms": "all" },
+      { "id": "0.31.0-local-passcode", "category": "new", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.30.0",
+    "date": "2026-06-13",
+    "items": [
+      { "id": "0.30.0-folder-sync-desktop", "category": "new", "apps": ["notes"], "platforms": ["web"] },
+      { "id": "0.30.0-support-link", "category": "new", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.29.0",
+    "date": "2026-06-11",
+    "items": [
+      { "id": "0.29.0-saved-searches", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.29.0-native-share", "category": "new", "apps": ["notes"], "platforms": ["android", "ios"] }
+    ]
+  },
+  {
+    "version": "0.28.0",
+    "date": "2026-06-09",
+    "items": [
+      { "id": "0.28.0-periodic-dedup", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.28.0-live-hr", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.28.0-code-copy", "category": "improved", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.27.0",
+    "date": "2026-06-07",
+    "items": [
+      { "id": "0.27.0-longer-sessions", "category": "improved", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.26.0",
+    "date": "2026-05-27",
+    "items": [
+      { "id": "0.26.0-push", "category": "new", "apps": ["task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.25.0",
+    "date": "2026-05-18",
+    "items": [
+      { "id": "0.25.0-forced-colors", "category": "improved", "apps": ["notes", "task"], "platforms": ["web"] }
+    ]
+  },
+  {
+    "version": "0.24.0",
+    "date": "2026-05-17",
+    "items": [
+      { "id": "0.24.0-share-markdown", "category": "new", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.23.0",
+    "date": "2026-05-16",
+    "items": [
+      { "id": "0.23.0-shares", "category": "new", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.22.0",
+    "date": "2026-05-12",
+    "items": [
+      { "id": "0.22.0-multiselect", "category": "new", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.20.0",
+    "date": "2026-05-10",
+    "items": [
+      { "id": "0.20.0-sso-unlock", "category": "new", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.19.0",
+    "date": "2026-05-09",
+    "items": [
+      { "id": "0.19.0-task-lists", "category": "new", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.18.0",
+    "date": "2026-05-09",
+    "items": [
+      { "id": "0.18.0-periodic-notes", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.18.0-settings-sync", "category": "new", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.17.0",
+    "date": "2026-05-08",
+    "items": [
+      { "id": "0.17.0-search-operators", "category": "new", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.15.0",
+    "date": "2026-05-02",
+    "items": [
+      { "id": "0.15.0-reminder-timing", "category": "new", "apps": ["task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.14.0",
+    "date": "2026-04-30",
+    "items": [
+      { "id": "0.14.0-inline-images", "category": "new", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.13.0",
+    "date": "2026-04-29",
+    "items": [
+      { "id": "0.13.0-live-default", "category": "improved", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.12.0",
+    "date": "2026-04-29",
+    "items": [
+      { "id": "0.12.0-editable-tables", "category": "new", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.11.0",
+    "date": "2026-04-29",
+    "items": [
+      { "id": "0.11.0-live-code", "category": "improved", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.10.0",
+    "date": "2026-04-28",
+    "items": [
+      { "id": "0.10.0-live-preview", "category": "new", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.9.0",
+    "date": "2026-04-26",
+    "items": [
+      { "id": "0.9.0-subfolder-search", "category": "improved", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.8.0",
+    "date": "2026-04-26",
+    "items": [
+      { "id": "0.8.0-initial-sync", "category": "improved", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.6.0",
+    "date": "2026-04-25",
+    "items": [
+      { "id": "0.6.0-pdf-export", "category": "new", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.5.0",
+    "date": "2026-04-25",
+    "items": [
+      { "id": "0.5.0-subfolders", "category": "new", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.4.0",
+    "date": "2026-04-25",
+    "items": [
+      { "id": "0.4.0-markdown-import", "category": "new", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.2.0",
+    "date": "2026-04-23",
+    "items": [
+      { "id": "0.2.0-offline-reliability", "category": "fixed", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
+    "version": "0.1.0",
+    "date": "2026-04-20",
+    "items": [
+      { "id": "0.1.0-first-release", "category": "new", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  }
+]

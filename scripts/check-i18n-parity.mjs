@@ -6,14 +6,19 @@
 //   - extra keys   (present in the locale, absent in EN)
 //
 // Namespaces:
-//   - notes  : flat per-locale file  (notes/<locale>.json)
-//   - common : flat per-locale file  (common/<locale>.json)
-//   - tasks  : per-locale folder, compared file-by-file (tasks/<locale>/*.json)
+//   - notes         : flat per-locale file  (notes/<locale>.json)
+//   - common        : flat per-locale file  (common/<locale>.json)
+//   - tasks         : per-locale folder, compared file-by-file (tasks/<locale>/*.json)
+//   - release-notes : flat per-locale file  (release-notes/text/<locale>.json) -
+//                     curated "What's new" content; structural integrity (ids vs
+//                     manifest, enums, dates) is additionally covered by the
+//                     @reborn/i18n Vitest test release-notes.test.ts.
 //
 // Usage (from repo root):
 //   node scripts/check-i18n-parity.mjs
 //   node scripts/check-i18n-parity.mjs --namespace=notes
 //   node scripts/check-i18n-parity.mjs --namespace=tasks
+//   node scripts/check-i18n-parity.mjs --namespace=release-notes
 //   node scripts/check-i18n-parity.mjs --verbose      # dump every drifted key
 //
 // Exit code: 0 when all locales match EN, 1 when any drift is found.
@@ -24,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TRANSLATIONS_DIR = resolve(__dirname, '..', 'packages', 'i18n', 'src', 'translations');
+const RELEASE_NOTES_TEXT_DIR = resolve(__dirname, '..', 'packages', 'i18n', 'src', 'release-notes', 'text');
 const LOCALES = ['en', 'pl', 'de', 'fr', 'es'];
 const NON_EN = LOCALES.filter((l) => l !== 'en');
 const PREVIEW_LIMIT = 10;
@@ -70,12 +76,12 @@ function fmtKeys(keys) {
 
 let hasDrift = false;
 
-function checkFlat(namespace) {
-  console.log(`\n[${namespace}]`);
-  const enKeys = flatten(readJson(join(TRANSLATIONS_DIR, namespace, 'en.json')));
+function checkFlatDir(label, dir) {
+  console.log(`\n[${label}]`);
+  const enKeys = flatten(readJson(join(dir, 'en.json')));
   console.log(`  en  TOTAL ${enKeys.length} keys`);
   for (const locale of NON_EN) {
-    const path = join(TRANSLATIONS_DIR, namespace, `${locale}.json`);
+    const path = join(dir, `${locale}.json`);
     const keys = flatten(readJson(path));
     const { missing, extra } = diff(enKeys, keys);
     const status = missing.length === 0 && extra.length === 0 ? 'OK' : 'DRIFT';
@@ -84,6 +90,10 @@ function checkFlat(namespace) {
     if (extra.length) console.log(`    extra:   ${fmtKeys(extra)}`);
     if (missing.length || extra.length) hasDrift = true;
   }
+}
+
+function checkFlat(namespace) {
+  checkFlatDir(namespace, join(TRANSLATIONS_DIR, namespace));
 }
 
 function checkTasks() {
@@ -139,12 +149,13 @@ function checkTasks() {
   }
 }
 
-const namespaces = onlyNamespace ? [onlyNamespace] : ['notes', 'common', 'tasks'];
+const namespaces = onlyNamespace ? [onlyNamespace] : ['notes', 'common', 'tasks', 'release-notes'];
 for (const ns of namespaces) {
   if (ns === 'tasks') checkTasks();
+  else if (ns === 'release-notes') checkFlatDir('release-notes', RELEASE_NOTES_TEXT_DIR);
   else if (ns === 'notes' || ns === 'common') checkFlat(ns);
   else {
-    console.error(`Unknown namespace: ${ns} (expected notes | common | tasks)`);
+    console.error(`Unknown namespace: ${ns} (expected notes | common | tasks | release-notes)`);
     process.exit(2);
   }
 }

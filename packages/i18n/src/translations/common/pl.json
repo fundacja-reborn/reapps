@@ -15,6 +15,20 @@
       "recommended_description": "Nowsza wersja aplikacji jest dostępna w sklepie."
     }
   },
+  "whats_new": {
+    "title": "Co nowego",
+    "settings_row": "Co nowego",
+    "settings_row_desc": "Zobacz, co zmieniło się w ostatnich aktualizacjach",
+    "updated_toast_title": "Zaktualizowano do v{version}",
+    "updated_toast_desc": "Zobacz, co nowego w tej wersji.",
+    "updated_toast_button": "Co nowego",
+    "category_new": "Nowość",
+    "category_improved": "Ulepszenia",
+    "category_fixed": "Poprawki",
+    "empty": "Brak informacji o zmianach.",
+    "show_older": "Pokaż starsze aktualizacje",
+    "full_changelog": "Pełna lista zmian"
+  },
   "dates": {
     "today": "dzisiaj",
     "tomorrow": "jutro",

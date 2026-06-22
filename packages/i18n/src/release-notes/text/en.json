@@ -1,0 +1,174 @@
+{
+  "0.34.1-xray-overlay": {
+    "title": "Encryption X-Ray stays aligned",
+    "description": "The encryption overlay now follows the editor as you scroll."
+  },
+  "0.34.0-linked-notes": {
+    "title": "Linked notes panel",
+    "description": "See a note's backlinks and outgoing links together in one panel."
+  },
+  "0.34.0-import-links": {
+    "title": "Keep links when importing Markdown",
+    "description": "Optionally turn inter-note links and Obsidian wikilinks into working links during import."
+  },
+  "0.33.0-native-folder-sync": {
+    "title": "Folder sync on mobile",
+    "description": "Mirror a device folder into your notes on Android and iOS."
+  },
+  "0.33.0-native-sync-speed": {
+    "title": "Faster sync on mobile",
+    "description": "Sync pulls note history only for notes that actually changed."
+  },
+  "0.33.0-ios-2fa": {
+    "title": "All six 2FA digits on iOS",
+    "description": "Fixed entering the full two-factor code in the iOS app."
+  },
+  "0.32.1-tag-autocomplete": {
+    "title": "Smoother tag autocomplete",
+    "description": "Tag suggestions support keyboard navigation and clear the input once you pick one."
+  },
+  "0.32.0-sync-errors": {
+    "title": "Clearer sync errors",
+    "description": "When the server rejects a change, the affected note or task shows a clear error instead of failing silently."
+  },
+  "0.32.0-large-notes": {
+    "title": "Sync very large notes",
+    "description": "Large notes are no longer blocked from syncing by the server size limit."
+  },
+  "0.32.0-task-trash": {
+    "title": "Trash-aware task view",
+    "description": "The task detail view handles trashed tasks correctly, with a bigger search toggle on mobile."
+  },
+  "0.31.0-local-only": {
+    "title": "Use without an account",
+    "description": "Start fully offline with no account, then upgrade to a synced account whenever you want."
+  },
+  "0.31.0-local-passcode": {
+    "title": "Local passcode",
+    "description": "Protect local-only data on your device with an optional passcode."
+  },
+  "0.30.0-folder-sync-desktop": {
+    "title": "Live folder sync on desktop",
+    "description": "Mirror your notes one-way to a local folder on your computer, including nested paths."
+  },
+  "0.30.0-support-link": {
+    "title": "Support the project",
+    "description": "A heart icon in the navigation points to ways you can support development."
+  },
+  "0.29.0-saved-searches": {
+    "title": "Saved searches and smart folders",
+    "description": "Save a search as a smart folder you can reopen any time."
+  },
+  "0.29.0-native-share": {
+    "title": "System share sheet and deep links",
+    "description": "Open shared links straight in the app and share notes through your device's share sheet."
+  },
+  "0.28.0-periodic-dedup": {
+    "title": "Tidier periodic notes",
+    "description": "Duplicate daily, weekly, or monthly notes created on different devices are detected and merged."
+  },
+  "0.28.0-live-hr": {
+    "title": "Dividers in Live Preview",
+    "description": "A line of --- now renders as a horizontal divider in Live Preview."
+  },
+  "0.28.0-code-copy": {
+    "title": "Copy code blocks",
+    "description": "Code blocks have a copy button, and the last line is selectable."
+  },
+  "0.27.0-longer-sessions": {
+    "title": "Stay signed in longer",
+    "description": "Sessions now last up to 30 days before you need to sign in again."
+  },
+  "0.26.0-push": {
+    "title": "Reminders and push notifications",
+    "description": "Get push notifications for your task reminders."
+  },
+  "0.25.0-forced-colors": {
+    "title": "Windows High Contrast support",
+    "description": "Selected items stay visible in Windows forced-colors / High Contrast mode."
+  },
+  "0.24.0-share-markdown": {
+    "title": "Copy or download shared content as Markdown",
+    "description": "Read-only share viewers can copy the content or download it as a .md file."
+  },
+  "0.23.0-shares": {
+    "title": "Share read-only snapshots",
+    "description": "Publish a read-only, end-to-end encrypted snapshot of a note or task list through a private link."
+  },
+  "0.22.0-multiselect": {
+    "title": "Select multiple notes",
+    "description": "Select several notes at once to move, delete, or organize them."
+  },
+  "0.20.0-sso-unlock": {
+    "title": "One unlock for both apps",
+    "description": "Unlock re/notes and re/task together with a shared encryption key."
+  },
+  "0.19.0-task-lists": {
+    "title": "Checklists in notes",
+    "description": "Add interactive checkboxes (task lists) inside your notes."
+  },
+  "0.18.0-periodic-notes": {
+    "title": "Periodic notes",
+    "description": "Daily, weekly, and monthly notes with a dedicated calendar view."
+  },
+  "0.18.0-settings-sync": {
+    "title": "Encrypted settings sync",
+    "description": "Your preferences sync across devices, end-to-end encrypted."
+  },
+  "0.17.0-search-operators": {
+    "title": "Powerful search operators",
+    "description": "Search with operators, quoted phrases, negation, and boolean OR grouping."
+  },
+  "0.15.0-reminder-timing": {
+    "title": "Custom reminder timing",
+    "description": "Choose how far ahead reminders fire and the default hour for date-only reminders."
+  },
+  "0.14.0-inline-images": {
+    "title": "Inline images in Live Preview",
+    "description": "Images render inline in Live Preview, with click-to-load to protect your privacy."
+  },
+  "0.13.0-live-default": {
+    "title": "Live Preview by default",
+    "description": "Live Preview is now the default editor mode, with a first-run intro so you can choose."
+  },
+  "0.12.0-editable-tables": {
+    "title": "Editable tables",
+    "description": "Edit Markdown tables inline, Obsidian-style, right in Live Preview."
+  },
+  "0.11.0-live-code": {
+    "title": "Code blocks in Live Preview",
+    "description": "Code blocks render with syntax highlighting in Live Preview."
+  },
+  "0.10.0-live-preview": {
+    "title": "Live Preview editor",
+    "description": "A new editing mode that renders Markdown formatting as you type."
+  },
+  "0.9.0-subfolder-search": {
+    "title": "Search includes subfolders",
+    "description": "Searching within a folder now also covers its subfolders."
+  },
+  "0.8.0-initial-sync": {
+    "title": "Initial sync progress",
+    "description": "The main view shows sync progress the first time you sign in on a device."
+  },
+  "0.6.0-pdf-export": {
+    "title": "Export notes to PDF",
+    "description": "Export any note to PDF through the system print dialog."
+  },
+  "0.5.0-subfolders": {
+    "title": "Subfolders",
+    "description": "Organize your notes in nested folders."
+  },
+  "0.4.0-markdown-import": {
+    "title": "Import Markdown folders",
+    "description": "Import a folder of Markdown files, with per-folder targeting and duplicate handling."
+  },
+  "0.2.0-offline-reliability": {
+    "title": "More reliable offline mode",
+    "description": "Offline sessions restore correctly and the sync indicator reflects real connectivity."
+  },
+  "0.1.0-first-release": {
+    "title": "First public release",
+    "description": "re/notes and re/task go public under the AGPL-3.0 license after almost a year of private development - end-to-end encrypted notes and tasks, open from here on."
+  }
+}

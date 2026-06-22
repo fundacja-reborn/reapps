@@ -15,6 +15,20 @@
       "recommended_description": "A newer version of the app is available in the store."
     }
   },
+  "whats_new": {
+    "title": "What's new",
+    "settings_row": "What's new",
+    "settings_row_desc": "See what changed in recent updates",
+    "updated_toast_title": "Updated to v{version}",
+    "updated_toast_desc": "See what's new in this version.",
+    "updated_toast_button": "What's new",
+    "category_new": "New",
+    "category_improved": "Improved",
+    "category_fixed": "Fixed",
+    "empty": "No release notes to show yet.",
+    "show_older": "Show older updates",
+    "full_changelog": "Full changelog"
+  },
   "dates": {
     "today": "today",
     "tomorrow": "tomorrow",

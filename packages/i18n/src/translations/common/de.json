@@ -15,6 +15,20 @@
       "recommended_description": "Im Store ist eine neuere Version der App verfügbar."
     }
   },
+  "whats_new": {
+    "title": "Neuigkeiten",
+    "settings_row": "Neuigkeiten",
+    "settings_row_desc": "Sieh, was sich in den letzten Updates geändert hat",
+    "updated_toast_title": "Auf v{version} aktualisiert",
+    "updated_toast_desc": "Sieh, was in dieser Version neu ist.",
+    "updated_toast_button": "Neuigkeiten",
+    "category_new": "Neu",
+    "category_improved": "Verbessert",
+    "category_fixed": "Behoben",
+    "empty": "Noch keine Änderungshinweise vorhanden.",
+    "show_older": "Ältere Updates anzeigen",
+    "full_changelog": "Vollständige Änderungsliste"
+  },
   "dates": {
     "today": "heute",
     "tomorrow": "morgen",

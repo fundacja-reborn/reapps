@@ -1,0 +1,174 @@
+{
+  "0.34.1-xray-overlay": {
+    "title": "Encryption X-Ray se mantiene alineado",
+    "description": "La superposición de cifrado ahora sigue al editor a medida que te desplazas."
+  },
+  "0.34.0-linked-notes": {
+    "title": "Panel de notas vinculadas",
+    "description": "Consulta los enlaces entrantes y salientes de una nota juntos en un solo panel."
+  },
+  "0.34.0-import-links": {
+    "title": "Conserva los enlaces al importar Markdown",
+    "description": "Convierte opcionalmente los enlaces entre notas y los wikilinks de Obsidian en enlaces funcionales durante la importación."
+  },
+  "0.33.0-native-folder-sync": {
+    "title": "Sincronización de carpetas en el móvil",
+    "description": "Refleja una carpeta del dispositivo en tus notas en Android e iOS."
+  },
+  "0.33.0-native-sync-speed": {
+    "title": "Sincronización más rápida en el móvil",
+    "description": "La sincronización descarga el historial únicamente de las notas que realmente cambiaron."
+  },
+  "0.33.0-ios-2fa": {
+    "title": "Los seis dígitos del 2FA en iOS",
+    "description": "Se corrigió la introducción del código completo de doble factor en la app de iOS."
+  },
+  "0.32.1-tag-autocomplete": {
+    "title": "Autocompletado de etiquetas más fluido",
+    "description": "Las sugerencias de etiquetas admiten navegación con el teclado y limpian el campo cuando eliges una."
+  },
+  "0.32.0-sync-errors": {
+    "title": "Errores de sincronización más claros",
+    "description": "Cuando el servidor rechaza un cambio, la nota o tarea afectada muestra un error claro en lugar de fallar en silencio."
+  },
+  "0.32.0-large-notes": {
+    "title": "Sincroniza notas muy grandes",
+    "description": "El límite de tamaño del servidor ya no impide sincronizar las notas grandes."
+  },
+  "0.32.0-task-trash": {
+    "title": "Vista de tareas que reconoce la papelera",
+    "description": "La vista de detalle de tareas gestiona correctamente las tareas en la papelera, con un selector de búsqueda más grande en el móvil."
+  },
+  "0.31.0-local-only": {
+    "title": "Úsala sin cuenta",
+    "description": "Empieza totalmente sin conexión y sin cuenta, y pásate a una cuenta sincronizada cuando quieras."
+  },
+  "0.31.0-local-passcode": {
+    "title": "Código de acceso local",
+    "description": "Protege los datos guardados solo en tu dispositivo con un código de acceso opcional."
+  },
+  "0.30.0-folder-sync-desktop": {
+    "title": "Sincronización de carpetas en vivo en el escritorio",
+    "description": "Refleja tus notas en una sola dirección hacia una carpeta local de tu ordenador, incluidas las rutas anidadas."
+  },
+  "0.30.0-support-link": {
+    "title": "Apoya el proyecto",
+    "description": "Un icono de corazón en la navegación muestra formas de apoyar el desarrollo."
+  },
+  "0.29.0-saved-searches": {
+    "title": "Búsquedas guardadas y carpetas inteligentes",
+    "description": "Guarda una búsqueda como carpeta inteligente para volver a abrirla cuando quieras."
+  },
+  "0.29.0-native-share": {
+    "title": "Hoja de compartir del sistema y enlaces directos",
+    "description": "Abre los enlaces compartidos directamente en la app y comparte notas a través de la hoja de compartir de tu dispositivo."
+  },
+  "0.28.0-periodic-dedup": {
+    "title": "Notas periódicas más ordenadas",
+    "description": "Las notas diarias, semanales o mensuales duplicadas que se crean en distintos dispositivos se detectan y se fusionan."
+  },
+  "0.28.0-live-hr": {
+    "title": "Separadores en Live Preview",
+    "description": "Una línea de --- ahora se muestra como un separador horizontal en Live Preview."
+  },
+  "0.28.0-code-copy": {
+    "title": "Copia bloques de código",
+    "description": "Los bloques de código tienen un botón de copiar y la última línea se puede seleccionar."
+  },
+  "0.27.0-longer-sessions": {
+    "title": "Mantente con la sesión iniciada más tiempo",
+    "description": "Las sesiones ahora duran hasta 30 días antes de que tengas que volver a iniciar sesión."
+  },
+  "0.26.0-push": {
+    "title": "Recordatorios y notificaciones push",
+    "description": "Recibe notificaciones push de los recordatorios de tus tareas."
+  },
+  "0.25.0-forced-colors": {
+    "title": "Compatibilidad con alto contraste de Windows",
+    "description": "Los elementos seleccionados siguen visibles en el modo de colores forzados / alto contraste de Windows."
+  },
+  "0.24.0-share-markdown": {
+    "title": "Copia o descarga el contenido compartido como Markdown",
+    "description": "Quienes ven un contenido compartido en modo de solo lectura pueden copiar el contenido o descargarlo como archivo .md."
+  },
+  "0.23.0-shares": {
+    "title": "Comparte instantáneas de solo lectura",
+    "description": "Publica una instantánea de solo lectura y cifrada de extremo a extremo de una nota o lista de tareas mediante un enlace privado."
+  },
+  "0.22.0-multiselect": {
+    "title": "Selecciona varias notas",
+    "description": "Selecciona varias notas a la vez para moverlas, eliminarlas u organizarlas."
+  },
+  "0.20.0-sso-unlock": {
+    "title": "Un solo desbloqueo para ambas apps",
+    "description": "Desbloquea re/notes y re/task a la vez con una clave de cifrado compartida."
+  },
+  "0.19.0-task-lists": {
+    "title": "Listas de tareas en las notas",
+    "description": "Añade casillas interactivas (listas de tareas) dentro de tus notas."
+  },
+  "0.18.0-periodic-notes": {
+    "title": "Notas periódicas",
+    "description": "Notas diarias, semanales y mensuales con una vista de calendario específica."
+  },
+  "0.18.0-settings-sync": {
+    "title": "Sincronización cifrada de ajustes",
+    "description": "Tus preferencias se sincronizan entre dispositivos, cifradas de extremo a extremo."
+  },
+  "0.17.0-search-operators": {
+    "title": "Potentes operadores de búsqueda",
+    "description": "Busca con operadores, frases entre comillas, negación y agrupación booleana con OR."
+  },
+  "0.15.0-reminder-timing": {
+    "title": "Momento de los recordatorios personalizable",
+    "description": "Elige con cuánta antelación se activan los recordatorios y la hora predeterminada de los recordatorios que solo tienen fecha."
+  },
+  "0.14.0-inline-images": {
+    "title": "Imágenes integradas en Live Preview",
+    "description": "Las imágenes se muestran integradas en Live Preview, con carga al hacer clic para proteger tu privacidad."
+  },
+  "0.13.0-live-default": {
+    "title": "Live Preview por defecto",
+    "description": "Live Preview ahora es el modo de edición predeterminado, con una introducción la primera vez para que puedas elegir."
+  },
+  "0.12.0-editable-tables": {
+    "title": "Tablas editables",
+    "description": "Edita tablas de Markdown directamente, al estilo de Obsidian, en Live Preview."
+  },
+  "0.11.0-live-code": {
+    "title": "Bloques de código en Live Preview",
+    "description": "Los bloques de código se muestran con resaltado de sintaxis en Live Preview."
+  },
+  "0.10.0-live-preview": {
+    "title": "Editor Live Preview",
+    "description": "Un nuevo modo de edición que muestra el formato Markdown mientras escribes."
+  },
+  "0.9.0-subfolder-search": {
+    "title": "La búsqueda incluye las subcarpetas",
+    "description": "Buscar dentro de una carpeta ahora también abarca sus subcarpetas."
+  },
+  "0.8.0-initial-sync": {
+    "title": "Progreso de la sincronización inicial",
+    "description": "La vista principal muestra el progreso de la sincronización la primera vez que inicias sesión en un dispositivo."
+  },
+  "0.6.0-pdf-export": {
+    "title": "Exporta notas a PDF",
+    "description": "Exporta cualquier nota a PDF mediante el cuadro de diálogo de impresión del sistema."
+  },
+  "0.5.0-subfolders": {
+    "title": "Subcarpetas",
+    "description": "Organiza tus notas en carpetas anidadas."
+  },
+  "0.4.0-markdown-import": {
+    "title": "Importa carpetas de Markdown",
+    "description": "Importa una carpeta de archivos Markdown, con destino por carpeta y gestión de duplicados."
+  },
+  "0.2.0-offline-reliability": {
+    "title": "Modo sin conexión más fiable",
+    "description": "Las sesiones sin conexión se restauran correctamente y el indicador de sincronización refleja la conectividad real."
+  },
+  "0.1.0-first-release": {
+    "title": "Primera versión pública",
+    "description": "re/notes y re/task se hacen públicas bajo la licencia AGPL-3.0 tras casi un año de desarrollo privado - notas y tareas cifradas de extremo a extremo, abiertas a partir de ahora."
+  }
+}

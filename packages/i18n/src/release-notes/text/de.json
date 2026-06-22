@@ -1,0 +1,174 @@
+{
+  "0.34.1-xray-overlay": {
+    "title": "Encryption X-Ray bleibt ausgerichtet",
+    "description": "Das Verschlüsselungs-Overlay folgt jetzt dem Editor, während du scrollst."
+  },
+  "0.34.0-linked-notes": {
+    "title": "Panel für verknüpfte Notizen",
+    "description": "Sieh dir Backlinks und ausgehende Links einer Notiz gemeinsam in einem Panel an."
+  },
+  "0.34.0-import-links": {
+    "title": "Links beim Markdown-Import behalten",
+    "description": "Wandle Notizverknüpfungen und Obsidian-Wikilinks beim Import optional in funktionierende Links um."
+  },
+  "0.33.0-native-folder-sync": {
+    "title": "Ordner-Sync auf dem Smartphone",
+    "description": "Spiegle einen Geräteordner unter Android und iOS in deine Notizen."
+  },
+  "0.33.0-native-sync-speed": {
+    "title": "Schnellere Synchronisierung auf dem Smartphone",
+    "description": "Die Synchronisierung lädt den Notizverlauf nur noch für Notizen, die sich wirklich geändert haben."
+  },
+  "0.33.0-ios-2fa": {
+    "title": "Alle sechs 2FA-Ziffern auf iOS",
+    "description": "Die Eingabe des vollständigen Zwei-Faktor-Codes in der iOS-App wurde korrigiert."
+  },
+  "0.32.1-tag-autocomplete": {
+    "title": "Flüssigere Tag-Autovervollständigung",
+    "description": "Tag-Vorschläge unterstützen jetzt die Tastaturnavigation und leeren das Eingabefeld, sobald du einen auswählst."
+  },
+  "0.32.0-sync-errors": {
+    "title": "Klarere Sync-Fehler",
+    "description": "Lehnt der Server eine Änderung ab, zeigt die betroffene Notiz oder Aufgabe einen klaren Fehler an, statt stillschweigend fehlzuschlagen."
+  },
+  "0.32.0-large-notes": {
+    "title": "Sehr große Notizen synchronisieren",
+    "description": "Große Notizen werden vom Größenlimit des Servers nicht mehr an der Synchronisierung gehindert."
+  },
+  "0.32.0-task-trash": {
+    "title": "Aufgabenansicht mit Papierkorb",
+    "description": "Die Aufgaben-Detailansicht geht jetzt korrekt mit gelöschten Aufgaben um und bietet einen größeren Such-Umschalter auf dem Smartphone."
+  },
+  "0.31.0-local-only": {
+    "title": "Ohne Konto nutzen",
+    "description": "Leg ganz ohne Konto offline los und steig auf ein synchronisiertes Konto um, wann immer du möchtest."
+  },
+  "0.31.0-local-passcode": {
+    "title": "Lokaler Zugangscode",
+    "description": "Schütze rein lokale Daten auf deinem Gerät mit einem optionalen Zugangscode."
+  },
+  "0.30.0-folder-sync-desktop": {
+    "title": "Live-Ordner-Sync auf dem Desktop",
+    "description": "Spiegle deine Notizen in einem Schritt in einen lokalen Ordner auf deinem Computer, inklusive verschachtelter Pfade."
+  },
+  "0.30.0-support-link": {
+    "title": "Unterstütze das Projekt",
+    "description": "Ein Herz-Symbol in der Navigation zeigt dir, wie du die Entwicklung unterstützen kannst."
+  },
+  "0.29.0-saved-searches": {
+    "title": "Gespeicherte Suchen und smarte Ordner",
+    "description": "Speichere eine Suche als smarten Ordner, den du jederzeit wieder öffnen kannst."
+  },
+  "0.29.0-native-share": {
+    "title": "System-Teilen-Menü und Deep Links",
+    "description": "Öffne geteilte Links direkt in der App und teile Notizen über das Teilen-Menü deines Geräts."
+  },
+  "0.28.0-periodic-dedup": {
+    "title": "Aufgeräumtere periodische Notizen",
+    "description": "Doppelte Tages-, Wochen- oder Monatsnotizen, die auf verschiedenen Geräten entstanden sind, werden erkannt und zusammengeführt."
+  },
+  "0.28.0-live-hr": {
+    "title": "Trennlinien in der Live Preview",
+    "description": "Eine Zeile mit --- wird in der Live Preview jetzt als horizontale Trennlinie dargestellt."
+  },
+  "0.28.0-code-copy": {
+    "title": "Codeblöcke kopieren",
+    "description": "Codeblöcke haben jetzt einen Kopier-Button, und die letzte Zeile lässt sich auswählen."
+  },
+  "0.27.0-longer-sessions": {
+    "title": "Länger angemeldet bleiben",
+    "description": "Sitzungen halten jetzt bis zu 30 Tage, bevor du dich erneut anmelden musst."
+  },
+  "0.26.0-push": {
+    "title": "Erinnerungen und Push-Benachrichtigungen",
+    "description": "Erhalte Push-Benachrichtigungen für deine Aufgaben-Erinnerungen."
+  },
+  "0.25.0-forced-colors": {
+    "title": "Unterstützung für Windows mit hohem Kontrast",
+    "description": "Ausgewählte Elemente bleiben im Windows-Modus für erzwungene Farben / hohen Kontrast sichtbar."
+  },
+  "0.24.0-share-markdown": {
+    "title": "Geteilte Inhalte als Markdown kopieren oder herunterladen",
+    "description": "Wer eine schreibgeschützte Freigabe ansieht, kann den Inhalt kopieren oder als .md-Datei herunterladen."
+  },
+  "0.23.0-shares": {
+    "title": "Schreibgeschützte Momentaufnahmen teilen",
+    "description": "Veröffentliche eine schreibgeschützte, Ende-zu-Ende-verschlüsselte Momentaufnahme einer Notiz oder Aufgabenliste über einen privaten Link."
+  },
+  "0.22.0-multiselect": {
+    "title": "Mehrere Notizen auswählen",
+    "description": "Wähle mehrere Notizen auf einmal aus, um sie zu verschieben, zu löschen oder zu ordnen."
+  },
+  "0.20.0-sso-unlock": {
+    "title": "Einmal entsperren für beide Apps",
+    "description": "Entsperre re/notes und re/task gemeinsam mit einem geteilten Verschlüsselungsschlüssel."
+  },
+  "0.19.0-task-lists": {
+    "title": "Checklisten in Notizen",
+    "description": "Füge interaktive Kontrollkästchen (Aufgabenlisten) in deine Notizen ein."
+  },
+  "0.18.0-periodic-notes": {
+    "title": "Periodische Notizen",
+    "description": "Tages-, Wochen- und Monatsnotizen mit einer eigenen Kalenderansicht."
+  },
+  "0.18.0-settings-sync": {
+    "title": "Verschlüsselte Einstellungssynchronisierung",
+    "description": "Deine Einstellungen werden Ende-zu-Ende-verschlüsselt über alle Geräte hinweg synchronisiert."
+  },
+  "0.17.0-search-operators": {
+    "title": "Leistungsstarke Suchoperatoren",
+    "description": "Suche mit Operatoren, Phrasen in Anführungszeichen, Negation und ODER-Verknüpfung per Boolescher Gruppierung."
+  },
+  "0.15.0-reminder-timing": {
+    "title": "Eigene Erinnerungszeiten",
+    "description": "Lege fest, wie früh Erinnerungen ausgelöst werden und welche Standardstunde für Erinnerungen ohne Uhrzeit gilt."
+  },
+  "0.14.0-inline-images": {
+    "title": "Eingebettete Bilder in der Live Preview",
+    "description": "Bilder werden in der Live Preview eingebettet dargestellt - mit Laden per Klick, um deine Privatsphäre zu schützen."
+  },
+  "0.13.0-live-default": {
+    "title": "Live Preview als Standard",
+    "description": "Die Live Preview ist jetzt der Standard-Editormodus, mit einer Einführung beim ersten Start, damit du selbst wählen kannst."
+  },
+  "0.12.0-editable-tables": {
+    "title": "Bearbeitbare Tabellen",
+    "description": "Bearbeite Markdown-Tabellen direkt in der Live Preview, ganz im Stil von Obsidian."
+  },
+  "0.11.0-live-code": {
+    "title": "Codeblöcke in der Live Preview",
+    "description": "Codeblöcke werden in der Live Preview mit Syntaxhervorhebung dargestellt."
+  },
+  "0.10.0-live-preview": {
+    "title": "Live-Preview-Editor",
+    "description": "Ein neuer Bearbeitungsmodus, der Markdown-Formatierung schon beim Tippen darstellt."
+  },
+  "0.9.0-subfolder-search": {
+    "title": "Suche schließt Unterordner ein",
+    "description": "Die Suche innerhalb eines Ordners umfasst jetzt auch dessen Unterordner."
+  },
+  "0.8.0-initial-sync": {
+    "title": "Fortschritt der Erstsynchronisierung",
+    "description": "Die Hauptansicht zeigt den Sync-Fortschritt, wenn du dich zum ersten Mal auf einem Gerät anmeldest."
+  },
+  "0.6.0-pdf-export": {
+    "title": "Notizen als PDF exportieren",
+    "description": "Exportiere jede Notiz über den Druckdialog des Systems als PDF."
+  },
+  "0.5.0-subfolders": {
+    "title": "Unterordner",
+    "description": "Organisiere deine Notizen in verschachtelten Ordnern."
+  },
+  "0.4.0-markdown-import": {
+    "title": "Markdown-Ordner importieren",
+    "description": "Importiere einen Ordner mit Markdown-Dateien, mit gezielter Zuordnung pro Ordner und dem Umgang mit Duplikaten."
+  },
+  "0.2.0-offline-reliability": {
+    "title": "Zuverlässigerer Offline-Modus",
+    "description": "Offline-Sitzungen werden korrekt wiederhergestellt und die Sync-Anzeige spiegelt die tatsächliche Verbindung wider."
+  },
+  "0.1.0-first-release": {
+    "title": "Erste öffentliche Veröffentlichung",
+    "description": "re/notes und re/task werden nach fast einem Jahr privater Entwicklung unter der AGPL-3.0-Lizenz öffentlich - Ende-zu-Ende-verschlüsselte Notizen und Aufgaben, von hier an offen."
+  }
+}

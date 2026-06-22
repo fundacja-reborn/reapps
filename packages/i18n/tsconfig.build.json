@@ -9,7 +9,8 @@
     "noEmit": false
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "src/release-notes/manifest.json"
   ],
   "exclude": [
     "node_modules",

@@ -1,0 +1,174 @@
+{
+  "0.34.1-xray-overlay": {
+    "title": "Encryption X-Ray reste aligné",
+    "description": "La surcouche de chiffrement suit désormais l'éditeur au fil du défilement."
+  },
+  "0.34.0-linked-notes": {
+    "title": "Panneau des notes liées",
+    "description": "Retrouvez les rétroliens et les liens sortants d'une note réunis dans un seul panneau."
+  },
+  "0.34.0-import-links": {
+    "title": "Conservez les liens à l'import de Markdown",
+    "description": "Transformez si vous le souhaitez les liens entre notes et les wikilinks Obsidian en liens fonctionnels pendant l'import."
+  },
+  "0.33.0-native-folder-sync": {
+    "title": "Synchronisation de dossier sur mobile",
+    "description": "Reflétez un dossier de votre appareil dans vos notes sur Android et iOS."
+  },
+  "0.33.0-native-sync-speed": {
+    "title": "Synchronisation plus rapide sur mobile",
+    "description": "La synchronisation ne récupère l'historique que des notes réellement modifiées."
+  },
+  "0.33.0-ios-2fa": {
+    "title": "Les six chiffres de la 2FA sur iOS",
+    "description": "Correction de la saisie du code de double authentification complet dans l'application iOS."
+  },
+  "0.32.1-tag-autocomplete": {
+    "title": "Autocomplétion des étiquettes plus fluide",
+    "description": "Les suggestions d'étiquettes se parcourent au clavier et le champ se vide une fois votre choix fait."
+  },
+  "0.32.0-sync-errors": {
+    "title": "Des erreurs de synchronisation plus claires",
+    "description": "Quand le serveur refuse une modification, la note ou la tâche concernée affiche une erreur claire au lieu d'échouer en silence."
+  },
+  "0.32.0-large-notes": {
+    "title": "Synchronisez les notes très volumineuses",
+    "description": "Les notes volumineuses ne sont plus bloquées à la synchronisation par la limite de taille du serveur."
+  },
+  "0.32.0-task-trash": {
+    "title": "Vue des tâches compatible avec la corbeille",
+    "description": "La vue détaillée des tâches gère correctement les tâches mises à la corbeille, avec un bouton de recherche plus grand sur mobile."
+  },
+  "0.31.0-local-only": {
+    "title": "Utilisez l'application sans compte",
+    "description": "Démarrez entièrement hors ligne sans compte, puis passez à un compte synchronisé quand vous le souhaitez."
+  },
+  "0.31.0-local-passcode": {
+    "title": "Code d'accès local",
+    "description": "Protégez les données locales de votre appareil avec un code d'accès facultatif."
+  },
+  "0.30.0-folder-sync-desktop": {
+    "title": "Synchronisation de dossier en direct sur ordinateur",
+    "description": "Reflétez vos notes dans un sens vers un dossier local de votre ordinateur, chemins imbriqués compris."
+  },
+  "0.30.0-support-link": {
+    "title": "Soutenez le projet",
+    "description": "Une icône en forme de cœur dans la navigation indique les façons de soutenir le développement."
+  },
+  "0.29.0-saved-searches": {
+    "title": "Recherches enregistrées et dossiers intelligents",
+    "description": "Enregistrez une recherche sous forme de dossier intelligent que vous pourrez rouvrir à tout moment."
+  },
+  "0.29.0-native-share": {
+    "title": "Feuille de partage du système et liens profonds",
+    "description": "Ouvrez les liens partagés directement dans l'application et partagez vos notes via la feuille de partage de votre appareil."
+  },
+  "0.28.0-periodic-dedup": {
+    "title": "Des notes périodiques mieux rangées",
+    "description": "Les notes quotidiennes, hebdomadaires ou mensuelles créées en double sur différents appareils sont détectées et fusionnées."
+  },
+  "0.28.0-live-hr": {
+    "title": "Séparateurs en Live Preview",
+    "description": "Une ligne de --- s'affiche désormais comme un séparateur horizontal en Live Preview."
+  },
+  "0.28.0-code-copy": {
+    "title": "Copiez les blocs de code",
+    "description": "Les blocs de code disposent d'un bouton de copie, et la dernière ligne est sélectionnable."
+  },
+  "0.27.0-longer-sessions": {
+    "title": "Restez connecté plus longtemps",
+    "description": "Les sessions durent désormais jusqu'à 30 jours avant qu'une nouvelle connexion ne soit nécessaire."
+  },
+  "0.26.0-push": {
+    "title": "Rappels et notifications push",
+    "description": "Recevez des notifications push pour vos rappels de tâches."
+  },
+  "0.25.0-forced-colors": {
+    "title": "Prise en charge du contraste élevé sous Windows",
+    "description": "Les éléments sélectionnés restent visibles en mode couleurs forcées / contraste élevé de Windows."
+  },
+  "0.24.0-share-markdown": {
+    "title": "Copiez ou téléchargez le contenu partagé en Markdown",
+    "description": "Les personnes consultant un partage en lecture seule peuvent copier le contenu ou le télécharger au format .md."
+  },
+  "0.23.0-shares": {
+    "title": "Partagez des instantanés en lecture seule",
+    "description": "Publiez un instantané d'une note ou d'une liste de tâches, en lecture seule et chiffré de bout en bout, via un lien privé."
+  },
+  "0.22.0-multiselect": {
+    "title": "Sélectionnez plusieurs notes",
+    "description": "Sélectionnez plusieurs notes à la fois pour les déplacer, les supprimer ou les organiser."
+  },
+  "0.20.0-sso-unlock": {
+    "title": "Un seul déverrouillage pour les deux applications",
+    "description": "Déverrouillez re/notes et re/task ensemble grâce à une clé de chiffrement partagée."
+  },
+  "0.19.0-task-lists": {
+    "title": "Listes de tâches dans les notes",
+    "description": "Ajoutez des cases à cocher interactives (listes de tâches) au sein de vos notes."
+  },
+  "0.18.0-periodic-notes": {
+    "title": "Notes périodiques",
+    "description": "Des notes quotidiennes, hebdomadaires et mensuelles avec une vue calendrier dédiée."
+  },
+  "0.18.0-settings-sync": {
+    "title": "Synchronisation chiffrée des réglages",
+    "description": "Vos préférences se synchronisent entre vos appareils, chiffrées de bout en bout."
+  },
+  "0.17.0-search-operators": {
+    "title": "Des opérateurs de recherche puissants",
+    "description": "Recherchez avec des opérateurs, des expressions entre guillemets, la négation et le regroupement booléen OR."
+  },
+  "0.15.0-reminder-timing": {
+    "title": "Délai de rappel personnalisé",
+    "description": "Choisissez combien de temps à l'avance les rappels se déclenchent et l'heure par défaut des rappels sans heure précise."
+  },
+  "0.14.0-inline-images": {
+    "title": "Images intégrées en Live Preview",
+    "description": "Les images s'affichent directement en Live Preview, avec un chargement au clic pour préserver votre vie privée."
+  },
+  "0.13.0-live-default": {
+    "title": "Live Preview par défaut",
+    "description": "Live Preview est désormais le mode d'édition par défaut, avec une présentation au premier lancement pour vous laisser choisir."
+  },
+  "0.12.0-editable-tables": {
+    "title": "Tableaux modifiables",
+    "description": "Modifiez vos tableaux Markdown en ligne, à la manière d'Obsidian, directement en Live Preview."
+  },
+  "0.11.0-live-code": {
+    "title": "Blocs de code en Live Preview",
+    "description": "Les blocs de code s'affichent avec coloration syntaxique en Live Preview."
+  },
+  "0.10.0-live-preview": {
+    "title": "Éditeur Live Preview",
+    "description": "Un nouveau mode d'édition qui affiche la mise en forme Markdown à mesure que vous tapez."
+  },
+  "0.9.0-subfolder-search": {
+    "title": "La recherche inclut les sous-dossiers",
+    "description": "La recherche dans un dossier couvre désormais aussi ses sous-dossiers."
+  },
+  "0.8.0-initial-sync": {
+    "title": "Progression de la synchronisation initiale",
+    "description": "La vue principale affiche la progression de la synchronisation lors de votre première connexion sur un appareil."
+  },
+  "0.6.0-pdf-export": {
+    "title": "Exportez vos notes en PDF",
+    "description": "Exportez n'importe quelle note en PDF via la boîte de dialogue d'impression du système."
+  },
+  "0.5.0-subfolders": {
+    "title": "Sous-dossiers",
+    "description": "Organisez vos notes dans des dossiers imbriqués."
+  },
+  "0.4.0-markdown-import": {
+    "title": "Importez des dossiers Markdown",
+    "description": "Importez un dossier de fichiers Markdown, avec ciblage par dossier et gestion des doublons."
+  },
+  "0.2.0-offline-reliability": {
+    "title": "Un mode hors ligne plus fiable",
+    "description": "Les sessions hors ligne se restaurent correctement et l'indicateur de synchronisation reflète la connectivité réelle."
+  },
+  "0.1.0-first-release": {
+    "title": "Première version publique",
+    "description": "re/notes et re/task deviennent publics sous licence AGPL-3.0 après presque un an de développement privé - des notes et des tâches chiffrées de bout en bout, ouvertes à partir de maintenant."
+  }
+}
