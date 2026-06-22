@@ -927,6 +927,9 @@
       "name": "re/notes",
       "desc": "E2E-verschlüsselte, Offline-First-Notizen",
       "version": "Version",
+      "native_app_version": "{version} (Build {build})",
+      "frontend_version": "Frontend",
+      "backend_version": "Backend",
       "license": "Lizenz",
       "open_task": "re/task öffnen",
       "open_notes": "re/notes öffnen"

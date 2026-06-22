@@ -927,6 +927,9 @@
       "name": "re/notes",
       "desc": "Notes chiffrées E2E, offline-first",
       "version": "Version",
+      "native_app_version": "{version} (build {build})",
+      "frontend_version": "Frontend",
+      "backend_version": "Backend",
       "license": "Licence",
       "open_task": "Ouvrir re/task",
       "open_notes": "Ouvrir re/notes"

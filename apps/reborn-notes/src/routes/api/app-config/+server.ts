@@ -2,6 +2,8 @@ import { json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
+declare const __APP_VERSION__: string;
+
 /**
  * Public, unauthenticated app metadata for NATIVE clients (Faza 5, plan D5).
  *
@@ -12,6 +14,13 @@ import type { RequestHandler } from './$types';
  * header, no telemetry - consistent with the no-PII posture. The trade-off is
  * accepted: the server cannot observe the client-version distribution before
  * raising a threshold. Web clients never call this endpoint.
+ *
+ * `version` is the live backend monorepo version (same value as
+ * /api/health.version). Native Settings shows it next to the frozen bundled
+ * frontend version so the user can see how far the store build has drifted
+ * from the server (guideline 38 "Wersje w aplikacji natywnej"). Serving it
+ * here lets the native client read thresholds and backend version in one
+ * round-trip. Still zero client telemetry - it is a plain GET.
  *
  * Env (all optional; 0 / unset = no enforcement):
  *   NATIVE_MIN_BUILD_ANDROID / NATIVE_MIN_BUILD_IOS
@@ -42,6 +51,7 @@ export const GET: RequestHandler = () =>
 	json({
 		success: true,
 		data: {
+			version: __APP_VERSION__,
 			native: {
 				android: platformConfig('ANDROID'),
 				ios: platformConfig('IOS')

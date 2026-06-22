@@ -927,6 +927,9 @@
       "name": "re/notes",
       "desc": "Notas cifradas E2E, offline-first",
       "version": "Versión",
+      "native_app_version": "{version} (compilación {build})",
+      "frontend_version": "Frontend",
+      "backend_version": "Backend",
       "license": "Licencia",
       "open_task": "Abrir re/task",
       "open_notes": "Abrir re/notes"
