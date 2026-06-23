@@ -51,6 +51,11 @@
   "release": {
     "projectsRelationship": "fixed",
     "releaseTagPattern": "v{version}",
+    "version": {
+      "versionActionsOptions": {
+        "skipLockFileUpdate": true
+      }
+    },
     "changelog": {
       "workspaceChangelog": {
         "file": "CHANGELOG.md",
