@@ -105,9 +105,16 @@ export function extractHeadings(markdown) {
 
 // ── TOC building ─────────────────────────────────────────────────────────────
 
-/** Escape the bracket characters that would break a Markdown link label. */
+/**
+ * Escape the characters that would break a Markdown link label. The backslash
+ * (Markdown's escape char) MUST be in the set, otherwise a literal `\` in the
+ * heading text would "consume" a following bracket escape and close the label
+ * early (e.g. `foo\]bar` -> `foo\\]bar` -> the `]` ends the label). A single
+ * character class prefixes each matched char (`\`, `[`, `]`) with a backslash in
+ * one left-to-right pass over the original string, so the order is correct.
+ */
 function escapeLabel(text) {
-  return text.replace(/[[\]]/g, '\\$&');
+  return text.replace(/[\\[\]]/g, '\\$&');
 }
 
 /** Build the managed TOC block (without surrounding blank lines). */
@@ -192,6 +199,19 @@ function selfTest() {
   const doc = extractHeadings(fx.doc.markdown);
   if (JSON.stringify(doc) !== JSON.stringify(fx.doc.headings)) {
     fails.push(`extractHeadings(doc) mismatch:\n  got ${JSON.stringify(doc)}\n  exp ${JSON.stringify(fx.doc.headings)}`);
+  }
+
+  // escapeLabel must escape the backslash too, not just the brackets.
+  const escCases = [
+    ['plain text', 'plain text'],
+    ['a[b]c', 'a\\[b\\]c'],
+    ['c:\\path', 'c:\\\\path']
+  ];
+  for (const [input, expected] of escCases) {
+    const got = escapeLabel(input);
+    if (got !== expected) {
+      fails.push(`escapeLabel(${JSON.stringify(input)}) = ${JSON.stringify(got)} != ${JSON.stringify(expected)}`);
+    }
   }
 
   if (fails.length) {
