@@ -14,7 +14,8 @@
     RotateCcw,
     Trash,
     Clock,
-    Waypoints
+    Waypoints,
+    ListTree
   } from '@lucide/svelte';
   import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@reborn/ui';
   import { t } from '$lib/stores/i18n.store';
@@ -36,6 +37,7 @@
     onpermanentdelete,
     onhistory,
     onlinkednotes,
+    onoutline,
     onshowxray
   }: {
     open: boolean;
@@ -57,6 +59,8 @@
     onhistory?: () => void;
     /** Opens Linked notes panel (mobile only) */
     onlinkednotes?: () => void;
+    /** Opens the Outline panel (mobile only) */
+    onoutline?: () => void;
     /** Opens Encryption X-Ray panel */
     onshowxray?: () => void;
   } = $props();
@@ -172,6 +176,19 @@
           >
             <Clock class="mr-2 h-4 w-4" />
             {$t('history.title')}
+          </Button>
+        {/if}
+        {#if onoutline}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => {
+              open = false;
+              onoutline?.();
+            }}
+          >
+            <ListTree class="mr-2 h-4 w-4" />
+            {$t('outline.title')}
           </Button>
         {/if}
         {#if onlinkednotes}

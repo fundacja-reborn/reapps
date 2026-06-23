@@ -5,6 +5,7 @@
     Eye,
     Clock,
     Waypoints,
+    ListTree,
     ArrowLeft,
     Lock,
     Loader2,
@@ -32,6 +33,8 @@
     historyMode = $bindable<HistoryMode>('closed'),
     linkedNotesActive = false,
     ontogglelinkednotes,
+    outlineActive = false,
+    ontoggleoutline,
     onback,
     onshowxray,
     onrestore,
@@ -52,6 +55,10 @@
     linkedNotesActive?: boolean;
     /** Toggle the Linked notes panel (desktop only - mobile uses the kebab menu). */
     ontogglelinkednotes?: () => void;
+    /** Whether the Outline panel is open (drives the toggle's pressed state). */
+    outlineActive?: boolean;
+    /** Toggle the Outline panel (desktop only - mobile uses the kebab menu). */
+    ontoggleoutline?: () => void;
     onback: () => void;
     onshowxray: () => void;
     onrestore: () => void;
@@ -225,6 +232,22 @@
         {/if}
       {/each}
     </div>
+
+    <!-- Outline toggle (desktop only - on mobile it's in kebab menu) -->
+    {#if !isMobile && ontoggleoutline}
+      <button
+        type="button"
+        onclick={ontoggleoutline}
+        title={$t('outline.title')}
+        aria-label={$t('outline.title')}
+        aria-pressed={outlineActive}
+        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground
+           transition-colors hover:bg-accent hover:text-accent-foreground
+           {outlineActive ? 'bg-accent text-accent-foreground' : ''}"
+      >
+        <ListTree class="h-4 w-4" />
+      </button>
+    {/if}
 
     <!-- Linked notes toggle (desktop only - on mobile it's in kebab menu) -->
     {#if !isMobile && ontogglelinkednotes}

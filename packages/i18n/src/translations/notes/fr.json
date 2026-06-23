@@ -644,6 +644,10 @@
     "incoming_count": "Liens entrants : {count}",
     "outgoing_count": "Liens sortants : {count}"
   },
+  "outline": {
+    "title": "Plan",
+    "empty": "Cette note n'a pas encore de titres."
+  },
   "history": {
     "title": "Historique des versions",
     "close": "Fermer l'historique",

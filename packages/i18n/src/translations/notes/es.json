@@ -644,6 +644,10 @@
     "incoming_count": "Enlaces entrantes: {count}",
     "outgoing_count": "Enlaces salientes: {count}"
   },
+  "outline": {
+    "title": "Esquema",
+    "empty": "Esta nota aún no tiene encabezados."
+  },
   "history": {
     "title": "Historial de versiones",
     "close": "Cerrar historial",

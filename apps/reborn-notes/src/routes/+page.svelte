@@ -29,6 +29,7 @@
 
   import VersionHistorySheet from '$lib/components/VersionHistorySheet.svelte';
   import LinkedNotesSheet from '$lib/components/LinkedNotesSheet.svelte';
+  import OutlineSheet from '$lib/components/OutlineSheet.svelte';
   import FolderTree from '$lib/components/sidebar/FolderTree.svelte';
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
@@ -85,6 +86,8 @@
   import type { SaveScope } from '$lib/utils/search-scope';
   import { goto } from '$lib/utils/navigation';
   import { createScrollSync } from '$lib/utils/scroll-sync';
+  import { scrollToHeading } from '$lib/utils/heading-scroll';
+  import type { DocHeading } from '$lib/utils/heading-outline';
   import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
   import { requireActiveSession } from '$lib/utils/require-active-session';
   import type { EditorView } from '@codemirror/view';
@@ -277,15 +280,44 @@
 
   function toggleLinkedNotes() {
     linkedNotesOpen = !linkedNotesOpen;
-    if (linkedNotesOpen && historyMode !== 'closed') {
-      closeHistory();
+    if (linkedNotesOpen) {
+      outlineOpen = false;
+      if (historyMode !== 'closed') closeHistory();
     }
   }
 
   function handleDetailLinkedNotes() {
     detailActionSheetOpen = false;
     if (historyMode !== 'closed') closeHistory();
+    outlineOpen = false;
     linkedNotesOpen = true;
+  }
+
+  function toggleOutline() {
+    outlineOpen = !outlineOpen;
+    if (outlineOpen) {
+      linkedNotesOpen = false;
+      if (historyMode !== 'closed') closeHistory();
+    }
+  }
+
+  function handleDetailOutline() {
+    detailActionSheetOpen = false;
+    if (historyMode !== 'closed') closeHistory();
+    linkedNotesOpen = false;
+    outlineOpen = true;
+  }
+
+  // Jump to a heading from the Outline panel. In a preview-bearing view we scroll
+  // the rendered preview by slug; in edit-only mode there is no preview, so we
+  // scroll the CodeMirror editor to the heading's source line instead.
+  function handleOutlineNavigate(heading: DocHeading) {
+    if (effectiveViewMode === 'edit') {
+      editorRef?.scrollToLine(heading.line);
+    } else {
+      scrollToHeading(previewContentEl, heading.slug);
+    }
+    if (isMobile) outlineOpen = false;
   }
 
   async function confirmDetailDelete() {
@@ -304,13 +336,15 @@
   type HistoryMode = 'closed' | 'list' | 'diff';
   let historyMode = $state<HistoryMode>('closed');
   let linkedNotesOpen = $state(false);
+  let outlineOpen = $state(false);
 
-  // The Linked notes panel is mutually exclusive with version history (both are
-  // right-side sheets) and resets when returning to the list, so opening another
-  // note never auto-reopens it.
+  // The Linked notes / Outline panels are mutually exclusive with version
+  // history and with each other (all right-side sheets), and reset when
+  // returning to the list, so opening another note never auto-reopens them.
   $effect(() => {
     if (historyMode !== 'closed' || $activeNoteId == null) {
       linkedNotesOpen = false;
+      outlineOpen = false;
     }
   });
   let selectedVersion = $state<import('@reborn/types').NoteHistoryDecrypted | null>(null);
@@ -865,7 +899,13 @@
   }
 
   // ── Internal note links ──────────────────────────────────────────
-  async function handleNoteLink(noteId: string) {
+  // A cross-note `note:UUID#slug` click carries an anchor. We can't scroll until
+  // the target note has rendered, so we stash {noteId, slug} and consume it in
+  // `handlePreviewRender` (which also re-fires after images load). Pairing the
+  // slug with its note id keeps a stale anchor from firing on an unrelated note.
+  let pendingAnchor = $state<{ noteId: string; slug: string } | null>(null);
+
+  async function handleNoteLink(noteId: string, anchor?: string) {
     await noteDetailService.flushAndSnapshot();
     const note = await notesStore.loadNote(noteId);
     if (!note) {
@@ -876,6 +916,7 @@
       toastStore.info($t('notes.note_in_trash'));
       return;
     }
+    pendingAnchor = anchor ? { noteId, slug: anchor } : null;
     activeNoteId.set(noteId);
   }
 
@@ -953,9 +994,14 @@
   // panes mount/unmount) would re-fire this effect, calling setAnchor(1)
   // and zeroing scrollTop — defeating toggle preservation.
   $effect(() => {
-    void $activeNoteId;
+    const navId = $activeNoteId;
     untrack(() => {
       scrollSync.setAnchor(1);
+      // When this navigation targets a heading anchor (cross-note `note:UUID#slug`),
+      // do NOT zero the scroll - `handlePreviewRender` is about to scroll the new
+      // note to its heading, and a competing scrollTop=0 (effect order is not
+      // guaranteed) would land us back at the top.
+      if (pendingAnchor?.noteId === navId && navId != null) return;
       if (desktopEditorScrollContainer) desktopEditorScrollContainer.scrollTop = 0;
       if (mobileScrollContainer) mobileScrollContainer.scrollTop = 0;
       if (previewScrollEl) previewScrollEl.scrollTop = 0;
@@ -1004,6 +1050,16 @@
   // images finish loading, since heights only stabilise post-load.
   function handlePreviewRender() {
     scrollSync.refresh();
+    // Consume a pending cross-note heading anchor once its note has rendered.
+    // Clear it on a note mismatch (a different note rendered first) so a stale
+    // anchor never fires on an unrelated note.
+    const target = pendingAnchor;
+    if (!target) return;
+    if (target.noteId !== $activeNoteId) {
+      pendingAnchor = null;
+      return;
+    }
+    if (scrollToHeading(previewContentEl, target.slug)) pendingAnchor = null;
   }
 
   function handleEditorViewInit(view: EditorView) {
@@ -1445,6 +1501,8 @@
               bind:historyMode
               linkedNotesActive={linkedNotesOpen}
               ontogglelinkednotes={toggleLinkedNotes}
+              outlineActive={outlineOpen}
+              ontoggleoutline={toggleOutline}
               onback={() => {
                 if (isMobile && mobileHistoryDepth > 0) {
                   history.back();
@@ -1712,6 +1770,8 @@
             bind:historyMode
             linkedNotesActive={linkedNotesOpen}
             ontogglelinkednotes={toggleLinkedNotes}
+            outlineActive={outlineOpen}
+            ontoggleoutline={toggleOutline}
             onback={() => activeNoteId.set(null)}
             onshowxray={() => {
               showEncryptionXRay = true;
@@ -1946,6 +2006,17 @@
   />
 {/if}
 
+{#if $activeNoteId}
+  <OutlineSheet
+    content={noteDetailService.content}
+    open={outlineOpen}
+    onnavigate={handleOutlineNavigate}
+    onclose={() => {
+      outlineOpen = false;
+    }}
+  />
+{/if}
+
 <ConfirmDialog
   bind:open={restoreDialogOpen}
   title={$t('history.restore_title')}
@@ -1975,6 +2046,7 @@
   ondelete={() => handleDetailDelete()}
   onhistory={handleDetailHistory}
   onlinkednotes={handleDetailLinkedNotes}
+  onoutline={handleDetailOutline}
   onshowxray={() => { showEncryptionXRay = true; }}
   onrestore={() => {}}
   onpermanentdelete={() => {}}

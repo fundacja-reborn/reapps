@@ -644,6 +644,10 @@
     "incoming_count": "Incoming links: {count}",
     "outgoing_count": "Outgoing links: {count}"
   },
+  "outline": {
+    "title": "Outline",
+    "empty": "No headings in this note yet."
+  },
   "history": {
     "title": "Version history",
     "close": "Close history",

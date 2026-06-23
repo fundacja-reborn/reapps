@@ -293,6 +293,23 @@
     view.focus();
   }
 
+  /**
+   * Scroll the editor to a 1-based source line (outline navigation in edit
+   * mode). Places the cursor at the line start and scrolls it near the top.
+   * No-op if the line is out of range (content changed since the outline built).
+   */
+  export function scrollToLine(line: number): void {
+    if (!view) return;
+    const { doc } = view.state;
+    if (line < 1 || line > doc.lines) return;
+    const pos = doc.line(line).from;
+    view.dispatch({
+      selection: { anchor: pos },
+      effects: EditorView.scrollIntoView(pos, { y: 'start', yMargin: 16 })
+    });
+    view.focus();
+  }
+
   function insertCodeBlock(): boolean {
     if (!view) return false;
     const { state } = view;

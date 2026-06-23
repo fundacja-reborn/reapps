@@ -644,6 +644,10 @@
     "incoming_count": "Linki przychodzące: {count}",
     "outgoing_count": "Linki wychodzące: {count}"
   },
+  "outline": {
+    "title": "Konspekt",
+    "empty": "Ta notatka nie ma jeszcze nagłówków."
+  },
   "history": {
     "title": "Historia wersji",
     "close": "Zamknij historię",
