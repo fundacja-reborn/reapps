@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy, tick, untrack } from 'svelte';
-  import { SvelteSet } from 'svelte/reactivity';
   import { beforeNavigate } from '$app/navigation';
   import { base } from '$app/paths';
   import { copyText } from '$lib/utils/clipboard';
