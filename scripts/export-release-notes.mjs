@@ -4,7 +4,7 @@
 //
 // The in-app "What's new" dialog reads the dataset directly from @reborn/i18n;
 // the website cannot import that package (standalone Astro repo), so this script
-// flattens manifest + per-locale text into one self-contained file that gets
+// flattens manifest + upcoming + per-locale text into one self-contained file that gets
 // committed into reapps-www. One source of truth, two surfaces.
 //
 // Run at release time (after `pnpm release`), then commit the result in
@@ -43,6 +43,7 @@ function readJson(path) {
 }
 
 const manifest = readJson(join(RN_DIR, 'manifest.json'));
+const upcoming = readJson(join(RN_DIR, 'upcoming.json'));
 const text = Object.fromEntries(LOCALES.map((l) => [l, readJson(join(TEXT_DIR, `${l}.json`))]));
 
 // Fail loudly on any missing translation so a release never ships a half-empty
@@ -55,6 +56,12 @@ for (const release of manifest) {
       const entry = text[locale][item.id];
       if (typeof entry !== 'string' || entry.length === 0) missing.push(`${locale}:${item.id}`);
     }
+  }
+}
+for (const item of upcoming) {
+  for (const locale of LOCALES) {
+    const entry = text[locale][item.id];
+    if (typeof entry !== 'string' || entry.length === 0) missing.push(`${locale}:${item.id}`);
   }
 }
 if (missing.length) {
@@ -74,10 +81,21 @@ const releases = manifest.map((release) => ({
   }))
 }));
 
+// Coming-soon entries live off the version axis (no version/date/category):
+// rendered as a section atop the public changelog, mirroring what the in-app
+// dialog shows on web.
+const upcomingItems = upcoming.map((item) => ({
+  id: item.id,
+  apps: item.apps,
+  platforms: item.platforms,
+  text: Object.fromEntries(LOCALES.map((l) => [l, text[l][item.id]]))
+}));
+
 const output = {
   schema: 1,
   locales: LOCALES,
-  releases
+  releases,
+  upcoming: upcomingItems
 };
 
 const json = JSON.stringify(output, null, 2) + '\n';
@@ -89,6 +107,6 @@ if (toStdout) {
   writeFileSync(outPath, json, 'utf8');
   const itemCount = releases.reduce((n, r) => n + r.items.length, 0);
   console.log(
-    `[export-release-notes] Wrote ${releases.length} releases / ${itemCount} items (${LOCALES.length} locales) to ${outPath}`
+    `[export-release-notes] Wrote ${releases.length} releases / ${itemCount} items + ${upcomingItems.length} upcoming (${LOCALES.length} locales) to ${outPath}`
   );
 }
