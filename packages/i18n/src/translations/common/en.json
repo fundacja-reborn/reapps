@@ -15,6 +15,24 @@
       "recommended_description": "A newer version of the app is available in the store."
     }
   },
+  "whats_new": {
+    "title": "What's new",
+    "settings_row": "What's new",
+    "settings_row_desc": "See what changed in recent updates",
+    "category_new": "New",
+    "category_improved": "Improved",
+    "category_fixed": "Fixed",
+    "platform_web": "Web",
+    "platform_ios": "iOS app",
+    "platform_android": "Android app",
+    "platform_macos": "macOS app",
+    "platform_windows": "Windows app",
+    "platform_linux": "Linux app",
+    "coming_soon": "Coming soon",
+    "empty": "No release notes to show yet.",
+    "show_older": "Show older updates",
+    "full_changelog": "Full changelog"
+  },
   "dates": {
     "today": "today",
     "tomorrow": "tomorrow",
@@ -87,7 +105,7 @@
       "error": "An error occurred while logging out"
     },
     "session": {
-      "expired_banner": "Session expired — click to sign in again",
+      "expired_banner": "Session expired - click to sign in again",
       "reauth_title": "Session expired",
       "reauth_description": "Your session has expired. Enter your password to continue without losing your data.",
       "username_label": "Username",
@@ -98,7 +116,7 @@
       "error_auth_failed": "Authentication failed. Please check your password.",
       "error_unknown": "Authentication failed",
       "error_locked": "Account temporarily locked. Too many failed attempts. Try again in {seconds}s.",
-      "empty_no_data": "No data available — session expired. Sign in again to sync your data.",
+      "empty_no_data": "No data available - session expired. Sign in again to sync your data.",
       "totp_title": "Two-factor verification",
       "totp_description": "Enter the code from your authenticator app to finish re-authenticating.",
       "totp_label": "2FA code",

@@ -25,7 +25,8 @@
     User,
     HardDrive,
     ShieldAlert,
-    CalendarDays
+    CalendarDays,
+    Sparkles
   } from '@lucide/svelte';
   import { goto } from '$lib/utils/navigation';
   import {
@@ -37,6 +38,7 @@
   import { cn, GithubMark } from '@reborn/ui';
   import { authStore } from '$lib/stores/auth.store';
   import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
+  import { openWhatsNew } from '$lib/stores/whats-new.svelte';
   import { onMount } from 'svelte';
   import {
     quotaUsedBytes,
@@ -523,6 +525,18 @@
               {/if}
             </div>
           </div>
+          <button
+            type="button"
+            onclick={() => openWhatsNew()}
+            class={cn(itemClasses, 'w-full text-left')}
+          >
+            <Sparkles class="h-5 w-5 text-muted-foreground shrink-0" />
+            <div class="flex-1 min-w-0">
+              <div class="font-medium">{$t('whats_new.settings_row')}</div>
+              <div class="text-sm text-muted-foreground">{$t('whats_new.settings_row_desc')}</div>
+            </div>
+            <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
+          </button>
           <div class={itemClasses}>
             <Scale class="h-5 w-5 text-muted-foreground shrink-0" />
             <div class="flex-1 min-w-0">

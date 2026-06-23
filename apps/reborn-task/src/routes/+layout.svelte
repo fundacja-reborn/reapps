@@ -13,7 +13,7 @@
 	import { SessionExpiredBanner, RequireSessionModal } from '@reborn/ui';
 	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 	import LocalModeWelcome from '$lib/components/LocalModeWelcome.svelte';
-	import { Toaster } from '@reborn/ui';
+	import { Toaster, WhatsNewDialog } from '@reborn/ui';
 	import type { Snippet } from 'svelte';
 	import { initializeStorage, isDatabaseInitialized } from '@reborn/storage';
 	import { cryptoManager } from '@reborn/crypto';
@@ -23,10 +23,17 @@
 	import { taskTitleIndex } from '$lib/services/task-title-index.svelte';
 	import { taskCounts } from '$lib/stores/task-counts.store';
 	import { sharesStore } from '$lib/stores/shares.store';
+	import { whatsNew } from '$lib/stores/whats-new.svelte';
+	import { maybeShowWhatsNew } from '$lib/services/whats-new.service';
 
 	const logger = createLogger('Layout');
 
 	let { children }: { children: Snippet } = $props();
+
+	// What's new dialog: web-only app, so platform is always 'web'. The website
+	// changelog (English + /pl only) backs the "Full changelog" link.
+	const SITE_URL = (import.meta.env.PUBLIC_SITE_URL as string | undefined) ?? 'https://reapps.eu';
+	const changelogHref = $derived(`${SITE_URL}${$locale === 'pl' ? '/pl' : ''}/changelog`);
 
 	// Track initialization timeout
 	let initTimeout = $state(false);
@@ -99,6 +106,15 @@
 		runSync().catch((err) => {
 			logger.error('Sync-on-E2E-unlock failed:', err);
 		});
+	});
+
+	// What's new: auto-open the dialog once the app is unlocked (the E2E key is
+	// available, so the user is past login/unlock and looking at content), never
+	// over a lock/auth screen. Web-only app -> platform 'web'. maybeShowWhatsNew
+	// acts at most once and only advances its baseline when it actually runs.
+	$effect(() => {
+		if (!browser || !$session?.hasE2E) return;
+		maybeShowWhatsNew('task', 'web');
 	});
 
 	// Initialize dark mode based on user preference or system setting
@@ -315,6 +331,12 @@
 	</div>
 	<LocalModeWelcome />
 	<Toaster />
+	<WhatsNewDialog
+		bind:open={whatsNew.open}
+		app="task"
+		platform="web"
+		fullChangelogHref={changelogHref}
+	/>
 {:else}
 	<LoadingScreen />
 {/if}

@@ -15,6 +15,24 @@
       "recommended_description": "Une version plus récente de l'application est disponible dans la boutique."
     }
   },
+  "whats_new": {
+    "title": "Nouveautés",
+    "settings_row": "Nouveautés",
+    "settings_row_desc": "Découvrez ce qui a changé dans les dernières mises à jour",
+    "category_new": "Nouveau",
+    "category_improved": "Amélioré",
+    "category_fixed": "Corrigé",
+    "platform_web": "Web",
+    "platform_ios": "App iOS",
+    "platform_android": "App Android",
+    "platform_macos": "App macOS",
+    "platform_windows": "App Windows",
+    "platform_linux": "App Linux",
+    "coming_soon": "Bientôt disponible",
+    "empty": "Aucune note de version pour le moment.",
+    "show_older": "Afficher les mises à jour plus anciennes",
+    "full_changelog": "Journal des modifications complet"
+  },
   "dates": {
     "today": "aujourd'hui",
     "tomorrow": "demain",
@@ -87,7 +105,7 @@
       "error": "Une erreur est survenue lors de la déconnexion"
     },
     "session": {
-      "expired_banner": "Session expirée — cliquez pour vous reconnecter",
+      "expired_banner": "Session expirée - cliquez pour vous reconnecter",
       "reauth_title": "Session expirée",
       "reauth_description": "Votre session a expiré. Entrez votre mot de passe pour continuer sans perdre vos données.",
       "username_label": "Nom d'utilisateur",
@@ -98,7 +116,7 @@
       "error_auth_failed": "L'authentification a échoué. Veuillez vérifier votre mot de passe.",
       "error_unknown": "L'authentification a échoué",
       "error_locked": "Compte temporairement verrouillé. Trop de tentatives échouées. Réessayez dans {seconds}s.",
-      "empty_no_data": "Aucune donnée disponible — session expirée. Reconnectez-vous pour synchroniser vos données.",
+      "empty_no_data": "Aucune donnée disponible - session expirée. Reconnectez-vous pour synchroniser vos données.",
       "totp_title": "Vérification à deux facteurs",
       "totp_description": "Entrez le code de votre application d'authentification pour terminer la reconnexion.",
       "totp_label": "Code 2FA",

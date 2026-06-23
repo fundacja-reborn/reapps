@@ -3,7 +3,7 @@
   import { onMount, untrack } from 'svelte';
   import { installNativeAuthProbe } from '$lib/utils/native-auth-probe';
   import { get } from 'svelte/store';
-  import { Toaster } from '@reborn/ui';
+  import { Toaster, WhatsNewDialog } from '@reborn/ui';
   import { browser } from '$app/environment';
   import type { Snippet } from 'svelte';
   import { goto } from '$lib/utils/navigation';
@@ -37,10 +37,21 @@
   import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
   import { initAppLock, shouldLockOnResume } from '$lib/services/app-lock.service';
   import { createLogger } from '@reborn/utils';
+  import type { ReleasePlatform } from '@reborn/i18n';
+  import { whatsNew } from '$lib/stores/whats-new.svelte';
+  import { resolveWhatsNewPlatform } from '$lib/utils/whats-new-platform';
+  import { maybeShowWhatsNew } from '$lib/services/whats-new.service';
 
   const logger = createLogger('notes:layout');
 
   let { children }: { children: Snippet } = $props();
+
+  // What's new dialog: platform drives release-notes filtering; the website
+  // changelog (English + /pl only) backs the "Full changelog" link.
+  const SITE_URL = (import.meta.env.PUBLIC_SITE_URL as string | undefined) ?? 'https://reapps.eu';
+  const changelogHref = $derived(`${SITE_URL}${$locale === 'pl' ? '/pl' : ''}/changelog`);
+  let wnPlatform = $state<ReleasePlatform>('web');
+  let wnPlatformReady = $state(false);
 
   let appReady = $state(false);
   let initTimeout = $state(false);
@@ -118,6 +129,19 @@
       });
       return;
     }
+  });
+
+  // What's new: auto-open the dialog once the app is unlocked and showing
+  // content - never over a lock/auth screen. Mirrors the guard above: account
+  // user with the E2E key, or local-only, and not gated behind a passcode /
+  // App Lock. maybeShowWhatsNew acts at most once and only advances its baseline
+  // when it actually runs, so a still-locked session never burns the prompt.
+  $effect(() => {
+    if (!browser || !appReady || !wnPlatformReady) return;
+    const unlocked = ($authStore.isAuthenticated && $authStore.hasE2E) || $authStore.isLocalOnly;
+    if (!unlocked) return;
+    if (cryptoManager.isLocalPasscodeLocked() || cryptoManager.isAppLockLocked()) return;
+    maybeShowWhatsNew('notes', wnPlatform);
   });
 
   // Re-decrypt all stores when E2E key becomes available (e.g. after unlock/login flow).
@@ -322,6 +346,14 @@
       logger.error('Initialization failed:', e);
     });
 
+    // What's new: resolve the platform so both the Settings dialog and the
+    // auto-open effect filter release notes correctly. The dialog itself is
+    // opened by the unlock-gated $effect above, never on a fixed timer.
+    void resolveWhatsNewPlatform().then((p) => {
+      wnPlatform = p;
+      wnPlatformReady = true;
+    });
+
     // Initialize network monitoring (sets up online/offline listeners)
     const unsubscribeNetwork = isOnline.subscribe(() => {});
 
@@ -518,6 +550,12 @@
     />
     {@render children()}
     <Toaster />
+    <WhatsNewDialog
+      bind:open={whatsNew.open}
+      app="notes"
+      platform={wnPlatform}
+      fullChangelogHref={changelogHref}
+    />
     <LocalModeWelcome />
     {#if __REBORN_NATIVE__}
       <UpdateRequiredGate />

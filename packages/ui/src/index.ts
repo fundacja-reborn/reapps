@@ -370,6 +370,9 @@ export {
   DateTimeFormatCard
 } from './components/settings';
 
+// What's new (release notes) dialog
+export { WhatsNewDialog } from './components/whats-new';
+
 // Time Field
 export { TimeFieldInput } from './components/time-field';
 

@@ -21,7 +21,9 @@
     "release:patch": "node scripts/release.mjs --specifier=patch",
     "release:minor": "node scripts/release.mjs --specifier=minor",
     "release:major": "node scripts/release.mjs --specifier=major",
-    "release:finalize": "node scripts/release.mjs --finalize"
+    "release:finalize": "node scripts/release.mjs --finalize",
+    "export:release-notes": "node scripts/export-release-notes.mjs",
+    "check:i18n": "node scripts/check-i18n-parity.mjs"
   },
   "private": true,
   "devDependencies": {

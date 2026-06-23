@@ -1,0 +1,7 @@
+[
+  {
+    "id": "upcoming-native-apps",
+    "apps": ["notes", "task"],
+    "platforms": ["android", "ios"]
+  }
+]

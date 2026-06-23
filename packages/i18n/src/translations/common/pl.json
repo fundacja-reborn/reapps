@@ -15,6 +15,24 @@
       "recommended_description": "Nowsza wersja aplikacji jest dostępna w sklepie."
     }
   },
+  "whats_new": {
+    "title": "Co nowego",
+    "settings_row": "Co nowego",
+    "settings_row_desc": "Zobacz, co zmieniło się w ostatnich aktualizacjach",
+    "category_new": "Nowość",
+    "category_improved": "Ulepszenia",
+    "category_fixed": "Poprawki",
+    "platform_web": "Web",
+    "platform_ios": "Aplikacja iOS",
+    "platform_android": "Aplikacja Android",
+    "platform_macos": "Aplikacja macOS",
+    "platform_windows": "Aplikacja Windows",
+    "platform_linux": "Aplikacja Linux",
+    "coming_soon": "Wkrótce",
+    "empty": "Brak informacji o zmianach.",
+    "show_older": "Pokaż starsze aktualizacje",
+    "full_changelog": "Pełna lista zmian"
+  },
   "dates": {
     "today": "dzisiaj",
     "tomorrow": "jutro",
@@ -87,7 +105,7 @@
       "error": "Wystąpił błąd podczas wylogowywania"
     },
     "session": {
-      "expired_banner": "Sesja wygasła — kliknij, aby zalogować się ponownie",
+      "expired_banner": "Sesja wygasła - kliknij, aby zalogować się ponownie",
       "reauth_title": "Sesja wygasła",
       "reauth_description": "Twoja sesja wygasła. Wprowadź hasło, aby kontynuować bez utraty danych.",
       "username_label": "Nazwa użytkownika",
@@ -98,7 +116,7 @@
       "error_auth_failed": "Uwierzytelnianie nie powiodło się. Sprawdź swoje hasło.",
       "error_unknown": "Uwierzytelnianie nie powiodło się",
       "error_locked": "Konto tymczasowo zablokowane. Zbyt wiele nieudanych prób. Spróbuj ponownie za {seconds} s.",
-      "empty_no_data": "Brak danych — sesja wygasła. Zaloguj się ponownie, aby zsynchronizować dane.",
+      "empty_no_data": "Brak danych - sesja wygasła. Zaloguj się ponownie, aby zsynchronizować dane.",
       "totp_title": "Weryfikacja dwuetapowa",
       "totp_description": "Wprowadź kod z aplikacji uwierzytelniającej, aby dokończyć ponowne logowanie.",
       "totp_label": "Kod 2FA",

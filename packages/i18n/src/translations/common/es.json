@@ -15,6 +15,24 @@
       "recommended_description": "Hay una versión más reciente de la aplicación disponible en la tienda."
     }
   },
+  "whats_new": {
+    "title": "Novedades",
+    "settings_row": "Novedades",
+    "settings_row_desc": "Mira qué cambió en las últimas actualizaciones",
+    "category_new": "Nuevo",
+    "category_improved": "Mejorado",
+    "category_fixed": "Corregido",
+    "platform_web": "Web",
+    "platform_ios": "App de iOS",
+    "platform_android": "App de Android",
+    "platform_macos": "App de macOS",
+    "platform_windows": "App de Windows",
+    "platform_linux": "App de Linux",
+    "coming_soon": "Próximamente",
+    "empty": "Aún no hay notas de versión.",
+    "show_older": "Mostrar actualizaciones anteriores",
+    "full_changelog": "Registro de cambios completo"
+  },
   "dates": {
     "today": "hoy",
     "tomorrow": "mañana",
@@ -87,7 +105,7 @@
       "error": "Se produjo un error al cerrar la sesión"
     },
     "session": {
-      "expired_banner": "Sesión expirada — haga clic para iniciar sesión de nuevo",
+      "expired_banner": "Sesión expirada - haga clic para iniciar sesión de nuevo",
       "reauth_title": "Sesión expirada",
       "reauth_description": "Su sesión ha expirado. Introduzca su contraseña para continuar sin perder sus datos.",
       "username_label": "Nombre de usuario",
@@ -98,7 +116,7 @@
       "error_auth_failed": "La autenticación falló. Por favor, verifique su contraseña.",
       "error_unknown": "La autenticación falló",
       "error_locked": "Cuenta bloqueada temporalmente. Demasiados intentos fallidos. Inténtelo de nuevo en {seconds}s.",
-      "empty_no_data": "No hay datos disponibles — sesión expirada. Inicie sesión de nuevo para sincronizar sus datos.",
+      "empty_no_data": "No hay datos disponibles - sesión expirada. Inicie sesión de nuevo para sincronizar sus datos.",
       "totp_title": "Verificación en dos pasos",
       "totp_description": "Introduzca el código de su aplicación de autenticación para terminar de iniciar sesión de nuevo.",
       "totp_label": "Código 2FA",

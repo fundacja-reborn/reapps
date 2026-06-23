@@ -36,3 +36,28 @@ export {
 
 // Re-export types from setup
 export type { I18nOptions } from './setup';
+
+// Release notes ("What's new") - curated, user-facing release history
+export {
+  RELEASE_NOTES,
+  UPCOMING,
+  compareVersions,
+  getLatestReleaseVersion,
+  hasUnseenReleaseNotes,
+  selectReleases,
+  selectUpcoming
+} from './release-notes';
+export { getReleaseNotes, getUpcoming } from './release-notes-api';
+export type {
+  ReleaseApp,
+  ReleasePlatform,
+  ReleaseCategory,
+  ReleaseItem,
+  ReleaseEntry,
+  ReleaseNotesText,
+  ReleaseFilter,
+  LocalizedReleaseItem,
+  LocalizedRelease,
+  UpcomingItem,
+  LocalizedUpcomingItem
+} from './release-notes';

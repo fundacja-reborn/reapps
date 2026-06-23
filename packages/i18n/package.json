@@ -27,7 +27,7 @@
   "scripts": {
     "build": "pnpm run clean && pnpm run build:types && tsup && pnpm copy-translations",
     "build:types": "tsc -p tsconfig.build.json",
-    "copy-translations": "mkdir -p dist && cp -r src/translations dist/",
+    "copy-translations": "mkdir -p dist && cp -r src/translations dist/ && mkdir -p dist/release-notes && cp -r src/release-notes/text dist/release-notes/ && cp src/release-notes/manifest.json dist/release-notes/",
     "dev": "tsup --watch",
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo",
     "test": "vitest run",
