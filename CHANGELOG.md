@@ -1,3 +1,9 @@
+## 0.35.0 (2026-06-23)
+
+### 🚀 Features
+
+- **reapps:** what's new release notes across apps and website ([#324](https://github.com/fundacja-reborn/reapps/pull/324))
+
 ## 0.34.1 (2026-06-22)
 
 ### 🩹 Fixes
