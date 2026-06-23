@@ -88,6 +88,7 @@
   import { createScrollSync } from '$lib/utils/scroll-sync';
   import { scrollToHeading } from '$lib/utils/heading-scroll';
   import type { DocHeading } from '$lib/utils/heading-outline';
+  import { applyToc, removeToc, hasToc, isTocStale } from '$lib/utils/toc';
   import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
   import { requireActiveSession } from '$lib/utils/require-active-session';
   import type { EditorView } from '@codemirror/view';
@@ -886,6 +887,30 @@
   // ── Autosave (delegated to noteDetailService) ─────────────────
   function handleContentChange(content: string) {
     noteDetailService.setContentDebounced(content);
+  }
+
+  // ── In-note table of contents (note "..." menu) ───────────────
+  // Same source mutation as the preview's TOC toolbar, but reachable in every
+  // view mode (incl. edit-only, where there is no preview). `tocMenuMode` decides
+  // which item(s) the menu shows; `tocStaleMenu` flags a drifted block. The
+  // `applyToc(...) !== null` probe doubles as "the note has headings to list".
+  const noteHasToc = $derived(hasToc(noteDetailService.content));
+  const tocMenuMode: 'insert' | 'manage' | 'hidden' = $derived(
+    noteHasToc
+      ? 'manage'
+      : applyToc(noteDetailService.content, { title: $t('toc.title') }) !== null
+        ? 'insert'
+        : 'hidden'
+  );
+  const tocStaleMenu = $derived(isTocStale(noteDetailService.content, { title: $t('toc.title') }));
+
+  function handleDetailTocApply(): void {
+    const next = applyToc(noteDetailService.content, { title: $t('toc.title') });
+    if (next !== null) handleContentChange(next);
+  }
+  function handleDetailTocRemove(): void {
+    const next = removeToc(noteDetailService.content);
+    if (next !== null) handleContentChange(next);
   }
 
   function handleTitleInput(e: Event) {
@@ -1920,6 +1945,10 @@
                 onshare={() => handleDetailShare()}
                 onshowxray={() => { showEncryptionXRay = true; }}
                 ondelete={handleDetailDelete}
+                {tocMenuMode}
+                tocStale={tocStaleMenu}
+                onTocApply={handleDetailTocApply}
+                onTocRemove={handleDetailTocRemove}
               />
             {/snippet}
           </NoteEditorHeader>
@@ -2169,6 +2198,10 @@
   onshowxray={() => { showEncryptionXRay = true; }}
   onrestore={() => {}}
   onpermanentdelete={() => {}}
+  {tocMenuMode}
+  tocStale={tocStaleMenu}
+  onTocApply={handleDetailTocApply}
+  onTocRemove={handleDetailTocRemove}
 />
 
 <!-- Detail-view move-to-folder (mobile bottom sheet) -->

@@ -648,6 +648,13 @@
     "title": "Konspekt",
     "empty": "Ta notatka nie ma jeszcze nagłówków."
   },
+  "toc": {
+    "title": "Spis treści",
+    "insert": "Wstaw spis treści",
+    "refresh": "Odśwież spis treści",
+    "remove": "Usuń spis treści",
+    "stale": "Nagłówki się zmieniły - odśwież spis treści"
+  },
   "history": {
     "title": "Historia wersji",
     "close": "Zamknij historię",

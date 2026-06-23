@@ -5,12 +5,12 @@
  *  - MarkdownPreview (stamps `id` on rendered headings for in-note `#anchor`
  *    links and the outline panel),
  *  - the OutlineSheet panel (lists a note's headings),
+ *  - the in-note table of contents (`toc.ts`, builds `[Section](#slug)` entries),
  *  - the import link rewrite (`internal-link-rewrite-utils.ts`, maps an
  *    Obsidian `[[Doc#Heading]]` subpath to `note:UUID#slug`).
  *
- * The TOC generator script (`scripts/generate-toc.mjs`) re-implements the same
- * algorithm (it runs in plain Node, outside this app) and self-checks parity
- * against the same fixture (`heading-outline.fixture.ts`). Keep the two in sync.
+ * Every consumer calls these functions directly, so a heading's anchor id, a TOC
+ * entry's `#slug` and an outline row can never drift apart.
  *
  * Slugs are GitHub-ish: lowercase, Unicode letters/numbers kept (so Polish /
  * German / French / Spanish headings stay readable), everything else dropped,

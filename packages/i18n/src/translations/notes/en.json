@@ -648,6 +648,13 @@
     "title": "Outline",
     "empty": "No headings in this note yet."
   },
+  "toc": {
+    "title": "Table of contents",
+    "insert": "Insert table of contents",
+    "refresh": "Refresh table of contents",
+    "remove": "Remove table of contents",
+    "stale": "Headings changed - refresh the table of contents"
+  },
   "history": {
     "title": "Version history",
     "close": "Close history",

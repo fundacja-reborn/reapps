@@ -648,6 +648,13 @@
     "title": "Esquema",
     "empty": "Esta nota aún no tiene encabezados."
   },
+  "toc": {
+    "title": "Tabla de contenido",
+    "insert": "Insertar tabla de contenido",
+    "refresh": "Actualizar tabla de contenido",
+    "remove": "Eliminar tabla de contenido",
+    "stale": "Los encabezados cambiaron - actualiza la tabla de contenido"
+  },
   "history": {
     "title": "Historial de versiones",
     "close": "Cerrar historial",

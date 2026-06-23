@@ -1,5 +1,5 @@
 {
-  "_comment": "Canonical heading-slug parity cases. Consumed by heading-outline.spec.ts AND by scripts/generate-toc.mjs (--self-test). Keep slugifyHeading / extractHeadings (heading-outline.ts) and the script's re-implementation in sync; this fixture is the contract between them.",
+  "_comment": "Canonical heading-slug parity cases for heading-outline.spec.ts. Pins the behaviour of slugifyHeading / extractHeadings (heading-outline.ts), which the in-note TOC (toc.ts), the outline panel and the import link rewrite all depend on.",
   "slugs": [
     { "text": "Hello World", "slug": "hello-world" },
     { "text": "Bezpieczeństwo danych", "slug": "bezpieczeństwo-danych" },

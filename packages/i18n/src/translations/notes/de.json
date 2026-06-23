@@ -648,6 +648,13 @@
     "title": "Gliederung",
     "empty": "Diese Notiz hat noch keine Überschriften."
   },
+  "toc": {
+    "title": "Inhaltsverzeichnis",
+    "insert": "Inhaltsverzeichnis einfügen",
+    "refresh": "Inhaltsverzeichnis aktualisieren",
+    "remove": "Inhaltsverzeichnis entfernen",
+    "stale": "Überschriften geändert - Inhaltsverzeichnis aktualisieren"
+  },
   "history": {
     "title": "Versionsverlauf",
     "close": "Verlauf schließen",

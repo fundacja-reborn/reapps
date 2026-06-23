@@ -5,6 +5,7 @@
   import MarkdownDiffView from '$lib/components/MarkdownDiffView.svelte';
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import { t } from '$lib/stores/i18n.store';
+  import { applyToc, removeToc, isTocStale } from '$lib/utils/toc';
   import type { ImageLoadMode, PeriodicKind } from '@reborn/storage';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -119,6 +120,20 @@
     oncontentchange(next);
   }
 
+  // In-note table of contents - the preview's corner toolbar (refresh / remove)
+  // mutates the markdown source the same way the task-checkbox toggle does.
+  // `tocStale` flips the refresh button to its "out of date" state when the
+  // headings have drifted from the listed entries.
+  function handleTocRefresh(): void {
+    const next = applyToc(noteDetailService.content, { title: $t('toc.title') });
+    if (next !== null) oncontentchange(next);
+  }
+  function handleTocDelete(): void {
+    const next = removeToc(noteDetailService.content);
+    if (next !== null) oncontentchange(next);
+  }
+  const tocStale = $derived(isTocStale(noteDetailService.content, { title: $t('toc.title') }));
+
   // Privacy hint + deep-link to the image-loading preference, surfaced next to
   // the "Load all images" button so the owner understands why their own images
   // don't auto-load and can flip the default in one click. MarkdownPreview only
@@ -194,6 +209,9 @@
               onrender={onpreviewrender}
               onNoteLink={onnotelink}
               onTaskToggle={handleTaskToggle}
+              onTocRefresh={handleTocRefresh}
+              onTocDelete={handleTocDelete}
+              {tocStale}
               {resolveNoteTitle}
               {imageLoadMode}
               {loadAllImagesHint}
@@ -212,6 +230,9 @@
             onrender={onpreviewrender}
             onNoteLink={onnotelink}
             onTaskToggle={handleTaskToggle}
+            onTocRefresh={handleTocRefresh}
+            onTocDelete={handleTocDelete}
+            {tocStale}
             {resolveNoteTitle}
             {imageLoadMode}
             {loadAllImagesHint}

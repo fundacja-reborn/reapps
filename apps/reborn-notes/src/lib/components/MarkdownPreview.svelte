@@ -21,6 +21,16 @@
   } from '$lib/utils/markdown-to-html';
   import { extractHeadings, assignHeadingSlugs } from '$lib/utils/heading-outline';
   import { scrollToHeading } from '$lib/utils/heading-scroll';
+  import { hasToc, tocInnerMarkdown, toEditableTocBlock } from '$lib/utils/toc';
+
+  // Toolbar icons for the owner's in-note table of contents (refresh + remove).
+  // Static, self-contained Lucide-style SVGs (16px, `stroke="currentColor"` so
+  // they follow the button colour) - same approach as CODE_COPY_ICON, never user
+  // input, so DOMPurify's svg profile passes them through unchanged.
+  const TOC_REFRESH_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
+  const TOC_REMOVE_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
 
   // `note:UUID` with an optional `#heading-slug` anchor. Group 1 = UUID,
   // group 2 = anchor (without the `#`), undefined when there is none.
@@ -59,6 +69,9 @@
     settingsLinkHref,
     onNoteLink,
     onTaskToggle,
+    onTocRefresh,
+    onTocDelete,
+    tocStale = false,
     onrender,
     resolveNoteTitle
   }: {
@@ -107,6 +120,19 @@
      */
     onTaskToggle?: (taskIndex: number, checked: boolean) => void;
     /**
+     * Owner-only table-of-contents toolbar. When `onTocRefresh` is provided AND
+     * the note holds a managed TOC block, the block is rendered as a single
+     * `<nav class="note-toc">` carrying a refresh + remove toolbar (mirrors the
+     * code-block copy button). Both callbacks mutate the markdown source upstream
+     * (like {@link onTaskToggle}). Read-only viewers (shared snapshot, history)
+     * leave these unset, so the markers there are just stripped to a plain
+     * bold-title + list with no controls.
+     */
+    onTocRefresh?: () => void;
+    onTocDelete?: () => void;
+    /** Drives the "out of date" styling on the refresh button (headings drifted). */
+    tocStale?: boolean;
+    /**
      * Fired after the rendered HTML is committed to the DOM (and
      * `data-source-line` attrs are stamped). The parent uses this to
      * rebuild line-anchor caches in the scroll-sync.
@@ -140,6 +166,30 @@
   // stomped when multiple MarkdownPreview components are mounted (e.g. mobile
   // + desktop layouts, or version-history previews).
   const md = new Marked({ gfm: true, breaks: true });
+
+  // Separate, vanilla Marked for rendering the TOC block's inner title + list to
+  // HTML before it is spliced into the atomic `<nav>` (see toEditableTocBlock).
+  // Kept distinct from `md` so it never touches `md`'s per-render list/task
+  // counters, and so the TOC list renders with default markup we style under
+  // `.note-toc` rather than the data-d list ramp used for body lists.
+  const tocMd = new Marked({ gfm: true, breaks: true });
+
+  // The owner-only refresh + remove toolbar, injected just inside the TOC `<nav>`.
+  // Labels are attribute-escaped; the refresh button doubles as the "out of date"
+  // indicator via `is-stale`. Built in the html derivation so it tracks locale
+  // and `tocStale`.
+  function buildTocToolbar(): string {
+    const esc = (s: string) => s.replace(/"/g, '&quot;');
+    const refreshLabel = esc(tocStale ? $t('toc.stale') : $t('toc.refresh'));
+    const removeLabel = esc($t('toc.remove'));
+    const staleCls = tocStale ? ' is-stale' : '';
+    return (
+      '<span class="note-toc-actions">' +
+      `<button type="button" class="note-toc-btn note-toc-refresh${staleCls}" aria-label="${refreshLabel}" title="${refreshLabel}">${TOC_REFRESH_ICON}</button>` +
+      `<button type="button" class="note-toc-btn note-toc-remove" aria-label="${removeLabel}" title="${removeLabel}">${TOC_REMOVE_ICON}</button>` +
+      '</span>'
+    );
+  }
 
   // List / task-list renderers are shared with `exportNoteAsPdf` so the PDF
   // pipeline emits the same `task-list-item` markup (no double bullet, scoped
@@ -222,7 +272,17 @@
       lastTokens = [];
       return '';
     }
-    const tokens = md.lexer(content);
+    // Owner-editable preview: render a managed TOC block as one atomic <nav>
+    // (one token -> one DOM node) carrying the refresh/remove toolbar, so the
+    // source-line zip and split-view scroll-sync stay aligned. Read-only viewers
+    // (no onTocRefresh) skip this; their markers are stripped to a plain list.
+    let source = content;
+    if (onTocRefresh && hasToc(content)) {
+      const innerMd = tocInnerMarkdown(content);
+      const innerHtml = innerMd != null ? (tocMd.parse(innerMd) as string) : '';
+      source = toEditableTocBlock(content, innerHtml, buildTocToolbar());
+    }
+    const tokens = md.lexer(source);
     annotateTopLevelLines(tokens);
     lastTokens = tokens;
     const raw = sanitize(md.parser(tokens) as string);
@@ -364,6 +424,16 @@
       const placeholders = containerEl.querySelectorAll('.image-placeholder');
       placeholders.forEach((p) => loadImage(p as HTMLElement));
       target.closest('.load-all-images-row')?.remove();
+      return;
+    }
+
+    // In-note TOC toolbar (owner-editable preview only): refresh / remove the
+    // managed block. Handlers mutate the markdown source upstream.
+    const tocBtn = target.closest('.note-toc-refresh, .note-toc-remove');
+    if (tocBtn) {
+      e.preventDefault();
+      if (tocBtn.classList.contains('note-toc-refresh')) onTocRefresh?.();
+      else onTocDelete?.();
       return;
     }
 
@@ -713,6 +783,83 @@
     opacity: 1;
     color: #16a34a;
     border-color: #16a34a;
+  }
+
+  /* In-note table of contents (owner-editable preview only). `.note-toc` is the
+     positioning context for its corner toolbar - mirrors `.code-block`. Read-only
+     viewers (shared snapshot, history) never get this wrapper; they render a
+     plain bold title + list. */
+  .preview :global(.note-toc) {
+    position: relative;
+    margin: 0 0 1em;
+    padding: 0.75em 1em;
+    border: 1px solid var(--border);
+    border-radius: 0.5em;
+    background: color-mix(in srgb, var(--muted) 40%, transparent);
+  }
+  .preview :global(.note-toc p) {
+    margin: 0 0 0.5em;
+    font-size: 0.9375rem;
+  }
+  .preview :global(.note-toc ul) {
+    margin: 0 0 0 1.1em;
+    list-style: none;
+  }
+  .preview :global(.note-toc ul ul) {
+    margin-bottom: 0;
+  }
+  .preview :global(.note-toc li + li) {
+    margin-top: 0.15em;
+  }
+  /* Hover/focus-revealed corner toolbar. When the TOC is out of date the whole
+     group is force-shown via :has() - a child can't out-opaque its parent, so the
+     reveal has to live on `.note-toc-actions`. */
+  .preview :global(.note-toc-actions) {
+    position: absolute;
+    top: 0.4em;
+    right: 0.4em;
+    display: inline-flex;
+    gap: 0.25em;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+  .preview :global(.note-toc:hover .note-toc-actions),
+  .preview :global(.note-toc:focus-within .note-toc-actions),
+  .preview :global(.note-toc:has(.note-toc-refresh.is-stale) .note-toc-actions) {
+    opacity: 1;
+  }
+  .preview :global(.note-toc-btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9em;
+    height: 1.9em;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 0.375em;
+    background: var(--background);
+    color: var(--muted-foreground);
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    transition:
+      color 0.12s ease,
+      border-color 0.12s ease,
+      background 0.12s ease;
+  }
+  .preview :global(.note-toc-btn:hover),
+  .preview :global(.note-toc-btn:focus-visible) {
+    color: var(--foreground);
+    background: var(--accent);
+  }
+  .preview :global(.note-toc-remove:hover) {
+    color: var(--destructive);
+    border-color: var(--destructive);
+  }
+  /* Out of date: refresh button stays visible + amber so the drift is noticed. */
+  .preview :global(.note-toc-refresh.is-stale) {
+    color: #d97706;
+    border-color: #d97706;
   }
 
   /* Syntax highlight tokens — palette mirrors editor/live-preview/theme.ts.

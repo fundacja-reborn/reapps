@@ -648,6 +648,13 @@
     "title": "Plan",
     "empty": "Cette note n'a pas encore de titres."
   },
+  "toc": {
+    "title": "Table des matières",
+    "insert": "Insérer la table des matières",
+    "refresh": "Actualiser la table des matières",
+    "remove": "Supprimer la table des matières",
+    "stale": "Titres modifiés - actualisez la table des matières"
+  },
   "history": {
     "title": "Historique des versions",
     "close": "Fermer l'historique",
