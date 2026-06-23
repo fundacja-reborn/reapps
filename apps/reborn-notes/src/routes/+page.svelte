@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick, untrack } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
   import { beforeNavigate } from '$app/navigation';
   import { base } from '$app/paths';
   import { copyText } from '$lib/utils/clipboard';
@@ -955,6 +956,11 @@
   const scrollSync = createScrollSync();
   let previewScrollEl = $state<HTMLElement | null>(null);
   let previewContentEl = $state<HTMLElement | null>(null);
+  // Scroll-spy for the Outline panel: the heading slug currently near the top of
+  // the preview, plus a tick bumped on each preview render so the observer
+  // re-attaches to freshly rendered heading elements.
+  let activeOutlineSlug = $state<string | null>(null);
+  let previewRenderTick = $state(0);
   let editorView = $state<EditorView | null>(null);
   let desktopEditorScrollContainer = $state<HTMLElement | null>(null);
   let mobileScrollContainer = $state<HTMLElement | null>(null);
@@ -1050,6 +1056,7 @@
   // images finish loading, since heights only stabilise post-load.
   function handlePreviewRender() {
     scrollSync.refresh();
+    previewRenderTick++;
     // Consume a pending cross-note heading anchor once its note has rendered.
     // Clear it on a note mismatch (a different note rendered first) so a stale
     // anchor never fires on an unrelated note.
@@ -1061,6 +1068,46 @@
     }
     if (scrollToHeading(previewContentEl, target.slug)) pendingAnchor = null;
   }
+
+  // Scroll-spy: while the Outline panel is open, observe the preview's headings
+  // and mark the topmost one near the top of the scroll viewport as active.
+  // Re-attaches when the preview re-renders (new heading elements) or the note
+  // changes; no-op when the panel is closed or no preview is mounted (edit-only).
+  $effect(() => {
+    if (!outlineOpen) {
+      activeOutlineSlug = null;
+      return;
+    }
+    void previewRenderTick;
+    void $activeNoteId;
+    const container = previewContentEl;
+    const root = previewSyncScrollEl;
+    if (!container) return;
+    const headings = [...container.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')];
+    if (headings.length === 0) return;
+
+    const visible = new SvelteSet<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).id;
+          if (entry.isIntersecting) visible.add(id);
+          else visible.delete(id);
+        }
+        // Active = first heading (document order) in the trigger zone near the
+        // top. When none are (scrolled mid-section), keep the last active one.
+        for (const heading of headings) {
+          if (visible.has(heading.id)) {
+            activeOutlineSlug = heading.id;
+            break;
+          }
+        }
+      },
+      { root, rootMargin: '0px 0px -70% 0px', threshold: 0 }
+    );
+    headings.forEach((heading) => observer.observe(heading));
+    return () => observer.disconnect();
+  });
 
   function handleEditorViewInit(view: EditorView) {
     editorView = view;
@@ -2010,6 +2057,7 @@
   <OutlineSheet
     content={noteDetailService.content}
     open={outlineOpen}
+    activeSlug={activeOutlineSlug}
     onnavigate={handleOutlineNavigate}
     onclose={() => {
       outlineOpen = false;
