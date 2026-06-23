@@ -122,7 +122,7 @@
       {:else}
         <div class="divide-y divide-border">
           {#if upcoming.length > 0}
-            <section class="space-y-3 py-5 first:pt-0 last:pb-0">
+            <section class="space-y-2 py-6 first:pt-0 last:pb-0">
               <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {$t('whats_new.coming_soon')}
               </p>
@@ -153,7 +153,7 @@
             </section>
           {/if}
           {#each visible as release (release.version)}
-            <section class="space-y-3 py-5 first:pt-0 last:pb-0">
+            <section class="space-y-5 py-6 first:pt-0 last:pb-0">
               <div class="flex items-baseline justify-between gap-3">
                 <h3 class="text-base font-semibold">{fmtDate(release.date)}</h3>
                 <span
@@ -164,7 +164,7 @@
               </div>
 
               {#each groups(release.items) as group (group.category)}
-                <div class="space-y-1.5">
+                <div class="space-y-2">
                   <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {$t(`whats_new.category_${group.category}`)}
                   </p>
