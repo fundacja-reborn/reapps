@@ -159,6 +159,21 @@ describe('importFolder inter-note link rewriting', () => {
     const idA = r2.pathToNoteId['vault/a.md'];
     expect(notes.get(idA)?.content).toBe(`Go [B](note:${idB}) now.`);
   });
+
+  it('preserves a #heading fragment as a note anchor (encoded path link)', async () => {
+    const res = await importFolder(
+      [
+        input('a.md', 'vault/a.md', '---\ntitle: A\n---\nJump [B](b.md#Some%20Section).'),
+        input('b.md', 'vault/b.md', '---\ntitle: B\n---\n## Some Section')
+      ],
+      'rename',
+      undefined,
+      { rewriteInterNoteLinks: true }
+    );
+    const idA = res.pathToNoteId['vault/a.md'];
+    const idB = res.pathToNoteId['vault/b.md'];
+    expect(notes.get(idA)?.content).toBe(`Jump [B](note:${idB}#some-section).`);
+  });
 });
 
 describe('importFolder Obsidian wikilink rewriting', () => {
@@ -212,6 +227,18 @@ describe('importFolder Obsidian wikilink rewriting', () => {
     const idDupX = res.pathToNoteId['vault/x/Dup.md'];
     // Bare [[Dup]] is ambiguous → untouched; [[x/Dup]] names one file → resolved.
     expect(notes.get(idA)?.content).toBe(`Bare [[Dup]] vs path [x/Dup](note:${idDupX}).`);
+    expect(res.linksRewritten).toBe(1);
+  });
+
+  it('rewrites a [[Doc#Heading]] wikilink to a note anchor', async () => {
+    const files: ImportFolderInput[] = [
+      input('a.md', 'vault/a.md', '---\ntitle: A\n---\nSee [[B#Some Heading]].'),
+      input('b.md', 'vault/b.md', '---\ntitle: B\n---\n## Some Heading')
+    ];
+    const res = await importFolder(files, 'rename', undefined, { rewriteInterNoteLinks: true });
+    const idA = res.pathToNoteId['vault/a.md'];
+    const idB = res.pathToNoteId['vault/b.md'];
+    expect(notes.get(idA)?.content).toBe(`See [B](note:${idB}#some-heading).`);
     expect(res.linksRewritten).toBe(1);
   });
 });

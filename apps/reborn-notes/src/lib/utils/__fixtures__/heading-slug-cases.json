@@ -1,0 +1,28 @@
+{
+  "_comment": "Canonical heading-slug parity cases. Consumed by heading-outline.spec.ts AND by scripts/generate-toc.mjs (--self-test). Keep slugifyHeading / extractHeadings (heading-outline.ts) and the script's re-implementation in sync; this fixture is the contract between them.",
+  "slugs": [
+    { "text": "Hello World", "slug": "hello-world" },
+    { "text": "Bezpieczeństwo danych", "slug": "bezpieczeństwo-danych" },
+    { "text": "Wdrożenie (SCP)", "slug": "wdrożenie-scp" },
+    { "text": "**Bold** heading", "slug": "bold-heading" },
+    { "text": "`code` in heading", "slug": "code-in-heading" },
+    { "text": "🔴 Ważne", "slug": "ważne" },
+    { "text": "Über Größe", "slug": "über-größe" },
+    { "text": "Café déjà-vu", "slug": "café-déjà-vu" },
+    { "text": "Multiple   spaces", "slug": "multiple-spaces" },
+    { "text": "C++ & D", "slug": "c-d" }
+  ],
+  "dedup": {
+    "texts": ["Setup", "Setup", "Setup", "Teardown"],
+    "slugs": ["setup", "setup-1", "setup-2", "teardown"]
+  },
+  "doc": {
+    "markdown": "---\ntitle: Test\ntags: [a, b]\n---\n\n# Title\n\nIntro paragraph.\n\n## Sekcja Pierwsza\n\nSome text.\n\n```bash\n# this is a comment, not a heading\necho hi\n```\n\n## Sekcja Pierwsza\n\nDuplicate heading above.\n\n### Pod-sekcja\n",
+    "headings": [
+      { "depth": 1, "text": "Title", "slug": "title", "line": 6 },
+      { "depth": 2, "text": "Sekcja Pierwsza", "slug": "sekcja-pierwsza", "line": 10 },
+      { "depth": 2, "text": "Sekcja Pierwsza", "slug": "sekcja-pierwsza-1", "line": 19 },
+      { "depth": 3, "text": "Pod-sekcja", "slug": "pod-sekcja", "line": 23 }
+    ]
+  }
+}

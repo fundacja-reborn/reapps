@@ -60,7 +60,7 @@
     /** Forwarded from MarkdownPreview — fires after each render commit. */
     onpreviewrender?: () => void;
     onnotelinkrequest: () => void;
-    onnotelink: (noteId: string) => void;
+    onnotelink: (noteId: string, anchor?: string) => void;
     resolveNoteTitle: (noteId: string) => string | undefined;
   } = $props();
 

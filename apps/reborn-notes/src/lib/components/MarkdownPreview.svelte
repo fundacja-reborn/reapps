@@ -19,8 +19,13 @@
     createMarkdownListRenderers,
     createMarkdownImageRenderer
   } from '$lib/utils/markdown-to-html';
+  import { extractHeadings, assignHeadingSlugs } from '$lib/utils/heading-outline';
+  import { scrollToHeading } from '$lib/utils/heading-scroll';
 
-  const NOTE_LINK_RE = /^note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+  // `note:UUID` with an optional `#heading-slug` anchor. Group 1 = UUID,
+  // group 2 = anchor (without the `#`), undefined when there is none.
+  const NOTE_LINK_RE =
+    /^note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:#(.+))?$/i;
 
   const ALLOWED_URI =
     /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|note):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i; // eslint-disable-line no-useless-escape
@@ -84,8 +89,12 @@
      */
     settingsLinkLabel?: string;
     settingsLinkHref?: string;
-    /** Called when user clicks a note:UUID link */
-    onNoteLink?: (noteId: string) => void;
+    /**
+     * Called when the user clicks a `note:UUID` link. `anchor` is the optional
+     * `#heading-slug` (without the `#`) when the link targets a heading
+     * (`note:UUID#slug`); the owner navigates to the note and scrolls to it.
+     */
+    onNoteLink?: (noteId: string, anchor?: string) => void;
     /**
      * Called when the user clicks a checkbox in a GFM task list. The owner
      * is responsible for toggling the matching `[ ]` / `[x]` in the
@@ -229,11 +238,11 @@
       .replace(/<\/table>/g, '</table></div>');
     if (!resolveNoteTitle) return tableWrapped;
     return tableWrapped.replace(
-      /<a ([^>]*?)href="note:([0-9a-f-]{36})"([^>]*?)>([^<]*)<\/a>/gi,
-      (_match, pre, noteId, post, _text) => {
+      /<a ([^>]*?)href="note:([0-9a-f-]{36})(#[^"]*)?"([^>]*?)>([^<]*)<\/a>/gi,
+      (_match, pre, noteId, frag, post, _text) => {
         const currentTitle = resolveNoteTitle(noteId);
         const displayText = currentTitle ?? _text;
-        return `<a ${pre}href="note:${noteId}"${post}>${displayText}</a>`;
+        return `<a ${pre}href="note:${noteId}${frag ?? ''}"${post}>${displayText}</a>`;
       }
     );
   });
@@ -247,6 +256,7 @@
     void html;
     if (!containerEl) return;
     applySourceLineAttrs(containerEl, lastTokens);
+    assignHeadingIds(containerEl, content);
     onrender?.();
 
     const images = containerEl.querySelectorAll('img');
@@ -269,6 +279,26 @@
     img.style.maxWidth = '100%';
     img.style.borderRadius = '0.375em';
     placeholder.replaceWith(img);
+  }
+
+  // Stamp slug ids on rendered headings so in-note `#anchor` links, cross-note
+  // `note:UUID#anchor` links and the outline panel can scroll to them. Ids come
+  // from extractHeadings(content) - the SAME source the outline panel and the
+  // import link-rewrite use - so a TOC link's `#slug` always matches the
+  // heading's id. If marked and our extractor disagree on the heading count
+  // (e.g. a Setext heading we deliberately don't parse), fall back to slugifying
+  // each rendered heading's text so ids are still present and unique for in-note
+  // navigation within this preview.
+  function assignHeadingIds(root: HTMLElement, source: string) {
+    const headings = root.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6');
+    const slugs = extractHeadings(source).map((h) => h.slug);
+    const ids =
+      slugs.length === headings.length
+        ? slugs
+        : assignHeadingSlugs([...headings].map((el) => el.textContent ?? ''));
+    headings.forEach((el, i) => {
+      el.id = ids[i];
+    });
   }
 
   function handleClick(e: MouseEvent) {
@@ -338,7 +368,24 @@
 
     if (noteMatch) {
       e.preventDefault();
-      onNoteLink?.(noteMatch[1]);
+      // noteMatch[2] is the optional #heading anchor (without the `#`), or
+      // undefined. The owner navigates to the note and scrolls to the heading.
+      onNoteLink?.(noteMatch[1], noteMatch[2]);
+      return;
+    }
+
+    // In-note heading anchor (`[Section](#slug)`, e.g. a table of contents):
+    // scroll within this preview rather than let the browser navigate the URL
+    // hash (which would clash with share deep-links and SPA routing).
+    if (href.startsWith('#')) {
+      e.preventDefault();
+      let id = href.slice(1);
+      try {
+        id = decodeURIComponent(id);
+      } catch {
+        /* malformed %-escape - fall back to the raw fragment */
+      }
+      scrollToHeading(containerEl, id);
       return;
     }
 
@@ -420,6 +467,9 @@
     line-height: 1.3;
     margin-top: 1.5em;
     margin-bottom: 0.5em;
+    /* Breathing room when an in-note/cross-note anchor scrolls a heading to the
+       top of the preview, so it doesn't sit flush against the container edge. */
+    scroll-margin-top: 0.75rem;
   }
   .preview :global(:first-child) {
     margin-top: 0;
