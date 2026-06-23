@@ -1086,6 +1086,33 @@
     if (headings.length === 0) return;
 
     const visible = new SvelteSet<string>();
+
+    const computeActive = () => {
+      // At the very bottom of a scrollable pane the trailing sections are on
+      // screen but can't be pushed up into the trigger zone (no content below),
+      // so the spy would stay stuck on whatever is near the top. Promote the
+      // last heading instead - the "you've reached the end" convention
+      // (VitePress / Bootstrap). Guarded on the pane actually being scrollable,
+      // so a short note that fully fits keeps its top heading active rather than
+      // jumping to the last one while you're looking at the top.
+      if (
+        root &&
+        root.scrollHeight > root.clientHeight + 4 &&
+        root.scrollTop + root.clientHeight >= root.scrollHeight - 2
+      ) {
+        activeOutlineSlug = headings[headings.length - 1].id;
+        return;
+      }
+      // Otherwise: first heading (document order) in the trigger zone near the
+      // top. When none are (scrolled mid-section), keep the last active one.
+      for (const heading of headings) {
+        if (visible.has(heading.id)) {
+          activeOutlineSlug = heading.id;
+          break;
+        }
+      }
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -1093,19 +1120,21 @@
           if (entry.isIntersecting) visible.add(id);
           else visible.delete(id);
         }
-        // Active = first heading (document order) in the trigger zone near the
-        // top. When none are (scrolled mid-section), keep the last active one.
-        for (const heading of headings) {
-          if (visible.has(heading.id)) {
-            activeOutlineSlug = heading.id;
-            break;
-          }
-        }
+        computeActive();
       },
       { root, rootMargin: '0px 0px -70% 0px', threshold: 0 }
     );
     headings.forEach((heading) => observer.observe(heading));
-    return () => observer.disconnect();
+
+    // The observer only fires when a heading crosses the trigger zone; the final
+    // stretch of scroll to the very bottom crosses none, so also recompute on
+    // scroll to catch reaching the end.
+    root?.addEventListener('scroll', computeActive, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      root?.removeEventListener('scroll', computeActive);
+    };
   });
 
   function handleEditorViewInit(view: EditorView) {
