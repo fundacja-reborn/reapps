@@ -40,12 +40,14 @@ export type { I18nOptions } from './setup';
 // Release notes ("What's new") - curated, user-facing release history
 export {
   RELEASE_NOTES,
+  UPCOMING,
   compareVersions,
   getLatestReleaseVersion,
   hasUnseenReleaseNotes,
-  selectReleases
+  selectReleases,
+  selectUpcoming
 } from './release-notes';
-export { getReleaseNotes } from './release-notes-api';
+export { getReleaseNotes, getUpcoming } from './release-notes-api';
 export type {
   ReleaseApp,
   ReleasePlatform,
@@ -55,5 +57,7 @@ export type {
   ReleaseNotesText,
   ReleaseFilter,
   LocalizedReleaseItem,
-  LocalizedRelease
+  LocalizedRelease,
+  UpcomingItem,
+  LocalizedUpcomingItem
 } from './release-notes';

@@ -7,20 +7,26 @@
  * from `src/` during tests and from the bundled `dist/index.js` at runtime).
  */
 import manifestData from './manifest.json';
+import upcomingData from './upcoming.json';
 import type {
   LocalizedRelease,
   LocalizedReleaseItem,
+  LocalizedUpcomingItem,
   ReleaseApp,
   ReleaseEntry,
   ReleaseItem,
   ReleaseNotesText,
-  ReleasePlatform
+  ReleasePlatform,
+  UpcomingItem
 } from './types';
 
 export * from './types';
 
 /** Curated release history, newest first. */
 export const RELEASE_NOTES: ReleaseEntry[] = manifestData as unknown as ReleaseEntry[];
+
+/** Not-yet-released ("coming soon") items - advertised on web, off the version axis. */
+export const UPCOMING: UpcomingItem[] = upcomingData as unknown as UpcomingItem[];
 
 /**
  * Numeric x.y.z comparison. Returns >0 when a > b, <0 when a < b, 0 when equal.
@@ -112,6 +118,24 @@ export function selectReleases(
       items.push({ ...item, text: localized });
     }
     if (items.length > 0) out.push({ version: release.version, date: release.date, items });
+  }
+  return out;
+}
+
+/**
+ * Localized "coming soon" items for a surface. Shown only on the web/PWA build -
+ * the place to steer users toward the native apps; native builds return none.
+ * Off the version axis entirely, so this is independent of version gating.
+ */
+export function selectUpcoming(text: ReleaseNotesText, opts: ReleaseFilter): LocalizedUpcomingItem[] {
+  const { app, platform } = opts;
+  if (platform !== 'web') return [];
+  const out: LocalizedUpcomingItem[] = [];
+  for (const item of UPCOMING) {
+    if (!item.apps.includes(app)) continue;
+    const localized = text[item.id];
+    if (!localized) continue;
+    out.push({ ...item, text: localized });
   }
   return out;
 }

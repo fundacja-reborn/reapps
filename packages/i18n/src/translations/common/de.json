@@ -28,6 +28,7 @@
     "platform_macos": "macOS-App",
     "platform_windows": "Windows-App",
     "platform_linux": "Linux-App",
+    "coming_soon": "Demnächst",
     "empty": "Noch keine Änderungshinweise vorhanden.",
     "show_older": "Ältere Updates anzeigen",
     "full_changelog": "Vollständige Änderungsliste"

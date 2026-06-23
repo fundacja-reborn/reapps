@@ -52,6 +52,24 @@ export type ReleaseNotesText = Record<string, string>;
 /** An item joined with its localized text, ready to render. */
 export type LocalizedReleaseItem = ReleaseItem & { text: string };
 
+/**
+ * A not-yet-released ("coming soon") item. Lives outside the version axis - no
+ * `version`/`date`/`category` - so it never takes part in version gating
+ * (auto-open / `untilVersion`). Advertises upcoming versions (e.g. the native
+ * apps) on the web/PWA surface; `platforms` only drives the badge, not the
+ * version filter.
+ */
+export interface UpcomingItem {
+  /** Stable, unique id (also the i18n text key), e.g. "upcoming-native-apps". */
+  id: string;
+  apps: ReleaseApp[];
+  /** Platforms the upcoming thing targets - drives the badge ("iOS app" …). */
+  platforms: ReleasePlatform[] | 'all';
+}
+
+/** An upcoming item joined with its localized text, ready to render. */
+export type LocalizedUpcomingItem = UpcomingItem & { text: string };
+
 export interface LocalizedRelease {
   version: string;
   date: string;

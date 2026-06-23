@@ -3,7 +3,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { RELEASE_NOTES, compareVersions, hasUnseenReleaseNotes, selectReleases } from '../release-notes';
+import {
+  RELEASE_NOTES,
+  UPCOMING,
+  compareVersions,
+  hasUnseenReleaseNotes,
+  selectReleases
+} from '../release-notes';
 import type { ReleaseNotesText } from '../release-notes';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -20,10 +26,14 @@ function readText(locale: string): ReleaseNotesText {
 }
 
 const allIds = RELEASE_NOTES.flatMap((r) => r.items.map((i) => i.id));
+const upcomingIds = UPCOMING.map((i) => i.id);
+// Released + upcoming ids share the i18n text namespace: they must not collide
+// and every one needs text in all locales.
+const allTextIds = [...allIds, ...upcomingIds];
 
 describe('release-notes manifest', () => {
-  it('has unique item ids', () => {
-    expect(new Set(allIds).size).toBe(allIds.length);
+  it('has unique item ids (releases + upcoming share the i18n namespace)', () => {
+    expect(new Set(allTextIds).size).toBe(allTextIds.length);
   });
 
   it('uses valid enum values and ISO dates', () => {
@@ -53,18 +63,31 @@ describe('release-notes manifest', () => {
       ).toBeGreaterThan(0);
     }
   });
+
+  it('upcoming items use valid app/platform enums', () => {
+    for (const item of UPCOMING) {
+      expect(item.apps.length, `upcoming apps ${item.id}`).toBeGreaterThan(0);
+      for (const app of item.apps) expect(VALID_APPS.has(app), `app ${app} (${item.id})`).toBe(true);
+      if (item.platforms !== 'all') {
+        expect(item.platforms.length, `upcoming platforms ${item.id}`).toBeGreaterThan(0);
+        for (const p of item.platforms) {
+          expect(VALID_PLATFORMS.has(p), `platform ${p} (${item.id})`).toBe(true);
+        }
+      }
+    }
+  });
 });
 
 describe('release-notes translations', () => {
   for (const locale of LOCALES) {
     it(`${locale}: every manifest id has a non-empty string (+ no orphan keys)`, () => {
       const text = readText(locale);
-      for (const id of allIds) {
+      for (const id of allTextIds) {
         expect(typeof text[id], `${locale} "${id}" must be a string`).toBe('string');
         expect(text[id].length, `${locale} "${id}" empty`).toBeGreaterThan(0);
       }
       for (const key of Object.keys(text)) {
-        expect(allIds.includes(key), `${locale} orphan key "${key}"`).toBe(true);
+        expect(allTextIds.includes(key), `${locale} orphan key "${key}"`).toBe(true);
       }
     });
   }

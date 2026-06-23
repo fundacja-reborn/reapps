@@ -9,8 +9,14 @@
  * why the build copies `release-notes/text` into `dist/` (tsup keeps the
  * variable template `import()` as a runtime import rather than inlining it).
  */
-import { selectReleases } from './release-notes';
-import type { LocalizedRelease, ReleaseApp, ReleaseNotesText, ReleasePlatform } from './release-notes';
+import { selectReleases, selectUpcoming } from './release-notes';
+import type {
+  LocalizedRelease,
+  LocalizedUpcomingItem,
+  ReleaseApp,
+  ReleaseNotesText,
+  ReleasePlatform
+} from './release-notes';
 import type { SupportedLocale } from './config';
 
 async function loadReleaseNotesText(locale: SupportedLocale): Promise<ReleaseNotesText> {
@@ -42,4 +48,17 @@ export async function getReleaseNotes(opts: {
     platform: opts.platform,
     untilVersion: opts.untilVersion
   });
+}
+
+/**
+ * Load the localized "coming soon" items for a surface (web/PWA only; native
+ * returns none). Independent of the released history and its version gating.
+ */
+export async function getUpcoming(opts: {
+  app: ReleaseApp;
+  platform: ReleasePlatform;
+  locale: SupportedLocale;
+}): Promise<LocalizedUpcomingItem[]> {
+  const text = await loadReleaseNotesText(opts.locale);
+  return selectUpcoming(text, { app: opts.app, platform: opts.platform });
 }

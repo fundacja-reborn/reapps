@@ -10,7 +10,8 @@
   },
   "include": [
     "src/**/*.ts",
-    "src/release-notes/manifest.json"
+    "src/release-notes/manifest.json",
+    "src/release-notes/upcoming.json"
   ],
   "exclude": [
     "node_modules",

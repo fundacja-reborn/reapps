@@ -4,8 +4,10 @@
     t,
     locale,
     getReleaseNotes,
+    getUpcoming,
     formatDate,
     type LocalizedRelease,
+    type LocalizedUpcomingItem,
     type ReleaseApp,
     type ReleaseCategory,
     type ReleasePlatform,
@@ -34,6 +36,7 @@
   const CATEGORY_ORDER: ReleaseCategory[] = ['new', 'improved', 'fixed'];
 
   let releases = $state<LocalizedRelease[]>([]);
+  let upcoming = $state<LocalizedUpcomingItem[]>([]);
   let loading = $state(false);
   let showAll = $state(false);
   // Guard so the async load runs once per (app, platform, locale), not on every tick.
@@ -52,13 +55,18 @@
     const key = `${app}:${platform}:${loc}`;
     if (key === loadedKey) return;
     loading = true;
-    getReleaseNotes({ app, platform, locale: loc })
-      .then((r) => {
+    Promise.all([
+      getReleaseNotes({ app, platform, locale: loc }),
+      getUpcoming({ app, platform, locale: loc })
+    ])
+      .then(([r, u]) => {
         releases = r;
+        upcoming = u;
         loadedKey = key;
       })
       .catch(() => {
         releases = [];
+        upcoming = [];
       })
       .finally(() => {
         loading = false;
@@ -82,7 +90,7 @@
   // universal or already includes that platform.
   const BADGE_ORDER: ReleasePlatform[] = ['ios', 'android', 'macos', 'windows', 'linux', 'web'];
 
-  function platformBadges(item: LocalizedRelease['items'][number]): ReleasePlatform[] {
+  function platformBadges(item: { platforms: ReleasePlatform[] | 'all' }): ReleasePlatform[] {
     const plats = item.platforms;
     if (plats === 'all' || plats.includes(platform)) return [];
     return BADGE_ORDER.filter((p) => plats.includes(p));
@@ -109,10 +117,41 @@
     <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
       {#if loading && releases.length === 0}
         <p class="py-6 text-center text-sm text-muted-foreground">{$t('common.loading')}</p>
-      {:else if releases.length === 0}
+      {:else if releases.length === 0 && upcoming.length === 0}
         <p class="py-6 text-center text-sm text-muted-foreground">{$t('whats_new.empty')}</p>
       {:else}
         <div class="divide-y divide-border">
+          {#if upcoming.length > 0}
+            <section class="space-y-3 py-5 first:pt-0 last:pb-0">
+              <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {$t('whats_new.coming_soon')}
+              </p>
+              <ul class="space-y-2">
+                {#each upcoming as item (item.id)}
+                  <li class="flex gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      class="mt-2 size-1.5 shrink-0 rounded-full bg-muted-foreground/40"
+                    ></span>
+                    <div class="min-w-0 space-y-1.5">
+                      <p class="text-sm leading-relaxed text-foreground">{item.text}</p>
+                      {#if platformBadges(item).length > 0}
+                        <div class="flex flex-wrap gap-1">
+                          {#each platformBadges(item) as p (p)}
+                            <span
+                              class="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+                            >
+                              {$t(`whats_new.platform_${p}`)}
+                            </span>
+                          {/each}
+                        </div>
+                      {/if}
+                    </div>
+                  </li>
+                {/each}
+              </ul>
+            </section>
+          {/if}
           {#each visible as release (release.version)}
             <section class="space-y-3 py-5 first:pt-0 last:pb-0">
               <div class="flex items-baseline justify-between gap-3">
