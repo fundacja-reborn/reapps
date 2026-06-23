@@ -22,6 +22,12 @@
     "category_new": "Nowość",
     "category_improved": "Ulepszenia",
     "category_fixed": "Poprawki",
+    "platform_web": "Web",
+    "platform_ios": "Aplikacja iOS",
+    "platform_android": "Aplikacja Android",
+    "platform_macos": "Aplikacja macOS",
+    "platform_windows": "Aplikacja Windows",
+    "platform_linux": "Aplikacja Linux",
     "empty": "Brak informacji o zmianach.",
     "show_older": "Pokaż starsze aktualizacje",
     "full_changelog": "Pełna lista zmian"

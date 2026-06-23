@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { RELEASE_NOTES, compareVersions, selectReleases } from '../release-notes';
+import { RELEASE_NOTES, compareVersions, hasUnseenReleaseNotes, selectReleases } from '../release-notes';
 import type { ReleaseNotesText } from '../release-notes';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -80,12 +80,28 @@ describe('selectReleases', () => {
     expect(flat.every((i) => i.apps.includes('task'))).toBe(true);
   });
 
-  it('hides native-only items from web and vice versa', () => {
+  it('web/PWA shows the full catalog incl. native-only; native sees only its platform + all', () => {
     const web = selectReleases(enText, { app: 'notes', platform: 'web' }).flatMap((r) => r.items);
     const ios = selectReleases(enText, { app: 'notes', platform: 'ios' }).flatMap((r) => r.items);
-    expect(web.some((i) => i.id === '0.33.0-native-folder-sync')).toBe(false);
+    const android = selectReleases(enText, { app: 'notes', platform: 'android' }).flatMap((r) => r.items);
+    // Web surfaces native-only items so PWA users discover the native apps exist.
+    expect(web.some((i) => i.id === '0.33.0-native-folder-sync')).toBe(true);
+    expect(web.some((i) => i.id === '0.33.0-ios-2fa')).toBe(true);
+    expect(web.some((i) => i.id === '0.30.0-folder-sync-desktop')).toBe(true);
+    // A native build still sees only its own platform + universal items.
     expect(ios.some((i) => i.id === '0.33.0-native-folder-sync')).toBe(true);
-    expect(ios.some((i) => i.id === '0.30.0-folder-sync-desktop')).toBe(false);
+    expect(ios.some((i) => i.id === '0.30.0-folder-sync-desktop')).toBe(false); // web-only
+    expect(android.some((i) => i.id === '0.33.0-ios-2fa')).toBe(false); // ios-only
+  });
+
+  it('auto-open trigger stays per-platform: web is not prompted by a native-only release', () => {
+    // 0.33.0 carries only native items for notes. A web user crossing it should
+    // NOT be auto-prompted (they cannot act on native-only changes) even though
+    // selectReleases would show those items once the dialog is open. The same
+    // window does prompt an iOS native user.
+    const win = { app: 'notes' as const, lastSeenVersion: '0.32.1', currentVersion: '0.33.0' };
+    expect(hasUnseenReleaseNotes({ ...win, platform: 'web' })).toBe(false);
+    expect(hasUnseenReleaseNotes({ ...win, platform: 'ios' })).toBe(true);
   });
 
   it('caps at untilVersion (frozen native bundle never shows newer notes)', () => {

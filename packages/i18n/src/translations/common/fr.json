@@ -22,6 +22,12 @@
     "category_new": "Nouveau",
     "category_improved": "Amélioré",
     "category_fixed": "Corrigé",
+    "platform_web": "Web",
+    "platform_ios": "App iOS",
+    "platform_android": "App Android",
+    "platform_macos": "App macOS",
+    "platform_windows": "App Windows",
+    "platform_linux": "App Linux",
     "empty": "Aucune note de version pour le moment.",
     "show_older": "Afficher les mises à jour plus anciennes",
     "full_changelog": "Journal des modifications complet"

@@ -75,6 +75,19 @@
     })).filter((g) => g.items.length > 0);
   }
 
+  // Platform tags, shown only for items that are NOT for the current surface.
+  // On the web/PWA build (which now shows the full catalog) a native-only item
+  // gets an "iOS app" / "Android app" tag, so "on iOS" can't be mistaken for the
+  // PWA running on iOS. Never fires on a native build, where every shown item is
+  // universal or already includes that platform.
+  const BADGE_ORDER: ReleasePlatform[] = ['ios', 'android', 'macos', 'windows', 'linux', 'web'];
+
+  function platformBadges(item: LocalizedRelease['items'][number]): ReleasePlatform[] {
+    const plats = item.platforms;
+    if (plats === 'all' || plats.includes(platform)) return [];
+    return BADGE_ORDER.filter((p) => plats.includes(p));
+  }
+
   function fmtDate(date: string): string {
     return formatDate(date, ($locale ?? 'en') as string, {
       year: 'numeric',
@@ -123,7 +136,20 @@
                           aria-hidden="true"
                           class="mt-2 size-1.5 shrink-0 rounded-full bg-muted-foreground/40"
                         ></span>
-                        <p class="text-sm leading-relaxed text-foreground">{item.text}</p>
+                        <div class="min-w-0 space-y-1.5">
+                          <p class="text-sm leading-relaxed text-foreground">{item.text}</p>
+                          {#if platformBadges(item).length > 0}
+                            <div class="flex flex-wrap gap-1">
+                              {#each platformBadges(item) as p (p)}
+                                <span
+                                  class="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+                                >
+                                  {$t(`whats_new.platform_${p}`)}
+                                </span>
+                              {/each}
+                            </div>
+                          {/if}
+                        </div>
                       </li>
                     {/each}
                   </ul>

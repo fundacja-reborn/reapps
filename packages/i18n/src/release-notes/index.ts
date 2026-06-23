@@ -38,8 +38,22 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-function itemMatches(item: ReleaseItem, app: ReleaseApp, platform: ReleasePlatform): boolean {
+/**
+ * Visibility predicate. `webSeesAll` widens the web/PWA surface to the FULL
+ * catalog (including native-only items) so PWA users discover that native apps
+ * exist; native builds always see only their own platform + universal items.
+ * Display (`selectReleases`) passes it; the auto-open trigger does NOT, so a
+ * native-only release never pops a modal at web users - it just appears in the
+ * dialog once they open it.
+ */
+function itemMatches(
+  item: ReleaseItem,
+  app: ReleaseApp,
+  platform: ReleasePlatform,
+  webSeesAll = false
+): boolean {
   if (!item.apps.includes(app)) return false;
+  if (webSeesAll && platform === 'web') return true;
   if (item.platforms === 'all') return true;
   return item.platforms.includes(platform);
 }
@@ -92,7 +106,7 @@ export function selectReleases(
     if (untilVersion && compareVersions(release.version, untilVersion) > 0) continue;
     const items: LocalizedReleaseItem[] = [];
     for (const item of release.items) {
-      if (!itemMatches(item, app, platform)) continue;
+      if (!itemMatches(item, app, platform, true)) continue;
       const localized = text[item.id];
       if (!localized) continue;
       items.push({ ...item, text: localized });
