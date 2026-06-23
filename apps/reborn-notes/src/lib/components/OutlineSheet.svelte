@@ -35,7 +35,7 @@
 </script>
 
 <Sheet {open} onOpenChange={handleOpenChange}>
-  <SheetContent side="right" class="flex w-80 flex-col gap-0 p-0 sm:max-w-sm">
+  <SheetContent side="right" overlayClass="bg-black/20" class="flex w-80 flex-col gap-0 p-0 sm:max-w-sm">
     <SheetHeader class="shrink-0 border-b px-4 py-3">
       <SheetTitle class="flex items-center gap-2 text-sm">
         <ListTree class="h-4 w-4 text-muted-foreground" />

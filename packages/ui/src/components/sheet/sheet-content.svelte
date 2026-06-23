@@ -30,17 +30,25 @@
 		class: className,
 		side = "right",
 		portalProps,
+		overlayClass,
 		children,
 		...restProps
 	}: WithoutChildrenOrChild<SheetPrimitive.ContentProps> & {
 		portalProps?: SheetPrimitive.PortalProps;
 		side?: Side;
+		/**
+		 * Extra classes for the backdrop overlay (merged over the default
+		 * `bg-black/80`). Use a lighter scrim (e.g. `bg-black/20`) for
+		 * non-destructive navigation panels where the user wants to see the
+		 * content react underneath; leave unset for modal/confirm dialogs.
+		 */
+		overlayClass?: string;
 		children: Snippet;
 	} = $props();
 </script>
 
 <SheetPrimitive.Portal {...portalProps}>
-	<SheetOverlay />
+	<SheetOverlay class={overlayClass} />
 	<SheetPrimitive.Content bind:ref class={cn(sheetVariants({ side }), className)} {...restProps}>
 		{@render children?.()}
 		<SheetPrimitive.Close

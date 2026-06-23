@@ -83,7 +83,7 @@
 </script>
 
 <Sheet {open} onOpenChange={handleOpenChange}>
-  <SheetContent side="right" class="w-80 sm:max-w-sm p-0 flex flex-col">
+  <SheetContent side="right" overlayClass="bg-black/20" class="w-80 sm:max-w-sm p-0 flex flex-col">
     <SheetHeader class="shrink-0 border-b px-4 py-3">
       <SheetTitle class="flex items-center gap-2 text-sm">
         <Clock class="h-4 w-4 text-muted-foreground" />
