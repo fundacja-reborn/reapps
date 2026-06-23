@@ -315,16 +315,13 @@
     // Mark the clicked entry active immediately - it's an explicit choice, and at
     // the end of a note the preview often can't scroll it under the trigger zone,
     // so scroll position alone would leave the wrong (or the last) entry marked.
-    // Hold it against the scroll-spy until the programmatic scroll settles (~700ms
-    // covers a smooth scrollIntoView); afterwards a real user scroll resumes the
-    // spy. The slug equals the rendered heading's id, so it matches the spy's own
-    // value and the OutlineSheet's `node.slug === activeSlug` check.
+    // Lock it against the scroll-spy for the duration of the programmatic scroll
+    // (released once motion settles), so it isn't overwritten mid-scroll; then a
+    // real user scroll resumes the spy. The slug equals the rendered heading's id,
+    // matching the spy's own value and OutlineSheet's `node.slug === activeSlug`.
     activeOutlineSlug = heading.slug;
     outlineNavLocked = true;
-    clearTimeout(outlineNavLockTimer);
-    outlineNavLockTimer = setTimeout(() => {
-      outlineNavLocked = false;
-    }, 700);
+    scheduleOutlineNavUnlock();
 
     if (effectiveViewMode === 'edit') {
       editorRef?.scrollToLine(heading.line);
@@ -975,11 +972,25 @@
   let activeOutlineSlug = $state<string | null>(null);
   let previewRenderTick = $state(0);
   // An outline click sets the active entry directly for instant feedback, then
-  // briefly "locks" it so the scroll-spy - especially the at-bottom "last
-  // heading" rule - doesn't overwrite it before the programmatic scroll settles.
-  // Plain (non-reactive) flag: only read imperatively inside the spy callback.
+  // "locks" it so the scroll-spy - especially the at-bottom "last heading" rule -
+  // doesn't overwrite it while the programmatic scroll is still moving. The lock
+  // releases once scrolling has been quiet for a beat (settle-debounce), so it
+  // holds for the WHOLE smooth scroll however long it runs (a fixed timer would
+  // release mid-scroll on long notes and flicker through passing sections). Plain
+  // non-reactive flag: read imperatively in the spy, never in a tracked context.
   let outlineNavLocked = false;
-  let outlineNavLockTimer: ReturnType<typeof setTimeout> | undefined;
+  let outlineNavSettleTimer: ReturnType<typeof setTimeout> | undefined;
+
+  // Release the click-lock after motion settles. Re-armed on every scroll tick
+  // while locked, so it only fires once the (programmatic) scroll stops; also
+  // armed by the click itself, covering the no-scroll case (clicking a section
+  // the note can't scroll any further - e.g. already at the bottom).
+  function scheduleOutlineNavUnlock() {
+    clearTimeout(outlineNavSettleTimer);
+    outlineNavSettleTimer = setTimeout(() => {
+      outlineNavLocked = false;
+    }, 150);
+  }
   let editorView = $state<EditorView | null>(null);
   let desktopEditorScrollContainer = $state<HTMLElement | null>(null);
   let mobileScrollContainer = $state<HTMLElement | null>(null);
@@ -1150,12 +1161,22 @@
 
     // The observer only fires when a heading crosses the trigger zone; the final
     // stretch of scroll to the very bottom crosses none, so also recompute on
-    // scroll to catch reaching the end.
-    root?.addEventListener('scroll', computeActive, { passive: true });
+    // scroll to catch reaching the end. While a click-lock is active, treat each
+    // scroll tick as "still settling" instead of recomputing - this keeps the
+    // clicked entry highlighted through the entire programmatic scroll (no
+    // flicker), and the lock releases a beat after motion stops.
+    const onScroll = () => {
+      if (outlineNavLocked) {
+        scheduleOutlineNavUnlock();
+        return;
+      }
+      computeActive();
+    };
+    root?.addEventListener('scroll', onScroll, { passive: true });
 
     return () => {
       observer.disconnect();
-      root?.removeEventListener('scroll', computeActive);
+      root?.removeEventListener('scroll', onScroll);
     };
   });
 
