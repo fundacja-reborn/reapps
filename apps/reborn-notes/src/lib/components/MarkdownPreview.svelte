@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { Marked, type Tokens, type RendererObject } from 'marked';
   import DOMPurify from 'dompurify';
 
@@ -257,7 +257,14 @@
     if (!containerEl) return;
     applySourceLineAttrs(containerEl, lastTokens);
     assignHeadingIds(containerEl, content);
-    onrender?.();
+    // `onrender` is a post-render notification, not a reactive read. The owner's
+    // callback may read-modify-write its own state (the Outline scroll-spy bumps
+    // a render tick: `previewRenderTick++`). Run it untracked so that read does
+    // NOT make this render effect depend on the owner's tick - otherwise the
+    // write re-triggers this very effect on every render, looping until Svelte
+    // throws effect_update_depth_exceeded. The deps that SHOULD re-run this
+    // effect (`html`, `content`, `containerEl`) are all read above, untouched.
+    untrack(() => onrender?.());
 
     const images = containerEl.querySelectorAll('img');
     const onLoad = () => onrender?.();
