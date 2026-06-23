@@ -1,5 +1,5 @@
 {
-  "upcoming-native-apps": "Native Android and iOS apps are coming to the App Store and Google Play - the same end-to-end encrypted notes and tasks as a dedicated app, built from this same open-source code.",
+  "upcoming-native-apps": "Native apps are coming to the App Store and Google Play - re/notes first, with re/task following shortly after. The same end-to-end encrypted notes and tasks as dedicated apps, built from this same open-source code.",
   "0.34.1-xray-overlay": "Fixed the Encryption X-Ray, the split view that shows your note beside the ciphertext stored on the server, drifting off-screen: the divider slid out of view on long notes and the panel sat half off-screen on short ones. It now stays pinned to the visible editor area, with snap points, keyboard control, and a remembered split position. Opens from the lock icon in the note toolbar.",
   "0.34.0-linked-notes": "Added a linked-notes panel that gathers a note's backlinks and outgoing links in one place, flags mutual links, and marks broken ones. Opens from the links icon in the note toolbar, or the note's overflow menu on mobile.",
   "0.34.0-import-links": "Added an option to rewrite inter-note links during Markdown import: relative Markdown links and Obsidian-style [[wikilinks]] become working in-app links. It is a checkbox in the folder-import dialog, off by default.",
