@@ -312,6 +312,20 @@
   // the rendered preview by slug; in edit-only mode there is no preview, so we
   // scroll the CodeMirror editor to the heading's source line instead.
   function handleOutlineNavigate(heading: DocHeading) {
+    // Mark the clicked entry active immediately - it's an explicit choice, and at
+    // the end of a note the preview often can't scroll it under the trigger zone,
+    // so scroll position alone would leave the wrong (or the last) entry marked.
+    // Hold it against the scroll-spy until the programmatic scroll settles (~700ms
+    // covers a smooth scrollIntoView); afterwards a real user scroll resumes the
+    // spy. The slug equals the rendered heading's id, so it matches the spy's own
+    // value and the OutlineSheet's `node.slug === activeSlug` check.
+    activeOutlineSlug = heading.slug;
+    outlineNavLocked = true;
+    clearTimeout(outlineNavLockTimer);
+    outlineNavLockTimer = setTimeout(() => {
+      outlineNavLocked = false;
+    }, 700);
+
     if (effectiveViewMode === 'edit') {
       editorRef?.scrollToLine(heading.line);
     } else {
@@ -960,6 +974,12 @@
   // re-attaches to freshly rendered heading elements.
   let activeOutlineSlug = $state<string | null>(null);
   let previewRenderTick = $state(0);
+  // An outline click sets the active entry directly for instant feedback, then
+  // briefly "locks" it so the scroll-spy - especially the at-bottom "last
+  // heading" rule - doesn't overwrite it before the programmatic scroll settles.
+  // Plain (non-reactive) flag: only read imperatively inside the spy callback.
+  let outlineNavLocked = false;
+  let outlineNavLockTimer: ReturnType<typeof setTimeout> | undefined;
   let editorView = $state<EditorView | null>(null);
   let desktopEditorScrollContainer = $state<HTMLElement | null>(null);
   let mobileScrollContainer = $state<HTMLElement | null>(null);
@@ -1088,6 +1108,8 @@
     const visible = new SvelteSet<string>();
 
     const computeActive = () => {
+      // A recent outline click owns the highlight until its scroll settles.
+      if (outlineNavLocked) return;
       // At the very bottom of a scrollable pane the trailing sections are on
       // screen but can't be pushed up into the trigger zone (no content below),
       // so the spy would stay stuck on whatever is near the top. Promote the
