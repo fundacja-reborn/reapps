@@ -25,10 +25,14 @@ import { openWhatsNew } from '$lib/stores/whats-new.svelte';
 const logger = createLogger('task:whats-new');
 const LAST_SEEN_KEY = 'whats_new_last_seen';
 
-let done = false;
+// Latched only once we have actually opened the dialog (not on a no-op check),
+// so re-running the gate after an unlock in the same page load never re-pops a
+// dialog the user just closed - while a no-op first run (already up to date)
+// does not latch, leaving the door open for a later legitimate open.
+let shown = false;
 
 export function maybeShowWhatsNew(app: ReleaseApp, platform: ReleasePlatform): void {
-  if (!browser || done) return;
+  if (!browser || shown) return;
 
   const current = __APP_VERSION__;
 
@@ -36,27 +40,24 @@ export function maybeShowWhatsNew(app: ReleaseApp, platform: ReleasePlatform): v
   try {
     lastSeen = localStorage.getItem(LAST_SEEN_KEY);
   } catch {
-    done = true; // localStorage unavailable - don't retry this session
-    return;
+    return; // localStorage unavailable - harmless to re-check later
   }
 
   // First run on this device: record a baseline, don't greet new users.
   if (!lastSeen) {
-    done = true;
     safeSet(current);
     return;
   }
 
-  // We are unlocked and acting now: do this at most once per session.
-  done = true;
-
+  // Nothing newer than what the user has already seen.
   if (compareVersions(current, lastSeen) <= 0) return;
 
   if (hasUnseenReleaseNotes({ app, platform, lastSeenVersion: lastSeen, currentVersion: current })) {
+    shown = true; // latch only on a real open
     logger.info(`Updated to ${current} - opening What's new`);
     openWhatsNew();
   }
-  // Advance the baseline regardless so this stays a once-per-update event.
+  // Advance the baseline so this stays a once-per-update event across loads.
   safeSet(current);
 }
 
