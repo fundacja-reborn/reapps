@@ -61,7 +61,10 @@
   >
     <FaceIcon class="h-4 w-4 md:h-3.5 md:w-3.5" />
     {#if !isMobile}
-      <span class="hidden sm:inline">{label}</span>
+      <!-- Labels collapse to icons when the note pane is narrow (container query
+           on the header, ~@lg). Keeps the toolbar from clipping the trailing
+           icons/kebab in the 768-960px desktop range where the pane is tight. -->
+      <span class="hidden @lg:inline">{label}</span>
     {/if}
   </button>
 
