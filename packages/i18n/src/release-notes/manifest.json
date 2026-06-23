@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.35.0",
+    "date": "2026-06-23",
+    "items": [
+      { "id": "0.35.0-whats-new", "category": "new", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.34.1",
     "date": "2026-06-22",
     "items": [
