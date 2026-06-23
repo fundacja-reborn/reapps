@@ -75,6 +75,7 @@ scripts/*
 !scripts/release.mjs
 !scripts/check-i18n-parity.mjs
 !scripts/export-release-notes.mjs
+!scripts/generate-toc.mjs
 tmp/
 patches/
 *.bak
