@@ -69,6 +69,14 @@ const CODE_LINE = Decoration.line({ class: 'cm-lp-code-line' });
 const CODE_LINE_FIRST = Decoration.line({ class: 'cm-lp-code-line cm-lp-code-line-first' });
 const CODE_LINE_LAST = Decoration.line({ class: 'cm-lp-code-line cm-lp-code-line-last' });
 
+// In-note TOC raw-reveal (cursor inside the block): keep the box background via
+// per-line decorations, mirroring the fenced-code-block reveal, so the block
+// stays visually distinct instead of blending into the note. First/last lines
+// round the corners + pad the ends.
+const TOC_LINE = Decoration.line({ class: 'cm-lp-toc-line' });
+const TOC_LINE_FIRST = Decoration.line({ class: 'cm-lp-toc-line cm-lp-toc-line-first' });
+const TOC_LINE_LAST = Decoration.line({ class: 'cm-lp-toc-line cm-lp-toc-line-last' });
+
 const HEADING_LINE: Record<number, Decoration> = {
   1: Decoration.line({ class: 'cm-lp-h1-line' }),
   2: Decoration.line({ class: 'cm-lp-h2-line' }),
@@ -270,14 +278,18 @@ export function buildDecorations(
   // click-to-edit reveal as fenced code blocks.
   const docText = doc.toString();
   const tocRange = findTocBlockRange(docText);
-  let tocWidgetFrom = -1;
-  let tocWidgetTo = -1;
+  let tocSkipFrom = -1;
+  let tocSkipTo = -1;
   if (tocRange) {
     const startLine = doc.lineAt(tocRange.from);
     const endLine = doc.lineAt(tocRange.to);
+    // Skip every node within the block in BOTH states — the widget replaces it
+    // (cursor outside) or the raw reveal owns its lines (cursor inside) — so
+    // nothing double-decorates the TOC.
+    tocSkipFrom = startLine.from;
+    tocSkipTo = endLine.to;
     if (!isAnySelectionInRange(state, startLine.from, endLine.to)) {
-      tocWidgetFrom = startLine.from;
-      tocWidgetTo = endLine.to;
+      // Cursor outside → one boxed widget.
       const innerMd = tocInnerMarkdown(docText) ?? '';
       // Drift is independent of the (preserved) title, so a bare fallback is
       // fine here — see `isTocStale`.
@@ -286,8 +298,20 @@ export function buildDecorations(
         Decoration.replace({
           widget: new TocWidget(innerMd, stale, options.tocLabels),
           block: true
-        }).range(tocWidgetFrom, tocWidgetTo)
+        }).range(startLine.from, endLine.to)
       );
+    } else {
+      // Cursor inside → raw markdown for editing (fully raw, like a fenced code
+      // block), but keep the box background per-line so the block stays distinct
+      // instead of blending into the note.
+      const lineCount = endLine.number - startLine.number;
+      for (let n = startLine.number; n <= endLine.number; n++) {
+        const ln = doc.line(n);
+        let deco: Decoration = TOC_LINE;
+        if (n === startLine.number) deco = TOC_LINE_FIRST;
+        else if (n === endLine.number && lineCount > 0) deco = TOC_LINE_LAST;
+        ranges.push(deco.range(ln.from));
+      }
     }
   }
 
@@ -297,12 +321,12 @@ export function buildDecorations(
       const from = nodeRef.from;
       const to = nodeRef.to;
 
-      // Skip everything inside the active TOC widget range (nodes fully
-      // contained in it) — their content is replaced by the block widget, so any
-      // decoration here would overlap it. Containment (not just `from >=`) lets a
+      // Skip everything inside the TOC block (nodes fully contained in it) — the
+      // widget replaces it, or the raw reveal's line decorations own it, so any
+      // node decoration here would clash. Containment (not just `from >=`) lets a
       // root/container spanning past the block still descend to decorate siblings
       // before and after it.
-      if (tocWidgetFrom >= 0 && from >= tocWidgetFrom && to <= tocWidgetTo) {
+      if (tocSkipFrom >= 0 && from >= tocSkipFrom && to <= tocSkipTo) {
         return false;
       }
 

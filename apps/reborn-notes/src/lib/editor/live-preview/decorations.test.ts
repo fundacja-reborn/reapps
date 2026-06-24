@@ -903,6 +903,15 @@ describe('buildDecorations — in-note table of contents', () => {
     expect(tocWidgets(buildDecorations(state))).toHaveLength(0);
   });
 
+  it('keeps the box background via line decorations when the caret is inside', () => {
+    const inside = withToc.indexOf('<!-- toc -->') + 4;
+    const ranges = asRanges(buildDecorations(makeState(withToc, inside)));
+    const tocLines = ranges.filter((r) => r.spec.class?.includes('cm-lp-toc-line'));
+    expect(tocLines.length).toBeGreaterThan(1); // every line of the block
+    expect(tocLines.some((r) => r.spec.class?.includes('cm-lp-toc-line-first'))).toBe(true);
+    expect(tocLines.some((r) => r.spec.class?.includes('cm-lp-toc-line-last'))).toBe(true);
+  });
+
   it('decorates nothing inside the widget range (no overlap under the block widget)', () => {
     const state = makeState(withToc, 0);
     const ranges = asRanges(buildDecorations(state));

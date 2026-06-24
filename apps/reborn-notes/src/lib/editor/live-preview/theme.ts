@@ -414,6 +414,26 @@ export const livePreviewTheme = EditorView.theme({
   // Out of date: refresh button stays visible + amber so the drift is noticed.
   '.cm-lp-toc-refresh.is-stale': { color: '#d97706', borderColor: '#d97706' },
 
+  // Cursor inside: raw markdown reveal keeps the box background per-line (like the
+  // fenced-code-block reveal) so the block stays distinct instead of blending into
+  // the note. Padding-only (no margin) — CM6 height-map rule. Background matches
+  // the `.cm-lp-toc` widget so click-to-edit doesn't change the block's colour.
+  '.cm-lp-toc-line': {
+    backgroundColor: 'color-mix(in srgb, var(--muted) 40%, transparent)',
+    paddingLeft: '1em',
+    paddingRight: '1em'
+  },
+  '.cm-lp-toc-line-first': {
+    paddingTop: '0.5em',
+    borderTopLeftRadius: '0.5em',
+    borderTopRightRadius: '0.5em'
+  },
+  '.cm-lp-toc-line-last': {
+    paddingBottom: '0.5em',
+    borderBottomLeftRadius: '0.5em',
+    borderBottomRightRadius: '0.5em'
+  },
+
   // Cursor inside: per-line decoration so the raw fences and body share
   // a continuous code-block look. Padding-only (no margin) — see header
   // note about CM6 height map.
