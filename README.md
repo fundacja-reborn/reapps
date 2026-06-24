@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://reapps.eu/task">Try re/task</a> · <a href="https://reapps.eu/notes">Try re/notes</a> · <a href="https://reapps.eu">Website</a>
+  <a href="https://reapps.eu/notes">Try re/notes</a> · <a href="https://reapps.eu/task">Try re/task</a> · <a href="https://reapps.eu/changelog/">Changelog</a> · <a href="https://reapps.eu">Website</a>
 </p>
 
 <p align="center">
@@ -29,6 +29,28 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 
 ## Apps
 
+### re/notes - Encrypted notes & documents
+
+<p align="center">
+  <img src="docs/assets/renotes-screenshot.webp" alt="re/notes - note list and Markdown editor" width="700">
+</p>
+
+- **Markdown editor** - headings, lists, task checkboxes, tables, code blocks, images, and more
+- **Live preview** - formatting renders inline as you type (Obsidian-style), with editable tables and syntax-highlighted code blocks; a side-by-side split view is also available
+- **Folders & tags** - flexible organization system
+- **Outline & table of contents** - a document outline panel of the open note's headings, plus an in-note table of contents you can insert; headings carry anchors, so links jump straight to a section (preserved in shared notes and PDF/Markdown exports)
+- **Internal links & backlinks** - link between notes with `[[` autocomplete to build a knowledge base; a linked-notes panel gathers backlinks and outgoing links, flags mutual links, and marks broken ones
+- **Periodic notes** - one-click Daily, Weekly, and Monthly notes (Obsidian-style); date-based titles with configurable formats, lazy-created folders, Daily on by default ([blog post](https://reapps.eu/blog/periodic-notes-daily-weekly-monthly))
+- **Multi-select & bulk actions** - pin, star, move to folder, or delete many notes at once (long-press on touch, header toggle on desktop)
+- **Version history** - up to 10 saved versions per note
+- **Full-text search** with operators - `tag:work`, `folder:projects/active`, `created:<7d`, `has:link`, `-tag:archived`, … ([reference](docs/search-operators.md))
+- **Saved searches & smart folders** - save any query as a live, named view and pin it into the folder tree as a smart folder
+- **Encryption X-Ray** - see exactly what the server sees (encrypted blobs)
+- **Trash & recovery** - safely delete and restore notes
+- **Import & export** - Markdown, JSON, PDF, or encrypted backup; import single `.md` files or entire folders with subfolders (e.g., an Obsidian vault) preserving directory structure, optionally rewriting links between imported notes (relative Markdown links and `[[wikilinks]]`) so they navigate in-app
+- **Local folder sync** - link a folder of Markdown files on your disk and changed files are re-imported (and encrypted) automatically; one-way disk → app, never deletes notes (Chromium-based browsers)
+- **Read-only share links** - publish a frozen snapshot of a note via an encrypted public URL; the snapshot key lives in the URL fragment so the server never sees it. Optional password, expiry, and view-count limit; revoke anytime ([blog post](https://reapps.eu/blog/sharing-notes-tasks-zero-knowledge-snapshots/)).
+
 ### re/task - Encrypted task management
 
 <p align="center">
@@ -46,36 +68,17 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 - **Import & export** - JSON backup and restore
 - **Read-only share links** - send a frozen snapshot of a task (with its subtasks) via an encrypted public URL; the snapshot key lives in the URL fragment so the server never sees it. Optional password, expiry, and view-count limit; revoke anytime ([blog post](https://reapps.eu/blog/sharing-notes-tasks-zero-knowledge-snapshots/)).
 
-### re/notes - Encrypted notes & documents
-
-<p align="center">
-  <img src="docs/assets/renotes-screenshot.webp" alt="re/notes - note list and Markdown editor" width="700">
-</p>
-
-- **Markdown editor** - headings, lists, code blocks, images, and more
-- **Folders & tags** - flexible organization system
-- **Multi-select & bulk actions** - pin, star, move to folder, or delete many notes at once (long-press on touch, header toggle on desktop)
-- **Periodic notes** - one-click Daily, Weekly, and Monthly notes (Obsidian-style); date-based titles with configurable formats, lazy-created folders, Daily on by default ([blog post](https://reapps.eu/blog/periodic-notes-daily-weekly-monthly))
-- **Version history** - up to 10 saved versions per note
-- **Internal links** - link between notes with autocomplete to build a knowledge base
-- **Live preview** - edit Markdown on one side, see formatted output on the other
-- **Encryption X-Ray** - see exactly what the server sees (encrypted blobs)
-- **Full-text search** with operators - `tag:work`, `folder:projects/active`, `created:<7d`, `has:link`, `-tag:archived`, … ([reference](docs/search-operators.md))
-- **Trash & recovery** - safely delete and restore notes
-- **Import & export** - Markdown, JSON, or encrypted backup; import single `.md` files or entire folders with subfolders (e.g., an Obsidian vault) preserving directory structure, optionally rewriting links between imported notes (relative Markdown links and `[[wikilinks]]`) so they navigate in-app
-- **Local folder sync** - link a folder of Markdown files on your disk and changed files are re-imported (and encrypted) automatically; one-way disk → app, never deletes notes (Chromium-based browsers)
-- **Read-only share links** - publish a frozen snapshot of a note via an encrypted public URL; the snapshot key lives in the URL fragment so the server never sees it. Optional password, expiry, and view-count limit; revoke anytime ([blog post](https://reapps.eu/blog/sharing-notes-tasks-zero-knowledge-snapshots/)).
-
 ### Shared features
 
 - 🔐 **End-to-end encryption** - data is encrypted on your device before reaching any server
 - 📱 **Offline-first PWA** - works without internet, syncs when back online
-- 🔄 **Cross-device sync** - access from any device, changes sync automatically
+- 💾 **Local-only mode** - try either app with no account at all; data stays on your device and can be upgraded to a synced, encrypted account anytime without losing anything (optional local passcode)
+- 🔄 **Cross-device sync** - access from any device; your notes, tasks, and app settings sync automatically
 - 🛡️ **Two-factor authentication** - TOTP (2FA) with one-time recovery codes
 - 👤 **One account, no email** - just a username and password, shared across both apps (SSO)
 - 🌍 **Installable** - add to home screen as a native-like app
 - 🌙 **Dark mode** - full dark theme support
-- � **Multilingual** - English 🇬🇧, French 🇫🇷, German 🇩🇪, Polish 🇵🇱, Spanish 🇪🇸
+- 🌐 **Multilingual** - English 🇬🇧, French 🇫🇷, German 🇩🇪, Polish 🇵🇱, Spanish 🇪🇸
 
 ## Security & privacy
 
@@ -107,12 +110,14 @@ A free public instance is available at **[reapps.eu](https://reapps.eu)**, maint
 
 | App | URL |
 |---|---|
-| re/task | [reapps.eu/task](https://reapps.eu/task) |
 | re/notes | [reapps.eu/notes](https://reapps.eu/notes) |
+| re/task | [reapps.eu/task](https://reapps.eu/task) |
 
 No email required. Create an account with just a username and password.
 
 **Live status:** [stats.uptimerobot.com/JDB9dZbrRv](https://stats.uptimerobot.com/JDB9dZbrRv)
+
+**What's new & what's next:** see the [changelog and roadmap](https://reapps.eu/changelog/) - shipped releases plus a Coming soon preview of what we're building.
 
 ## Self-hosting
 
