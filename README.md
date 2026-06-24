@@ -23,6 +23,8 @@
 
 ---
 
+> 📱 **Coming soon - native mobile apps.** Native apps are coming to the App Store and Google Play - re/notes first, with re/task following shortly after. The same end-to-end encrypted notes and tasks as dedicated apps, built from this same open-source code. Track progress on the [changelog and roadmap](https://reapps.eu/changelog/).
+
 **Reborn Apps** is a suite of two Progressive Web Apps built with a **Zero Knowledge architecture** - all user data is encrypted on your device before it ever reaches the server. The server stores only ciphertext and cannot read your tasks, notes, or metadata.
 
 Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-profit. Hosted on Hetzner Cloud (Germany). No tracking, no ads, no email required.
