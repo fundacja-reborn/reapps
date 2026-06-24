@@ -357,7 +357,13 @@ export const livePreviewTheme = EditorView.theme({
     padding: '0.75em 1em',
     border: '1px solid var(--border)',
     borderRadius: '0.5em',
-    background: 'color-mix(in srgb, var(--muted) 40%, transparent)'
+    background: 'color-mix(in srgb, var(--muted) 40%, transparent)',
+    // The editor uses `white-space: pre-wrap` (lineWrapping), under which the
+    // newlines marked emits BETWEEN tags (`</li>\n<li>`) render as real line
+    // breaks - blowing the list apart. The TOC is prose-like HTML, not source,
+    // so reset to normal whitespace collapsing (inherited by all entries) to
+    // match the rendered preview's compact spacing.
+    whiteSpace: 'normal'
   },
   '.cm-lp-toc p': { margin: '0 0 0.5em', fontSize: '0.9375em' },
   '.cm-lp-toc ul': { margin: '0 0 0 1.1em', padding: '0', listStyle: 'none' },
