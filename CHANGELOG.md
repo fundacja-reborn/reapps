@@ -1,3 +1,10 @@
+## 0.36.0 (2026-06-24)
+
+### 🚀 Features
+
+- **notes:** heading anchors + table of contents ([#327](https://github.com/fundacja-reborn/reapps/pull/327))
+- **notes:** show the outline toggle in the mobile note header ([#329](https://github.com/fundacja-reborn/reapps/pull/329))
+
 ## 0.35.0 (2026-06-23)
 
 ### 🚀 Features
