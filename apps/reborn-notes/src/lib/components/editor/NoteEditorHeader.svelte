@@ -233,8 +233,9 @@
       {/each}
     </div>
 
-    <!-- Outline toggle (desktop only - on mobile it's in kebab menu) -->
-    {#if !isMobile && ontoggleoutline}
+    <!-- Outline toggle - shown on mobile too (frequent action); the kebab action
+         menu still offers it as well. h-7 w-7 matches the mobile lock/kebab. -->
+    {#if ontoggleoutline}
       <button
         type="button"
         onclick={ontoggleoutline}
