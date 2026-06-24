@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { Marked, type Tokens, type RendererObject } from 'marked';
   import DOMPurify from 'dompurify';
 
@@ -9,7 +9,8 @@
     highlightCodeToHtml,
     triggerLanguageLoad,
     CODE_COPY_ICON,
-    copyCodeFromButton
+    copyCodeFromButton,
+    HEADING_LINK_ICON
   } from '$lib/editor/live-preview';
   import {
     annotateTopLevelLines,
@@ -19,8 +20,23 @@
     createMarkdownListRenderers,
     createMarkdownImageRenderer
   } from '$lib/utils/markdown-to-html';
+  import { extractHeadings, assignHeadingSlugs } from '$lib/utils/heading-outline';
+  import { scrollToHeading } from '$lib/utils/heading-scroll';
+  import { hasToc, tocInnerMarkdown, toEditableTocBlock } from '$lib/utils/toc';
 
-  const NOTE_LINK_RE = /^note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+  // Toolbar icons for the owner's in-note table of contents (refresh + remove).
+  // Static, self-contained Lucide-style SVGs (16px, `stroke="currentColor"` so
+  // they follow the button colour) - same approach as CODE_COPY_ICON, never user
+  // input, so DOMPurify's svg profile passes them through unchanged.
+  const TOC_REFRESH_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
+  const TOC_REMOVE_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
+
+  // `note:UUID` with an optional `#heading-slug` anchor. Group 1 = UUID,
+  // group 2 = anchor (without the `#`), undefined when there is none.
+  const NOTE_LINK_RE =
+    /^note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:#(.+))?$/i;
 
   const ALLOWED_URI =
     /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|note):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i; // eslint-disable-line no-useless-escape
@@ -54,8 +70,13 @@
     settingsLinkHref,
     onNoteLink,
     onTaskToggle,
+    onTocRefresh,
+    onTocDelete,
+    tocStale = false,
     onrender,
-    resolveNoteTitle
+    resolveNoteTitle,
+    onHeadingLinkCopy,
+    headingLinkLabel
   }: {
     content: string;
     class?: string;
@@ -84,8 +105,12 @@
      */
     settingsLinkLabel?: string;
     settingsLinkHref?: string;
-    /** Called when user clicks a note:UUID link */
-    onNoteLink?: (noteId: string) => void;
+    /**
+     * Called when the user clicks a `note:UUID` link. `anchor` is the optional
+     * `#heading-slug` (without the `#`) when the link targets a heading
+     * (`note:UUID#slug`); the owner navigates to the note and scrolls to it.
+     */
+    onNoteLink?: (noteId: string, anchor?: string) => void;
     /**
      * Called when the user clicks a checkbox in a GFM task list. The owner
      * is responsible for toggling the matching `[ ]` / `[x]` in the
@@ -98,6 +123,19 @@
      */
     onTaskToggle?: (taskIndex: number, checked: boolean) => void;
     /**
+     * Owner-only table-of-contents toolbar. When `onTocRefresh` is provided AND
+     * the note holds a managed TOC block, the block is rendered as a single
+     * `<nav class="note-toc">` carrying a refresh + remove toolbar (mirrors the
+     * code-block copy button). Both callbacks mutate the markdown source upstream
+     * (like {@link onTaskToggle}). Read-only viewers (shared snapshot, history)
+     * leave these unset, so the markers there are just stripped to a plain
+     * bold-title + list with no controls.
+     */
+    onTocRefresh?: () => void;
+    onTocDelete?: () => void;
+    /** Drives the "out of date" styling on the refresh button (headings drifted). */
+    tocStale?: boolean;
+    /**
      * Fired after the rendered HTML is committed to the DOM (and
      * `data-source-line` attrs are stamped). The parent uses this to
      * rebuild line-anchor caches in the scroll-sync.
@@ -105,6 +143,16 @@
     onrender?: () => void;
     /** Resolves current title for a note UUID (for auto-update display text) */
     resolveNoteTitle?: (noteId: string) => string | undefined;
+    /**
+     * Owner-editable preview only. When provided, each rendered heading gets a
+     * hover-revealed "copy link to heading" button; the click reports the
+     * heading's slug + text so the owner builds + copies the internal link (it
+     * holds the note id, clipboard helper and toast). Read-only viewers (shared
+     * snapshot, history) leave it unset, so no button is injected there.
+     */
+    onHeadingLinkCopy?: (slug: string, text: string) => void;
+    /** aria-label / tooltip for the per-heading copy-link button. */
+    headingLinkLabel?: string;
   } = $props();
 
   let containerEl: HTMLElement;
@@ -131,6 +179,30 @@
   // stomped when multiple MarkdownPreview components are mounted (e.g. mobile
   // + desktop layouts, or version-history previews).
   const md = new Marked({ gfm: true, breaks: true });
+
+  // Separate, vanilla Marked for rendering the TOC block's inner title + list to
+  // HTML before it is spliced into the atomic `<nav>` (see toEditableTocBlock).
+  // Kept distinct from `md` so it never touches `md`'s per-render list/task
+  // counters, and so the TOC list renders with default markup we style under
+  // `.note-toc` rather than the data-d list ramp used for body lists.
+  const tocMd = new Marked({ gfm: true, breaks: true });
+
+  // The owner-only refresh + remove toolbar, injected just inside the TOC `<nav>`.
+  // Labels are attribute-escaped; the refresh button doubles as the "out of date"
+  // indicator via `is-stale`. Built in the html derivation so it tracks locale
+  // and `tocStale`.
+  function buildTocToolbar(): string {
+    const esc = (s: string) => s.replace(/"/g, '&quot;');
+    const refreshLabel = esc(tocStale ? $t('toc.stale') : $t('toc.refresh'));
+    const removeLabel = esc($t('toc.remove'));
+    const staleCls = tocStale ? ' is-stale' : '';
+    return (
+      '<span class="note-toc-actions">' +
+      `<button type="button" class="note-toc-btn note-toc-refresh${staleCls}" aria-label="${refreshLabel}" title="${refreshLabel}">${TOC_REFRESH_ICON}</button>` +
+      `<button type="button" class="note-toc-btn note-toc-remove" aria-label="${removeLabel}" title="${removeLabel}">${TOC_REMOVE_ICON}</button>` +
+      '</span>'
+    );
+  }
 
   // List / task-list renderers are shared with `exportNoteAsPdf` so the PDF
   // pipeline emits the same `task-list-item` markup (no double bullet, scoped
@@ -213,7 +285,17 @@
       lastTokens = [];
       return '';
     }
-    const tokens = md.lexer(content);
+    // Owner-editable preview: render a managed TOC block as one atomic <nav>
+    // (one token -> one DOM node) carrying the refresh/remove toolbar, so the
+    // source-line zip and split-view scroll-sync stay aligned. Read-only viewers
+    // (no onTocRefresh) skip this; their markers are stripped to a plain list.
+    let source = content;
+    if (onTocRefresh && hasToc(content)) {
+      const innerMd = tocInnerMarkdown(content);
+      const innerHtml = innerMd != null ? (tocMd.parse(innerMd) as string) : '';
+      source = toEditableTocBlock(content, innerHtml, buildTocToolbar());
+    }
+    const tokens = md.lexer(source);
     annotateTopLevelLines(tokens);
     lastTokens = tokens;
     const raw = sanitize(md.parser(tokens) as string);
@@ -229,11 +311,11 @@
       .replace(/<\/table>/g, '</table></div>');
     if (!resolveNoteTitle) return tableWrapped;
     return tableWrapped.replace(
-      /<a ([^>]*?)href="note:([0-9a-f-]{36})"([^>]*?)>([^<]*)<\/a>/gi,
-      (_match, pre, noteId, post, _text) => {
+      /<a ([^>]*?)href="note:([0-9a-f-]{36})(#[^"]*)?"([^>]*?)>([^<]*)<\/a>/gi,
+      (_match, pre, noteId, frag, post, _text) => {
         const currentTitle = resolveNoteTitle(noteId);
         const displayText = currentTitle ?? _text;
-        return `<a ${pre}href="note:${noteId}"${post}>${displayText}</a>`;
+        return `<a ${pre}href="note:${noteId}${frag ?? ''}"${post}>${displayText}</a>`;
       }
     );
   });
@@ -247,7 +329,15 @@
     void html;
     if (!containerEl) return;
     applySourceLineAttrs(containerEl, lastTokens);
-    onrender?.();
+    assignHeadingIds(containerEl, content);
+    // `onrender` is a post-render notification, not a reactive read. The owner's
+    // callback may read-modify-write its own state (the Outline scroll-spy bumps
+    // a render tick: `previewRenderTick++`). Run it untracked so that read does
+    // NOT make this render effect depend on the owner's tick - otherwise the
+    // write re-triggers this very effect on every render, looping until Svelte
+    // throws effect_update_depth_exceeded. The deps that SHOULD re-run this
+    // effect (`html`, `content`, `containerEl`) are all read above, untouched.
+    untrack(() => onrender?.());
 
     const images = containerEl.querySelectorAll('img');
     const onLoad = () => onrender?.();
@@ -271,6 +361,44 @@
     placeholder.replaceWith(img);
   }
 
+  // Stamp slug ids on rendered headings so in-note `#anchor` links, cross-note
+  // `note:UUID#anchor` links and the outline panel can scroll to them. Ids come
+  // from extractHeadings(content) - the SAME source the outline panel and the
+  // import link-rewrite use - so a TOC link's `#slug` always matches the
+  // heading's id. If marked and our extractor disagree on the heading count
+  // (e.g. a Setext heading we deliberately don't parse), fall back to slugifying
+  // each rendered heading's text so ids are still present and unique for in-note
+  // navigation within this preview.
+  function assignHeadingIds(root: HTMLElement, source: string) {
+    const headings = root.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6');
+    const slugs = extractHeadings(source).map((h) => h.slug);
+    const ids =
+      slugs.length === headings.length
+        ? slugs
+        : assignHeadingSlugs([...headings].map((el) => el.textContent ?? ''));
+    const anchorLabel = headingLinkLabel ?? '';
+    headings.forEach((el, i) => {
+      el.id = ids[i];
+      // Owner-editable preview: append the hover-revealed copy-link button. The
+      // heading is rebuilt on every {@html} commit, so it never accumulates.
+      // Read the text BEFORE appending so the label is the heading content, not
+      // the button glyph. The click is handled by delegation in `handleClick`;
+      // the icon is a trusted constant (never user input), like CODE_COPY_ICON.
+      if (onHeadingLinkCopy) {
+        const text = el.textContent ?? '';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'md-head-anchor';
+        btn.title = anchorLabel;
+        btn.setAttribute('aria-label', anchorLabel);
+        btn.dataset.headingSlug = ids[i];
+        btn.dataset.headingText = text;
+        btn.innerHTML = HEADING_LINK_ICON;
+        el.appendChild(btn);
+      }
+    });
+  }
+
   function handleClick(e: MouseEvent) {
     const target = e.target as HTMLElement;
 
@@ -288,6 +416,18 @@
         copy: $t('editor.code_copy'),
         copied: $t('editor.code_copied')
       });
+      return;
+    }
+
+    // Copy-link-to-heading button (owner preview). Inert DOM carrying the
+    // heading's slug + text; the owner builds + copies the internal link and
+    // shows the toast (it holds the note id). `closest` resolves clicks on the
+    // inner <svg>/<path>.
+    const headBtn = target.closest('.md-head-anchor');
+    if (headBtn) {
+      e.preventDefault();
+      const slug = (headBtn as HTMLElement).dataset.headingSlug ?? '';
+      if (slug) onHeadingLinkCopy?.(slug, (headBtn as HTMLElement).dataset.headingText ?? '');
       return;
     }
 
@@ -330,6 +470,16 @@
       return;
     }
 
+    // In-note TOC toolbar (owner-editable preview only): refresh / remove the
+    // managed block. Handlers mutate the markdown source upstream.
+    const tocBtn = target.closest('.note-toc-refresh, .note-toc-remove');
+    if (tocBtn) {
+      e.preventDefault();
+      if (tocBtn.classList.contains('note-toc-refresh')) onTocRefresh?.();
+      else onTocDelete?.();
+      return;
+    }
+
     const anchor = target.closest('a');
     if (!anchor) return;
 
@@ -338,7 +488,24 @@
 
     if (noteMatch) {
       e.preventDefault();
-      onNoteLink?.(noteMatch[1]);
+      // noteMatch[2] is the optional #heading anchor (without the `#`), or
+      // undefined. The owner navigates to the note and scrolls to the heading.
+      onNoteLink?.(noteMatch[1], noteMatch[2]);
+      return;
+    }
+
+    // In-note heading anchor (`[Section](#slug)`, e.g. a table of contents):
+    // scroll within this preview rather than let the browser navigate the URL
+    // hash (which would clash with share deep-links and SPA routing).
+    if (href.startsWith('#')) {
+      e.preventDefault();
+      let id = href.slice(1);
+      try {
+        id = decodeURIComponent(id);
+      } catch {
+        /* malformed %-escape - fall back to the raw fragment */
+      }
+      scrollToHeading(containerEl, id);
       return;
     }
 
@@ -420,6 +587,9 @@
     line-height: 1.3;
     margin-top: 1.5em;
     margin-bottom: 0.5em;
+    /* Breathing room when an in-note/cross-note anchor scrolls a heading to the
+       top of the preview, so it doesn't sit flush against the container edge. */
+    scroll-margin-top: 0.75rem;
   }
   .preview :global(:first-child) {
     margin-top: 0;
@@ -656,6 +826,124 @@
     opacity: 1;
     color: #16a34a;
     border-color: #16a34a;
+  }
+
+  /* Per-heading "copy link" button (owner-editable preview). `assignHeadingIds`
+     appends it inline at the end of each heading, so it sits right after the
+     text - mirrors the Live Preview `.cm-lp-head-anchor` affordance. Hidden
+     until the heading is hovered / the button focused (desktop); on coarse
+     pointers (touch, no hover) it stays faintly visible so it is discoverable. */
+  .preview :global(.md-head-anchor) {
+    display: inline-flex;
+    vertical-align: middle;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-left: 0.4em;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 0.375em;
+    background: var(--background);
+    color: var(--muted-foreground);
+    cursor: pointer;
+    opacity: 0;
+    -webkit-user-select: none;
+    user-select: none;
+    transition:
+      opacity 0.12s ease,
+      color 0.12s ease,
+      border-color 0.12s ease;
+  }
+  .preview :global(:is(h1, h2, h3, h4, h5, h6):hover .md-head-anchor),
+  .preview :global(.md-head-anchor:focus-visible) {
+    opacity: 1;
+  }
+  .preview :global(.md-head-anchor:hover) {
+    opacity: 1;
+    color: var(--foreground);
+  }
+  @media (hover: none) {
+    .preview :global(.md-head-anchor) {
+      opacity: 0.55;
+    }
+  }
+
+  /* In-note table of contents (owner-editable preview only). `.note-toc` is the
+     positioning context for its corner toolbar - mirrors `.code-block`. Read-only
+     viewers (shared snapshot, history) never get this wrapper; they render a
+     plain bold title + list. */
+  .preview :global(.note-toc) {
+    position: relative;
+    margin: 0 0 1em;
+    padding: 0.75em 1em;
+    border: 1px solid var(--border);
+    border-radius: 0.5em;
+    background: color-mix(in srgb, var(--muted) 40%, transparent);
+  }
+  .preview :global(.note-toc p) {
+    margin: 0 0 0.5em;
+    font-size: 0.9375rem;
+  }
+  .preview :global(.note-toc ul) {
+    margin: 0 0 0 1.1em;
+    list-style: none;
+  }
+  .preview :global(.note-toc ul ul) {
+    margin-bottom: 0;
+  }
+  .preview :global(.note-toc li + li) {
+    margin-top: 0.15em;
+  }
+  /* Hover/focus-revealed corner toolbar. When the TOC is out of date the whole
+     group is force-shown via :has() - a child can't out-opaque its parent, so the
+     reveal has to live on `.note-toc-actions`. */
+  .preview :global(.note-toc-actions) {
+    position: absolute;
+    top: 0.4em;
+    right: 0.4em;
+    display: inline-flex;
+    gap: 0.25em;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+  .preview :global(.note-toc:hover .note-toc-actions),
+  .preview :global(.note-toc:focus-within .note-toc-actions),
+  .preview :global(.note-toc:has(.note-toc-refresh.is-stale) .note-toc-actions) {
+    opacity: 1;
+  }
+  .preview :global(.note-toc-btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9em;
+    height: 1.9em;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 0.375em;
+    background: var(--background);
+    color: var(--muted-foreground);
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    transition:
+      color 0.12s ease,
+      border-color 0.12s ease,
+      background 0.12s ease;
+  }
+  .preview :global(.note-toc-btn:hover),
+  .preview :global(.note-toc-btn:focus-visible) {
+    color: var(--foreground);
+    background: var(--accent);
+  }
+  .preview :global(.note-toc-remove:hover) {
+    color: var(--destructive);
+    border-color: var(--destructive);
+  }
+  /* Out of date: refresh button stays visible + amber so the drift is noticed. */
+  .preview :global(.note-toc-refresh.is-stale) {
+    color: #d97706;
+    border-color: #d97706;
   }
 
   /* Syntax highlight tokens — palette mirrors editor/live-preview/theme.ts.

@@ -13,6 +13,7 @@ describe('sanitizeLinkUrl', () => {
     ['sms:+48123456789'],
     ['xmpp:user@server'],
     ['note:00000000-0000-0000-0000-000000000000'],
+    ['note:00000000-0000-0000-0000-000000000000#my-heading'],
     ['/relative/path'],
     ['./relative'],
     ['#anchor']

@@ -22,12 +22,16 @@ import {
   livePreviewSyncListener,
   livePreviewAtomicRanges,
   livePreviewListClickForward,
-  livePreviewTaskCheckboxToggle
+  livePreviewTaskCheckboxToggle,
+  livePreviewTocActions,
+  livePreviewAnchorScroll,
+  type TocActions
 } from './decorations';
 import { livePreviewTheme } from './theme';
 import { codeLanguages } from './code-languages';
 import { loadedImagesField, type ImageWidgetLabels } from './image-widget';
 import type { CodeCopyLabels } from './code-copy';
+import type { TocWidgetLabels } from './toc-widget';
 
 /**
  * Runtime options for the Live Preview extension. The Compartment in
@@ -40,6 +44,12 @@ export interface LivePreviewOptions {
   imageLabels?: ImageWidgetLabels;
   /** i18n labels for the fenced-code copy button. */
   codeLabels?: CodeCopyLabels;
+  /** i18n labels for the in-note TOC corner toolbar. */
+  tocLabels?: TocWidgetLabels;
+  /** aria-label / tooltip for the per-heading "copy link" button. */
+  headingLinkLabel?: string;
+  /** Owner callbacks for the TOC refresh / remove buttons. */
+  tocActions?: TocActions;
 }
 
 const DEFAULT_LABELS: ImageWidgetLabels = {
@@ -52,11 +62,21 @@ const DEFAULT_CODE_LABELS: CodeCopyLabels = {
   copied: 'Copied'
 };
 
+const DEFAULT_TOC_LABELS: TocWidgetLabels = {
+  refresh: 'Refresh',
+  stale: 'Out of date - refresh',
+  remove: 'Remove'
+};
+
+const DEFAULT_HEADING_LINK_LABEL = 'Copy link to heading';
+
 export function createLivePreviewExtension(options: LivePreviewOptions = {}): Extension {
   const field = createLivePreviewField({
     imageLoadMode: options.imageLoadMode ?? 'ask',
     imageLabels: options.imageLabels ?? DEFAULT_LABELS,
-    codeLabels: options.codeLabels ?? DEFAULT_CODE_LABELS
+    codeLabels: options.codeLabels ?? DEFAULT_CODE_LABELS,
+    tocLabels: options.tocLabels ?? DEFAULT_TOC_LABELS,
+    headingLinkLabel: options.headingLinkLabel ?? DEFAULT_HEADING_LINK_LABEL
   });
   return [
     field,
@@ -65,6 +85,8 @@ export function createLivePreviewExtension(options: LivePreviewOptions = {}): Ex
     livePreviewAtomicRanges,
     livePreviewListClickForward,
     livePreviewTaskCheckboxToggle,
+    livePreviewTocActions(options.tocActions),
+    livePreviewAnchorScroll,
     livePreviewTheme
   ];
 }
@@ -88,9 +110,14 @@ export {
   livePreviewAtomicRanges,
   livePreviewListClickForward,
   livePreviewTaskCheckboxToggle,
+  livePreviewTocActions,
+  livePreviewAnchorScroll,
   rebuildLivePreview,
-  type BuildDecorationsOptions
+  type BuildDecorationsOptions,
+  type TocActions
 } from './decorations';
+export { TocWidget, type TocWidgetLabels } from './toc-widget';
+export { HeadingAnchorWidget, HEADING_LINK_ICON } from './heading-anchor-widget';
 export {
   CodeBlockWidget,
   LinkWidget,

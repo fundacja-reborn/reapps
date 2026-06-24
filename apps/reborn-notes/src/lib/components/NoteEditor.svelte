@@ -26,6 +26,8 @@
   import { editorMode } from '$lib/stores/app-settings.store';
   import type { ImageLoadMode } from '@reborn/storage';
   import { isDataUri } from '$lib/utils/markdown-sanitizer';
+  import { copyText } from '$lib/utils/clipboard';
+  import { simplifySelfNoteLinks, buildHeadingLink } from '$lib/services/note-link-utils';
   import { toastStore } from '@reborn/ui';
   import {
     Bold,
@@ -64,7 +66,9 @@
     ontoolbarheight,
     availableNotes = [],
     currentNoteId = null,
-    imageLoadMode = 'ask' as ImageLoadMode
+    imageLoadMode = 'ask' as ImageLoadMode,
+    onTocRefresh,
+    onTocDelete
   }: {
     content?: string;
     placeholder?: string;
@@ -87,8 +91,12 @@
     onviewdestroy?: () => void;
     /** Called when user requests to insert a note link (toolbar button or Ctrl+Shift+K) */
     onnotelinkrequest?: () => void;
-    /** Called when a rendered note-link widget is clicked (Live Preview mode) */
-    onnotelinkclick?: (noteId: string) => void;
+    /**
+     * Called when a rendered note-link widget is clicked (Live Preview mode).
+     * `anchor` is the optional `#heading-slug` (without the `#`) when the link
+     * targets a heading (`note:UUID#slug`).
+     */
+    onnotelinkclick?: (noteId: string, anchor?: string) => void;
     /**
      * Split view only - reports the formatting toolbar's measured height
      * (border-box, px) whenever it changes. The toolbar wraps to 1-2 rows by
@@ -102,6 +110,10 @@
     currentNoteId?: string | null;
     /** User preference for external image loading — drives `ImageWidget` rendering. */
     imageLoadMode?: ImageLoadMode;
+    /** Live Preview only — insert-or-refresh the in-note TOC (corner refresh button). */
+    onTocRefresh?: () => void;
+    /** Live Preview only — remove the in-note TOC (corner trash button). */
+    onTocDelete?: () => void;
   } = $props();
 
   let editorRootEl: HTMLDivElement;
@@ -139,6 +151,20 @@
       codeLabels: {
         copy: $t('editor.code_copy'),
         copied: $t('editor.code_copied')
+      },
+      tocLabels: {
+        refresh: $t('toc.refresh'),
+        stale: $t('toc.stale'),
+        remove: $t('toc.remove')
+      },
+      headingLinkLabel: $t('editor.copy_heading_link'),
+      // The widget DOM is inert; the corner buttons act through these. They mutate
+      // `noteDetailService.content` upstream (same path as the kebab menu and the
+      // rendered preview's toolbar), which flows back as the `content` prop and
+      // rebuilds the widget.
+      tocActions: {
+        refresh: () => onTocRefresh?.(),
+        remove: () => onTocDelete?.()
       }
     };
   }
@@ -293,6 +319,53 @@
     view.focus();
   }
 
+  /**
+   * Copy an internal link to a heading in this note (Live Preview hover button).
+   * The link is built by the shared {@link buildHeadingLink} so Live Preview and
+   * the rendered Preview copy the exact same thing: the full cross-note
+   * `[text](note:UUID#slug)`, which the paste handler collapses to the bare
+   * `[text](#slug)` form when it lands back in this same note. Silent no-op if
+   * the clipboard write fails (mirrors the code-block copy button).
+   */
+  async function copyHeadingLink(slug: string, text: string): Promise<void> {
+    const link = buildHeadingLink(currentNoteId, slug, text);
+    if (await copyText(link)) {
+      toastStore.success($t('notes.heading_link_copied'));
+    }
+  }
+
+  /**
+   * Height (px) of the sticky formatting toolbar where it overlays the editor's
+   * scroll container, fed to `EditorView.scrollMargins` so scroll-into-view keeps
+   * headings / the caret BELOW the toolbar instead of behind it. Only the mobile
+   * and desktop single-pane toolbars are `position: sticky` over the shared
+   * scroller; the split-view / default toolbar sits above its own scroller (no
+   * overlap → 0). Measured live because the toolbar wraps to 1-2 rows by width.
+   */
+  function stickyToolbarInset(): number {
+    const el = toolbarEl;
+    if (!el) return 0;
+    if (!isMobile && !(parentScroll && !splitView)) return 0;
+    return el.getBoundingClientRect().height;
+  }
+
+  /**
+   * Scroll the editor to a 1-based source line (outline navigation in edit
+   * mode). Places the cursor at the line start and scrolls it near the top.
+   * No-op if the line is out of range (content changed since the outline built).
+   */
+  export function scrollToLine(line: number): void {
+    if (!view) return;
+    const { doc } = view.state;
+    if (line < 1 || line > doc.lines) return;
+    const pos = doc.line(line).from;
+    view.dispatch({
+      selection: { anchor: pos },
+      effects: EditorView.scrollIntoView(pos, { y: 'start', yMargin: 16 })
+    });
+    view.focus();
+  }
+
   function insertCodeBlock(): boolean {
     if (!view) return false;
     const { state } = view;
@@ -426,6 +499,15 @@
         getMarkdownExtension(),
         syntaxHighlighting(defaultHighlightStyle),
         EditorView.lineWrapping,
+        // Keep every scroll-into-view (heading-anchor clicks, outline jumps, the
+        // caret while typing near the top) clear of the sticky formatting toolbar
+        // that overlays the scroll container in the mobile + single-pane layouts.
+        // CM6 grows the scroll target by this top margin; measured live so it
+        // tracks the toolbar's wrapped height, and 0 where it doesn't overlap.
+        EditorView.scrollMargins.of(() => {
+          const top = stickyToolbarInset();
+          return top ? { top } : null;
+        }),
         customKeymap,
         themeCompartment.of(isDark() ? oneDark : []),
         readonlyCompartment.of(EditorState.readOnly.of(readonly)),
@@ -441,16 +523,28 @@
         EditorView.domEventHandlers({
           click(e) {
             const target = e.target as HTMLElement | null;
+
+            // Copy-link-to-heading button (Live Preview heading hover affordance).
+            // The widget DOM is inert; the link is built here where the note id,
+            // clipboard helper and toast store are in scope.
+            const headBtn = target?.closest('.cm-lp-head-anchor') as HTMLElement | null;
+            if (headBtn) {
+              e.preventDefault();
+              const slug = headBtn.dataset.headingSlug ?? '';
+              if (slug) void copyHeadingLink(slug, headBtn.dataset.headingText ?? '');
+              return;
+            }
+
             const noteEl = target?.closest('[data-note-link="true"]') as HTMLElement | null;
             if (noteEl) {
               const noteId = noteEl.dataset.noteId;
               if (noteId) {
                 e.preventDefault();
-                onnotelinkclick?.(noteId);
+                onnotelinkclick?.(noteId, noteEl.dataset.noteAnchor || undefined);
               }
             }
           },
-          paste(e) {
+          paste(e, cmView) {
             const files = e.clipboardData?.files;
             if (files && files.length > 0) {
               for (const file of Array.from(files)) {
@@ -466,6 +560,25 @@
               e.preventDefault();
               toastStore.warning($t('editor.image_base64_blocked'));
               return;
+            }
+
+            // A heading link copied from THIS note pastes back as the bare in-note
+            // `[label](#slug)` form (matches the TOC's intra-note links + is
+            // portable to standalone markdown). Links to OTHER notes are left as
+            // the full `note:UUID#slug`. Only rewrites when something changes, so
+            // ordinary pastes fall through to CM6's default handling.
+            const id = currentNoteId;
+            if (id) {
+              const simplified = simplifySelfNoteLinks(text, id);
+              if (simplified !== text) {
+                e.preventDefault();
+                const sel = cmView.state.selection.main;
+                cmView.dispatch({
+                  changes: { from: sel.from, to: sel.to, insert: simplified },
+                  selection: { anchor: sel.from + simplified.length },
+                  userEvent: 'input.paste'
+                });
+              }
             }
           },
           drop(e) {
@@ -836,15 +949,15 @@
 
     {#if isMobile}
       <!-- Mobile: sticky toolbar at top of editor.
-           Position is deterministic — independent of virtual keyboard state
+           Position is deterministic - independent of virtual keyboard state
            and Stage Manager edge-cases on iPad. -->
-      <div class="mobile-toolbar sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b">
+      <div bind:this={toolbarEl} class="mobile-toolbar sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b">
         <div class="flex flex-nowrap items-center gap-0.5 overflow-x-auto px-2 py-1.5">
           {@render toolbarButtons()}
         </div>
       </div>
     {:else if parentScroll && !splitView}
-      <div class="sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-5">
+      <div bind:this={toolbarEl} class="sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-5">
         <div class="mx-auto max-w-3xl">
           <div class="flex flex-wrap items-center gap-0.5 py-1.5">
             {@render toolbarButtons()}

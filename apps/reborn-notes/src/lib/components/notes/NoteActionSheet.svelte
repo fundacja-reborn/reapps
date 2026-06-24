@@ -14,7 +14,11 @@
     RotateCcw,
     Trash,
     Clock,
-    Waypoints
+    Waypoints,
+    ListTree,
+    ListPlus,
+    RefreshCw,
+    ListX
   } from '@lucide/svelte';
   import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@reborn/ui';
   import { t } from '$lib/stores/i18n.store';
@@ -36,7 +40,12 @@
     onpermanentdelete,
     onhistory,
     onlinkednotes,
-    onshowxray
+    onoutline,
+    onshowxray,
+    tocMenuMode = 'hidden',
+    tocStale = false,
+    onTocApply,
+    onTocRemove
   }: {
     open: boolean;
     note: NoteListItem | null;
@@ -57,8 +66,18 @@
     onhistory?: () => void;
     /** Opens Linked notes panel (mobile only) */
     onlinkednotes?: () => void;
+    /** Opens the Outline panel (mobile only) */
+    onoutline?: () => void;
     /** Opens Encryption X-Ray panel */
     onshowxray?: () => void;
+    /** Table-of-contents menu state: insert / manage / hidden. */
+    tocMenuMode?: 'insert' | 'manage' | 'hidden';
+    /** Marks the refresh action as out of date (headings drifted). */
+    tocStale?: boolean;
+    /** Insert-or-refresh the managed TOC block. */
+    onTocApply?: () => void;
+    /** Remove the managed TOC block. */
+    onTocRemove?: () => void;
   } = $props();
 </script>
 
@@ -120,6 +139,48 @@
           <FolderInput class="mr-2 h-4 w-4" />
           {$t('notes.move_to_folder')}
         </Button>
+        {#if tocMenuMode === 'insert'}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => {
+              open = false;
+              onTocApply?.();
+            }}
+          >
+            <ListPlus class="mr-2 h-4 w-4" />
+            {$t('toc.insert')}
+          </Button>
+        {:else if tocMenuMode === 'manage'}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => {
+              open = false;
+              onTocApply?.();
+            }}
+          >
+            <RefreshCw class="mr-2 h-4 w-4" />
+            {$t('toc.refresh')}
+            {#if tocStale}
+              <span
+                class="ml-auto inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
+                aria-hidden="true"
+              ></span>
+            {/if}
+          </Button>
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => {
+              open = false;
+              onTocRemove?.();
+            }}
+          >
+            <ListX class="mr-2 h-4 w-4" />
+            {$t('toc.remove')}
+          </Button>
+        {/if}
         <Button
           variant="ghost"
           class="w-full justify-start"
@@ -172,6 +233,19 @@
           >
             <Clock class="mr-2 h-4 w-4" />
             {$t('history.title')}
+          </Button>
+        {/if}
+        {#if onoutline}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => {
+              open = false;
+              onoutline?.();
+            }}
+          >
+            <ListTree class="mr-2 h-4 w-4" />
+            {$t('outline.title')}
           </Button>
         {/if}
         {#if onlinkednotes}

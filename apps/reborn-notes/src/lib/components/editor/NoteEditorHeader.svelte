@@ -5,6 +5,7 @@
     Eye,
     Clock,
     Waypoints,
+    ListTree,
     ArrowLeft,
     Lock,
     Loader2,
@@ -32,6 +33,8 @@
     historyMode = $bindable<HistoryMode>('closed'),
     linkedNotesActive = false,
     ontogglelinkednotes,
+    outlineActive = false,
+    ontoggleoutline,
     onback,
     onshowxray,
     onrestore,
@@ -52,6 +55,10 @@
     linkedNotesActive?: boolean;
     /** Toggle the Linked notes panel (desktop only - mobile uses the kebab menu). */
     ontogglelinkednotes?: () => void;
+    /** Whether the Outline panel is open (drives the toggle's pressed state). */
+    outlineActive?: boolean;
+    /** Toggle the Outline panel (desktop only - mobile uses the kebab menu). */
+    ontoggleoutline?: () => void;
     onback: () => void;
     onshowxray: () => void;
     onrestore: () => void;
@@ -91,9 +98,9 @@
 <!-- pt + min-h grow together by the iOS notch inset so the content keeps its
      full row box and stays vertically centered (env() is 0 elsewhere). -->
 <header
-  class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-border/60
+  class="@container flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center border-b border-border/60
     pt-[env(safe-area-inset-top,0px)]
-    {isMobile ? 'px-3' : 'px-6'}"
+    {isMobile ? 'gap-2 px-3' : 'gap-1 px-3 @lg:gap-2 @lg:px-6'}"
 >
   <button
     type="button"
@@ -218,13 +225,29 @@
             >
               <Icon class="h-4 w-4 md:h-3.5 md:w-3.5" />
               {#if !isMobile}
-                <span class="hidden sm:inline">{label}</span>
+                <span class="hidden @lg:inline">{label}</span>
               {/if}
             </button>
           {/if}
         {/if}
       {/each}
     </div>
+
+    <!-- Outline toggle (desktop only - on mobile it's in kebab menu) -->
+    {#if !isMobile && ontoggleoutline}
+      <button
+        type="button"
+        onclick={ontoggleoutline}
+        title={$t('outline.title')}
+        aria-label={$t('outline.title')}
+        aria-pressed={outlineActive}
+        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground
+           transition-colors hover:bg-accent hover:text-accent-foreground
+           {outlineActive ? 'bg-accent text-accent-foreground' : ''}"
+      >
+        <ListTree class="h-4 w-4" />
+      </button>
+    {/if}
 
     <!-- Linked notes toggle (desktop only - on mobile it's in kebab menu) -->
     {#if !isMobile && ontogglelinkednotes}

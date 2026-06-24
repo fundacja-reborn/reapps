@@ -6,7 +6,10 @@ import type { DecorationSet } from '@codemirror/view';
 import { buildDecorations, isAnySelectionInRange, resolveListClickForward } from './decorations';
 import { TableWidget } from './table-widget';
 import { ImageWidget } from './image-widget';
-import { TaskCheckboxWidget } from './widgets';
+import { CodeBlockWidget, TaskCheckboxWidget } from './widgets';
+import { TocWidget } from './toc-widget';
+import { HeadingAnchorWidget } from './heading-anchor-widget';
+import { applyToc } from '$lib/utils/toc';
 
 interface DecoSpec {
   class?: string;
@@ -84,7 +87,8 @@ describe('buildDecorations — headings', () => {
     const state = makeState('# Title\n\nbody', 3); // cursor inside "Title"
     const ranges = asRanges(buildDecorations(state));
 
-    expect(classAt(ranges, 0, 0)).toBe('cm-lp-h1-line');
+    // Caret on the line adds `cm-lp-head-active` alongside the heading class.
+    expect(classAt(ranges, 0, 0)).toContain('cm-lp-h1-line');
     expect(hasHiddenRange(ranges, 0, 2)).toBe(false);
   });
 
@@ -411,8 +415,11 @@ describe('buildDecorations — fenced code blocks', () => {
 
     // Heading line decoration still applied
     expect(classAt(ranges, 0, 0)).toBe('cm-lp-h1-line');
-    // Fenced code widget present
-    expect(ranges.filter((r) => r.hasWidget)).toHaveLength(1);
+    // Fenced code widget present. The heading also emits a copy-link button, so
+    // filter by widget type rather than counting all widgets.
+    expect(
+      ranges.filter((r) => r.hasWidget && r.spec.widget instanceof CodeBlockWidget)
+    ).toHaveLength(1);
   });
 });
 
@@ -565,16 +572,28 @@ describe('buildDecorations — tables', () => {
 describe('buildDecorations — inline images', () => {
   const LABELS = { load: 'Load image', base64Blocked: 'Embedded images blocked' };
   const CODE_LABELS = { copy: 'Copy code', copied: 'Copied' };
-  const OPTS_ASK = { imageLoadMode: 'ask' as const, imageLabels: LABELS, codeLabels: CODE_LABELS };
+  const TOC_LABELS = { refresh: 'Refresh', stale: 'Out of date', remove: 'Remove' };
+  const HEADING_LINK_LABEL = 'Copy link to heading';
+  const OPTS_ASK = {
+    imageLoadMode: 'ask' as const,
+    imageLabels: LABELS,
+    codeLabels: CODE_LABELS,
+    tocLabels: TOC_LABELS,
+    headingLinkLabel: HEADING_LINK_LABEL
+  };
   const OPTS_ALWAYS = {
     imageLoadMode: 'always' as const,
     imageLabels: LABELS,
-    codeLabels: CODE_LABELS
+    codeLabels: CODE_LABELS,
+    tocLabels: TOC_LABELS,
+    headingLinkLabel: HEADING_LINK_LABEL
   };
   const OPTS_NEVER = {
     imageLoadMode: 'never' as const,
     imageLabels: LABELS,
-    codeLabels: CODE_LABELS
+    codeLabels: CODE_LABELS,
+    tocLabels: TOC_LABELS,
+    headingLinkLabel: HEADING_LINK_LABEL
   };
 
   it('replaces an image with an ImageWidget when cursor is outside', () => {
@@ -871,5 +890,116 @@ describe('resolveListClickForward — padding-zone vs content gate', () => {
     expect(result).not.toBeNull();
     // contentStart = innerMarkerPos + 2 (past `- `)
     expect(result?.contentStart).toBe(innerMarkerPos + 2);
+  });
+});
+
+describe('buildDecorations — in-note table of contents', () => {
+  // `# Doc` then a managed TOC block, then the listed headings.
+  const withToc = applyToc('# Doc\n\n## Alpha\n\n## Beta\n', { title: 'Contents' })!;
+  const tocWidgets = (set: ReturnType<typeof buildDecorations>) =>
+    asRanges(set).filter((r) => r.hasWidget && r.spec.widget instanceof TocWidget);
+
+  it('replaces the block with a single TocWidget spanning >1 line when the cursor is outside', () => {
+    const state = makeState(withToc, 0); // caret in "# Doc", outside the block
+    const widgets = tocWidgets(buildDecorations(state));
+    expect(widgets).toHaveLength(1);
+    expect(widgets[0].to).toBeGreaterThan(widgets[0].from); // block replace
+  });
+
+  it('emits no TocWidget when the caret is inside the block (raw reveal for editing)', () => {
+    const inside = withToc.indexOf('<!-- toc -->') + 4;
+    const state = makeState(withToc, inside);
+    expect(tocWidgets(buildDecorations(state))).toHaveLength(0);
+  });
+
+  it('keeps the box background via line decorations when the caret is inside', () => {
+    const inside = withToc.indexOf('<!-- toc -->') + 4;
+    const ranges = asRanges(buildDecorations(makeState(withToc, inside)));
+    const tocLines = ranges.filter((r) => r.spec.class?.includes('cm-lp-toc-line'));
+    expect(tocLines.length).toBeGreaterThan(1); // every line of the block
+    expect(tocLines.some((r) => r.spec.class?.includes('cm-lp-toc-line-first'))).toBe(true);
+    expect(tocLines.some((r) => r.spec.class?.includes('cm-lp-toc-line-last'))).toBe(true);
+  });
+
+  it('decorates nothing inside the widget range (no overlap under the block widget)', () => {
+    const state = makeState(withToc, 0);
+    const ranges = asRanges(buildDecorations(state));
+    const toc = ranges.find((r) => r.hasWidget && r.spec.widget instanceof TocWidget)!;
+    const inside = ranges.filter((r) => r !== toc && r.from > toc.from && r.from < toc.to);
+    expect(inside).toHaveLength(0);
+  });
+
+  it('flags the widget stale after a heading drifts from the listed entries', () => {
+    // Rename a heading in the body without refreshing the block → drift.
+    const drifted = withToc.replace('## Beta', '## Gamma');
+    const state = makeState(drifted, 0);
+    const widgets = tocWidgets(buildDecorations(state));
+    expect(widgets).toHaveLength(1);
+    expect((widgets[0].spec.widget as TocWidget).stale).toBe(true);
+
+    // Pristine block (no edits) is not stale.
+    const pristine = tocWidgets(buildDecorations(makeState(withToc, 0)));
+    expect((pristine[0].spec.widget as TocWidget).stale).toBe(false);
+  });
+});
+
+describe('buildDecorations — heading copy-link button', () => {
+  const headingButtons = (set: ReturnType<typeof buildDecorations>) =>
+    asRanges(set).filter((r) => r.hasWidget && r.spec.widget instanceof HeadingAnchorWidget);
+
+  it('emits a HeadingAnchorWidget at the heading line end carrying its slug + text', () => {
+    const doc = '# Hello World\n\nbody';
+    const state = makeState(doc, doc.length - 1); // caret in body
+    const buttons = headingButtons(buildDecorations(state));
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].from).toBe('# Hello World'.length); // end of the heading line
+    const w = buttons[0].spec.widget as HeadingAnchorWidget;
+    expect(w.slug).toBe('hello-world');
+    expect(w.text).toBe('Hello World');
+    expect(w.label).toBe('Copy link to heading'); // DEFAULT_OPTIONS fallback
+  });
+
+  it('emits a button for every heading level', () => {
+    const doc = '# A\n\n## B\n\n### C\n\n#### D\n\n##### E\n\n###### F\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    expect(headingButtons(buildDecorations(state))).toHaveLength(6);
+  });
+
+  it('disambiguates duplicate heading slugs (matches the TOC / preview)', () => {
+    const doc = '# Intro\n\n## Setup\n\n## Setup\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    const slugs = headingButtons(buildDecorations(state)).map(
+      (r) => (r.spec.widget as HeadingAnchorWidget).slug
+    );
+    expect(slugs).toEqual(['intro', 'setup', 'setup-1']);
+  });
+
+  it('passes the configured label through to the widget', () => {
+    const doc = '# H\n\nbody';
+    const buttons = headingButtons(
+      buildDecorations(makeState(doc, doc.length - 1), {
+        imageLoadMode: 'ask',
+        imageLabels: { load: 'x', base64Blocked: 'y' },
+        codeLabels: { copy: 'x', copied: 'y' },
+        tocLabels: { refresh: 'x', stale: 'y', remove: 'z' },
+        headingLinkLabel: 'Skopiuj link do nagłówka'
+      })
+    );
+    expect(buttons).toHaveLength(1);
+    expect((buttons[0].spec.widget as HeadingAnchorWidget).label).toBe('Skopiuj link do nagłówka');
+  });
+
+  it('reveals the button via cm-lp-head-active only when the caret is on the heading line', () => {
+    const doc = '# Title\n\nbody';
+    const onLine = asRanges(buildDecorations(makeState(doc, 3))); // caret in "Title"
+    expect(onLine.some((r) => r.spec.class?.includes('cm-lp-head-active'))).toBe(true);
+    const offLine = asRanges(buildDecorations(makeState(doc, doc.length - 1))); // caret in body
+    expect(offLine.some((r) => r.spec.class?.includes('cm-lp-head-active'))).toBe(false);
+  });
+
+  it('emits no button for a "#" inside a fenced code block (not a heading)', () => {
+    const doc = '```\n# not a heading\n```\n\nbody';
+    const state = makeState(doc, doc.length - 1);
+    expect(headingButtons(buildDecorations(state))).toHaveLength(0);
   });
 });

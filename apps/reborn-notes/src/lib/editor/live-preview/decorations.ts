@@ -10,7 +10,14 @@
  */
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
-import { type EditorState, type Range, RangeSetBuilder, StateEffect, StateField } from '@codemirror/state';
+import {
+  type EditorState,
+  type Extension,
+  type Range,
+  RangeSetBuilder,
+  StateEffect,
+  StateField
+} from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 import type { Text } from '@codemirror/state';
 import type { ImageLoadMode } from '@reborn/storage';
@@ -19,6 +26,10 @@ import { ImageWidget, type ImageWidgetLabels, getLoadedImages } from './image-wi
 import type { CodeCopyLabels } from './code-copy';
 import { TableWidget } from './table-widget';
 import { parseTable } from './table-parse';
+import { TocWidget, type TocWidgetLabels } from './toc-widget';
+import { HeadingAnchorWidget } from './heading-anchor-widget';
+import { findTocBlockRange, tocInnerMarkdown, isTocStale } from '$lib/utils/toc';
+import { extractHeadings } from '$lib/utils/heading-outline';
 
 /**
  * Options threaded into `buildDecorations` from `createLivePreviewExtension`.
@@ -29,12 +40,17 @@ export interface BuildDecorationsOptions {
   imageLoadMode: ImageLoadMode;
   imageLabels: ImageWidgetLabels;
   codeLabels: CodeCopyLabels;
+  tocLabels: TocWidgetLabels;
+  /** aria-label / tooltip for the per-heading "copy link" button. */
+  headingLinkLabel: string;
 }
 
 const DEFAULT_OPTIONS: BuildDecorationsOptions = {
   imageLoadMode: 'ask',
   imageLabels: { load: 'Load image', base64Blocked: 'Embedded images are not supported' },
-  codeLabels: { copy: 'Copy code', copied: 'Copied' }
+  codeLabels: { copy: 'Copy code', copied: 'Copied' },
+  tocLabels: { refresh: 'Refresh', stale: 'Out of date - refresh', remove: 'Remove' },
+  headingLinkLabel: 'Copy link to heading'
 };
 
 /**
@@ -57,6 +73,14 @@ const CODE_LINE = Decoration.line({ class: 'cm-lp-code-line' });
 const CODE_LINE_FIRST = Decoration.line({ class: 'cm-lp-code-line cm-lp-code-line-first' });
 const CODE_LINE_LAST = Decoration.line({ class: 'cm-lp-code-line cm-lp-code-line-last' });
 
+// In-note TOC raw-reveal (cursor inside the block): keep the box background via
+// per-line decorations, mirroring the fenced-code-block reveal, so the block
+// stays visually distinct instead of blending into the note. First/last lines
+// round the corners + pad the ends.
+const TOC_LINE = Decoration.line({ class: 'cm-lp-toc-line' });
+const TOC_LINE_FIRST = Decoration.line({ class: 'cm-lp-toc-line cm-lp-toc-line-first' });
+const TOC_LINE_LAST = Decoration.line({ class: 'cm-lp-toc-line cm-lp-toc-line-last' });
+
 const HEADING_LINE: Record<number, Decoration> = {
   1: Decoration.line({ class: 'cm-lp-h1-line' }),
   2: Decoration.line({ class: 'cm-lp-h2-line' }),
@@ -64,6 +88,18 @@ const HEADING_LINE: Record<number, Decoration> = {
   4: Decoration.line({ class: 'cm-lp-h4-line' }),
   5: Decoration.line({ class: 'cm-lp-h5-line' }),
   6: Decoration.line({ class: 'cm-lp-h6-line' })
+};
+// Variant heading-line decorations carrying `cm-lp-head-active`, used while the
+// caret is on the line. Reveals the copy-link button without a hover (the only
+// way to surface it on touch). Same line element + heading class as the base
+// variant, just one extra class, so the rendered heading is unchanged.
+const HEADING_LINE_ACTIVE: Record<number, Decoration> = {
+  1: Decoration.line({ class: 'cm-lp-h1-line cm-lp-head-active' }),
+  2: Decoration.line({ class: 'cm-lp-h2-line cm-lp-head-active' }),
+  3: Decoration.line({ class: 'cm-lp-h3-line cm-lp-head-active' }),
+  4: Decoration.line({ class: 'cm-lp-h4-line cm-lp-head-active' }),
+  5: Decoration.line({ class: 'cm-lp-h5-line cm-lp-head-active' }),
+  6: Decoration.line({ class: 'cm-lp-h6-line cm-lp-head-active' })
 };
 const STRONG_MARK = Decoration.mark({ class: 'cm-lp-strong' });
 const EM_MARK = Decoration.mark({ class: 'cm-lp-em' });
@@ -248,11 +284,83 @@ export function buildDecorations(
   const doc = state.doc;
   const loaded = getLoadedImages(state);
 
+  // ─── In-note table of contents ───────────────────────────────
+  // The managed `<!-- toc -->` block is NOT a single syntax node (comment +
+  // paragraph + list + comment), so it is found by text range, not tree node.
+  // Cursor OUTSIDE → replace the whole line span with one boxed `TocWidget`
+  // (mirrors the rendered preview) and skip every node within it below, so
+  // nothing decorates under the block widget. Cursor INSIDE → emit no widget and
+  // let the raw markdown (markers + list) show for editing — the same
+  // click-to-edit reveal as fenced code blocks.
+  const docText = doc.toString();
+
+  // Heading anchor slugs (deduplicated) keyed by 1-based line number. Built from
+  // the SAME `extractHeadings` the rendered preview + TOC use, so a copied
+  // `#slug` always resolves to its heading. Lazy: only computed once the first
+  // ATXHeading node is hit, so notes without headings pay nothing.
+  let headingMetaByLine: Map<number, { slug: string; text: string }> | null = null;
+  const headingMetaAt = (lineNumber: number): { slug: string; text: string } | undefined => {
+    if (headingMetaByLine === null) {
+      headingMetaByLine = new Map();
+      for (const h of extractHeadings(docText)) {
+        headingMetaByLine.set(h.line, { slug: h.slug, text: h.text });
+      }
+    }
+    return headingMetaByLine.get(lineNumber);
+  };
+
+  const tocRange = findTocBlockRange(docText);
+  let tocSkipFrom = -1;
+  let tocSkipTo = -1;
+  if (tocRange) {
+    const startLine = doc.lineAt(tocRange.from);
+    const endLine = doc.lineAt(tocRange.to);
+    // Skip every node within the block in BOTH states — the widget replaces it
+    // (cursor outside) or the raw reveal owns its lines (cursor inside) — so
+    // nothing double-decorates the TOC.
+    tocSkipFrom = startLine.from;
+    tocSkipTo = endLine.to;
+    if (!isAnySelectionInRange(state, startLine.from, endLine.to)) {
+      // Cursor outside → one boxed widget.
+      const innerMd = tocInnerMarkdown(docText) ?? '';
+      // Drift is independent of the (preserved) title, so a bare fallback is
+      // fine here — see `isTocStale`.
+      const stale = isTocStale(docText, { title: '' });
+      ranges.push(
+        Decoration.replace({
+          widget: new TocWidget(innerMd, stale, options.tocLabels),
+          block: true
+        }).range(startLine.from, endLine.to)
+      );
+    } else {
+      // Cursor inside → raw markdown for editing (fully raw, like a fenced code
+      // block), but keep the box background per-line so the block stays distinct
+      // instead of blending into the note.
+      const lineCount = endLine.number - startLine.number;
+      for (let n = startLine.number; n <= endLine.number; n++) {
+        const ln = doc.line(n);
+        let deco: Decoration = TOC_LINE;
+        if (n === startLine.number) deco = TOC_LINE_FIRST;
+        else if (n === endLine.number && lineCount > 0) deco = TOC_LINE_LAST;
+        ranges.push(deco.range(ln.from));
+      }
+    }
+  }
+
   tree.iterate({
     enter(nodeRef) {
       const name = nodeRef.type.name;
       const from = nodeRef.from;
       const to = nodeRef.to;
+
+      // Skip everything inside the TOC block (nodes fully contained in it) — the
+      // widget replaces it, or the raw reveal's line decorations own it, so any
+      // node decoration here would clash. Containment (not just `from >=`) lets a
+      // root/container spanning past the block still descend to decorate siblings
+      // before and after it.
+      if (tocSkipFrom >= 0 && from >= tocSkipFrom && to <= tocSkipTo) {
+        return false;
+      }
 
       // ─── GFM Table — always rendered as an editable widget ────────
       // Unlike other live-preview elements, tables do NOT switch to raw
@@ -337,13 +445,33 @@ export function buildDecorations(
       const headingMatch = /^ATXHeading([1-6])$/.exec(name);
       if (headingMatch) {
         const level = parseInt(headingMatch[1], 10);
-        const lineDeco = HEADING_LINE[level];
-        if (!lineDeco) return false;
-
         const line = doc.lineAt(from);
+        const cursorInside = isAnySelectionInRange(state, from, to);
+
+        // Caret on the heading line switches to the `cm-lp-head-active` variant,
+        // which reveals the copy-link button (the only way to surface it on
+        // touch, where there is no hover). Same line + heading class otherwise.
+        const lineDeco = (cursorInside ? HEADING_LINE_ACTIVE : HEADING_LINE)[level];
+        if (!lineDeco) return false;
         ranges.push(lineDeco.range(line.from));
 
-        const cursorInside = isAnySelectionInRange(state, from, to);
+        // Copy-link-to-heading button, pinned to the line's top-right corner.
+        // Inert DOM; the click is wired in NoteEditor (the note id, clipboard
+        // helper and toast store live in the Svelte layer).
+        const headingMeta = headingMetaAt(line.number);
+        if (headingMeta) {
+          ranges.push(
+            Decoration.widget({
+              widget: new HeadingAnchorWidget(
+                headingMeta.slug,
+                headingMeta.text,
+                options.headingLinkLabel
+              ),
+              side: 1
+            }).range(line.to)
+          );
+        }
+
         const headerMark = findFirstChild(nodeRef.node, 'HeaderMark');
         if (headerMark) {
           if (!cursorInside) {
@@ -814,3 +942,115 @@ export const livePreviewTaskCheckboxToggle = EditorView.domEventHandlers({
     return true;
   }
 });
+
+/**
+ * The owner's TOC mutation callbacks, threaded from `NoteEditor` (which holds
+ * the i18n `$t` and the note's content service). The `TocWidget` DOM is inert;
+ * this handler is the only place editor TOC clicks act.
+ */
+export interface TocActions {
+  /** Insert-or-refresh the managed block (corner refresh button). */
+  refresh: () => void;
+  /** Remove the managed block (corner trash button). */
+  remove: () => void;
+}
+
+/**
+ * Wires clicks inside the `TocWidget`:
+ *  - refresh / remove corner buttons → the owner's `TocActions` (which mutate the
+ *    markdown source the same way the kebab menu and the rendered preview's
+ *    toolbar do — all three share one path);
+ *  - an entry link (`#slug`) → scroll the editor to that heading line.
+ *
+ * `mousedown` is prevented on these targets so the click does not move the CM6
+ * caret into the block (which would swap the widget for raw markdown before the
+ * `click` fires); the work runs on `click` (also fires on keyboard activation of
+ * the buttons).
+ */
+export function livePreviewTocActions(actions?: TocActions): Extension {
+  return EditorView.domEventHandlers({
+    mousedown(event) {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('.cm-lp-toc-refresh, .cm-lp-toc-remove, .cm-lp-toc a[href]')) {
+        event.preventDefault();
+        return true;
+      }
+      return false;
+    },
+    click(event, view) {
+      const target = event.target as HTMLElement | null;
+      if (!target) return false;
+      if (target.closest('.cm-lp-toc-refresh')) {
+        event.preventDefault();
+        actions?.refresh();
+        return true;
+      }
+      if (target.closest('.cm-lp-toc-remove')) {
+        event.preventDefault();
+        actions?.remove();
+        return true;
+      }
+      const anchor = target.closest('.cm-lp-toc a[href]') as HTMLAnchorElement | null;
+      if (anchor) {
+        event.preventDefault();
+        scrollEditorToSlug(view, anchor.getAttribute('href'));
+        return true;
+      }
+      return false;
+    }
+  });
+}
+
+/**
+ * Scrolls the editor to a heading when an in-note anchor link (`[label](#slug)`)
+ * in the body is clicked - the bare-anchor twin of the TOC entry handler above.
+ * `LinkWidget` renders such links as `a.cm-lp-anchor-link`. `mousedown` is
+ * prevented so the click doesn't move the caret into the link (which would swap
+ * the rendered link widget for raw markdown before the `click` fires).
+ */
+export const livePreviewAnchorScroll = EditorView.domEventHandlers({
+  mousedown(event) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.cm-lp-anchor-link')) {
+      event.preventDefault();
+      return true;
+    }
+    return false;
+  },
+  click(event, view) {
+    const target = event.target as HTMLElement | null;
+    const anchor = target?.closest('.cm-lp-anchor-link') as HTMLAnchorElement | null;
+    if (anchor) {
+      event.preventDefault();
+      scrollEditorToSlug(view, anchor.getAttribute('href'));
+      return true;
+    }
+    return false;
+  }
+});
+
+/**
+ * Scroll the editor to the heading a TOC entry points at. The href is a `#slug`
+ * fragment — marked percent-encodes it, so decode before matching the slug
+ * `extractHeadings` stamps. Places the caret at the heading line start (outside
+ * the TOC block, so the widget stays rendered) and scrolls it near the top.
+ */
+function scrollEditorToSlug(view: EditorView, href: string | null): void {
+  if (!href) return;
+  const raw = href.startsWith('#') ? href.slice(1) : href;
+  let slug: string;
+  try {
+    slug = decodeURIComponent(raw);
+  } catch {
+    slug = raw;
+  }
+  const heading = extractHeadings(view.state.doc.toString()).find((h) => h.slug === slug);
+  if (!heading) return;
+  const lineNo = Math.min(Math.max(heading.line, 1), view.state.doc.lines);
+  const pos = view.state.doc.line(lineNo).from;
+  view.dispatch({
+    selection: { anchor: pos },
+    effects: EditorView.scrollIntoView(pos, { y: 'start', yMargin: 16 })
+  });
+  view.focus();
+}

@@ -24,7 +24,19 @@
  * resolved by vault-relative path or unique basename. Reference-style
  * `[label][ref]` definitions and `![[embeds]]` (transclusions - reborn-notes
  * has no include semantics) are intentionally left untouched.
+ *
+ * Heading anchors: a `#fragment` on a path link (`b.md#section`) and a wikilink
+ * heading subpath (`[[Doc#Heading]]`) are preserved as `note:UUID#slug`, where
+ * `slug` is {@link slugifyHeading} of the fragment. Slugifying unifies both
+ * GitHub-style fragments (already a slug -> slugifies to itself) and Obsidian
+ * heading text (`#Heading Text` -> `heading-text`); MarkdownPreview stamps the
+ * matching id on the target heading so the link lands on it. A same-note
+ * Obsidian heading link (`[[#Heading]]`) becomes a plain in-note `[..](#slug)`
+ * anchor. Block references (`#^block`) have no heading equivalent and drop to a
+ * plain note link (cross-note) or are left as-is (same-note).
  */
+
+import { slugifyHeading } from '$lib/utils/heading-outline';
 
 /** Result of a rewrite pass: the new content and how many links were rewritten. */
 export type LinkRewriteResult = { content: string; rewritten: number };
@@ -161,19 +173,20 @@ export function buildWikilinkIndex(
 }
 
 /**
- * Split a wikilink body (`Target#sub|alias`) into the resolvable target and the
- * display label. `target` is the text before the first `#` (subpath) and first
- * `|` (alias); the label is the alias when present, else the target as written.
- * The `#heading` / `#^block` subpath is dropped - `note:` links have no
- * intra-note anchors yet, so the link lands on the note.
+ * Split a wikilink body (`Target#sub|alias`) into its parts. `target` is the
+ * text before the first `#` (subpath) and first `|` (alias); `sub` is the
+ * subpath after the first `#` (a heading name, or a `^block` reference - the
+ * leading `^` is kept so the caller can tell them apart); `alias` is the display
+ * override after `|`. An empty `target` means a same-note link (`[[#Heading]]`).
  */
-function parseWikilink(inner: string): { target: string; label: string } {
+function parseWikilink(inner: string): { target: string; sub: string; alias: string } {
   const pipeIdx = inner.indexOf('|');
   const beforePipe = pipeIdx === -1 ? inner : inner.slice(0, pipeIdx);
   const alias = (pipeIdx === -1 ? '' : inner.slice(pipeIdx + 1)).trim();
   const hashIdx = beforePipe.indexOf('#');
   const target = (hashIdx === -1 ? beforePipe : beforePipe.slice(0, hashIdx)).trim();
-  return { target, label: alias || target };
+  const sub = hashIdx === -1 ? '' : beforePipe.slice(hashIdx + 1).trim();
+  return { target, sub, alias };
 }
 
 /**
@@ -209,13 +222,16 @@ function resolveWikilink(target: string, index: WikilinkIndex): string | undefin
  *
  * A link is rewritten only when its target resolves to a known note. Images
  * (`![..](..)`), external/`note:`/anchor-only/absolute destinations, non-`.md`
- * targets, code spans, and unresolved targets are left untouched. Any
- * `#fragment` is dropped (the `note:` scheme has no heading anchors yet).
+ * targets, code spans, and unresolved targets are left untouched. A `#fragment`
+ * is preserved as a `note:UUID#slug` heading anchor (slugified - see file
+ * header); a `#^block` reference, having no heading equivalent, is dropped.
  *
  * @param opts.wikilinks Optional {@link WikilinkIndex}. When supplied, Obsidian
- *                       `[[Target]]` / `[[Target|alias]]` links are also
- *                       rewritten (target resolved by vault-relative path or
- *                       unique basename; `#heading`/`^block` subpaths dropped).
+ *                       `[[Target]]` / `[[Target|alias]]` / `[[Target#Heading]]`
+ *                       links are also rewritten (target resolved by
+ *                       vault-relative path or unique basename; a `#Heading`
+ *                       subpath becomes `note:UUID#slug`, `#^block` is dropped,
+ *                       and a same-note `[[#Heading]]` becomes `[..](#slug)`).
  *                       `![[embeds]]` stay untouched. Without it, every `[[..]]`
  *                       is left as-is (the path-link-only behavior).
  */
@@ -261,16 +277,29 @@ export function rewriteInterNoteLinks(
       // starts with `~~~`. Either way it is code: leave verbatim.
       if (codeFence !== undefined || match.startsWith('~~~')) return match;
 
-      // Obsidian wikilink `[[Target]]` / `[[Target|alias]]` (group 3 set). Only
-      // rewritten when an index was supplied; `![[embed]]` (transclusion) and
-      // unresolved/ambiguous targets are left as-is.
+      // Obsidian wikilink `[[Target]]` / `[[Target|alias]]` / `[[Target#Heading]]`
+      // (group 3 set). Only rewritten when an index was supplied; `![[embed]]`
+      // (transclusion) and unresolved/ambiguous targets are left as-is.
       if (wikiInner !== undefined) {
         if (wikilinks === undefined || wikiBang === '!') return match;
-        const { target, label: wikiLabel } = parseWikilink(wikiInner);
+        const { target, sub, alias } = parseWikilink(wikiInner);
+        // A `#^block` reference has no heading equivalent; only a `#heading`
+        // subpath maps to an anchor.
+        const headingSub = sub && !sub.startsWith('^') ? sub : '';
+
+        // Same-note heading link `[[#Heading]]` (empty target) -> in-note anchor.
+        // `[[#^block]]` / bare `[[#]]` have nothing to resolve; left as-is.
+        if (target === '') {
+          if (headingSub === '') return match;
+          rewritten++;
+          return `[${alias || sub}](#${slugifyHeading(headingSub)})`;
+        }
+
         const noteId = resolveWikilink(target, wikilinks);
         if (noteId === undefined) return match;
         rewritten++;
-        return `[${wikiLabel}](note:${noteId})`;
+        const anchor = headingSub ? `#${slugifyHeading(headingSub)}` : '';
+        return `[${alias || target}](note:${noteId}${anchor})`;
       }
 
       // Image / embed (`![..](..)`): not a navigable link.
@@ -287,9 +316,10 @@ export function rewriteInterNoteLinks(
       if (rawUrl === '' || SCHEME_RE.test(rawUrl) || rawUrl.startsWith('#') || rawUrl.startsWith('/'))
         return match;
 
-      // Drop any #fragment, then percent-decode the path.
+      // Split off the #fragment, then percent-decode the path.
       const hashIdx = rawUrl.indexOf('#');
       const pathPart = hashIdx === -1 ? rawUrl : rawUrl.slice(0, hashIdx);
+      const fragment = hashIdx === -1 ? '' : rawUrl.slice(hashIdx + 1);
       let decoded: string;
       try {
         decoded = decodeURIComponent(pathPart);
@@ -302,8 +332,23 @@ export function rewriteInterNoteLinks(
       const noteId = resolveId(resolved);
       if (noteId === undefined) return match;
 
+      // Preserve a heading anchor. The fragment may be a GitHub-style slug or
+      // Obsidian heading text; slugifyHeading maps both to the id MarkdownPreview
+      // stamps on the heading (a slug slugifies to itself).
+      let anchor = '';
+      if (fragment) {
+        let decodedFragment: string;
+        try {
+          decodedFragment = decodeURIComponent(fragment);
+        } catch {
+          decodedFragment = fragment;
+        }
+        const slug = slugifyHeading(decodedFragment);
+        if (slug) anchor = `#${slug}`;
+      }
+
       rewritten++;
-      return `[${label}](note:${noteId}${title})`;
+      return `[${label}](note:${noteId}${anchor}${title})`;
     }
   );
 

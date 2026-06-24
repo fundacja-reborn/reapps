@@ -29,6 +29,7 @@
 
   import VersionHistorySheet from '$lib/components/VersionHistorySheet.svelte';
   import LinkedNotesSheet from '$lib/components/LinkedNotesSheet.svelte';
+  import OutlineSheet from '$lib/components/OutlineSheet.svelte';
   import FolderTree from '$lib/components/sidebar/FolderTree.svelte';
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
@@ -85,6 +86,9 @@
   import type { SaveScope } from '$lib/utils/search-scope';
   import { goto } from '$lib/utils/navigation';
   import { createScrollSync } from '$lib/utils/scroll-sync';
+  import { scrollToHeading } from '$lib/utils/heading-scroll';
+  import type { DocHeading } from '$lib/utils/heading-outline';
+  import { applyToc, removeToc, hasToc, isTocStale } from '$lib/utils/toc';
   import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
   import { requireActiveSession } from '$lib/utils/require-active-session';
   import type { EditorView } from '@codemirror/view';
@@ -277,15 +281,55 @@
 
   function toggleLinkedNotes() {
     linkedNotesOpen = !linkedNotesOpen;
-    if (linkedNotesOpen && historyMode !== 'closed') {
-      closeHistory();
+    if (linkedNotesOpen) {
+      outlineOpen = false;
+      if (historyMode !== 'closed') closeHistory();
     }
   }
 
   function handleDetailLinkedNotes() {
     detailActionSheetOpen = false;
     if (historyMode !== 'closed') closeHistory();
+    outlineOpen = false;
     linkedNotesOpen = true;
+  }
+
+  function toggleOutline() {
+    outlineOpen = !outlineOpen;
+    if (outlineOpen) {
+      linkedNotesOpen = false;
+      if (historyMode !== 'closed') closeHistory();
+    }
+  }
+
+  function handleDetailOutline() {
+    detailActionSheetOpen = false;
+    if (historyMode !== 'closed') closeHistory();
+    linkedNotesOpen = false;
+    outlineOpen = true;
+  }
+
+  // Jump to a heading from the Outline panel. In a preview-bearing view we scroll
+  // the rendered preview by slug; in edit-only mode there is no preview, so we
+  // scroll the CodeMirror editor to the heading's source line instead.
+  function handleOutlineNavigate(heading: DocHeading) {
+    // Mark the clicked entry active immediately - it's an explicit choice, and at
+    // the end of a note the preview often can't scroll it under the trigger zone,
+    // so scroll position alone would leave the wrong (or the last) entry marked.
+    // Lock it against the scroll-spy for the duration of the programmatic scroll
+    // (released once motion settles), so it isn't overwritten mid-scroll; then a
+    // real user scroll resumes the spy. The slug equals the rendered heading's id,
+    // matching the spy's own value and OutlineSheet's `node.slug === activeSlug`.
+    activeOutlineSlug = heading.slug;
+    outlineNavLocked = true;
+    scheduleOutlineNavUnlock();
+
+    if (effectiveViewMode === 'edit') {
+      editorRef?.scrollToLine(heading.line);
+    } else {
+      scrollToHeading(previewContentEl, heading.slug);
+    }
+    if (isMobile) outlineOpen = false;
   }
 
   async function confirmDetailDelete() {
@@ -304,13 +348,15 @@
   type HistoryMode = 'closed' | 'list' | 'diff';
   let historyMode = $state<HistoryMode>('closed');
   let linkedNotesOpen = $state(false);
+  let outlineOpen = $state(false);
 
-  // The Linked notes panel is mutually exclusive with version history (both are
-  // right-side sheets) and resets when returning to the list, so opening another
-  // note never auto-reopens it.
+  // The Linked notes / Outline panels are mutually exclusive with version
+  // history and with each other (all right-side sheets), and reset when
+  // returning to the list, so opening another note never auto-reopens them.
   $effect(() => {
     if (historyMode !== 'closed' || $activeNoteId == null) {
       linkedNotesOpen = false;
+      outlineOpen = false;
     }
   });
   let selectedVersion = $state<import('@reborn/types').NoteHistoryDecrypted | null>(null);
@@ -843,6 +889,30 @@
     noteDetailService.setContentDebounced(content);
   }
 
+  // ── In-note table of contents (note "..." menu) ───────────────
+  // Same source mutation as the preview's TOC toolbar, but reachable in every
+  // view mode (incl. edit-only, where there is no preview). `tocMenuMode` decides
+  // which item(s) the menu shows; `tocStaleMenu` flags a drifted block. The
+  // `applyToc(...) !== null` probe doubles as "the note has headings to list".
+  const noteHasToc = $derived(hasToc(noteDetailService.content));
+  const tocMenuMode: 'insert' | 'manage' | 'hidden' = $derived(
+    noteHasToc
+      ? 'manage'
+      : applyToc(noteDetailService.content, { title: $t('toc.title') }) !== null
+        ? 'insert'
+        : 'hidden'
+  );
+  const tocStaleMenu = $derived(isTocStale(noteDetailService.content, { title: $t('toc.title') }));
+
+  function handleDetailTocApply(): void {
+    const next = applyToc(noteDetailService.content, { title: $t('toc.title') });
+    if (next !== null) handleContentChange(next);
+  }
+  function handleDetailTocRemove(): void {
+    const next = removeToc(noteDetailService.content);
+    if (next !== null) handleContentChange(next);
+  }
+
   function handleTitleInput(e: Event) {
     noteDetailService.setTitleDebounced((e.target as HTMLInputElement).value);
   }
@@ -865,7 +935,13 @@
   }
 
   // ── Internal note links ──────────────────────────────────────────
-  async function handleNoteLink(noteId: string) {
+  // A cross-note `note:UUID#slug` click carries an anchor. We can't scroll until
+  // the target note has rendered, so we stash {noteId, slug} and consume it in
+  // `handlePreviewRender` (which also re-fires after images load). Pairing the
+  // slug with its note id keeps a stale anchor from firing on an unrelated note.
+  let pendingAnchor = $state<{ noteId: string; slug: string } | null>(null);
+
+  async function handleNoteLink(noteId: string, anchor?: string) {
     await noteDetailService.flushAndSnapshot();
     const note = await notesStore.loadNote(noteId);
     if (!note) {
@@ -876,6 +952,21 @@
       toastStore.info($t('notes.note_in_trash'));
       return;
     }
+    // The anchor can arrive percent-encoded: marked encodes non-ASCII slug chars
+    // in the rendered href (Polish `ą` → `%C4%85`), so a heading link clicked in
+    // the PREVIEW hands us the encoded form, while the heading ids stamped by
+    // MarkdownPreview are raw Unicode. Decode so `scrollToHeading` matches. The
+    // editor (Live Preview) path passes a raw slug straight from the markdown
+    // source, where decode is a harmless no-op (slugs never contain `%`).
+    let slug = anchor;
+    if (slug) {
+      try {
+        slug = decodeURIComponent(slug);
+      } catch {
+        /* malformed %-escape - fall back to the raw anchor */
+      }
+    }
+    pendingAnchor = slug ? { noteId, slug } : null;
     activeNoteId.set(noteId);
   }
 
@@ -914,6 +1005,31 @@
   const scrollSync = createScrollSync();
   let previewScrollEl = $state<HTMLElement | null>(null);
   let previewContentEl = $state<HTMLElement | null>(null);
+  // Scroll-spy for the Outline panel: the heading slug currently near the top of
+  // the preview, plus a tick bumped on each preview render so the observer
+  // re-attaches to freshly rendered heading elements.
+  let activeOutlineSlug = $state<string | null>(null);
+  let previewRenderTick = $state(0);
+  // An outline click sets the active entry directly for instant feedback, then
+  // "locks" it so the scroll-spy - especially the at-bottom "last heading" rule -
+  // doesn't overwrite it while the programmatic scroll is still moving. The lock
+  // releases once scrolling has been quiet for a beat (settle-debounce), so it
+  // holds for the WHOLE smooth scroll however long it runs (a fixed timer would
+  // release mid-scroll on long notes and flicker through passing sections). Plain
+  // non-reactive flag: read imperatively in the spy, never in a tracked context.
+  let outlineNavLocked = false;
+  let outlineNavSettleTimer: ReturnType<typeof setTimeout> | undefined;
+
+  // Release the click-lock after motion settles. Re-armed on every scroll tick
+  // while locked, so it only fires once the (programmatic) scroll stops; also
+  // armed by the click itself, covering the no-scroll case (clicking a section
+  // the note can't scroll any further - e.g. already at the bottom).
+  function scheduleOutlineNavUnlock() {
+    clearTimeout(outlineNavSettleTimer);
+    outlineNavSettleTimer = setTimeout(() => {
+      outlineNavLocked = false;
+    }, 150);
+  }
   let editorView = $state<EditorView | null>(null);
   let desktopEditorScrollContainer = $state<HTMLElement | null>(null);
   let mobileScrollContainer = $state<HTMLElement | null>(null);
@@ -953,9 +1069,14 @@
   // panes mount/unmount) would re-fire this effect, calling setAnchor(1)
   // and zeroing scrollTop — defeating toggle preservation.
   $effect(() => {
-    void $activeNoteId;
+    const navId = $activeNoteId;
     untrack(() => {
       scrollSync.setAnchor(1);
+      // When this navigation targets a heading anchor (cross-note `note:UUID#slug`),
+      // do NOT zero the scroll - `handlePreviewRender` is about to scroll the new
+      // note to its heading, and a competing scrollTop=0 (effect order is not
+      // guaranteed) would land us back at the top.
+      if (pendingAnchor?.noteId === navId && navId != null) return;
       if (desktopEditorScrollContainer) desktopEditorScrollContainer.scrollTop = 0;
       if (mobileScrollContainer) mobileScrollContainer.scrollTop = 0;
       if (previewScrollEl) previewScrollEl.scrollTop = 0;
@@ -1004,7 +1125,99 @@
   // images finish loading, since heights only stabilise post-load.
   function handlePreviewRender() {
     scrollSync.refresh();
+    previewRenderTick++;
+    // Consume a pending cross-note heading anchor once its note has rendered.
+    // Clear it on a note mismatch (a different note rendered first) so a stale
+    // anchor never fires on an unrelated note.
+    const target = pendingAnchor;
+    if (!target) return;
+    if (target.noteId !== $activeNoteId) {
+      pendingAnchor = null;
+      return;
+    }
+    if (scrollToHeading(previewContentEl, target.slug)) pendingAnchor = null;
   }
+
+  // Scroll-spy: while the Outline panel is open, observe the preview's headings
+  // and mark the topmost one near the top of the scroll viewport as active.
+  // Re-attaches when the preview re-renders (new heading elements) or the note
+  // changes; no-op when the panel is closed or no preview is mounted (edit-only).
+  $effect(() => {
+    if (!outlineOpen) {
+      activeOutlineSlug = null;
+      return;
+    }
+    void previewRenderTick;
+    void $activeNoteId;
+    const container = previewContentEl;
+    const root = previewSyncScrollEl;
+    if (!container) return;
+    const headings = [...container.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')];
+    if (headings.length === 0) return;
+
+    const visible = new SvelteSet<string>();
+
+    const computeActive = () => {
+      // A recent outline click owns the highlight until its scroll settles.
+      if (outlineNavLocked) return;
+      // At the very bottom of a scrollable pane the trailing sections are on
+      // screen but can't be pushed up into the trigger zone (no content below),
+      // so the spy would stay stuck on whatever is near the top. Promote the
+      // last heading instead - the "you've reached the end" convention
+      // (VitePress / Bootstrap). Guarded on the pane actually being scrollable,
+      // so a short note that fully fits keeps its top heading active rather than
+      // jumping to the last one while you're looking at the top.
+      if (
+        root &&
+        root.scrollHeight > root.clientHeight + 4 &&
+        root.scrollTop + root.clientHeight >= root.scrollHeight - 2
+      ) {
+        activeOutlineSlug = headings[headings.length - 1].id;
+        return;
+      }
+      // Otherwise: first heading (document order) in the trigger zone near the
+      // top. When none are (scrolled mid-section), keep the last active one.
+      for (const heading of headings) {
+        if (visible.has(heading.id)) {
+          activeOutlineSlug = heading.id;
+          break;
+        }
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).id;
+          if (entry.isIntersecting) visible.add(id);
+          else visible.delete(id);
+        }
+        computeActive();
+      },
+      { root, rootMargin: '0px 0px -70% 0px', threshold: 0 }
+    );
+    headings.forEach((heading) => observer.observe(heading));
+
+    // The observer only fires when a heading crosses the trigger zone; the final
+    // stretch of scroll to the very bottom crosses none, so also recompute on
+    // scroll to catch reaching the end. While a click-lock is active, treat each
+    // scroll tick as "still settling" instead of recomputing - this keeps the
+    // clicked entry highlighted through the entire programmatic scroll (no
+    // flicker), and the lock releases a beat after motion stops.
+    const onScroll = () => {
+      if (outlineNavLocked) {
+        scheduleOutlineNavUnlock();
+        return;
+      }
+      computeActive();
+    };
+    root?.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      root?.removeEventListener('scroll', onScroll);
+    };
+  });
 
   function handleEditorViewInit(view: EditorView) {
     editorView = view;
@@ -1445,6 +1658,8 @@
               bind:historyMode
               linkedNotesActive={linkedNotesOpen}
               ontogglelinkednotes={toggleLinkedNotes}
+              outlineActive={outlineOpen}
+              ontoggleoutline={toggleOutline}
               onback={() => {
                 if (isMobile && mobileHistoryDepth > 0) {
                   history.back();
@@ -1712,6 +1927,8 @@
             bind:historyMode
             linkedNotesActive={linkedNotesOpen}
             ontogglelinkednotes={toggleLinkedNotes}
+            outlineActive={outlineOpen}
+            ontoggleoutline={toggleOutline}
             onback={() => activeNoteId.set(null)}
             onshowxray={() => {
               showEncryptionXRay = true;
@@ -1742,6 +1959,10 @@
                 onshare={() => handleDetailShare()}
                 onshowxray={() => { showEncryptionXRay = true; }}
                 ondelete={handleDetailDelete}
+                {tocMenuMode}
+                tocStale={tocStaleMenu}
+                onTocApply={handleDetailTocApply}
+                onTocRemove={handleDetailTocRemove}
               />
             {/snippet}
           </NoteEditorHeader>
@@ -1946,6 +2167,18 @@
   />
 {/if}
 
+{#if $activeNoteId}
+  <OutlineSheet
+    content={noteDetailService.content}
+    open={outlineOpen}
+    activeSlug={activeOutlineSlug}
+    onnavigate={handleOutlineNavigate}
+    onclose={() => {
+      outlineOpen = false;
+    }}
+  />
+{/if}
+
 <ConfirmDialog
   bind:open={restoreDialogOpen}
   title={$t('history.restore_title')}
@@ -1975,9 +2208,14 @@
   ondelete={() => handleDetailDelete()}
   onhistory={handleDetailHistory}
   onlinkednotes={handleDetailLinkedNotes}
+  onoutline={handleDetailOutline}
   onshowxray={() => { showEncryptionXRay = true; }}
   onrestore={() => {}}
   onpermanentdelete={() => {}}
+  {tocMenuMode}
+  tocStale={tocStaleMenu}
+  onTocApply={handleDetailTocApply}
+  onTocRemove={handleDetailTocRemove}
 />
 
 <!-- Detail-view move-to-folder (mobile bottom sheet) -->

@@ -32,10 +32,23 @@ describe('rewriteInterNoteLinks', () => {
     expect(content).toBe(`[B](note:${UUID_B})`);
   });
 
-  it('strips a #fragment from the target', () => {
+  it('preserves a #fragment as a heading anchor', () => {
     const map = { 'vault/b.md': UUID_B };
     const { content } = rewriteInterNoteLinks('[B](b.md#heading)', 'vault/a.md', map);
-    expect(content).toBe(`[B](note:${UUID_B})`);
+    expect(content).toBe(`[B](note:${UUID_B}#heading)`);
+  });
+
+  it('percent-decodes then slugifies an encoded heading fragment', () => {
+    const map = { 'vault/b.md': UUID_B };
+    const { content } = rewriteInterNoteLinks('[B](b.md#Some%20Section)', 'vault/a.md', map);
+    expect(content).toBe(`[B](note:${UUID_B}#some-section)`);
+  });
+
+  it('keeps the anchored note: link stable on a second pass (idempotent)', () => {
+    const map = { 'vault/b.md': UUID_B };
+    const once = rewriteInterNoteLinks('[B](b.md#heading)', 'vault/a.md', map).content;
+    const twice = rewriteInterNoteLinks(once, 'vault/a.md', map).content;
+    expect(twice).toBe(once);
   });
 
   it('percent-decodes spaces in the path', () => {
@@ -219,19 +232,28 @@ describe('rewriteInterNoteLinks - wikilinks', () => {
     expect(wiki('[[B|the bee]]', 'vault/a.md', map).content).toBe(`[the bee](note:${UUID_B})`);
   });
 
-  it('drops a #heading subpath and labels with the target', () => {
+  it('keeps a #heading subpath as a note anchor and labels with the target', () => {
     const map = { 'vault/B.md': UUID_B };
-    expect(wiki('[[B#Section]]', 'vault/a.md', map).content).toBe(`[B](note:${UUID_B})`);
+    expect(wiki('[[B#Section]]', 'vault/a.md', map).content).toBe(`[B](note:${UUID_B}#section)`);
   });
 
-  it('drops a #^block subpath', () => {
+  it('slugifies a multi-word heading subpath', () => {
+    const map = { 'vault/B.md': UUID_B };
+    expect(wiki('[[B#Some Long Heading]]', 'vault/a.md', map).content).toBe(
+      `[B](note:${UUID_B}#some-long-heading)`
+    );
+  });
+
+  it('drops a #^block subpath (no heading equivalent)', () => {
     const map = { 'vault/B.md': UUID_B };
     expect(wiki('[[B#^block1]]', 'vault/a.md', map).content).toBe(`[B](note:${UUID_B})`);
   });
 
   it('combines #heading and |alias', () => {
     const map = { 'vault/B.md': UUID_B };
-    expect(wiki('[[B#Section|go]]', 'vault/a.md', map).content).toBe(`[go](note:${UUID_B})`);
+    expect(wiki('[[B#Section|go]]', 'vault/a.md', map).content).toBe(
+      `[go](note:${UUID_B}#section)`
+    );
   });
 
   it('resolves a path-form wikilink [[sub/C]]', () => {
@@ -297,9 +319,19 @@ describe('rewriteInterNoteLinks - wikilinks', () => {
     expect(wiki('![[B]]', 'vault/a.md', map).content).toBe('![[B]]');
   });
 
-  it('leaves an intra-note [[#heading]] untouched', () => {
+  it('converts a same-note [[#Heading]] to an in-note anchor', () => {
     const map = { 'vault/B.md': UUID_B };
-    expect(wiki('[[#Section]]', 'vault/a.md', map).content).toBe('[[#Section]]');
+    expect(wiki('[[#Section]]', 'vault/a.md', map).content).toBe('[Section](#section)');
+  });
+
+  it('converts a same-note [[#Heading|alias]] to an in-note anchor', () => {
+    const map = { 'vault/B.md': UUID_B };
+    expect(wiki('[[#Some Section|here]]', 'vault/a.md', map).content).toBe('[here](#some-section)');
+  });
+
+  it('leaves a same-note [[#^block]] untouched (no heading equivalent)', () => {
+    const map = { 'vault/B.md': UUID_B };
+    expect(wiki('[[#^block1]]', 'vault/a.md', map).content).toBe('[[#^block1]]');
   });
 
   it('does not rewrite a wikilink inside inline code', () => {

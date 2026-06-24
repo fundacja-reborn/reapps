@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { extractNoteLinkTargets, intersectIds } from './note-link-utils';
+import {
+  buildHeadingLink,
+  escapeLinkLabel,
+  extractNoteLinkTargets,
+  intersectIds,
+  simplifySelfNoteLinks
+} from './note-link-utils';
 
 const A = '550e8400-e29b-41d4-a716-446655440000';
 const B = '123e4567-e89b-12d3-a456-426614174000';
@@ -47,6 +53,13 @@ describe('extractNoteLinkTargets', () => {
     expect(extractNoteLinkTargets(`[short](note:550e8400-e29b-41d4-a716)`).size).toBe(0);
   });
 
+  it('treats an anchored link (note:UUID#slug) as a backlink to the whole note', () => {
+    expect([...extractNoteLinkTargets(`[Sec](note:${A}#section)`)]).toEqual([A]);
+    // The anchor does not change the target id, so two links to the same note
+    // (one anchored, one not) still dedupe to a single backlink.
+    expect([...extractNoteLinkTargets(`[a](note:${A}) [b](note:${A}#h)`)]).toEqual([A]);
+  });
+
   it('returns an empty set for empty or link-free content', () => {
     expect(extractNoteLinkTargets('').size).toBe(0);
     expect(extractNoteLinkTargets('Plain text, no links.').size).toBe(0);
@@ -78,5 +91,95 @@ describe('intersectIds (mutual links)', () => {
 
   it('accepts Set inputs (the graph passes id sets)', () => {
     expect(intersectIds(new Set([A, B]), new Set([B, C]))).toEqual(new Set([B]));
+  });
+});
+
+describe('simplifySelfNoteLinks', () => {
+  it('collapses a self heading link to the bare in-note anchor', () => {
+    expect(simplifySelfNoteLinks(`See [Sec](note:${A}#my-section).`, A)).toBe(
+      'See [Sec](#my-section).'
+    );
+  });
+
+  it('is case-insensitive on the id', () => {
+    expect(simplifySelfNoteLinks(`[x](note:${A}#h)`, A.toUpperCase())).toBe('[x](#h)');
+    expect(simplifySelfNoteLinks(`[x](NOTE:${A.toUpperCase()}#h)`, A)).toBe('[x](#h)');
+  });
+
+  it('leaves links to OTHER notes untouched', () => {
+    const content = `[self](note:${A}#a) [other](note:${B}#b)`;
+    expect(simplifySelfNoteLinks(content, A)).toBe(`[self](#a) [other](note:${B}#b)`);
+  });
+
+  it('leaves an anchor-less self link untouched (nothing to collapse to)', () => {
+    expect(simplifySelfNoteLinks(`[whole](note:${A})`, A)).toBe(`[whole](note:${A})`);
+  });
+
+  it('collapses every self heading link in the text', () => {
+    const content = `[a](note:${A}#one) and [b](note:${A}#two)`;
+    expect(simplifySelfNoteLinks(content, A)).toBe('[a](#one) and [b](#two)');
+  });
+
+  it('preserves Unicode slugs', () => {
+    expect(simplifySelfNoteLinks(`[s](note:${A}#sekcja-pierwsza)`, A)).toBe(
+      '[s](#sekcja-pierwsza)'
+    );
+  });
+
+  it('does not touch a bare note: mention that is not a link destination', () => {
+    expect(simplifySelfNoteLinks(`ref note:${A}#h inline`, A)).toBe(`ref note:${A}#h inline`);
+  });
+
+  it('returns content unchanged for empty inputs', () => {
+    expect(simplifySelfNoteLinks('', A)).toBe('');
+    expect(simplifySelfNoteLinks(`[x](note:${A}#h)`, '')).toBe(`[x](note:${A}#h)`);
+  });
+});
+
+describe('buildHeadingLink', () => {
+  it('builds the full cross-note form when the note has an id', () => {
+    expect(buildHeadingLink(A, 'my-section', 'My Section')).toBe(
+      `[My Section](note:${A}#my-section)`
+    );
+  });
+
+  it('falls back to a bare in-note anchor when there is no id', () => {
+    expect(buildHeadingLink(null, 'my-section', 'My Section')).toBe('[My Section](#my-section)');
+    expect(buildHeadingLink(undefined, 'h', 'H')).toBe('[H](#h)');
+    expect(buildHeadingLink('', 'h', 'H')).toBe('[H](#h)');
+  });
+
+  it('escapes characters that would break the link label', () => {
+    // input text: A [x] \ B  → label: A \[x\] \\ B
+    expect(buildHeadingLink(A, 'a-b', 'A [x] \\ B')).toBe(`[A \\[x\\] \\\\ B](note:${A}#a-b)`);
+  });
+
+  it('falls back to the slug as the label when the heading text is empty', () => {
+    expect(buildHeadingLink(A, 'only-slug', '')).toBe(`[only-slug](note:${A}#only-slug)`);
+    expect(buildHeadingLink(null, 'only-slug', '')).toBe('[only-slug](#only-slug)');
+  });
+
+  it('preserves a Unicode slug', () => {
+    expect(buildHeadingLink(A, 'bezpieczeństwo', 'Bezpieczeństwo')).toBe(
+      `[Bezpieczeństwo](note:${A}#bezpieczeństwo)`
+    );
+  });
+
+  it('round-trips: a link built for this note self-cleans back to the bare anchor', () => {
+    // The Live Preview + Preview copy buttons emit buildHeadingLink(); pasted
+    // back into the same note, the editor collapses it via simplifySelfNoteLinks.
+    const link = buildHeadingLink(A, 'sec', 'Sec');
+    expect(simplifySelfNoteLinks(link, A)).toBe('[Sec](#sec)');
+  });
+});
+
+describe('escapeLinkLabel', () => {
+  it('escapes backslash and square brackets', () => {
+    expect(escapeLinkLabel('a[b]c')).toBe('a\\[b\\]c');
+    expect(escapeLinkLabel('a\\b')).toBe('a\\\\b');
+  });
+
+  it('leaves ordinary text (including Unicode) untouched', () => {
+    expect(escapeLinkLabel('Plain Heading 123 - ąćź')).toBe('Plain Heading 123 - ąćź');
   });
 });

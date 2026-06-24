@@ -5,6 +5,10 @@
   import MarkdownDiffView from '$lib/components/MarkdownDiffView.svelte';
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import { t } from '$lib/stores/i18n.store';
+  import { applyToc, removeToc, isTocStale } from '$lib/utils/toc';
+  import { copyText } from '$lib/utils/clipboard';
+  import { buildHeadingLink } from '$lib/services/note-link-utils';
+  import { toastStore } from '@reborn/ui';
   import type { ImageLoadMode, PeriodicKind } from '@reborn/storage';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -60,7 +64,7 @@
     /** Forwarded from MarkdownPreview — fires after each render commit. */
     onpreviewrender?: () => void;
     onnotelinkrequest: () => void;
-    onnotelink: (noteId: string) => void;
+    onnotelink: (noteId: string, anchor?: string) => void;
     resolveNoteTitle: (noteId: string) => string | undefined;
   } = $props();
 
@@ -119,6 +123,33 @@
     oncontentchange(next);
   }
 
+  // In-note table of contents - the preview's corner toolbar (refresh / remove)
+  // mutates the markdown source the same way the task-checkbox toggle does.
+  // `tocStale` flips the refresh button to its "out of date" state when the
+  // headings have drifted from the listed entries.
+  function handleTocRefresh(): void {
+    const next = applyToc(noteDetailService.content, { title: $t('toc.title') });
+    if (next !== null) oncontentchange(next);
+  }
+  function handleTocDelete(): void {
+    const next = removeToc(noteDetailService.content);
+    if (next !== null) oncontentchange(next);
+  }
+  const tocStale = $derived(isTocStale(noteDetailService.content, { title: $t('toc.title') }));
+
+  /**
+   * Copy an internal link to a heading from the rendered Preview's hover button.
+   * Built by the shared {@link buildHeadingLink} so it is byte-identical to the
+   * Live Preview editor's copy; pasted back into this note it self-cleans to the
+   * bare `#slug` via the editor's paste handler. Silent no-op if the clipboard
+   * write fails (mirrors the code-block copy button).
+   */
+  async function handleHeadingLinkCopy(slug: string, text: string): Promise<void> {
+    if (await copyText(buildHeadingLink(noteId, slug, text))) {
+      toastStore.success($t('notes.heading_link_copied'));
+    }
+  }
+
   // Privacy hint + deep-link to the image-loading preference, surfaced next to
   // the "Load all images" button so the owner understands why their own images
   // don't auto-load and can flip the default in one click. MarkdownPreview only
@@ -156,6 +187,8 @@
           parentScroll={parentScroll}
           {isMobile}
           {imageLoadMode}
+          onTocRefresh={handleTocRefresh}
+          onTocDelete={handleTocDelete}
         />
       {:else if effectiveViewMode === 'split'}
         <!-- Split: each pane owns its scroll; sync handled by scroll-sync.ts.
@@ -177,6 +210,8 @@
               ontoolbarheight={(h) => (splitToolbarHeight = h)}
               {isMobile}
               {imageLoadMode}
+              onTocRefresh={handleTocRefresh}
+              onTocDelete={handleTocDelete}
             />
           </div>
           <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -194,6 +229,11 @@
               onrender={onpreviewrender}
               onNoteLink={onnotelink}
               onTaskToggle={handleTaskToggle}
+              onTocRefresh={handleTocRefresh}
+              onTocDelete={handleTocDelete}
+              onHeadingLinkCopy={handleHeadingLinkCopy}
+              headingLinkLabel={$t('editor.copy_heading_link')}
+              {tocStale}
               {resolveNoteTitle}
               {imageLoadMode}
               {loadAllImagesHint}
@@ -212,6 +252,11 @@
             onrender={onpreviewrender}
             onNoteLink={onnotelink}
             onTaskToggle={handleTaskToggle}
+            onTocRefresh={handleTocRefresh}
+            onTocDelete={handleTocDelete}
+            onHeadingLinkCopy={handleHeadingLinkCopy}
+            headingLinkLabel={$t('editor.copy_heading_link')}
+            {tocStale}
             {resolveNoteTitle}
             {imageLoadMode}
             {loadAllImagesHint}

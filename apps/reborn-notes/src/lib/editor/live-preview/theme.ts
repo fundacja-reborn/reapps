@@ -79,6 +79,40 @@ export const livePreviewTheme = EditorView.theme({
     '.cm-lp-h6-line': { fontSize: '0.875rem' }
   },
 
+  // ─── Copy-link-to-heading button ─────────────────────────────
+  // Emitted by `HeadingAnchorWidget` at the very end of each heading line, so it
+  // flows inline right after the heading text - a short heading keeps the button
+  // beside it instead of stranded at the far-right edge where it is easy to miss.
+  // The box size is in `rem` (the SVG is a fixed 16px) so it stays consistent
+  // across levels instead of scaling with the heading font. It keeps its box
+  // while hidden (opacity, not display), so revealing it never reflows the text.
+  '.cm-lp-head-anchor': {
+    display: 'inline-flex',
+    verticalAlign: 'middle',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '1.5rem',
+    height: '1.5rem',
+    marginLeft: '0.4em',
+    padding: '0',
+    border: '1px solid var(--border)',
+    borderRadius: '0.375rem',
+    background: 'var(--background)',
+    color: 'var(--muted-foreground)',
+    cursor: 'pointer',
+    opacity: '0',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    transition: 'opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease'
+  },
+  // Reveal on hover (desktop) or when the caret is on the heading line (the
+  // `cm-lp-head-active` class — the only way to surface it on touch).
+  '.cm-lp-h1-line:hover .cm-lp-head-anchor, .cm-lp-h2-line:hover .cm-lp-head-anchor, .cm-lp-h3-line:hover .cm-lp-head-anchor, .cm-lp-h4-line:hover .cm-lp-head-anchor, .cm-lp-h5-line:hover .cm-lp-head-anchor, .cm-lp-h6-line:hover .cm-lp-head-anchor':
+    { opacity: '1' },
+  '.cm-lp-head-active .cm-lp-head-anchor': { opacity: '1' },
+  '.cm-lp-head-anchor:hover': { opacity: '1', color: 'var(--foreground)' },
+  '.cm-lp-head-anchor:focus-visible': { opacity: '1', color: 'var(--foreground)' },
+
   // Visible markdown markers on the actively-edited line. Emitted by
   // `buildDecorations` as `Decoration.mark({ class: 'cm-lp-mark' })` on the
   // ranges that would otherwise be hidden (`#`, `**`, `_`, `~~`, `` ` ``,
@@ -344,6 +378,94 @@ export const livePreviewTheme = EditorView.theme({
     opacity: '1',
     color: '#16a34a',
     borderColor: '#16a34a'
+  },
+
+  // ─── In-note table of contents ───────────────────────────────
+  // Cursor outside: the managed block is replaced with a boxed <nav> + corner
+  // toolbar — mirrors `.note-toc` in MarkdownPreview.svelte (keep in sync) and
+  // the copy-button precedent above. Margin must stay 0 (CM6 height-map rule for
+  // block widgets); the markdown's surrounding blank lines provide the spacing.
+  '.cm-lp-toc': {
+    position: 'relative',
+    margin: '0',
+    padding: '0.75em 1em',
+    border: '1px solid var(--border)',
+    borderRadius: '0.5em',
+    background: 'color-mix(in srgb, var(--muted) 40%, transparent)',
+    // The editor uses `white-space: pre-wrap` (lineWrapping), under which the
+    // newlines marked emits BETWEEN tags (`</li>\n<li>`) render as real line
+    // breaks - blowing the list apart. The TOC is prose-like HTML, not source,
+    // so reset to normal whitespace collapsing (inherited by all entries) to
+    // match the rendered preview's compact spacing.
+    whiteSpace: 'normal'
+  },
+  '.cm-lp-toc p': { margin: '0 0 0.5em', fontSize: '0.9375em' },
+  '.cm-lp-toc ul': { margin: '0 0 0 1.1em', padding: '0', listStyle: 'none' },
+  '.cm-lp-toc ul ul': { marginBottom: '0' },
+  '.cm-lp-toc li + li': { marginTop: '0.15em' },
+  '.cm-lp-toc a': {
+    color: 'inherit',
+    textDecoration: 'underline',
+    textUnderlineOffset: '2px',
+    cursor: 'pointer'
+  },
+  '.cm-lp-toc a:hover': { color: 'var(--primary)' },
+  // Corner toolbar — hidden until hover/focus; force-shown when out of date so
+  // the drift is noticed (a child can't out-opaque its parent, so the reveal
+  // lives on the actions wrapper — same `:has()` trick as the preview).
+  '.cm-lp-toc-actions': {
+    position: 'absolute',
+    top: '0.4em',
+    right: '0.4em',
+    zIndex: '1',
+    display: 'inline-flex',
+    gap: '0.25em',
+    opacity: '0',
+    transition: 'opacity 0.12s ease'
+  },
+  '.cm-lp-toc:hover .cm-lp-toc-actions': { opacity: '1' },
+  '.cm-lp-toc:focus-within .cm-lp-toc-actions': { opacity: '1' },
+  '.cm-lp-toc:has(.cm-lp-toc-refresh.is-stale) .cm-lp-toc-actions': { opacity: '1' },
+  '.cm-lp-toc-btn': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '1.9em',
+    height: '1.9em',
+    padding: '0',
+    border: '1px solid var(--border)',
+    borderRadius: '0.375em',
+    background: 'var(--background)',
+    color: 'var(--muted-foreground)',
+    cursor: 'pointer',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    transition: 'color 0.12s ease, border-color 0.12s ease, background 0.12s ease'
+  },
+  '.cm-lp-toc-btn:hover': { color: 'var(--foreground)', background: 'var(--accent)' },
+  '.cm-lp-toc-btn:focus-visible': { color: 'var(--foreground)', background: 'var(--accent)' },
+  '.cm-lp-toc-remove:hover': { color: 'var(--destructive)', borderColor: 'var(--destructive)' },
+  // Out of date: refresh button stays visible + amber so the drift is noticed.
+  '.cm-lp-toc-refresh.is-stale': { color: '#d97706', borderColor: '#d97706' },
+
+  // Cursor inside: raw markdown reveal keeps the box background per-line (like the
+  // fenced-code-block reveal) so the block stays distinct instead of blending into
+  // the note. Padding-only (no margin) — CM6 height-map rule. Background matches
+  // the `.cm-lp-toc` widget so click-to-edit doesn't change the block's colour.
+  '.cm-lp-toc-line': {
+    backgroundColor: 'color-mix(in srgb, var(--muted) 40%, transparent)',
+    paddingLeft: '1em',
+    paddingRight: '1em'
+  },
+  '.cm-lp-toc-line-first': {
+    paddingTop: '0.5em',
+    borderTopLeftRadius: '0.5em',
+    borderTopRightRadius: '0.5em'
+  },
+  '.cm-lp-toc-line-last': {
+    paddingBottom: '0.5em',
+    borderBottomLeftRadius: '0.5em',
+    borderBottomRightRadius: '0.5em'
   },
 
   // Cursor inside: per-line decoration so the raw fences and body share

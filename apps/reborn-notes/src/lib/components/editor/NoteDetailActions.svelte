@@ -11,7 +11,10 @@
     Link2,
     Share2,
     ScanEye,
-    Trash2
+    Trash2,
+    ListPlus,
+    RefreshCw,
+    ListX
   } from '@lucide/svelte';
   import {
     DropdownMenu,
@@ -36,7 +39,11 @@
     oncopylink,
     onshare,
     onshowxray,
-    ondelete
+    ondelete,
+    tocMenuMode = 'hidden',
+    tocStale = false,
+    onTocApply,
+    onTocRemove
   }: {
     note: NoteListItem | null;
     /** Mobile: opens parent-provided NoteActionSheet */
@@ -50,6 +57,15 @@
     onshare?: () => void;
     onshowxray: () => void;
     ondelete: () => void;
+    /** Table-of-contents menu state: insert (has headings, no block), manage
+     *  (block present), or hidden (nothing to offer). */
+    tocMenuMode?: 'insert' | 'manage' | 'hidden';
+    /** Marks the refresh item as out of date (headings drifted from the block). */
+    tocStale?: boolean;
+    /** Insert-or-refresh the managed TOC block. */
+    onTocApply?: () => void;
+    /** Remove the managed TOC block. */
+    onTocRemove?: () => void;
   } = $props();
 
   const isMobileQuery = useIsMobile();
@@ -124,6 +140,28 @@
             <FolderInput class="h-3.5 w-3.5" />
             {$t('notes.move_to_folder')}
           </DropdownMenuItem>
+          {#if tocMenuMode === 'insert'}
+            <DropdownMenuItem onclick={onTocApply}>
+              <ListPlus class="h-3.5 w-3.5" />
+              {$t('toc.insert')}
+            </DropdownMenuItem>
+          {:else if tocMenuMode === 'manage'}
+            <DropdownMenuItem onclick={onTocApply}>
+              <RefreshCw class="h-3.5 w-3.5" />
+              {$t('toc.refresh')}
+              {#if tocStale}
+                <span
+                  class="ml-auto inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
+                  title={$t('toc.stale')}
+                  aria-hidden="true"
+                ></span>
+              {/if}
+            </DropdownMenuItem>
+            <DropdownMenuItem onclick={onTocRemove}>
+              <ListX class="h-3.5 w-3.5" />
+              {$t('toc.remove')}
+            </DropdownMenuItem>
+          {/if}
           <DropdownMenuItem onclick={onexport}>
             <Download class="h-3.5 w-3.5" />
             {$t('notes.export_markdown')}

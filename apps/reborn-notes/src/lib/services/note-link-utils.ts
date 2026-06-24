@@ -4,9 +4,13 @@
  * part - it must never over-match) is trivially unit-testable.
  */
 
-/** Capture the target UUID of every `[label](note:UUID)` markdown link. */
+/**
+ * Capture the target UUID of every `[label](note:UUID)` markdown link, with an
+ * optional `#heading-slug` anchor (`note:UUID#slug`) - the anchor is ignored for
+ * backlink purposes (a link to a heading still backlinks the whole note).
+ */
 const NOTE_LINK_TARGET_RE =
-  /\]\(note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)/gi;
+  /\]\(note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:#[^)]*)?\)/gi;
 
 /**
  * Extract the set of note ids that `content` links to via the `note:` scheme,
@@ -41,4 +45,58 @@ export function intersectIds(a: Iterable<string>, b: Iterable<string>): Set<stri
     if (other.has(low)) both.add(low);
   }
   return both;
+}
+
+/**
+ * Collapse links pointing at a heading in the note's OWN body to the bare
+ * in-note `[label](#slug)` anchor form. The "copy link to heading" button
+ * always copies the full cross-note `[label](note:UUID#slug)`; pasted back into
+ * the note it came from, the `note:UUID` prefix is redundant - the bare `#slug`
+ * is exactly what the in-note table of contents emits and what survives an
+ * export to standalone Markdown. Anchor-less self links (`note:UUID`) and links
+ * to OTHER notes are left untouched. Case-insensitive on the id.
+ *
+ * Used by the editor's paste handler so a heading link dropped back into its
+ * source note self-cleans, while the same clipboard text stays a full link
+ * everywhere else.
+ */
+export function simplifySelfNoteLinks(content: string, selfId: string): string {
+  if (!content || !selfId) return content;
+  // Escape the id for use in a RegExp (UUIDs only contain hex + hyphens, but be
+  // defensive). Match only the markdown link-destination form the copy button
+  // produces; a bare `note:...` in prose is never rewritten. `#[^)\s]+` requires
+  // an actual anchor, so anchor-less self links fall through unchanged.
+  const escaped = selfId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`\\]\\(note:${escaped}(#[^)\\s]+)\\)`, 'gi');
+  return content.replace(re, ']($1)');
+}
+
+/**
+ * Escape the characters that would break a markdown link *label* (`[label](…)`)
+ * if they appeared raw: the backslash and the square brackets that delimit the
+ * label. Used when a heading's text becomes the label of a copied link.
+ */
+export function escapeLinkLabel(text: string): string {
+  return text.replace(/[\\[\]]/g, '\\$&');
+}
+
+/**
+ * Build the internal link the "copy link to heading" affordance puts on the
+ * clipboard. Shared by Live Preview (`HeadingAnchorWidget` click) and the
+ * rendered Preview so the same heading always yields the same link.
+ *
+ * Always the full cross-note form `[label](note:UUID#slug)` so it pastes into
+ * any note; the editor's paste handler ({@link simplifySelfNoteLinks}) collapses
+ * it to the bare `[label](#slug)` when it lands back in the note it came from.
+ * Falls back to a bare in-note anchor when the note has no id yet (brand-new,
+ * unsaved). The label is the heading text, escaped; an empty heading falls back
+ * to the slug so the link is never `[](…)`.
+ */
+export function buildHeadingLink(
+  noteId: string | null | undefined,
+  slug: string,
+  text: string
+): string {
+  const label = escapeLinkLabel(text) || slug;
+  return noteId ? `[${label}](note:${noteId}#${slug})` : `[${label}](#${slug})`;
 }
