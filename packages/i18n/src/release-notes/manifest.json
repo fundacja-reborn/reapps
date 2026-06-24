@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.36.0",
+    "date": "2026-06-24",
+    "items": [
+      { "id": "0.36.0-outline", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.36.0-toc", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.36.0-import-anchors", "category": "improved", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.35.0",
     "date": "2026-06-23",
     "items": [
