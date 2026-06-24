@@ -27,7 +27,7 @@
   import type { ImageLoadMode } from '@reborn/storage';
   import { isDataUri } from '$lib/utils/markdown-sanitizer';
   import { copyText } from '$lib/utils/clipboard';
-  import { simplifySelfNoteLinks } from '$lib/services/note-link-utils';
+  import { simplifySelfNoteLinks, buildHeadingLink } from '$lib/services/note-link-utils';
   import { toastStore } from '@reborn/ui';
   import {
     Bold,
@@ -319,26 +319,34 @@
     view.focus();
   }
 
-  /** Escape `\` `[` `]` so heading text is safe as a `[label](...)` link label. */
-  function escapeLinkLabel(text: string): string {
-    return text.replace(/[\\[\]]/g, '\\$&');
-  }
-
   /**
    * Copy an internal link to a heading in this note (Live Preview hover button).
-   * Always the full cross-note form `[text](note:UUID#slug)` so it pastes into
-   * any note; the paste handler collapses it to the bare `[text](#slug)` form
-   * when it lands back in this same note. Falls back to a bare in-note anchor
-   * when the note has no id yet (brand-new, unsaved). Silent no-op if the
-   * clipboard write fails (mirrors the code-block copy button).
+   * The link is built by the shared {@link buildHeadingLink} so Live Preview and
+   * the rendered Preview copy the exact same thing: the full cross-note
+   * `[text](note:UUID#slug)`, which the paste handler collapses to the bare
+   * `[text](#slug)` form when it lands back in this same note. Silent no-op if
+   * the clipboard write fails (mirrors the code-block copy button).
    */
   async function copyHeadingLink(slug: string, text: string): Promise<void> {
-    const label = escapeLinkLabel(text) || slug;
-    const id = currentNoteId;
-    const link = id ? `[${label}](note:${id}#${slug})` : `[${label}](#${slug})`;
+    const link = buildHeadingLink(currentNoteId, slug, text);
     if (await copyText(link)) {
       toastStore.success($t('notes.heading_link_copied'));
     }
+  }
+
+  /**
+   * Height (px) of the sticky formatting toolbar where it overlays the editor's
+   * scroll container, fed to `EditorView.scrollMargins` so scroll-into-view keeps
+   * headings / the caret BELOW the toolbar instead of behind it. Only the mobile
+   * and desktop single-pane toolbars are `position: sticky` over the shared
+   * scroller; the split-view / default toolbar sits above its own scroller (no
+   * overlap → 0). Measured live because the toolbar wraps to 1-2 rows by width.
+   */
+  function stickyToolbarInset(): number {
+    const el = toolbarEl;
+    if (!el) return 0;
+    if (!isMobile && !(parentScroll && !splitView)) return 0;
+    return el.getBoundingClientRect().height;
   }
 
   /**
@@ -491,6 +499,15 @@
         getMarkdownExtension(),
         syntaxHighlighting(defaultHighlightStyle),
         EditorView.lineWrapping,
+        // Keep every scroll-into-view (heading-anchor clicks, outline jumps, the
+        // caret while typing near the top) clear of the sticky formatting toolbar
+        // that overlays the scroll container in the mobile + single-pane layouts.
+        // CM6 grows the scroll target by this top margin; measured live so it
+        // tracks the toolbar's wrapped height, and 0 where it doesn't overlap.
+        EditorView.scrollMargins.of(() => {
+          const top = stickyToolbarInset();
+          return top ? { top } : null;
+        }),
         customKeymap,
         themeCompartment.of(isDark() ? oneDark : []),
         readonlyCompartment.of(EditorState.readOnly.of(readonly)),
@@ -932,15 +949,15 @@
 
     {#if isMobile}
       <!-- Mobile: sticky toolbar at top of editor.
-           Position is deterministic — independent of virtual keyboard state
+           Position is deterministic - independent of virtual keyboard state
            and Stage Manager edge-cases on iPad. -->
-      <div class="mobile-toolbar sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b">
+      <div bind:this={toolbarEl} class="mobile-toolbar sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b">
         <div class="flex flex-nowrap items-center gap-0.5 overflow-x-auto px-2 py-1.5">
           {@render toolbarButtons()}
         </div>
       </div>
     {:else if parentScroll && !splitView}
-      <div class="sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-5">
+      <div bind:this={toolbarEl} class="sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-5">
         <div class="mx-auto max-w-3xl">
           <div class="flex flex-wrap items-center gap-0.5 py-1.5">
             {@render toolbarButtons()}

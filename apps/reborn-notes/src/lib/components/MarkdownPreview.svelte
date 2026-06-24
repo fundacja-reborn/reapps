@@ -9,7 +9,8 @@
     highlightCodeToHtml,
     triggerLanguageLoad,
     CODE_COPY_ICON,
-    copyCodeFromButton
+    copyCodeFromButton,
+    HEADING_LINK_ICON
   } from '$lib/editor/live-preview';
   import {
     annotateTopLevelLines,
@@ -73,7 +74,9 @@
     onTocDelete,
     tocStale = false,
     onrender,
-    resolveNoteTitle
+    resolveNoteTitle,
+    onHeadingLinkCopy,
+    headingLinkLabel
   }: {
     content: string;
     class?: string;
@@ -140,6 +143,16 @@
     onrender?: () => void;
     /** Resolves current title for a note UUID (for auto-update display text) */
     resolveNoteTitle?: (noteId: string) => string | undefined;
+    /**
+     * Owner-editable preview only. When provided, each rendered heading gets a
+     * hover-revealed "copy link to heading" button; the click reports the
+     * heading's slug + text so the owner builds + copies the internal link (it
+     * holds the note id, clipboard helper and toast). Read-only viewers (shared
+     * snapshot, history) leave it unset, so no button is injected there.
+     */
+    onHeadingLinkCopy?: (slug: string, text: string) => void;
+    /** aria-label / tooltip for the per-heading copy-link button. */
+    headingLinkLabel?: string;
   } = $props();
 
   let containerEl: HTMLElement;
@@ -363,8 +376,26 @@
       slugs.length === headings.length
         ? slugs
         : assignHeadingSlugs([...headings].map((el) => el.textContent ?? ''));
+    const anchorLabel = headingLinkLabel ?? '';
     headings.forEach((el, i) => {
       el.id = ids[i];
+      // Owner-editable preview: append the hover-revealed copy-link button. The
+      // heading is rebuilt on every {@html} commit, so it never accumulates.
+      // Read the text BEFORE appending so the label is the heading content, not
+      // the button glyph. The click is handled by delegation in `handleClick`;
+      // the icon is a trusted constant (never user input), like CODE_COPY_ICON.
+      if (onHeadingLinkCopy) {
+        const text = el.textContent ?? '';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'md-head-anchor';
+        btn.title = anchorLabel;
+        btn.setAttribute('aria-label', anchorLabel);
+        btn.dataset.headingSlug = ids[i];
+        btn.dataset.headingText = text;
+        btn.innerHTML = HEADING_LINK_ICON;
+        el.appendChild(btn);
+      }
     });
   }
 
@@ -385,6 +416,18 @@
         copy: $t('editor.code_copy'),
         copied: $t('editor.code_copied')
       });
+      return;
+    }
+
+    // Copy-link-to-heading button (owner preview). Inert DOM carrying the
+    // heading's slug + text; the owner builds + copies the internal link and
+    // shows the toast (it holds the note id). `closest` resolves clicks on the
+    // inner <svg>/<path>.
+    const headBtn = target.closest('.md-head-anchor');
+    if (headBtn) {
+      e.preventDefault();
+      const slug = (headBtn as HTMLElement).dataset.headingSlug ?? '';
+      if (slug) onHeadingLinkCopy?.(slug, (headBtn as HTMLElement).dataset.headingText ?? '');
       return;
     }
 
@@ -783,6 +826,47 @@
     opacity: 1;
     color: #16a34a;
     border-color: #16a34a;
+  }
+
+  /* Per-heading "copy link" button (owner-editable preview). `assignHeadingIds`
+     appends it inline at the end of each heading, so it sits right after the
+     text - mirrors the Live Preview `.cm-lp-head-anchor` affordance. Hidden
+     until the heading is hovered / the button focused (desktop); on coarse
+     pointers (touch, no hover) it stays faintly visible so it is discoverable. */
+  .preview :global(.md-head-anchor) {
+    display: inline-flex;
+    vertical-align: middle;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-left: 0.4em;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 0.375em;
+    background: var(--background);
+    color: var(--muted-foreground);
+    cursor: pointer;
+    opacity: 0;
+    -webkit-user-select: none;
+    user-select: none;
+    transition:
+      opacity 0.12s ease,
+      color 0.12s ease,
+      border-color 0.12s ease;
+  }
+  .preview :global(:is(h1, h2, h3, h4, h5, h6):hover .md-head-anchor),
+  .preview :global(.md-head-anchor:focus-visible) {
+    opacity: 1;
+  }
+  .preview :global(.md-head-anchor:hover) {
+    opacity: 1;
+    color: var(--foreground);
+  }
+  @media (hover: none) {
+    .preview :global(.md-head-anchor) {
+      opacity: 0.55;
+    }
   }
 
   /* In-note table of contents (owner-editable preview only). `.note-toc` is the

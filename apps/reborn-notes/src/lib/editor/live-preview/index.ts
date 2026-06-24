@@ -117,7 +117,7 @@ export {
   type TocActions
 } from './decorations';
 export { TocWidget, type TocWidgetLabels } from './toc-widget';
-export { HeadingAnchorWidget } from './heading-anchor-widget';
+export { HeadingAnchorWidget, HEADING_LINK_ICON } from './heading-anchor-widget';
 export {
   CodeBlockWidget,
   LinkWidget,

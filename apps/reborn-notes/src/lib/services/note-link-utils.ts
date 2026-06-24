@@ -70,3 +70,33 @@ export function simplifySelfNoteLinks(content: string, selfId: string): string {
   const re = new RegExp(`\\]\\(note:${escaped}(#[^)\\s]+)\\)`, 'gi');
   return content.replace(re, ']($1)');
 }
+
+/**
+ * Escape the characters that would break a markdown link *label* (`[label](…)`)
+ * if they appeared raw: the backslash and the square brackets that delimit the
+ * label. Used when a heading's text becomes the label of a copied link.
+ */
+export function escapeLinkLabel(text: string): string {
+  return text.replace(/[\\[\]]/g, '\\$&');
+}
+
+/**
+ * Build the internal link the "copy link to heading" affordance puts on the
+ * clipboard. Shared by Live Preview (`HeadingAnchorWidget` click) and the
+ * rendered Preview so the same heading always yields the same link.
+ *
+ * Always the full cross-note form `[label](note:UUID#slug)` so it pastes into
+ * any note; the editor's paste handler ({@link simplifySelfNoteLinks}) collapses
+ * it to the bare `[label](#slug)` when it lands back in the note it came from.
+ * Falls back to a bare in-note anchor when the note has no id yet (brand-new,
+ * unsaved). The label is the heading text, escaped; an empty heading falls back
+ * to the slug so the link is never `[](…)`.
+ */
+export function buildHeadingLink(
+  noteId: string | null | undefined,
+  slug: string,
+  text: string
+): string {
+  const label = escapeLinkLabel(text) || slug;
+  return noteId ? `[${label}](note:${noteId}#${slug})` : `[${label}](#${slug})`;
+}

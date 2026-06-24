@@ -6,6 +6,9 @@
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import { t } from '$lib/stores/i18n.store';
   import { applyToc, removeToc, isTocStale } from '$lib/utils/toc';
+  import { copyText } from '$lib/utils/clipboard';
+  import { buildHeadingLink } from '$lib/services/note-link-utils';
+  import { toastStore } from '@reborn/ui';
   import type { ImageLoadMode, PeriodicKind } from '@reborn/storage';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -134,6 +137,19 @@
   }
   const tocStale = $derived(isTocStale(noteDetailService.content, { title: $t('toc.title') }));
 
+  /**
+   * Copy an internal link to a heading from the rendered Preview's hover button.
+   * Built by the shared {@link buildHeadingLink} so it is byte-identical to the
+   * Live Preview editor's copy; pasted back into this note it self-cleans to the
+   * bare `#slug` via the editor's paste handler. Silent no-op if the clipboard
+   * write fails (mirrors the code-block copy button).
+   */
+  async function handleHeadingLinkCopy(slug: string, text: string): Promise<void> {
+    if (await copyText(buildHeadingLink(noteId, slug, text))) {
+      toastStore.success($t('notes.heading_link_copied'));
+    }
+  }
+
   // Privacy hint + deep-link to the image-loading preference, surfaced next to
   // the "Load all images" button so the owner understands why their own images
   // don't auto-load and can flip the default in one click. MarkdownPreview only
@@ -215,6 +231,8 @@
               onTaskToggle={handleTaskToggle}
               onTocRefresh={handleTocRefresh}
               onTocDelete={handleTocDelete}
+              onHeadingLinkCopy={handleHeadingLinkCopy}
+              headingLinkLabel={$t('editor.copy_heading_link')}
               {tocStale}
               {resolveNoteTitle}
               {imageLoadMode}
@@ -236,6 +254,8 @@
             onTaskToggle={handleTaskToggle}
             onTocRefresh={handleTocRefresh}
             onTocDelete={handleTocDelete}
+            onHeadingLinkCopy={handleHeadingLinkCopy}
+            headingLinkLabel={$t('editor.copy_heading_link')}
             {tocStale}
             {resolveNoteTitle}
             {imageLoadMode}

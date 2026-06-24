@@ -80,27 +80,20 @@ export const livePreviewTheme = EditorView.theme({
   },
 
   // ─── Copy-link-to-heading button ─────────────────────────────
-  // Emitted by `HeadingAnchorWidget` at the end of each heading line. Headings
-  // need a positioning context so the absolutely-placed button pins to the
-  // line; `position: relative` is layout-inert here (lines are block boxes).
-  '.cm-lp-h1-line, .cm-lp-h2-line, .cm-lp-h3-line, .cm-lp-h4-line, .cm-lp-h5-line, .cm-lp-h6-line':
-    {
-      position: 'relative'
-    },
-  // `top` is in `em` so it tracks each heading's `paddingTop` (1.5em, also in
-  // em) — the button's top edge lands on the heading text regardless of level.
-  // The box size is in `rem` (and the SVG is a fixed 16px) so the button stays
-  // a consistent size instead of scaling with the heading font.
+  // Emitted by `HeadingAnchorWidget` at the very end of each heading line, so it
+  // flows inline right after the heading text - a short heading keeps the button
+  // beside it instead of stranded at the far-right edge where it is easy to miss.
+  // The box size is in `rem` (the SVG is a fixed 16px) so it stays consistent
+  // across levels instead of scaling with the heading font. It keeps its box
+  // while hidden (opacity, not display), so revealing it never reflows the text.
   '.cm-lp-head-anchor': {
-    position: 'absolute',
-    top: '1.5em',
-    right: '0',
-    zIndex: '1',
     display: 'inline-flex',
+    verticalAlign: 'middle',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '1.7rem',
-    height: '1.7rem',
+    width: '1.5rem',
+    height: '1.5rem',
+    marginLeft: '0.4em',
     padding: '0',
     border: '1px solid var(--border)',
     borderRadius: '0.375rem',
