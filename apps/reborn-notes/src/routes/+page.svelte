@@ -952,7 +952,21 @@
       toastStore.info($t('notes.note_in_trash'));
       return;
     }
-    pendingAnchor = anchor ? { noteId, slug: anchor } : null;
+    // The anchor can arrive percent-encoded: marked encodes non-ASCII slug chars
+    // in the rendered href (Polish `ą` → `%C4%85`), so a heading link clicked in
+    // the PREVIEW hands us the encoded form, while the heading ids stamped by
+    // MarkdownPreview are raw Unicode. Decode so `scrollToHeading` matches. The
+    // editor (Live Preview) path passes a raw slug straight from the markdown
+    // source, where decode is a harmless no-op (slugs never contain `%`).
+    let slug = anchor;
+    if (slug) {
+      try {
+        slug = decodeURIComponent(slug);
+      } catch {
+        /* malformed %-escape - fall back to the raw anchor */
+      }
+    }
+    pendingAnchor = slug ? { noteId, slug } : null;
     activeNoteId.set(noteId);
   }
 

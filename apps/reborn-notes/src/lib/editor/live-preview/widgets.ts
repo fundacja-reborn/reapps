@@ -73,6 +73,14 @@ export class LinkWidget extends WidgetType {
       if (noteMatch[2]) span.dataset.noteAnchor = noteMatch[2];
       span.title = this.url;
       span.textContent = '📝 ' + this.text;
+      // Stop a left-click from moving the caret into the link, which would swap
+      // this widget for the raw markdown before NoteEditor's `click` handler can
+      // navigate. Mirrors the intra-note `.cm-lp-anchor-link` / copy-button
+      // affordance. Primary button only, so right-click and clicking just past
+      // the link still reveal the source for editing.
+      span.addEventListener('mousedown', (e) => {
+        if (e.button === 0) e.preventDefault();
+      });
       return span;
     }
 
