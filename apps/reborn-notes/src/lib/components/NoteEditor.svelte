@@ -64,7 +64,9 @@
     ontoolbarheight,
     availableNotes = [],
     currentNoteId = null,
-    imageLoadMode = 'ask' as ImageLoadMode
+    imageLoadMode = 'ask' as ImageLoadMode,
+    onTocRefresh,
+    onTocDelete
   }: {
     content?: string;
     placeholder?: string;
@@ -102,6 +104,10 @@
     currentNoteId?: string | null;
     /** User preference for external image loading — drives `ImageWidget` rendering. */
     imageLoadMode?: ImageLoadMode;
+    /** Live Preview only — insert-or-refresh the in-note TOC (corner refresh button). */
+    onTocRefresh?: () => void;
+    /** Live Preview only — remove the in-note TOC (corner trash button). */
+    onTocDelete?: () => void;
   } = $props();
 
   let editorRootEl: HTMLDivElement;
@@ -139,6 +145,19 @@
       codeLabels: {
         copy: $t('editor.code_copy'),
         copied: $t('editor.code_copied')
+      },
+      tocLabels: {
+        refresh: $t('toc.refresh'),
+        stale: $t('toc.stale'),
+        remove: $t('toc.remove')
+      },
+      // The widget DOM is inert; the corner buttons act through these. They mutate
+      // `noteDetailService.content` upstream (same path as the kebab menu and the
+      // rendered preview's toolbar), which flows back as the `content` prop and
+      // rebuilds the widget.
+      tocActions: {
+        refresh: () => onTocRefresh?.(),
+        remove: () => onTocDelete?.()
       }
     };
   }

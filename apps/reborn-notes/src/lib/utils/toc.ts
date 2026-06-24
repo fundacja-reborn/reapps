@@ -72,6 +72,18 @@ export function hasToc(content: string): boolean {
 }
 
 /**
+ * Character range `[from, to)` of the managed TOC block in `content`, or `null`
+ * when there is none. Lets the CM6 Live Preview decoration map the block onto
+ * editor lines (so it can render the same box + toolbar the rendered preview
+ * shows) without re-implementing the marker regex - this stays the single source.
+ */
+export function findTocBlockRange(content: string): { from: number; to: number } | null {
+  const m = content.match(TOC_BLOCK_RE);
+  if (!m || m.index === undefined) return null;
+  return { from: m.index, to: m.index + m[0].length };
+}
+
+/**
  * Escape the characters that would break a Markdown link label. The backslash
  * (Markdown's escape char) MUST be in the set, otherwise a literal `\` in the
  * heading text would "consume" a following bracket escape and close the label

@@ -171,6 +171,8 @@
           parentScroll={parentScroll}
           {isMobile}
           {imageLoadMode}
+          onTocRefresh={handleTocRefresh}
+          onTocDelete={handleTocDelete}
         />
       {:else if effectiveViewMode === 'split'}
         <!-- Split: each pane owns its scroll; sync handled by scroll-sync.ts.
@@ -192,6 +194,8 @@
               ontoolbarheight={(h) => (splitToolbarHeight = h)}
               {isMobile}
               {imageLoadMode}
+              onTocRefresh={handleTocRefresh}
+              onTocDelete={handleTocDelete}
             />
           </div>
           <div class="flex min-w-0 flex-1 flex-col overflow-hidden">

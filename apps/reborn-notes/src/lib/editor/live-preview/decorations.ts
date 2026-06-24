@@ -10,7 +10,14 @@
  */
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
-import { type EditorState, type Range, RangeSetBuilder, StateEffect, StateField } from '@codemirror/state';
+import {
+  type EditorState,
+  type Extension,
+  type Range,
+  RangeSetBuilder,
+  StateEffect,
+  StateField
+} from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 import type { Text } from '@codemirror/state';
 import type { ImageLoadMode } from '@reborn/storage';
@@ -19,6 +26,9 @@ import { ImageWidget, type ImageWidgetLabels, getLoadedImages } from './image-wi
 import type { CodeCopyLabels } from './code-copy';
 import { TableWidget } from './table-widget';
 import { parseTable } from './table-parse';
+import { TocWidget, type TocWidgetLabels } from './toc-widget';
+import { findTocBlockRange, tocInnerMarkdown, isTocStale } from '$lib/utils/toc';
+import { extractHeadings } from '$lib/utils/heading-outline';
 
 /**
  * Options threaded into `buildDecorations` from `createLivePreviewExtension`.
@@ -29,12 +39,14 @@ export interface BuildDecorationsOptions {
   imageLoadMode: ImageLoadMode;
   imageLabels: ImageWidgetLabels;
   codeLabels: CodeCopyLabels;
+  tocLabels: TocWidgetLabels;
 }
 
 const DEFAULT_OPTIONS: BuildDecorationsOptions = {
   imageLoadMode: 'ask',
   imageLabels: { load: 'Load image', base64Blocked: 'Embedded images are not supported' },
-  codeLabels: { copy: 'Copy code', copied: 'Copied' }
+  codeLabels: { copy: 'Copy code', copied: 'Copied' },
+  tocLabels: { refresh: 'Refresh', stale: 'Out of date - refresh', remove: 'Remove' }
 };
 
 /**
@@ -248,11 +260,51 @@ export function buildDecorations(
   const doc = state.doc;
   const loaded = getLoadedImages(state);
 
+  // ─── In-note table of contents ───────────────────────────────
+  // The managed `<!-- toc -->` block is NOT a single syntax node (comment +
+  // paragraph + list + comment), so it is found by text range, not tree node.
+  // Cursor OUTSIDE → replace the whole line span with one boxed `TocWidget`
+  // (mirrors the rendered preview) and skip every node within it below, so
+  // nothing decorates under the block widget. Cursor INSIDE → emit no widget and
+  // let the raw markdown (markers + list) show for editing — the same
+  // click-to-edit reveal as fenced code blocks.
+  const docText = doc.toString();
+  const tocRange = findTocBlockRange(docText);
+  let tocWidgetFrom = -1;
+  let tocWidgetTo = -1;
+  if (tocRange) {
+    const startLine = doc.lineAt(tocRange.from);
+    const endLine = doc.lineAt(tocRange.to);
+    if (!isAnySelectionInRange(state, startLine.from, endLine.to)) {
+      tocWidgetFrom = startLine.from;
+      tocWidgetTo = endLine.to;
+      const innerMd = tocInnerMarkdown(docText) ?? '';
+      // Drift is independent of the (preserved) title, so a bare fallback is
+      // fine here — see `isTocStale`.
+      const stale = isTocStale(docText, { title: '' });
+      ranges.push(
+        Decoration.replace({
+          widget: new TocWidget(innerMd, stale, options.tocLabels),
+          block: true
+        }).range(tocWidgetFrom, tocWidgetTo)
+      );
+    }
+  }
+
   tree.iterate({
     enter(nodeRef) {
       const name = nodeRef.type.name;
       const from = nodeRef.from;
       const to = nodeRef.to;
+
+      // Skip everything inside the active TOC widget range (nodes fully
+      // contained in it) — their content is replaced by the block widget, so any
+      // decoration here would overlap it. Containment (not just `from >=`) lets a
+      // root/container spanning past the block still descend to decorate siblings
+      // before and after it.
+      if (tocWidgetFrom >= 0 && from >= tocWidgetFrom && to <= tocWidgetTo) {
+        return false;
+      }
 
       // ─── GFM Table — always rendered as an editable widget ────────
       // Unlike other live-preview elements, tables do NOT switch to raw
@@ -814,3 +866,87 @@ export const livePreviewTaskCheckboxToggle = EditorView.domEventHandlers({
     return true;
   }
 });
+
+/**
+ * The owner's TOC mutation callbacks, threaded from `NoteEditor` (which holds
+ * the i18n `$t` and the note's content service). The `TocWidget` DOM is inert;
+ * this handler is the only place editor TOC clicks act.
+ */
+export interface TocActions {
+  /** Insert-or-refresh the managed block (corner refresh button). */
+  refresh: () => void;
+  /** Remove the managed block (corner trash button). */
+  remove: () => void;
+}
+
+/**
+ * Wires clicks inside the `TocWidget`:
+ *  - refresh / remove corner buttons → the owner's `TocActions` (which mutate the
+ *    markdown source the same way the kebab menu and the rendered preview's
+ *    toolbar do — all three share one path);
+ *  - an entry link (`#slug`) → scroll the editor to that heading line.
+ *
+ * `mousedown` is prevented on these targets so the click does not move the CM6
+ * caret into the block (which would swap the widget for raw markdown before the
+ * `click` fires); the work runs on `click` (also fires on keyboard activation of
+ * the buttons).
+ */
+export function livePreviewTocActions(actions?: TocActions): Extension {
+  return EditorView.domEventHandlers({
+    mousedown(event) {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('.cm-lp-toc-refresh, .cm-lp-toc-remove, .cm-lp-toc a[href]')) {
+        event.preventDefault();
+        return true;
+      }
+      return false;
+    },
+    click(event, view) {
+      const target = event.target as HTMLElement | null;
+      if (!target) return false;
+      if (target.closest('.cm-lp-toc-refresh')) {
+        event.preventDefault();
+        actions?.refresh();
+        return true;
+      }
+      if (target.closest('.cm-lp-toc-remove')) {
+        event.preventDefault();
+        actions?.remove();
+        return true;
+      }
+      const anchor = target.closest('.cm-lp-toc a[href]') as HTMLAnchorElement | null;
+      if (anchor) {
+        event.preventDefault();
+        scrollEditorToSlug(view, anchor.getAttribute('href'));
+        return true;
+      }
+      return false;
+    }
+  });
+}
+
+/**
+ * Scroll the editor to the heading a TOC entry points at. The href is a `#slug`
+ * fragment — marked percent-encodes it, so decode before matching the slug
+ * `extractHeadings` stamps. Places the caret at the heading line start (outside
+ * the TOC block, so the widget stays rendered) and scrolls it near the top.
+ */
+function scrollEditorToSlug(view: EditorView, href: string | null): void {
+  if (!href) return;
+  const raw = href.startsWith('#') ? href.slice(1) : href;
+  let slug: string;
+  try {
+    slug = decodeURIComponent(raw);
+  } catch {
+    slug = raw;
+  }
+  const heading = extractHeadings(view.state.doc.toString()).find((h) => h.slug === slug);
+  if (!heading) return;
+  const lineNo = Math.min(Math.max(heading.line, 1), view.state.doc.lines);
+  const pos = view.state.doc.line(lineNo).from;
+  view.dispatch({
+    selection: { anchor: pos },
+    effects: EditorView.scrollIntoView(pos, { y: 'start', yMargin: 16 })
+  });
+  view.focus();
+}

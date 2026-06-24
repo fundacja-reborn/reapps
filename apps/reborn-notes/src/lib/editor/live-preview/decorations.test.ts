@@ -7,6 +7,8 @@ import { buildDecorations, isAnySelectionInRange, resolveListClickForward } from
 import { TableWidget } from './table-widget';
 import { ImageWidget } from './image-widget';
 import { TaskCheckboxWidget } from './widgets';
+import { TocWidget } from './toc-widget';
+import { applyToc } from '$lib/utils/toc';
 
 interface DecoSpec {
   class?: string;
@@ -565,16 +567,24 @@ describe('buildDecorations — tables', () => {
 describe('buildDecorations — inline images', () => {
   const LABELS = { load: 'Load image', base64Blocked: 'Embedded images blocked' };
   const CODE_LABELS = { copy: 'Copy code', copied: 'Copied' };
-  const OPTS_ASK = { imageLoadMode: 'ask' as const, imageLabels: LABELS, codeLabels: CODE_LABELS };
+  const TOC_LABELS = { refresh: 'Refresh', stale: 'Out of date', remove: 'Remove' };
+  const OPTS_ASK = {
+    imageLoadMode: 'ask' as const,
+    imageLabels: LABELS,
+    codeLabels: CODE_LABELS,
+    tocLabels: TOC_LABELS
+  };
   const OPTS_ALWAYS = {
     imageLoadMode: 'always' as const,
     imageLabels: LABELS,
-    codeLabels: CODE_LABELS
+    codeLabels: CODE_LABELS,
+    tocLabels: TOC_LABELS
   };
   const OPTS_NEVER = {
     imageLoadMode: 'never' as const,
     imageLabels: LABELS,
-    codeLabels: CODE_LABELS
+    codeLabels: CODE_LABELS,
+    tocLabels: TOC_LABELS
   };
 
   it('replaces an image with an ImageWidget when cursor is outside', () => {
@@ -871,5 +881,46 @@ describe('resolveListClickForward — padding-zone vs content gate', () => {
     expect(result).not.toBeNull();
     // contentStart = innerMarkerPos + 2 (past `- `)
     expect(result?.contentStart).toBe(innerMarkerPos + 2);
+  });
+});
+
+describe('buildDecorations — in-note table of contents', () => {
+  // `# Doc` then a managed TOC block, then the listed headings.
+  const withToc = applyToc('# Doc\n\n## Alpha\n\n## Beta\n', { title: 'Contents' })!;
+  const tocWidgets = (set: ReturnType<typeof buildDecorations>) =>
+    asRanges(set).filter((r) => r.hasWidget && r.spec.widget instanceof TocWidget);
+
+  it('replaces the block with a single TocWidget spanning >1 line when the cursor is outside', () => {
+    const state = makeState(withToc, 0); // caret in "# Doc", outside the block
+    const widgets = tocWidgets(buildDecorations(state));
+    expect(widgets).toHaveLength(1);
+    expect(widgets[0].to).toBeGreaterThan(widgets[0].from); // block replace
+  });
+
+  it('emits no TocWidget when the caret is inside the block (raw reveal for editing)', () => {
+    const inside = withToc.indexOf('<!-- toc -->') + 4;
+    const state = makeState(withToc, inside);
+    expect(tocWidgets(buildDecorations(state))).toHaveLength(0);
+  });
+
+  it('decorates nothing inside the widget range (no overlap under the block widget)', () => {
+    const state = makeState(withToc, 0);
+    const ranges = asRanges(buildDecorations(state));
+    const toc = ranges.find((r) => r.hasWidget && r.spec.widget instanceof TocWidget)!;
+    const inside = ranges.filter((r) => r !== toc && r.from > toc.from && r.from < toc.to);
+    expect(inside).toHaveLength(0);
+  });
+
+  it('flags the widget stale after a heading drifts from the listed entries', () => {
+    // Rename a heading in the body without refreshing the block → drift.
+    const drifted = withToc.replace('## Beta', '## Gamma');
+    const state = makeState(drifted, 0);
+    const widgets = tocWidgets(buildDecorations(state));
+    expect(widgets).toHaveLength(1);
+    expect((widgets[0].spec.widget as TocWidget).stale).toBe(true);
+
+    // Pristine block (no edits) is not stale.
+    const pristine = tocWidgets(buildDecorations(makeState(withToc, 0)));
+    expect((pristine[0].spec.widget as TocWidget).stale).toBe(false);
   });
 });

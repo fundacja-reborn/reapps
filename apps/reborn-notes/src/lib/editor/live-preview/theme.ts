@@ -346,6 +346,68 @@ export const livePreviewTheme = EditorView.theme({
     borderColor: '#16a34a'
   },
 
+  // ─── In-note table of contents ───────────────────────────────
+  // Cursor outside: the managed block is replaced with a boxed <nav> + corner
+  // toolbar — mirrors `.note-toc` in MarkdownPreview.svelte (keep in sync) and
+  // the copy-button precedent above. Margin must stay 0 (CM6 height-map rule for
+  // block widgets); the markdown's surrounding blank lines provide the spacing.
+  '.cm-lp-toc': {
+    position: 'relative',
+    margin: '0',
+    padding: '0.75em 1em',
+    border: '1px solid var(--border)',
+    borderRadius: '0.5em',
+    background: 'color-mix(in srgb, var(--muted) 40%, transparent)'
+  },
+  '.cm-lp-toc p': { margin: '0 0 0.5em', fontSize: '0.9375em' },
+  '.cm-lp-toc ul': { margin: '0 0 0 1.1em', padding: '0', listStyle: 'none' },
+  '.cm-lp-toc ul ul': { marginBottom: '0' },
+  '.cm-lp-toc li + li': { marginTop: '0.15em' },
+  '.cm-lp-toc a': {
+    color: 'inherit',
+    textDecoration: 'underline',
+    textUnderlineOffset: '2px',
+    cursor: 'pointer'
+  },
+  '.cm-lp-toc a:hover': { color: 'var(--primary)' },
+  // Corner toolbar — hidden until hover/focus; force-shown when out of date so
+  // the drift is noticed (a child can't out-opaque its parent, so the reveal
+  // lives on the actions wrapper — same `:has()` trick as the preview).
+  '.cm-lp-toc-actions': {
+    position: 'absolute',
+    top: '0.4em',
+    right: '0.4em',
+    zIndex: '1',
+    display: 'inline-flex',
+    gap: '0.25em',
+    opacity: '0',
+    transition: 'opacity 0.12s ease'
+  },
+  '.cm-lp-toc:hover .cm-lp-toc-actions': { opacity: '1' },
+  '.cm-lp-toc:focus-within .cm-lp-toc-actions': { opacity: '1' },
+  '.cm-lp-toc:has(.cm-lp-toc-refresh.is-stale) .cm-lp-toc-actions': { opacity: '1' },
+  '.cm-lp-toc-btn': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '1.9em',
+    height: '1.9em',
+    padding: '0',
+    border: '1px solid var(--border)',
+    borderRadius: '0.375em',
+    background: 'var(--background)',
+    color: 'var(--muted-foreground)',
+    cursor: 'pointer',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    transition: 'color 0.12s ease, border-color 0.12s ease, background 0.12s ease'
+  },
+  '.cm-lp-toc-btn:hover': { color: 'var(--foreground)', background: 'var(--accent)' },
+  '.cm-lp-toc-btn:focus-visible': { color: 'var(--foreground)', background: 'var(--accent)' },
+  '.cm-lp-toc-remove:hover': { color: 'var(--destructive)', borderColor: 'var(--destructive)' },
+  // Out of date: refresh button stays visible + amber so the drift is noticed.
+  '.cm-lp-toc-refresh.is-stale': { color: '#d97706', borderColor: '#d97706' },
+
   // Cursor inside: per-line decoration so the raw fences and body share
   // a continuous code-block look. Padding-only (no margin) — see header
   // note about CM6 height map.
