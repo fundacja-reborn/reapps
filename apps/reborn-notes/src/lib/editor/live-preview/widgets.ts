@@ -29,8 +29,10 @@ export { sanitizeInfoClass } from './highlight-html';
 /** Backwards-compat alias for previous DOM helper name. */
 export { renderHighlightedDom as renderHighlighted } from './highlight-html';
 
+// `note:UUID` with an optional `#heading-slug`. Group 1 = UUID, group 2 = the
+// anchor (without the `#`), undefined when the link targets the note as a whole.
 const NOTE_URL_RE =
-  /^note:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  /^note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:#(.+))?$/i;
 
 const ALLOWED_SCHEMES = /^(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):/i;
 
@@ -57,17 +59,33 @@ export class LinkWidget extends WidgetType {
 
   toDOM(): HTMLElement {
     const safeUrl = sanitizeLinkUrl(this.url);
-    const isNote = safeUrl !== null && NOTE_URL_RE.test(safeUrl);
 
-    if (isNote && safeUrl) {
-      // Note links rendered as inert span — navigation handled by editor click handler.
+    // Internal note link (`note:UUID` or `note:UUID#heading-slug`): inert span,
+    // navigation handled by NoteEditor's click handler. The optional anchor is
+    // carried in its own data attribute so the click can scroll to the heading
+    // after the target note renders.
+    const noteMatch = safeUrl ? NOTE_URL_RE.exec(safeUrl) : null;
+    if (noteMatch) {
       const span = document.createElement('span');
       span.classList.add('cm-lp-link', 'cm-note-link');
       span.dataset.noteLink = 'true';
-      span.dataset.noteId = safeUrl.replace(/^note:/i, '');
+      span.dataset.noteId = noteMatch[1];
+      if (noteMatch[2]) span.dataset.noteAnchor = noteMatch[2];
       span.title = this.url;
       span.textContent = '📝 ' + this.text;
       return span;
+    }
+
+    // In-note heading anchor (`#slug` — a copied same-note heading link, or a
+    // body anchor). Render a real anchor, but its click scrolls within the
+    // editor (wired by `livePreviewAnchorScroll`) instead of opening a new tab.
+    if (safeUrl && safeUrl.startsWith('#')) {
+      const internal = document.createElement('a');
+      internal.classList.add('cm-lp-link', 'cm-lp-anchor-link');
+      internal.textContent = this.text;
+      internal.href = safeUrl;
+      internal.title = this.url;
+      return internal;
     }
 
     const anchor = document.createElement('a');

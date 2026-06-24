@@ -5,9 +5,10 @@
 import { Decoration, type DecorationSet, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { RangeSetBuilder } from '@codemirror/state';
 
-// Match `[any text](note:UUID)` — standard markdown link with note: scheme
+// Match `[any text](note:UUID)` — standard markdown link with note: scheme,
+// with an optional `#heading-slug` anchor (`note:UUID#slug`).
 const NOTE_LINK_RE =
-  /\[([^\]]+)\]\(note:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\)/gi;
+  /\[([^\]]+)\]\(note:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:#[^)\s]+)?\)/gi;
 
 const noteLinkMark = Decoration.mark({ class: 'cm-note-link' });
 

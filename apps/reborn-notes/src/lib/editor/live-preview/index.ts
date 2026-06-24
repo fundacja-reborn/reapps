@@ -24,6 +24,7 @@ import {
   livePreviewListClickForward,
   livePreviewTaskCheckboxToggle,
   livePreviewTocActions,
+  livePreviewAnchorScroll,
   type TocActions
 } from './decorations';
 import { livePreviewTheme } from './theme';
@@ -45,6 +46,8 @@ export interface LivePreviewOptions {
   codeLabels?: CodeCopyLabels;
   /** i18n labels for the in-note TOC corner toolbar. */
   tocLabels?: TocWidgetLabels;
+  /** aria-label / tooltip for the per-heading "copy link" button. */
+  headingLinkLabel?: string;
   /** Owner callbacks for the TOC refresh / remove buttons. */
   tocActions?: TocActions;
 }
@@ -65,12 +68,15 @@ const DEFAULT_TOC_LABELS: TocWidgetLabels = {
   remove: 'Remove'
 };
 
+const DEFAULT_HEADING_LINK_LABEL = 'Copy link to heading';
+
 export function createLivePreviewExtension(options: LivePreviewOptions = {}): Extension {
   const field = createLivePreviewField({
     imageLoadMode: options.imageLoadMode ?? 'ask',
     imageLabels: options.imageLabels ?? DEFAULT_LABELS,
     codeLabels: options.codeLabels ?? DEFAULT_CODE_LABELS,
-    tocLabels: options.tocLabels ?? DEFAULT_TOC_LABELS
+    tocLabels: options.tocLabels ?? DEFAULT_TOC_LABELS,
+    headingLinkLabel: options.headingLinkLabel ?? DEFAULT_HEADING_LINK_LABEL
   });
   return [
     field,
@@ -80,6 +86,7 @@ export function createLivePreviewExtension(options: LivePreviewOptions = {}): Ex
     livePreviewListClickForward,
     livePreviewTaskCheckboxToggle,
     livePreviewTocActions(options.tocActions),
+    livePreviewAnchorScroll,
     livePreviewTheme
   ];
 }
@@ -104,11 +111,13 @@ export {
   livePreviewListClickForward,
   livePreviewTaskCheckboxToggle,
   livePreviewTocActions,
+  livePreviewAnchorScroll,
   rebuildLivePreview,
   type BuildDecorationsOptions,
   type TocActions
 } from './decorations';
 export { TocWidget, type TocWidgetLabels } from './toc-widget';
+export { HeadingAnchorWidget } from './heading-anchor-widget';
 export {
   CodeBlockWidget,
   LinkWidget,

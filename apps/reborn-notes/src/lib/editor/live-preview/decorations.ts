@@ -27,6 +27,7 @@ import type { CodeCopyLabels } from './code-copy';
 import { TableWidget } from './table-widget';
 import { parseTable } from './table-parse';
 import { TocWidget, type TocWidgetLabels } from './toc-widget';
+import { HeadingAnchorWidget } from './heading-anchor-widget';
 import { findTocBlockRange, tocInnerMarkdown, isTocStale } from '$lib/utils/toc';
 import { extractHeadings } from '$lib/utils/heading-outline';
 
@@ -40,13 +41,16 @@ export interface BuildDecorationsOptions {
   imageLabels: ImageWidgetLabels;
   codeLabels: CodeCopyLabels;
   tocLabels: TocWidgetLabels;
+  /** aria-label / tooltip for the per-heading "copy link" button. */
+  headingLinkLabel: string;
 }
 
 const DEFAULT_OPTIONS: BuildDecorationsOptions = {
   imageLoadMode: 'ask',
   imageLabels: { load: 'Load image', base64Blocked: 'Embedded images are not supported' },
   codeLabels: { copy: 'Copy code', copied: 'Copied' },
-  tocLabels: { refresh: 'Refresh', stale: 'Out of date - refresh', remove: 'Remove' }
+  tocLabels: { refresh: 'Refresh', stale: 'Out of date - refresh', remove: 'Remove' },
+  headingLinkLabel: 'Copy link to heading'
 };
 
 /**
@@ -84,6 +88,18 @@ const HEADING_LINE: Record<number, Decoration> = {
   4: Decoration.line({ class: 'cm-lp-h4-line' }),
   5: Decoration.line({ class: 'cm-lp-h5-line' }),
   6: Decoration.line({ class: 'cm-lp-h6-line' })
+};
+// Variant heading-line decorations carrying `cm-lp-head-active`, used while the
+// caret is on the line. Reveals the copy-link button without a hover (the only
+// way to surface it on touch). Same line element + heading class as the base
+// variant, just one extra class, so the rendered heading is unchanged.
+const HEADING_LINE_ACTIVE: Record<number, Decoration> = {
+  1: Decoration.line({ class: 'cm-lp-h1-line cm-lp-head-active' }),
+  2: Decoration.line({ class: 'cm-lp-h2-line cm-lp-head-active' }),
+  3: Decoration.line({ class: 'cm-lp-h3-line cm-lp-head-active' }),
+  4: Decoration.line({ class: 'cm-lp-h4-line cm-lp-head-active' }),
+  5: Decoration.line({ class: 'cm-lp-h5-line cm-lp-head-active' }),
+  6: Decoration.line({ class: 'cm-lp-h6-line cm-lp-head-active' })
 };
 const STRONG_MARK = Decoration.mark({ class: 'cm-lp-strong' });
 const EM_MARK = Decoration.mark({ class: 'cm-lp-em' });
@@ -277,6 +293,22 @@ export function buildDecorations(
   // let the raw markdown (markers + list) show for editing — the same
   // click-to-edit reveal as fenced code blocks.
   const docText = doc.toString();
+
+  // Heading anchor slugs (deduplicated) keyed by 1-based line number. Built from
+  // the SAME `extractHeadings` the rendered preview + TOC use, so a copied
+  // `#slug` always resolves to its heading. Lazy: only computed once the first
+  // ATXHeading node is hit, so notes without headings pay nothing.
+  let headingMetaByLine: Map<number, { slug: string; text: string }> | null = null;
+  const headingMetaAt = (lineNumber: number): { slug: string; text: string } | undefined => {
+    if (headingMetaByLine === null) {
+      headingMetaByLine = new Map();
+      for (const h of extractHeadings(docText)) {
+        headingMetaByLine.set(h.line, { slug: h.slug, text: h.text });
+      }
+    }
+    return headingMetaByLine.get(lineNumber);
+  };
+
   const tocRange = findTocBlockRange(docText);
   let tocSkipFrom = -1;
   let tocSkipTo = -1;
@@ -413,13 +445,33 @@ export function buildDecorations(
       const headingMatch = /^ATXHeading([1-6])$/.exec(name);
       if (headingMatch) {
         const level = parseInt(headingMatch[1], 10);
-        const lineDeco = HEADING_LINE[level];
-        if (!lineDeco) return false;
-
         const line = doc.lineAt(from);
+        const cursorInside = isAnySelectionInRange(state, from, to);
+
+        // Caret on the heading line switches to the `cm-lp-head-active` variant,
+        // which reveals the copy-link button (the only way to surface it on
+        // touch, where there is no hover). Same line + heading class otherwise.
+        const lineDeco = (cursorInside ? HEADING_LINE_ACTIVE : HEADING_LINE)[level];
+        if (!lineDeco) return false;
         ranges.push(lineDeco.range(line.from));
 
-        const cursorInside = isAnySelectionInRange(state, from, to);
+        // Copy-link-to-heading button, pinned to the line's top-right corner.
+        // Inert DOM; the click is wired in NoteEditor (the note id, clipboard
+        // helper and toast store live in the Svelte layer).
+        const headingMeta = headingMetaAt(line.number);
+        if (headingMeta) {
+          ranges.push(
+            Decoration.widget({
+              widget: new HeadingAnchorWidget(
+                headingMeta.slug,
+                headingMeta.text,
+                options.headingLinkLabel
+              ),
+              side: 1
+            }).range(line.to)
+          );
+        }
+
         const headerMark = findFirstChild(nodeRef.node, 'HeaderMark');
         if (headerMark) {
           if (!cursorInside) {
@@ -948,6 +1000,34 @@ export function livePreviewTocActions(actions?: TocActions): Extension {
     }
   });
 }
+
+/**
+ * Scrolls the editor to a heading when an in-note anchor link (`[label](#slug)`)
+ * in the body is clicked - the bare-anchor twin of the TOC entry handler above.
+ * `LinkWidget` renders such links as `a.cm-lp-anchor-link`. `mousedown` is
+ * prevented so the click doesn't move the caret into the link (which would swap
+ * the rendered link widget for raw markdown before the `click` fires).
+ */
+export const livePreviewAnchorScroll = EditorView.domEventHandlers({
+  mousedown(event) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.cm-lp-anchor-link')) {
+      event.preventDefault();
+      return true;
+    }
+    return false;
+  },
+  click(event, view) {
+    const target = event.target as HTMLElement | null;
+    const anchor = target?.closest('.cm-lp-anchor-link') as HTMLAnchorElement | null;
+    if (anchor) {
+      event.preventDefault();
+      scrollEditorToSlug(view, anchor.getAttribute('href'));
+      return true;
+    }
+    return false;
+  }
+});
 
 /**
  * Scroll the editor to the heading a TOC entry points at. The href is a `#slug`

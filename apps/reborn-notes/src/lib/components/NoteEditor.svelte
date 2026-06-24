@@ -26,6 +26,8 @@
   import { editorMode } from '$lib/stores/app-settings.store';
   import type { ImageLoadMode } from '@reborn/storage';
   import { isDataUri } from '$lib/utils/markdown-sanitizer';
+  import { copyText } from '$lib/utils/clipboard';
+  import { simplifySelfNoteLinks } from '$lib/services/note-link-utils';
   import { toastStore } from '@reborn/ui';
   import {
     Bold,
@@ -89,8 +91,12 @@
     onviewdestroy?: () => void;
     /** Called when user requests to insert a note link (toolbar button or Ctrl+Shift+K) */
     onnotelinkrequest?: () => void;
-    /** Called when a rendered note-link widget is clicked (Live Preview mode) */
-    onnotelinkclick?: (noteId: string) => void;
+    /**
+     * Called when a rendered note-link widget is clicked (Live Preview mode).
+     * `anchor` is the optional `#heading-slug` (without the `#`) when the link
+     * targets a heading (`note:UUID#slug`).
+     */
+    onnotelinkclick?: (noteId: string, anchor?: string) => void;
     /**
      * Split view only - reports the formatting toolbar's measured height
      * (border-box, px) whenever it changes. The toolbar wraps to 1-2 rows by
@@ -151,6 +157,7 @@
         stale: $t('toc.stale'),
         remove: $t('toc.remove')
       },
+      headingLinkLabel: $t('editor.copy_heading_link'),
       // The widget DOM is inert; the corner buttons act through these. They mutate
       // `noteDetailService.content` upstream (same path as the kebab menu and the
       // rendered preview's toolbar), which flows back as the `content` prop and
@@ -310,6 +317,28 @@
       selection: { anchor: sel.from + insert.length }
     });
     view.focus();
+  }
+
+  /** Escape `\` `[` `]` so heading text is safe as a `[label](...)` link label. */
+  function escapeLinkLabel(text: string): string {
+    return text.replace(/[\\[\]]/g, '\\$&');
+  }
+
+  /**
+   * Copy an internal link to a heading in this note (Live Preview hover button).
+   * Always the full cross-note form `[text](note:UUID#slug)` so it pastes into
+   * any note; the paste handler collapses it to the bare `[text](#slug)` form
+   * when it lands back in this same note. Falls back to a bare in-note anchor
+   * when the note has no id yet (brand-new, unsaved). Silent no-op if the
+   * clipboard write fails (mirrors the code-block copy button).
+   */
+  async function copyHeadingLink(slug: string, text: string): Promise<void> {
+    const label = escapeLinkLabel(text) || slug;
+    const id = currentNoteId;
+    const link = id ? `[${label}](note:${id}#${slug})` : `[${label}](#${slug})`;
+    if (await copyText(link)) {
+      toastStore.success($t('notes.heading_link_copied'));
+    }
   }
 
   /**
@@ -477,16 +506,28 @@
         EditorView.domEventHandlers({
           click(e) {
             const target = e.target as HTMLElement | null;
+
+            // Copy-link-to-heading button (Live Preview heading hover affordance).
+            // The widget DOM is inert; the link is built here where the note id,
+            // clipboard helper and toast store are in scope.
+            const headBtn = target?.closest('.cm-lp-head-anchor') as HTMLElement | null;
+            if (headBtn) {
+              e.preventDefault();
+              const slug = headBtn.dataset.headingSlug ?? '';
+              if (slug) void copyHeadingLink(slug, headBtn.dataset.headingText ?? '');
+              return;
+            }
+
             const noteEl = target?.closest('[data-note-link="true"]') as HTMLElement | null;
             if (noteEl) {
               const noteId = noteEl.dataset.noteId;
               if (noteId) {
                 e.preventDefault();
-                onnotelinkclick?.(noteId);
+                onnotelinkclick?.(noteId, noteEl.dataset.noteAnchor || undefined);
               }
             }
           },
-          paste(e) {
+          paste(e, cmView) {
             const files = e.clipboardData?.files;
             if (files && files.length > 0) {
               for (const file of Array.from(files)) {
@@ -502,6 +543,25 @@
               e.preventDefault();
               toastStore.warning($t('editor.image_base64_blocked'));
               return;
+            }
+
+            // A heading link copied from THIS note pastes back as the bare in-note
+            // `[label](#slug)` form (matches the TOC's intra-note links + is
+            // portable to standalone markdown). Links to OTHER notes are left as
+            // the full `note:UUID#slug`. Only rewrites when something changes, so
+            // ordinary pastes fall through to CM6's default handling.
+            const id = currentNoteId;
+            if (id) {
+              const simplified = simplifySelfNoteLinks(text, id);
+              if (simplified !== text) {
+                e.preventDefault();
+                const sel = cmView.state.selection.main;
+                cmView.dispatch({
+                  changes: { from: sel.from, to: sel.to, insert: simplified },
+                  selection: { anchor: sel.from + simplified.length },
+                  userEvent: 'input.paste'
+                });
+              }
             }
           },
           drop(e) {

@@ -176,6 +176,7 @@
     "export_failed": "Export der Notiz fehlgeschlagen",
     "copy_note_link": "Notiz-Link kopieren",
     "note_link_copied": "Notiz-Link in die Zwischenablage kopiert",
+    "heading_link_copied": "Überschrift-Link in die Zwischenablage kopiert",
     "note_not_found": "Notiz nicht gefunden",
     "note_in_trash": "Diese Notiz befindet sich im Papierkorb",
     "restore": "Wiederherstellen",
@@ -420,6 +421,7 @@
     "markdown_preview": "Markdown-Vorschau",
     "code_copy": "Code kopieren",
     "code_copied": "Kopiert",
+    "copy_heading_link": "Link zur Überschrift kopieren",
     "formatting": {
       "bold": "Fett",
       "italic": "Kursiv",

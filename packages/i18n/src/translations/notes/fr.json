@@ -176,6 +176,7 @@
     "export_failed": "Échec de l'exportation de la note",
     "copy_note_link": "Copier le lien de la note",
     "note_link_copied": "Lien de la note copié dans le presse-papiers",
+    "heading_link_copied": "Lien du titre copié dans le presse-papiers",
     "note_not_found": "Note introuvable",
     "note_in_trash": "Cette note est dans la corbeille",
     "restore": "Restaurer",
@@ -420,6 +421,7 @@
     "markdown_preview": "Aperçu Markdown",
     "code_copy": "Copier le code",
     "code_copied": "Copié",
+    "copy_heading_link": "Copier le lien vers le titre",
     "formatting": {
       "bold": "Gras",
       "italic": "Italique",

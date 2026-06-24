@@ -176,6 +176,7 @@
     "export_failed": "Nie udało się wyeksportować notatki",
     "copy_note_link": "Kopiuj link do notatki",
     "note_link_copied": "Link do notatki skopiowany do schowka",
+    "heading_link_copied": "Link do nagłówka skopiowany do schowka",
     "note_not_found": "Notatka nie znaleziona",
     "note_in_trash": "Ta notatka znajduje się w koszu",
     "restore": "Przywróć",
@@ -420,6 +421,7 @@
     "markdown_preview": "Podgląd Markdown",
     "code_copy": "Skopiuj kod",
     "code_copied": "Skopiowano",
+    "copy_heading_link": "Kopiuj link do nagłówka",
     "formatting": {
       "bold": "Pogrubienie",
       "italic": "Kursywa",

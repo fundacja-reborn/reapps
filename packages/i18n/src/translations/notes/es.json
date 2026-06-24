@@ -176,6 +176,7 @@
     "export_failed": "Error al exportar la nota",
     "copy_note_link": "Copiar enlace de nota",
     "note_link_copied": "Enlace de nota copiado al portapapeles",
+    "heading_link_copied": "Enlace al encabezado copiado al portapapeles",
     "note_not_found": "Nota no encontrada",
     "note_in_trash": "Esta nota está en la papelera",
     "restore": "Restaurar",
@@ -420,6 +421,7 @@
     "markdown_preview": "Vista previa Markdown",
     "code_copy": "Copiar código",
     "code_copied": "Copiado",
+    "copy_heading_link": "Copiar enlace al encabezado",
     "formatting": {
       "bold": "Negrita",
       "italic": "Cursiva",

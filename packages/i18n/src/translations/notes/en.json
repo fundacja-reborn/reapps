@@ -176,6 +176,7 @@
     "export_failed": "Failed to export note",
     "copy_note_link": "Copy note link",
     "note_link_copied": "Note link copied to clipboard",
+    "heading_link_copied": "Heading link copied to clipboard",
     "note_not_found": "Note not found",
     "note_in_trash": "This note is in trash",
     "restore": "Restore",
@@ -420,6 +421,7 @@
     "markdown_preview": "Markdown preview",
     "code_copy": "Copy code",
     "code_copied": "Copied",
+    "copy_heading_link": "Copy link to heading",
     "formatting": {
       "bold": "Bold",
       "italic": "Italic",

@@ -79,6 +79,47 @@ export const livePreviewTheme = EditorView.theme({
     '.cm-lp-h6-line': { fontSize: '0.875rem' }
   },
 
+  // ─── Copy-link-to-heading button ─────────────────────────────
+  // Emitted by `HeadingAnchorWidget` at the end of each heading line. Headings
+  // need a positioning context so the absolutely-placed button pins to the
+  // line; `position: relative` is layout-inert here (lines are block boxes).
+  '.cm-lp-h1-line, .cm-lp-h2-line, .cm-lp-h3-line, .cm-lp-h4-line, .cm-lp-h5-line, .cm-lp-h6-line':
+    {
+      position: 'relative'
+    },
+  // `top` is in `em` so it tracks each heading's `paddingTop` (1.5em, also in
+  // em) — the button's top edge lands on the heading text regardless of level.
+  // The box size is in `rem` (and the SVG is a fixed 16px) so the button stays
+  // a consistent size instead of scaling with the heading font.
+  '.cm-lp-head-anchor': {
+    position: 'absolute',
+    top: '1.5em',
+    right: '0',
+    zIndex: '1',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '1.7rem',
+    height: '1.7rem',
+    padding: '0',
+    border: '1px solid var(--border)',
+    borderRadius: '0.375rem',
+    background: 'var(--background)',
+    color: 'var(--muted-foreground)',
+    cursor: 'pointer',
+    opacity: '0',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    transition: 'opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease'
+  },
+  // Reveal on hover (desktop) or when the caret is on the heading line (the
+  // `cm-lp-head-active` class — the only way to surface it on touch).
+  '.cm-lp-h1-line:hover .cm-lp-head-anchor, .cm-lp-h2-line:hover .cm-lp-head-anchor, .cm-lp-h3-line:hover .cm-lp-head-anchor, .cm-lp-h4-line:hover .cm-lp-head-anchor, .cm-lp-h5-line:hover .cm-lp-head-anchor, .cm-lp-h6-line:hover .cm-lp-head-anchor':
+    { opacity: '1' },
+  '.cm-lp-head-active .cm-lp-head-anchor': { opacity: '1' },
+  '.cm-lp-head-anchor:hover': { opacity: '1', color: 'var(--foreground)' },
+  '.cm-lp-head-anchor:focus-visible': { opacity: '1', color: 'var(--foreground)' },
+
   // Visible markdown markers on the actively-edited line. Emitted by
   // `buildDecorations` as `Decoration.mark({ class: 'cm-lp-mark' })` on the
   // ranges that would otherwise be hidden (`#`, `**`, `_`, `~~`, `` ` ``,
