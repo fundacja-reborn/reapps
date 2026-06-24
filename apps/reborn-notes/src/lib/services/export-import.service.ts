@@ -400,14 +400,15 @@ export async function exportNoteAsPdf(note: NoteDecrypted): Promise<void> {
     };
     // Top-level body blocks (h1-h6, p, ul, ol, table, pre, blockquote, hr,
     // figure, …). Each is a natural break point.
-    for (const child of Array.from(bodyEl.children)) {
-      collect(child);
-      // Descend one level for lists — breaking between <li> on the same page
-      // is much friendlier than slicing through a single bullet.
-      if (child.tagName === 'UL' || child.tagName === 'OL') {
-        for (const li of Array.from(child.children)) collect(li);
-      }
-    }
+    for (const child of Array.from(bodyEl.children)) collect(child);
+    // Every list item, at ANY nesting depth, is also a friendly break point
+    // (breaking between <li> beats slicing through a bullet glyph). Recursing
+    // the WHOLE list tree - not just one level - is what fixes a generated TOC:
+    // when the note has a single top-level heading, every entry nests under one
+    // giant top-level <li> that offers no interior boundary. The largest break
+    // that still fits on page one is then the block BEFORE the list (the bold
+    // TOC title), stranding the whole TOC on page two behind a near-blank page.
+    for (const li of Array.from(bodyEl.querySelectorAll('li'))) collect(li);
     breakBoundariesCss.sort((a, b) => a - b);
 
     const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
