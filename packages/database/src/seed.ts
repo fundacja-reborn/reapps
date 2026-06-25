@@ -99,7 +99,7 @@ async function main(): Promise<void> {
   const lang = parseLang(args);
   const clearOnly = isClearOnly(args);
 
-  logger.info('=== Reborn Apps — Seed Script ===');
+  logger.info('=== Reborn Apps - Seed Script ===');
 
   // Step 1: Clear existing data
   await clearDatabase();

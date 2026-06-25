@@ -1,5 +1,5 @@
 /**
- * Demo data for seed script — PL/EN versions.
+ * Demo data for seed script - PL/EN versions.
  * Used for store/website screenshots and testing.
  *
  * Task due dates are RELATIVE (dueInDays) so a fresh seed always renders a
