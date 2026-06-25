@@ -74,7 +74,6 @@
     onTocDelete,
     tocStale = false,
     onrender,
-    resolveNoteTitle,
     onHeadingLinkCopy,
     headingLinkLabel
   }: {
@@ -141,8 +140,6 @@
      * rebuild line-anchor caches in the scroll-sync.
      */
     onrender?: () => void;
-    /** Resolves current title for a note UUID (for auto-update display text) */
-    resolveNoteTitle?: (noteId: string) => string | undefined;
     /**
      * Owner-editable preview only. When provided, each rendered heading gets a
      * hover-revealed "copy link to heading" button; the click reports the
@@ -309,15 +306,12 @@
     const tableWrapped = raw
       .replace(/<table>/g, '<div class="table-wrap"><table>')
       .replace(/<\/table>/g, '</table></div>');
-    if (!resolveNoteTitle) return tableWrapped;
-    return tableWrapped.replace(
-      /<a ([^>]*?)href="note:([0-9a-f-]{36})(#[^"]*)?"([^>]*?)>([^<]*)<\/a>/gi,
-      (_match, pre, noteId, frag, post, _text) => {
-        const currentTitle = resolveNoteTitle(noteId);
-        const displayText = currentTitle ?? _text;
-        return `<a ${pre}href="note:${noteId}${frag ?? ''}"${post}>${displayText}</a>`;
-      }
-    );
+    // Note links render with their authored label, exactly as written - same as
+    // Live Preview, the shared snapshot and exported Markdown. We deliberately do
+    // NOT swap the label for the target note's current title: that clobbered
+    // custom labels and heading-anchor link text (`[localhost](note:UUID#slug)`
+    // showed the note title instead). The authored label is the source of truth.
+    return tableWrapped;
   });
 
   // After {@html html} commits to the DOM, stamp top-level children with
