@@ -6,11 +6,52 @@ import type {
   SubtaskSensitiveMetadata,
   NoteSensitiveMetadata
 } from '@reborn/types';
-import { DEMO_USER, TASK_LISTS, TASKS, FOLDERS, TAGS, NOTES, type Lang } from './seed-data.js';
+import {
+  DEMO_USER,
+  TASK_LISTS,
+  TASKS,
+  FOLDERS,
+  TAGS,
+  NOTES,
+  type Lang,
+  type TaskData
+} from './seed-data.js';
 
 const logger = createLogger('Database:Seed');
 
 // ==================== HELPERS ====================
+
+/**
+ * Resolve a task's relative due offset into the string the app stores.
+ * Date-only dues become `YYYY-MM-DD`; timed dues become a full ISO timestamp
+ * with `has_time = true`. Computed at seed time so screenshots always show a
+ * fresh Overdue / Today / Tomorrow / Upcoming spread.
+ */
+function computeDue(task: TaskData): { dueDate: string | null; hasTime: boolean } {
+  if (task.dueInDays === undefined) return { dueDate: null, hasTime: false };
+
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + task.dueInDays);
+
+  if (task.dueTime) {
+    const [h, m] = task.dueTime.split(':').map(Number);
+    d.setHours(h, m, 0, 0);
+    return { dueDate: d.toISOString(), hasTime: true };
+  }
+
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  const da = String(d.getDate()).padStart(2, '0');
+  return { dueDate: `${y}-${mo}-${da}`, hasTime: false };
+}
+
+/** ISO timestamp N days ago, for the completed_at field of finished tasks. */
+function computeCompletedAt(daysAgo: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString();
+}
 
 function parseLang(args: string[]): Lang {
   const langIdx = args.indexOf('--lang');
@@ -58,7 +99,7 @@ async function main(): Promise<void> {
   const lang = parseLang(args);
   const clearOnly = isClearOnly(args);
 
-  logger.info('=== Reborn Apps — Seed Script ===');
+  logger.info('=== Reborn Apps - Seed Script ===');
 
   // Step 1: Clear existing data
   await clearDatabase();
@@ -128,12 +169,14 @@ async function main(): Promise<void> {
       ? await crypto.encryptString(task.description[lang])
       : null;
 
+    const { dueDate, hasTime } = computeDue(task);
+
     const metadata: TaskSensitiveMetadata = {
       is_completed: task.isCompleted,
       is_starred: task.isStarred,
-      due_date: task.dueDate ?? null,
-      has_time: task.hasTime ?? false,
-      completed_at: null,
+      due_date: dueDate,
+      has_time: hasTime,
+      completed_at: task.isCompleted ? computeCompletedAt(task.completedDaysAgo ?? 0) : null,
       reminder_date: null,
       is_recurring: false,
       notification_sent: false
