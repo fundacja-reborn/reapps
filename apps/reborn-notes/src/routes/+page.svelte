@@ -970,10 +970,6 @@
     activeNoteId.set(noteId);
   }
 
-  function resolveNoteTitle(noteId: string): string | undefined {
-    return noteIndex.getTitle(noteId);
-  }
-
   // ── Note link picker ─────────────────────────────────────────────
   let notePickerOpen = $state(false);
   let notePickerNotes = $state<{ id: string; title: string }[]>([]);
@@ -1645,7 +1641,6 @@
               onpreviewrender={handlePreviewRender}
               onnotelinkrequest={openNotePicker}
               onnotelink={handleNoteLink}
-              {resolveNoteTitle}
               imageLoadMode={$imageLoadMode}
               noteKind={currentNoteKind}
             />
@@ -1739,7 +1734,6 @@
                   onpreviewrender={handlePreviewRender}
                   onnotelinkrequest={openNotePicker}
                   onnotelink={handleNoteLink}
-                  {resolveNoteTitle}
                   imageLoadMode={$imageLoadMode}
                   noteKind={currentNoteKind}
                 />
@@ -1914,7 +1908,6 @@
             onpreviewrender={handlePreviewRender}
             onnotelinkrequest={openNotePicker}
             onnotelink={handleNoteLink}
-            {resolveNoteTitle}
             imageLoadMode={$imageLoadMode}
             noteKind={currentNoteKind}
           />
@@ -2009,7 +2002,6 @@
                 onpreviewrender={handlePreviewRender}
                 onnotelinkrequest={openNotePicker}
                 onnotelink={handleNoteLink}
-                {resolveNoteTitle}
                 imageLoadMode={$imageLoadMode}
                 noteKind={currentNoteKind}
               />

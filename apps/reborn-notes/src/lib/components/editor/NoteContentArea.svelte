@@ -33,8 +33,7 @@
     onviewdestroy,
     onpreviewrender,
     onnotelinkrequest,
-    onnotelink,
-    resolveNoteTitle
+    onnotelink
   }: {
     noteId: string;
     effectiveViewMode: ViewMode;
@@ -65,7 +64,6 @@
     onpreviewrender?: () => void;
     onnotelinkrequest: () => void;
     onnotelink: (noteId: string, anchor?: string) => void;
-    resolveNoteTitle: (noteId: string) => string | undefined;
   } = $props();
 
   // Split view always uses independent scrolls per pane — sticky+100dvh inside a
@@ -234,7 +232,6 @@
               onHeadingLinkCopy={handleHeadingLinkCopy}
               headingLinkLabel={$t('editor.copy_heading_link')}
               {tocStale}
-              {resolveNoteTitle}
               {imageLoadMode}
               {loadAllImagesHint}
               {settingsLinkLabel}
@@ -257,7 +254,6 @@
             onHeadingLinkCopy={handleHeadingLinkCopy}
             headingLinkLabel={$t('editor.copy_heading_link')}
             {tocStale}
-            {resolveNoteTitle}
             {imageLoadMode}
             {loadAllImagesHint}
             {settingsLinkLabel}

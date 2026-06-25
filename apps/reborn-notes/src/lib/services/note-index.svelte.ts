@@ -5,7 +5,7 @@
  * Cleared on lock/logout. Rebuilt after sync.
  * ~2 MB for 10K notes (vs ~50 MB full decrypt with content).
  *
- * Consumers: NoteList, NotePicker, autocomplete [[, resolveNoteTitle(), search sidebar.
+ * Consumers: NoteList, NotePicker, autocomplete [[, search sidebar.
  *
  * Replaces the old NoteTitleIndex — now stores all metadata needed for list rendering:
  * title, folderId, isPinned, isStarred, isArchived, createdAt, updatedAt, tagIds.
@@ -179,12 +179,6 @@ class NoteIndex {
       .filter(([, e]) => !e.isArchived)
       .sort((a, b) => b[1].updatedAt.localeCompare(a[1].updatedAt))
       .map(([id, e]) => ({ id, title: e.title }));
-  }
-
-  /** Get a single title by id. Reactive. */
-  getTitle(id: string): string | undefined {
-    void this._version;
-    return this._map.get(id)?.title;
   }
 
   /** Get a single entry by id. Reactive. */
