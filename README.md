@@ -49,7 +49,7 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 - **Saved searches & smart folders** - save any query as a live, named view and pin it into the folder tree as a smart folder
 - **Encryption X-Ray** - see exactly what the server sees (encrypted blobs)
 - **Trash & recovery** - safely delete and restore notes
-- **Import & export** - Markdown, JSON, PDF, or encrypted backup; import single `.md` files or entire folders with subfolders (e.g., an Obsidian vault) preserving directory structure, optionally rewriting links between imported notes (relative Markdown links and `[[wikilinks]]`) so they navigate in-app
+- **Import & export** - Markdown, JSON, PDF, or a portable password-encrypted backup that restores on any account (decrypted and re-encrypted entirely in your browser); import single `.md` files or entire folders with subfolders (e.g., an Obsidian vault) preserving directory structure, optionally rewriting links between imported notes (relative Markdown links and `[[wikilinks]]`) so they navigate in-app
 - **Local folder sync** - link a folder of Markdown files on your disk and changed files are re-imported (and encrypted) automatically; one-way disk → app, never deletes notes (Chromium-based browsers)
 - **Read-only share links** - publish a frozen snapshot of a note via an encrypted public URL; the snapshot key lives in the URL fragment so the server never sees it. Optional password, expiry, and view-count limit; revoke anytime ([blog post](https://reapps.eu/blog/sharing-notes-tasks-zero-knowledge-snapshots/)).
 
@@ -67,7 +67,7 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 - **Smart views** - Today, Upcoming, Overdue, Starred, Completed
 - **Full-text search** with operators - `list:Inbox`, `due:<7d`, `is:overdue`, `has:link`, … ([reference](docs/search-operators.md))
 - **Trash & recovery** - restore deleted tasks within 30 days
-- **Import & export** - JSON backup and restore
+- **Import & export** - JSON backup and restore, plus a portable password-encrypted backup that restores on any account (decrypted and re-encrypted entirely in your browser)
 - **Read-only share links** - send a frozen snapshot of a task (with its subtasks) via an encrypted public URL; the snapshot key lives in the URL fragment so the server never sees it. Optional password, expiry, and view-count limit; revoke anytime ([blog post](https://reapps.eu/blog/sharing-notes-tasks-zero-knowledge-snapshots/)).
 
 ### Shared features

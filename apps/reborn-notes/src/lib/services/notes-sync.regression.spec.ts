@@ -532,19 +532,20 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(cleanupSrc).not.toMatch(/^const\s+FLAG_KEY\s*=\s*'reborn-notes:idb-null-fk-cleanup-v1'/m);
   });
 
-  it('export sanitizer stamps current userId into records with invalid user_id', () => {
-    // normalizeExportUuids gets a userIdReplacement parameter; both
-    // exportJsonBackup and exportEncryptedBackup must pass the current
-    // account's userId so legacy IDB pollution (user_id: null/missing)
-    // doesn't propagate into freshly-emitted backup files.
+  it('v1 export sanitizer stamps current userId into records with invalid user_id', () => {
+    // normalizeExportUuids gets a userIdReplacement parameter; exportJsonBackup
+    // (the v1 account-key backup) must pass the current account's userId so
+    // legacy IDB pollution (user_id: null/missing) doesn't propagate into
+    // freshly-emitted backup files.
     const src = readSource('./export-import.service.ts');
     expect(src).toMatch(
       /function\s+normalizeExportUuids[\s\S]{0,300}?userIdReplacement\?:\s*string/
     );
 
+    // Bound the slice at the portable-backup section that follows exportJsonBackup.
     const fullExport = src.slice(
       src.indexOf('export async function exportJsonBackup'),
-      src.indexOf('export async function exportEncryptedBackup')
+      src.indexOf('// ── Portable backup')
     );
     expect(fullExport).toMatch(/get\(authStore\)\.userId/);
     // All three normalize calls in this function must thread userId through.
@@ -572,14 +573,21 @@ describe('notes-sync - regression (offline data loss)', () => {
         /userId/
       );
     }
+  });
 
-    const encExport = src.slice(src.indexOf('export async function exportEncryptedBackup'));
-    expect(encExport).toMatch(/get\(authStore\)\.userId/);
-    for (const argList of eachCall(encExport, 'normalizeExportUuids')) {
-      expect(argList, `normalizeExportUuids call must thread userId: ${argList}`).toMatch(
-        /userId/
-      );
-    }
+  it('importJsonBackup routes a v3 portable backup through reencryptPortablePayload', () => {
+    // The v3 branch must re-encrypt the plaintext payload with the CURRENT
+    // account key (via the injected cryptoManager) before the shared loops run -
+    // that is what makes a portable backup land readable on any account. The
+    // round-trip behavior itself is covered by portable-backup-utils.spec.ts.
+    const src = readSource('./export-import.service.ts');
+    expect(src).toMatch(/from '\.\/portable-backup-utils'/);
+    const v3Branch = src.slice(
+      src.indexOf('if (parsed.version === 3)'),
+      src.indexOf('} else if (parsed.version === 1)')
+    );
+    expect(v3Branch).toMatch(/reencryptPortablePayload\(\s*cryptoManager,/);
+    expect(v3Branch).toMatch(/cryptoManager\.isInitialized\(\)/);
   });
 
   it('pullNotes routes shadow-index decoding through extractShadowIndexes and skips save on throw', () => {
