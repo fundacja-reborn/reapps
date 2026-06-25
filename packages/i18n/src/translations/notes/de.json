@@ -646,6 +646,10 @@
     "incoming_count": "Eingehende Links: {count}",
     "outgoing_count": "Ausgehende Links: {count}"
   },
+  "note_nav": {
+    "back": "Vorherige Notiz",
+    "forward": "Nächste Notiz"
+  },
   "outline": {
     "title": "Gliederung",
     "empty": "Diese Notiz hat noch keine Überschriften."

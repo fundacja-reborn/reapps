@@ -19,6 +19,7 @@ import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
 import { noteIndex } from '$lib/services/note-index.svelte';
 import { noteLinkGraph } from '$lib/services/note-link-graph.svelte';
+import { noteNavHistory } from '$lib/services/note-nav-history.svelte';
 import {
   pushNote,
   pushNoteUpdate,
@@ -504,6 +505,7 @@ export async function permanentlyDeleteNote(id: string): Promise<void> {
   await noteStore.delete(id);
   noteIndex.remove(id);
   noteLinkGraph.onNoteRemoved(id);
+  noteNavHistory.remove(id);
   pushNoteDelete(id, true);
 }
 
@@ -522,6 +524,7 @@ export async function emptyTrash(): Promise<number> {
   for (const n of archived) {
     noteIndex.remove(n.id);
     noteLinkGraph.onNoteRemoved(n.id);
+    noteNavHistory.remove(n.id);
   }
 
   // Push permanent deletes to server (fire-and-forget, skip never-synced notes)

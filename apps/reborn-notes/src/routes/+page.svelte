@@ -75,6 +75,7 @@
   import { t } from '$lib/stores/i18n.store';
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import { noteIndex } from '$lib/services/note-index.svelte';
+  import { noteNavHistory } from '$lib/services/note-nav-history.svelte';
   import { tagManager } from '$lib/services/tag-manager.svelte';
   import { toastStore } from '@reborn/ui';
   import {
@@ -507,7 +508,11 @@
     const dx = e.changedTouches[0].clientX - swipeStartX;
     const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY);
     if (dx > 80 && dy < 50) {
-      if (isMobile && mobileHistoryDepth > 0) {
+      // Walk the note visit trail first (C→B→A); only once it's exhausted does
+      // the swipe fall through to closing the note / popping the mobile history.
+      if ($activeNoteId != null && noteNavHistory.canGoBack) {
+        goBackNote();
+      } else if (isMobile && mobileHistoryDepth > 0) {
         history.back();
       } else {
         await noteDetailService.flushAndSnapshot();
@@ -941,6 +946,77 @@
   // slug with its note id keeps a stale anchor from firing on an unrelated note.
   let pendingAnchor = $state<{ noteId: string; slug: string } | null>(null);
 
+  // ── Note navigation history (Back / Forward between notes) ───────
+  // Browser-like trail of visited notes. The recorder $effect (declared just
+  // above the scroll-reset effect) records every note that becomes active and
+  // captures the outgoing note's scroll; Back/Forward move the cursor and ask
+  // for a scroll restore. `suppressHistoryRecord` marks an activeNoteId change
+  // that came from Back/Forward itself, so it isn't recorded as a new visit.
+  let suppressHistoryRecord = false;
+  let prevHistoryNoteId: string | null = null;
+  let pendingScrollRestore = $state<{ noteId: string; top: number } | null>(null);
+
+  const backNoteTitle = $derived(
+    noteNavHistory.backTargetId ? (noteIndex.get(noteNavHistory.backTargetId)?.title ?? '') : ''
+  );
+  const forwardNoteTitle = $derived(
+    noteNavHistory.forwardTargetId
+      ? (noteIndex.get(noteNavHistory.forwardTargetId)?.title ?? '')
+      : ''
+  );
+
+  /** The scroll container that actually scrolls the open note, per view mode. */
+  function activeNoteScrollEl(): HTMLElement | null {
+    if (isMobile) return mobileScrollContainer ?? null;
+    if (effectiveViewMode === 'split') return previewScrollEl ?? null;
+    if (effectiveViewMode === 'edit') return editorView?.scrollDOM ?? desktopEditorScrollContainer ?? null;
+    return desktopEditorScrollContainer ?? null; // preview
+  }
+
+  /** Apply a pending Back/Forward scroll restore once the target note is laid out. */
+  function applyPendingScrollRestore() {
+    const target = pendingScrollRestore;
+    if (!target || target.noteId !== $activeNoteId) return;
+    const el = activeNoteScrollEl();
+    if (el) el.scrollTop = target.top;
+    pendingScrollRestore = null;
+  }
+
+  /** Step the navigation trail to a validated target and restore its scroll. */
+  async function navigateNavHistory(dir: 'back' | 'forward') {
+    const targetId = dir === 'back' ? noteNavHistory.backTargetId : noteNavHistory.forwardTargetId;
+    if (!targetId) return;
+    await noteDetailService.flushAndSnapshot();
+    const note = await notesStore.loadNote(targetId);
+    if (!note) {
+      toastStore.error($t('notes.note_not_found'));
+      noteNavHistory.remove(targetId); // broken entry - drop so it's skipped next time
+      return;
+    }
+    if (note.is_archived) {
+      toastStore.info($t('notes.note_in_trash'));
+      noteNavHistory.remove(targetId);
+      return;
+    }
+    // Commit the cursor move now that the target is known-good.
+    if (dir === 'back') noteNavHistory.back();
+    else noteNavHistory.forward();
+    suppressHistoryRecord = true;
+    pendingScrollRestore = { noteId: targetId, top: noteNavHistory.getScroll(targetId) };
+    activeNoteId.set(targetId);
+    // Preview/split restore via handlePreviewRender; edit-only has no render
+    // callback, so nudge a restore on the next frame as well (idempotent - the
+    // first apply clears the pending state).
+    tick().then(() => requestAnimationFrame(applyPendingScrollRestore));
+  }
+
+  function goBackNote() {
+    void navigateNavHistory('back');
+  }
+  function goForwardNote() {
+    void navigateNavHistory('forward');
+  }
+
   async function handleNoteLink(noteId: string, anchor?: string) {
     await noteDetailService.flushAndSnapshot();
     const note = await notesStore.loadNote(noteId);
@@ -1053,6 +1129,24 @@
     return isMobile ? mobileScrollContainer : desktopEditorScrollContainer;
   });
 
+  // Record note visits for Back/Forward navigation and capture the OUTGOING
+  // note's scroll position before the reset effect below zeroes it. Declared
+  // before that effect so it runs first on each $activeNoteId change. Reads
+  // refs/mode inside untrack so it depends only on $activeNoteId (mirrors the
+  // reset effect's reasoning).
+  $effect(() => {
+    const id = $activeNoteId;
+    untrack(() => {
+      if (prevHistoryNoteId != null) {
+        const el = activeNoteScrollEl();
+        if (el) noteNavHistory.saveScroll(prevHistoryNoteId, el.scrollTop);
+      }
+      if (id != null && !suppressHistoryRecord) noteNavHistory.visit(id);
+      suppressHistoryRecord = false;
+      prevHistoryNoteId = id;
+    });
+  });
+
   // Reset both the abstract anchor AND the parent scroll container's
   // scrollTop whenever we open a different note. NoteEditor/MarkdownPreview
   // are not remounted on note change (they just receive a new content prop),
@@ -1073,6 +1167,9 @@
       // note to its heading, and a competing scrollTop=0 (effect order is not
       // guaranteed) would land us back at the top.
       if (pendingAnchor?.noteId === navId && navId != null) return;
+      // Same deferral for a Back/Forward scroll restore - applyPendingScrollRestore
+      // sets the saved offset after render; zeroing here would fight it.
+      if (pendingScrollRestore?.noteId === navId && navId != null) return;
       if (desktopEditorScrollContainer) desktopEditorScrollContainer.scrollTop = 0;
       if (mobileScrollContainer) mobileScrollContainer.scrollTop = 0;
       if (previewScrollEl) previewScrollEl.scrollTop = 0;
@@ -1122,6 +1219,8 @@
   function handlePreviewRender() {
     scrollSync.refresh();
     previewRenderTick++;
+    // Restore a Back/Forward scroll position once the target note has rendered.
+    applyPendingScrollRestore();
     // Consume a pending cross-note heading anchor once its note has rendered.
     // Clear it on a note mismatch (a different note rendered first) so a stale
     // anchor never fires on an unrelated note.
@@ -1379,6 +1478,23 @@
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault();
       activeSection = 'search';
+      return;
+    }
+    // Alt+Left / Alt+Right - Back / Forward between visited notes. Ignored when
+    // focus is in the editor (there Alt+Arrow is CM6 word navigation) and only
+    // while a note is open. Other modifiers excluded so it can't shadow combos.
+    if (
+      e.altKey &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.shiftKey &&
+      (e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
+      $activeNoteId != null &&
+      !(e.target as HTMLElement | null)?.closest('.cm-editor')
+    ) {
+      e.preventDefault();
+      if (e.key === 'ArrowLeft') goBackNote();
+      else goForwardNote();
     }
   }}
 />
@@ -1655,8 +1771,16 @@
               ontogglelinkednotes={toggleLinkedNotes}
               outlineActive={outlineOpen}
               ontoggleoutline={toggleOutline}
+              canGoBackNote={noteNavHistory.canGoBack}
+              canGoForwardNote={noteNavHistory.canGoForward}
+              {backNoteTitle}
+              {forwardNoteTitle}
+              onnotehistoryback={goBackNote}
+              onnotehistoryforward={goForwardNote}
               onback={() => {
-                if (isMobile && mobileHistoryDepth > 0) {
+                if (noteNavHistory.canGoBack) {
+                  goBackNote();
+                } else if (isMobile && mobileHistoryDepth > 0) {
                   history.back();
                 } else {
                   activeNoteId.set(null);
@@ -1922,6 +2046,12 @@
             ontogglelinkednotes={toggleLinkedNotes}
             outlineActive={outlineOpen}
             ontoggleoutline={toggleOutline}
+            canGoBackNote={noteNavHistory.canGoBack}
+            canGoForwardNote={noteNavHistory.canGoForward}
+            {backNoteTitle}
+            {forwardNoteTitle}
+            onnotehistoryback={goBackNote}
+            onnotehistoryforward={goForwardNote}
             onback={() => activeNoteId.set(null)}
             onshowxray={() => {
               showEncryptionXRay = true;

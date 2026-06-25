@@ -646,6 +646,10 @@
     "incoming_count": "Liens entrants : {count}",
     "outgoing_count": "Liens sortants : {count}"
   },
+  "note_nav": {
+    "back": "Note précédente",
+    "forward": "Note suivante"
+  },
   "outline": {
     "title": "Plan",
     "empty": "Cette note n'a pas encore de titres."
