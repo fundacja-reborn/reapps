@@ -10,7 +10,7 @@
 		Alert,
 		AlertDescription
 	} from '@reborn/ui';
-	import { FileDown, FileUp, AlertTriangle, Info } from '@lucide/svelte';
+	import { FileDown, FileUp, AlertTriangle, Info, Eye, EyeOff } from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { toast } from '@reborn/ui';
 	import { createLogger } from '@reborn/utils';
@@ -22,13 +22,25 @@
 	// Export state
 	let isExportingDecrypted = $state(false);
 	let isExportingEncrypted = $state(false);
+	let isExportingPortable = $state(false);
 	let showDecryptedWarning = $state(false);
+
+	// Portable (password-protected) export
+	let showPortableForm = $state(false);
+	let portablePassword = $state('');
+	let portablePasswordVisible = $state(false);
+	let portableError = $state<string | null>(null);
 
 	// Import state
 	let importFile = $state<File | null>(null);
 	let isImporting = $state(false);
 	let importResult = $state<{ lists: number; tasks: number; subtasks: number; skipped: number; errors: string[] } | null>(null);
 	let importError = $state<string | null>(null);
+
+	// Password prompt for importing a portable (password-protected) backup
+	let importNeedsPassword = $state(false);
+	let importPassword = $state('');
+	let importPasswordVisible = $state(false);
 
 	let fileInput: HTMLInputElement;
 
@@ -63,11 +75,36 @@
 		}
 	}
 
+	async function handleExportPortable(e: Event) {
+		e.preventDefault();
+		if (!portablePassword) return;
+		if (portablePassword.length < 8) {
+			portableError = $t('settings.import_export.portable_password_too_short');
+			return;
+		}
+		isExportingPortable = true;
+		portableError = null;
+		try {
+			await dataExportService.exportEncryptedPortable(portablePassword);
+			toast.success($t('settings.import_export.export_success'));
+			showPortableForm = false;
+			portablePassword = '';
+		} catch (err: unknown) {
+			logger.error('Export portable failed:', err);
+			portableError = err instanceof Error ? err.message : $t('settings.import_export.export_error');
+		} finally {
+			isExportingPortable = false;
+		}
+	}
+
 	function handleFileChange(e: Event) {
 		const input = e.target as HTMLInputElement;
 		importFile = input.files?.[0] ?? null;
 		importResult = null;
 		importError = null;
+		// A new file selection invalidates any pending password prompt.
+		importNeedsPassword = false;
+		importPassword = '';
 	}
 
 	async function handleImport() {
@@ -79,11 +116,29 @@
 			return;
 		}
 
+		// Detect a portable (password-protected) backup and prompt for the
+		// password before importing. Once the prompt is shown the form's submit
+		// calls back into handleImport with importPassword set.
+		if (!importNeedsPassword) {
+			try {
+				const text = await importFile.text();
+				if (dataImportService.isPortableEncryptedText(text)) {
+					importNeedsPassword = true;
+					return;
+				}
+			} catch {
+				// Fall through - importFromFile will surface a precise parse error.
+			}
+		}
+
 		isImporting = true;
 		importResult = null;
 		importError = null;
 		try {
-			const result = await dataImportService.importFromFile(importFile);
+			const result = await dataImportService.importFromFile(
+				importFile,
+				importPassword || undefined
+			);
 			importResult = {
 				lists: result.listsImported,
 				tasks: result.tasksImported,
@@ -101,6 +156,8 @@
 			);
 			// Reset file input
 			importFile = null;
+			importNeedsPassword = false;
+			importPassword = '';
 			if (fileInput) fileInput.value = '';
 		} catch (err: unknown) {
 			logger.error('Import failed:', err);
@@ -108,6 +165,12 @@
 		} finally {
 			isImporting = false;
 		}
+	}
+
+	function cancelImportPassword() {
+		importNeedsPassword = false;
+		importPassword = '';
+		importError = null;
 	}
 </script>
 
@@ -134,7 +197,7 @@
 					<Button
 						variant="outline"
 						onclick={handleExportDecrypted}
-						disabled={isExportingDecrypted || isExportingEncrypted}
+						disabled={isExportingDecrypted || isExportingEncrypted || isExportingPortable}
 						class="shrink-0"
 					>
 						{#if isExportingDecrypted}
@@ -183,7 +246,7 @@
 					<Button
 						variant="outline"
 						onclick={handleExportEncrypted}
-						disabled={isExportingDecrypted || isExportingEncrypted}
+						disabled={isExportingDecrypted || isExportingEncrypted || isExportingPortable}
 						class="shrink-0"
 					>
 						{#if isExportingEncrypted}
@@ -192,6 +255,86 @@
 							{$t('settings.import_export.export_encrypted_button')}
 						{/if}
 					</Button>
+				</div>
+
+				<!-- Portable encrypted export (password-protected, cross-account) -->
+				<div class="flex flex-col gap-3 p-4 rounded-lg border bg-muted/30">
+					<div class="flex flex-col sm:flex-row sm:items-center gap-3">
+						<div class="flex-1 min-w-0">
+							<div class="font-medium text-sm">
+								{$t('settings.import_export.export_portable_title')}
+							</div>
+							<div class="text-sm text-muted-foreground mt-0.5">
+								{$t('settings.import_export.export_portable_description')}
+							</div>
+						</div>
+						{#if !showPortableForm}
+							<Button
+								variant="outline"
+								onclick={() => {
+									showPortableForm = true;
+									portableError = null;
+								}}
+								disabled={isExportingDecrypted || isExportingEncrypted || isExportingPortable}
+								class="shrink-0"
+							>
+								{$t('settings.import_export.export_portable_button')}
+							</Button>
+						{/if}
+					</div>
+					<div class="flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/40 px-3 py-2">
+						<AlertTriangle class="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+						<p class="text-xs text-amber-700 dark:text-amber-400">
+							{$t('settings.import_export.export_portable_warning')}
+						</p>
+					</div>
+					{#if showPortableForm}
+						<form onsubmit={handleExportPortable} class="space-y-2">
+							<div class="relative">
+								<input
+									type={portablePasswordVisible ? 'text' : 'password'}
+									bind:value={portablePassword}
+									placeholder={$t('settings.import_export.portable_password_placeholder')}
+									disabled={isExportingPortable}
+									class="w-full rounded-md border border-input bg-background px-3 py-2 pr-9 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+								/>
+								<button
+									type="button"
+									onclick={() => (portablePasswordVisible = !portablePasswordVisible)}
+									class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+									tabindex={-1}
+								>
+									{#if portablePasswordVisible}
+										<EyeOff class="h-4 w-4" />
+									{:else}
+										<Eye class="h-4 w-4" />
+									{/if}
+								</button>
+							</div>
+							{#if portableError}
+								<p class="text-xs text-destructive">{portableError}</p>
+							{/if}
+							<div class="flex gap-2">
+								<Button type="submit" size="sm" disabled={isExportingPortable || !portablePassword}>
+									{isExportingPortable
+										? $t('settings.import_export.portable_encrypting')
+										: $t('settings.import_export.portable_encrypt_button')}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onclick={() => {
+										showPortableForm = false;
+										portablePassword = '';
+										portableError = null;
+									}}
+								>
+									{$t('common.cancel')}
+								</Button>
+							</div>
+						</form>
+					{/if}
 				</div>
 			</CardContent>
 		</Card>
@@ -263,7 +406,7 @@
 					</div>
 					<Button
 						onclick={handleImport}
-						disabled={!importFile || isImporting}
+						disabled={!importFile || isImporting || importNeedsPassword}
 						class="shrink-0"
 					>
 						{#if isImporting}
@@ -273,6 +416,52 @@
 						{/if}
 					</Button>
 				</div>
+
+				<!-- Password prompt for a portable (password-protected) backup -->
+				{#if importNeedsPassword}
+					<form
+						onsubmit={(e) => {
+							e.preventDefault();
+							handleImport();
+						}}
+						class="space-y-2 rounded-md border border-primary/40 p-3"
+					>
+						<p class="text-xs text-muted-foreground">
+							{$t('settings.import_export.import_encrypted_prompt')}
+						</p>
+						<div class="relative">
+							<input
+								type={importPasswordVisible ? 'text' : 'password'}
+								bind:value={importPassword}
+								placeholder={$t('settings.import_export.import_password_placeholder')}
+								disabled={isImporting}
+								class="w-full rounded-md border border-input bg-background px-3 py-2 pr-9 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+							/>
+							<button
+								type="button"
+								onclick={() => (importPasswordVisible = !importPasswordVisible)}
+								class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+								tabindex={-1}
+							>
+								{#if importPasswordVisible}
+									<EyeOff class="h-4 w-4" />
+								{:else}
+									<Eye class="h-4 w-4" />
+								{/if}
+							</button>
+						</div>
+						<div class="flex gap-2">
+							<Button type="submit" size="sm" disabled={isImporting || !importPassword}>
+								{isImporting
+									? $t('settings.import_export.import_decrypting')
+									: $t('settings.import_export.import_decrypt_button')}
+							</Button>
+							<Button type="button" variant="outline" size="sm" onclick={cancelImportPassword}>
+								{$t('common.cancel')}
+							</Button>
+						</div>
+					</form>
+				{/if}
 
 				<!-- Info notes -->
 				<div class="rounded-lg border bg-muted/30 p-4 space-y-2">

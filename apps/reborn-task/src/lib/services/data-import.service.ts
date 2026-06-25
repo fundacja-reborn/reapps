@@ -1,12 +1,17 @@
 import { taskStore, listStore, subtaskStore, addOperation } from '@reborn/storage';
-import { cryptoManager } from '@reborn/crypto';
+import {
+	cryptoManager,
+	deriveKeyFromPassword,
+	decryptData,
+	base64ToArrayBuffer
+} from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import { schemas } from '@reborn/types';
 import { get } from 'svelte/store';
 import { user } from '$lib/stores/auth.store';
 import { taskCounts } from '$lib/stores/task-counts.store';
 import { taskIndex } from './task-title-index.svelte';
-import type { ExportData } from './data-export.service';
+import type { ExportData, PortableEncryptedExport } from './data-export.service';
 import type {
 	ListEncrypted,
 	TaskEncrypted,
@@ -97,21 +102,39 @@ export interface ImportResult {
 export class DataImportService {
 	/**
 	 * Import data from a JSON File object produced by a file input.
-	 * Handles both encrypted and decrypted export formats.
+	 * Handles decrypted, account-key encrypted, and portable
+	 * (password-encrypted) export formats. For a portable backup the caller must
+	 * supply the `password` used at export time.
 	 */
-	async importFromFile(file: File): Promise<ImportResult> {
+	async importFromFile(file: File, password?: string): Promise<ImportResult> {
 		if (file.size > MAX_IMPORT_FILE_SIZE) {
 			throw new Error(
 				`Rozmiar pliku (${Math.round(file.size / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)} MB.`
 			);
 		}
-
 		const text = await file.text();
+		return this.importFromText(text, password);
+	}
+
+	/**
+	 * Import from already-read file text. A portable, password-encrypted envelope
+	 * is decrypted (with `password`) to a plaintext ExportDataDecrypted first;
+	 * the decrypted-import path then re-encrypts every record with the CURRENT
+	 * account key, which is what makes a portable backup land on any account.
+	 */
+	async importFromText(text: string, password?: string): Promise<ImportResult> {
 		let parsed: unknown;
 		try {
 			parsed = JSON.parse(text);
 		} catch {
-			throw new Error('Nieprawidłowy format pliku — oczekiwano JSON');
+			throw new Error('Nieprawidłowy format pliku - oczekiwano JSON');
+		}
+
+		if (this.isPortableEncryptedExport(parsed)) {
+			if (!password) {
+				throw new Error('Ten backup jest zaszyfrowany. Podaj hasło.');
+			}
+			parsed = await this.decryptPortableEnvelope(parsed, password);
 		}
 
 		if (!this.isValidExportData(parsed)) {
@@ -158,6 +181,52 @@ export class DataImportService {
 		}
 		await taskCounts.refresh();
 		return result;
+	}
+
+	/**
+	 * True if `text` is a portable, password-encrypted reborn-task backup. The
+	 * UI calls this before importing to know whether to prompt for a password.
+	 */
+	isPortableEncryptedText(text: string): boolean {
+		try {
+			return this.isPortableEncryptedExport(JSON.parse(text));
+		} catch {
+			return false;
+		}
+	}
+
+	private isPortableEncryptedExport(parsed: unknown): parsed is PortableEncryptedExport {
+		if (typeof parsed !== 'object' || parsed === null) return false;
+		const p = parsed as Record<string, unknown>;
+		return (
+			p.app === 'reborn-task' &&
+			p.portable === true &&
+			typeof p.encryption === 'string' &&
+			typeof p.salt === 'string' &&
+			typeof p.iv === 'string' &&
+			typeof p.data === 'string'
+		);
+	}
+
+	private async decryptPortableEnvelope(
+		envelope: PortableEncryptedExport,
+		password: string
+	): Promise<unknown> {
+		const salt = base64ToArrayBuffer(envelope.salt);
+		const iv = base64ToArrayBuffer(envelope.iv);
+		const ciphertext = base64ToArrayBuffer(envelope.data);
+		const key = await deriveKeyFromPassword(password, salt);
+		let decrypted: string;
+		try {
+			decrypted = (await decryptData(ciphertext, key, iv, 'string')) as string;
+		} catch {
+			throw new Error('Nieprawidłowe hasło lub uszkodzony plik backupu.');
+		}
+		try {
+			return JSON.parse(decrypted);
+		} catch {
+			throw new Error('Uszkodzony plik backupu.');
+		}
 	}
 
 	private async importEncrypted(
