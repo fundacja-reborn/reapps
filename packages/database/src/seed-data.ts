@@ -65,7 +65,7 @@ export interface NoteData {
 // ==================== DEMO USER ====================
 
 export const DEMO_USER = {
-  username: 'amigo',
+  username: 'demo',
   password: 'Demo1234!'
 };
 
