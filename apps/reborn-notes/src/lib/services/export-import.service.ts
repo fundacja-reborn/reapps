@@ -12,7 +12,9 @@ import type {
   NoteEncrypted,
   NoteStoredLocal,
   NoteSensitiveMetadata,
-  FolderWithChildren
+  FolderEncrypted,
+  FolderWithChildren,
+  TagEncrypted
 } from '@reborn/types';
 import {
   schemas,
@@ -75,6 +77,11 @@ import {
   NOTE_OPTIONAL_FIELDS,
   TAG_OPTIONAL_FIELDS
 } from './import-normalize-utils';
+import {
+  buildPortablePayload,
+  reencryptPortablePayload,
+  type PortablePayload
+} from './portable-backup-utils';
 
 const logger = createLogger('ExportImport');
 
@@ -693,53 +700,51 @@ export async function exportJsonBackup(): Promise<void> {
   await downloadBlob(blob, `reborn-notes-backup-${date}.json`);
 }
 
+// ── Portable backup (envelope v3, "plaintext-inside") ────────────────────────
+
 /**
- * Export a password-encrypted JSON backup.
- * Uses PBKDF2 to derive an AES-256-GCM key from the user-provided password.
- * The output file contains: version, salt (base64), iv (base64), data (base64 ciphertext).
- * This backup can be imported on any account with the correct password.
+ * Export a portable, password-encrypted backup (envelope version 3).
  *
- * Zero Knowledge: shadow indexes are stripped before encryption (defense in
- * depth — even if the password leaks, no extra signal beyond what's already
- * in `metadata_encrypted`).
+ * Unlike version 2 - which wrapped account-key ciphertext in a password layer
+ * and was therefore readable only on the originating account - version 3 stores
+ * the notes/folders/tags DECRYPTED inside the password-protected envelope. On
+ * import the payload is re-encrypted with the importing account's master key,
+ * so the backup is genuinely portable across accounts (a superset of the
+ * Markdown export: full fidelity + portability).
+ *
+ * Zero Knowledge is preserved end to end: decryption (here) and re-encryption
+ * (on import) both run in the browser. The only artifact that leaves is the
+ * password-encrypted envelope; the server never sees plaintext and its
+ * visibility is unchanged.
  */
 export async function exportEncryptedBackup(password: string): Promise<void> {
+  if (!cryptoManager.isInitialized()) {
+    throw new Error('Brak załadowanego klucza szyfrowania - odblokuj konto i spróbuj ponownie.');
+  }
+
   const [notes, folders, tags] = await Promise.all([
     noteStore.getAll() as Promise<NoteStoredLocal[]>,
-    folderStore.getAll(),
-    tagStore.getAll()
+    folderStore.getAll() as Promise<FolderEncrypted[]>,
+    tagStore.getAll() as Promise<TagEncrypted[]>
   ]);
 
-  const userId = get(authStore).userId ?? undefined;
-
-  const sanitizedNotes: NoteEncrypted[] = normalizeExportUuids(
-    notes.map(stripNoteShadowIndexes),
-    ['id', 'user_id', 'folder_id'],
-    NOTE_OPTIONAL_FIELDS,
-    userId
-  );
-  const sanitizedFolders = normalizeExportUuids(
+  const payload = await buildPortablePayload(
+    cryptoManager,
+    notes,
     folders,
-    ['id', 'user_id', 'parent_id'],
-    FOLDER_OPTIONAL_FIELDS,
-    userId
+    tags,
+    new Date().toISOString()
   );
-  const sanitizedTags = normalizeExportUuids(tags, ['id', 'user_id'], TAG_OPTIONAL_FIELDS, userId);
 
-  const backup = {
-    exported_at: new Date().toISOString(),
-    app: 'reborn-notes',
-    data: { notes: sanitizedNotes, folders: sanitizedFolders, tags: sanitizedTags }
-  };
-
-  const json = JSON.stringify(backup);
+  const json = JSON.stringify(payload);
   const salt = await generateSalt(16);
   const key = await deriveKeyFromPassword(password, salt);
   const { encryptedData, iv } = await encryptData(json, key);
 
-  const envelope = {
-    version: 2,
+  const envelope: BackupV3 = {
+    version: 3,
     encryption: 'aes-256-gcm-pbkdf2',
+    payload: 'plaintext',
     salt: arrayBufferToBase64(salt),
     iv: arrayBufferToBase64(iv),
     data: arrayBufferToBase64(encryptedData)
@@ -749,7 +754,7 @@ export async function exportEncryptedBackup(password: string): Promise<void> {
     type: 'application/json; charset=utf-8'
   });
   const date = new Date().toISOString().slice(0, 10);
-  await downloadBlob(blob, `reborn-notes-backup-encrypted-${date}.json`);
+  await downloadBlob(blob, `reborn-notes-backup-portable-${date}.json`);
 }
 
 // ── Backup format detection & types ──────────────────────────────────────────
@@ -772,6 +777,21 @@ type BackupV1 = {
 type BackupV2 = {
   version: 2;
   encryption: string;
+  salt: string;
+  iv: string;
+  data: string;
+};
+
+/**
+ * Portable encrypted envelope (version 3). Same password-derived AES-GCM
+ * wrapper as v2, but `data` decrypts to a {@link PortablePayload} of plaintext
+ * (`payload: 'plaintext'`) instead of account-key ciphertext - which is what
+ * makes it importable on any account. See {@link exportEncryptedBackup}.
+ */
+type BackupV3 = {
+  version: 3;
+  encryption: string;
+  payload: 'plaintext';
   salt: string;
   iv: string;
   data: string;
@@ -815,20 +835,29 @@ export type ImportBackupResult = {
 };
 
 /**
- * Check if a backup file is encrypted (version 2).
- * Call this before importJsonBackup to know if a password is needed.
+ * Check if a backup file is password-encrypted (version 2 legacy same-account,
+ * or version 3 portable). Call this before importJsonBackup to know whether a
+ * password prompt is needed.
  */
 export function isEncryptedBackup(raw: string): boolean {
   try {
     const parsed = JSON.parse(raw);
-    return parsed.version === 2 && typeof parsed.encryption === 'string';
+    return (
+      (parsed.version === 2 || parsed.version === 3) && typeof parsed.encryption === 'string'
+    );
   } catch {
     return false;
   }
 }
 
 /**
- * Import a JSON backup file (version 1 plaintext or version 2 encrypted).
+ * Import a JSON backup file:
+ *  - version 1: plaintext envelope, account-key ciphertext inside (same account).
+ *  - version 2: password envelope, account-key ciphertext inside (legacy, same
+ *    account only - kept for back-compat).
+ *  - version 3: password envelope, plaintext inside - re-encrypted with the
+ *    current account key, so it imports on ANY account.
+ *
  * - Validates each item with Zod schemas before saving.
  * - Uses timestamp-based conflict resolution: skips items where the local version is newer.
  * - Forces sync_status='pending' and triggers pushPendingItems() after import.
@@ -851,10 +880,11 @@ export async function importJsonBackup(
   const parsed = JSON.parse(raw);
   let backupData: BackupV1['data'];
 
-  if (parsed.version === 2) {
-    // Encrypted backup
+  if (parsed.version === 2 || parsed.version === 3) {
+    // Password-encrypted envelope. Both versions share the same PBKDF2 +
+    // AES-GCM wrapper; they differ only in what the ciphertext decrypts to.
     if (!password) throw new Error('Ten backup jest zaszyfrowany. Podaj hasło.');
-    const envelope = parsed as BackupV2;
+    const envelope = parsed as BackupV2 | BackupV3;
     const salt = base64ToArrayBuffer(envelope.salt);
     const iv = base64ToArrayBuffer(envelope.iv);
     const ciphertext = base64ToArrayBuffer(envelope.data);
@@ -866,9 +896,23 @@ export async function importJsonBackup(
       throw new Error('Nieprawidłowe hasło lub uszkodzony plik backupu.');
     }
     const inner = JSON.parse(decrypted);
-    backupData = inner.data;
+    if (parsed.version === 3) {
+      // Plaintext payload - re-encrypt with the current account key so the
+      // shared loops below handle it like any other backup. Portable: lands
+      // readable on any account.
+      if (!cryptoManager.isInitialized()) {
+        throw new Error(
+          'Brak załadowanego klucza szyfrowania - odblokuj konto i spróbuj ponownie.'
+        );
+      }
+      backupData = await reencryptPortablePayload(cryptoManager, inner as PortablePayload, userId);
+    } else {
+      // v2: inner.data is account-key ciphertext. Decryptable only on the
+      // originating account (legacy same-account-only behavior).
+      backupData = inner.data;
+    }
   } else if (parsed.version === 1) {
-    // Plaintext backup
+    // Plaintext envelope, account-key ciphertext inside.
     backupData = (parsed as BackupV1).data;
   } else {
     throw new Error('Nieznany format backupu.');

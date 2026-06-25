@@ -1,12 +1,18 @@
 import { taskStore, listStore, subtaskStore, addOperation } from '@reborn/storage';
-import { cryptoManager } from '@reborn/crypto';
+import {
+	cryptoManager,
+	deriveKeyFromPassword,
+	decryptData,
+	base64ToArrayBuffer
+} from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import { schemas } from '@reborn/types';
 import { get } from 'svelte/store';
 import { user } from '$lib/stores/auth.store';
 import { taskCounts } from '$lib/stores/task-counts.store';
 import { taskIndex } from './task-title-index.svelte';
-import type { ExportData } from './data-export.service';
+import { remapPortableIds } from './portable-import-utils';
+import type { ExportData, PortableEncryptedExport } from './data-export.service';
 import type {
 	ListEncrypted,
 	TaskEncrypted,
@@ -97,21 +103,45 @@ export interface ImportResult {
 export class DataImportService {
 	/**
 	 * Import data from a JSON File object produced by a file input.
-	 * Handles both encrypted and decrypted export formats.
+	 * Handles decrypted, account-key encrypted, and portable
+	 * (password-encrypted) export formats. For a portable backup the caller must
+	 * supply the `password` used at export time.
 	 */
-	async importFromFile(file: File): Promise<ImportResult> {
+	async importFromFile(file: File, password?: string): Promise<ImportResult> {
 		if (file.size > MAX_IMPORT_FILE_SIZE) {
 			throw new Error(
 				`Rozmiar pliku (${Math.round(file.size / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)} MB.`
 			);
 		}
-
 		const text = await file.text();
+		return this.importFromText(text, password);
+	}
+
+	/**
+	 * Import from already-read file text. A portable, password-encrypted envelope
+	 * is decrypted (with `password`) to a plaintext ExportDataDecrypted first;
+	 * the decrypted-import path then re-encrypts every record with the CURRENT
+	 * account key, which is what makes a portable backup land on any account.
+	 */
+	async importFromText(text: string, password?: string): Promise<ImportResult> {
 		let parsed: unknown;
 		try {
 			parsed = JSON.parse(text);
 		} catch {
-			throw new Error('Nieprawidłowy format pliku — oczekiwano JSON');
+			throw new Error('Nieprawidłowy format pliku - oczekiwano JSON');
+		}
+
+		// A portable backup is explicitly cross-account ("import on any account"),
+		// so its records must be re-keyed AND re-id'd on import; a plain decrypted
+		// or account-key-encrypted file is a same-account restore that keeps IDs.
+		// (The guard stays in the `if` so it narrows `parsed` to the envelope type.)
+		let portable = false;
+		if (this.isPortableEncryptedExport(parsed)) {
+			portable = true;
+			if (!password) {
+				throw new Error('Ten backup jest zaszyfrowany. Podaj hasło.');
+			}
+			parsed = await this.decryptPortableEnvelope(parsed, password);
 		}
 
 		if (!this.isValidExportData(parsed)) {
@@ -144,8 +174,9 @@ export class DataImportService {
 			// Encrypted format — save raw encrypted data
 			await this.importEncrypted(exportData, currentUser.id, result);
 		} else {
-			// Decrypted format — encrypt each item before saving
-			await this.importDecrypted(exportData, currentUser.id, result);
+			// Decrypted format — encrypt each item before saving. `portable` forces
+			// fresh IDs (cross-account); a same-account decrypted restore keeps them.
+			await this.importDecrypted(exportData, currentUser.id, result, portable);
 		}
 
 		logger.info('Import complete', result);
@@ -158,6 +189,52 @@ export class DataImportService {
 		}
 		await taskCounts.refresh();
 		return result;
+	}
+
+	/**
+	 * True if `text` is a portable, password-encrypted reborn-task backup. The
+	 * UI calls this before importing to know whether to prompt for a password.
+	 */
+	isPortableEncryptedText(text: string): boolean {
+		try {
+			return this.isPortableEncryptedExport(JSON.parse(text));
+		} catch {
+			return false;
+		}
+	}
+
+	private isPortableEncryptedExport(parsed: unknown): parsed is PortableEncryptedExport {
+		if (typeof parsed !== 'object' || parsed === null) return false;
+		const p = parsed as Record<string, unknown>;
+		return (
+			p.app === 'reborn-task' &&
+			p.portable === true &&
+			typeof p.encryption === 'string' &&
+			typeof p.salt === 'string' &&
+			typeof p.iv === 'string' &&
+			typeof p.data === 'string'
+		);
+	}
+
+	private async decryptPortableEnvelope(
+		envelope: PortableEncryptedExport,
+		password: string
+	): Promise<unknown> {
+		const salt = base64ToArrayBuffer(envelope.salt);
+		const iv = base64ToArrayBuffer(envelope.iv);
+		const ciphertext = base64ToArrayBuffer(envelope.data);
+		const key = await deriveKeyFromPassword(password, salt);
+		let decrypted: string;
+		try {
+			decrypted = (await decryptData(ciphertext, key, iv, 'string')) as string;
+		} catch {
+			throw new Error('Nieprawidłowe hasło lub uszkodzony plik backupu.');
+		}
+		try {
+			return JSON.parse(decrypted);
+		} catch {
+			throw new Error('Uszkodzony plik backupu.');
+		}
 	}
 
 	private async importEncrypted(
@@ -295,11 +372,19 @@ export class DataImportService {
 	private async importDecrypted(
 		exportData: ExportData & { encrypted: false },
 		userId: string,
-		result: ImportResult
+		result: ImportResult,
+		portable = false
 	): Promise<void> {
 		const now = new Date().toISOString();
 
-		for (const list of exportData.data.lists) {
+		// Portable (cross-account) backup: regenerate every ID and remap the FK
+		// chains so the records can't collide with the source account's rows on
+		// the server (a reused id 403s / hits a PK unique violation on push and
+		// never syncs). A same-account restore (portable=false) keeps IDs so the
+		// conflict-by-updated_at merge below can update rows in place.
+		const data = portable ? remapPortableIds(exportData.data) : exportData.data;
+
+		for (const list of data.lists) {
 			try {
 				const parsed = schemas.ListDecryptedSchema.safeParse(list);
 				if (!parsed.success) {
@@ -348,7 +433,7 @@ export class DataImportService {
 			}
 		}
 
-		for (const task of exportData.data.tasks) {
+		for (const task of data.tasks) {
 			try {
 				const parsed = schemas.TaskDecryptedSchema.safeParse(task);
 				if (!parsed.success) {
@@ -416,7 +501,7 @@ export class DataImportService {
 			}
 		}
 
-		for (const subtask of exportData.data.subtasks) {
+		for (const subtask of data.subtasks) {
 			try {
 				const parsed = schemas.SubtaskSchema.safeParse(subtask);
 				if (!parsed.success) {

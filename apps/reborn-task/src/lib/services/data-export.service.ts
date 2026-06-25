@@ -1,5 +1,11 @@
 import { taskStore, listStore, subtaskStore } from '@reborn/storage';
-import { cryptoManager } from '@reborn/crypto';
+import {
+	cryptoManager,
+	deriveKeyFromPassword,
+	generateSalt,
+	encryptData,
+	arrayBufferToBase64
+} from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import type {
 	ListDecrypted,
@@ -44,6 +50,8 @@ function stripNullOptionalFields(
  */
 const ENCRYPTED_EXPORT_VERSION = '1.1';
 const DECRYPTED_EXPORT_VERSION = '1.0';
+/** Envelope format version for the portable, password-encrypted backup. */
+const PORTABLE_EXPORT_VERSION = '1.0';
 
 export interface ExportDataDecrypted {
 	version: string;
@@ -71,17 +79,44 @@ export interface ExportDataEncrypted {
 
 export type ExportData = ExportDataDecrypted | ExportDataEncrypted;
 
+/**
+ * Portable, password-encrypted backup envelope.
+ *
+ * Wraps a DECRYPTED {@link ExportDataDecrypted} payload in a PBKDF2 + AES-GCM
+ * layer keyed by a user-chosen password. Because the inner data is plaintext
+ * (not account-key ciphertext), it can be imported on ANY account - the
+ * importer re-encrypts it with the target account's master key. The account-key
+ * `exportEncrypted` backup, by contrast, is readable only on the originating
+ * account.
+ *
+ * Zero Knowledge: decrypt (export) and re-encrypt (import) both happen in the
+ * browser; only the password-encrypted envelope ever leaves the device.
+ */
+export interface PortableEncryptedExport {
+	app: 'reborn-task';
+	version: string;
+	exportedAt: string;
+	/** Discriminator: marks this as a portable envelope vs a plain ExportData file. */
+	portable: true;
+	encryption: 'aes-256-gcm-pbkdf2';
+	salt: string;
+	iv: string;
+	/** base64 AES-GCM ciphertext of the JSON-encoded ExportDataDecrypted payload. */
+	data: string;
+}
+
 export class DataExportService {
 	/**
-	 * Export all user data as decrypted (plaintext) JSON.
-	 * Useful for portability and use in other applications.
+	 * Decrypt all lists/tasks/subtasks with the current account key into a
+	 * plaintext {@link ExportDataDecrypted} payload. Shared by the decrypted
+	 * export and the portable (password-encrypted) export below.
 	 */
-	async exportDecrypted(): Promise<void> {
+	private async buildDecryptedPayload(): Promise<ExportDataDecrypted> {
 		if (!cryptoManager.isInitialized()) {
 			throw new Error('CryptoManager nie jest zainicjalizowany');
 		}
 
-		logger.info('Starting decrypted export...');
+		logger.info('Decrypting all data for export...');
 
 		const [allLists, allTasks, allSubtasks] = await Promise.all([
 			listStore.getAll(),
@@ -217,13 +252,59 @@ export class DataExportService {
 			}
 		};
 
-		logger.info('Decrypted export ready', {
+		logger.info('Decrypted payload ready', {
 			lists: decryptedLists.length,
 			tasks: decryptedTasks.length,
 			subtasks: decryptedSubtasks.length
 		});
 
+		return exportData;
+	}
+
+	/**
+	 * Export all user data as decrypted (plaintext) JSON.
+	 * Useful for portability and use in other applications.
+	 */
+	async exportDecrypted(): Promise<void> {
+		const exportData = await this.buildDecryptedPayload();
 		this.triggerDownload(exportData, `reborn-task-export-${this.dateStamp()}.json`);
+	}
+
+	/**
+	 * Export a portable, password-encrypted backup.
+	 *
+	 * Builds the same plaintext payload as {@link exportDecrypted}, then wraps it
+	 * in a PBKDF2-derived AES-GCM layer keyed by the user's password. Unlike
+	 * {@link exportEncrypted} (account-key, same-account-only), this backup can be
+	 * imported on any account - the importer re-encrypts the payload with the
+	 * target account's master key. Zero Knowledge is preserved: only the
+	 * password-encrypted envelope leaves the device.
+	 */
+	async exportEncryptedPortable(password: string): Promise<void> {
+		const payload = await this.buildDecryptedPayload();
+		const json = JSON.stringify(payload);
+		const salt = await generateSalt(16);
+		const key = await deriveKeyFromPassword(password, salt);
+		const { encryptedData, iv } = await encryptData(json, key);
+
+		const envelope: PortableEncryptedExport = {
+			app: 'reborn-task',
+			version: PORTABLE_EXPORT_VERSION,
+			exportedAt: new Date().toISOString(),
+			portable: true,
+			encryption: 'aes-256-gcm-pbkdf2',
+			salt: arrayBufferToBase64(salt),
+			iv: arrayBufferToBase64(iv),
+			data: arrayBufferToBase64(encryptedData)
+		};
+
+		logger.info('Portable encrypted export ready', {
+			lists: payload.data.lists.length,
+			tasks: payload.data.tasks.length,
+			subtasks: payload.data.subtasks.length
+		});
+
+		this.triggerDownload(envelope, `reborn-task-backup-portable-${this.dateStamp()}.json`);
 	}
 
 	/**
@@ -316,7 +397,7 @@ export class DataExportService {
 		]) as unknown as SubtaskEncrypted;
 	}
 
-	private triggerDownload(data: ExportData, filename: string): void {
+	private triggerDownload(data: ExportData | PortableEncryptedExport, filename: string): void {
 		const json = JSON.stringify(data, null, 2);
 		const blob = new Blob([json], { type: 'application/json' });
 		const url = URL.createObjectURL(blob);
