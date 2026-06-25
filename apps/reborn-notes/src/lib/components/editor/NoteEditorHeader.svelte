@@ -7,6 +7,8 @@
     Waypoints,
     ListTree,
     ArrowLeft,
+    ChevronLeft,
+    ChevronRight,
     Lock,
     Loader2,
     CheckCircle2,
@@ -35,6 +37,12 @@
     ontogglelinkednotes,
     outlineActive = false,
     ontoggleoutline,
+    canGoBackNote = false,
+    canGoForwardNote = false,
+    backNoteTitle = '',
+    forwardNoteTitle = '',
+    onnotehistoryback,
+    onnotehistoryforward,
     onback,
     onshowxray,
     onrestore,
@@ -59,6 +67,18 @@
     outlineActive?: boolean;
     /** Toggle the Outline panel (desktop only - mobile uses the kebab menu). */
     ontoggleoutline?: () => void;
+    /** Note-navigation Back availability (drives the Back chevron's enabled state). */
+    canGoBackNote?: boolean;
+    /** Note-navigation Forward availability (drives the Forward chevron's enabled state). */
+    canGoForwardNote?: boolean;
+    /** Title of the note Back would open - shown in the chevron tooltip. */
+    backNoteTitle?: string;
+    /** Title of the note Forward would open - shown in the chevron tooltip. */
+    forwardNoteTitle?: string;
+    /** Go Back one note in the visit trail (desktop chevron). */
+    onnotehistoryback?: () => void;
+    /** Go Forward one note in the visit trail (desktop chevron). */
+    onnotehistoryforward?: () => void;
     onback: () => void;
     onshowxray: () => void;
     onrestore: () => void;
@@ -112,6 +132,40 @@
   >
     <ArrowLeft class={isMobile ? 'h-5 w-5' : 'h-4 w-4'} />
   </button>
+
+  <!-- Back / Forward through the note visit trail. Desktop only (mobile uses the
+       edge-swipe and the back-arrow chaining); shown once a trail exists. The
+       `<`/`>` chevrons read as history, distinct from the `←` close arrow. -->
+  {#if !isMobile && (canGoBackNote || canGoForwardNote)}
+    <div class="flex shrink-0 items-center">
+      <button
+        type="button"
+        onclick={onnotehistoryback}
+        disabled={!canGoBackNote}
+        class="flex h-8 w-8 items-center justify-center rounded-md text-foreground
+           hover:bg-accent transition-colors disabled:pointer-events-none disabled:opacity-40"
+        title={canGoBackNote && backNoteTitle
+          ? `${$t('note_nav.back')}: ${backNoteTitle} (Alt+←)`
+          : `${$t('note_nav.back')} (Alt+←)`}
+        aria-label={$t('note_nav.back')}
+      >
+        <ChevronLeft class="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onclick={onnotehistoryforward}
+        disabled={!canGoForwardNote}
+        class="flex h-8 w-8 items-center justify-center rounded-md text-foreground
+           hover:bg-accent transition-colors disabled:pointer-events-none disabled:opacity-40"
+        title={canGoForwardNote && forwardNoteTitle
+          ? `${$t('note_nav.forward')}: ${forwardNoteTitle} (Alt+→)`
+          : `${$t('note_nav.forward')} (Alt+→)`}
+        aria-label={$t('note_nav.forward')}
+      >
+        <ChevronRight class="h-4 w-4" />
+      </button>
+    </div>
+  {/if}
 
   <!-- Small title (shown when large title scrolls out of view) -->
   {#if title}

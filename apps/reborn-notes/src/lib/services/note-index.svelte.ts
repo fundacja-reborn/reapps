@@ -15,6 +15,7 @@ import { noteStore, noteTagStore } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
 import { decryptTitleOnly } from './note.service';
 import { noteLinkGraph } from './note-link-graph.svelte';
+import { noteNavHistory } from './note-nav-history.svelte';
 import type { NoteDecrypted } from '@reborn/types';
 import { evaluate, type QueryAST, type SearchContext, type SearchEntity } from '@reborn/utils';
 
@@ -147,6 +148,10 @@ class NoteIndex {
     this._map.clear();
     this._version++;
     noteLinkGraph.clear();
+    // Navigation trail is session-scoped: drop it on lock/logout so Back can't
+    // walk into another account's notes. NOT cleared on build() (unlock leaves
+    // it empty anyway; a post-import refresh should keep the trail intact).
+    noteNavHistory.clear();
   }
 
   // ── Incremental updates ────────────────────────────────────────

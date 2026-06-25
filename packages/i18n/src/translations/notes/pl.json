@@ -646,6 +646,10 @@
     "incoming_count": "Linki przychodzące: {count}",
     "outgoing_count": "Linki wychodzące: {count}"
   },
+  "note_nav": {
+    "back": "Poprzednia notatka",
+    "forward": "Następna notatka"
+  },
   "outline": {
     "title": "Konspekt",
     "empty": "Ta notatka nie ma jeszcze nagłówków."

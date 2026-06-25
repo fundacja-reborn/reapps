@@ -646,6 +646,10 @@
     "incoming_count": "Enlaces entrantes: {count}",
     "outgoing_count": "Enlaces salientes: {count}"
   },
+  "note_nav": {
+    "back": "Nota anterior",
+    "forward": "Nota siguiente"
+  },
   "outline": {
     "title": "Esquema",
     "empty": "Esta nota aún no tiene encabezados."

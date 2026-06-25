@@ -646,6 +646,10 @@
     "incoming_count": "Incoming links: {count}",
     "outgoing_count": "Outgoing links: {count}"
   },
+  "note_nav": {
+    "back": "Previous note",
+    "forward": "Next note"
+  },
   "outline": {
     "title": "Outline",
     "empty": "No headings in this note yet."
