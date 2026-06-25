@@ -11,6 +11,7 @@ import { get } from 'svelte/store';
 import { user } from '$lib/stores/auth.store';
 import { taskCounts } from '$lib/stores/task-counts.store';
 import { taskIndex } from './task-title-index.svelte';
+import { remapPortableIds } from './portable-import-utils';
 import type { ExportData, PortableEncryptedExport } from './data-export.service';
 import type {
 	ListEncrypted,
@@ -130,7 +131,13 @@ export class DataImportService {
 			throw new Error('Nieprawidłowy format pliku - oczekiwano JSON');
 		}
 
+		// A portable backup is explicitly cross-account ("import on any account"),
+		// so its records must be re-keyed AND re-id'd on import; a plain decrypted
+		// or account-key-encrypted file is a same-account restore that keeps IDs.
+		// (The guard stays in the `if` so it narrows `parsed` to the envelope type.)
+		let portable = false;
 		if (this.isPortableEncryptedExport(parsed)) {
+			portable = true;
 			if (!password) {
 				throw new Error('Ten backup jest zaszyfrowany. Podaj hasło.');
 			}
@@ -167,8 +174,9 @@ export class DataImportService {
 			// Encrypted format — save raw encrypted data
 			await this.importEncrypted(exportData, currentUser.id, result);
 		} else {
-			// Decrypted format — encrypt each item before saving
-			await this.importDecrypted(exportData, currentUser.id, result);
+			// Decrypted format — encrypt each item before saving. `portable` forces
+			// fresh IDs (cross-account); a same-account decrypted restore keeps them.
+			await this.importDecrypted(exportData, currentUser.id, result, portable);
 		}
 
 		logger.info('Import complete', result);
@@ -364,11 +372,19 @@ export class DataImportService {
 	private async importDecrypted(
 		exportData: ExportData & { encrypted: false },
 		userId: string,
-		result: ImportResult
+		result: ImportResult,
+		portable = false
 	): Promise<void> {
 		const now = new Date().toISOString();
 
-		for (const list of exportData.data.lists) {
+		// Portable (cross-account) backup: regenerate every ID and remap the FK
+		// chains so the records can't collide with the source account's rows on
+		// the server (a reused id 403s / hits a PK unique violation on push and
+		// never syncs). A same-account restore (portable=false) keeps IDs so the
+		// conflict-by-updated_at merge below can update rows in place.
+		const data = portable ? remapPortableIds(exportData.data) : exportData.data;
+
+		for (const list of data.lists) {
 			try {
 				const parsed = schemas.ListDecryptedSchema.safeParse(list);
 				if (!parsed.success) {
@@ -417,7 +433,7 @@ export class DataImportService {
 			}
 		}
 
-		for (const task of exportData.data.tasks) {
+		for (const task of data.tasks) {
 			try {
 				const parsed = schemas.TaskDecryptedSchema.safeParse(task);
 				if (!parsed.success) {
@@ -485,7 +501,7 @@ export class DataImportService {
 			}
 		}
 
-		for (const subtask of exportData.data.subtasks) {
+		for (const subtask of data.subtasks) {
 			try {
 				const parsed = schemas.SubtaskSchema.safeParse(subtask);
 				if (!parsed.success) {

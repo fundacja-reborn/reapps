@@ -192,23 +192,54 @@ export async function buildPortablePayload(
 }
 
 /**
+ * Default ID generator for re-imported entities: the global Web Crypto
+ * `randomUUID`. Referenced through `globalThis` because this module's transform
+ * functions take a parameter named `crypto` (the injected {@link PortableCrypto})
+ * which would otherwise shadow the global. Injectable so tests stay deterministic.
+ */
+function defaultNewId(): string {
+  return globalThis.crypto.randomUUID();
+}
+
+/**
  * Re-encrypt a decrypted {@link PortablePayload} with the importing account's
  * key, producing the same `*_encrypted` wire shape the version 1/2 path yields.
  * The shared import loops then treat all formats identically - which is what
  * makes a v3 backup land readable on any account.
+ *
+ * Every entity is also given a **fresh ID**, and all foreign keys
+ * (`folder.parent_id`, `note.folder_id`, and the tag IDs inside a note's
+ * metadata bundle) are remapped to the new IDs. This is mandatory for
+ * cross-account portability: the server rejects a write to an `id` already
+ * owned by another user with `403 Forbidden` (the ownership guard in every
+ * `/api/{notes,folders,tags}` POST handler), so reusing the source account's
+ * IDs would make each pushed record bounce ("Rejected by server") even though
+ * the local copy is perfectly readable. Fresh IDs make a portable import
+ * additive - genuinely new records owned by the target account. Dangling
+ * references (a `folder_id` or tag ID whose target is not part of the backup)
+ * are dropped rather than carried over as a now-meaningless ID.
  */
 export async function reencryptPortablePayload(
   crypto: PortableCrypto,
   payload: PortablePayload,
-  userId: string
+  userId: string,
+  newId: () => string = defaultNewId
 ): Promise<PortableWireData> {
   const data = payload?.data ?? { notes: [], folders: [], tags: [] };
 
+  // Pre-assign fresh IDs for folders and tags so foreign keys resolve in a
+  // single pass regardless of declaration order (a child folder may appear
+  // before its parent).
+  const folderIdMap = new Map<string, string>();
+  for (const f of data.folders ?? []) folderIdMap.set(f.id, newId());
+  const tagIdMap = new Map<string, string>();
+  for (const t of data.tags ?? []) tagIdMap.set(t.id, newId());
+
   const folders = await Promise.all(
     (data.folders ?? []).map(async (f) => ({
-      id: f.id,
+      id: folderIdMap.get(f.id)!,
       user_id: userId,
-      parent_id: f.parent_id ?? undefined,
+      parent_id: f.parent_id ? (folderIdMap.get(f.parent_id) ?? undefined) : undefined,
       name_encrypted: await crypto.encryptText(f.name || 'Untitled'),
       order_index: f.order_index ?? 0,
       is_archived: f.is_archived ?? false,
@@ -221,7 +252,7 @@ export async function reencryptPortablePayload(
 
   const tags = await Promise.all(
     (data.tags ?? []).map(async (t) => ({
-      id: t.id,
+      id: tagIdMap.get(t.id)!,
       user_id: userId,
       name_encrypted: await crypto.encryptText(t.name || 'tag'),
       ...(t.color ? { color_encrypted: await crypto.encryptText(t.color) } : {}),
@@ -234,16 +265,21 @@ export async function reencryptPortablePayload(
 
   const notes = await Promise.all(
     (data.notes ?? []).map(async (n) => {
+      // Remap tag references to the freshly-minted tag IDs; drop any whose tag
+      // is not part of this backup (would point at nothing on the new account).
+      const remappedTags = (n.tags ?? [])
+        .map((tid) => tagIdMap.get(tid))
+        .filter((tid): tid is string => Boolean(tid));
       const metadata: NoteSensitiveMetadata = {
         is_pinned: n.is_pinned ?? false,
         is_starred: n.is_starred ?? false,
-        tags: n.tags ?? []
+        tags: remappedTags
       };
       if (n.periodic) metadata.periodic = n.periodic;
       return {
-        id: n.id,
+        id: newId(),
         user_id: userId,
-        folder_id: n.folder_id ?? undefined,
+        folder_id: n.folder_id ? (folderIdMap.get(n.folder_id) ?? undefined) : undefined,
         title_encrypted: await crypto.encryptText(n.title || 'Untitled'),
         content_encrypted: await crypto.encryptText(n.content ?? ''),
         metadata_encrypted: await crypto.encryptObject<NoteSensitiveMetadata>(metadata),
