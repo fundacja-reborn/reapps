@@ -11,9 +11,11 @@ import { resolve } from 'path';
  * list) that showed Polish to every locale. The decrypted-export warning block
  * (title, body, "export anyway"/"cancel" buttons) plus the export and import
  * button loading labels (each a `{$t('common.loading') || 'Polish...'}` fallback)
- * had the same problem. This locks all of those via source assertions, with no
- * runtime import of the page's heavy dependency graph. Mirrors
- * `data-import.regression.spec.ts`. See guideline 44.
+ * had the same problem. The bare file `<input>` was a third leak: it rendered
+ * browser-locale chrome ("Wybierz plik"), now hidden behind a localized button.
+ * This locks all of those via source assertions, with no runtime import of the
+ * page's heavy dependency graph. Mirrors `data-import.regression.spec.ts`. See
+ * guideline 44.
  */
 function readSource(relative: string): string {
 	return readFileSync(resolve(__dirname, relative), 'utf-8');
@@ -57,6 +59,16 @@ describe('reborn-task export & import action labels - i18n (regression)', () => 
 	it('localizes the export and import loading labels', () => {
 		expect(page).toMatch(/import_export\.exporting'/);
 		expect(page).toMatch(/import_export\.importing'/);
+	});
+
+	it('hides the native file input behind a localized picker button', () => {
+		// A bare <input type="file"> renders browser-locale chrome ("Wybierz plik"
+		// / "Nie wybrano pliku"); hide it (sr-only) and drive selection from a
+		// localized Button + filename label instead, so no Polish leaks via the OS.
+		expect(page).toMatch(/type="file"[\s\S]{0,200}?class="sr-only"/);
+		expect(page).toMatch(/import_export\.import_select_file'/);
+		expect(page).toMatch(/import_export\.import_no_file'/);
+		expect(page).not.toMatch(/file:bg-background/); // old native-button styling
 	});
 
 	it('drops every hardcoded `|| Polish` fallback on loading labels', () => {

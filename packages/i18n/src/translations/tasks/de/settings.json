@@ -299,6 +299,7 @@
     "import_section_title": "Aus Datei importieren",
     "import_section_description": "Importieren Sie Daten aus einer JSON-Datei, die aus dieser App exportiert wurde. Neue Eintr\u00e4ge werden hinzugef\u00fcgt; bestehende aktualisiert, wenn die importierte Version neuer ist.",
     "import_select_file": "JSON-Datei ausw\u00e4hlen",
+    "import_no_file": "Keine Datei ausgew\u00e4hlt",
     "import_button": "Importieren",
     "import_success": "Import abgeschlossen: {lists} Listen, {tasks} Aufgaben, {subtasks} Teilaufgaben",
     "import_skipped_note": "{count} Elemente übersprungen (neuere lokale Versionen).",

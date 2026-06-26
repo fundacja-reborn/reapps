@@ -299,6 +299,7 @@
     "import_section_title": "Import from File",
     "import_section_description": "Import data from a JSON file exported from this app. New items will be added; existing ones updated if the imported version is newer.",
     "import_select_file": "Select JSON file",
+    "import_no_file": "No file selected",
     "import_button": "Import",
     "import_success": "Import complete: {lists} lists, {tasks} tasks, {subtasks} subtasks",
     "import_skipped_note": "Skipped {count} items (newer local versions).",

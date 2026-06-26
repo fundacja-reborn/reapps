@@ -299,6 +299,7 @@
     "import_section_title": "Import z pliku",
     "import_section_description": "Importuj dane z pliku JSON wyeksportowanego z tej aplikacji. Nowe elementy zostaną dodane; istniejące zaktualizowane (jeśli importowana wersja jest nowsza).",
     "import_select_file": "Wybierz plik JSON",
+    "import_no_file": "Nie wybrano pliku",
     "import_button": "Importuj",
     "import_success": "Import zakończony: {lists} list, {tasks} zadań, {subtasks} podzadań",
     "import_skipped_note": "Pominięto {count} elementów (nowsze lokalne wersje).",
