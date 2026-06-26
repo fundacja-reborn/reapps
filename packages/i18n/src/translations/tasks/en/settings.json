@@ -296,6 +296,7 @@
     "import_button": "Import",
     "import_success": "Import complete: {lists} lists, {tasks} tasks, {subtasks} subtasks",
     "import_error": "Error importing data",
+    "import_cross_account_error": "This encrypted backup was created on a different account, so it can't be read here. To move data between accounts, use the Portable Encrypted Backup option (password-protected).",
     "import_notes_title": "Important Notes",
     "import_note_1": "New items will be added; existing ones updated only if the imported version is newer.",
     "import_note_2": "Decrypted data will be re-encrypted with your current key on import.",

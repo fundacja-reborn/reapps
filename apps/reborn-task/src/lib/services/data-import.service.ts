@@ -9,9 +9,11 @@ import { createLogger } from '@reborn/utils';
 import { schemas } from '@reborn/types';
 import { get } from 'svelte/store';
 import { user } from '$lib/stores/auth.store';
+import { t } from '$lib/stores/i18n.store';
 import { taskCounts } from '$lib/stores/task-counts.store';
 import { taskIndex } from './task-title-index.svelte';
 import { remapPortableIds } from './portable-import-utils';
+import { isEncryptedBackupReadable } from './encrypted-import-guard';
 import type { ExportData, PortableEncryptedExport } from './data-export.service';
 import type {
 	ListEncrypted,
@@ -242,6 +244,27 @@ export class DataImportService {
 		userId: string,
 		result: ImportResult
 	): Promise<void> {
+		// An account-key encrypted backup is readable only on the account that
+		// created it. Imported elsewhere every field fails the AES-GCM auth check,
+		// so the old code saved untouched ciphertext that showed as blank rows and
+		// then sync-rejected on push (PK collision / 403). Probe one ciphertext per
+		// entity kind; if NONE decrypt, stop with a clear message pointing at the
+		// portable (password) backup - the supported cross-account path. A
+		// same-account restore decrypts on the first probe and proceeds. (Portable
+		// and decrypted imports never reach here: they carry plaintext re-encrypted
+		// with the current key.)
+		const readable = await isEncryptedBackupReadable(
+			[
+				exportData.data.lists[0]?.name_encrypted,
+				exportData.data.tasks[0]?.title_encrypted,
+				exportData.data.subtasks[0]?.name_encrypted
+			],
+			(ciphertext) => cryptoManager.decryptText(ciphertext)
+		);
+		if (!readable) {
+			throw new Error(get(t)('settings.import_export.import_cross_account_error'));
+		}
+
 		const now = new Date().toISOString();
 
 		for (const list of exportData.data.lists) {

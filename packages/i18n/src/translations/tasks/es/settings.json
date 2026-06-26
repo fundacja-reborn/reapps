@@ -296,6 +296,7 @@
     "import_button": "Importar",
     "import_success": "Importación completa: {lists} listas, {tasks} tareas, {subtasks} subtareas",
     "import_error": "Error al importar los datos",
+    "import_cross_account_error": "Esta copia de seguridad cifrada se creó en otra cuenta, por lo que no se puede leer aquí. Para mover datos entre cuentas, usa la opción «Copia cifrada portátil» (protegida con contraseña).",
     "import_notes_title": "Notas importantes",
     "import_note_1": "Los nuevos elementos se añadirán; los existentes se actualizarán solo si la versión importada es más reciente.",
     "import_note_2": "Los datos descifrados se volverán a cifrar con su clave actual al importar.",
