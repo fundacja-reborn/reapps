@@ -45,6 +45,14 @@ export {
   KNOWN_SENSITIVE_FIELDS
 } from './encryption-validation';
 
+// Backup recovery phrase (user-held secret that encrypts automated backups)
+export {
+  generateRecoveryPhrase,
+  normalizeRecoveryPhrase,
+  isValidRecoveryPhrase,
+  RECOVERY_PHRASE_FORMAT
+} from './recovery-phrase';
+
 // Snapshot share helpers (per-share AES-GCM key, URL fragment transport)
 export {
   generateSnapshotKey,
