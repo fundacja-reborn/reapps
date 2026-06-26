@@ -11,6 +11,7 @@
   import { oneDark } from '@codemirror/theme-one-dark';
   import { noteLinkAutocomplete, type NoteLinkItem } from '$lib/editor/note-link-autocomplete';
   import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
+  import { noteSearchExtension } from '$lib/editor/note-search';
   import { listIndent, listOutdent } from '$lib/editor/list-keymap';
   import {
     BULLET_ANCHOR,
@@ -519,6 +520,7 @@
             : []
         ),
         noteLinkDecoration,
+        noteSearchExtension,
         stripBulletAnchorListener,
         EditorView.domEventHandlers({
           click(e) {
@@ -1199,6 +1201,18 @@
     text-decoration: underline dashed;
     text-underline-offset: 3px;
     border-radius: 2px;
+  }
+
+  /* In-note search (find) highlights — driven by editor/note-search.ts. Colors
+     share the --rn-find-* vars defined globally on the note page so the editor
+     and the rendered preview's ::highlight() styles stay in sync. */
+  :global(.cm-host .cm-note-search-match) {
+    background-color: var(--rn-find-bg, rgba(250, 204, 21, 0.4));
+    border-radius: 2px;
+  }
+  :global(.cm-host .cm-note-search-match-active) {
+    background-color: var(--rn-find-active-bg, #f59e0b);
+    color: var(--rn-find-active-fg, #1c1917);
   }
 
   .toolbar-btn {

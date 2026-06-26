@@ -650,6 +650,16 @@
     "back": "Nota anterior",
     "forward": "Nota siguiente"
   },
+  "note_search": {
+    "open": "Buscar en la nota",
+    "placeholder": "Buscar en la nota…",
+    "previous": "Coincidencia anterior",
+    "next": "Coincidencia siguiente",
+    "close": "Cerrar búsqueda",
+    "match_case": "Distinguir mayúsculas y minúsculas",
+    "no_results": "Sin resultados",
+    "position": "{current} de {total}"
+  },
   "outline": {
     "title": "Esquema",
     "empty": "Esta nota aún no tiene encabezados."

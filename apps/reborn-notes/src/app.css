@@ -16,6 +16,12 @@
   --tag-mix: 13%;
   --tag-fg-mix: 100%;
   --tag-border-mix: 33%;
+  /* In-note search (find) highlight palette — shared by the CodeMirror editor
+     (.cm-note-search-match) and the rendered preview's CSS Custom Highlight API
+     ranges (::highlight rules below). */
+  --rn-find-bg: rgba(250, 204, 21, 0.4);
+  --rn-find-active-bg: #f59e0b;
+  --rn-find-active-fg: #1c1917;
 }
 .dark {
   --accent: oklch(0.371 0 0);
@@ -26,6 +32,20 @@
   --tag-mix: 18%;
   --tag-fg-mix: 55%;
   --tag-border-mix: 25%;
+  --rn-find-bg: rgba(250, 204, 21, 0.32);
+  --rn-find-active-bg: #f59e0b;
+  --rn-find-active-fg: #1c1917;
+}
+
+/* Rendered-preview find highlights, painted via the CSS Custom Highlight API in
+   lib/utils/note-search-dom.ts. Custom props inherit to the highlighted text, so
+   ::highlight() resolves the same palette the editor uses. */
+::highlight(note-search) {
+  background-color: var(--rn-find-bg);
+}
+::highlight(note-search-active) {
+  background-color: var(--rn-find-active-bg);
+  color: var(--rn-find-active-fg);
 }
 
 /* Notes uses Roboto as primary font */

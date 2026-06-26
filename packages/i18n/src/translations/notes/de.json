@@ -650,6 +650,16 @@
     "back": "Vorherige Notiz",
     "forward": "Nächste Notiz"
   },
+  "note_search": {
+    "open": "In Notiz suchen",
+    "placeholder": "In Notiz suchen…",
+    "previous": "Vorheriger Treffer",
+    "next": "Nächster Treffer",
+    "close": "Suche schließen",
+    "match_case": "Groß-/Kleinschreibung beachten",
+    "no_results": "Keine Treffer",
+    "position": "{current} von {total}"
+  },
   "outline": {
     "title": "Gliederung",
     "empty": "Diese Notiz hat noch keine Überschriften."

@@ -650,6 +650,16 @@
     "back": "Previous note",
     "forward": "Next note"
   },
+  "note_search": {
+    "open": "Search in note",
+    "placeholder": "Search in note…",
+    "previous": "Previous match",
+    "next": "Next match",
+    "close": "Close search",
+    "match_case": "Match case",
+    "no_results": "No results",
+    "position": "{current} of {total}"
+  },
   "outline": {
     "title": "Outline",
     "empty": "No headings in this note yet."

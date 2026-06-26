@@ -650,6 +650,16 @@
     "back": "Poprzednia notatka",
     "forward": "Następna notatka"
   },
+  "note_search": {
+    "open": "Szukaj w notatce",
+    "placeholder": "Szukaj w notatce…",
+    "previous": "Poprzednie dopasowanie",
+    "next": "Następne dopasowanie",
+    "close": "Zamknij wyszukiwanie",
+    "match_case": "Uwzględnij wielkość liter",
+    "no_results": "Brak wyników",
+    "position": "{current} z {total}"
+  },
   "outline": {
     "title": "Konspekt",
     "empty": "Ta notatka nie ma jeszcze nagłówków."

@@ -43,6 +43,7 @@
   import NoteContentArea from '$lib/components/editor/NoteContentArea.svelte';
   import EncryptionXRay from '$lib/components/EncryptionXRay.svelte';
   import NoteDetailActions from '$lib/components/editor/NoteDetailActions.svelte';
+  import NoteSearchBar from '$lib/components/editor/NoteSearchBar.svelte';
   import NoteMetadataBar from '$lib/components/editor/NoteMetadataBar.svelte';
   import NoteActionSheet from '$lib/components/notes/NoteActionSheet.svelte';
   import ShareNoteDialog from '$lib/components/notes/ShareNoteDialog.svelte';
@@ -93,6 +94,14 @@
   import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
   import { requireActiveSession } from '$lib/utils/require-active-session';
   import type { EditorView } from '@codemirror/view';
+  import { findMatches, NOTE_SEARCH_MATCH_CAP, type SearchMatch } from '$lib/utils/note-search-core';
+  import { setNoteSearch, scrollCmMatchIntoView } from '$lib/editor/note-search';
+  import {
+    findDomMatchRanges,
+    paintDomHighlights,
+    clearDomHighlights,
+    scrollDomRangeIntoView
+  } from '$lib/utils/note-search-dom';
 
   type ViewMode = 'edit' | 'split' | 'preview';
 
@@ -1322,6 +1331,156 @@
     editorView = null;
   }
 
+  // ── In-note search (find in note) ─────────────────────────────────
+  // Client-side find over the OPEN note. One bar drives two backends by view
+  // mode: the CodeMirror editor (edit/split) via mark decorations, and the
+  // rendered preview (preview) via the CSS Custom Highlight API. Everything runs
+  // in the browser over already-decrypted, in-memory content — nothing is sent
+  // to or logged on the server (Zero Knowledge preserved).
+  let searchOpen = $state(false);
+  let searchQuery = $state('');
+  let searchCaseSensitive = $state(false);
+  let searchActiveIndex = $state(-1); // 0-based; -1 when there are no matches
+  let searchFocusSignal = $state(0); // bumped to (re)focus + select the bar input
+  let cmMatches = $state<SearchMatch[]>([]);
+  let domMatches = $state<Range[]>([]);
+  // Scroll to the active match only on explicit navigation / query change — never
+  // on a plain content edit, so typing with search open doesn't yank the viewport.
+  let pendingSearchScroll = $state(false);
+
+  const searchTotal = $derived(
+    effectiveViewMode === 'preview' ? domMatches.length : cmMatches.length
+  );
+  const searchCapped = $derived(searchTotal >= NOTE_SEARCH_MATCH_CAP);
+  const searchCurrent = $derived(
+    searchActiveIndex >= 0 && searchTotal > 0 ? searchActiveIndex + 1 : 0
+  );
+
+  function openNoteSearch() {
+    if (!searchOpen) {
+      // Seed from a non-empty single-line editor selection (find-bar convention).
+      const view = editorView;
+      if (view) {
+        const sel = view.state.selection.main;
+        if (!sel.empty) {
+          const picked = view.state.sliceDoc(sel.from, sel.to);
+          if (picked && !picked.includes('\n') && picked.length <= 200) searchQuery = picked;
+        }
+      }
+      searchActiveIndex = searchQuery ? 0 : -1;
+      searchOpen = true;
+    }
+    // Re-triggering Ctrl/Cmd+F on an open bar just refocuses + selects the input.
+    pendingSearchScroll = true;
+    searchFocusSignal++;
+  }
+
+  function closeNoteSearch() {
+    if (!searchOpen) return;
+    searchOpen = false;
+    pendingSearchScroll = false;
+    cmMatches = [];
+    domMatches = [];
+    clearDomHighlights();
+    editorView?.dispatch({ effects: setNoteSearch.of(null) });
+    // Return focus to the editor so typing resumes where the user left off.
+    if (effectiveViewMode !== 'preview') editorView?.focus();
+  }
+
+  function handleSearchInput(value: string) {
+    searchQuery = value;
+    searchActiveIndex = value ? 0 : -1; // a new query jumps to the first match
+    pendingSearchScroll = true;
+  }
+
+  function toggleSearchCase() {
+    searchCaseSensitive = !searchCaseSensitive;
+    searchActiveIndex = searchQuery ? 0 : -1;
+    pendingSearchScroll = true;
+    searchFocusSignal++;
+  }
+
+  function stepSearch(delta: 1 | -1) {
+    if (searchTotal === 0) return;
+    const base = searchActiveIndex < 0 ? 0 : searchActiveIndex;
+    searchActiveIndex = (base + delta + searchTotal) % searchTotal;
+    pendingSearchScroll = true;
+  }
+
+  // Recompute matches for the ACTIVE surface as the query / doc / preview change.
+  // Writes only the match arrays (never activeIndex) to avoid a reactive loop.
+  $effect(() => {
+    if (!searchOpen || $activeNoteId == null || historyMode !== 'closed') {
+      cmMatches = [];
+      domMatches = [];
+      return;
+    }
+    const query = searchQuery;
+    const caseSensitive = searchCaseSensitive;
+    if (effectiveViewMode === 'preview') {
+      void previewRenderTick; // re-run after each preview re-render
+      domMatches = findDomMatchRanges(previewContentEl, query, caseSensitive);
+      cmMatches = [];
+    } else {
+      const text = noteDetailService.content; // offsets line up with the CM doc
+      cmMatches = query ? findMatches(text, query, caseSensitive) : [];
+      domMatches = [];
+    }
+  });
+
+  // Keep activeIndex valid as the match set changes (clamp on shrink, preserve
+  // otherwise). Writes inside untrack so it never re-triggers itself.
+  $effect(() => {
+    const total = effectiveViewMode === 'preview' ? domMatches.length : cmMatches.length;
+    untrack(() => {
+      if (total === 0) {
+        if (searchActiveIndex !== -1) searchActiveIndex = -1;
+      } else if (searchActiveIndex < 0 || searchActiveIndex >= total) {
+        searchActiveIndex = 0;
+      }
+    });
+  });
+
+  // Paint highlights on the active surface and clear the other one.
+  $effect(() => {
+    const mode = effectiveViewMode;
+    const active = searchActiveIndex;
+    if (mode === 'preview') {
+      const ranges = domMatches;
+      editorView?.dispatch({ effects: setNoteSearch.of(null) });
+      paintDomHighlights(ranges, active);
+    } else {
+      const matches = cmMatches;
+      clearDomHighlights();
+      editorView?.dispatch({
+        effects: setNoteSearch.of(matches.length ? { matches, active } : null)
+      });
+    }
+  });
+
+  // Scroll the active match into view, but only when navigation / a query change
+  // asked for it (pendingSearchScroll) — not on every recompute.
+  $effect(() => {
+    const mode = effectiveViewMode;
+    const matches = mode === 'preview' ? domMatches : cmMatches;
+    const active = searchActiveIndex;
+    if (!pendingSearchScroll) return;
+    if (active < 0 || active >= matches.length) return;
+    if (mode === 'preview') {
+      scrollDomRangeIntoView(previewSyncScrollEl, matches[active] as Range);
+    } else if (editorView) {
+      scrollCmMatchIntoView(editorView, matches[active] as SearchMatch);
+    }
+    pendingSearchScroll = false;
+  });
+
+  // Close search when leaving the note or entering version history / trash diff.
+  $effect(() => {
+    if ($activeNoteId == null || historyMode !== 'closed') {
+      if (searchOpen) closeNoteSearch();
+    }
+  });
+
   // ── Folder breadcrumb navigation ──────────────────────────────────
   // The section-change $effect above clears `activeFolderId` for any non-periodic
   // transition. So we set the target id AFTER tick() - once that clearing pass
@@ -1478,6 +1637,16 @@
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault();
       activeSection = 'search';
+      return;
+    }
+    // Ctrl/Cmd+F — in-note find. Overrides the browser's page find while a note
+    // is open (mirrors Google Docs / Notion / VS Code). Live note view only,
+    // never in version history or trash.
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F') && !e.shiftKey && !e.altKey) {
+      if ($activeNoteId != null && historyMode === 'closed' && !activeTrash) {
+        e.preventDefault();
+        openNoteSearch();
+      }
       return;
     }
     // Alt+Left / Alt+Right - Back / Forward between visited notes. Ignored when
@@ -1806,6 +1975,7 @@
                 <NoteDetailActions
                   note={detailMenuNote}
                   onmenuopen={() => (detailActionSheetOpen = true)}
+                  onsearch={openNoteSearch}
                   onpin={handleDetailPin}
                   onstar={handleDetailStar}
                   onmove={handleDetailMoveDesktop}
@@ -1862,6 +2032,25 @@
                   noteKind={currentNoteKind}
                 />
               </div>
+
+              {#if searchOpen}
+                <div class="absolute inset-x-0 top-0 z-30">
+                  <NoteSearchBar
+                    isMobile
+                    query={searchQuery}
+                    caseSensitive={searchCaseSensitive}
+                    total={searchTotal}
+                    current={searchCurrent}
+                    capped={searchCapped}
+                    focusSignal={searchFocusSignal}
+                    oninput={handleSearchInput}
+                    ontogglecase={toggleSearchCase}
+                    onnext={() => stepSearch(1)}
+                    onprev={() => stepSearch(-1)}
+                    onclose={closeNoteSearch}
+                  />
+                </div>
+              {/if}
 
               {#if showEncryptionXRay && historyMode === 'closed'}
                 <EncryptionXRay
@@ -2073,6 +2262,7 @@
               <NoteDetailActions
                 note={detailMenuNote}
                 onmenuopen={() => (detailActionSheetOpen = true)}
+                onsearch={openNoteSearch}
                 onpin={handleDetailPin}
                 onstar={handleDetailStar}
                 onmove={handleDetailMoveDesktop}
@@ -2136,6 +2326,24 @@
                 noteKind={currentNoteKind}
               />
             </div>
+
+            {#if searchOpen}
+              <div class="absolute right-3 top-3 z-30">
+                <NoteSearchBar
+                  query={searchQuery}
+                  caseSensitive={searchCaseSensitive}
+                  total={searchTotal}
+                  current={searchCurrent}
+                  capped={searchCapped}
+                  focusSignal={searchFocusSignal}
+                  oninput={handleSearchInput}
+                  ontogglecase={toggleSearchCase}
+                  onnext={() => stepSearch(1)}
+                  onprev={() => stepSearch(-1)}
+                  onclose={closeNoteSearch}
+                />
+              </div>
+            {/if}
 
             {#if showEncryptionXRay && historyMode === 'closed'}
               <EncryptionXRay
@@ -2320,6 +2528,7 @@
 <NoteActionSheet
   bind:open={detailActionSheetOpen}
   note={detailMenuNote}
+  onsearch={openNoteSearch}
   onpin={() => handleDetailPin()}
   onstar={() => handleDetailStar()}
   onmove={() => handleDetailOpenMoveMobile()}
