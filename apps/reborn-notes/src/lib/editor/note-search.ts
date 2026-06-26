@@ -28,8 +28,10 @@ import {
   type PluginValue
 } from '@codemirror/view';
 import { StateField, StateEffect, RangeSetBuilder, type Extension } from '@codemirror/state';
+import { syntaxTree } from '@codemirror/language';
 import type { SearchMatch } from '$lib/utils/note-search-core';
 import { NOTE_SEARCH_MATCH_CAP } from '$lib/utils/note-search-core';
+import { findTocBlockRange } from '$lib/utils/toc';
 import {
   findDomMatchRanges,
   paintWidgetHighlights,
@@ -100,12 +102,57 @@ const noteSearchField = StateField.define<NoteSearchState | null>({
 // intentionally omitted.)
 const WIDGET_SELECTOR = '.cm-lp-toc, .cm-lp-table-wrap, .cm-lp-codeblock-outer';
 
+interface SourceRange {
+  from: number;
+  to: number;
+}
+
+/** What {@link NoteSearchWidgetHighlighter.collect} paints: base hits + one active. */
+interface WidgetPaint {
+  base: Range[];
+  active: Range | null;
+}
+
+/**
+ * Source ranges of the replaced block widgets currently in view - the managed
+ * TOC block plus every `Table` / `FencedCode` node in the visible viewport.
+ * These match exactly the blocks `decorations.ts` swaps for widgets, and let the
+ * highlighter map the active source match onto a widget's DOM hit. The syntax
+ * tree is walked only over `visibleRanges`, and the TOC's whole-doc regex runs
+ * only when a TOC widget is actually present, to keep the per-frame scan cheap.
+ */
+function widgetSourceRanges(view: EditorView, hasTocRoot: boolean): SourceRange[] {
+  const ranges: SourceRange[] = [];
+  if (hasTocRoot) {
+    const toc = findTocBlockRange(view.state.doc.toString());
+    if (toc) ranges.push(toc);
+  }
+  const tree = syntaxTree(view.state);
+  for (const { from, to } of view.visibleRanges) {
+    tree.iterate({
+      from,
+      to,
+      enter(node) {
+        if (node.name === 'Table' || node.name === 'FencedCode') {
+          ranges.push({ from: node.from, to: node.to });
+        }
+      }
+    });
+  }
+  return ranges;
+}
+
 /**
  * ViewPlugin that paints in-note search matches inside Live Preview block
  * widgets. It re-scans the visible widget DOM whenever the search state, the
  * document, or the viewport changes (new widgets scroll in), deferring the DOM
  * read/write to a measure pass so the widget markup is laid out. In raw editor
  * mode no widgets exist, so the scan finds nothing and the layer stays clear.
+ *
+ * The active match gets the strong (orange) highlight too, but only when it can
+ * be located UNAMBIGUOUSLY: a widget's in-range source matches must align 1:1
+ * with its DOM hits (both in document order). On any mismatch the widget falls
+ * back to base-only, so a pathological query can never colour the wrong entry.
  */
 class NoteSearchWidgetHighlighter implements PluginValue {
   constructor(view: EditorView) {
@@ -123,26 +170,60 @@ class NoteSearchWidgetHighlighter implements PluginValue {
 
   private schedule(view: EditorView): void {
     // `key: this` coalesces repeated requests in the same frame into one scan.
-    view.requestMeasure({
+    view.requestMeasure<WidgetPaint>({
       key: this,
       read: () => this.collect(view),
-      write: (ranges) => paintWidgetHighlights(ranges)
+      write: ({ base, active }) => paintWidgetHighlights(base, active)
     });
   }
 
-  private collect(view: EditorView): Range[] {
+  private collect(view: EditorView): WidgetPaint {
+    const empty: WidgetPaint = { base: [], active: null };
     const state = view.state.field(noteSearchField, false);
-    if (!state || !state.query) return [];
+    if (!state || !state.query) return empty;
     const roots = view.contentDOM.querySelectorAll<HTMLElement>(WIDGET_SELECTOR);
-    if (!roots.length) return [];
-    const ranges: Range[] = [];
+    if (!roots.length) return empty;
+
+    const activeMatch = state.active >= 0 ? state.matches[state.active] : null;
+    const hasTocRoot =
+      !!activeMatch && Array.from(roots).some((r) => r.classList.contains('cm-lp-toc'));
+    const wranges = activeMatch ? widgetSourceRanges(view, hasTocRoot) : [];
+
+    const base: Range[] = [];
+    let active: Range | null = null;
+    let count = 0;
+
     for (const root of roots) {
-      for (const range of findDomMatchRanges(root, state.query, state.caseSensitive)) {
-        ranges.push(range);
-        if (ranges.length >= NOTE_SEARCH_MATCH_CAP) return ranges;
+      const hits = findDomMatchRanges(root, state.query, state.caseSensitive);
+      if (!hits.length) continue;
+
+      // Try to locate the active match's DOM hit inside this widget (see class
+      // doc): map the root to its source range, then align in-range source
+      // matches with DOM hits 1:1. Any ambiguity ⇒ this widget is base-only.
+      let activeIdx = -1;
+      if (activeMatch) {
+        let pos = -1;
+        try {
+          pos = view.posAtDOM(root);
+        } catch {
+          pos = -1;
+        }
+        const wr = pos >= 0 ? wranges.find((r) => pos >= r.from && pos <= r.to) : undefined;
+        if (wr && activeMatch.from >= wr.from && activeMatch.from < wr.to) {
+          const inRange = state.matches.filter((m) => m.from >= wr.from && m.from < wr.to);
+          if (inRange.length === hits.length) {
+            activeIdx = inRange.findIndex((m) => m.from === activeMatch.from);
+          }
+        }
+      }
+
+      for (let i = 0; i < hits.length; i++) {
+        if (i === activeIdx) active = hits[i];
+        else base.push(hits[i]);
+        if (++count >= NOTE_SEARCH_MATCH_CAP) return { base, active };
       }
     }
-    return ranges;
+    return { base, active };
   }
 
   destroy(): void {

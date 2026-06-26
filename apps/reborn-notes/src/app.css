@@ -48,10 +48,14 @@
   color: var(--rn-find-active-fg);
 }
 /* Matches inside Live Preview block widgets (TOC / table / code), painted by the
-   editor's widget highlighter. Same base palette as above; active emphasis stays
-   on the editable-text mark, so widget hits use the base colour only. */
+   editor's widget highlighter. Same palette as the text marks: base for all hits,
+   the strong variant for the active match when it can be located unambiguously. */
 ::highlight(note-search-wgt) {
   background-color: var(--rn-find-bg);
+}
+::highlight(note-search-wgt-active) {
+  background-color: var(--rn-find-active-bg);
+  color: var(--rn-find-active-fg);
 }
 
 /* Notes uses Roboto as primary font */

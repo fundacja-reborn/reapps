@@ -24,6 +24,8 @@ const HL_ACTIVE = 'note-search-active';
  * other even though both write to the document-global `CSS.highlights`.
  */
 const HL_WIDGET = 'note-search-wgt';
+/** Active-match variant of {@link HL_WIDGET} (the strong/orange emphasis). */
+const HL_WIDGET_ACTIVE = 'note-search-wgt-active';
 
 /** Whether the browser supports the CSS Custom Highlight API (painting). */
 export function supportsHighlightApi(): boolean {
@@ -132,29 +134,37 @@ export function clearDomHighlights(): void {
 }
 
 /**
- * Paint `ranges` (matches found inside Live Preview block widgets) under the
- * dedicated {@link HL_WIDGET} name. Empty input clears the layer. These ranges
- * live in the editor's widget DOM, which CodeMirror's mark decorations can't
- * reach (the source is replaced by generated DOM); the CSS Custom Highlight API
- * is the only way to colour them without mutating widget markup. Active-match
- * emphasis stays on visible editor text (the `cm-note-search-match-active` mark);
- * widget hits render as the base highlight only.
+ * Paint matches found inside Live Preview block widgets: `base` under the
+ * {@link HL_WIDGET} name and the `active` range (if any) under
+ * {@link HL_WIDGET_ACTIVE}. These ranges live in the editor's widget DOM, which
+ * CodeMirror's mark decorations can't reach (the source is replaced by generated
+ * DOM); the CSS Custom Highlight API is the only way to colour them without
+ * mutating widget markup. The active range is kept OUT of `base` by the caller so
+ * the two `::highlight()` styles don't blend. Empty input clears each layer.
  */
-export function paintWidgetHighlights(ranges: Range[]): void {
+export function paintWidgetHighlights(base: Range[], active: Range | null): void {
   if (!supportsHighlightApi()) return;
-  if (!ranges.length) {
+  if (base.length) {
+    const hl = new Highlight();
+    for (const range of base) hl.add(range);
+    CSS.highlights.set(HL_WIDGET, hl);
+  } else {
     CSS.highlights.delete(HL_WIDGET);
-    return;
   }
-  const hl = new Highlight();
-  for (const range of ranges) hl.add(range);
-  CSS.highlights.set(HL_WIDGET, hl);
+  if (active) {
+    const hl = new Highlight();
+    hl.add(active);
+    CSS.highlights.set(HL_WIDGET_ACTIVE, hl);
+  } else {
+    CSS.highlights.delete(HL_WIDGET_ACTIVE);
+  }
 }
 
-/** Remove the Live Preview widget search highlight from the registry. */
+/** Remove both Live Preview widget search highlights from the registry. */
 export function clearWidgetHighlights(): void {
   if (!supportsHighlightApi()) return;
   CSS.highlights.delete(HL_WIDGET);
+  CSS.highlights.delete(HL_WIDGET_ACTIVE);
 }
 
 /**
