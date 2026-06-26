@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { EditorView, keymap, placeholder as placeholderExt } from '@codemirror/view';
-  import { EditorState, Compartment } from '@codemirror/state';
+  import { EditorState, Compartment, Prec } from '@codemirror/state';
   import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
   import {
     syntaxHighlighting,
@@ -520,7 +520,12 @@
             : []
         ),
         noteLinkDecoration,
-        noteSearchExtension,
+        // Highest precedence so the search mark becomes the INNERMOST span (CM6
+        // nests higher-precedence decorations deeper) and its background paints
+        // ON TOP of Live Preview's own inline marks — e.g. `cm-lp-code`, whose
+        // grey background would otherwise occlude the highlight on a match that
+        // lands inside inline code.
+        Prec.highest(noteSearchExtension),
         stripBulletAnchorListener,
         EditorView.domEventHandlers({
           click(e) {
