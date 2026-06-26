@@ -203,7 +203,7 @@
 						class="shrink-0"
 					>
 						{#if isExportingDecrypted}
-							{$t('common.loading') || 'Eksportowanie...'}
+							{$t('settings.import_export.exporting')}
 						{:else}
 							{$t('settings.import_export.export_decrypted_button')}
 						{/if}
@@ -214,8 +214,8 @@
 					<div class="flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/40 px-3 py-2">
 						<AlertTriangle class="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
 						<div class="text-xs text-amber-700 dark:text-amber-400">
-							<p class="font-medium">Uwaga: dane zostaną wyeksportowane bez szyfrowania.</p>
-							<p class="mt-1">Plik będzie zawierał wszystkie dane w czytelnej formie. Nie przechowuj go w niezabezpieczonych lokalizacjach.</p>
+							<p class="font-medium">{$t('settings.import_export.export_decrypted_warning_title')}</p>
+							<p class="mt-1">{$t('settings.import_export.export_decrypted_warning_body')}</p>
 							<div class="mt-2 flex gap-2">
 								<Button
 									variant="destructive"
@@ -223,14 +223,14 @@
 									onclick={handleExportDecrypted}
 									disabled={isExportingDecrypted}
 								>
-									{isExportingDecrypted ? 'Eksportowanie...' : 'Eksportuj mimo to'}
+									{isExportingDecrypted ? $t('settings.import_export.exporting') : $t('settings.import_export.export_anyway_button')}
 								</Button>
 								<Button
 									variant="outline"
 									size="sm"
 									onclick={() => showDecryptedWarning = false}
 								>
-									Anuluj
+									{$t('common.cancel')}
 								</Button>
 							</div>
 						</div>
@@ -252,7 +252,7 @@
 						class="shrink-0"
 					>
 						{#if isExportingEncrypted}
-							{$t('common.loading') || 'Eksportowanie...'}
+							{$t('settings.import_export.exporting')}
 						{:else}
 							{$t('settings.import_export.export_encrypted_button')}
 						{/if}
@@ -427,7 +427,7 @@
 						class="shrink-0"
 					>
 						{#if isImporting}
-							{$t('common.loading') || 'Importowanie...'}
+							{$t('settings.import_export.importing')}
 						{:else}
 							{$t('settings.import_export.import_button')}
 						{/if}

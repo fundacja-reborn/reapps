@@ -8,9 +8,12 @@ import { resolve } from 'path';
  * key - an earlier version passed {lists}/{tasks}/{subtasks} as top-level $t
  * options, so the message rendered literally as "{lists} lists, ...". The same
  * results block also carried hardcoded Polish sub-lines (skipped count, error
- * list) that showed Polish to every locale. This locks both fixes via source
- * assertions, with no runtime import of the page's heavy dependency graph.
- * Mirrors `data-import.regression.spec.ts`. See guideline 44.
+ * list) that showed Polish to every locale. The decrypted-export warning block
+ * (title, body, "export anyway"/"cancel" buttons) plus the export and import
+ * button loading labels (each a `{$t('common.loading') || 'Polish...'}` fallback)
+ * had the same problem. This locks all of those via source assertions, with no
+ * runtime import of the page's heavy dependency graph. Mirrors
+ * `data-import.regression.spec.ts`. See guideline 44.
  */
 function readSource(relative: string): string {
 	return readFileSync(resolve(__dirname, relative), 'utf-8');
@@ -39,5 +42,35 @@ describe('reborn-task import summary - i18n interpolation (regression)', () => {
 		expect(page).not.toMatch(/Pominięto/);
 		expect(page).not.toMatch(/Błędy podczas importu/);
 		expect(page).not.toMatch(/} więcej</);
+	});
+});
+
+describe('reborn-task export & import action labels - i18n (regression)', () => {
+	const page = readSource(PAGE);
+
+	it('localizes the decrypted-export warning text and buttons', () => {
+		expect(page).toMatch(/import_export\.export_decrypted_warning_title'/);
+		expect(page).toMatch(/import_export\.export_decrypted_warning_body'/);
+		expect(page).toMatch(/import_export\.export_anyway_button'/);
+	});
+
+	it('localizes the export and import loading labels', () => {
+		expect(page).toMatch(/import_export\.exporting'/);
+		expect(page).toMatch(/import_export\.importing'/);
+	});
+
+	it('drops every hardcoded `|| Polish` fallback on loading labels', () => {
+		// Was `{$t('common.loading') || 'Eksportowanie...'}` (and ...Importowanie...) -
+		// the `|| 'Polish'` fallback shipped Polish to every locale; now dedicated
+		// exporting/importing keys are used with no fallback.
+		expect(page).not.toMatch(/common\.loading'\)\s*\|\|/);
+	});
+
+	it('leaves no hardcoded Polish in the export/import action labels', () => {
+		expect(page).not.toMatch(/Eksportowanie/);
+		expect(page).not.toMatch(/Importowanie/);
+		expect(page).not.toMatch(/Eksportuj mimo to/);
+		expect(page).not.toMatch(/Uwaga: dane zostaną/);
+		expect(page).not.toMatch(/Anuluj/);
 	});
 });
