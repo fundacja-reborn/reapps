@@ -1,3 +1,9 @@
+## 0.37.1 (2026-06-26)
+
+### 🩹 Fixes
+
+- **whats-new:** scope last-seen baseline per app ([#346](https://github.com/fundacja-reborn/reapps/pull/346))
+
 ## 0.37.0 (2026-06-26)
 
 ### 🚀 Features
