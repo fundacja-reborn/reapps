@@ -1,3 +1,21 @@
+## 0.37.0 (2026-06-26)
+
+### 🚀 Features
+
+- **backup:** portable cross-account password-encrypted export ([#335](https://github.com/fundacja-reborn/reapps/pull/335))
+- **notes:** back/forward navigation between linked notes ([#337](https://github.com/fundacja-reborn/reapps/pull/337))
+- **notes:** in-note search with match navigation ([#344](https://github.com/fundacja-reborn/reapps/pull/344))
+
+### 🩹 Fixes
+
+- **backup:** warn that portable import adds a fresh copy ([#340](https://github.com/fundacja-reborn/reapps/pull/340), [#335](https://github.com/fundacja-reborn/reapps/issues/335))
+- **notes:** show authored label for internal links in Preview ([#336](https://github.com/fundacja-reborn/reapps/pull/336))
+- **notes:** remap internal note links on portable cross-account import ([#343](https://github.com/fundacja-reborn/reapps/pull/343))
+- **settings:** localize task file picker, drop notes folder-sync dupe ([#342](https://github.com/fundacja-reborn/reapps/pull/342))
+- **task:** interpolate counts in import summary message ([#339](https://github.com/fundacja-reborn/reapps/pull/339))
+- **task:** guard cross-account import of account-key encrypted backup ([#338](https://github.com/fundacja-reborn/reapps/pull/338))
+- **task:** localize export/import labels in settings UI ([#341](https://github.com/fundacja-reborn/reapps/pull/341))
+
 ## 0.36.0 (2026-06-24)
 
 ### 🚀 Features
