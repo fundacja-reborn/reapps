@@ -4,6 +4,7 @@ import {
   escapeLinkLabel,
   extractNoteLinkTargets,
   intersectIds,
+  remapNoteLinks,
   simplifySelfNoteLinks
 } from './note-link-utils';
 
@@ -63,6 +64,59 @@ describe('extractNoteLinkTargets', () => {
   it('returns an empty set for empty or link-free content', () => {
     expect(extractNoteLinkTargets('').size).toBe(0);
     expect(extractNoteLinkTargets('Plain text, no links.').size).toBe(0);
+  });
+});
+
+describe('remapNoteLinks', () => {
+  const NEW_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const NEW_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
+  it('rewrites a link target to its new id, keeping the label', () => {
+    const map = new Map([[A, NEW_A]]);
+    expect(remapNoteLinks(`See [Note A](note:${A}).`, map)).toBe(`See [Note A](note:${NEW_A}).`);
+  });
+
+  it('preserves a #heading anchor while swapping the id', () => {
+    const map = new Map([[A, NEW_A]]);
+    expect(remapNoteLinks(`[Sec](note:${A}#section)`, map)).toBe(`[Sec](note:${NEW_A}#section)`);
+  });
+
+  it('remaps every link, each to its own new id', () => {
+    const map = new Map([
+      [A, NEW_A],
+      [B, NEW_B]
+    ]);
+    expect(remapNoteLinks(`[a](note:${A}) and [b](note:${B})`, map)).toBe(
+      `[a](note:${NEW_A}) and [b](note:${NEW_B})`
+    );
+  });
+
+  it('leaves a link whose target is not in the map untouched (dangling)', () => {
+    // B is not in the map - a link to a note outside the backup stays verbatim.
+    const map = new Map([[A, NEW_A]]);
+    expect(remapNoteLinks(`[a](note:${A}) [b](note:${B})`, map)).toBe(
+      `[a](note:${NEW_A}) [b](note:${B})`
+    );
+  });
+
+  it('is case-insensitive on the id (uppercase link, lowercase map key)', () => {
+    const map = new Map([[A, NEW_A]]);
+    expect(remapNoteLinks(`[a](note:${A.toUpperCase()})`, map)).toBe(`[a](note:${NEW_A})`);
+  });
+
+  it('does not touch a bare note: mention that is not a link destination', () => {
+    const map = new Map([[A, NEW_A]]);
+    expect(remapNoteLinks(`ref note:${A} inline`, map)).toBe(`ref note:${A} inline`);
+  });
+
+  it('ignores malformed UUIDs', () => {
+    const map = new Map([[A, NEW_A]]);
+    expect(remapNoteLinks(`[bad](note:not-a-uuid)`, map)).toBe(`[bad](note:not-a-uuid)`);
+  });
+
+  it('returns content unchanged for empty content or empty map', () => {
+    expect(remapNoteLinks('', new Map([[A, NEW_A]]))).toBe('');
+    expect(remapNoteLinks(`[a](note:${A})`, new Map())).toBe(`[a](note:${A})`);
   });
 });
 

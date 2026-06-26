@@ -30,6 +30,38 @@ export function extractNoteLinkTargets(content: string, selfId?: string): Set<st
 }
 
 /**
+ * Same `[label](note:UUID#anchor)` shape as {@link NOTE_LINK_TARGET_RE}, but
+ * split into three capture groups - the `](note:` prefix, the bare UUID, and the
+ * trailing `#anchor)` (or bare `)`) - so {@link remapNoteLinks} can swap just the
+ * id and rebuild the link verbatim.
+ */
+const NOTE_LINK_REWRITE_RE =
+  /(\]\(note:)([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})((?:#[^)]*)?\))/gi;
+
+/**
+ * Rewrite the target of every `[label](note:OLD_UUID)` link to the new id from
+ * `idMap`, leaving the label and any `#heading` anchor untouched. A link whose
+ * target is absent from the map is returned verbatim - during a portable
+ * cross-account import that means a link to a note outside the backup stays as-is
+ * (it was already going to dangle) rather than having its surrounding markdown
+ * mangled.
+ *
+ * This is what keeps note-to-note links working after a portable backup import
+ * regenerates every note id (see `reencryptPortablePayload`): the importer
+ * pre-mints the new ids, then runs this over each note's body so every `note:`
+ * target follows its note to the new account. Lookups are case-insensitive on
+ * the id (UUIDs from `randomUUID` are lowercase, but a hand-edited link may not
+ * be), mirroring {@link extractNoteLinkTargets}.
+ */
+export function remapNoteLinks(content: string, idMap: ReadonlyMap<string, string>): string {
+  if (!content || idMap.size === 0) return content;
+  return content.replace(NOTE_LINK_REWRITE_RE, (whole, pre: string, id: string, rest: string) => {
+    const mapped = idMap.get(id) ?? idMap.get(id.toLowerCase());
+    return mapped ? `${pre}${mapped}${rest}` : whole;
+  });
+}
+
+/**
  * Ids present in BOTH lists - the mutual (bidirectional) links of a note: the
  * notes it links to that also link back. Powers the "↔" badge in the panel.
  *
