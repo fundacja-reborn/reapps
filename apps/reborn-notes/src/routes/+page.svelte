@@ -67,6 +67,7 @@
   import {
     appSettings,
     imageLoadMode,
+    editorMode,
     editorModeIntroSeen,
     periodicNotesSettings
   } from '$lib/stores/app-settings.store';
@@ -90,11 +91,16 @@
   import { createScrollSync } from '$lib/utils/scroll-sync';
   import { scrollToHeading } from '$lib/utils/heading-scroll';
   import type { DocHeading } from '$lib/utils/heading-outline';
-  import { applyToc, removeToc, hasToc, isTocStale } from '$lib/utils/toc';
+  import { applyToc, removeToc, hasToc, isTocStale, tocHiddenSpans } from '$lib/utils/toc';
   import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
   import { requireActiveSession } from '$lib/utils/require-active-session';
   import type { EditorView } from '@codemirror/view';
-  import { findMatches, NOTE_SEARCH_MATCH_CAP, type SearchMatch } from '$lib/utils/note-search-core';
+  import {
+    findMatches,
+    excludeMatchesInSpans,
+    NOTE_SEARCH_MATCH_CAP,
+    type SearchMatch
+  } from '$lib/utils/note-search-core';
   import { setNoteSearch, scrollCmMatchIntoView } from '$lib/editor/note-search';
   import {
     findDomMatchRanges,
@@ -1423,7 +1429,15 @@
       cmMatches = [];
     } else {
       const text = noteDetailService.content; // offsets line up with the CM doc
-      cmMatches = query ? findMatches(text, query, caseSensitive) : [];
+      let matches = query ? findMatches(text, query, caseSensitive) : [];
+      // Live Preview renders a managed TOC as a widget showing only entry labels;
+      // its `#slug` link targets (kebab dups of the headings) are never visible,
+      // so drop matches there to keep the count/navigation aligned with what the
+      // reader sees. Raw editor mode shows the slugs verbatim, so keep them.
+      if (effectiveViewMode === 'edit' && $editorMode === 'live' && matches.length) {
+        matches = excludeMatchesInSpans(matches, tocHiddenSpans(text));
+      }
+      cmMatches = matches;
       domMatches = [];
     }
   });
@@ -1453,7 +1467,11 @@
       const matches = cmMatches;
       clearDomHighlights();
       editorView?.dispatch({
-        effects: setNoteSearch.of(matches.length ? { matches, active } : null)
+        effects: setNoteSearch.of(
+          matches.length
+            ? { matches, active, query: searchQuery, caseSensitive: searchCaseSensitive }
+            : null
+        )
       });
     }
   });

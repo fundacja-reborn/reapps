@@ -15,6 +15,15 @@ import { findMatches, NOTE_SEARCH_MATCH_CAP } from './note-search-core';
 
 const HL_ALL = 'note-search';
 const HL_ACTIVE = 'note-search-active';
+/**
+ * Separate highlight name for matches painted INSIDE Live Preview block widgets
+ * (TOC / table / code) by the CodeMirror editor's widget highlighter. Kept
+ * distinct from {@link HL_ALL} so the editor's `clearDomHighlights()` (run on
+ * every editor-mode repaint) can wipe the rendered-preview highlights without
+ * touching the widget ones, and vice versa - the two backends never stomp each
+ * other even though both write to the document-global `CSS.highlights`.
+ */
+const HL_WIDGET = 'note-search-wgt';
 
 /** Whether the browser supports the CSS Custom Highlight API (painting). */
 export function supportsHighlightApi(): boolean {
@@ -120,6 +129,32 @@ export function clearDomHighlights(): void {
   if (!supportsHighlightApi()) return;
   CSS.highlights.delete(HL_ALL);
   CSS.highlights.delete(HL_ACTIVE);
+}
+
+/**
+ * Paint `ranges` (matches found inside Live Preview block widgets) under the
+ * dedicated {@link HL_WIDGET} name. Empty input clears the layer. These ranges
+ * live in the editor's widget DOM, which CodeMirror's mark decorations can't
+ * reach (the source is replaced by generated DOM); the CSS Custom Highlight API
+ * is the only way to colour them without mutating widget markup. Active-match
+ * emphasis stays on visible editor text (the `cm-note-search-match-active` mark);
+ * widget hits render as the base highlight only.
+ */
+export function paintWidgetHighlights(ranges: Range[]): void {
+  if (!supportsHighlightApi()) return;
+  if (!ranges.length) {
+    CSS.highlights.delete(HL_WIDGET);
+    return;
+  }
+  const hl = new Highlight();
+  for (const range of ranges) hl.add(range);
+  CSS.highlights.set(HL_WIDGET, hl);
+}
+
+/** Remove the Live Preview widget search highlight from the registry. */
+export function clearWidgetHighlights(): void {
+  if (!supportsHighlightApi()) return;
+  CSS.highlights.delete(HL_WIDGET);
 }
 
 /**

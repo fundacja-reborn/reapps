@@ -59,3 +59,27 @@ export function findMatches(text: string, query: string, caseSensitive: boolean)
   }
   return matches;
 }
+
+/** A half-open `[from, to)` source span. */
+export interface SearchSpan {
+  from: number;
+  to: number;
+}
+
+/**
+ * Drop matches that overlap any span in `excluded`.
+ *
+ * Used in Live Preview to hide matches that fall in source ranges the editor
+ * renders away (e.g. the `#slug` inside a managed TOC's `](#slug)` link target -
+ * a kebab-case dup of the heading the reader never sees). Filtering keeps the
+ * match count and prev/next navigation aligned with what is actually visible, so
+ * the user never lands on an "invisible" hit. A match overlaps a span when their
+ * half-open ranges intersect (`from < span.to && to > span.from`).
+ */
+export function excludeMatchesInSpans(
+  matches: SearchMatch[],
+  excluded: SearchSpan[]
+): SearchMatch[] {
+  if (!excluded.length) return matches;
+  return matches.filter((m) => !excluded.some((s) => m.from < s.to && m.to > s.from));
+}

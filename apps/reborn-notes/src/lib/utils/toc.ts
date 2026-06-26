@@ -84,6 +84,36 @@ export function findTocBlockRange(content: string): { from: number; to: number }
 }
 
 /**
+ * Source spans inside the managed TOC block that Live Preview renders away, so
+ * an in-note search can drop matches the reader never sees:
+ *
+ *  - the `<!-- toc -->` / `<!-- /toc -->` comment markers, and
+ *  - each `](#slug)` link target - the slug is a kebab-case DUP of the heading
+ *    text, so a query that matches a heading also matches its slug, which would
+ *    otherwise inflate the count with a hit that has no visible counterpart (the
+ *    rendered entry shows only the label; the slug lives in the anchor's href).
+ *
+ * Returned spans are absolute `[from, to)` offsets into `content`. The visible
+ * title and entry labels are deliberately NOT listed - matches there stay.
+ * Returns `[]` when there is no managed block.
+ */
+export function tocHiddenSpans(content: string): { from: number; to: number }[] {
+  const block = findTocBlockRange(content);
+  if (!block) return [];
+  const slice = content.slice(block.from, block.to);
+  const spans: { from: number; to: number }[] = [];
+  const push = (re: RegExp) => {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(slice)) !== null) {
+      spans.push({ from: block.from + m.index, to: block.from + m.index + m[0].length });
+    }
+  };
+  push(/<!--[\s\S]*?-->/g); // open/close markers
+  push(/\]\(#[^)]*\)/g); // `](#slug)` link targets
+  return spans;
+}
+
+/**
  * Escape the characters that would break a Markdown link label. The backslash
  * (Markdown's escape char) MUST be in the set, otherwise a literal `\` in the
  * heading text would "consume" a following bracket escape and close the label
