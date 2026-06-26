@@ -886,6 +886,7 @@
       "import_backup_desc": "Restore from a JSON backup file",
       "import_json": "Import JSON",
       "encrypted_prompt": "{name} is encrypted. Enter the password used during export:",
+      "import_portable_additive_note": "This adds a fresh copy to your account. Importing the same backup again creates duplicates rather than updating a previous import.",
       "backup_password": "Backup password",
       "decrypting": "Decrypting…",
       "decrypt_import": "Decrypt & import",

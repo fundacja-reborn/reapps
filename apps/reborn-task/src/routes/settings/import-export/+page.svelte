@@ -446,6 +446,12 @@
 						<p class="text-xs text-muted-foreground">
 							{$t('settings.import_export.import_encrypted_prompt')}
 						</p>
+						<div class="flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/40 px-3 py-2">
+							<AlertTriangle class="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+							<p class="text-xs text-amber-700 dark:text-amber-400">
+								{$t('settings.import_export.import_portable_additive_note')}
+							</p>
+						</div>
 						<div class="relative">
 							<input
 								type={importPasswordVisible ? 'text' : 'password'}

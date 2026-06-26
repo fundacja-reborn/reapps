@@ -886,6 +886,7 @@
       "import_backup_desc": "Aus einer JSON-Sicherungsdatei wiederherstellen",
       "import_json": "JSON importieren",
       "encrypted_prompt": "{name} ist verschlüsselt. Geben Sie das beim Export verwendete Passwort ein:",
+      "import_portable_additive_note": "Dadurch wird eine neue Kopie zu Ihrem Konto hinzugefügt. Wird dieselbe Sicherung erneut importiert, entstehen Duplikate, statt einen früheren Import zu aktualisieren.",
       "backup_password": "Sicherungspasswort",
       "decrypting": "Entschlüsseln…",
       "decrypt_import": "Entschlüsseln & importieren",

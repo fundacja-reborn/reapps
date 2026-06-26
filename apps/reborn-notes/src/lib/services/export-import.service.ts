@@ -851,6 +851,22 @@ export function isEncryptedBackup(raw: string): boolean {
 }
 
 /**
+ * Check if a backup file is a portable (version 3) backup: a plaintext payload
+ * inside a password envelope, re-encrypted with the current account key on
+ * import so it lands on ANY account. Unlike the same-account formats (v1/v2),
+ * a portable import regenerates every id, so re-importing the same file ADDS
+ * fresh copies rather than updating in place. The UI uses this to warn that a
+ * repeated import duplicates the data.
+ */
+export function isPortableBackup(raw: string): boolean {
+  try {
+    return JSON.parse(raw).version === 3;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Import a JSON backup file:
  *  - version 1: plaintext envelope, account-key ciphertext inside (same account).
  *  - version 2: password envelope, account-key ciphertext inside (legacy, same

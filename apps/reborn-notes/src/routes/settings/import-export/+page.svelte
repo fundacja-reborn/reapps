@@ -36,6 +36,7 @@
     importFolder,
     importJsonBackup,
     isEncryptedBackup,
+    isPortableBackup,
     type ImportBackupResult,
     type ImportFolderResult,
     type ImportMarkdownResult,
@@ -115,6 +116,9 @@
   let backupFileContent = $state<string | null>(null);
   let backupFileName = $state('');
   let backupNeedsPassword = $state(false);
+  // True only for portable (v3) backups, which regenerate ids on import (so a
+  // re-import duplicates). Drives the additive-copy note in the password prompt.
+  let backupIsPortable = $state(false);
   let backupPassword = $state('');
   let backupPasswordVisible = $state(false);
   let backupError = $state<string | null>(null);
@@ -308,6 +312,7 @@
     backupError = null;
     backupFileContent = null;
     backupNeedsPassword = false;
+    backupIsPortable = false;
     backupPassword = '';
     backupImportInputEl?.click();
   }
@@ -330,6 +335,7 @@
 
     if (isEncryptedBackup(raw)) {
       backupNeedsPassword = true;
+      backupIsPortable = isPortableBackup(raw);
     } else {
       await doBackupImport(raw);
     }
@@ -369,6 +375,7 @@
 
   function cancelBackupImport() {
     backupNeedsPassword = false;
+    backupIsPortable = false;
     backupFileContent = null;
     backupPassword = '';
     backupError = null;
@@ -824,6 +831,11 @@
                   values: { name: backupFileName }
                 })}
               </p>
+              {#if backupIsPortable}
+                <div class="rounded-md px-3 py-2 text-xs bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                  <p>{$t('settings_page.export_import.import_portable_additive_note')}</p>
+                </div>
+              {/if}
               <div class="relative">
                 <input
                   type={backupPasswordVisible ? 'text' : 'password'}

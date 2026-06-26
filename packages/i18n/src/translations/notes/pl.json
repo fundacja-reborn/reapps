@@ -886,6 +886,7 @@
       "import_backup_desc": "Przywróć z pliku kopii zapasowej JSON",
       "import_json": "Importuj JSON",
       "encrypted_prompt": "{name} jest zaszyfrowany. Wprowadź hasło użyte podczas eksportu:",
+      "import_portable_additive_note": "To doda nową kopię do Twojego konta. Ponowny import tego samego pliku utworzy duplikaty zamiast zaktualizować wcześniejszy import.",
       "backup_password": "Hasło kopii zapasowej",
       "decrypting": "Odszyfrowywanie…",
       "decrypt_import": "Odszyfruj i importuj",

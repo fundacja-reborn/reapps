@@ -285,6 +285,7 @@
     "portable_encrypt_button": "Verschl\u00fcsseln & herunterladen",
     "portable_encrypting": "Wird verschl\u00fcsselt...",
     "import_encrypted_prompt": "Diese Sicherung ist passwortgesch\u00fctzt. Gib das beim Export verwendete Passwort ein:",
+    "import_portable_additive_note": "Dadurch wird eine neue Kopie zu deinem Konto hinzugef\u00fcgt. Wird dieselbe Sicherung erneut importiert, entstehen Duplikate, statt einen fr\u00fcheren Import zu aktualisieren.",
     "import_password_placeholder": "Sicherungspasswort",
     "import_decrypt_button": "Entschl\u00fcsseln & importieren",
     "import_decrypting": "Wird entschl\u00fcsselt...",

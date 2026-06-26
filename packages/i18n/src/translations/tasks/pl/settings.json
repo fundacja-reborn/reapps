@@ -285,6 +285,7 @@
     "portable_encrypt_button": "Zaszyfruj i pobierz",
     "portable_encrypting": "Szyfrowanie...",
     "import_encrypted_prompt": "Ta kopia jest chroniona hasłem. Podaj hasło użyte podczas eksportu:",
+    "import_portable_additive_note": "To doda nową kopię do Twojego konta. Ponowny import tego samego pliku utworzy duplikaty zamiast zaktualizować wcześniejszy import.",
     "import_password_placeholder": "Hasło kopii",
     "import_decrypt_button": "Odszyfruj i zaimportuj",
     "import_decrypting": "Odszyfrowywanie...",
