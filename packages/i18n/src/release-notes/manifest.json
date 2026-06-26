@@ -1,5 +1,17 @@
 [
   {
+    "version": "0.37.0",
+    "date": "2026-06-26",
+    "items": [
+      { "id": "0.37.0-note-search", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.37.0-portable-backup", "category": "new", "apps": ["notes", "task"], "platforms": "all" },
+      { "id": "0.37.0-note-history", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.37.0-preview-link-labels", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.37.0-import-guard", "category": "fixed", "apps": ["task"], "platforms": "all" },
+      { "id": "0.37.0-task-i18n", "category": "fixed", "apps": ["task"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.36.0",
     "date": "2026-06-24",
     "items": [
