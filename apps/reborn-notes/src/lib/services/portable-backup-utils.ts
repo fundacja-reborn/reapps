@@ -1,9 +1,9 @@
 /**
  * Pure transforms for the portable encrypted backup (envelope version 3,
- * "plaintext-inside"). Kept in a light module - importing only types - so the
- * crypto round-trip can be unit-tested without pulling the full export/import
- * service (stores, JSZip, DOMPurify, ...). Mirrors the split used by
- * `export-import-trash-utils.ts`.
+ * "plaintext-inside"). Kept in a light module - importing only types and a pure
+ * sibling util (note-link rewriting) - so the crypto round-trip can be
+ * unit-tested without pulling the full export/import service (stores, JSZip,
+ * DOMPurify, ...). Mirrors the split used by `export-import-trash-utils.ts`.
  *
  * The crypto is injected via {@link PortableCrypto} (satisfied by
  * `cryptoManager`) so tests can simulate two distinct accounts - the whole
@@ -20,6 +20,7 @@ import type {
   FolderEncrypted,
   TagEncrypted
 } from '@reborn/types';
+import { remapNoteLinks } from './note-link-utils';
 
 /** Minimal crypto surface needed by the transforms (a subset of cryptoManager). */
 export interface PortableCrypto {
@@ -218,6 +219,13 @@ function defaultNewId(): string {
  * additive - genuinely new records owned by the target account. Dangling
  * references (a `folder_id` or tag ID whose target is not part of the backup)
  * are dropped rather than carried over as a now-meaningless ID.
+ *
+ * Because note ids change too, the `note:UUID` links embedded in each note's
+ * Markdown body are rewritten to the freshly-minted ids ({@link remapNoteLinks})
+ * so note-to-note links keep resolving after a cross-account import. A link to a
+ * note that is not part of the backup is left untouched - it would dangle either
+ * way, and rewriting only what we can resolve avoids mangling the surrounding
+ * Markdown.
  */
 export async function reencryptPortablePayload(
   crypto: PortableCrypto,
@@ -234,6 +242,13 @@ export async function reencryptPortablePayload(
   for (const f of data.folders ?? []) folderIdMap.set(f.id, newId());
   const tagIdMap = new Map<string, string>();
   for (const t of data.tags ?? []) tagIdMap.set(t.id, newId());
+  // Pre-assign note IDs too, so a `note:UUID` link can be remapped to its
+  // target's new ID even when the linked note appears later in the array (or
+  // links the other way). Minted after folders+tags to keep the assignment
+  // order folders -> tags -> notes that the spec's deterministic generator and
+  // the existing FK assertions rely on.
+  const noteIdMap = new Map<string, string>();
+  for (const n of data.notes ?? []) noteIdMap.set(n.id, newId());
 
   const folders = await Promise.all(
     (data.folders ?? []).map(async (f) => ({
@@ -277,11 +292,11 @@ export async function reencryptPortablePayload(
       };
       if (n.periodic) metadata.periodic = n.periodic;
       return {
-        id: newId(),
+        id: noteIdMap.get(n.id)!,
         user_id: userId,
         folder_id: n.folder_id ? (folderIdMap.get(n.folder_id) ?? undefined) : undefined,
         title_encrypted: await crypto.encryptText(n.title || 'Untitled'),
-        content_encrypted: await crypto.encryptText(n.content ?? ''),
+        content_encrypted: await crypto.encryptText(remapNoteLinks(n.content ?? '', noteIdMap)),
         metadata_encrypted: await crypto.encryptObject<NoteSensitiveMetadata>(metadata),
         is_archived: n.is_archived ?? false,
         created_at: n.created_at,

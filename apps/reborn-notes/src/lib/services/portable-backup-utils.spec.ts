@@ -297,6 +297,53 @@ describe('reencryptPortablePayload (import, re-encrypt with target account key)'
     expect(noteByTitle['Orphan'].folder_id).toBeUndefined();
   });
 
+  it("rewrites note-to-note links in content to the imported notes' new ids; leaves links outside the backup as-is", async () => {
+    // Real UUID-shaped ids so the `note:` link regex matches (links reference
+    // notes by UUID). The two notes cross-link; one also links a note that is
+    // NOT part of the backup.
+    const ALPHA = '550e8400-e29b-41d4-a716-446655440000';
+    const BETA = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+    const OUTSIDE = '00000000-0000-4000-8000-0000000000ff';
+    const notes = [
+      await makeStoredNote(A, {
+        id: ALPHA,
+        title: 'Alpha',
+        content: `Link to [Beta](note:${BETA}), to [a section](note:${BETA}#intro), and to [gone](note:${OUTSIDE}).`
+      }),
+      await makeStoredNote(A, {
+        id: BETA,
+        title: 'Beta',
+        content: `Back to [Alpha](note:${ALPHA}).`
+      })
+    ];
+
+    const payload = await buildPortablePayload(A, notes, [], [], '2026-06-25T00:00:00.000Z');
+    const wire = await reencryptPortablePayload(B, payload, 'user-B', seqIds());
+
+    const noteByTitle: Record<string, Record<string, unknown>> = {};
+    for (const nn of wire.notes) noteByTitle[await B.decryptText(field(nn, 'title_encrypted'))] = nn;
+    const alphaId = String(noteByTitle['Alpha'].id);
+    const betaId = String(noteByTitle['Beta'].id);
+    const alphaContent = await B.decryptText(field(noteByTitle['Alpha'], 'content_encrypted'));
+    const betaContent = await B.decryptText(field(noteByTitle['Beta'], 'content_encrypted'));
+
+    // Ids are regenerated (the very thing that used to break the links)...
+    expect(alphaId).not.toBe(ALPHA);
+    expect(betaId).not.toBe(BETA);
+    // ...and every link to a note inside the backup now points at its new id,
+    // with the #heading anchor preserved.
+    expect(alphaContent).toContain(`[Beta](note:${betaId})`);
+    expect(alphaContent).toContain(`[a section](note:${betaId}#intro)`);
+    expect(betaContent).toContain(`[Alpha](note:${alphaId})`);
+    // The source ids are gone from the bodies entirely.
+    expect(alphaContent).not.toContain(ALPHA);
+    expect(alphaContent).not.toContain(BETA);
+    expect(betaContent).not.toContain(ALPHA);
+    // A link to a note that was not part of the backup is left verbatim - it
+    // would dangle either way, and we never mangle the surrounding Markdown.
+    expect(alphaContent).toContain(`[gone](note:${OUTSIDE})`);
+  });
+
   it('defaults pin/star/tags for a note with no metadata, and omits tag color when absent', async () => {
     const notes = [await makeStoredNote(A, { id: 'n1', title: 'Plain', content: '' })];
     const tags = [await makeStoredTag(A, { id: 't1', name: 'nocolor' })];
