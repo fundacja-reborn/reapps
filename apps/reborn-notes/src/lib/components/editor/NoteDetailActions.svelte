@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     MoreHorizontal,
+    Search,
     Pin,
     PinOff,
     Star,
@@ -31,6 +32,7 @@
   let {
     note,
     onmenuopen,
+    onsearch,
     onpin,
     onstar,
     onmove,
@@ -48,6 +50,8 @@
     note: NoteListItem | null;
     /** Mobile: opens parent-provided NoteActionSheet */
     onmenuopen: () => void;
+    /** Opens the in-note search bar (Ctrl/Cmd+F equivalent). */
+    onsearch: () => void;
     onpin: () => void;
     onstar: () => void;
     onmove: (folderId: string | null, e?: Event) => void;
@@ -117,7 +121,14 @@
             </button>
           {/snippet}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" class="min-w-40">
+        <DropdownMenuContent align="end" class="min-w-44">
+          <!-- Find -->
+          <DropdownMenuItem onclick={onsearch}>
+            <Search class="h-3.5 w-3.5" />
+            {$t('note_search.open')}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <!-- Organize -->
           <DropdownMenuItem onclick={onpin}>
             {#if note.is_pinned}
               <PinOff class="h-3.5 w-3.5" />
@@ -140,11 +151,14 @@
             <FolderInput class="h-3.5 w-3.5" />
             {$t('notes.move_to_folder')}
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <!-- Content tools (conditional on the note having headings / a TOC block) -->
           {#if tocMenuMode === 'insert'}
             <DropdownMenuItem onclick={onTocApply}>
               <ListPlus class="h-3.5 w-3.5" />
               {$t('toc.insert')}
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
           {:else if tocMenuMode === 'manage'}
             <DropdownMenuItem onclick={onTocApply}>
               <RefreshCw class="h-3.5 w-3.5" />
@@ -161,15 +175,9 @@
               <ListX class="h-3.5 w-3.5" />
               {$t('toc.remove')}
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
           {/if}
-          <DropdownMenuItem onclick={onexport}>
-            <Download class="h-3.5 w-3.5" />
-            {$t('notes.export_markdown')}
-          </DropdownMenuItem>
-          <DropdownMenuItem onclick={onexportpdf}>
-            <FileText class="h-3.5 w-3.5" />
-            {$t('notes.export_pdf')}
-          </DropdownMenuItem>
+          <!-- Share / export -->
           <DropdownMenuItem onclick={oncopylink}>
             <Link2 class="h-3.5 w-3.5" />
             {$t('notes.copy_note_link')}
@@ -180,11 +188,22 @@
               {$t('share.note.menu_label')}
             </DropdownMenuItem>
           {/if}
+          <DropdownMenuItem onclick={onexport}>
+            <Download class="h-3.5 w-3.5" />
+            {$t('notes.export_markdown')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onclick={onexportpdf}>
+            <FileText class="h-3.5 w-3.5" />
+            {$t('notes.export_pdf')}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <!-- Info -->
           <DropdownMenuItem onclick={onshowxray}>
             <ScanEye class="h-3.5 w-3.5" />
             {$t('encryption.title')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <!-- Destructive -->
           <DropdownMenuItem
             class="text-destructive focus:text-destructive"
             onclick={ondelete}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    Search,
     Pin,
     PinOff,
     Star,
@@ -28,6 +29,7 @@
     open = $bindable(false),
     note,
     isTrash = false,
+    onsearch,
     onpin,
     onstar,
     onmove,
@@ -50,6 +52,8 @@
     open: boolean;
     note: NoteListItem | null;
     isTrash?: boolean;
+    /** Opens the in-note search bar. Only wired in the open-note context. */
+    onsearch?: () => void;
     onpin: (id: string) => void;
     onstar: (id: string) => void;
     onmove: (id: string) => void;
@@ -79,14 +83,23 @@
     /** Remove the managed TOC block. */
     onTocRemove?: () => void;
   } = $props();
+
+  // Whether the "navigate/structure this note" group has anything to show, so
+  // its leading separator isn't rendered for list-item sheets (which pass none).
+  const hasContentTools = $derived(
+    !!onoutline || !!onlinkednotes || !!onhistory || tocMenuMode !== 'hidden'
+  );
 </script>
 
 <Sheet bind:open>
-  <SheetContent side="bottom" class="h-auto">
-    <SheetHeader class="text-left">
+  <!-- Capped height + scrollable body so a long menu fits a short screen; the
+       header (and the sheet's absolute close button) stay pinned while only the
+       action list scrolls. -->
+  <SheetContent side="bottom" class="flex max-h-[85dvh] flex-col">
+    <SheetHeader class="shrink-0 pr-8 text-left">
       <SheetTitle class="line-clamp-2 text-left">{note?.title || $t('notes.untitled')}</SheetTitle>
     </SheetHeader>
-    <div class="mt-4 space-y-1">
+    <div class="flex-1 space-y-1 overflow-y-auto">
       {#if isTrash}
         <Button
           variant="ghost"
@@ -105,6 +118,22 @@
           {$t('notes.delete_permanently')}
         </Button>
       {:else}
+        <!-- Find -->
+        {#if onsearch}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => {
+              open = false;
+              onsearch?.();
+            }}
+          >
+            <Search class="mr-2 h-4 w-4" />
+            {$t('note_search.open')}
+          </Button>
+          <div class="my-1 h-px bg-border" role="separator"></div>
+        {/if}
+        <!-- Organize -->
         <Button
           variant="ghost"
           class="w-full justify-start"
@@ -139,66 +168,93 @@
           <FolderInput class="mr-2 h-4 w-4" />
           {$t('notes.move_to_folder')}
         </Button>
-        {#if tocMenuMode === 'insert'}
-          <Button
-            variant="ghost"
-            class="w-full justify-start"
-            onclick={() => {
-              open = false;
-              onTocApply?.();
-            }}
-          >
-            <ListPlus class="mr-2 h-4 w-4" />
-            {$t('toc.insert')}
-          </Button>
-        {:else if tocMenuMode === 'manage'}
-          <Button
-            variant="ghost"
-            class="w-full justify-start"
-            onclick={() => {
-              open = false;
-              onTocApply?.();
-            }}
-          >
-            <RefreshCw class="mr-2 h-4 w-4" />
-            {$t('toc.refresh')}
-            {#if tocStale}
-              <span
-                class="ml-auto inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
-                aria-hidden="true"
-              ></span>
-            {/if}
-          </Button>
-          <Button
-            variant="ghost"
-            class="w-full justify-start"
-            onclick={() => {
-              open = false;
-              onTocRemove?.();
-            }}
-          >
-            <ListX class="mr-2 h-4 w-4" />
-            {$t('toc.remove')}
-          </Button>
+        <!-- Navigate / structure this note -->
+        {#if hasContentTools}
+          <div class="my-1 h-px bg-border" role="separator"></div>
+          {#if onoutline}
+            <Button
+              variant="ghost"
+              class="w-full justify-start"
+              onclick={() => {
+                open = false;
+                onoutline?.();
+              }}
+            >
+              <ListTree class="mr-2 h-4 w-4" />
+              {$t('outline.title')}
+            </Button>
+          {/if}
+          {#if tocMenuMode === 'insert'}
+            <Button
+              variant="ghost"
+              class="w-full justify-start"
+              onclick={() => {
+                open = false;
+                onTocApply?.();
+              }}
+            >
+              <ListPlus class="mr-2 h-4 w-4" />
+              {$t('toc.insert')}
+            </Button>
+          {:else if tocMenuMode === 'manage'}
+            <Button
+              variant="ghost"
+              class="w-full justify-start"
+              onclick={() => {
+                open = false;
+                onTocApply?.();
+              }}
+            >
+              <RefreshCw class="mr-2 h-4 w-4" />
+              {$t('toc.refresh')}
+              {#if tocStale}
+                <span
+                  class="ml-auto inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
+                  aria-hidden="true"
+                ></span>
+              {/if}
+            </Button>
+            <Button
+              variant="ghost"
+              class="w-full justify-start"
+              onclick={() => {
+                open = false;
+                onTocRemove?.();
+              }}
+            >
+              <ListX class="mr-2 h-4 w-4" />
+              {$t('toc.remove')}
+            </Button>
+          {/if}
+          {#if onlinkednotes}
+            <Button
+              variant="ghost"
+              class="w-full justify-start"
+              onclick={() => {
+                open = false;
+                onlinkednotes?.();
+              }}
+            >
+              <Waypoints class="mr-2 h-4 w-4" />
+              {$t('linked_notes.title')}
+            </Button>
+          {/if}
+          {#if onhistory}
+            <Button
+              variant="ghost"
+              class="w-full justify-start"
+              onclick={() => {
+                open = false;
+                onhistory?.();
+              }}
+            >
+              <Clock class="mr-2 h-4 w-4" />
+              {$t('history.title')}
+            </Button>
+          {/if}
         {/if}
-        <Button
-          variant="ghost"
-          class="w-full justify-start"
-          onclick={() => note && onexport(note)}
-        >
-          <Download class="mr-2 h-4 w-4" />
-          {$t('notes.export_markdown')}
-        </Button>
-        {#if onexportpdf}
-          <Button
-            variant="ghost"
-            class="w-full justify-start"
-            onclick={() => note && onexportpdf?.(note)}
-          >
-            <FileText class="mr-2 h-4 w-4" />
-            {$t('notes.export_pdf')}
-          </Button>
-        {/if}
+        <!-- Share / export -->
+        <div class="my-1 h-px bg-border" role="separator"></div>
         <Button
           variant="ghost"
           class="w-full justify-start"
@@ -222,46 +278,27 @@
             {$t('share.note.menu_label')}
           </Button>
         {/if}
-        {#if onhistory}
+        <Button
+          variant="ghost"
+          class="w-full justify-start"
+          onclick={() => note && onexport(note)}
+        >
+          <Download class="mr-2 h-4 w-4" />
+          {$t('notes.export_markdown')}
+        </Button>
+        {#if onexportpdf}
           <Button
             variant="ghost"
             class="w-full justify-start"
-            onclick={() => {
-              open = false;
-              onhistory?.();
-            }}
+            onclick={() => note && onexportpdf?.(note)}
           >
-            <Clock class="mr-2 h-4 w-4" />
-            {$t('history.title')}
+            <FileText class="mr-2 h-4 w-4" />
+            {$t('notes.export_pdf')}
           </Button>
         {/if}
-        {#if onoutline}
-          <Button
-            variant="ghost"
-            class="w-full justify-start"
-            onclick={() => {
-              open = false;
-              onoutline?.();
-            }}
-          >
-            <ListTree class="mr-2 h-4 w-4" />
-            {$t('outline.title')}
-          </Button>
-        {/if}
-        {#if onlinkednotes}
-          <Button
-            variant="ghost"
-            class="w-full justify-start"
-            onclick={() => {
-              open = false;
-              onlinkednotes?.();
-            }}
-          >
-            <Waypoints class="mr-2 h-4 w-4" />
-            {$t('linked_notes.title')}
-          </Button>
-        {/if}
+        <!-- Info -->
         {#if onshowxray}
+          <div class="my-1 h-px bg-border" role="separator"></div>
           <Button
             variant="ghost"
             class="w-full justify-start"
@@ -274,6 +311,8 @@
             {$t('encryption.title')}
           </Button>
         {/if}
+        <!-- Destructive -->
+        <div class="my-1 h-px bg-border" role="separator"></div>
         <Button
           variant="ghost"
           class="w-full justify-start text-destructive hover:text-destructive"

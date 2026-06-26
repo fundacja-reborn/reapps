@@ -650,6 +650,16 @@
     "back": "Note précédente",
     "forward": "Note suivante"
   },
+  "note_search": {
+    "open": "Rechercher dans la note",
+    "placeholder": "Rechercher dans la note…",
+    "previous": "Résultat précédent",
+    "next": "Résultat suivant",
+    "close": "Fermer la recherche",
+    "match_case": "Respecter la casse",
+    "no_results": "Aucun résultat",
+    "position": "{current} sur {total}"
+  },
   "outline": {
     "title": "Plan",
     "empty": "Cette note n'a pas encore de titres."

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { EditorView, keymap, placeholder as placeholderExt } from '@codemirror/view';
-  import { EditorState, Compartment } from '@codemirror/state';
+  import { EditorState, Compartment, Prec } from '@codemirror/state';
   import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
   import {
     syntaxHighlighting,
@@ -11,6 +11,7 @@
   import { oneDark } from '@codemirror/theme-one-dark';
   import { noteLinkAutocomplete, type NoteLinkItem } from '$lib/editor/note-link-autocomplete';
   import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
+  import { noteSearchExtension } from '$lib/editor/note-search';
   import { listIndent, listOutdent } from '$lib/editor/list-keymap';
   import {
     BULLET_ANCHOR,
@@ -519,6 +520,12 @@
             : []
         ),
         noteLinkDecoration,
+        // Highest precedence so the search mark becomes the INNERMOST span (CM6
+        // nests higher-precedence decorations deeper) and its background paints
+        // ON TOP of Live Preview's own inline marks — e.g. `cm-lp-code`, whose
+        // grey background would otherwise occlude the highlight on a match that
+        // lands inside inline code.
+        Prec.highest(noteSearchExtension),
         stripBulletAnchorListener,
         EditorView.domEventHandlers({
           click(e) {
@@ -1199,6 +1206,18 @@
     text-decoration: underline dashed;
     text-underline-offset: 3px;
     border-radius: 2px;
+  }
+
+  /* In-note search (find) highlights — driven by editor/note-search.ts. Colors
+     share the --rn-find-* vars defined globally on the note page so the editor
+     and the rendered preview's ::highlight() styles stay in sync. */
+  :global(.cm-host .cm-note-search-match) {
+    background-color: var(--rn-find-bg, rgba(250, 204, 21, 0.4));
+    border-radius: 2px;
+  }
+  :global(.cm-host .cm-note-search-match-active) {
+    background-color: var(--rn-find-active-bg, #f59e0b);
+    color: var(--rn-find-active-fg, #1c1917);
   }
 
   .toolbar-btn {
