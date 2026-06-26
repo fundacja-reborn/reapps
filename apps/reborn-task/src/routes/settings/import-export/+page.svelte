@@ -409,17 +409,20 @@
 				{/if}
 
 				<div class="flex flex-col sm:flex-row gap-3">
-					<div class="flex-1">
+					<div class="flex flex-1 items-center gap-3 min-w-0">
 						<input
 							bind:this={fileInput}
 							type="file"
 							accept=".json"
 							onchange={handleFileChange}
-							class="block w-full text-sm text-muted-foreground
-								file:mr-4 file:py-2 file:px-4 file:rounded-md file:border file:border-input
-								file:text-sm file:font-medium file:bg-background file:text-foreground
-								hover:file:bg-muted cursor-pointer"
+							class="sr-only"
 						/>
+						<Button variant="outline" onclick={() => fileInput?.click()} class="shrink-0">
+							{$t('settings.import_export.import_select_file')}
+						</Button>
+						<span class="truncate text-sm text-muted-foreground">
+							{importFile ? importFile.name : $t('settings.import_export.import_no_file')}
+						</span>
 					</div>
 					<Button
 						onclick={handleImport}

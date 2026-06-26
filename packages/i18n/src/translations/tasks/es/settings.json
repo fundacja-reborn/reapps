@@ -299,6 +299,7 @@
     "import_section_title": "Importar desde archivo",
     "import_section_description": "Importe datos desde un archivo JSON exportado de esta aplicación. Los nuevos elementos se añadirán; los existentes se actualizarán si la versión importada es más reciente.",
     "import_select_file": "Seleccionar archivo JSON",
+    "import_no_file": "Ningún archivo seleccionado",
     "import_button": "Importar",
     "import_success": "Importación completa: {lists} listas, {tasks} tareas, {subtasks} subtareas",
     "import_skipped_note": "{count} elementos omitidos (versiones locales más recientes).",

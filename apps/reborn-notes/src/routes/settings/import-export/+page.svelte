@@ -14,16 +14,13 @@
     Upload,
     FolderArchive,
     FolderInput,
-    FolderSync,
     FileJson,
     FileText,
     KeyRound,
     Eye,
     EyeOff,
-    AlertTriangle,
-    ChevronRight
+    AlertTriangle
   } from '@lucide/svelte';
-  import { resolve } from '$app/paths';
   import { t } from '$lib/stores/i18n.store';
   import { foldersStore } from '$lib/stores/folders.store';
   import { tagsStore } from '$lib/stores/tags.store';
@@ -780,23 +777,6 @@
             <ImportResultSummary result={folderImportResult} class="mt-3" />
           {/if}
         </div>
-
-        <!-- Live folder sync moved to its own settings page (multi-folder) -->
-        <a
-          href={resolve('/settings/folder-sync')}
-          class="flex items-center gap-3 rounded-lg border bg-muted/30 p-4 transition-colors hover:bg-accent/50"
-        >
-          <FolderSync class="h-4 w-4 shrink-0 text-muted-foreground" />
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium">
-              {$t('settings_page.export_import.folder_sync_title')}
-            </p>
-            <p class="text-xs text-muted-foreground">
-              {$t('settings_page.export_import.folder_sync_hub_desc')}
-            </p>
-          </div>
-          <ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
-        </a>
 
         <!-- Import JSON backup -->
         <div class="p-4 rounded-lg border bg-muted/30">
