@@ -47,3 +47,37 @@ describe('reborn-task data-import — user_id resilience (regression)', () => {
 		);
 	});
 });
+
+/**
+ * Regression: an account-key "Encrypted Backup" is readable only on the account
+ * that created it. Imported on a different account every field fails the
+ * AES-GCM auth check; the old code saved the untouched ciphertext (blank rows,
+ * later sync-rejected) with no error. The guard probes one ciphertext per entity
+ * kind and, if none decrypt, throws a localized message pointing at the portable
+ * (password) backup. This locks the wiring in place. See guideline 44.
+ */
+describe('reborn-task data-import — cross-account encrypted guard (regression)', () => {
+	it('probes decryptability and aborts before the import loops run', () => {
+		const src = readSource('./data-import.service.ts');
+		const encStart = src.indexOf('private async importEncrypted');
+		const encEnd = src.indexOf('private async importDecrypted');
+		const enc = src.slice(encStart, encEnd);
+
+		// The guard must run BEFORE any save loop (the first `for` in the method).
+		const guardIdx = enc.indexOf('isEncryptedBackupReadable');
+		const firstLoopIdx = enc.indexOf('for (const list of');
+		expect(guardIdx).toBeGreaterThan(-1);
+		expect(firstLoopIdx).toBeGreaterThan(guardIdx);
+
+		// Probes a ciphertext from each entity kind, decrypting with the current key.
+		expect(enc).toMatch(/lists\[0\]\?\.name_encrypted/);
+		expect(enc).toMatch(/tasks\[0\]\?\.title_encrypted/);
+		expect(enc).toMatch(/subtasks\[0\]\?\.name_encrypted/);
+		expect(enc).toMatch(/cryptoManager\.decryptText/);
+
+		// On failure it throws the localized cross-account message, not a silent skip.
+		expect(enc).toMatch(
+			/if\s*\(\s*!readable\s*\)\s*\{[\s\S]*?settings\.import_export\.import_cross_account_error/
+		);
+	});
+});

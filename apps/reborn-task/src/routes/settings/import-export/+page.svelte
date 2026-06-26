@@ -148,10 +148,12 @@
 			};
 			toast.success(
 				$t('settings.import_export.import_success', {
-					lists: result.listsImported,
-					tasks: result.tasksImported,
-					subtasks: result.subtasksImported,
-					default: `Import zakończony: ${result.listsImported} list, ${result.tasksImported} zadań, ${result.subtasksImported} podzadań`
+					values: {
+						lists: result.listsImported,
+						tasks: result.tasksImported,
+						subtasks: result.subtasksImported
+					},
+					default: `Import complete: ${result.listsImported} lists, ${result.tasksImported} tasks, ${result.subtasksImported} subtasks`
 				})
 			);
 			// Reset file input
@@ -361,14 +363,19 @@
 					<Alert>
 						<AlertDescription>
 							{$t('settings.import_export.import_success', {
-								lists: importResult.lists,
-								tasks: importResult.tasks,
-								subtasks: importResult.subtasks,
-								default: `Import zakończony: ${importResult.lists} list, ${importResult.tasks} zadań, ${importResult.subtasks} podzadań`
+								values: {
+									lists: importResult.lists,
+									tasks: importResult.tasks,
+									subtasks: importResult.subtasks
+								},
+								default: `Import complete: ${importResult.lists} lists, ${importResult.tasks} tasks, ${importResult.subtasks} subtasks`
 							})}
 							{#if importResult.skipped > 0}
 								<p class="mt-1 text-xs text-muted-foreground">
-									Pominięto {importResult.skipped} elementów (nowsze lokalne wersje).
+									{$t('settings.import_export.import_skipped_note', {
+										values: { count: importResult.skipped },
+										default: `Skipped ${importResult.skipped} items (newer local versions).`
+									})}
 								</p>
 							{/if}
 						</AlertDescription>
@@ -377,13 +384,23 @@
 						<div class="flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/40 px-3 py-2">
 							<AlertTriangle class="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
 							<div class="text-xs text-amber-700 dark:text-amber-400">
-								<p class="font-medium">Błędy podczas importu ({importResult.errors.length}):</p>
+								<p class="font-medium">
+									{$t('settings.import_export.import_errors_title', {
+										values: { count: importResult.errors.length },
+										default: `Import errors (${importResult.errors.length}):`
+									})}
+								</p>
 								<ul class="mt-1 list-disc list-inside space-y-0.5">
 									{#each importResult.errors.slice(0, 10) as error}
 										<li>{error}</li>
 									{/each}
 									{#if importResult.errors.length > 10}
-										<li>...i {importResult.errors.length - 10} więcej</li>
+										<li>
+											{$t('settings.import_export.import_errors_more', {
+												values: { count: importResult.errors.length - 10 },
+												default: `...and ${importResult.errors.length - 10} more`
+											})}
+										</li>
 									{/if}
 								</ul>
 							</div>
