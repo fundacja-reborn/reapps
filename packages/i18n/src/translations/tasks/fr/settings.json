@@ -285,6 +285,7 @@
     "portable_encrypt_button": "Chiffrer et t\u00e9l\u00e9charger",
     "portable_encrypting": "Chiffrement...",
     "import_encrypted_prompt": "Cette sauvegarde est prot\u00e9g\u00e9e par mot de passe. Saisissez le mot de passe utilis\u00e9 lors de l'export :",
+    "import_portable_additive_note": "Cela ajoute une nouvelle copie \u00e0 votre compte. R\u00e9importer la m\u00eame sauvegarde cr\u00e9e des doublons au lieu de mettre \u00e0 jour un import pr\u00e9c\u00e9dent.",
     "import_password_placeholder": "Mot de passe de la sauvegarde",
     "import_decrypt_button": "D\u00e9chiffrer et importer",
     "import_decrypting": "D\u00e9chiffrement...",

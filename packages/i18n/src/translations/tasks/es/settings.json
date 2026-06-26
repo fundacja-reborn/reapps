@@ -285,6 +285,7 @@
     "portable_encrypt_button": "Cifrar y descargar",
     "portable_encrypting": "Cifrando...",
     "import_encrypted_prompt": "Esta copia está protegida con contraseña. Introduce la contraseña utilizada al exportar:",
+    "import_portable_additive_note": "Esto añade una copia nueva a tu cuenta. Volver a importar el mismo archivo crea duplicados en lugar de actualizar una importación anterior.",
     "import_password_placeholder": "Contraseña de la copia",
     "import_decrypt_button": "Descifrar e importar",
     "import_decrypting": "Descifrando...",
