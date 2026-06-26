@@ -148,10 +148,12 @@
 			};
 			toast.success(
 				$t('settings.import_export.import_success', {
-					lists: result.listsImported,
-					tasks: result.tasksImported,
-					subtasks: result.subtasksImported,
-					default: `Import zakończony: ${result.listsImported} list, ${result.tasksImported} zadań, ${result.subtasksImported} podzadań`
+					values: {
+						lists: result.listsImported,
+						tasks: result.tasksImported,
+						subtasks: result.subtasksImported
+					},
+					default: `Import complete: ${result.listsImported} lists, ${result.tasksImported} tasks, ${result.subtasksImported} subtasks`
 				})
 			);
 			// Reset file input
@@ -361,10 +363,12 @@
 					<Alert>
 						<AlertDescription>
 							{$t('settings.import_export.import_success', {
-								lists: importResult.lists,
-								tasks: importResult.tasks,
-								subtasks: importResult.subtasks,
-								default: `Import zakończony: ${importResult.lists} list, ${importResult.tasks} zadań, ${importResult.subtasks} podzadań`
+								values: {
+									lists: importResult.lists,
+									tasks: importResult.tasks,
+									subtasks: importResult.subtasks
+								},
+								default: `Import complete: ${importResult.lists} lists, ${importResult.tasks} tasks, ${importResult.subtasks} subtasks`
 							})}
 							{#if importResult.skipped > 0}
 								<p class="mt-1 text-xs text-muted-foreground">
