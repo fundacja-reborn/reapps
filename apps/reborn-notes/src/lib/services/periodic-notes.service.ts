@@ -37,6 +37,8 @@ import {
 import { foldersStore } from '$lib/stores/folders.store';
 import { notesStore } from '$lib/stores/notes.store';
 import { noteIndex } from '$lib/services/note-index.svelte';
+import { isSyncing } from '$lib/stores/sync-status.store';
+import { whenFalsy } from '$lib/utils/store-wait';
 import { getSetting } from '$lib/utils/app-settings';
 import { appSettings } from '$lib/stores/app-settings.store';
 import { t as i18nT, locale as i18nLocale } from '$lib/stores/i18n.store';
@@ -327,6 +329,20 @@ export async function getOrCreateNote(
 
   const existing = await findExistingPeriodicNote(folderId, kind, anchorIso);
   if (existing) return { noteId: existing, created: false };
+
+  // No match in the in-memory index - but the index is built incrementally
+  // during the initial paginated pull, and the keyset order (updated_at ASC)
+  // puts today's freshly-touched periodic note on the LAST page. A miss while a
+  // pull is still in flight may just mean "not paged in yet", not "doesn't
+  // exist": creating now would duplicate a note that's about to arrive. Wait
+  // for the pull to settle (index complete), then resolve once more before
+  // committing to a new note. Steady-state (no pull running) this is a no-op.
+  // Post-sync dedup (detectAndNotifyPeriodicDuplicates) remains the backstop.
+  if (get(isSyncing)) {
+    await whenFalsy(isSyncing);
+    const afterSync = await findExistingPeriodicNote(folderId, kind, anchorIso);
+    if (afterSync) return { noteId: afterSync, created: false };
+  }
 
   const noteId = await createNote(title, '', folderId, {
     periodic: { kind, anchor: anchorIso }
