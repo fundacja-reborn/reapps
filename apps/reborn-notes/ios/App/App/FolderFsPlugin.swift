@@ -34,7 +34,9 @@ public class FolderFsPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelega
         CAPPluginMethod(name: "pickDirectory", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "listFiles", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "readFile", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "isSameDirectory", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "isSameDirectory", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "writeFile", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "deleteFile", returnType: CAPPluginReturnPromise)
     ]
 
     /// Upper bound on waiting for an iCloud placeholder to download before a read.
@@ -303,5 +305,132 @@ public class FolderFsPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelega
         } catch {
             call.reject("Failed to compare bookmarks: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: - writeFile
+
+    /// Create-or-overwrite one UTF-8 file in the bookmarked folder - the automated
+    /// backup engine drops an encrypted envelope here (planning/auto-backup-zk.md).
+    /// No write-specific grant is needed: a folder picked via UIDocumentPicker in
+    /// open mode (asCopy:false) is read-write by nature, so the SAME plain bookmark
+    /// used by listFiles/readFile already authorizes writes. (The JS `write` flag on
+    /// pickDirectory is therefore an Android-only concern.)
+    @objc func writeFile(_ call: CAPPluginCall) {
+        guard let bookmarkB64 = call.getString("bookmark"),
+              let bookmarkData = Data(base64Encoded: bookmarkB64),
+              let relPath = call.getString("path"),
+              let content = call.getString("content") else {
+            call.reject("Missing bookmark, path or content")
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                var isStale = false
+                let root = try URL(
+                    resolvingBookmarkData: bookmarkData,
+                    options: [],
+                    relativeTo: nil,
+                    bookmarkDataIsStale: &isStale
+                )
+                let didAccess = root.startAccessingSecurityScopedResource()
+                defer { if didAccess { root.stopAccessingSecurityScopedResource() } }
+                guard didAccess else {
+                    call.reject("Access denied to bookmarked folder", "ACCESS_DENIED")
+                    return
+                }
+
+                // Refresh a stale bookmark while we still hold access (same contract
+                // as listFiles); the JS layer persists it over the old one.
+                var staleBookmark: String?
+                if isStale,
+                   let fresh = try? root.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
+                    staleBookmark = fresh.base64EncodedString()
+                }
+
+                let fileURL = self.resolveChild(root: root, relativePath: relPath)
+                try self.coordinatedWrite(fileURL, content: content)
+
+                var result: [String: Any] = [:]
+                if let staleBookmark = staleBookmark { result["staleBookmark"] = staleBookmark }
+                call.resolve(result)
+            } catch {
+                call.reject("Failed to write file: \(error.localizedDescription)", "WRITE_FAILED")
+            }
+        }
+    }
+
+    /// Coordinated, atomic UTF-8 write. NSFileCoordinator `.forReplacing` is the
+    /// iCloud-safe counterpart of coordinatedRead (the backup folder may live in
+    /// iCloud Drive); `.atomic` writes to a temp file then renames, so a crash can
+    /// never leave a truncated backup behind.
+    private func coordinatedWrite(_ url: URL, content: String) throws {
+        var coordError: NSError?
+        var writeError: Error?
+        NSFileCoordinator().coordinate(writingItemAt: url, options: .forReplacing, error: &coordError) { newURL in
+            do { try Data(content.utf8).write(to: newURL, options: .atomic) }
+            catch { writeError = error }
+        }
+        if let coordError = coordError { throw coordError }
+        if let writeError = writeError { throw writeError }
+    }
+
+    // MARK: - deleteFile
+
+    /// Remove one file from the bookmarked folder (backup rotation). Idempotent: an
+    /// already-absent file is the desired end state, so missing is not an error.
+    @objc func deleteFile(_ call: CAPPluginCall) {
+        guard let bookmarkB64 = call.getString("bookmark"),
+              let bookmarkData = Data(base64Encoded: bookmarkB64),
+              let relPath = call.getString("path") else {
+            call.reject("Missing bookmark or path")
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                var isStale = false
+                let root = try URL(
+                    resolvingBookmarkData: bookmarkData,
+                    options: [],
+                    relativeTo: nil,
+                    bookmarkDataIsStale: &isStale
+                )
+                let didAccess = root.startAccessingSecurityScopedResource()
+                defer { if didAccess { root.stopAccessingSecurityScopedResource() } }
+                guard didAccess else {
+                    call.reject("Access denied to bookmarked folder", "ACCESS_DENIED")
+                    return
+                }
+
+                var staleBookmark: String?
+                if isStale,
+                   let fresh = try? root.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
+                    staleBookmark = fresh.base64EncodedString()
+                }
+
+                let fileURL = self.resolveChild(root: root, relativePath: relPath)
+                if FileManager.default.fileExists(atPath: fileURL.path) {
+                    try self.coordinatedRemove(fileURL)
+                }
+
+                var result: [String: Any] = [:]
+                if let staleBookmark = staleBookmark { result["staleBookmark"] = staleBookmark }
+                call.resolve(result)
+            } catch {
+                call.reject("Failed to delete file: \(error.localizedDescription)", "DELETE_FAILED")
+            }
+        }
+    }
+
+    private func coordinatedRemove(_ url: URL) throws {
+        var coordError: NSError?
+        var removeError: Error?
+        NSFileCoordinator().coordinate(writingItemAt: url, options: .forDeleting, error: &coordError) { newURL in
+            do { try FileManager.default.removeItem(at: newURL) }
+            catch { removeError = error }
+        }
+        if let coordError = coordError { throw coordError }
+        if let removeError = removeError { throw removeError }
     }
 }

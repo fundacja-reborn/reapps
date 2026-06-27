@@ -23,6 +23,7 @@
   import { sharesStore } from '$lib/stores/shares.store';
   import { pullFromServer, pushPendingItems, refreshStoresAfterPull } from '$lib/services/notes-sync.service';
   import { initFolderSync, runFolderSync } from '$lib/services/folder-sync.service';
+  import { runNotesAutoBackupIfDue } from '$lib/services/auto-backup';
   import { verifyAndRebuildLocalShadowIndexes } from '$lib/services/shadow-index-reconciler.service';
   import { noteIndex } from '$lib/services/note-index.svelte';
   import { cleanupNullFkFields } from '$lib/services/idb-cleanup.service';
@@ -206,6 +207,10 @@
       // Live folder sync: scan the linked local directory once the unlock
       // sync settled. No-ops unless configured + auto-sync enabled.
       void runFolderSync('auto');
+      // Automated backup: write an encrypted snapshot to the user's folder if
+      // due. Native-only and internally gated (enabled + folder + cadence +
+      // unchanged-skip), so firing blind here is safe and a no-op on web.
+      void runNotesAutoBackupIfDue();
     };
     // fire-and-forget: initial sync, errors handled by sync service
     runSync().catch(() => {});
@@ -415,6 +420,8 @@
         // the lifecycle resume is the dependable signal. runFolderSync re-validates
         // support/auth/cooldown/single-flight internally, so firing blind is safe.
         void runFolderSync('auto');
+        // Same for the automated backup: gated internally, safe to fire blind.
+        void runNotesAutoBackupIfDue();
       });
 
       // Inbound App Links to a public share (https://<host>/notes/s/<slug>#k=...):

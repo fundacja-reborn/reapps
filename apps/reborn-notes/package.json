@@ -68,6 +68,7 @@
     "@lucide/svelte": "1.16.0",
     "@reborn/api-client": "workspace:*",
     "@reborn/auth": "workspace:*",
+    "@reborn/backup": "workspace:*",
     "@reborn/crypto": "workspace:*",
     "@reborn/database": "workspace:*",
     "@reborn/i18n": "workspace:*",

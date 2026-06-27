@@ -6,6 +6,7 @@
     CheckSquare,
     FileDown,
     FolderSync,
+    DatabaseBackup,
     LogOut,
     Lock,
     ShieldCheck,
@@ -486,6 +487,16 @@
               </div>
               <div class="text-sm text-muted-foreground">
                 {$t('settings_page.export_import.folder_sync_hub_desc')}
+              </div>
+            </div>
+            <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
+          </a>
+          <a href={resolve('/settings/backup')} class={itemClasses}>
+            <DatabaseBackup class="h-5 w-5 text-muted-foreground shrink-0" />
+            <div class="flex-1 min-w-0">
+              <div class="font-medium">{$t('settings_page.backup.hub_title')}</div>
+              <div class="text-sm text-muted-foreground">
+                {$t('settings_page.backup.hub_desc')}
               </div>
             </div>
             <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />

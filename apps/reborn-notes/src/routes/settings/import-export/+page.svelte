@@ -804,7 +804,7 @@
           </div>
 
           <!-- Password prompt for encrypted backup -->
-          {#if backupNeedsPassword}
+          {#if backupNeedsPassword && !importingBackup}
             <form onsubmit={handleBackupPasswordSubmit} class="mt-3 space-y-2">
               <p class="text-xs text-muted-foreground">
                 {$t('settings_page.export_import.encrypted_prompt', {
@@ -930,7 +930,9 @@
               {/if}
               {#if backupImportResult.skipped > 0}
                 <p class="text-muted-foreground">
-                  Pominięto {backupImportResult.skipped} elementów (nowsze lokalne wersje).
+                  {$t('settings_page.export_import.import_skipped_older', {
+                    values: { count: backupImportResult.skipped }
+                  })}
                 </p>
               {/if}
               {#if backupImportResult.strippedCount > 0}
