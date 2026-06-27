@@ -45,6 +45,14 @@ export {
   KNOWN_SENSITIVE_FIELDS
 } from './encryption-validation';
 
+// Password-based envelope encryption (PBKDF2 + AES-GCM) for portable backups
+export {
+  encryptWithPassword,
+  decryptWithPassword,
+  PASSWORD_ENVELOPE_ALGORITHM
+} from './password-envelope';
+export type { PasswordEnvelopeParts } from './password-envelope';
+
 // Backup recovery phrase (user-held secret that encrypts automated backups)
 export {
   generateRecoveryPhrase,
