@@ -614,6 +614,31 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(window).toMatch(/return null;/);
   });
 
+  it('pullNotes batches note writes via saveMany, never per-note save (Android OOM)', () => {
+    // Regression for the first-sync crash on a large account (503 notes, many
+    // long): noteStore.save() runs refreshItems() - a full getAll() over the
+    // entire notes table (every content_encrypted blob) - on every call. Firing
+    // one per note (503 concurrent) made memory grow ~O(n²) and OOM-killed the
+    // in-process Android System WebView at ~40 s; iOS WKWebView (out of process)
+    // absorbed the same spike. The pull must collect the writes and flush them
+    // with a single saveMany() (one transaction, one refresh). See guideline 36.
+    const src = readSource('./notes-sync.service.ts');
+    const pullNotes = src.slice(
+      src.indexOf('async function pullNotes'),
+      src.indexOf('// ── Push helpers')
+    );
+    // Strip line comments so the assertions check actual calls, not the
+    // explanatory comment that names the old `noteStore.save()` trap on purpose.
+    const code = pullNotes.replace(/\/\/.*$/gm, '');
+    // Writes go through the batched primitive...
+    expect(code).toMatch(/noteStore\.saveMany\(/);
+    // ...and never per-note save() in the pull loop (the O(n²) refresh trap).
+    expect(code).not.toMatch(/noteStore\.save\(/);
+    // Tag-association writes are likewise bounded, not a 503-wide burst.
+    expect(code).toMatch(/settleInBatches\(\s*tagAdds\b/);
+    expect(code).toMatch(/settleInBatches\(\s*tagRemoves\b/);
+  });
+
   it('post-pull reconciler runs in +layout.svelte runSync and onMount paths', () => {
     const layout = readSource('../../routes/+layout.svelte');
     expect(layout).toMatch(/from '\$lib\/services\/shadow-index-reconciler\.service'/);
