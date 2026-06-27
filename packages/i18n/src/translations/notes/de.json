@@ -717,7 +717,6 @@
     "local_only": "Nur lokal",
     "synced": "Synchronisiert",
     "syncing": "Notizen werden synchronisiert…",
-    "syncing_history": "Verlauf wird synchronisiert…",
     "offline": "Offline",
     "error": "Synchronisierungsfehler",
     "pending": "{count} ausstehend",

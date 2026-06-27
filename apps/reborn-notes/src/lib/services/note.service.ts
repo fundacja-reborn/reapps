@@ -15,8 +15,10 @@ import {
 } from '@reborn/storage';
 import { MAX_NOTE_VERSIONS, type NoteStoredLocal, type NoteDecrypted, type NoteHistoryEntry, type NoteHistoryDecrypted, type NoteSensitiveMetadata, type PeriodicNoteMetadata } from '@reborn/types';
 import { cryptoManager } from '@reborn/crypto';
+import { createLogger } from '@reborn/utils';
 import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
+import { checkOnline } from '$lib/stores/connectivity.store';
 import { noteIndex } from '$lib/services/note-index.svelte';
 import { noteLinkGraph } from '$lib/services/note-link-graph.svelte';
 import { noteNavHistory } from '$lib/services/note-nav-history.svelte';
@@ -25,8 +27,11 @@ import {
   pushNoteUpdate,
   pushNoteDelete,
   pushNoteRestore,
-  pushNoteVersion
+  pushNoteVersion,
+  pullNoteVersionsForNote
 } from './notes-sync.service';
+
+const logger = createLogger('Note-Service');
 
 export type SortBy = 'updated_at' | 'created_at' | 'title';
 
@@ -587,6 +592,33 @@ export async function saveVersionSnapshot(noteId: string): Promise<void> {
 /** Get version history for a note — raw encrypted entries (newest first). */
 export async function getNoteHistory(noteId: string): Promise<NoteHistoryEntry[]> {
   return noteHistoryQueries.getForNote(noteId);
+}
+
+/**
+ * Best-effort: pull this note's server-side version history into local IndexedDB.
+ *
+ * Called on demand when the history panel opens - versions are no longer
+ * backfilled during sync (that bulk cold-start cost is gone; see guideline 36).
+ * Online-only and fully graceful: offline or any failure leaves the local
+ * history untouched, so the panel still renders whatever snapshots exist locally.
+ *
+ * Merge safety: server entries carry their own id, so saveMany upserts them by id
+ * (a synced local snapshot becomes sync_status:'synced') while a not-yet-pushed
+ * local PENDING snapshot (its own UUID, unknown to the server) is never clobbered.
+ * pruneVersions then bounds the merged set to the newest MAX_NOTE_VERSIONS - the
+ * current snapshot has the newest created_at, so it survives.
+ *
+ * ZK: same ciphertext from the same endpoint as the old backfill, decrypted
+ * client-side by getNoteHistoryDecrypted - no change to the server-visibility model.
+ */
+export async function syncNoteVersionsFromServer(noteId: string): Promise<void> {
+  if (!checkOnline()) return;
+  try {
+    await pullNoteVersionsForNote(noteId);
+    await noteHistoryOperations.pruneVersions(noteId, MAX_NOTE_VERSIONS);
+  } catch (err) {
+    logger.debug('On-demand version history sync failed - falling back to local history', err);
+  }
 }
 
 /** Get version history decrypted on-demand (for UI display). */

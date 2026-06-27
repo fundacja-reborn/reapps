@@ -34,6 +34,10 @@
     // saveVersionSnapshot has built-in deduplication — skips if content unchanged.
     await noteDetailService.flushPendingSave();
     await NoteService.saveVersionSnapshot(id);
+    // Lazily pull server-side versions (best-effort, online-only). History is no
+    // longer backfilled during sync; this is where other devices' snapshots land.
+    // Offline or any failure degrades gracefully to the local history below.
+    await NoteService.syncNoteVersionsFromServer(id);
     versions = await NoteService.getNoteHistoryDecrypted(id);
     loading = false;
   }
