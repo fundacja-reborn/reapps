@@ -1,6 +1,6 @@
 import { createLogger } from '@reborn/utils';
 import { notesStore } from '$lib/stores/notes.store';
-import { saveVersionSnapshot } from '$lib/services/note.service';
+import { saveVersionSnapshot, saveBaselineSnapshot } from '$lib/services/note.service';
 import { t } from '$lib/stores/i18n.store';
 import { get } from 'svelte/store';
 import { MAX_NOTE_CONTENT_BYTES } from '@reborn/types';
@@ -45,6 +45,9 @@ class NoteDetailService {
   private checkpointTimer?: ReturnType<typeof setInterval>;
   private readonly CHECKPOINT_MS = 30 * 60 * 1000; // 30 min
   private editedSinceLastSnapshot = false;
+  // Whether the pristine (pre-edit) baseline of the open note has been
+  // snapshotted yet this load. Reset on every loadNote, set on first edit.
+  private baselineCaptured = false;
 
   // Pending values captured synchronously at edit time
   private pendingTitle: string | null = null;
@@ -71,6 +74,8 @@ class NoteDetailService {
     }
 
     this.noteId = id;
+    // Fresh load: the next edit must snapshot this note's pristine state first.
+    this.baselineCaptured = false;
     const note = await notesStore.loadNote(id);
     if (note) {
       this.title = note.title;
@@ -103,6 +108,7 @@ class NoteDetailService {
    * Set title with debounce. Captures value synchronously.
    */
   setTitleDebounced(title: string): void {
+    this.captureBaselineSnapshot();
     this.title = title;
     this.pendingTitle = title;
     this.saveStatus = 'dirty';
@@ -121,6 +127,7 @@ class NoteDetailService {
    * Set content with debounce. Captures value synchronously.
    */
   setContentDebounced(content: string): void {
+    this.captureBaselineSnapshot();
     this.content = content;
     this.pendingContent = content;
     this.saveStatus = 'dirty';
@@ -258,6 +265,7 @@ class NoteDetailService {
     this.pendingTitle = null;
     this.pendingContent = null;
     this.editedSinceLastSnapshot = false;
+    this.baselineCaptured = false;
   }
 
   /**
@@ -268,6 +276,31 @@ class NoteDetailService {
   }
 
   // ── Private ────────────────────────────────────────────────────
+
+  /**
+   * Snapshot the open note's pristine (pre-edit) state the first time it's
+   * edited this load. Without it, the first debounced save overwrites the
+   * loaded content in IndexedDB before any snapshot runs, so version history
+   * only ever captures the EDITED state and the pre-edit baseline is lost (the
+   * symptom: editing a freshly-synced note makes that edit look like version 1,
+   * with the original gone).
+   *
+   * Routes through saveBaselineSnapshot (not saveVersionSnapshot): version
+   * history is lazy since #355, so the local store is empty on a cold start and
+   * a blind baseline would duplicate a pre-edit state that already exists as a
+   * server version. saveBaselineSnapshot pulls server history first and skips
+   * when the pre-edit state is already recorded; a never-versioned note still
+   * gets its baseline. Fire-and-forget; it captures the pristine entry up front.
+   */
+  private captureBaselineSnapshot(): void {
+    if (this.baselineCaptured) return;
+    const id = this.noteId;
+    if (!id) return;
+    this.baselineCaptured = true;
+    saveBaselineSnapshot(id).catch((e) =>
+      logger.error('Failed to snapshot pre-edit baseline:', e)
+    );
+  }
 
   private clearTimers(): void {
     if (this.titleDebounceTimer) {
