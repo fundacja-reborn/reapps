@@ -19,6 +19,9 @@ export * from './search-query';
 // Automated ZK backup: scheduling, rotation and filename logic (pure)
 export * from './auto-backup';
 
+// Automated ZK backup: the dependency-injected orchestrator
+export * from './auto-backup-runner';
+
 // Re-export commonly used functions for convenience
 export { createLogger, LoggerGlobal, LOG_LEVELS } from './logger';
 export {
