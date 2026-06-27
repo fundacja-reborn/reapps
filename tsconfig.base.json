@@ -22,6 +22,7 @@
       "@reborn-apps/storage": ["packages/storage/src/index.ts"],
       "@reborn/api-client": ["packages/api-client/src/index.ts"],
       "@reborn/auth": ["packages/auth/src/index.ts"],
+      "@reborn/backup": ["packages/backup/src/index.ts"],
       "@reborn/crypto": ["packages/crypto/src/index.ts"],
       "@reborn/database": ["packages/database/src/index.ts"],
       "@reborn/platform": ["packages/platform/src/index.ts"],
