@@ -508,6 +508,19 @@ async function pullNotes(): Promise<string[]> {
   if (!res.ok) throw new Error(`GET /api/notes: ${res.status}`);
   const { data } = await res.json();
 
+  // Collect all writes here and flush them in one batch below, instead of issuing
+  // them per-note inside the map. Each `noteStore.save()` runs refreshItems() - a
+  // full getAll() over the whole notes table (every content_encrypted blob) - so
+  // firing 503 of them concurrently made first-sync memory grow ~O(n²) and
+  // OOM-killed the in-process Android System WebView at ~40 s. (iOS WKWebView
+  // renders out of process with a far higher ceiling, so it absorbed the same
+  // spike in ~10 s.) saveMany() does one transaction + one refresh; the UI is
+  // rebuilt by refreshStoresAfterPull() afterwards regardless, so the per-note
+  // refresh was redundant work on top of being the memory bomb. See guideline 36.
+  const notesToWrite: NoteStoredLocal[] = [];
+  const tagAdds: Array<{ noteId: string; tagId: string }> = [];
+  const tagRemoves: Array<{ noteId: string; tagId: string }> = [];
+
   const changedResults = await Promise.all(
     (
       data as Array<{
@@ -557,7 +570,7 @@ async function pullNotes(): Promise<string[]> {
           logger.info(
             `Reconciling archive state for note ${n.id}: local=${localNote.is_archived} server=${serverArchived}`
           );
-          await noteStore.save({ ...localNote, is_archived: serverArchived });
+          notesToWrite.push({ ...localNote, is_archived: serverArchived });
         }
 
         // Reconciliation: see pullFolders() for rationale. Covers notes whose edits
@@ -571,7 +584,7 @@ async function pullNotes(): Promise<string[]> {
             (localNote.folder_id ?? null) !== (n.folder_id ?? null))
         ) {
           logger.warn(`Reconciling orphaned note edit ${n.id} - marking pending`);
-          await noteStore.save({ ...localNote, sync_status: 'pending' });
+          notesToWrite.push({ ...localNote, sync_status: 'pending' });
         }
         return null;
       }
@@ -613,25 +626,19 @@ async function pullNotes(): Promise<string[]> {
         created_at: n.created_at,
         updated_at: n.updated_at
       };
-      await noteStore.save(note);
+      notesToWrite.push(note);
 
-      // Rebuild local note-tag associations from metadata_encrypted
+      // Rebuild local note-tag associations from metadata_encrypted. Collect the
+      // deltas here (read-only) and apply them in a bounded sweep below, off the
+      // per-note hot path - noteTagStore.save()/delete() each refresh that store too.
       if (metaTagIds.length > 0) {
         const currentTagIds = await noteTagQueries.getTagsForNote(n.id);
-        const toAdd = metaTagIds.filter((id: string) => !currentTagIds.includes(id));
-        const toRemove = currentTagIds.filter((id: string) => !metaTagIds.includes(id));
-        await Promise.all([
-          ...toAdd.map((tagId: string) =>
-            noteTagOperations
-              .addTagToNote(n.id, tagId)
-              .catch((e) => logger.warn('Failed to add tag to note', e))
-          ),
-          ...toRemove.map((tagId: string) =>
-            noteTagOperations
-              .removeTagFromNote(n.id, tagId)
-              .catch((e) => logger.warn('Failed to remove tag from note', e))
-          )
-        ]);
+        for (const tagId of metaTagIds) {
+          if (!currentTagIds.includes(tagId)) tagAdds.push({ noteId: n.id, tagId });
+        }
+        for (const tagId of currentTagIds) {
+          if (!metaTagIds.includes(tagId)) tagRemoves.push({ noteId: n.id, tagId });
+        }
       }
 
       // This note's server state advanced (new, or newer sync_version) → its
@@ -639,6 +646,39 @@ async function pullNotes(): Promise<string[]> {
       return n.id;
     })
   );
+
+  // Flush every note upsert / reconciliation in a single transaction (one
+  // refreshItems for the whole pull, not one per note). saveMany runs the same
+  // pre-save encryption guard per record as save(); a record that fails it is
+  // counted and skipped rather than aborting the whole sync.
+  if (notesToWrite.length > 0) {
+    const result = await noteStore.saveMany(notesToWrite);
+    if (result.failed > 0) {
+      logger.warn(
+        `pullNotes: ${result.failed}/${notesToWrite.length} note writes failed in batch`,
+        { errors: result.errors.slice(0, 3) }
+      );
+    }
+  }
+
+  // Apply tag-association deltas in bounded batches. addTagToNote/removeTagFromNote
+  // each refresh the (small) noteTags store; settleInBatches keeps that off a
+  // 503-wide burst. Disjoint pairs across notes, so global add-then-remove order
+  // is safe (a note never has the same tagId queued for both add and remove).
+  if (tagAdds.length > 0) {
+    await settleInBatches(tagAdds, ({ noteId, tagId }) =>
+      noteTagOperations
+        .addTagToNote(noteId, tagId)
+        .catch((e) => logger.warn('Failed to add tag to note', e))
+    );
+  }
+  if (tagRemoves.length > 0) {
+    await settleInBatches(tagRemoves, ({ noteId, tagId }) =>
+      noteTagOperations
+        .removeTagFromNote(noteId, tagId)
+        .catch((e) => logger.warn('Failed to remove tag from note', e))
+    );
+  }
 
   // Remove local notes that no longer exist on the server (permanently deleted on another device).
   // We use include_archived=true above, so the server returns soft-deleted notes too.
