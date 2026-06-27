@@ -45,6 +45,9 @@ class NoteDetailService {
   private checkpointTimer?: ReturnType<typeof setInterval>;
   private readonly CHECKPOINT_MS = 30 * 60 * 1000; // 30 min
   private editedSinceLastSnapshot = false;
+  // Whether the pristine (pre-edit) baseline of the open note has been
+  // snapshotted yet this load. Reset on every loadNote, set on first edit.
+  private baselineCaptured = false;
 
   // Pending values captured synchronously at edit time
   private pendingTitle: string | null = null;
@@ -71,6 +74,8 @@ class NoteDetailService {
     }
 
     this.noteId = id;
+    // Fresh load: the next edit must snapshot this note's pristine state first.
+    this.baselineCaptured = false;
     const note = await notesStore.loadNote(id);
     if (note) {
       this.title = note.title;
@@ -103,6 +108,7 @@ class NoteDetailService {
    * Set title with debounce. Captures value synchronously.
    */
   setTitleDebounced(title: string): void {
+    this.captureBaselineSnapshot();
     this.title = title;
     this.pendingTitle = title;
     this.saveStatus = 'dirty';
@@ -121,6 +127,7 @@ class NoteDetailService {
    * Set content with debounce. Captures value synchronously.
    */
   setContentDebounced(content: string): void {
+    this.captureBaselineSnapshot();
     this.content = content;
     this.pendingContent = content;
     this.saveStatus = 'dirty';
@@ -258,6 +265,7 @@ class NoteDetailService {
     this.pendingTitle = null;
     this.pendingContent = null;
     this.editedSinceLastSnapshot = false;
+    this.baselineCaptured = false;
   }
 
   /**
@@ -268,6 +276,27 @@ class NoteDetailService {
   }
 
   // ── Private ────────────────────────────────────────────────────
+
+  /**
+   * Snapshot the open note's pristine (pre-edit) state the first time it's
+   * edited this load. Without it, the first debounced save overwrites the
+   * loaded content in IndexedDB before any snapshot runs, so version history
+   * only ever captures the EDITED state and the pre-edit baseline is lost (the
+   * symptom: editing a freshly-synced note makes that edit look like version 1,
+   * with the original gone). Reads ciphertext straight from IDB - still pristine
+   * here, since the debounced save runs >= DEBOUNCE_MS later. Fire-and-forget +
+   * deduped in saveVersionSnapshot (skips when it already matches the latest
+   * version), so an already-versioned baseline costs nothing.
+   */
+  private captureBaselineSnapshot(): void {
+    if (this.baselineCaptured) return;
+    const id = this.noteId;
+    if (!id) return;
+    this.baselineCaptured = true;
+    saveVersionSnapshot(id).catch((e) =>
+      logger.error('Failed to snapshot pre-edit baseline:', e)
+    );
+  }
 
   private clearTimers(): void {
     if (this.titleDebounceTimer) {
