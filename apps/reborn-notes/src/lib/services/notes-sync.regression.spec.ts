@@ -334,84 +334,70 @@ describe('notes-sync - regression (offline data loss)', () => {
     // (Matches a call `Promise.allSettled(`, not the word in a comment.)
     expect(fn).not.toMatch(/Promise\.allSettled\s*\(/);
 
-    // The tail version push and the pull-side version fetch share the cap too.
+    // The tail version push still shares the cap. The bulk pull-side version
+    // fetch is gone - history is fetched per-note on demand in stage 2a.
     const versionsFn = src.slice(src.indexOf('async function pushPendingVersions'));
     expect(versionsFn.slice(0, 900)).toMatch(/settleInBatches\(\s*pending\b/);
-    const pullVersions = src.slice(src.indexOf('async function pullNoteVersions'));
-    expect(pullVersions.slice(0, 400)).toMatch(/settleInBatches\(\s*noteIds\b/);
     // The bespoke pull-versions batch constant is gone (unified onto the helper).
     expect(src).not.toMatch(/PULL_VERSIONS_BATCH_SIZE/);
   });
 
-  it('pulls versions only for notes pullNotes actually changed, not all notes (native GET storm)', () => {
-    // Native CapacitorHttp does ~1 GET/note for versions; pulling versions for
-    // EVERY note on EVERY sync dominated native sync time (e.g. 122 notes ×
-    // ~700ms). A note's server-side version list grows only when the note is
-    // edited (which bumps its sync_version), so an unchanged note cannot have
-    // new versions. pullNotes therefore reports the ids it wrote and the
-    // orchestrator pulls versions for only those. Cold start still backfills:
-    // every note is new → "changed". Guards the optimization from regressing
-    // back to the all-notes pull.
-    const src = readSource('./notes-sync.service.ts');
-
-    // pullNotes reports the changed set instead of returning void.
-    expect(src).toMatch(/async function pullNotes\(\): Promise<string\[\]>/);
-    const pullNotes = src.slice(
-      src.indexOf('async function pullNotes'),
-      src.indexOf('// ── Push helpers')
-    );
-    // Main write path returns the id; skip paths return null; result filtered.
-    expect(pullNotes).toMatch(/return n\.id;/);
-    expect(pullNotes).toMatch(/return null;/);
-    expect(pullNotes).toMatch(/return changedResults\.filter\(/);
-
-    // The orchestrator feeds pullNotes' result into pullNoteVersions - it must
-    // NOT re-derive the version target from a fresh getAll() of every note.
-    const orchestrator = src.slice(
-      src.indexOf('async function runPullFromServer'),
-      src.indexOf('async function pullFolders')
-    );
-    expect(orchestrator).toMatch(/const changedNoteIds = await pullNotes\(/);
-    expect(orchestrator).toMatch(/pullNoteVersions\(changedNoteIds\)/);
-    // The old all-notes version pull is gone.
-    expect(orchestrator).not.toMatch(/pullNoteVersions\(noteIds\)/);
-    expect(orchestrator).not.toMatch(/noteStore\.getAll\(\) as NoteEncrypted/);
-  });
-
-  it('runs the version backfill off the critical path (notes paint before history)', () => {
-    // Cold start treats every note as "changed", so pullNoteVersions does 1
-    // GET/note over the slow native bridge (~31s for 503 notes). Awaiting it
-    // held the freshly-pulled notes off-screen for the whole backfill (callers
-    // refresh the stores only after pullFromServer resolves). It must run as a
-    // background task and report through the isSyncingHistory phase so the footer
-    // can distinguish "Syncing history…" from a blocking "Syncing…". See
-    // guideline 36.
+  it('orchestrator no longer backfills version history (lazy on-demand path)', () => {
+    // Stage 2a: the bulk cold-start version backfill is gone from the pull
+    // critical path (it cost 1 GET/note, ~31s native for 503 notes). History is
+    // now fetched on demand when the panel opens (note.service
+    // syncNoteVersionsFromServer), so the orchestrator must not pull versions or
+    // drive the removed isSyncingHistory phase. See guideline 36.
     const src = readSource('./notes-sync.service.ts');
     const orchestrator = src.slice(
       src.indexOf('async function runPullFromServer'),
       src.indexOf('async function pullFolders')
     );
-    // Fire-and-forget, never awaited.
-    expect(orchestrator).toMatch(/void\s+pullNoteVersions\(changedNoteIds\)/);
-    expect(orchestrator).not.toMatch(/await\s+pullNoteVersions/);
-    // The background phase is raised and (ref-counted) lowered for the footer.
-    expect(orchestrator).toMatch(/isSyncingHistory\.set\(true\)/);
-    expect(orchestrator).toMatch(/isSyncingHistory\.set\(false\)/);
+    expect(orchestrator).not.toMatch(/pullNoteVersions/);
+    expect(orchestrator).not.toMatch(/isSyncingHistory/);
+    expect(orchestrator).not.toMatch(/historyBackfillsInFlight/);
+    // pullNotes is still called (its changed-id result is unused in 2a, kept for 2b).
+    expect(orchestrator).toMatch(/await pullNotes\(/);
   });
 
-  it('backfills versions with one batched write per note (no per-row save → WebView OOM)', () => {
-    // History rows carry content_encrypted (large); on a cold start the backfill
-    // touches every note. Writing them one save() at a time repeats the per-row
-    // transaction churn that OOM'd the Android WebView on the notes path (reg 16,
-    // PR #353). One saveMany() per note keeps each note's versions on a single
-    // transaction.
-    const src = readSource('./notes-sync.service.ts');
-    const pullVersions = src.slice(
-      src.indexOf('async function pullNoteVersions'),
-      src.indexOf('async function pushPendingVersions')
+  it('on-demand history sync fetches per note, batches the write, and prunes', () => {
+    // The single-note fetch helper survives (the bulk many-id variant is gone)
+    // and keeps the batched write: saveMany is one transaction per note, avoiding
+    // the per-row churn that OOM'd the Android WebView on the notes path (PR #353).
+    const syncSrc = readSource('./notes-sync.service.ts');
+    expect(syncSrc).toMatch(
+      /export async function pullNoteVersionsForNote\(noteId: string\)/
     );
-    expect(pullVersions).toMatch(/noteHistoryStore\.saveMany\(/);
-    expect(pullVersions).not.toMatch(/noteHistoryStore\.save\(/);
+    const helper = syncSrc.slice(
+      syncSrc.indexOf('export async function pullNoteVersionsForNote'),
+      syncSrc.indexOf('async function pushPendingVersions')
+    );
+    expect(helper).toMatch(/noteHistoryStore\.saveMany\(/);
+    expect(helper).not.toMatch(/noteHistoryStore\.save\(/);
+
+    // note.service wraps it as an online-only, best-effort sync that prunes to
+    // the version cap and degrades gracefully (offline → local history).
+    const noteSrc = readSource('./note.service.ts');
+    const fn = noteSrc.slice(
+      noteSrc.indexOf('export async function syncNoteVersionsFromServer'),
+      noteSrc.indexOf('export async function getNoteHistoryDecrypted')
+    );
+    expect(fn).toMatch(/checkOnline\(/);
+    expect(fn).toMatch(/pullNoteVersionsForNote\(/);
+    expect(fn).toMatch(/pruneVersions\(/);
+  });
+
+  it('version history panel syncs from server before reading local history', () => {
+    // VersionHistorySheet.loadHistory must fetch server versions (on demand)
+    // BEFORE decrypting/reading local history, so the panel reflects other
+    // devices' snapshots when online and falls back to local when offline.
+    const sheet = readSource('../components/VersionHistorySheet.svelte');
+    const loadHistory = sheet.slice(sheet.indexOf('async function loadHistory'));
+    const syncIdx = loadHistory.search(/syncNoteVersionsFromServer\s*\(/);
+    const readIdx = loadHistory.search(/getNoteHistoryDecrypted\s*\(/);
+    expect(syncIdx).toBeGreaterThan(-1);
+    expect(readIdx).toBeGreaterThan(-1);
+    expect(syncIdx).toBeLessThan(readIdx);
   });
 
   it('archived-pending retry joins the per-entity chain so the cap is real', () => {

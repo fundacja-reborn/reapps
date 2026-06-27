@@ -14,11 +14,6 @@ import {
 export type SyncStatusType =
   | 'synced'
   | 'syncing'
-  // Notes are in IndexedDB and on screen; only the non-critical version-history
-  // backfill is still running in the background (a cold start does 1 GET/note).
-  // A distinct phase so the footer reads "Syncing history…" rather than a
-  // blocking "Syncing…" or a premature "Synced". See notes-sync.service.
-  | 'syncing_history'
   | 'offline'
   | 'error'
   // One or more records were permanently rejected by the server (a 4xx the
@@ -75,13 +70,6 @@ if (browser && connectivityStore) {
 // ── Sync progress (set by sync service) ─────────────────────────
 
 export const isSyncing = writable(false);
-// Background, non-critical phase: the notes are already pulled and visible, but
-// the version-history backfill (1 GET/note on a cold start - the dominant native
-// sync cost) is still running. Kept separate from `isSyncing` so it never gates
-// showing the notes; surfaced as the 'syncing_history' status. Ref-counted in
-// notes-sync.service (overlapping pulls), so it only clears when the LAST
-// backfill finishes.
-export const isSyncingHistory = writable(false);
 export const syncError = writable(false);
 export const sessionExpired = writable(false);
 // True in local-only / no-account mode. Set by the auth store (one-way, like
@@ -155,8 +143,7 @@ export const syncStatus = derived(
     pendingCount,
     errorCount,
     lastSyncedAt,
-    localOnly,
-    isSyncingHistory
+    localOnly
   ],
   ([
     $isOnline,
@@ -166,8 +153,7 @@ export const syncStatus = derived(
     $pendingCount,
     $errorCount,
     $lastSyncedAt,
-    $localOnly,
-    $isSyncingHistory
+    $localOnly
   ]): SyncStatusState => {
     let status: SyncStatusType;
 
@@ -188,11 +174,6 @@ export const syncStatus = derived(
       status = 'error';
     } else if ($pendingCount > 0) {
       status = 'pending';
-    } else if ($isSyncingHistory) {
-      // Notes are done and visible; only the background history backfill remains.
-      // Ranks below pending/error (those need user attention) but above the
-      // settled states so the footer keeps signalling the backfill is working.
-      status = 'syncing_history';
     } else if ($lastSyncedAt === null) {
       status = 'needs_sync';
     } else {

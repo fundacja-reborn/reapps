@@ -40,7 +40,6 @@ import { authStore } from '$lib/stores/auth.store';
 import { createLogger } from '@reborn/utils';
 import {
   isSyncing,
-  isSyncingHistory,
   syncError,
   lastSyncedAt,
   isInitialSync,
@@ -171,13 +170,6 @@ export async function pullFromServer(): Promise<boolean> {
   return coalescedPull();
 }
 
-// In-flight version backfills. Pulls are single-flighted (coalescedPull), but a
-// pull RESOLVES before its background backfill finishes (that is the point), so a
-// later pull can start a second backfill while the first is still running. Clear
-// the `isSyncingHistory` phase only when the last one settles, otherwise the
-// footer would flash "Synced" mid-backfill.
-let historyBackfillsInFlight = 0;
-
 async function runPullFromServer(): Promise<boolean> {
   if (!isAuthenticated()) return false;
 
@@ -234,47 +226,22 @@ async function runPullFromServer(): Promise<boolean> {
         success = false;
       })
     ]);
-    // Notes after folders/tags (they reference them). pullNotes returns the IDs
-    // it actually wrote (new, or server sync_version newer) - the only notes
-    // whose server-side version history can have grown since the last sync.
-    const changedNoteIds = await pullNotes().catch((e) => {
+    // Notes after folders/tags (they reference them). pullNotes still reports the
+    // ids it actually wrote (new, or server sync_version newer); the result is
+    // unused here in stage 2a and kept for the paginated delta sync in 2b.
+    //
+    // Version history is no longer backfilled during sync. It used to pull 1
+    // GET/note for every changed note, and on a cold start (every note is "new")
+    // that dominated native CapacitorHttp sync time (~31s for 503 notes) - stage
+    // 1 moved it to a background task, stage 2a removes it entirely. History is
+    // now fetched on demand when the panel opens (note.service
+    // `syncNoteVersionsFromServer`), which is the only place a user looks at it.
+    // See guideline 36.
+    await pullNotes().catch((e) => {
       reportSyncError(e);
       logger.error('Pull notes failed:', e);
       success = false;
-      return [] as string[];
     });
-
-    // Pull versions only for changed notes, not all of them. A note's version
-    // list grows only when the note is edited (which bumps its sync_version), so
-    // an unchanged note cannot have new server-side versions. Cold start treats
-    // every note as new → full backfill. This removes the per-note GET storm
-    // (1 request/note/sync) that dominated native CapacitorHttp sync time. The
-    // tradeoff (a snapshot created without a sync_version bump - e.g. opening the
-    // history panel - may lag on other devices until the note's next edit) is
-    // acceptable: that content equals the live note and each device regenerates
-    // its own such snapshot locally. History is non-critical. See guideline 36.
-    // History backfill is non-critical and, on a cold start (every note is
-    // "new"), the dominant cost: 1 GET/note over the slow native CapacitorHttp
-    // bridge (~31s for 503 notes). It MUST NOT gate showing the notes - callers
-    // run refreshStoresAfterPull() once this function resolves, so awaiting the
-    // backfill kept the already-pulled notes off-screen for its whole duration.
-    // Run it as a background task and surface it through the dedicated
-    // `isSyncingHistory` phase ("Syncing history…" in the footer). lastSyncedAt
-    // below marks the notes pull as done, independent of this best-effort
-    // backfill. See guideline 36.
-    if (changedNoteIds.length > 0) {
-      historyBackfillsInFlight++;
-      isSyncingHistory.set(true);
-      void pullNoteVersions(changedNoteIds)
-        .catch((e) => {
-          reportSyncError(e);
-          logger.error('Pull note versions failed:', e);
-          // Non-critical - don't set success=false
-        })
-        .finally(() => {
-          if (--historyBackfillsInFlight === 0) isSyncingHistory.set(false);
-        });
-    }
 
     if (success) {
       logger.info('Pull sync completed');
@@ -664,8 +631,8 @@ async function pullNotes(): Promise<string[]> {
         }
       }
 
-      // This note's server state advanced (new, or newer sync_version) → its
-      // version list may have grown. Return its id for the targeted version pull.
+      // This note's server state advanced (new, or newer sync_version). Reported
+      // for stage 2b's delta sync; unused now that history loads on demand.
       return n.id;
     })
   );
@@ -718,8 +685,9 @@ async function pullNotes(): Promise<string[]> {
     logger.debug(`Removed ${orphanNoteIds.length} locally-synced notes no longer on server`);
   }
 
-  // Notes whose server state advanced this pull - the only ones whose
-  // server-side version history can have grown. Drives the targeted version pull.
+  // Notes whose server state advanced this pull. Reported for stage 2b's
+  // paginated delta sync; the caller currently ignores the result (version
+  // history is fetched on demand when the panel opens). See guideline 36.
   return changedResults.filter((id): id is string => id !== null);
 }
 
@@ -1629,37 +1597,39 @@ export function pushNoteVersion(entry: NoteHistoryEntry): void {
   });
 }
 
-/** Pull versions for all notes from server and upsert locally (batched, max SYNC_BATCH_SIZE concurrent). */
-async function pullNoteVersions(noteIds: string[]): Promise<void> {
-  await settleInBatches(noteIds, async (noteId) => {
-    const res = await authFetch(`${API_BASE}/notes/${noteId}/versions`);
-    if (!res.ok) return;
-    const { data } = await res.json();
-    if (!Array.isArray(data)) return;
+/**
+ * Fetch one note's server-side version history and upsert it locally in a single
+ * batched write. Backs the on-demand history path (note.service
+ * `syncNoteVersionsFromServer` → VersionHistorySheet): history is pulled when the
+ * panel opens, not backfilled during sync. The bulk cold-start backfill this
+ * replaced (1 GET/note, ~31s native for 503 notes) is gone. See guideline 36.
+ */
+export async function pullNoteVersionsForNote(noteId: string): Promise<void> {
+  const res = await authFetch(`${API_BASE}/notes/${noteId}/versions`);
+  if (!res.ok) return;
+  const { data } = await res.json();
+  if (!Array.isArray(data)) return;
 
-    // One batched write per note, not save()-per-row. History rows carry
-    // content_encrypted (large), and on a cold start this runs for every note -
-    // the same per-row transaction churn that OOM'd the Android WebView on the
-    // notes path (reg 16, PR #353). saveMany keeps each note's versions on a
-    // single transaction.
-    const entries: NoteHistoryEntry[] = (
-      data as Array<{
-        id: string;
-        note_id: string;
-        title_encrypted: string;
-        content_encrypted: string;
-        created_at: string;
-      }>
-    ).map((v) => ({
-      id: v.id,
-      note_id: v.note_id,
-      title_encrypted: v.title_encrypted,
-      content_encrypted: v.content_encrypted,
-      sync_status: 'synced',
-      created_at: v.created_at
-    }));
-    if (entries.length > 0) await noteHistoryStore.saveMany(entries);
-  });
+  // One batched write per note, not save()-per-row. History rows carry
+  // content_encrypted (large); saveMany keeps them on a single transaction (the
+  // per-row churn OOM'd the Android WebView on the notes path, PR #353).
+  const entries: NoteHistoryEntry[] = (
+    data as Array<{
+      id: string;
+      note_id: string;
+      title_encrypted: string;
+      content_encrypted: string;
+      created_at: string;
+    }>
+  ).map((v) => ({
+    id: v.id,
+    note_id: v.note_id,
+    title_encrypted: v.title_encrypted,
+    content_encrypted: v.content_encrypted,
+    sync_status: 'synced',
+    created_at: v.created_at
+  }));
+  if (entries.length > 0) await noteHistoryStore.saveMany(entries);
 }
 
 /** Push all pending (unsynced) note versions to server. */
