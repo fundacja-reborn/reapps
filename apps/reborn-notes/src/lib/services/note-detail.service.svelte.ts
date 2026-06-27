@@ -1,6 +1,6 @@
 import { createLogger } from '@reborn/utils';
 import { notesStore } from '$lib/stores/notes.store';
-import { saveVersionSnapshot } from '$lib/services/note.service';
+import { saveVersionSnapshot, saveBaselineSnapshot } from '$lib/services/note.service';
 import { t } from '$lib/stores/i18n.store';
 import { get } from 'svelte/store';
 import { MAX_NOTE_CONTENT_BYTES } from '@reborn/types';
@@ -283,17 +283,21 @@ class NoteDetailService {
    * loaded content in IndexedDB before any snapshot runs, so version history
    * only ever captures the EDITED state and the pre-edit baseline is lost (the
    * symptom: editing a freshly-synced note makes that edit look like version 1,
-   * with the original gone). Reads ciphertext straight from IDB - still pristine
-   * here, since the debounced save runs >= DEBOUNCE_MS later. Fire-and-forget +
-   * deduped in saveVersionSnapshot (skips when it already matches the latest
-   * version), so an already-versioned baseline costs nothing.
+   * with the original gone).
+   *
+   * Routes through saveBaselineSnapshot (not saveVersionSnapshot): version
+   * history is lazy since #355, so the local store is empty on a cold start and
+   * a blind baseline would duplicate a pre-edit state that already exists as a
+   * server version. saveBaselineSnapshot pulls server history first and skips
+   * when the pre-edit state is already recorded; a never-versioned note still
+   * gets its baseline. Fire-and-forget; it captures the pristine entry up front.
    */
   private captureBaselineSnapshot(): void {
     if (this.baselineCaptured) return;
     const id = this.noteId;
     if (!id) return;
     this.baselineCaptured = true;
-    saveVersionSnapshot(id).catch((e) =>
+    saveBaselineSnapshot(id).catch((e) =>
       logger.error('Failed to snapshot pre-edit baseline:', e)
     );
   }
