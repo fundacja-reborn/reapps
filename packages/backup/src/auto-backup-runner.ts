@@ -63,6 +63,11 @@ export interface RunAutoBackupDeps {
    * the app supplies the decrypt round-trip.
    */
   verifyBackup?: (writtenContent: string, phrase: string) => Promise<void>;
+  /**
+   * Force a backup now, bypassing the cadence / unchanged-skip gate (a manual
+   * "back up now"). The enabled, destination, data and phrase gates still apply.
+   */
+  force?: boolean;
 }
 
 export type AutoBackupSkipReason =
@@ -98,16 +103,18 @@ export async function runAutoBackup(deps: RunAutoBackupDeps): Promise<AutoBackup
   }
 
   const lastDataChangeAt = await deps.getLastDataChangeAt();
-  const due = isBackupDue({
-    enabled: config.enabled,
-    intervalHours: config.intervalHours,
-    lastBackupAt: state.lastBackupAt,
-    now,
-    lastDataChangeAt
-  });
-  if (!due) {
-    return { status: 'skipped', reason: lastDataChangeAt === null ? 'no-data' : 'not-due' };
-  }
+  if (lastDataChangeAt === null) return { status: 'skipped', reason: 'no-data' };
+
+  const due =
+    deps.force === true ||
+    isBackupDue({
+      enabled: config.enabled,
+      intervalHours: config.intervalHours,
+      lastBackupAt: state.lastBackupAt,
+      now,
+      lastDataChangeAt
+    });
+  if (!due) return { status: 'skipped', reason: 'not-due' };
 
   const phrase = await deps.getRecoveryPhrase();
   if (!phrase) return { status: 'skipped', reason: 'no-phrase' };

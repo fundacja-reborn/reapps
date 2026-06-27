@@ -20,9 +20,12 @@ import { verifyBackup } from './verify';
 /**
  * Run one "back up if due" cycle for reborn-notes.
  *
- * @param now epoch ms (injectable for tests; defaults to wall clock)
+ * @param opts.force bypass the cadence gate (a manual "back up now")
+ * @param opts.now epoch ms (injectable for tests; defaults to wall clock)
  */
-export async function runNotesAutoBackupIfDue(now: number = Date.now()): Promise<AutoBackupOutcome> {
+export async function runNotesAutoBackupIfDue(
+  opts: { force?: boolean; now?: number } = {}
+): Promise<AutoBackupOutcome> {
   // Real silent auto-backup is native-only: web has no persistent unattended
   // write target nor a secure vault for the phrase. Web export stays manual.
   if (!__REBORN_NATIVE__) return { status: 'skipped', reason: 'no-destination' };
@@ -42,7 +45,8 @@ export async function runNotesAutoBackupIfDue(now: number = Date.now()): Promise
     app: 'reborn-notes',
     config,
     state: loadAutoBackupState(),
-    now,
+    now: opts.now ?? Date.now(),
+    force: opts.force,
     destination: createNativeFolderDestination(config.folderBookmark),
     getLastDataChangeAt,
     getRecoveryPhrase: loadRecoveryPhrase,
@@ -51,3 +55,11 @@ export async function runNotesAutoBackupIfDue(now: number = Date.now()): Promise
     verifyBackup
   });
 }
+
+export {
+  loadAutoBackupConfig,
+  saveAutoBackupConfig,
+  loadAutoBackupState,
+  DEFAULT_NOTES_AUTO_BACKUP_CONFIG,
+  type NotesAutoBackupConfig
+} from './prefs';
