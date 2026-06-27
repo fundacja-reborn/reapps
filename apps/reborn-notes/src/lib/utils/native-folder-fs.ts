@@ -63,6 +63,32 @@ export interface FolderFsPlugin {
   }): Promise<{ content: string; mtime: number }>;
   /** Same on-disk directory? (dedup at link time). */
   isSameDirectory(options: { a: string; b: string }): Promise<{ same: boolean }>;
+  /**
+   * Write (create or overwrite) one UTF-8 file at `path` relative to the
+   * bookmarked directory root. The automated backup engine uses this to drop an
+   * encrypted backup envelope into the user-chosen folder (see
+   * `planning/auto-backup-zk.md`). Returns a refreshed `staleBookmark` on the
+   * same terms as {@link listFiles}.
+   *
+   * NATIVE IMPL PENDING: the read-only folder-sync picker only requests READ
+   * access, so the Swift/Android sides must (a) re-pick or upgrade the grant to
+   * include WRITE (`Intent.FLAG_GRANT_WRITE_URI_PERMISSION` + a persisted write
+   * grant on Android; a writable security-scoped bookmark on iOS) and (b)
+   * implement the coordinated write. Until then this rejects on device.
+   */
+  writeFile(options: {
+    bookmark: string;
+    path: string;
+    content: string;
+  }): Promise<{ staleBookmark?: string }>;
+  /**
+   * Delete one file at `path` relative to the bookmarked directory root, used by
+   * backup rotation. `path` is the file's display name at the folder root (our
+   * backups are flat); the Android side resolves it to a SAF documentId.
+   *
+   * NATIVE IMPL PENDING (same WRITE-grant prerequisite as {@link writeFile}).
+   */
+  deleteFile(options: { bookmark: string; path: string }): Promise<{ staleBookmark?: string }>;
 }
 
 let plugin: FolderFsPlugin | null = null;

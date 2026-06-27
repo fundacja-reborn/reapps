@@ -70,7 +70,13 @@ export type AutoBackupSkipReason =
   | 'no-destination'
   | 'not-due'
   | 'no-data'
-  | 'no-phrase';
+  | 'no-phrase'
+  /**
+   * Crypto is locked (master key not loaded), so account data cannot be
+   * decrypted to re-wrap it. Produced by the per-app adapter before it calls
+   * {@link runAutoBackup} - the runner itself is crypto-free and never emits it.
+   */
+  | 'locked';
 
 export type AutoBackupOutcome =
   | { status: 'skipped'; reason: AutoBackupSkipReason }

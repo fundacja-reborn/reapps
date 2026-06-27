@@ -259,6 +259,9 @@ importers:
       '@reborn/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@reborn/backup':
+        specifier: workspace:*
+        version: link:../../packages/backup
       '@reborn/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto
