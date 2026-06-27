@@ -717,6 +717,7 @@
     "local_only": "Tylko lokalnie",
     "synced": "Zsynchronizowane",
     "syncing": "Synchronizacja notatek…",
+    "syncing_progress": "Synchronizacja notatek… {done}/{total}",
     "offline": "Offline",
     "error": "Błąd synchronizacji",
     "pending": "{count} oczekujących",

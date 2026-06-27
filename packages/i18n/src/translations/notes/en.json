@@ -717,6 +717,7 @@
     "local_only": "Local only",
     "synced": "Synced",
     "syncing": "Syncing notes…",
+    "syncing_progress": "Syncing notes… {done}/{total}",
     "offline": "Offline",
     "error": "Sync error",
     "pending": "{count} pending",

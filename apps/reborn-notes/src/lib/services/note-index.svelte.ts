@@ -11,7 +11,7 @@
  * title, folderId, isPinned, isStarred, isArchived, createdAt, updatedAt, tagIds.
  * Full content is NEVER stored here — loaded on demand by note-detail.service.
  */
-import { noteStore, noteTagStore } from '@reborn/storage';
+import { noteStore, noteTagStore, noteTagQueries } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
 import { decryptTitleOnly } from './note.service';
 import { noteLinkGraph } from './note-link-graph.svelte';
@@ -133,6 +133,47 @@ class NoteIndex {
       this._version++;
     } finally {
       this._building = false;
+    }
+  }
+
+  /**
+   * Incrementally add/update specific notes by id: point-read just those rows
+   * (noteStore.getMany) and decrypt them, instead of build()'s full
+   * getAll()+decrypt of every note. Backs the paginated pull's per-page reveal -
+   * each page lands in the index without an O(n) rebuild per page (which would
+   * re-deserialize the whole notes table every page = the O(n²) trap PR #353
+   * removed). Tags are read from the (already-applied) note-tag relations, so
+   * call this AFTER the page's tag deltas are written. Same crypto guard as
+   * build(): a row that fails to decrypt is skipped; a later full rebuild
+   * (refreshStoresAfterPull) reconciles it.
+   */
+  async upsertFromStore(ids: string[]): Promise<void> {
+    if (!cryptoManager.isInitialized() || ids.length === 0) return;
+    const encrypted = await noteStore.getMany(ids);
+    let changed = false;
+    for (const enc of encrypted) {
+      try {
+        const e = await decryptTitleOnly(enc);
+        const tagIds = await noteTagQueries.getTagsForNote(e.id);
+        this._map.set(e.id, {
+          title: e.title,
+          folderId: e.folderId,
+          isPinned: e.isPinned,
+          isStarred: e.isStarred,
+          isArchived: e.isArchived,
+          createdAt: e.createdAt,
+          updatedAt: e.updatedAt,
+          tagIds
+        });
+        changed = true;
+      } catch {
+        // Skip undecryptable row; the post-pull full rebuild reconciles it.
+      }
+    }
+    if (changed) {
+      this._version++;
+      // Titles/folders may have changed; invalidate the lazy link graph.
+      noteLinkGraph.clear();
     }
   }
 

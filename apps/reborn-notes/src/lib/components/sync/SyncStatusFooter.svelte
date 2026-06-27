@@ -14,8 +14,13 @@
     AlertTriangle,
     HardDrive
   } from '@lucide/svelte';
-  import { syncStatus, type SyncStatusType } from '$lib/stores/sync-status.store';
-  import { pullFromServer, pushPendingItems, refreshStoresAfterPull } from '$lib/services/notes-sync.service';
+  import { syncStatus, syncProgress, type SyncStatusType } from '$lib/stores/sync-status.store';
+  import {
+    pullFromServer,
+    pushPendingItems,
+    refreshStoresAfterPull,
+    requestFullReconcileNextPull
+  } from '$lib/services/notes-sync.service';
   import { t } from '$lib/stores/i18n.store';
 
   let manualSyncing = $state(false);
@@ -31,6 +36,9 @@
 
     manualSyncing = true;
     try {
+      // Manual sync is an explicit "make me current" - force a full id reconcile
+      // (all_ids) so permanent deletes from other devices are caught now.
+      requestFullReconcileNextPull();
       await pushPendingItems();
       const synced = await pullFromServer();
       if (synced) {
@@ -91,8 +99,14 @@
     switch (status) {
       case 'synced':
         return $t('sync_status.synced');
-      case 'syncing':
-        return $t('sync_status.syncing');
+      case 'syncing': {
+        // Determinate counter while the notes phase is paginating; plain label
+        // otherwise (warm sync with no pages to count).
+        const p = $syncProgress;
+        return p && p.total > 0
+          ? $t('sync_status.syncing_progress', { values: { done: p.done, total: p.total } })
+          : $t('sync_status.syncing');
+      }
       case 'offline':
         return $t('sync_status.offline');
       case 'error':
@@ -121,6 +135,9 @@
   }
 
   let Icon = $derived(getIcon($syncStatus.status));
+  // Reactive to $syncProgress: getLabel reads it in the 'syncing' case, so the
+  // counter ("Syncing notes… 320/2000") updates as pages land.
+  let label = $derived(getLabel($syncStatus.status));
   let spinning = $derived($syncStatus.status === 'syncing' || manualSyncing);
   let isClickable = $derived(
     $syncStatus.status !== 'offline' &&
@@ -153,10 +170,10 @@
       class="flex items-center gap-1.5 min-w-0 w-full rounded-md px-1 py-1 md:py-0.5 text-sm md:text-xs transition-colors
              hover:bg-sidebar-accent disabled:pointer-events-none disabled:opacity-70
              {getColorClass($syncStatus.status)}"
-      title={isClickable ? $t('sync_status.click_to_sync') : getLabel($syncStatus.status)}
+      title={isClickable ? $t('sync_status.click_to_sync') : label}
     >
       <Icon class="h-4 w-4 md:h-3.5 md:w-3.5 shrink-0 {spinning ? 'animate-spin' : ''}" />
-      <span class="truncate">{getLabel($syncStatus.status)}</span>
+      <span class="truncate">{label}</span>
       {#if timeStr && $syncStatus.status === 'synced'}
         <span class="ml-auto shrink-0 text-[10px] text-muted-foreground/60">{timeStr}</span>
       {/if}

@@ -425,6 +425,10 @@ function createAuthStore() {
     try {
       const { clearAllUserData } = await import('@reborn/storage');
       await clearAllUserData();
+      // Drop the delta-sync watermark so the next login does a clean full pull
+      // (dynamic import avoids an auth.store <-> notes-sync.service cycle).
+      const { clearNotesDeltaWatermark } = await import('$lib/services/notes-sync.service');
+      clearNotesDeltaWatermark();
     } catch (err) {
       logger.error('Failed to clear IndexedDB on logout:', err);
     }

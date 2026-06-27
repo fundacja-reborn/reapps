@@ -292,6 +292,10 @@ model Note {
   @@index([user_id, deleted_at])
   @@index([folder_id])
   @@index([updated_at])
+  // Keyset pagination for the delta pull (GET /api/notes): ORDER BY (updated_at, id)
+  // scoped to a user. The standalone updated_at index can't serve a per-user
+  // keyset scan; this composite does. See guideline 36 (paginated delta sync).
+  @@index([user_id, updated_at, id])
 }
 
 model Tag {
