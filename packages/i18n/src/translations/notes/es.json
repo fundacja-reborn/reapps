@@ -716,7 +716,8 @@
   "sync_status": {
     "local_only": "Solo local",
     "synced": "Sincronizado",
-    "syncing": "Sincronizando…",
+    "syncing": "Sincronizando notas…",
+    "syncing_history": "Sincronizando el historial…",
     "offline": "Sin conexión",
     "error": "Error de sincronización",
     "pending": "{count} pendiente(s)",

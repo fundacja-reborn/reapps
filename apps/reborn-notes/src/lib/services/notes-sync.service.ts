@@ -40,6 +40,7 @@ import { authStore } from '$lib/stores/auth.store';
 import { createLogger } from '@reborn/utils';
 import {
   isSyncing,
+  isSyncingHistory,
   syncError,
   lastSyncedAt,
   isInitialSync,
@@ -170,6 +171,13 @@ export async function pullFromServer(): Promise<boolean> {
   return coalescedPull();
 }
 
+// In-flight version backfills. Pulls are single-flighted (coalescedPull), but a
+// pull RESOLVES before its background backfill finishes (that is the point), so a
+// later pull can start a second backfill while the first is still running. Clear
+// the `isSyncingHistory` phase only when the last one settles, otherwise the
+// footer would flash "Synced" mid-backfill.
+let historyBackfillsInFlight = 0;
+
 async function runPullFromServer(): Promise<boolean> {
   if (!isAuthenticated()) return false;
 
@@ -245,12 +253,27 @@ async function runPullFromServer(): Promise<boolean> {
     // history panel - may lag on other devices until the note's next edit) is
     // acceptable: that content equals the live note and each device regenerates
     // its own such snapshot locally. History is non-critical. See guideline 36.
+    // History backfill is non-critical and, on a cold start (every note is
+    // "new"), the dominant cost: 1 GET/note over the slow native CapacitorHttp
+    // bridge (~31s for 503 notes). It MUST NOT gate showing the notes - callers
+    // run refreshStoresAfterPull() once this function resolves, so awaiting the
+    // backfill kept the already-pulled notes off-screen for its whole duration.
+    // Run it as a background task and surface it through the dedicated
+    // `isSyncingHistory` phase ("Syncing history…" in the footer). lastSyncedAt
+    // below marks the notes pull as done, independent of this best-effort
+    // backfill. See guideline 36.
     if (changedNoteIds.length > 0) {
-      await pullNoteVersions(changedNoteIds).catch((e) => {
-        reportSyncError(e);
-        logger.error('Pull note versions failed:', e);
-        // Non-critical - don't set success=false
-      });
+      historyBackfillsInFlight++;
+      isSyncingHistory.set(true);
+      void pullNoteVersions(changedNoteIds)
+        .catch((e) => {
+          reportSyncError(e);
+          logger.error('Pull note versions failed:', e);
+          // Non-critical - don't set success=false
+        })
+        .finally(() => {
+          if (--historyBackfillsInFlight === 0) isSyncingHistory.set(false);
+        });
     }
 
     if (success) {
@@ -1614,22 +1637,28 @@ async function pullNoteVersions(noteIds: string[]): Promise<void> {
     const { data } = await res.json();
     if (!Array.isArray(data)) return;
 
-    for (const v of data as Array<{
-      id: string;
-      note_id: string;
-      title_encrypted: string;
-      content_encrypted: string;
-      created_at: string;
-    }>) {
-      await noteHistoryStore.save({
-        id: v.id,
-        note_id: v.note_id,
-        title_encrypted: v.title_encrypted,
-        content_encrypted: v.content_encrypted,
-        sync_status: 'synced',
-        created_at: v.created_at
-      });
-    }
+    // One batched write per note, not save()-per-row. History rows carry
+    // content_encrypted (large), and on a cold start this runs for every note -
+    // the same per-row transaction churn that OOM'd the Android WebView on the
+    // notes path (reg 16, PR #353). saveMany keeps each note's versions on a
+    // single transaction.
+    const entries: NoteHistoryEntry[] = (
+      data as Array<{
+        id: string;
+        note_id: string;
+        title_encrypted: string;
+        content_encrypted: string;
+        created_at: string;
+      }>
+    ).map((v) => ({
+      id: v.id,
+      note_id: v.note_id,
+      title_encrypted: v.title_encrypted,
+      content_encrypted: v.content_encrypted,
+      sync_status: 'synced',
+      created_at: v.created_at
+    }));
+    if (entries.length > 0) await noteHistoryStore.saveMany(entries);
   });
 }
 
