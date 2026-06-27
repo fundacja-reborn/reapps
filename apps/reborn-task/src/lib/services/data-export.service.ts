@@ -1,10 +1,7 @@
 import { taskStore, listStore, subtaskStore } from '@reborn/storage';
 import {
 	cryptoManager,
-	deriveKeyFromPassword,
-	generateSalt,
-	encryptData,
-	arrayBufferToBase64
+	encryptWithPassword
 } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import type {
@@ -271,6 +268,41 @@ export class DataExportService {
 	}
 
 	/**
+	 * Build a portable, password-encrypted backup envelope WITHOUT writing it
+	 * anywhere - returns the JSON blob plus entity counts. Download-free seam
+	 * shared by the manual export ({@link exportEncryptedPortable}) and the
+	 * automated backup engine, which writes the bytes to the user's chosen folder
+	 * instead of triggering a browser download.
+	 */
+	async buildPortableBackup(
+		password: string
+	): Promise<{ blob: Blob; counts: { lists: number; tasks: number; subtasks: number } }> {
+		const payload = await this.buildDecryptedPayload();
+		const { salt, iv, data } = await encryptWithPassword(JSON.stringify(payload), password);
+
+		const envelope: PortableEncryptedExport = {
+			app: 'reborn-task',
+			version: PORTABLE_EXPORT_VERSION,
+			exportedAt: new Date().toISOString(),
+			portable: true,
+			encryption: 'aes-256-gcm-pbkdf2',
+			salt,
+			iv,
+			data
+		};
+
+		const counts = {
+			lists: payload.data.lists.length,
+			tasks: payload.data.tasks.length,
+			subtasks: payload.data.subtasks.length
+		};
+		logger.info('Portable encrypted export ready', counts);
+
+		const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' });
+		return { blob, counts };
+	}
+
+	/**
 	 * Export a portable, password-encrypted backup.
 	 *
 	 * Builds the same plaintext payload as {@link exportDecrypted}, then wraps it
@@ -281,30 +313,8 @@ export class DataExportService {
 	 * password-encrypted envelope leaves the device.
 	 */
 	async exportEncryptedPortable(password: string): Promise<void> {
-		const payload = await this.buildDecryptedPayload();
-		const json = JSON.stringify(payload);
-		const salt = await generateSalt(16);
-		const key = await deriveKeyFromPassword(password, salt);
-		const { encryptedData, iv } = await encryptData(json, key);
-
-		const envelope: PortableEncryptedExport = {
-			app: 'reborn-task',
-			version: PORTABLE_EXPORT_VERSION,
-			exportedAt: new Date().toISOString(),
-			portable: true,
-			encryption: 'aes-256-gcm-pbkdf2',
-			salt: arrayBufferToBase64(salt),
-			iv: arrayBufferToBase64(iv),
-			data: arrayBufferToBase64(encryptedData)
-		};
-
-		logger.info('Portable encrypted export ready', {
-			lists: payload.data.lists.length,
-			tasks: payload.data.tasks.length,
-			subtasks: payload.data.subtasks.length
-		});
-
-		this.triggerDownload(envelope, `reborn-task-backup-portable-${this.dateStamp()}.json`);
+		const { blob } = await this.buildPortableBackup(password);
+		this.triggerDownloadBlob(blob, `reborn-task-backup-portable-${this.dateStamp()}.json`);
 	}
 
 	/**
@@ -399,7 +409,10 @@ export class DataExportService {
 
 	private triggerDownload(data: ExportData | PortableEncryptedExport, filename: string): void {
 		const json = JSON.stringify(data, null, 2);
-		const blob = new Blob([json], { type: 'application/json' });
+		this.triggerDownloadBlob(new Blob([json], { type: 'application/json' }), filename);
+	}
+
+	private triggerDownloadBlob(blob: Blob, filename: string): void {
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;

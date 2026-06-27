@@ -36,11 +36,9 @@ import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
 import {
   deriveKeyFromPassword,
-  generateSalt,
-  encryptData,
   decryptData,
-  arrayBufferToBase64,
   base64ToArrayBuffer,
+  encryptWithPassword,
   cryptoManager
 } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
@@ -703,21 +701,17 @@ export async function exportJsonBackup(): Promise<void> {
 // ── Portable backup (envelope v3, "plaintext-inside") ────────────────────────
 
 /**
- * Export a portable, password-encrypted backup (envelope version 3).
+ * Build a portable, password-encrypted backup (envelope v3) WITHOUT writing it
+ * anywhere - returns the JSON blob plus entity counts. This is the download-free
+ * seam shared by the manual export ({@link exportEncryptedBackup}) and the
+ * automated backup engine, which writes the bytes to the user's chosen folder
+ * instead of triggering a browser download.
  *
- * Unlike version 2 - which wrapped account-key ciphertext in a password layer
- * and was therefore readable only on the originating account - version 3 stores
- * the notes/folders/tags DECRYPTED inside the password-protected envelope. On
- * import the payload is re-encrypted with the importing account's master key,
- * so the backup is genuinely portable across accounts (a superset of the
- * Markdown export: full fidelity + portability).
- *
- * Zero Knowledge is preserved end to end: decryption (here) and re-encryption
- * (on import) both run in the browser. The only artifact that leaves is the
- * password-encrypted envelope; the server never sees plaintext and its
- * visibility is unchanged.
+ * See {@link exportEncryptedBackup} for the Zero Knowledge rationale.
  */
-export async function exportEncryptedBackup(password: string): Promise<void> {
+export async function buildEncryptedBackup(
+  password: string
+): Promise<{ blob: Blob; counts: { notes: number; folders: number; tags: number } }> {
   if (!cryptoManager.isInitialized()) {
     throw new Error('Brak załadowanego klucza szyfrowania - odblokuj konto i spróbuj ponownie.');
   }
@@ -736,23 +730,46 @@ export async function exportEncryptedBackup(password: string): Promise<void> {
     new Date().toISOString()
   );
 
-  const json = JSON.stringify(payload);
-  const salt = await generateSalt(16);
-  const key = await deriveKeyFromPassword(password, salt);
-  const { encryptedData, iv } = await encryptData(json, key);
-
+  const { salt, iv, data } = await encryptWithPassword(JSON.stringify(payload), password);
   const envelope: BackupV3 = {
     version: 3,
     encryption: 'aes-256-gcm-pbkdf2',
     payload: 'plaintext',
-    salt: arrayBufferToBase64(salt),
-    iv: arrayBufferToBase64(iv),
-    data: arrayBufferToBase64(encryptedData)
+    salt,
+    iv,
+    data
   };
 
   const blob = new Blob([JSON.stringify(envelope, null, 2)], {
     type: 'application/json; charset=utf-8'
   });
+  return {
+    blob,
+    counts: {
+      notes: payload.data.notes.length,
+      folders: payload.data.folders.length,
+      tags: payload.data.tags.length
+    }
+  };
+}
+
+/**
+ * Export a portable, password-encrypted backup (envelope version 3).
+ *
+ * Unlike version 2 - which wrapped account-key ciphertext in a password layer
+ * and was therefore readable only on the originating account - version 3 stores
+ * the notes/folders/tags DECRYPTED inside the password-protected envelope. On
+ * import the payload is re-encrypted with the importing account's master key,
+ * so the backup is genuinely portable across accounts (a superset of the
+ * Markdown export: full fidelity + portability).
+ *
+ * Zero Knowledge is preserved end to end: decryption (here) and re-encryption
+ * (on import) both run in the browser. The only artifact that leaves is the
+ * password-encrypted envelope; the server never sees plaintext and its
+ * visibility is unchanged.
+ */
+export async function exportEncryptedBackup(password: string): Promise<void> {
+  const { blob } = await buildEncryptedBackup(password);
   const date = new Date().toISOString().slice(0, 10);
   await downloadBlob(blob, `reborn-notes-backup-portable-${date}.json`);
 }
