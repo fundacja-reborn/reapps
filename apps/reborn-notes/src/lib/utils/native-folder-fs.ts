@@ -40,8 +40,18 @@ export interface NativeFsEntry {
 
 /** Native FolderFs plugin method surface (see FolderFsPlugin.swift). */
 export interface FolderFsPlugin {
-  /** Present the system folder picker (user gesture). Resolves a base64 bookmark. */
-  pickDirectory(): Promise<{ bookmark?: string; name?: string; cancelled?: boolean }>;
+  /**
+   * Present the system folder picker (user gesture). Resolves a base64 bookmark.
+   *
+   * `write: true` persists a READ|WRITE grant - for the automated-backup folder,
+   * which the engine writes and rotates files in. Omitted/false persists READ only
+   * (the read-only folder sync). On Android this maps to the SAF persisted-permission
+   * modes (least privilege: sync folders never gain write); on iOS the document-picker
+   * folder grant is read-write by nature, so the flag is a no-op there.
+   */
+  pickDirectory(options?: {
+    write?: boolean;
+  }): Promise<{ bookmark?: string; name?: string; cancelled?: boolean }>;
   /**
    * Recursively list files matching `extensions` (default `['md']`). Returns a
    * refreshed `staleBookmark` when the OS reported the stored bookmark stale -
@@ -67,14 +77,8 @@ export interface FolderFsPlugin {
    * Write (create or overwrite) one UTF-8 file at `path` relative to the
    * bookmarked directory root. The automated backup engine uses this to drop an
    * encrypted backup envelope into the user-chosen folder (see
-   * `planning/auto-backup-zk.md`). Returns a refreshed `staleBookmark` on the
-   * same terms as {@link listFiles}.
-   *
-   * NATIVE IMPL PENDING: the read-only folder-sync picker only requests READ
-   * access, so the Swift/Android sides must (a) re-pick or upgrade the grant to
-   * include WRITE (`Intent.FLAG_GRANT_WRITE_URI_PERMISSION` + a persisted write
-   * grant on Android; a writable security-scoped bookmark on iOS) and (b)
-   * implement the coordinated write. Until then this rejects on device.
+   * `planning/auto-backup-zk.md`). Requires a folder picked with `{ write: true }`.
+   * Returns a refreshed `staleBookmark` on the same terms as {@link listFiles}.
    */
   writeFile(options: {
     bookmark: string;
@@ -84,9 +88,9 @@ export interface FolderFsPlugin {
   /**
    * Delete one file at `path` relative to the bookmarked directory root, used by
    * backup rotation. `path` is the file's display name at the folder root (our
-   * backups are flat); the Android side resolves it to a SAF documentId.
-   *
-   * NATIVE IMPL PENDING (same WRITE-grant prerequisite as {@link writeFile}).
+   * backups are flat); the Android side resolves it to a SAF documentId. Deleting
+   * an already-absent file is a no-op (rotation is idempotent). Requires a folder
+   * picked with `{ write: true }`.
    */
   deleteFile(options: { bookmark: string; path: string }): Promise<{ staleBookmark?: string }>;
 }

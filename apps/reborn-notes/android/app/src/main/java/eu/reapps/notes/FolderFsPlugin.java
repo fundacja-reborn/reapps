@@ -21,6 +21,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -72,12 +73,19 @@ public class FolderFsPlugin extends Plugin {
 
     @PluginMethod
     public void pickDirectory(PluginCall call) {
+        // Least privilege: read-only sync picks (write=false/absent) request only a
+        // persistable READ grant; the automated-backup folder pick (write=true) also
+        // requests WRITE so the engine can create and rotate backup files. The
+        // original `call` is handed back to the callback, which re-reads `write`.
+        boolean write = Boolean.TRUE.equals(call.getBoolean("write", false));
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        // Request a persistable READ grant so takePersistableUriPermission below
-        // can survive process death and reboot.
-        intent.addFlags(
-            Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-        );
+        // FLAG_GRANT_PERSISTABLE lets takePersistableUriPermission below survive
+        // process death and reboot.
+        int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION;
+        if (write) {
+            flags |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+        }
+        intent.addFlags(flags);
         startActivityForResult(call, intent, "handlePickResult");
     }
 
@@ -94,12 +102,19 @@ public class FolderFsPlugin extends Plugin {
             return;
         }
         Uri treeUri = data.getData();
+        boolean write = Boolean.TRUE.equals(call.getBoolean("write", false));
+        int grantFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+        if (write) {
+            grantFlags |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+        }
         try {
-            // Take only READ (sync is read-only; never request WRITE). This grant
-            // is what makes the tree Uri usable after a relaunch/reboot.
+            // Persist exactly the modes this pick asked for: READ for sync, READ|WRITE
+            // for backups. Hardcoding our intent (rather than data.getFlags()) keeps
+            // sync folders read-only even though SAF grants write on any tree pick.
+            // This grant is what makes the tree Uri usable after a relaunch/reboot.
             getContext()
                 .getContentResolver()
-                .takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                .takePersistableUriPermission(treeUri, grantFlags);
         } catch (Exception e) {
             call.reject("Failed to persist folder access: " + e.getMessage());
             return;
@@ -276,6 +291,81 @@ public class FolderFsPlugin extends Plugin {
         }
     }
 
+    // MARK: - writeFile
+
+    /**
+     * Create-or-overwrite one UTF-8 file at the bookmarked folder root - the
+     * automated backup engine drops an encrypted envelope here. Requires a folder
+     * picked with write=true (a persisted WRITE grant). Our backups are flat, so
+     * `path` is just the file's display name.
+     */
+    @PluginMethod
+    public void writeFile(PluginCall call) {
+        String bookmark = call.getString("bookmark");
+        String path = call.getString("path");
+        String content = call.getString("content");
+        if (bookmark == null || path == null || content == null) {
+            call.reject("Missing bookmark, path or content");
+            return;
+        }
+        try {
+            Uri treeUri = Uri.parse(bookmark);
+            String rootDocId = DocumentsContract.getTreeDocumentId(treeUri);
+            String fileName = leafName(path);
+
+            // Reuse an existing same-named file (overwrite) rather than creating a
+            // duplicate - createDocument would otherwise mint "name (1).json".
+            Uri fileUri = findChildByName(treeUri, rootDocId, fileName);
+            if (fileUri == null) {
+                Uri parentDocUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, rootDocId);
+                fileUri = DocumentsContract.createDocument(
+                    getContext().getContentResolver(), parentDocUri, "application/json", fileName);
+                if (fileUri == null) {
+                    call.reject("Failed to create file: " + fileName, "WRITE_FAILED");
+                    return;
+                }
+            }
+            writeUtf8(fileUri, content);
+
+            // SAF grants never go silently stale (unlike iOS bookmarks), so there is
+            // no staleBookmark to return - an empty result matches the JS contract.
+            call.resolve(new JSObject());
+        } catch (SecurityException e) {
+            call.reject("Access denied to bookmarked folder", "ACCESS_DENIED");
+        } catch (Exception e) {
+            call.reject("Failed to write file: " + e.getMessage(), "WRITE_FAILED");
+        }
+    }
+
+    // MARK: - deleteFile
+
+    /**
+     * Remove one file from the bookmarked folder root (backup rotation). Idempotent:
+     * an already-absent file is the desired end state, so missing is not an error.
+     */
+    @PluginMethod
+    public void deleteFile(PluginCall call) {
+        String bookmark = call.getString("bookmark");
+        String path = call.getString("path");
+        if (bookmark == null || path == null) {
+            call.reject("Missing bookmark or path");
+            return;
+        }
+        try {
+            Uri treeUri = Uri.parse(bookmark);
+            String rootDocId = DocumentsContract.getTreeDocumentId(treeUri);
+            Uri fileUri = findChildByName(treeUri, rootDocId, leafName(path));
+            if (fileUri != null) {
+                DocumentsContract.deleteDocument(getContext().getContentResolver(), fileUri);
+            }
+            call.resolve(new JSObject());
+        } catch (SecurityException e) {
+            call.reject("Access denied to bookmarked folder", "ACCESS_DENIED");
+        } catch (Exception e) {
+            call.reject("Failed to delete file: " + e.getMessage(), "DELETE_FAILED");
+        }
+    }
+
     // MARK: - helpers
 
     /** Walk frame: a directory's documentId plus its accumulated <leaf>/<sub> path. */
@@ -446,6 +536,56 @@ public class FolderFsPlugin extends Plugin {
             return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
         } finally {
             input.close();
+        }
+    }
+
+    /**
+     * Find a direct child of `parentDocId` by display name, returning its document
+     * Uri or null. Used to overwrite-in-place and to locate a file for deletion
+     * (our backups are flat at the folder root).
+     */
+    private Uri findChildByName(Uri treeUri, String parentDocId, String name) {
+        ContentResolver resolver = getContext().getContentResolver();
+        Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentDocId);
+        Cursor cursor = resolver.query(
+            childrenUri,
+            new String[] { Document.COLUMN_DOCUMENT_ID, Document.COLUMN_DISPLAY_NAME },
+            null,
+            null,
+            null
+        );
+        if (cursor == null) {
+            return null;
+        }
+        try {
+            while (cursor.moveToNext()) {
+                if (name.equals(cursor.getString(1))) {
+                    return DocumentsContract.buildDocumentUriUsingTree(treeUri, cursor.getString(0));
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+        return null;
+    }
+
+    /** Basename of a (possibly leaf-rooted) relative path; backups are flat. */
+    private static String leafName(String path) {
+        int slash = path.lastIndexOf('/');
+        return slash >= 0 ? path.substring(slash + 1) : path;
+    }
+
+    private void writeUtf8(Uri fileUri, String content) throws IOException {
+        // "wt" = write + truncate, so an overwrite fully replaces the previous bytes.
+        OutputStream output = getContext().getContentResolver().openOutputStream(fileUri, "wt");
+        if (output == null) {
+            throw new IOException("openOutputStream returned null");
+        }
+        try {
+            output.write(content.getBytes(StandardCharsets.UTF_8));
+            output.flush();
+        } finally {
+            output.close();
         }
     }
 }

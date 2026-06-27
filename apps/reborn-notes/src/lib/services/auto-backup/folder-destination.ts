@@ -5,10 +5,10 @@
  * rotation. Native-only - web has no persistent unattended write target, so the
  * web path keeps `isConfigured()` false and the scheduler skips.
  *
- * NATIVE IMPL PENDING: this calls `writeFile`/`deleteFile` on the FolderFs
- * bridge, which still need their Swift/Android sides (and a WRITE permission
- * grant) - see `native-folder-fs.ts` and `planning/auto-backup-zk.md`. The TS
- * contract here is what those native methods must satisfy.
+ * This calls `writeFile`/`deleteFile` on the FolderFs bridge (implemented on both
+ * native platforms); the backup folder must be picked with a WRITE grant via
+ * `pickDirectory({ write: true })` - see `native-folder-fs.ts` and
+ * `planning/auto-backup-zk.md`.
  */
 
 import {

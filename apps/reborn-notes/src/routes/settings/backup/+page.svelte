@@ -91,7 +91,8 @@
 
   async function pickFolder() {
     const { getFolderFs } = await import('$lib/utils/native-folder-fs');
-    const res = await getFolderFs().pickDirectory();
+    // Backups need a writable grant; sync picks elsewhere stay read-only.
+    const res = await getFolderFs().pickDirectory({ write: true });
     if (res.cancelled || !res.bookmark) return;
     cfg.folderBookmark = res.bookmark;
     cfg.folderName = res.name ?? '';
