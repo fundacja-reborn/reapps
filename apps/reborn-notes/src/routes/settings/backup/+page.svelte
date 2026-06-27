@@ -11,6 +11,7 @@
   import { KeyRound, FolderOpen, AlertTriangle, Copy, Check, ShieldCheck } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import { IS_NATIVE } from '$lib/utils/native-client';
+  import { copyText } from '$lib/utils/clipboard';
   import { generateRecoveryPhrase } from '@reborn/crypto';
   import type { AutoBackupState } from '@reborn/backup';
   import {
@@ -60,13 +61,14 @@
 
   async function copyPhrase() {
     if (!shownPhrase) return;
-    try {
-      await navigator.clipboard.writeText(shownPhrase);
-      copied = true;
-      setTimeout(() => (copied = false), 2000);
-    } catch {
-      // Clipboard can be unavailable; the words are on screen to copy by hand.
-    }
+    // Route through the shared helper: the raw Clipboard API / execCommand both
+    // no-op (without throwing) inside the Android WebView, so this uses the
+    // native @capacitor/clipboard plugin on device. The words stay on screen as
+    // a manual fallback if even that fails.
+    const ok = await copyText(shownPhrase);
+    if (!ok) return;
+    copied = true;
+    setTimeout(() => (copied = false), 2000);
   }
 
   async function confirmSaved() {

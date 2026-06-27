@@ -939,6 +939,7 @@
       "imported_summary": "Importé : {notes} notes, {folders} dossiers, {tags} tags",
       "restored_from_trash": "{count} élément(s) restauré(s) depuis la corbeille locale (la sauvegarde les contenait comme actifs).",
       "relinked_to_folder": "{count} note(s) replacée(s) dans leurs dossiers de la sauvegarde (modifications locales du contenu préservées).",
+      "import_skipped_older": "{count} élément(s) ignoré(s) (versions locales plus récentes conservées).",
       "import_status_starting": "Préparation de l'import…",
       "import_status_reading": "Import de la note {current} sur {total}…",
       "import_status_indexing": "Mise à jour de l'index de recherche…",
