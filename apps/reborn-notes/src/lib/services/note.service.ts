@@ -550,42 +550,126 @@ export async function cleanTrash(daysOld = 30): Promise<number> {
 // ── Version History ───────────────────────────────────────────────
 
 /**
+ * Serialize version-history writes per note. `saveVersionSnapshot` /
+ * `saveBaselineSnapshot` are read-then-write (getForNote → compare → saveVersion)
+ * and fire from many concurrent triggers: the first-edit baseline, leave/flush,
+ * the history panel opening, the 30-min checkpoint. Without serialization two
+ * concurrent calls both pass the identical-content dedup (neither has written
+ * yet) and persist twin versions. A per-note promise chain makes each call see
+ * the previous one's write before running its own dedup.
+ */
+const versionWriteChains = new Map<string, Promise<unknown>>();
+function serializeVersionWrite<T>(noteId: string, run: () => Promise<T>): Promise<T> {
+  const prev = versionWriteChains.get(noteId) ?? Promise.resolve();
+  // Run after `prev` settles regardless of its outcome (both handlers = run).
+  const result = prev.then(run, run);
+  // Tail keeps ordering but swallows errors so one failure can't poison the
+  // chain; drop the map entry once this is the settled tail (no unbounded growth).
+  const tail = result.catch(() => undefined).finally(() => {
+    if (versionWriteChains.get(noteId) === tail) versionWriteChains.delete(noteId);
+  });
+  versionWriteChains.set(noteId, tail);
+  return result;
+}
+
+/**
  * Save a version snapshot for a note (copies ciphertext from IndexedDB — zero re-encryption).
  * Skips if note content is identical to the latest version. Prunes to MAX_NOTE_VERSIONS.
  */
 export async function saveVersionSnapshot(noteId: string): Promise<void> {
-  const existing = await noteStore.get(noteId);
-  if (!existing) return;
+  return serializeVersionWrite(noteId, async () => {
+    const existing = await noteStore.get(noteId);
+    if (!existing) return;
 
-  // Compare with latest version — skip if identical (avoid duplicate snapshots)
-  const latest = await noteHistoryQueries.getForNote(noteId);
-  if (latest.length > 0) {
-    const top = latest[0];
-    if (
-      top.title_encrypted === existing.title_encrypted &&
-      top.content_encrypted === existing.content_encrypted
-    ) {
-      return; // No change since last snapshot
+    // Compare with latest version — skip if identical (avoid duplicate snapshots)
+    const latest = await noteHistoryQueries.getForNote(noteId);
+    if (latest.length > 0) {
+      const top = latest[0];
+      if (
+        top.title_encrypted === existing.title_encrypted &&
+        top.content_encrypted === existing.content_encrypted
+      ) {
+        return; // No change since last snapshot
+      }
     }
-  }
 
-  const versionId = await noteHistoryOperations.saveVersion({
-    note_id: noteId,
-    title_encrypted: existing.title_encrypted,
-    content_encrypted: existing.content_encrypted,
-    sync_status: 'pending',
-    created_at: existing.updated_at
+    const versionId = await noteHistoryOperations.saveVersion({
+      note_id: noteId,
+      title_encrypted: existing.title_encrypted,
+      content_encrypted: existing.content_encrypted,
+      sync_status: 'pending',
+      created_at: existing.updated_at
+    });
+    await noteHistoryOperations.pruneVersions(noteId, MAX_NOTE_VERSIONS);
+
+    // Push to server (fire-and-forget)
+    pushNoteVersion({
+      id: versionId,
+      note_id: noteId,
+      title_encrypted: existing.title_encrypted,
+      content_encrypted: existing.content_encrypted,
+      sync_status: 'pending',
+      created_at: existing.updated_at
+    });
   });
-  await noteHistoryOperations.pruneVersions(noteId, MAX_NOTE_VERSIONS);
+}
 
-  // Push to server (fire-and-forget)
-  pushNoteVersion({
-    id: versionId,
-    note_id: noteId,
-    title_encrypted: existing.title_encrypted,
-    content_encrypted: existing.content_encrypted,
-    sync_status: 'pending',
-    created_at: existing.updated_at
+/**
+ * Snapshot a note's PRE-EDIT (pristine) state as a version, on the first edit of
+ * an editing session. Unlike `saveVersionSnapshot`, it reconciles with the
+ * server FIRST.
+ *
+ * Why: version history is lazy (no longer pulled during sync — guideline 36), so
+ * on a cold start the LOCAL history store is empty even for a note that already
+ * has versions on the server. Writing a baseline against an empty local history
+ * would duplicate the pre-edit state — which is already a server version from a
+ * previous session — and that twin surfaces the moment the panel pulls server
+ * history. So we pull the note's server versions first, then skip if any version
+ * already holds this exact pre-edit ciphertext. A never-versioned note still
+ * gets its baseline (nothing on the server to dedup against — this is the case
+ * the original bug lost); an already-versioned note writes nothing (its pre-edit
+ * state is already recoverable from the server).
+ *
+ * Reads the stored entry UP FRONT, so the later debounced save that overwrites
+ * IndexedDB can't change what we capture. ZK: copies existing ciphertext (no
+ * re-encryption) to the same versions endpoint as every other snapshot.
+ */
+export async function saveBaselineSnapshot(noteId: string): Promise<void> {
+  // Capture the pristine entry before anything awaits — the debounced save runs
+  // later, so IndexedDB still holds the pre-edit state at this point.
+  const entry = await noteStore.get(noteId);
+  if (!entry) return;
+
+  return serializeVersionWrite(noteId, async () => {
+    // Materialize server history before deciding (best-effort, online-only).
+    // Without this, a cold-start local miss makes us duplicate a server version.
+    await syncNoteVersionsFromServer(noteId);
+
+    const versions = await noteHistoryQueries.getForNote(noteId);
+    const alreadyVersioned = versions.some(
+      (v) =>
+        v.title_encrypted === entry.title_encrypted &&
+        v.content_encrypted === entry.content_encrypted
+    );
+    if (alreadyVersioned) return; // pre-edit state is already in history
+
+    const versionId = await noteHistoryOperations.saveVersion({
+      note_id: noteId,
+      title_encrypted: entry.title_encrypted,
+      content_encrypted: entry.content_encrypted,
+      sync_status: 'pending',
+      created_at: entry.updated_at
+    });
+    await noteHistoryOperations.pruneVersions(noteId, MAX_NOTE_VERSIONS);
+
+    pushNoteVersion({
+      id: versionId,
+      note_id: noteId,
+      title_encrypted: entry.title_encrypted,
+      content_encrypted: entry.content_encrypted,
+      sync_status: 'pending',
+      created_at: entry.updated_at
+    });
   });
 }
 
