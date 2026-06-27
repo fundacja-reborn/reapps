@@ -378,6 +378,42 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(orchestrator).not.toMatch(/noteStore\.getAll\(\) as NoteEncrypted/);
   });
 
+  it('runs the version backfill off the critical path (notes paint before history)', () => {
+    // Cold start treats every note as "changed", so pullNoteVersions does 1
+    // GET/note over the slow native bridge (~31s for 503 notes). Awaiting it
+    // held the freshly-pulled notes off-screen for the whole backfill (callers
+    // refresh the stores only after pullFromServer resolves). It must run as a
+    // background task and report through the isSyncingHistory phase so the footer
+    // can distinguish "Syncing history…" from a blocking "Syncing…". See
+    // guideline 36.
+    const src = readSource('./notes-sync.service.ts');
+    const orchestrator = src.slice(
+      src.indexOf('async function runPullFromServer'),
+      src.indexOf('async function pullFolders')
+    );
+    // Fire-and-forget, never awaited.
+    expect(orchestrator).toMatch(/void\s+pullNoteVersions\(changedNoteIds\)/);
+    expect(orchestrator).not.toMatch(/await\s+pullNoteVersions/);
+    // The background phase is raised and (ref-counted) lowered for the footer.
+    expect(orchestrator).toMatch(/isSyncingHistory\.set\(true\)/);
+    expect(orchestrator).toMatch(/isSyncingHistory\.set\(false\)/);
+  });
+
+  it('backfills versions with one batched write per note (no per-row save → WebView OOM)', () => {
+    // History rows carry content_encrypted (large); on a cold start the backfill
+    // touches every note. Writing them one save() at a time repeats the per-row
+    // transaction churn that OOM'd the Android WebView on the notes path (reg 16,
+    // PR #353). One saveMany() per note keeps each note's versions on a single
+    // transaction.
+    const src = readSource('./notes-sync.service.ts');
+    const pullVersions = src.slice(
+      src.indexOf('async function pullNoteVersions'),
+      src.indexOf('async function pushPendingVersions')
+    );
+    expect(pullVersions).toMatch(/noteHistoryStore\.saveMany\(/);
+    expect(pullVersions).not.toMatch(/noteHistoryStore\.save\(/);
+  });
+
   it('archived-pending retry joins the per-entity chain so the cap is real', () => {
     // pushNoteUpdate/pushNoteDelete are fire-and-forget (void). If the sweep
     // didn't await something, settleInBatches would enqueue every archived note

@@ -47,6 +47,8 @@
         return Check;
       case 'syncing':
         return RefreshCw;
+      case 'syncing_history':
+        return RefreshCw;
       case 'offline':
         return WifiOff;
       case 'error':
@@ -70,6 +72,10 @@
         return 'text-muted-foreground';
       case 'syncing':
         return 'text-primary';
+      case 'syncing_history':
+        // Muted, not primary: the notes are already synced and on screen; this
+        // is just the background history tidy-up.
+        return 'text-muted-foreground';
       case 'offline':
         return 'text-muted-foreground';
       case 'error':
@@ -93,6 +99,8 @@
         return $t('sync_status.synced');
       case 'syncing':
         return $t('sync_status.syncing');
+      case 'syncing_history':
+        return $t('sync_status.syncing_history');
       case 'offline':
         return $t('sync_status.offline');
       case 'error':
@@ -121,7 +129,11 @@
   }
 
   let Icon = $derived(getIcon($syncStatus.status));
-  let spinning = $derived($syncStatus.status === 'syncing' || manualSyncing);
+  let spinning = $derived(
+    $syncStatus.status === 'syncing' ||
+      $syncStatus.status === 'syncing_history' ||
+      manualSyncing
+  );
   let isClickable = $derived(
     $syncStatus.status !== 'offline' &&
       $syncStatus.status !== 'syncing' &&
