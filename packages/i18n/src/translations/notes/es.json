@@ -286,6 +286,14 @@
         "got_it": "Entendido"
       },
       "errors": { "failed": "No se pudo abrir la nota" },
+      "folder_dedup": {
+        "modal_title": "¿Ordenar las carpetas duplicadas?",
+        "modal_description": "{count, plural, one {Se encontró # carpeta periódica duplicada.} other {Se encontraron # carpetas periódicas duplicadas.}} Ordenar mueve todas las notas a una sola carpeta por tipo, combina las notas del mismo periodo y elimina los duplicados vacíos. Tus notas se conservan: no se elimina nada.",
+        "merge_action": "Ordenar",
+        "dismiss_action": "Ahora no",
+        "merge_success": "{count, plural, one {Se eliminó # carpeta duplicada.} other {Se eliminaron # carpetas duplicadas.}}",
+        "merge_error": "No se pudieron ordenar las carpetas. Inténtalo de nuevo."
+      },
       "dedup": {
         "modal_title": "¿Combinar notas duplicadas?",
         "modal_description": "{count, plural, one {Se encontró # nota periódica duplicada.} other {Se encontraron # notas periódicas duplicadas.}} Al combinar, su contenido se añade al original y las copias adicionales se mueven a la papelera, desde donde puedes restaurarlas.",

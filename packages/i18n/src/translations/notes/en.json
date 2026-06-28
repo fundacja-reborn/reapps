@@ -286,6 +286,14 @@
         "got_it": "Got it"
       },
       "errors": { "failed": "Failed to open the note" },
+      "folder_dedup": {
+        "modal_title": "Tidy up duplicate folders?",
+        "modal_description": "{count, plural, one {Found # duplicate periodic folder.} other {Found # duplicate periodic folders.}} Tidying up moves every note into a single folder per type, merges notes from the same period, and removes the empty duplicates. Your notes are kept - nothing is deleted.",
+        "merge_action": "Tidy up",
+        "dismiss_action": "Not now",
+        "merge_success": "{count, plural, one {Removed # duplicate folder.} other {Removed # duplicate folders.}}",
+        "merge_error": "Could not tidy up the folders. Please try again."
+      },
       "dedup": {
         "modal_title": "Merge duplicate notes?",
         "modal_description": "{count, plural, one {Found # duplicate periodic note.} other {Found # duplicate periodic notes.}} Merging combines their content into the original and moves the extra copies to Trash, where you can restore them.",
