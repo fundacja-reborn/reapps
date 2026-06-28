@@ -805,6 +805,22 @@
       "create": "Créer un compte",
       "create_desc": "Conservez vos notes et synchronisez entre appareils. Vos notes actuelles sont conservées."
     },
+    "behavior": {
+      "title": "Comportement",
+      "hub_desc": "Mode d'ouverture des notes, confirmation de suppression",
+      "open_mode": "Ouvrir les notes en",
+      "open_mode_desc": "Vue dans laquelle une note existante s'ouvre lorsque vous la sélectionnez. Les nouvelles notes s'ouvrent toujours prêtes à être modifiées.",
+      "open_mode_preview": "Aperçu (lecture seule)",
+      "open_mode_edit": "Édition",
+      "open_mode_split": "Partagé (édition et aperçu)",
+      "open_mode_device_hint": "S'applique uniquement à cet appareil",
+      "open_mode_updated": "Mode d'ouverture par défaut mis à jour",
+      "confirm_delete": "Confirmer avant de supprimer",
+      "confirm_delete_desc": "Demander avant de déplacer une note vers la Corbeille. Les notes dans la Corbeille peuvent être restaurées, mais sont définitivement supprimées après 30 jours.",
+      "confirm_delete_on": "Confirmation activée",
+      "confirm_delete_off": "Confirmation désactivée",
+      "confirm_delete_updated": "Confirmation de suppression mise à jour"
+    },
     "appearance": {
       "title": "Apparence",
       "hub_desc": "Thème de l'application, langue de l'interface, format de date et d'heure",

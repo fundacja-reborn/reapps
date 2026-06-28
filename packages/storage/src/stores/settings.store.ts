@@ -72,6 +72,14 @@ export interface AppSettings {
   editorMode: EditorMode;
   editorModeIntroSeen: boolean;
   /**
+   * When true, deleting a single note shows a confirmation dialog before moving
+   * it to Trash. When false, single-note deletes go straight to Trash (which is
+   * recoverable - notes are soft-deleted, never auto-purged). Default true.
+   * Synced across devices: it's a caution preference, not a device trait. Bulk
+   * deletes always confirm regardless of this flag.
+   */
+  confirmBeforeDelete: boolean;
+  /**
    * Notes-only: per-kind settings for Daily / Weekly / Monthly Notes (Obsidian-style).
    * Local & device-specific - not synced. Optional in the type so reborn-task settings
    * don't carry the field. Defaults are written by `initializeDefaults` for the notes app.
@@ -188,6 +196,7 @@ export const settingsOperations = {
           imageLoadMode: 'ask',
           editorMode: 'live',
           editorModeIntroSeen: false,
+          confirmBeforeDelete: true,
           ...(appName === 'reborn-notes'
             ? { periodicNotes: structuredClone(PERIODIC_NOTES_DEFAULTS) }
             : {}),

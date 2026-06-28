@@ -57,6 +57,7 @@ export interface AppSettingsBundle {
   imageLoadMode?: AppSettings['imageLoadMode'];
   editorMode?: AppSettings['editorMode'];
   editorModeIntroSeen?: AppSettings['editorModeIntroSeen'];
+  confirmBeforeDelete?: AppSettings['confirmBeforeDelete'];
   periodicNotes?: AppSettings['periodicNotes'];
 }
 
@@ -84,7 +85,8 @@ export function extractAppBundle(s: AppSettings): AppSettingsBundle {
     sync_interval_minutes: s.sync_interval_minutes,
     imageLoadMode: s.imageLoadMode,
     editorMode: s.editorMode,
-    editorModeIntroSeen: s.editorModeIntroSeen
+    editorModeIntroSeen: s.editorModeIntroSeen,
+    confirmBeforeDelete: s.confirmBeforeDelete
   };
   if (s.periodicNotes !== undefined) {
     bundle.periodicNotes = s.periodicNotes;
@@ -120,6 +122,7 @@ export function applyBundlesToSettings(
     if (app.imageLoadMode !== undefined) merged.imageLoadMode = app.imageLoadMode;
     if (app.editorMode !== undefined) merged.editorMode = app.editorMode;
     if (app.editorModeIntroSeen !== undefined) merged.editorModeIntroSeen = app.editorModeIntroSeen;
+    if (app.confirmBeforeDelete !== undefined) merged.confirmBeforeDelete = app.confirmBeforeDelete;
     if (app.periodicNotes !== undefined) merged.periodicNotes = app.periodicNotes;
   }
   return merged;
@@ -163,6 +166,7 @@ export function migrateAppBundle(raw: unknown): AppSettingsBundle {
   if (typeof obj.imageLoadMode === 'string') out.imageLoadMode = obj.imageLoadMode as AppSettings['imageLoadMode'];
   if (typeof obj.editorMode === 'string') out.editorMode = obj.editorMode as AppSettings['editorMode'];
   if (typeof obj.editorModeIntroSeen === 'boolean') out.editorModeIntroSeen = obj.editorModeIntroSeen;
+  if (typeof obj.confirmBeforeDelete === 'boolean') out.confirmBeforeDelete = obj.confirmBeforeDelete;
   if (typeof obj.periodicNotes === 'object' && obj.periodicNotes !== null) {
     out.periodicNotes = obj.periodicNotes as AppSettings['periodicNotes'];
   }

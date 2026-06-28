@@ -228,6 +228,16 @@ export const editorModeIntroSeen = derived(
 );
 
 /**
+ * When true (default), deleting a single note shows a confirmation dialog.
+ * When false, single-note deletes go straight to Trash. Synced across devices.
+ * Falls back to `true` for settings rows written before this field existed.
+ */
+export const confirmBeforeDelete = derived(
+  appSettings,
+  ($settings) => $settings?.confirmBeforeDelete ?? true
+);
+
+/**
  * Per-kind Periodic Notes settings (Daily / Weekly / Monthly).
  * Falls back to defaults when settings haven't loaded yet so consumers can
  * render eagerly without null checks; missing kinds (e.g. legacy settings

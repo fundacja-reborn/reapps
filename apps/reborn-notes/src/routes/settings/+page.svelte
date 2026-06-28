@@ -27,7 +27,8 @@
     HardDrive,
     ShieldAlert,
     CalendarDays,
-    Sparkles
+    Sparkles,
+    SlidersHorizontal
   } from '@lucide/svelte';
   import { goto } from '$lib/utils/navigation';
   import {
@@ -276,6 +277,16 @@
               <div class="font-medium">{$t('settings_page.appearance.title')}</div>
               <div class="text-sm text-muted-foreground">
                 {$t('settings_page.appearance.hub_desc')}
+              </div>
+            </div>
+            <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
+          </a>
+          <a href={resolve('/settings/behavior')} class={itemClasses}>
+            <SlidersHorizontal class="h-5 w-5 text-muted-foreground shrink-0" />
+            <div class="flex-1 min-w-0">
+              <div class="font-medium">{$t('settings_page.behavior.title')}</div>
+              <div class="text-sm text-muted-foreground">
+                {$t('settings_page.behavior.hub_desc')}
               </div>
             </div>
             <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
