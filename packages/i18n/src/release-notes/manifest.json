@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.38.0",
+    "date": "2026-06-28",
+    "items": [
+      { "id": "0.38.0-behavior-settings", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.38.0-desktop-menus", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.38.0-auto-backup", "category": "new", "apps": ["notes"], "platforms": ["android", "ios"] },
+      { "id": "0.38.0-sync-progress", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.38.0-mobile-first-sync", "category": "fixed", "apps": ["notes"], "platforms": ["android", "ios"] },
+      { "id": "0.38.0-ghost-note", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.38.0-periodic-dupes", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.38.0-native-deletes", "category": "fixed", "apps": ["notes"], "platforms": ["android", "ios"] },
+      { "id": "0.38.0-link-navigation", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.38.0-first-edit-history", "category": "fixed", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.37.0",
     "date": "2026-06-26",
     "items": [
