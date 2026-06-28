@@ -287,8 +287,9 @@
       },
       "errors": { "failed": "Failed to open the note" },
       "dedup": {
-        "toast_title": "Duplicate periodic notes",
-        "toast_description": "{count, plural, one {# duplicate note was created on another device.} other {# duplicate notes were created on another device.}} Merge into the original?",
+        "modal_title": "Merge duplicate notes?",
+        "modal_description": "{count, plural, one {Found # duplicate periodic note.} other {Found # duplicate periodic notes.}} Merging combines their content into the original and moves the extra copies to Trash, where you can restore them.",
+        "dismiss_action": "Not now",
         "merge_action": "Merge",
         "merge_separator": "Merged from a duplicate created {datetime}",
         "merge_success": "{count, plural, one {Merged # duplicate note.} other {Merged # duplicate notes.}}",
@@ -727,7 +728,10 @@
     "re_login": "Log in again",
     "initial": {
       "title": "Syncing your notes",
-      "message": "Downloading your encrypted data from the server may take a moment."
+      "message": "Downloading your encrypted data from the server may take a moment.",
+      "building": "Building your local database",
+      "count": "{done} / {total}",
+      "building_hint": "One-time setup after sign-in - then your notes open instantly, even offline."
     },
     "errors": {
       "count": "{count} not synced",

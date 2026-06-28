@@ -287,8 +287,9 @@
       },
       "errors": { "failed": "Impossible d'ouvrir la note" },
       "dedup": {
-        "toast_title": "Notes périodiques en double",
-        "toast_description": "{count, plural, one {# note en double a été créée sur un autre appareil.} other {# notes en double ont été créées sur un autre appareil.}} Fusionner dans la note originale ?",
+        "modal_title": "Fusionner les notes en double ?",
+        "modal_description": "{count, plural, one {# note périodique en double trouvée.} other {# notes périodiques en double trouvées.}} La fusion ajoute leur contenu à la note originale et déplace les copies supplémentaires vers la corbeille, où vous pouvez les restaurer.",
+        "dismiss_action": "Plus tard",
         "merge_action": "Fusionner",
         "merge_separator": "Fusionné depuis un doublon créé le {datetime}",
         "merge_success": "{count, plural, one {# note en double fusionnée.} other {# notes en double fusionnées.}}",
@@ -727,7 +728,10 @@
     "re_login": "Se reconnecter",
     "initial": {
       "title": "Synchronisation de vos notes",
-      "message": "Le téléchargement de vos données chiffrées depuis le serveur peut prendre un instant."
+      "message": "Le téléchargement de vos données chiffrées depuis le serveur peut prendre un instant.",
+      "building": "Création de votre base de données locale",
+      "count": "{done} / {total}",
+      "building_hint": "Une seule fois après la connexion - ensuite vos notes s'ouvrent instantanément, même hors ligne."
     },
     "errors": {
       "count": "{count} non synchronisé(s)",
