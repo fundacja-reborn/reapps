@@ -33,6 +33,8 @@
   import { reAuthenticate, verifyTotpForReauth } from '$lib/services/notes-auth.service';
   import { SessionExpiredBanner, RequireSessionModal } from '@reborn/ui';
   import LoadingScreen from '$lib/components/LoadingScreen.svelte';
+  import InitialSyncBanner from '$lib/components/sync/InitialSyncBanner.svelte';
+  import PeriodicDuplicatesDialog from '$lib/components/notes/PeriodicDuplicatesDialog.svelte';
   import LocalModeWelcome from '$lib/components/LocalModeWelcome.svelte';
   import UpdateRequiredGate from '$lib/components/layout/UpdateRequiredGate.svelte';
   import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
@@ -56,13 +58,15 @@
 
   let appReady = $state(false);
   let initTimeout = $state(false);
-  // Measured height of the session-expired banner. Exposed as --rn-banner-h so
-  // the viewport-height containers (main page panels, settings roots) can
-  // subtract it: the banner sits in normal flow ABOVE 100dvh layouts, so
-  // without the correction it pushes the bottom edge (IconNav avatar) off
-  // screen - on iOS the safe-area inset makes the banner taller and the clip
-  // obvious, but the overflow exists on web too. 0 when the banner is hidden.
-  let sessionBannerHeight = $state(0);
+  // Measured height of the top banner stack (session-expired + initial-sync).
+  // Exposed as --rn-banner-h so the viewport-height containers (main page
+  // panels, settings roots) can subtract it: the banners sit in normal flow
+  // ABOVE 100dvh layouts, so without the correction they push the bottom edge
+  // (IconNav avatar) off screen - on iOS the safe-area inset makes a banner
+  // taller and the clip obvious, but the overflow exists on web too. The two
+  // banners are mutually exclusive in practice (session-expired vs first sync),
+  // but measuring the wrapper sums them correctly if both ever show. 0 when none.
+  let bannerStackHeight = $state(0);
   let hasTriggeredInitialSync = $state(false);
 
   // Auth guard - blocked until onMount finishes initialization (appReady).
@@ -540,15 +544,16 @@
        keeps the wrapper transparent to the layout flow. -->
   <div
     class="svelte-app-ready"
-    style="display: contents; --rn-banner-h: {sessionBannerHeight}px"
+    style="display: contents; --rn-banner-h: {bannerStackHeight}px"
   >
-    <div bind:clientHeight={sessionBannerHeight}>
+    <div bind:clientHeight={bannerStackHeight}>
       <SessionExpiredBanner
         visible={$sessionExpired && navigator.onLine && !$localOnly}
         username={$authStore.username ?? ''}
         onReAuth={reAuthenticate}
         onVerifyTotp={verifyTotpForReauth}
       />
+      <InitialSyncBanner />
     </div>
     <RequireSessionModal
       username={$authStore.username ?? ''}
@@ -564,6 +569,7 @@
       fullChangelogHref={changelogHref}
     />
     <LocalModeWelcome />
+    <PeriodicDuplicatesDialog />
     {#if __REBORN_NATIVE__}
       <UpdateRequiredGate />
     {/if}

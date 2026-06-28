@@ -287,8 +287,9 @@
       },
       "errors": { "failed": "Notiz konnte nicht geöffnet werden" },
       "dedup": {
-        "toast_title": "Doppelte periodische Notizen",
-        "toast_description": "{count, plural, one {# doppelte Notiz wurde auf einem anderen Gerät erstellt.} other {# doppelte Notizen wurden auf einem anderen Gerät erstellt.}} Mit dem Original zusammenführen?",
+        "modal_title": "Doppelte Notizen zusammenführen?",
+        "modal_description": "{count, plural, one {# doppelte periodische Notiz gefunden.} other {# doppelte periodische Notizen gefunden.}} Beim Zusammenführen wird ihr Inhalt in das Original übernommen und die zusätzlichen Kopien werden in den Papierkorb verschoben, von wo Sie sie wiederherstellen können.",
+        "dismiss_action": "Jetzt nicht",
         "merge_action": "Zusammenführen",
         "merge_separator": "Aus einem Duplikat zusammengeführt, erstellt am {datetime}",
         "merge_success": "{count, plural, one {# doppelte Notiz zusammengeführt.} other {# doppelte Notizen zusammengeführt.}}",
@@ -727,7 +728,10 @@
     "re_login": "Erneut anmelden",
     "initial": {
       "title": "Notizen werden synchronisiert",
-      "message": "Das Herunterladen Ihrer verschlüsselten Daten vom Server kann einen Moment dauern."
+      "message": "Das Herunterladen Ihrer verschlüsselten Daten vom Server kann einen Moment dauern.",
+      "building": "Lokale Datenbank wird aufgebaut",
+      "count": "{done} / {total}",
+      "building_hint": "Einmalig nach der Anmeldung - danach öffnen sich Ihre Notizen sofort, auch offline."
     },
     "errors": {
       "count": "{count} nicht synchronisiert",

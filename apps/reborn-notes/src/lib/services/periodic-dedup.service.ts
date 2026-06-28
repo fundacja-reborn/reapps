@@ -11,7 +11,11 @@
  * DETECT + MANUAL MERGE. We never mutate note content automatically after a
  * background pull - that would be a trust violation (the user didn't initiate
  * it) and the highest-risk option for the lowest-severity problem. Instead we
- * surface a toast; the merge runs only when the user clicks it.
+ * surface a confirmation modal (PeriodicDuplicatesDialog, driven by the
+ * `periodicDuplicatePrompt` store); the merge runs only when the user confirms.
+ * A modal, not a toast: the merge is semi-destructive (combines content, moves
+ * the extra copies to Trash), and an auto-dismissing toast vanished before the
+ * user could act on it (smoke #2 of PR #356).
  *
  * Detection is cheap: a title-prefix pre-filter (locale-independent ISO date -
  * the prefix both locales share, which is exactly the 2026-05-12 case) buckets
@@ -19,7 +23,7 @@
  * collisions, and only stamped periodic notes count as duplicates, so a regular
  * note that merely starts with a date inside a periodic folder is never touched.
  */
-import { get } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import type { PeriodicKind } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
@@ -211,22 +215,18 @@ export async function mergeAllPeriodicDuplicates(): Promise<{ groups: number; ar
  */
 const notifiedKeys = new Set<string>();
 
-async function runMerge(): Promise<void> {
-  try {
-    const { archived } = await mergeAllPeriodicDuplicates();
-    notifiedKeys.clear();
-    if (archived > 0) {
-      toastStore.success(tr('notes.periodic.dedup.merge_success', { count: archived }));
-    }
-  } catch (e) {
-    logger.error('Periodic duplicate merge failed', e);
-    toastStore.error(tr('notes.periodic.dedup.merge_error'));
-  }
-}
+/**
+ * Pending duplicate-merge prompt. `PeriodicDuplicatesDialog` opens the merge
+ * confirmation modal while this is non-null and reads `extra` for the count;
+ * null = no prompt. A store (not a toast) because the merge is semi-destructive
+ * and a deliberate decision - the old auto-dismissing toast vanished before the
+ * user could act (smoke #2 of PR #356).
+ */
+export const periodicDuplicatePrompt = writable<{ extra: number } | null>(null);
 
 /**
- * Detect duplicate periodic notes and, if any new ones are found, show a toast
- * offering a one-click merge. Fire-and-forget from `refreshStoresAfterPull()`.
+ * Detect duplicate periodic notes and, if a new batch is found, post a prompt
+ * for the merge modal. Fire-and-forget from `refreshStoresAfterPull()`.
  */
 export async function detectAndNotifyPeriodicDuplicates(): Promise<void> {
   const groups = await detectPeriodicDuplicates();
@@ -239,12 +239,34 @@ export async function detectAndNotifyPeriodicDuplicates(): Promise<void> {
   // Count of extra copies (everything beyond the canonical in each group).
   const extra = groups.reduce((sum, g) => sum + g.members.length - 1, 0);
 
-  toastStore.warning(tr('notes.periodic.dedup.toast_title'), {
-    description: tr('notes.periodic.dedup.toast_description', { count: extra }),
-    duration: 15000,
-    action: {
-      label: tr('notes.periodic.dedup.merge_action'),
-      onClick: () => void runMerge()
+  periodicDuplicatePrompt.set({ extra });
+}
+
+/**
+ * Dismiss the prompt without merging. `notifiedKeys` already holds this batch,
+ * so it won't re-pop this session; it returns next session if the duplicates
+ * are still there. Also used for an Escape / overlay close.
+ */
+export function dismissPeriodicDuplicatePrompt(): void {
+  periodicDuplicatePrompt.set(null);
+}
+
+/**
+ * Confirm the merge from the modal: run the merge, then clear the prompt (after
+ * the await, so the modal keeps its processing state while the merge runs).
+ * Never throws - errors surface as a toast so the modal closes cleanly.
+ */
+export async function confirmMergePeriodicDuplicates(): Promise<void> {
+  try {
+    const { archived } = await mergeAllPeriodicDuplicates();
+    notifiedKeys.clear();
+    if (archived > 0) {
+      toastStore.success(tr('notes.periodic.dedup.merge_success', { count: archived }));
     }
-  });
+  } catch (e) {
+    logger.error('Periodic duplicate merge failed', e);
+    toastStore.error(tr('notes.periodic.dedup.merge_error'));
+  } finally {
+    periodicDuplicatePrompt.set(null);
+  }
 }

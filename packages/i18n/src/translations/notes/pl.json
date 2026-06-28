@@ -287,8 +287,9 @@
       },
       "errors": { "failed": "Nie udało się otworzyć notatki" },
       "dedup": {
-        "toast_title": "Zduplikowane notatki okresowe",
-        "toast_description": "{count, plural, one {# zduplikowana notatka powstała na innym urządzeniu.} few {# zduplikowane notatki powstały na innym urządzeniu.} many {# zduplikowanych notatek powstało na innym urządzeniu.} other {# zduplikowanych notatek powstało na innym urządzeniu.}} Scalić z oryginałem?",
+        "modal_title": "Scalić zduplikowane notatki?",
+        "modal_description": "{count, plural, one {Znaleziono # zduplikowaną notatkę okresową.} few {Znaleziono # zduplikowane notatki okresowe.} many {Znaleziono # zduplikowanych notatek okresowych.} other {Znaleziono # zduplikowanych notatek okresowych.}} Scalanie połączy ich treść z oryginałem i przeniesie nadmiarowe kopie do Kosza, skąd możesz je przywrócić.",
+        "dismiss_action": "Nie teraz",
         "merge_action": "Scal",
         "merge_separator": "Scalono z duplikatu utworzonego {datetime}",
         "merge_success": "{count, plural, one {Scalono # duplikat.} few {Scalono # duplikaty.} many {Scalono # duplikatów.} other {Scalono # duplikatów.}}",
@@ -727,7 +728,10 @@
     "re_login": "Zaloguj ponownie",
     "initial": {
       "title": "Trwa synchronizacja Twoich notatek",
-      "message": "Pobieranie zaszyfrowanych danych z serwera może chwilę potrwać."
+      "message": "Pobieranie zaszyfrowanych danych z serwera może chwilę potrwać.",
+      "building": "Budowanie lokalnej bazy danych",
+      "count": "{done} / {total}",
+      "building_hint": "Jednorazowo po zalogowaniu - potem notatki otwierają się natychmiast, też offline."
     },
     "errors": {
       "count": "{count} niezsynchronizowanych",

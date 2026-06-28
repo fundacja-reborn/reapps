@@ -35,7 +35,8 @@
     Heart,
     UserPlus,
     LogIn,
-    Lock
+    Lock,
+    Loader2
   } from '@lucide/svelte';
   import * as Tooltip from '@reborn/ui/components/tooltip';
   import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
@@ -59,6 +60,7 @@
     onNewNote,
     onsectionclick,
     onPeriodic,
+    pendingKind = null,
     horizontal = false,
     alwaysVisible = false
   }: {
@@ -68,6 +70,9 @@
     onsectionclick?: (section: Section) => void;
     /** Open or create the daily/weekly/monthly note for the current period. */
     onPeriodic?: (kind: PeriodicKind) => void;
+    /** Periodic kind currently resolving (waiting on the initial-sync pull): its
+     *  button shows a spinner instead of looking dead. See handlePeriodic. */
+    pendingKind?: PeriodicKind | null;
     /** Horizontal mode for mobile sheet header */
     horizontal?: boolean;
     /** Show icon rail regardless of breakpoint (for mobile master-detail layout) */
@@ -236,6 +241,7 @@
     {#each PERIODIC_BUTTONS as p (p.kind)}
       {@const sectionId = `periodic-${p.kind}` as const}
       {@const isActive = activeSection === sectionId}
+      {@const isPending = pendingKind === p.kind}
       <button
         type="button"
         onclick={() => onPeriodic?.(p.kind)}
@@ -245,9 +251,14 @@
           : 'text-muted-foreground hover:bg-sidebar-accent/60'}"
         aria-label={periodicTooltip(p.kind)}
         aria-current={isActive ? 'page' : undefined}
+        aria-busy={isPending}
         title={periodicTooltip(p.kind)}
       >
-        <p.icon class="h-5 w-5" />
+        {#if isPending}
+          <Loader2 class="h-5 w-5 animate-spin" />
+        {:else}
+          <p.icon class="h-5 w-5" />
+        {/if}
         <span class="text-[11px] leading-none">{periodicLabel(p.kind)}</span>
       </button>
     {/each}
@@ -409,6 +420,7 @@
     {#each PERIODIC_BUTTONS as p (p.kind)}
       {@const sectionId = `periodic-${p.kind}` as const}
       {@const isActive = activeSection === sectionId}
+      {@const isPending = pendingKind === p.kind}
       <Tooltip.Root>
         <Tooltip.Trigger>
           {#snippet child({ props })}
@@ -422,8 +434,13 @@
                 : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
               aria-label={periodicTooltip(p.kind)}
               aria-current={isActive ? 'page' : undefined}
+              aria-busy={isPending}
             >
-              <p.icon class="h-6 w-6 md:h-5 md:w-5" />
+              {#if isPending}
+                <Loader2 class="h-6 w-6 md:h-5 md:w-5 animate-spin" />
+              {:else}
+                <p.icon class="h-6 w-6 md:h-5 md:w-5" />
+              {/if}
             </button>
           {/snippet}
         </Tooltip.Trigger>

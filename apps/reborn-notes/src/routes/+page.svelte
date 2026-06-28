@@ -175,6 +175,10 @@
 
   // First-use onboarding modal — open with the kind that triggered it.
   let periodicOnboardingKind = $state<PeriodicKind | null>(null);
+  // Periodic kind whose button is mid-resolve (waiting on the initial-sync
+  // pull). Drives the spinner on the IconNav button so a click doesn't look
+  // dead while getOrCreateNote awaits the pull. Null in steady state.
+  let periodicPendingKind = $state<PeriodicKind | null>(null);
 
   async function handleDetailPin() {
     detailActionSheetOpen = false;
@@ -714,6 +718,17 @@
   }
 
   async function handlePeriodic(kind: PeriodicKind) {
+    // A re-click on the kind already resolving is a no-op: getOrCreateNote is
+    // awaiting the (single-flight) initial-sync pull, so a second call would
+    // just duplicate the await.
+    if (periodicPendingKind === kind) return;
+    // Anti-flicker: only surface the button spinner if the resolve actually
+    // takes a beat (during the initial-sync pull, getOrCreateNote awaits it). A
+    // steady-state index hit returns in a few ms and must not flash a spinner.
+    let resolved = false;
+    const spinnerTimer = setTimeout(() => {
+      if (!resolved) periodicPendingKind = kind;
+    }, 150);
     try {
       // Service guarantees the folder exists and settings.folderId is populated
       // after the await, so we can safely read it for the sidebar filter.
@@ -738,6 +753,10 @@
       const message = $t(`notes.periodic.errors.failed`);
       toastStore.error(message);
       console.error('[periodic-notes] failed to open', kind, err);
+    } finally {
+      resolved = true;
+      clearTimeout(spinnerTimer);
+      periodicPendingKind = null;
     }
   }
 
@@ -1717,6 +1736,7 @@
           onNewNote={handleNewNote}
           onsectionclick={handleSectionClick}
           onPeriodic={handlePeriodic}
+          pendingKind={periodicPendingKind}
           alwaysVisible
         />
 
@@ -2119,6 +2139,7 @@
         onNewNote={handleNewNote}
         onsectionclick={handleSectionClick}
         onPeriodic={handlePeriodic}
+        pendingKind={periodicPendingKind}
       />
 
       <!-- ── Content panel ───────────────────────────────────────── -->
