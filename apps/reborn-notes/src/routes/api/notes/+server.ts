@@ -9,12 +9,78 @@ import { apiErrorResponse } from '$lib/server/api-error';
 
 const logger = createLogger('Notes-API-Notes');
 
+const DEFAULT_PAGE_LIMIT = 200;
+const MAX_PAGE_LIMIT = 500;
+
+type NoteRow = {
+  id: string;
+  folder_id: string | null;
+  title_encrypted: string;
+  content_encrypted: string;
+  excerpt_encrypted: string | null;
+  metadata_encrypted: string | null;
+  is_archived: boolean;
+  deleted_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+  sync_version: number;
+};
+
+/** Wire shape for a single note. Identical for legacy and paginated responses. */
+function serializeNote(n: NoteRow) {
+  return {
+    id: n.id,
+    folder_id: n.folder_id,
+    title_encrypted: n.title_encrypted,
+    content_encrypted: n.content_encrypted,
+    excerpt_encrypted: n.excerpt_encrypted,
+    metadata_encrypted: n.metadata_encrypted ?? undefined,
+    is_archived: n.is_archived,
+    deleted_at: n.deleted_at?.toISOString() ?? null,
+    created_at: n.created_at.toISOString(),
+    updated_at: n.updated_at.toISOString(),
+    sync_version: n.sync_version
+  };
+}
+
 /**
- * GET /api/notes — fetch all notes for the authenticated user.
+ * Opaque keyset cursor over (updated_at, id). Both fields are already plaintext
+ * in the server-visibility model, so this introduces no new plaintext - it is
+ * just an encoding of the last row on a page. Not Prisma's `cursor:{id}`, which
+ * breaks when the cursor row was hard-deleted between pages (real in delta sync).
+ */
+function encodeCursor(updatedAt: Date, id: string): string {
+  return Buffer.from(JSON.stringify({ u: updatedAt.toISOString(), i: id })).toString('base64url');
+}
+function decodeCursor(raw: string): { updatedAt: Date; id: string } | null {
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+    if (typeof parsed?.u !== 'string' || typeof parsed?.i !== 'string') return null;
+    const updatedAt = new Date(parsed.u);
+    if (Number.isNaN(updatedAt.getTime())) return null;
+    return { updatedAt, id: parsed.i };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * GET /api/notes — fetch notes for the authenticated user.
+ *
+ * Two modes, selected by whether the client sends pagination params:
+ *   • Legacy (no `limit`/`cursor`): returns the full matching set, no `page`
+ *     envelope. Keeps clients on older builds working unchanged (OTA paradox).
+ *   • Paginated delta: keyset pagination over (updated_at ASC, id ASC). Returns
+ *     one page + a `page` envelope { has_more, next_cursor, total?, all_ids? }.
+ *
  * Query params:
- *   folder_id  — filter by folder (use "null" for unorganised)
- *   include_archived=true — include trash
- *   since      — ISO timestamp: only notes updated after this date
+ *   folder_id            — filter by folder ("null" for unorganised)
+ *   include_archived=true — include trash (soft-deleted rows)
+ *   since                — ISO timestamp: delta lower bound (inclusive, >=)
+ *   cursor               — opaque keyset cursor (next page)
+ *   limit                — page size (default 200, max 500)
+ *   reconcile=true       — first page also returns all_ids (full id set) for
+ *                          orphan-delete of notes hard-deleted on another device
  */
 export const GET: RequestHandler = async ({ request, url }) => {
   try {
@@ -24,33 +90,82 @@ export const GET: RequestHandler = async ({ request, url }) => {
     const folderId = url.searchParams.get('folder_id');
     const includeArchived = url.searchParams.get('include_archived') === 'true';
     const since = url.searchParams.get('since');
+    const cursorRaw = url.searchParams.get('cursor');
+    const limitRaw = url.searchParams.get('limit');
+    const wantReconcile = url.searchParams.get('reconcile') === 'true';
+    const paginated = limitRaw !== null || cursorRaw !== null;
 
-    const where: Prisma.NoteWhereInput = { user_id: userId };
-    if (!includeArchived) where.deleted_at = null;
-    if (folderId === 'null') where.folder_id = null;
-    else if (folderId) where.folder_id = folderId;
-    if (since) where.updated_at = { gt: new Date(since) };
+    // Filter shared by the page query, the delta count and the all_ids scan.
+    const baseWhere: Prisma.NoteWhereInput = { user_id: userId };
+    if (!includeArchived) baseWhere.deleted_at = null;
+    if (folderId === 'null') baseWhere.folder_id = null;
+    else if (folderId) baseWhere.folder_id = folderId;
 
-    const notes = await prisma.note.findMany({
-      where,
-      orderBy: { updated_at: 'desc' }
-    });
+    // ── Legacy mode: old clients send neither limit nor cursor. ──────────
+    if (!paginated) {
+      const where: Prisma.NoteWhereInput = { ...baseWhere };
+      if (since) where.updated_at = { gt: new Date(since) };
+      const notes = await prisma.note.findMany({ where, orderBy: { updated_at: 'desc' } });
+      return json({ success: true, data: notes.map(serializeNote) });
+    }
 
-    const data = notes.map((n) => ({
-      id: n.id,
-      folder_id: n.folder_id,
-      title_encrypted: n.title_encrypted,
-      content_encrypted: n.content_encrypted,
-      excerpt_encrypted: n.excerpt_encrypted,
-      metadata_encrypted: n.metadata_encrypted ?? undefined,
-      is_archived: n.is_archived,
-      deleted_at: n.deleted_at?.toISOString() ?? null,
-      created_at: n.created_at.toISOString(),
-      updated_at: n.updated_at.toISOString(),
-      sync_version: n.sync_version
-    }));
+    // ── Paginated delta mode ────────────────────────────────────────────
+    const limit = Math.min(
+      Math.max(parseInt(limitRaw ?? '', 10) || DEFAULT_PAGE_LIMIT, 1),
+      MAX_PAGE_LIMIT
+    );
+    const cursor = cursorRaw ? decodeCursor(cursorRaw) : null;
+    if (cursorRaw && !cursor) {
+      return json({ success: false, error: 'Invalid cursor' }, { status: 400 });
+    }
 
-    return json({ success: true, data });
+    // The cursor (when present) is a strict keyset lower bound already past
+    // `since`, so it supersedes it. The first page (no cursor) applies `since`
+    // INCLUSIVELY (>=): boundary rows equal to the client watermark are re-sent
+    // and no-op'd by the client's sync_version guard, so a row written at the
+    // exact watermark instant is never missed.
+    const pageWhere: Prisma.NoteWhereInput = { ...baseWhere };
+    if (cursor) {
+      pageWhere.OR = [
+        { updated_at: { gt: cursor.updatedAt } },
+        { updated_at: cursor.updatedAt, id: { gt: cursor.id } }
+      ];
+    } else if (since) {
+      pageWhere.updated_at = { gte: new Date(since) };
+    }
+
+    // Peek one extra row to detect has_more without a second count.
+    const rows = (await prisma.note.findMany({
+      where: pageWhere,
+      orderBy: [{ updated_at: 'asc' }, { id: 'asc' }],
+      take: limit + 1
+    })) as NoteRow[];
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const last = pageRows[pageRows.length - 1];
+    const nextCursor = hasMore && last ? encodeCursor(last.updated_at, last.id) : null;
+
+    const page: {
+      has_more: boolean;
+      next_cursor: string | null;
+      total?: number;
+      all_ids?: string[];
+    } = { has_more: hasMore, next_cursor: nextCursor };
+
+    // First page only (no cursor): attach the delta total for a determinate
+    // progress counter, and - when asked - the FULL id set for orphan reconcile.
+    // all_ids ignores the since/cursor filter: it is every note row the user has.
+    if (!cursor) {
+      const deltaWhere: Prisma.NoteWhereInput = { ...baseWhere };
+      if (since) deltaWhere.updated_at = { gte: new Date(since) };
+      page.total = await prisma.note.count({ where: deltaWhere });
+      if (wantReconcile) {
+        const ids = await prisma.note.findMany({ where: baseWhere, select: { id: true } });
+        page.all_ids = ids.map((r) => r.id);
+      }
+    }
+
+    return json({ success: true, data: pageRows.map(serializeNote), page });
   } catch (err: unknown) {
     return apiErrorResponse(err, logger, 'GET /api/notes');
   }

@@ -52,8 +52,16 @@ if (browser && connectivityStore) {
     const nowOnline = $c.status === 'online';
     if (nowOnline && !wasOnline) {
       import('$lib/services/notes-sync.service').then(
-        async ({ pullFromServer, pushPendingItems, refreshStoresAfterPull }) => {
+        async ({
+          pullFromServer,
+          pushPendingItems,
+          refreshStoresAfterPull,
+          requestFullReconcileNextPull
+        }) => {
           try {
+            // Coming back online: we may have missed deletes while offline, so
+            // force a full id reconcile (all_ids) on this pull, not a bare delta.
+            requestFullReconcileNextPull();
             await pushPendingItems();
             const synced = await pullFromServer();
             if (synced) await refreshStoresAfterPull();
@@ -70,6 +78,13 @@ if (browser && connectivityStore) {
 // ── Sync progress (set by sync service) ─────────────────────────
 
 export const isSyncing = writable(false);
+// Determinate progress for the notes phase of a pull (paginated delta sync):
+// {done, total} as pages land, or null when no pull is counting. Set by
+// notes-sync.service's pullNotes, cleared in runPullFromServer's finally. Read
+// by SyncStatusFooter and the first-load placeholder to show "Syncing notes…
+// 320/2000". A determinate counter is the key "is it frozen?" answer on a cold
+// sync of a few-thousand-note account on native.
+export const syncProgress = writable<{ done: number; total: number } | null>(null);
 export const syncError = writable(false);
 export const sessionExpired = writable(false);
 // True in local-only / no-account mode. Set by the auth store (one-way, like

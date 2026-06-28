@@ -721,3 +721,123 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(method).toMatch(/if\s*\(\s*!note\s*\)\s*return/);
   });
 });
+
+describe('notes-sync - paginated delta sync (stage 2b)', () => {
+  function pullNotesSrc(): string {
+    const src = readSource('./notes-sync.service.ts');
+    return src.slice(
+      src.indexOf('async function pullNotes'),
+      src.indexOf('async function writeNotesPage')
+    );
+  }
+  function writeNotesPageSrc(): string {
+    const src = readSource('./notes-sync.service.ts');
+    return src.slice(
+      src.indexOf('async function writeNotesPage'),
+      src.indexOf('// ── Push helpers')
+    );
+  }
+
+  it('pullNotes pages through the server in a cursor loop', () => {
+    const code = pullNotesSrc().replace(/\/\/.*$/gm, '');
+    // A do/while loop driven by the server's has_more / next_cursor.
+    expect(code).toMatch(/do\s*\{/);
+    expect(code).toMatch(/while\s*\(\s*cursor\s*\)/);
+    expect(code).toMatch(/has_more/);
+    expect(code).toMatch(/next_cursor/);
+    // The request carries the page limit + cursor.
+    expect(code).toMatch(/limit/);
+    expect(code).toMatch(/params\.set\(\s*['"]cursor['"]/);
+  });
+
+  it('each page is written via saveMany (bounded to a page) and revealed via the index', () => {
+    // saveMany lives in the per-page writer; the O(n²) per-note save() trap stays
+    // out of both functions.
+    const writer = writeNotesPageSrc().replace(/\/\/.*$/gm, '');
+    expect(writer).toMatch(/noteStore\.saveMany\(/);
+    expect(writer).not.toMatch(/noteStore\.save\(/);
+    // The loop reveals each page incrementally without a full rebuild per page.
+    const loop = pullNotesSrc().replace(/\/\/.*$/gm, '');
+    expect(loop).toMatch(/noteIndex\.upsertFromStore\(/);
+    expect(loop).toMatch(/notesStore\.refresh\(/);
+    expect(loop).not.toMatch(/noteIndex\.rebuild\(/);
+  });
+
+  it('orphan-delete uses the authoritative all_ids only, never page contents', () => {
+    const code = pullNotesSrc().replace(/\/\/.*$/gm, '');
+    // Deletion is gated on the full id set and skipped when it is absent.
+    expect(code).toMatch(/if\s*\(\s*allIds\s*\)/);
+    expect(code).toMatch(/!serverIds\.has\(/);
+    expect(code).toMatch(/noteStore\.deleteMany\(/);
+    // The old "diff against the response body" orphan path must be gone - in
+    // delta mode the body is only the changed notes, so it is NOT authoritative.
+    expect(code).not.toMatch(/serverNoteIds/);
+  });
+
+  it('reads the delta watermark behind a count() guard and advances it after the pull', () => {
+    const code = pullNotesSrc().replace(/\/\/.*$/gm, '');
+    // Ignore a stale watermark when IDB holds no notes (wiped but localStorage
+    // survived) -> full pull.
+    expect(code).toMatch(/noteStore\.count\(/);
+    expect(code).toMatch(/readWatermark\(/);
+    expect(code).toMatch(/writeWatermark\(/);
+    // The reset helper is exported for the logout path.
+    const full = readSource('./notes-sync.service.ts');
+    expect(full).toMatch(/export function clearNotesDeltaWatermark\(/);
+  });
+
+  it('drives a determinate progress store, cleared in a finally', () => {
+    const code = pullNotesSrc();
+    expect(code).toMatch(/syncProgress\.set\(\s*\{/); // {done, total}
+    expect(code).toMatch(/syncProgress\.set\(\s*null\s*\)/);
+    // Orchestrator also clears it as a safety net.
+    const run = readSource('./notes-sync.service.ts');
+    const runPull = run.slice(
+      run.indexOf('async function runPullFromServer'),
+      run.indexOf('async function pullFolders')
+    );
+    expect(runPull).toMatch(/syncProgress\.set\(\s*null\s*\)/);
+  });
+
+  it('requests all_ids only on a reconcile pull (variant B gating)', () => {
+    const code = pullNotesSrc().replace(/\/\/.*$/gm, '');
+    // reconcile decision comes from the session flag, and only the first page
+    // asks for it.
+    expect(code).toMatch(/const reconcile = !reconciledThisSession/);
+    expect(code).toMatch(/reconcile\s*\)\s*params\.set\(\s*['"]reconcile['"]/);
+    const full = readSource('./notes-sync.service.ts');
+    expect(full).toMatch(/export function requestFullReconcileNextPull\(/);
+  });
+
+  it('manual sync and online-recovery force a full reconcile', () => {
+    const footer = readSource('../components/sync/SyncStatusFooter.svelte');
+    expect(footer).toMatch(/requestFullReconcileNextPull\(\)/);
+    const store = readSource('../stores/sync-status.store.ts');
+    expect(store).toMatch(/requestFullReconcileNextPull/);
+  });
+
+  it('logout clears the delta watermark', () => {
+    const authStore = readSource('../stores/auth.store.ts');
+    expect(authStore).toMatch(/clearNotesDeltaWatermark\(\)/);
+  });
+
+  it('degrades safely against an old server with no page envelope', () => {
+    const code = pullNotesSrc().replace(/\/\/.*$/gm, '');
+    // When the server returns no `page`, the loop must not crash and must only
+    // treat the body as the full id set when there was no `since` (a true bulk).
+    expect(code).toMatch(/!pageInfo/);
+    expect(code).toMatch(/pageInfo\?\.has_more/);
+  });
+
+  it('noteIndex.upsertFromStore updates in-memory by id, not via a full getAll rebuild', () => {
+    const src = readSource('./note-index.svelte.ts');
+    const method = src.slice(
+      src.indexOf('async upsertFromStore'),
+      src.indexOf('/** Clear and rebuild')
+    );
+    expect(method).toMatch(/noteStore\.getMany\(/);
+    expect(method).toMatch(/this\._map\.set\(/);
+    // Must NOT fall back to the full-table getAll() that build() uses.
+    expect(method).not.toMatch(/noteStore\.getAll\(/);
+  });
+});

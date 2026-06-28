@@ -43,6 +43,7 @@ import {
   syncError,
   lastSyncedAt,
   isInitialSync,
+  syncProgress,
   refreshPendingCount
 } from '$lib/stores/sync-status.store';
 import { authFetch } from '$lib/utils/auth-fetch';
@@ -255,6 +256,10 @@ async function runPullFromServer(): Promise<boolean> {
     success = false;
   } finally {
     isSyncing.set(false);
+    // Safety net: pullNotes clears its own progress in a finally, but if it
+    // threw before that (e.g. the count()/watermark read), make sure the footer
+    // counter never wedges.
+    syncProgress.set(null);
     // Drop the first-load placeholder if this pull failed (e.g. offline): the
     // success path leaves it for refreshStoresAfterPull to clear once the stores
     // are hydrated. No-op when it was never set (periodic pulls).
@@ -490,13 +495,206 @@ async function pullSavedSearches(): Promise<void> {
   }
 }
 
+// Page size for the paginated delta pull. A few thousand notes / 200 = a few
+// dozen pages: few enough requests to keep native bridge overhead low, small
+// enough that no single transfer spikes the bridge's memory. See guideline 36.
+const NOTES_PAGE_SIZE = 200;
+
+type ServerNote = {
+  id: string;
+  folder_id?: string;
+  title_encrypted: string;
+  content_encrypted: string;
+  metadata_encrypted?: string;
+  is_archived?: boolean;
+  deleted_at?: string;
+  created_at: string;
+  updated_at: string;
+  sync_version?: number;
+};
+
+type ServerPage = {
+  has_more: boolean;
+  next_cursor: string | null;
+  total?: number;
+  all_ids?: string[];
+};
+
+// ── Delta-sync watermark (localStorage, per account) ─────────────
+// We persist max(updated_at) seen FROM THE SERVER so the next pull fetches only
+// the delta (?since). The value is a plaintext timestamp (updated_at is already
+// plaintext in the server-visibility model), so localStorage is fine; it is
+// keyed by userId and never leaves the device. Read is guarded by
+// noteStore.count() in pullNotes: if IndexedDB was wiped but localStorage
+// survived, the watermark is ignored and a full pull runs. Cleared on logout.
+const WATERMARK_PREFIX = 'notes_delta_since_';
+function readWatermark(userId: string): string | null {
+  try {
+    return localStorage.getItem(WATERMARK_PREFIX + userId);
+  } catch {
+    return null;
+  }
+}
+function writeWatermark(userId: string, iso: string): void {
+  try {
+    localStorage.setItem(WATERMARK_PREFIX + userId, iso);
+  } catch {
+    /* private mode / quota - delta just degrades to a full pull next time */
+  }
+}
+/** Drop every account's delta watermark. Called from the logout/clear path. */
+export function clearNotesDeltaWatermark(): void {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(WATERMARK_PREFIX)) keys.push(k);
+    }
+    for (const k of keys) localStorage.removeItem(k);
+  } catch {
+    /* ignore */
+  }
+}
+
+// Variant B orphan-delete gating: request the full id set (all_ids) only on the
+// first pull of this JS session, on manual sync, and on online-recovery - NOT on
+// every 5-min periodic pull (those stay pure deltas). A permanent delete from
+// another device then propagates on next app start / manual sync / reconnect,
+// which is benign (the trash/soft-delete state propagates via the delta itself).
+// This saves both the all_ids transfer and the local getAll() on idle syncs.
+let reconciledThisSession = false;
+export function requestFullReconcileNextPull(): void {
+  reconciledThisSession = false;
+}
+
+/**
+ * Paginated delta pull of notes (Filar 1). Loops keyset pages from the server,
+ * writing each page in one saveMany and revealing it in the list as it lands,
+ * then orphan-deletes via the authoritative all_ids and advances the watermark.
+ *
+ * Returns the ids whose server state advanced this pull (reported for callers /
+ * future use; history is fetched on demand, not from this list).
+ */
 async function pullNotes(): Promise<string[]> {
-  // See pullFolders() for rationale on the userId guard.
   const userId = get(authStore).userId;
   if (!userId) return [];
-  const res = await authFetch(`${API_BASE}/notes?include_archived=true`);
-  if (!res.ok) throw new Error(`GET /api/notes: ${res.status}`);
-  const { data } = await res.json();
+
+  // Variant B: only the first session pull / manual / online-recovery reconciles.
+  const reconcile = !reconciledThisSession;
+  // Ignore a stale watermark when IDB holds no notes (wiped but localStorage
+  // survived) - force a full pull so we don't skip unchanged notes we don't have.
+  const hasLocalNotes = (await noteStore.count()) > 0;
+  const since = hasLocalNotes ? readWatermark(userId) : null;
+
+  // Dynamic imports (same rationale as refreshStoresAfterPull): avoids a
+  // sync-service <-> note-index/notes-store import cycle. Cached by the bundler.
+  const { noteIndex } = await import('$lib/services/note-index.svelte');
+  const { notesStore } = await import('$lib/stores/notes.store');
+
+  const changed: string[] = [];
+  let cursor: string | null = null;
+  let firstPage = true;
+  let total = 0;
+  let done = 0;
+  // Authoritative full id set for orphan-delete. Stays null unless the server
+  // actually returns it (new server + reconcile) - we must NEVER orphan-delete
+  // from a partial delta page (that would wipe every unchanged note).
+  let allIds: Set<string> | null = null;
+  let maxUpdatedAt = since ?? '';
+
+  try {
+    do {
+      const params = new URLSearchParams({
+        include_archived: 'true',
+        limit: String(NOTES_PAGE_SIZE)
+      });
+      // `since` only on the first request; later pages carry the keyset cursor,
+      // which already sits past `since`.
+      if (firstPage && since) params.set('since', since);
+      if (cursor) params.set('cursor', cursor);
+      if (firstPage && reconcile) params.set('reconcile', 'true');
+
+      const res = await authFetch(`${API_BASE}/notes?${params.toString()}`);
+      if (!res.ok) throw new Error(`GET /api/notes: ${res.status}`);
+      const body = await res.json();
+      const data = (body.data ?? []) as ServerNote[];
+      const pageInfo = body.page as ServerPage | undefined;
+
+      if (firstPage) {
+        total = pageInfo?.total ?? data.length;
+        if (pageInfo?.all_ids) {
+          // New server + reconcile: trust the explicit full id set.
+          allIds = new Set(pageInfo.all_ids);
+        } else if (!pageInfo && !since) {
+          // Old server (no `page`) with no `since` returns the FULL set in `data`,
+          // so it is itself authoritative for orphan-delete. With a `since` we'd
+          // only get a delta, so we leave allIds null and skip orphan-delete.
+          allIds = new Set(data.map((n) => n.id));
+        }
+        syncProgress.set({ done: 0, total });
+      }
+
+      const { changed: pageChanged, maxUpdatedAt: pageMax } = await writeNotesPage(data, userId);
+      changed.push(...pageChanged);
+      if (pageMax > maxUpdatedAt) maxUpdatedAt = pageMax;
+      done += data.length;
+      syncProgress.set({ done, total: Math.max(total, done) });
+
+      // Incremental reveal: add this page to the in-memory index by id (point
+      // reads, no full rebuild) and repaint. writeNotesPage already applied the
+      // page's tag deltas, so getTagsForNote sees fresh relations.
+      if (pageChanged.length > 0) {
+        await noteIndex.upsertFromStore(pageChanged);
+        notesStore.refresh();
+      }
+      // Reveal progressively: drop the first-load placeholder once the first
+      // page is in memory, instead of waiting for the whole (multi-page) pull.
+      if (firstPage) isInitialSync.set(false);
+
+      cursor = pageInfo?.has_more ? (pageInfo.next_cursor ?? null) : null;
+      firstPage = false;
+    } while (cursor);
+  } finally {
+    syncProgress.set(null);
+  }
+
+  // Orphan-delete ONLY from the authoritative all_ids (never from page contents:
+  // a delta page holds just the changed notes). Skipped entirely when allIds is
+  // null (old server, or a non-reconcile periodic pull).
+  if (allIds) {
+    const serverIds = allIds;
+    const allLocalNotes = (await noteStore.getAll()) as NoteStoredLocal[];
+    const orphanNoteIds = allLocalNotes
+      .filter((n) => n.sync_status === 'synced' && !serverIds.has(n.id))
+      .map((n) => n.id);
+    if (orphanNoteIds.length > 0) {
+      await noteStore.deleteMany(orphanNoteIds);
+      logger.debug(`Removed ${orphanNoteIds.length} locally-synced notes no longer on server`);
+    }
+  }
+
+  // Advance the delta watermark (server-authoritative, monotonic). Next pull
+  // fetches only rows updated at/after this instant.
+  if (maxUpdatedAt && maxUpdatedAt !== since) writeWatermark(userId, maxUpdatedAt);
+  reconciledThisSession = true;
+
+  return changed;
+}
+
+/**
+ * Decode, reconcile and persist one page of server notes in a single batched
+ * write (one saveMany per page, not save()-per-note - the O(n²) refresh trap of
+ * PR #353, now bounded to a page). Applies the page's note-tag deltas too.
+ * Returns the ids that advanced plus the highest server updated_at in the page.
+ */
+async function writeNotesPage(
+  data: ServerNote[],
+  userId: string
+): Promise<{ changed: string[]; maxUpdatedAt: string }> {
+  // Highest server updated_at in this page (ISO strings sort chronologically).
+  // Computed over ALL rows, including ones the sync_version guard skips below -
+  // we still saw them at that timestamp, so the next ?since must cover them.
+  const maxUpdatedAt = data.reduce((m, n) => (n.updated_at > m ? n.updated_at : m), '');
 
   // Collect all writes here and flush them in one batch below, instead of issuing
   // them per-note inside the map. Each `noteStore.save()` runs refreshItems() - a
@@ -670,25 +868,10 @@ async function pullNotes(): Promise<string[]> {
     );
   }
 
-  // Remove local notes that no longer exist on the server (permanently deleted on another device).
-  // We use include_archived=true above, so the server returns soft-deleted notes too.
-  // If a note is missing from the response entirely, it was permanently deleted.
-  const serverNoteIds = new Set(
-    (data as Array<{ id: string }>).map((n) => n.id)
-  );
-  const allLocalNotes = (await noteStore.getAll()) as NoteStoredLocal[];
-  const orphanNoteIds = allLocalNotes
-    .filter((n) => n.sync_status === 'synced' && !serverNoteIds.has(n.id))
-    .map((n) => n.id);
-  if (orphanNoteIds.length > 0) {
-    await noteStore.deleteMany(orphanNoteIds);
-    logger.debug(`Removed ${orphanNoteIds.length} locally-synced notes no longer on server`);
-  }
-
-  // Notes whose server state advanced this pull. Reported for stage 2b's
-  // paginated delta sync; the caller currently ignores the result (version
-  // history is fetched on demand when the panel opens). See guideline 36.
-  return changedResults.filter((id): id is string => id !== null);
+  return {
+    changed: changedResults.filter((id): id is string => id !== null),
+    maxUpdatedAt
+  };
 }
 
 // ── Push helpers - IndexedDB → server ────────────────────────────

@@ -29,7 +29,7 @@
   import { tagsStore } from '$lib/stores/tags.store';
   import { SidebarTrigger } from '@reborn/ui/sidebar';
   import { t } from '$lib/stores/i18n.store';
-  import { sessionExpired, isInitialSync } from '$lib/stores/sync-status.store';
+  import { sessionExpired, isInitialSync, syncProgress } from '$lib/stores/sync-status.store';
   import { requireActiveSession } from '$lib/utils/require-active-session';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import ConfirmDialog from './shared/ConfirmDialog.svelte';
@@ -1025,6 +1025,13 @@
             <p class="text-sm text-muted-foreground">{$t('auth.session.empty_no_data')}</p>
           {:else if $isInitialSync}
             <p class="text-sm text-muted-foreground">{$t('sync_status.initial.title')}</p>
+            {#if $syncProgress && $syncProgress.total > 0}
+              <p class="mt-1 text-xs text-muted-foreground/70">
+                {$t('sync_status.syncing_progress', {
+                  values: { done: $syncProgress.done, total: $syncProgress.total }
+                })}
+              </p>
+            {/if}
           {:else}
             <p class="text-sm text-muted-foreground">{$t('notes.no_notes_short')}</p>
             <button
