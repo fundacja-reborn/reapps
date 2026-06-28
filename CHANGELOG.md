@@ -1,3 +1,24 @@
+## 0.38.0 (2026-06-28)
+
+### 🚀 Features
+
+- **notes:** automated encrypted backups to a user folder ([#352](https://github.com/fundacja-reborn/reapps/pull/352))
+- **notes:** paginated delta sync with determinate progress ([#356](https://github.com/fundacja-reborn/reapps/pull/356), [#353](https://github.com/fundacja-reborn/reapps/issues/353))
+- **notes:** readable first-sync state and merge-duplicates modal ([#358](https://github.com/fundacja-reborn/reapps/pull/358), [#2](https://github.com/fundacja-reborn/reapps/issues/2), [#356](https://github.com/fundacja-reborn/reapps/issues/356))
+- **notes:** prevent and consolidate duplicate periodic folders ([#364](https://github.com/fundacja-reborn/reapps/pull/364))
+- **notes:** add Behavior settings page (open mode, delete confirmation) ([#366](https://github.com/fundacja-reborn/reapps/pull/366), [#351](https://github.com/fundacja-reborn/reapps/issues/351), [#350](https://github.com/fundacja-reborn/reapps/issues/350))
+- **notes:** desktop right-click menus + Ctrl/Cmd+E view toggle ([#368](https://github.com/fundacja-reborn/reapps/pull/368), [#360](https://github.com/fundacja-reborn/reapps/issues/360), [#348](https://github.com/fundacja-reborn/reapps/issues/348))
+
+### 🩹 Fixes
+
+- **notes:** batch initial-sync note writes to stop Android WebView OOM ([#353](https://github.com/fundacja-reborn/reapps/pull/353))
+- **notes:** show notes before version-history backfill on cold start ([#354](https://github.com/fundacja-reborn/reapps/pull/354), [#353](https://github.com/fundacja-reborn/reapps/issues/353))
+- **notes:** snapshot pre-edit baseline so first edit keeps history ([#357](https://github.com/fundacja-reborn/reapps/pull/357), [#355](https://github.com/fundacja-reborn/reapps/issues/355))
+- **notes:** unblock native cross-origin deletes and restores ([#361](https://github.com/fundacja-reborn/reapps/pull/361))
+- **notes:** reset note back/forward trail on fresh open ([#363](https://github.com/fundacja-reborn/reapps/pull/363))
+- **notes:** restore action menu for notes opened outside list filter ([#365](https://github.com/fundacja-reborn/reapps/pull/365))
+- **notes:** discard untouched new note instead of syncing it ([#349](https://github.com/fundacja-reborn/reapps/pull/349), [#369](https://github.com/fundacja-reborn/reapps/pull/369))
+
 ## 0.37.1 (2026-06-26)
 
 ### 🩹 Fixes
