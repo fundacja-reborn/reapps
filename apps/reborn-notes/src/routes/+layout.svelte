@@ -35,6 +35,7 @@
   import LoadingScreen from '$lib/components/LoadingScreen.svelte';
   import InitialSyncBanner from '$lib/components/sync/InitialSyncBanner.svelte';
   import PeriodicDuplicatesDialog from '$lib/components/notes/PeriodicDuplicatesDialog.svelte';
+  import PeriodicFolderDuplicatesDialog from '$lib/components/notes/PeriodicFolderDuplicatesDialog.svelte';
   import LocalModeWelcome from '$lib/components/LocalModeWelcome.svelte';
   import UpdateRequiredGate from '$lib/components/layout/UpdateRequiredGate.svelte';
   import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
@@ -570,6 +571,7 @@
     />
     <LocalModeWelcome />
     <PeriodicDuplicatesDialog />
+    <PeriodicFolderDuplicatesDialog />
     {#if __REBORN_NATIVE__}
       <UpdateRequiredGate />
     {/if}

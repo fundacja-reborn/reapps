@@ -286,6 +286,14 @@
         "got_it": "Compris"
       },
       "errors": { "failed": "Impossible d'ouvrir la note" },
+      "folder_dedup": {
+        "modal_title": "Ranger les dossiers en double ?",
+        "modal_description": "{count, plural, one {# dossier périodique en double trouvé.} other {# dossiers périodiques en double trouvés.}} Le rangement déplace toutes les notes dans un seul dossier par type, fusionne les notes de la même période et supprime les doublons vides. Vos notes sont conservées - rien n'est supprimé.",
+        "merge_action": "Ranger",
+        "dismiss_action": "Plus tard",
+        "merge_success": "{count, plural, one {# dossier en double supprimé.} other {# dossiers en double supprimés.}}",
+        "merge_error": "Impossible de ranger les dossiers. Veuillez réessayer."
+      },
       "dedup": {
         "modal_title": "Fusionner les notes en double ?",
         "modal_description": "{count, plural, one {# note périodique en double trouvée.} other {# notes périodiques en double trouvées.}} La fusion ajoute leur contenu à la note originale et déplace les copies supplémentaires vers la corbeille, où vous pouvez les restaurer.",

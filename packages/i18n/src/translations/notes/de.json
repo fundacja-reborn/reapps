@@ -286,6 +286,14 @@
         "got_it": "Verstanden"
       },
       "errors": { "failed": "Notiz konnte nicht geöffnet werden" },
+      "folder_dedup": {
+        "modal_title": "Doppelte Ordner aufräumen?",
+        "modal_description": "{count, plural, one {# doppelter periodischer Ordner gefunden.} other {# doppelte periodische Ordner gefunden.}} Beim Aufräumen werden alle Notizen in einen einzigen Ordner pro Typ verschoben, Notizen desselben Zeitraums zusammengeführt und die leeren Duplikate entfernt. Deine Notizen bleiben erhalten - es wird nichts gelöscht.",
+        "merge_action": "Aufräumen",
+        "dismiss_action": "Jetzt nicht",
+        "merge_success": "{count, plural, one {# doppelten Ordner entfernt.} other {# doppelte Ordner entfernt.}}",
+        "merge_error": "Die Ordner konnten nicht aufgeräumt werden. Bitte erneut versuchen."
+      },
       "dedup": {
         "modal_title": "Doppelte Notizen zusammenführen?",
         "modal_description": "{count, plural, one {# doppelte periodische Notiz gefunden.} other {# doppelte periodische Notizen gefunden.}} Beim Zusammenführen wird ihr Inhalt in das Original übernommen und die zusätzlichen Kopien werden in den Papierkorb verschoben, von wo Sie sie wiederherstellen können.",

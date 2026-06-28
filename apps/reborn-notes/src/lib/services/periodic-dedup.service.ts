@@ -229,6 +229,18 @@ export const periodicDuplicatePrompt = writable<{ extra: number } | null>(null);
  * for the merge modal. Fire-and-forget from `refreshStoresAfterPull()`.
  */
 export async function detectAndNotifyPeriodicDuplicates(): Promise<void> {
+  // Folder-level duplicates take priority. Consolidating folders moves the notes
+  // into one folder per kind (and merges the same-period copies inline), so
+  // surfacing the note prompt at the same time would be redundant and confusing.
+  try {
+    const { detectAndNotifyPeriodicFolderDuplicates } = await import(
+      '$lib/services/periodic-folder-dedup.service'
+    );
+    if (await detectAndNotifyPeriodicFolderDuplicates()) return;
+  } catch (e) {
+    logger.warn('Periodic folder duplicate scan failed', e);
+  }
+
   const groups = await detectPeriodicDuplicates();
   if (groups.length === 0) return;
 

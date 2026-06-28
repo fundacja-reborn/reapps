@@ -286,6 +286,14 @@
         "got_it": "Rozumiem"
       },
       "errors": { "failed": "Nie udało się otworzyć notatki" },
+      "folder_dedup": {
+        "modal_title": "Uporządkować zduplikowane foldery?",
+        "modal_description": "{count, plural, one {Znaleziono # zduplikowany folder okresowy.} few {Znaleziono # zduplikowane foldery okresowe.} many {Znaleziono # zduplikowanych folderów okresowych.} other {Znaleziono # zduplikowanych folderów okresowych.}} Porządkowanie przeniesie wszystkie notatki do jednego folderu danego typu, scali notatki z tego samego okresu i usunie puste duplikaty. Twoje notatki zostają - nic nie jest usuwane.",
+        "merge_action": "Uporządkuj",
+        "dismiss_action": "Nie teraz",
+        "merge_success": "{count, plural, one {Usunięto # zduplikowany folder.} few {Usunięto # zduplikowane foldery.} many {Usunięto # zduplikowanych folderów.} other {Usunięto # zduplikowanych folderów.}}",
+        "merge_error": "Nie udało się uporządkować folderów. Spróbuj ponownie."
+      },
       "dedup": {
         "modal_title": "Scalić zduplikowane notatki?",
         "modal_description": "{count, plural, one {Znaleziono # zduplikowaną notatkę okresową.} few {Znaleziono # zduplikowane notatki okresowe.} many {Znaleziono # zduplikowanych notatek okresowych.} other {Znaleziono # zduplikowanych notatek okresowych.}} Scalanie połączy ich treść z oryginałem i przeniesie nadmiarowe kopie do Kosza, skąd możesz je przywrócić.",
