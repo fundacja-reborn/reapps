@@ -773,7 +773,7 @@
     "option_markdown_description": "Surowe znaczniki ** # [tekst](link) pozostają widoczne. Dla osób, które wolą pełną kontrolę nad składnią.",
     "recommended": "Polecane",
     "hint_switch_before_icon": "Tryb przełączysz w każdej chwili przyciskiem",
-    "hint_switch_after_icon": "w nagłówku notatki lub w Ustawieniach → Wygląd.",
+    "hint_switch_after_icon": "w nagłówku notatki lub w Ustawieniach → Zachowanie.",
     "continue_button": "Zaczynaj"
   },
   "save_status": {
@@ -807,7 +807,7 @@
     },
     "behavior": {
       "title": "Zachowanie",
-      "hub_desc": "Sposób otwierania notatek, potwierdzanie usuwania",
+      "hub_desc": "Sposób otwierania notatek, tryb edycji, potwierdzanie usuwania",
       "open_mode": "Otwieraj notatki w trybie",
       "open_mode_desc": "Widok, w którym otwiera się istniejąca notatka po jej wybraniu. Nowe notatki zawsze otwierają się gotowe do edycji.",
       "open_mode_preview": "Podgląd (tylko do odczytu)",
@@ -815,6 +815,11 @@
       "open_mode_split": "Podział (edycja i podgląd)",
       "open_mode_device_hint": "Dotyczy tylko tego urządzenia",
       "open_mode_updated": "Zaktualizowano domyślny tryb otwierania",
+      "editor_mode": "Tryb edycji",
+      "editor_mode_desc": "Jak Markdown jest wyświetlany podczas edycji notatki",
+      "editor_mode_markdown": "Markdown (pokaż całą składnię)",
+      "editor_mode_live": "Podgląd na żywo (ukryj składnię poza kursorem)",
+      "editor_mode_updated": "Tryb edycji zaktualizowany",
       "confirm_delete": "Potwierdzaj przed usunięciem",
       "confirm_delete_desc": "Pytaj przed przeniesieniem notatki do Kosza. Notatki w Koszu można przywrócić, ale po 30 dniach są trwale usuwane.",
       "confirm_delete_on": "Potwierdzanie włączone",
@@ -843,12 +848,7 @@
       "image_loading_always": "Zawsze ładuj automatycznie",
       "image_loading_never": "Nigdy nie ładuj zewnętrznych obrazów",
       "image_loading_updated": "Ustawienie ładowania obrazów zaktualizowane",
-      "image_loading_warning": "Automatyczne ładowanie obrazów może ujawnić Twój adres IP zewnętrznym serwerom",
-      "editor_mode": "Tryb edycji",
-      "editor_mode_desc": "Jak Markdown jest wyświetlany podczas edycji notatki",
-      "editor_mode_markdown": "Markdown (pokaż całą składnię)",
-      "editor_mode_live": "Podgląd na żywo (ukryj składnię poza kursorem)",
-      "editor_mode_updated": "Tryb edycji zaktualizowany"
+      "image_loading_warning": "Automatyczne ładowanie obrazów może ujawnić Twój adres IP zewnętrznym serwerom"
     },
     "security": {
       "title": "Bezpieczeństwo",

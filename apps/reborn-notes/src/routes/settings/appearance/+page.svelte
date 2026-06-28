@@ -15,17 +15,16 @@
     SelectTrigger,
     Button
   } from '@reborn/ui';
-  import { Globe, ImageIcon, Pencil } from '@lucide/svelte';
+  import { Globe, ImageIcon } from '@lucide/svelte';
   import {
     appSettings,
     currentTheme,
     currentLanguage,
     dateFormat,
     timeFormat,
-    imageLoadMode as imageLoadModeStore,
-    editorMode as editorModeStore
+    imageLoadMode as imageLoadModeStore
   } from '$lib/stores/app-settings.store';
-  import type { ImageLoadMode, EditorMode } from '@reborn/storage';
+  import type { ImageLoadMode } from '@reborn/storage';
   import { t } from '$lib/stores/i18n.store';
   import { SUPPORTED_LOCALES } from '@reborn/i18n';
   import type { AppSettings } from '@reborn/storage';
@@ -42,7 +41,6 @@
   let dateFormatValue = $state('DD/MM/YYYY');
   let timeFormatValue = $state('24h');
   let imageLoadModeValue = $state<ImageLoadMode>('ask');
-  let editorModeValue = $state<EditorMode>('markdown');
 
   const languageOptions = [
     { value: 'en', label: 'English' },
@@ -124,21 +122,6 @@
     }
   }
 
-  async function updateEditorMode(value: string | undefined) {
-    if (value !== 'markdown' && value !== 'live') return;
-    try {
-      isLoading = true;
-      error = null;
-      await appSettings.update('editorMode', value);
-      editorModeValue = value;
-      toast.success($t('settings_page.appearance.editor_mode_updated'));
-    } catch (err: unknown) {
-      logger.error('Failed to update editor mode', err);
-    } finally {
-      isLoading = false;
-    }
-  }
-
   async function updateTimeFormat(value: string) {
     try {
       isLoading = true;
@@ -163,7 +146,6 @@
       dateFormatValue = 'DD/MM/YYYY';
       timeFormatValue = '24h';
       imageLoadModeValue = 'ask';
-      editorModeValue = 'markdown';
       toast.success($t('settings_page.appearance.reset_done'));
     } catch (err: unknown) {
       logger.error('Failed to reset settings', err);
@@ -178,8 +160,7 @@
       currentLanguage.subscribe((value) => (language = value)),
       dateFormat.subscribe((value) => (dateFormatValue = value)),
       timeFormat.subscribe((value) => (timeFormatValue = value)),
-      imageLoadModeStore.subscribe((value) => (imageLoadModeValue = value)),
-      editorModeStore.subscribe((value) => (editorModeValue = value))
+      imageLoadModeStore.subscribe((value) => (imageLoadModeValue = value))
     ];
     return () => unsubscribes.forEach((fn) => fn());
   });
@@ -301,37 +282,6 @@
             {$t('settings_page.appearance.image_loading_warning')}
           </p>
         {/if}
-      </CardContent>
-    </Card>
-
-    <!-- Editor mode -->
-    <Card>
-      <CardHeader>
-        <CardTitle class="text-base flex items-center gap-2">
-          <Pencil class="h-4 w-4 text-muted-foreground" />
-          {$t('settings_page.appearance.editor_mode')}
-        </CardTitle>
-        <CardDescription>{$t('settings_page.appearance.editor_mode_desc')}</CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-3">
-        <Select
-          type="single"
-          value={editorModeValue}
-          onValueChange={(value) => updateEditorMode(value)}
-          disabled={isLoading}
-        >
-          <SelectTrigger class="w-full">
-            {editorModeValue === 'live'
-              ? $t('settings_page.appearance.editor_mode_live')
-              : $t('settings_page.appearance.editor_mode_markdown')}
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="markdown"
-              >{$t('settings_page.appearance.editor_mode_markdown')}</SelectItem
-            >
-            <SelectItem value="live">{$t('settings_page.appearance.editor_mode_live')}</SelectItem>
-          </SelectContent>
-        </Select>
       </CardContent>
     </Card>
 
