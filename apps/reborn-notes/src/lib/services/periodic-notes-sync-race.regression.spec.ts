@@ -21,9 +21,19 @@ import { resolve } from 'path';
  *      round-trip + push BEFORE pulling, so `isSyncing` is still false. Ensure a
  *      pull completes first via the single-flight `pullFromServer` (joins the
  *      imminent/in-flight pull, no extra round-trip), then re-resolve.
- * Only after both windows still miss do we create. The smoke repro was exactly
- * window 2: logging in and opening the daily note immediately, before the new
- * session's pull had paged today's note in.
+ * Only after both windows still miss do we create.
+ *
+ * THIRD window (the one the first two fixes missed; smoke 2026-06-28): the
+ * duplicate reproduced "directly after Synced", with isSyncing false AND
+ * lastSyncedAt non-null - so neither gate window was open. Root cause was not in
+ * the resolver at all but in `noteIndex.rebuild()`: it did `this._map.clear()`
+ * before an async `build()` that yields between decrypt batches, leaving the
+ * index observably EMPTY for the whole rebuild. `refreshStoresAfterPull` runs
+ * that rebuild immediately after the pull flips lastSyncedAt -> "Synced", so a
+ * periodic-note open in the gap saw zero notes and duplicated today's note. The
+ * structural fix is in note-index.svelte.ts: rebuild() must delegate to build()
+ * (which swaps a fresh Map in atomically) and never pre-clear. The two test
+ * blocks below pin BOTH layers - the resolver gate and the atomic rebuild.
  *
  * Source-level, like notes-sync.regression.spec.ts: periodic-notes.service pulls
  * in browser-only modules (cryptoManager, reactive stores) that are impractical
@@ -95,5 +105,42 @@ describe('periodic notes - resolver/sync race (PR #356 regression)', () => {
     expect(coldWait).toBeGreaterThan(firstResolve);
     expect(secondResolve).toBeGreaterThan(lastWait);
     expect(createIdx).toBeGreaterThan(secondResolve);
+  });
+});
+
+describe('noteIndex.rebuild - atomic swap (post-pull empty-window regression)', () => {
+  function rebuildBody(): string {
+    const src = readSource('./note-index.svelte.ts');
+    const start = src.indexOf('async rebuild(');
+    expect(start).toBeGreaterThan(-1);
+    // rebuild() is a short method; bound the slice at the next method's closing
+    // by taking up to the following `  /** ` doc-comment or `  clear(` sibling.
+    const after = src.slice(start);
+    const end = after.search(/\n\s{2}(?:\/\*\*|clear\(|update\()/);
+    return end > -1 ? after.slice(0, end) : after.slice(0, 400);
+  }
+
+  it('rebuild() delegates to build() and never pre-clears the live map', () => {
+    const body = rebuildBody();
+    // build() fills a fresh Map and swaps it into this._map only at the end, so
+    // the old complete map must stay readable until the swap. A pre-clear here
+    // (this._map.clear()) reopens the post-"Synced" empty window that duplicated
+    // periodic notes - it must be gone.
+    expect(body).toMatch(/await\s+this\.build\(\)/);
+    expect(body).not.toMatch(/this\._map\.clear\(\)/);
+  });
+
+  it('build() itself swaps a freshly-built map in atomically (single assignment)', () => {
+    const src = readSource('./note-index.svelte.ts');
+    const start = src.indexOf('async build(');
+    // Bound the slice at the next method (upsertFromStore) so we read exactly
+    // build()'s body, not a fixed char window that could clip the final swap.
+    const end = src.indexOf('async upsertFromStore(', start);
+    const body = src.slice(start, end > -1 ? end : start + 2400);
+    // The atomicity contract rebuild() relies on: build() works on a LOCAL `map`
+    // and publishes it with one `this._map = map`, rather than mutating this._map
+    // incrementally (which would expose partial state mid-build).
+    expect(body).toMatch(/const\s+map\s*=\s*new\s+Map/);
+    expect(body).toMatch(/this\._map\s*=\s*map/);
   });
 });

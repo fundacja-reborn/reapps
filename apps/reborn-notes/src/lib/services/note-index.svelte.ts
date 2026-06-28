@@ -177,10 +177,21 @@ class NoteIndex {
     }
   }
 
-  /** Clear and rebuild (after sync). */
+  /**
+   * Rebuild from IndexedDB (after sync / import). ATOMIC: delegates to build(),
+   * which fills a fresh local Map and swaps it into `this._map` only at the very
+   * end. It must NOT pre-clear the map: build() yields to the event loop between
+   * decrypt batches (setTimeout(0)), so a pre-clear would leave the index
+   * observably EMPTY for the whole rebuild. That empty window lands right after
+   * a cold-login pull sets lastSyncedAt ("Synced") and clears isSyncing - the
+   * one moment both look "done" - and any index read in it (e.g.
+   * findExistingPeriodicNote) sees zero notes and wrongly concludes "absent",
+   * duplicating the periodic note the pull just delivered. Keeping the old,
+   * complete map live until the swap closes that window. Stale entries (notes
+   * deleted on the server) are dropped by the swap, since build() reads the
+   * current getAll(). See guideline 57.
+   */
   async rebuild(): Promise<void> {
-    this._map.clear();
-    this._version++;
     await this.build();
   }
 
