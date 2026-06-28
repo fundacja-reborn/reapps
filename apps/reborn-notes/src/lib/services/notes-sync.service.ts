@@ -1326,91 +1326,114 @@ export function pushNoteUpdate(
 
 export function pushNoteDelete(id: string, permanent = false): void {
   void serializePerEntity('note', id, () =>
-    pushSilently(async (idempotencyKey) => {
-      const path = permanent ? `/notes/${id}?permanent=true` : `/notes/${id}`;
-      const res = await authFetch(`${API_BASE}${path}`, {
-        method: 'DELETE',
-        headers: { 'Idempotency-Key': idempotencyKey }
-      });
-      if (!res.ok) throw new Error(`DELETE /api/notes/${id}: ${res.status}`);
-      if (permanent) return;
-
-      // Server bumps sync_version on soft-delete (since rule 11.e) and returns
-      // the new value. We MUST mirror it locally, otherwise the next pull sees
-      // server=N+1 vs local=N and re-applies the archive state we already have
-      // - harmless but churn. More importantly, future pushes would operate on
-      // stale sync_version and look like conflicts.
-      let serverSyncVersion: number | undefined;
-      try {
-        const body = await res.json();
-        serverSyncVersion = body?.data?.sync_version;
-      } catch {
-        // Old server deploy - no body. Leave sync_version untouched.
-      }
-
-      // Intent-check: if the user restored the note while DELETE was in flight,
-      // `current.is_archived` will be false. Marking 'synced' would strand the
-      // local restore - chain a pushNoteRestore instead. See guideline 36 rule 11.b.
-      const current = await noteStore.get(id);
-      if (!current) return;
-      if (current.is_archived) {
-        await noteStore.save({
-          ...current,
-          sync_status: 'synced',
-          sync_version: serverSyncVersion ?? current.sync_version
+    pushSilently(
+      async (idempotencyKey) => {
+        const path = permanent ? `/notes/${id}?permanent=true` : `/notes/${id}`;
+        const res = await authFetch(`${API_BASE}${path}`, {
+          method: 'DELETE',
+          headers: { 'Idempotency-Key': idempotencyKey }
         });
-      } else {
-        logger.debug(`Note ${id} restored during delete push - chaining restore`);
-        await noteStore.save({
-          ...current,
-          sync_status: 'pending',
-          sync_version: serverSyncVersion ?? current.sync_version
-        });
-        pushNoteRestore(id);
+        // ensureOk (not a bare throw) so a permanent 4xx (400/403/413) becomes an
+        // HttpPushError that skips retry and marks the note sync_error below,
+        // instead of looping every periodic sync forever. A bodiless cross-origin
+        // DELETE used to 403 on native (CSRF origin check, now disabled); even so,
+        // a doomed delete must never re-push endlessly. See guideline 36 rule 14.
+        await ensureOk(res, `DELETE /api/notes/${id}`);
+        if (permanent) return;
+
+        // Server bumps sync_version on soft-delete (since rule 11.e) and returns
+        // the new value. We MUST mirror it locally, otherwise the next pull sees
+        // server=N+1 vs local=N and re-applies the archive state we already have
+        // - harmless but churn. More importantly, future pushes would operate on
+        // stale sync_version and look like conflicts.
+        let serverSyncVersion: number | undefined;
+        try {
+          const body = await res.json();
+          serverSyncVersion = body?.data?.sync_version;
+        } catch {
+          // Old server deploy - no body. Leave sync_version untouched.
+        }
+
+        // Intent-check: if the user restored the note while DELETE was in flight,
+        // `current.is_archived` will be false. Marking 'synced' would strand the
+        // local restore - chain a pushNoteRestore instead. See guideline 36 rule 11.b.
+        const current = await noteStore.get(id);
+        if (!current) return;
+        if (current.is_archived) {
+          await noteStore.save({
+            ...current,
+            sync_status: 'synced',
+            sync_version: serverSyncVersion ?? current.sync_version
+          });
+        } else {
+          logger.debug(`Note ${id} restored during delete push - chaining restore`);
+          await noteStore.save({
+            ...current,
+            sync_status: 'pending',
+            sync_version: serverSyncVersion ?? current.sync_version
+          });
+          pushNoteRestore(id);
+        }
+      },
+      async (err) => {
+        // Permanent rejection of a delete: stop re-pushing the doomed request
+        // (a bare throw would leave it 'pending' and retry on every periodic
+        // sync) and mark the note so its row shows the reason. No per-call toast
+        // - a batch can reject many; the inline badge is the durable surface.
+        await markNoteSyncError(id, err.code);
       }
-    })
+    )
   );
 }
 
 export function pushNoteRestore(id: string): void {
   void serializePerEntity('note', id, () =>
-    pushSilently(async (idempotencyKey) => {
-      const res = await authFetch(`${API_BASE}/notes/${id}/restore`, {
-        method: 'POST',
-        headers: { 'Idempotency-Key': idempotencyKey }
-      });
-      if (!res.ok) throw new Error(`POST /api/notes/${id}/restore: ${res.status}`);
-
-      // Server bumps sync_version on restore (since rule 11.e) and returns it.
-      // Mirror locally; fall back to preserving the current value on old deploys.
-      let serverSyncVersion: number | undefined;
-      try {
-        const body = await res.json();
-        serverSyncVersion = body?.data?.sync_version;
-      } catch {
-        // Old server deploy - no body.
-      }
-
-      // Intent-check: if the user re-archived the note while /restore was in
-      // flight, chain a pushNoteDelete to catch up. See guideline 36 rule 11.b.
-      const current = await noteStore.get(id);
-      if (!current) return;
-      if (!current.is_archived) {
-        await noteStore.save({
-          ...current,
-          sync_status: 'synced',
-          sync_version: serverSyncVersion ?? current.sync_version
+    pushSilently(
+      async (idempotencyKey) => {
+        const res = await authFetch(`${API_BASE}/notes/${id}/restore`, {
+          method: 'POST',
+          headers: { 'Idempotency-Key': idempotencyKey }
         });
-      } else {
-        logger.debug(`Note ${id} re-archived during restore push - chaining delete`);
-        await noteStore.save({
-          ...current,
-          sync_status: 'pending',
-          sync_version: serverSyncVersion ?? current.sync_version
-        });
-        pushNoteDelete(id);
+        // ensureOk so a permanent 4xx stops instead of retrying forever - same
+        // reasoning as pushNoteDelete. See guideline 36 rule 14.
+        await ensureOk(res, `POST /api/notes/${id}/restore`);
+
+        // Server bumps sync_version on restore (since rule 11.e) and returns it.
+        // Mirror locally; fall back to preserving the current value on old deploys.
+        let serverSyncVersion: number | undefined;
+        try {
+          const body = await res.json();
+          serverSyncVersion = body?.data?.sync_version;
+        } catch {
+          // Old server deploy - no body.
+        }
+
+        // Intent-check: if the user re-archived the note while /restore was in
+        // flight, chain a pushNoteDelete to catch up. See guideline 36 rule 11.b.
+        const current = await noteStore.get(id);
+        if (!current) return;
+        if (!current.is_archived) {
+          await noteStore.save({
+            ...current,
+            sync_status: 'synced',
+            sync_version: serverSyncVersion ?? current.sync_version
+          });
+        } else {
+          logger.debug(`Note ${id} re-archived during restore push - chaining delete`);
+          await noteStore.save({
+            ...current,
+            sync_status: 'pending',
+            sync_version: serverSyncVersion ?? current.sync_version
+          });
+          pushNoteDelete(id);
+        }
+      },
+      async (err) => {
+        // Permanent rejection of a restore: stop re-pushing and mark the note so
+        // its row shows the reason (mirrors pushNoteDelete).
+        await markNoteSyncError(id, err.code);
       }
-    })
+    )
   );
 }
 
