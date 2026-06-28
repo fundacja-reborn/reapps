@@ -204,17 +204,21 @@ describe('#349 leave-on-untouched (note-detail service)', () => {
     expect(method).toMatch(/this\.content\.trim\(\)\s*===\s*''/);
   });
 
-  it('leaveNote discards a pristine ephemeral note, else flushes+snapshots', () => {
+  it('leaveNote discards a pristine ephemeral note (refreshing the list), else flushes+snapshots', () => {
     const method = sliceMethod(noteDetailSrc(), 'async leaveNote');
     expect(method).toMatch(/this\.isUntouchedThisLoad\(\)\s*&&\s*\(await\s+discardIfEphemeral/);
+    // The discarded note must leave the sidebar immediately, not at the next sync.
+    expect(method).toMatch(/notesStore\.refresh\(\)/);
     expect(method).toMatch(/return\s+this\.flushAndSnapshot\s*\(\s*id\s*\)/);
   });
 
-  it('loadNote discards a pristine ephemeral previous note instead of saving it', () => {
+  it('loadNote discards a pristine ephemeral previous note (refreshing the list) instead of saving it', () => {
     const method = sliceMethod(noteDetailSrc(), 'async loadNote');
     expect(method).toMatch(/this\.isUntouchedThisLoad\(\)\s*&&\s*\(await\s+discardIfEphemeral\s*\(\s*prevId\s*\)\s*\)/);
     // Falls back to the original flush+snapshot when not discarded.
     expect(method).toMatch(/if\s*\(\s*!discarded\s*\)/);
+    // Drops the discarded note from the visible list right away.
+    expect(method).toMatch(/notesStore\.refresh\(\)/);
   });
 
   it('+page.svelte routes both leave paths (note close, navigation) through leaveNote', () => {

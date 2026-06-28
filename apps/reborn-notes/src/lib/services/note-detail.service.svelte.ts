@@ -75,6 +75,11 @@ class NoteDetailService {
             logger.error('Failed to snapshot previous note:', e)
           );
         }
+      } else {
+        // discardEphemeralNote removed the row from IndexedDB + noteIndex, but the
+        // visible sidebar list (_raw) only re-renders on refresh - without this the
+        // discarded note lingers until the next sync. #349
+        notesStore.refresh();
       }
       this.editedSinceLastSnapshot = false;
     }
@@ -263,6 +268,8 @@ class NoteDetailService {
     if (!id) return true;
     if (this.isUntouchedThisLoad() && (await discardIfEphemeral(id))) {
       this.editedSinceLastSnapshot = false;
+      // Drop the discarded note from the sidebar list immediately (see loadNote). #349
+      notesStore.refresh();
       return true;
     }
     return this.flushAndSnapshot(id);
