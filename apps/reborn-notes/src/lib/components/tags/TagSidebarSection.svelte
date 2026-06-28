@@ -8,12 +8,19 @@
     MoreHorizontal
   } from '@lucide/svelte';
   import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuSeparator,
+    ContextMenuTrigger,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger
   } from '@reborn/ui';
+  import type { RowAction } from '$lib/utils/row-action';
+  import type { TagDecrypted } from '@reborn/types';
   import { t } from '$lib/stores/i18n.store';
   import { tagsStore } from '$lib/stores/tags.store';
   import { tagManager } from '$lib/services/tag-manager.svelte';
@@ -34,6 +41,33 @@
       ? $tagsStore.filter((t) => t.name.toLowerCase().includes(tagManager.tagSearch.toLowerCase()))
       : $tagsStore
   );
+
+  // Single source of truth for a tag's actions — fed to both the kebab
+  // (DropdownMenu) and the right-click ContextMenu, so they can't drift.
+  function tagActions(tag: TagDecrypted): RowAction[] {
+    return [
+      {
+        key: 'rename',
+        icon: Pencil,
+        label: $t('tags.rename'),
+        run: () => tagManager.startRenameTag(tag.id, tag.name)
+      },
+      {
+        key: 'color',
+        icon: Palette,
+        label: $t('tags.tag_color'),
+        run: () => tagManager.startColorPicker(tag.id)
+      },
+      {
+        key: 'delete',
+        icon: Trash2,
+        label: $t('tags.delete_tag'),
+        run: () => ondelete(tag.id),
+        destructive: true,
+        separatorBefore: true
+      }
+    ];
+  }
 </script>
 
 <div class="flex flex-col overflow-hidden h-full">
@@ -120,75 +154,96 @@
       </p>
     {:else}
       {#each filteredTags as tag (tag.id)}
-        <div class="group relative flex items-center">
-          {#if tagManager.renamingTagId === tag.id}
-            <!-- svelte-ignore a11y_autofocus -->
-            <input
-              bind:this={tagManager.renameTagInputEl}
-              type="text"
-              bind:value={tagManager.renameTagValue}
-              autofocus
-              class="w-full rounded-md border bg-background px-2 py-1.5 text-sm caret-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              onkeydown={(e) => {
-                if (e.key === 'Enter') tagManager.commitRenameTag(tag.id);
-                if (e.key === 'Escape') {
-                  tagManager.renamingTagId = null;
-                }
-              }}
-              onblur={() => tagManager.commitRenameTag(tag.id)}
-            />
-          {:else}
-            <button
-              type="button"
-              onclick={() => onselect(tag.id)}
-              class="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors
-                {activeTagId === tag.id
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                : 'text-sidebar-foreground hover:bg-sidebar-accent/60'}"
-            >
-              <span
-                class="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={tag.color ? `background-color: ${tag.color}` : ''}
-                class:bg-muted-foreground={!tag.color}
-              ></span>
-              <span class="min-w-0 flex-1 truncate text-left text-sm">{tag.name}</span>
-            </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                {#snippet child({ props })}
+        {@const rowActions = tagActions(tag)}
+        <!-- Desktop right-click opens the same tag actions as the kebab (#348).
+             Disabled while renaming inline so the input keeps its native menu. -->
+        <ContextMenu>
+          <ContextMenuTrigger disabled={tagManager.renamingTagId === tag.id}>
+            {#snippet child({ props: triggerProps })}
+              <div {...triggerProps} class="group relative flex items-center">
+                {#if tagManager.renamingTagId === tag.id}
+                  <!-- svelte-ignore a11y_autofocus -->
+                  <input
+                    bind:this={tagManager.renameTagInputEl}
+                    type="text"
+                    bind:value={tagManager.renameTagValue}
+                    autofocus
+                    class="w-full rounded-md border bg-background px-2 py-1.5 text-sm caret-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    onkeydown={(e) => {
+                      if (e.key === 'Enter') tagManager.commitRenameTag(tag.id);
+                      if (e.key === 'Escape') {
+                        tagManager.renamingTagId = null;
+                      }
+                    }}
+                    onblur={() => tagManager.commitRenameTag(tag.id)}
+                  />
+                {:else}
                   <button
-                    {...props}
                     type="button"
-                    class="absolute right-1 flex h-6 w-6 items-center justify-center rounded text-muted-foreground
-                      transition-opacity md:opacity-0 md:group-hover:opacity-100 hover:bg-accent hover:text-foreground"
-                    aria-label={$t('tags.tag_actions')}
-                    tabindex="-1"
+                    onclick={() => onselect(tag.id)}
+                    class="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors
+                      {activeTagId === tag.id
+                      ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent/60'}"
                   >
-                    <MoreHorizontal class="h-3.5 w-3.5" />
+                    <span
+                      class="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={tag.color ? `background-color: ${tag.color}` : ''}
+                      class:bg-muted-foreground={!tag.color}
+                    ></span>
+                    <span class="min-w-0 flex-1 truncate text-left text-sm">{tag.name}</span>
                   </button>
-                {/snippet}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" class="min-w-36">
-                <DropdownMenuItem onclick={() => tagManager.startRenameTag(tag.id, tag.name)}>
-                  <Pencil class="h-3.5 w-3.5" />
-                  {$t('tags.rename')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onclick={() => tagManager.startColorPicker(tag.id)}>
-                  <Palette class="h-3.5 w-3.5" />
-                  {$t('tags.tag_color')}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  class="text-destructive focus:text-destructive"
-                  onclick={() => ondelete(tag.id)}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger>
+                      {#snippet child({ props })}
+                        <button
+                          {...props}
+                          type="button"
+                          class="absolute right-1 flex h-6 w-6 items-center justify-center rounded text-muted-foreground
+                            transition-opacity md:opacity-0 md:group-hover:opacity-100 hover:bg-accent hover:text-foreground"
+                          aria-label={$t('tags.tag_actions')}
+                          tabindex="-1"
+                        >
+                          <MoreHorizontal class="h-3.5 w-3.5" />
+                        </button>
+                      {/snippet}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" class="min-w-36">
+                      {#each rowActions as { key, icon: Icon, label, run, destructive, separatorBefore } (key)}
+                        {#if separatorBefore}
+                          <DropdownMenuSeparator />
+                        {/if}
+                        <DropdownMenuItem
+                          class={destructive ? 'text-destructive focus:text-destructive' : ''}
+                          onclick={run}
+                        >
+                          <Icon class="h-3.5 w-3.5" />
+                          {label}
+                        </DropdownMenuItem>
+                      {/each}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                {/if}
+              </div>
+            {/snippet}
+          </ContextMenuTrigger>
+          {#if tagManager.renamingTagId !== tag.id}
+            <ContextMenuContent class="min-w-44">
+              {#each rowActions as { key, icon: Icon, label, run, destructive, separatorBefore } (key)}
+                {#if separatorBefore}
+                  <ContextMenuSeparator />
+                {/if}
+                <ContextMenuItem
+                  class={destructive ? 'text-destructive focus:text-destructive' : ''}
+                  onclick={run}
                 >
-                  <Trash2 class="h-3.5 w-3.5" />
-                  {$t('tags.delete_tag')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <Icon class="h-3.5 w-3.5" />
+                  {label}
+                </ContextMenuItem>
+              {/each}
+            </ContextMenuContent>
           {/if}
-        </div>
+        </ContextMenu>
 
         {#if tagManager.colorPickerTagId === tag.id}
           <TagColorPicker

@@ -21,6 +21,11 @@
   } from '@lucide/svelte';
   import {
     Button,
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuSeparator,
+    ContextMenuTrigger,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -32,6 +37,7 @@
     SheetTitle,
     toastStore
   } from '@reborn/ui';
+  import type { RowAction } from '$lib/utils/row-action';
   import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
   import type { FolderWithChildren, SavedSearchDecrypted } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
@@ -268,6 +274,56 @@
     }
   });
 
+  // Single source of truth for a folder's actions — fed to both the desktop kebab
+  // (DropdownMenu) and the desktop right-click ContextMenu, so they can't drift.
+  function folderActions(folder: FolderWithChildren, syncConfigId: string | null): RowAction[] {
+    const actions: RowAction[] = [];
+    if (syncConfigId) {
+      actions.push({
+        key: 'sync',
+        icon: RefreshCw,
+        label: $t('folders.sync_now'),
+        run: (e) => handleSyncNow(syncConfigId, e)
+      });
+    }
+    actions.push(
+      {
+        key: 'new-subfolder',
+        icon: FolderPlus,
+        label: $t('folders.new_subfolder'),
+        run: (e) => handleCreateSub(folder.id, e),
+        separatorBefore: !!syncConfigId
+      },
+      {
+        key: 'rename',
+        icon: Pencil,
+        label: $t('folders.rename'),
+        run: (e) => startRename(folder, e)
+      },
+      {
+        key: 'import-md',
+        icon: Upload,
+        label: $t('folders.import_markdown.action'),
+        run: (e) => handleImportHere(folder, e)
+      },
+      {
+        key: 'import-folder',
+        icon: FolderInput,
+        label: $t('folders.import_folder.action'),
+        run: (e) => handleImportFolderHere(folder, e)
+      },
+      {
+        key: 'delete',
+        icon: Trash2,
+        label: $t('folders.delete_folder'),
+        run: (e) => handleDelete(folder, e),
+        destructive: true,
+        separatorBefore: true
+      }
+    );
+    return actions;
+  }
+
   // ── Drag & Drop ─────────────────────────────────────────────────
   // Folder rows are sorted alphabetically (see folder.service.getFolderTree),
   // so sibling reorder is meaningless — drop on a row only ever means
@@ -353,145 +409,152 @@
     {@const hasChildren = (folder.children?.length ?? 0) > 0 || parkedSearches.length > 0}
     {@const isDragTarget = dragOverId === folder.id}
     {@const syncConfigId = $syncedFolderConfigs.get(folder.id) ?? null}
+    {@const rowActions = folderActions(folder, syncConfigId)}
 
     <li
       role="treeitem"
       aria-expanded={hasChildren ? isExpanded : undefined}
       aria-selected={activeFolderId === folder.id}
     >
-      <div
-        data-folder-id={folder.id}
-        draggable="true"
-        ondragstart={(e) => onDragStart(folder, e)}
-        ondragover={(e) => onDragOver(folder, e)}
-        ondragleave={onDragLeave}
-        ondrop={(e) => onDrop(folder, e)}
-        class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm
-          cursor-pointer transition-colors
-          {isActive
-          ? 'bg-accent text-accent-foreground font-medium'
-          : 'text-foreground hover:bg-accent/50'}
-          {isDragTarget ? 'ring-1 ring-primary bg-accent/30' : ''}"
-        style="padding-left: {depth * 0.75 + 0.5}rem"
-        role="button"
-        tabindex="0"
-        onclick={() => handleRowSelect(folder)}
-        onkeydown={(e) => e.key === 'Enter' && handleRowSelect(folder)}
-        aria-label={$t('folders.folder_label', { values: { name: folder.name } })}
-      >
-        <!-- Folder icon (synced top-level folders get a distinct sync glyph) -->
-        {#if syncConfigId}
-          <FolderSync
-            class="h-4 w-4 shrink-0 text-primary"
-            aria-label={$t('folders.synced_folder')}
-          />
-        {:else if isExpanded && hasChildren}
-          <FolderOpen class="h-4 w-4 shrink-0 text-muted-foreground" />
-        {:else}
-          <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
-        {/if}
-
-        <!-- Name / inline rename -->
-        {#if editingId === folder.id}
-          <input
-            bind:this={editInputEl}
-            bind:value={editingName}
-            class="min-w-0 flex-1 rounded-md border bg-background px-2 py-0.5 text-sm caret-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            onclick={(e) => e.stopPropagation()}
-            onkeydown={(e) => {
-              if (e.key === 'Enter') commitRename(folder.id);
-              if (e.key === 'Escape') cancelRename();
-            }}
-            onblur={() => commitRename(folder.id)}
-          />
-        {:else}
-          <span class="min-w-0 flex-1 truncate">{folder.name}</span>
-        {/if}
-
-        <!-- Chevron (right side, only when has children) -->
-        {#if hasChildren && editingId !== folder.id}
-          <button
-            type="button"
-            onclick={(e) => {
-              e.stopPropagation();
-              if (isExpanded) expandedIds.delete(folder.id);
-              else expandedIds.add(folder.id);
-            }}
-            class="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
-            aria-label={isExpanded ? $t('folders.collapse') : $t('folders.expand')}
-            tabindex="-1"
-          >
-            <ChevronRight
-              class="h-3.5 w-3.5 transition-transform {isExpanded ? 'rotate-90' : ''}"
-            />
-          </button>
-        {/if}
-
-        <!-- Kebab menu button (visible on hover) -->
-        {#if editingId !== folder.id}
-          {#if isMobileQuery.value}
-            <button
-              type="button"
-              onclick={(e) => toggleMenu(folder.id, e)}
-              class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-              aria-label={$t('folders.folder_actions')}
-              tabindex="-1"
+      <!-- Desktop right-click opens the same folder actions as the kebab (#348).
+           Disabled on mobile and while renaming inline. -->
+      <ContextMenu>
+        <ContextMenuTrigger disabled={isMobileQuery.value || editingId === folder.id}>
+          {#snippet child({ props: triggerProps })}
+            <div
+              {...triggerProps}
+              data-folder-id={folder.id}
+              draggable="true"
+              ondragstart={(e) => onDragStart(folder, e)}
+              ondragover={(e) => onDragOver(folder, e)}
+              ondragleave={onDragLeave}
+              ondrop={(e) => onDrop(folder, e)}
+              class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm
+                cursor-pointer transition-colors
+                {isActive
+                ? 'bg-accent text-accent-foreground font-medium'
+                : 'text-foreground hover:bg-accent/50'}
+                {isDragTarget ? 'ring-1 ring-primary bg-accent/30' : ''}"
+              style="padding-left: {depth * 0.75 + 0.5}rem"
+              role="button"
+              tabindex="0"
+              onclick={() => handleRowSelect(folder)}
+              onkeydown={(e) => e.key === 'Enter' && handleRowSelect(folder)}
+              aria-label={$t('folders.folder_label', { values: { name: folder.name } })}
             >
-              <MoreHorizontal class="h-3.5 w-3.5" />
-            </button>
-          {:else}
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                {#snippet child({ props })}
+              <!-- Folder icon (synced top-level folders get a distinct sync glyph) -->
+              {#if syncConfigId}
+                <FolderSync
+                  class="h-4 w-4 shrink-0 text-primary"
+                  aria-label={$t('folders.synced_folder')}
+                />
+              {:else if isExpanded && hasChildren}
+                <FolderOpen class="h-4 w-4 shrink-0 text-muted-foreground" />
+              {:else}
+                <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
+              {/if}
+
+              <!-- Name / inline rename -->
+              {#if editingId === folder.id}
+                <input
+                  bind:this={editInputEl}
+                  bind:value={editingName}
+                  class="min-w-0 flex-1 rounded-md border bg-background px-2 py-0.5 text-sm caret-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  onclick={(e) => e.stopPropagation()}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter') commitRename(folder.id);
+                    if (e.key === 'Escape') cancelRename();
+                  }}
+                  onblur={() => commitRename(folder.id)}
+                />
+              {:else}
+                <span class="min-w-0 flex-1 truncate">{folder.name}</span>
+              {/if}
+
+              <!-- Chevron (right side, only when has children) -->
+              {#if hasChildren && editingId !== folder.id}
+                <button
+                  type="button"
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    if (isExpanded) expandedIds.delete(folder.id);
+                    else expandedIds.add(folder.id);
+                  }}
+                  class="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                  aria-label={isExpanded ? $t('folders.collapse') : $t('folders.expand')}
+                  tabindex="-1"
+                >
+                  <ChevronRight
+                    class="h-3.5 w-3.5 transition-transform {isExpanded ? 'rotate-90' : ''}"
+                  />
+                </button>
+              {/if}
+
+              <!-- Kebab menu button (visible on hover) -->
+              {#if editingId !== folder.id}
+                {#if isMobileQuery.value}
                   <button
-                    {...props}
                     type="button"
-                    onclick={(e) => e.stopPropagation()}
-                    class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-opacity md:opacity-0 md:group-hover:opacity-100 hover:bg-accent hover:text-foreground"
+                    onclick={(e) => toggleMenu(folder.id, e)}
+                    class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                     aria-label={$t('folders.folder_actions')}
                     tabindex="-1"
                   >
                     <MoreHorizontal class="h-3.5 w-3.5" />
                   </button>
-                {/snippet}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" class="min-w-36">
-                {#if syncConfigId}
-                  <DropdownMenuItem onclick={(e) => handleSyncNow(syncConfigId, e)}>
-                    <RefreshCw class="h-3.5 w-3.5" />
-                    {$t('folders.sync_now')}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                {:else}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger>
+                      {#snippet child({ props })}
+                        <button
+                          {...props}
+                          type="button"
+                          onclick={(e) => e.stopPropagation()}
+                          class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-opacity md:opacity-0 md:group-hover:opacity-100 hover:bg-accent hover:text-foreground"
+                          aria-label={$t('folders.folder_actions')}
+                          tabindex="-1"
+                        >
+                          <MoreHorizontal class="h-3.5 w-3.5" />
+                        </button>
+                      {/snippet}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" class="min-w-36">
+                      {#each rowActions as { key, icon: Icon, label, run, destructive, separatorBefore } (key)}
+                        {#if separatorBefore}
+                          <DropdownMenuSeparator />
+                        {/if}
+                        <DropdownMenuItem
+                          class={destructive ? 'text-destructive focus:text-destructive' : ''}
+                          onclick={run}
+                        >
+                          <Icon class="h-3.5 w-3.5" />
+                          {label}
+                        </DropdownMenuItem>
+                      {/each}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 {/if}
-                <DropdownMenuItem onclick={(e) => handleCreateSub(folder.id, e)}>
-                  <FolderPlus class="h-3.5 w-3.5" />
-                  {$t('folders.new_subfolder')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onclick={(e) => startRename(folder, e)}>
-                  <Pencil class="h-3.5 w-3.5" />
-                  {$t('folders.rename')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onclick={(e) => handleImportHere(folder, e)}>
-                  <Upload class="h-3.5 w-3.5" />
-                  {$t('folders.import_markdown.action')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onclick={(e) => handleImportFolderHere(folder, e)}>
-                  <FolderInput class="h-3.5 w-3.5" />
-                  {$t('folders.import_folder.action')}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  class="text-destructive focus:text-destructive"
-                  onclick={(e) => handleDelete(folder, e)}
-                >
-                  <Trash2 class="h-3.5 w-3.5" />
-                  {$t('folders.delete_folder')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          {/if}
+              {/if}
+            </div>
+          {/snippet}
+        </ContextMenuTrigger>
+        {#if !isMobileQuery.value && editingId !== folder.id}
+          <ContextMenuContent class="min-w-44">
+            {#each rowActions as { key, icon: Icon, label, run, destructive, separatorBefore } (key)}
+              {#if separatorBefore}
+                <ContextMenuSeparator />
+              {/if}
+              <ContextMenuItem
+                class={destructive ? 'text-destructive focus:text-destructive' : ''}
+                onclick={run}
+              >
+                <Icon class="h-3.5 w-3.5" />
+                {label}
+              </ContextMenuItem>
+            {/each}
+          </ContextMenuContent>
         {/if}
-      </div>
+      </ContextMenu>
 
       <!-- Children (recursive) + saved searches parked in this folder -->
       {#if isExpanded && hasChildren}
