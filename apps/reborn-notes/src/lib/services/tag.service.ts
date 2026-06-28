@@ -15,9 +15,9 @@ import type { TagDecrypted } from '@reborn/types';
 import { cryptoManager } from '@reborn/crypto';
 import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
-import { pushTag, pushTagUpdate, pushTagDelete, pushNoteUpdate } from './notes-sync.service';
+import { pushTag, pushTagUpdate, pushTagDelete, pushNoteUpdate, pushNoteMutation } from './notes-sync.service';
 import { noteStore } from '@reborn/storage';
-import type { NoteSensitiveMetadata } from '@reborn/types';
+import type { NoteSensitiveMetadata, NoteStoredLocal } from '@reborn/types';
 import { noteIndex } from '$lib/services/note-index.svelte';
 
 // ── User identity ─────────────────────────────────────────────────
@@ -264,15 +264,20 @@ export async function setTagsForNote(noteId: string, tagIds: string[], options?:
     } catch {
       /* use default */
     }
+    const wasEphemeral = existing.is_ephemeral === true;
     const metadataEncrypted = await cryptoManager.encryptObject(meta);
-    await noteStore.save({
+    const updated: NoteStoredLocal = {
       ...existing,
       metadata_encrypted: metadataEncrypted,
       updated_at: new Date().toISOString(),
-      sync_status: 'pending'
-    });
+      sync_status: 'pending',
+      ...(wasEphemeral ? { is_ephemeral: false } : {})
+    };
+    await noteStore.save(updated);
     if (!options?.skipSync) {
-      pushNoteUpdate(noteId, { metadata_encrypted: metadataEncrypted });
+      // Tagging is a deliberate "keep it" action - promotes a pristine ephemeral
+      // note via POST (a PATCH would 404 - the server has no row yet). #349
+      pushNoteMutation(updated, wasEphemeral, { metadata_encrypted: metadataEncrypted });
     }
   }
   // Update tagIds in the NoteIndex cache

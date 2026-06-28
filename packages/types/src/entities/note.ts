@@ -76,6 +76,17 @@ export interface NoteStoredLocal extends NoteEncrypted {
    * a successful push, or whenever a local edit re-marks the note 'pending'.
    */
   sync_error_code?: SyncErrorCode;
+  /**
+   * Local-only marker for a pristine "new note" the user has not touched yet
+   * (created via the New Note button, default title, empty body, no edit / star /
+   * pin / tag / move). Such a note's push is deferred: the sync sweep skips it
+   * and the server never sees it, so an accidental New Note click that the user
+   * backs out of leaves zero trace (client or server). The first deliberate
+   * action promotes it - the flag is cleared and the note is POSTed as a normal
+   * create. Never sent to the server (push payloads use an explicit allowlist).
+   * See issue #349.
+   */
+  is_ephemeral?: boolean;
 }
 
 /** Maximum number of version snapshots kept per note (client and server). */

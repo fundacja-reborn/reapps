@@ -107,10 +107,14 @@ if (!isPublicShareRoute) {
   // This is fire-and-forget: if it fails, +layout.svelte will retry in onMount.
   initializeStorage('notes')
     .then(async () => {
-      // Auto-purge old trash items (notes trashed more than 30 days ago)
+      // Auto-purge old trash items (notes trashed more than 30 days ago) and
+      // any leftover pristine ephemeral notes - New Note rows the user created
+      // but never touched, then reloaded/closed before the in-session discard
+      // could run (#349). Both are local-only, no decryption needed.
       try {
-        const { cleanTrash } = await import('$lib/services/note.service');
+        const { cleanTrash, cleanEphemeralNotes } = await import('$lib/services/note.service');
         await cleanTrash(30);
+        await cleanEphemeralNotes();
       } catch {
         // Non-critical — trash cleanup is also attempted in layout onMount
       }

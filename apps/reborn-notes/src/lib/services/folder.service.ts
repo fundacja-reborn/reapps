@@ -215,7 +215,10 @@ export async function deleteFolder(
         const current = await noteStore.get(note.id);
         if (current) await noteStore.save({ ...current, sync_status: 'pending' });
         noteIndex.patch(note.id, { folderId: undefined });
-        pushNoteUpdate(note.id, { folder_id: null });
+        // A pristine ephemeral note has no server row (deleting its folder is not
+        // a deliberate action on the note, so it is not promoted) - skip the push
+        // to avoid a 404; it stays ephemeral and is cleaned up. #349
+        if (!current?.is_ephemeral) pushNoteUpdate(note.id, { folder_id: null });
       }
     }
   }
