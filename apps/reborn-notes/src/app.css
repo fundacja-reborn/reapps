@@ -150,6 +150,19 @@
   .dark .note-item-bg:hover {
     background-color: oklch(0.371 0 0);
   }
+
+  /* Open/active note — one step stronger than hover so the open note stays
+     distinct even while another row is hovered (resting < hover < active).
+     Listed after the hover rules so it wins on equal specificity. */
+  .note-item-bg.is-active,
+  .note-item-bg.is-active:hover {
+    background-color: #dadada;
+  }
+
+  .dark .note-item-bg.is-active,
+  .dark .note-item-bg.is-active:hover {
+    background-color: oklch(0.44 0 0);
+  }
 }
 
 /* CodeMirror base styles */
