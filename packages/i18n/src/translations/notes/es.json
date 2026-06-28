@@ -287,8 +287,9 @@
       },
       "errors": { "failed": "No se pudo abrir la nota" },
       "dedup": {
-        "toast_title": "Notas periódicas duplicadas",
-        "toast_description": "{count, plural, one {Se creó # nota duplicada en otro dispositivo.} other {Se crearon # notas duplicadas en otro dispositivo.}} ¿Combinar con la original?",
+        "modal_title": "¿Combinar notas duplicadas?",
+        "modal_description": "{count, plural, one {Se encontró # nota periódica duplicada.} other {Se encontraron # notas periódicas duplicadas.}} Al combinar, su contenido se añade al original y las copias adicionales se mueven a la papelera, desde donde puedes restaurarlas.",
+        "dismiss_action": "Ahora no",
         "merge_action": "Combinar",
         "merge_separator": "Combinado desde un duplicado creado el {datetime}",
         "merge_success": "{count, plural, one {Se combinó # nota duplicada.} other {Se combinaron # notas duplicadas.}}",
@@ -727,7 +728,10 @@
     "re_login": "Iniciar sesión de nuevo",
     "initial": {
       "title": "Sincronizando tus notas",
-      "message": "La descarga de tus datos cifrados desde el servidor puede tardar un momento."
+      "message": "La descarga de tus datos cifrados desde el servidor puede tardar un momento.",
+      "building": "Creando tu base de datos local",
+      "count": "{done} / {total}",
+      "building_hint": "Solo una vez tras iniciar sesión - después tus notas se abren al instante, incluso sin conexión."
     },
     "errors": {
       "count": "{count} sin sincronizar",
