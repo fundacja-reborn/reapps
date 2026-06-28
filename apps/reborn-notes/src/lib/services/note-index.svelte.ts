@@ -244,6 +244,31 @@ class NoteIndex {
     return this._map.get(id);
   }
 
+  /**
+   * Resolve a single entry to a NoteListItem by id. Reactive. Null when absent.
+   *
+   * Unlike the filtered list in notes.store (which only holds rows matching the
+   * active search/folder/tag filter), this spans the WHOLE index - so a note
+   * opened via a [[link]] or the Back/Forward trail, which can land outside the
+   * current sidebar filter, still resolves its list metadata.
+   */
+  getItem(id: string): NoteListItem | null {
+    void this._version;
+    const e = this._map.get(id);
+    if (!e) return null;
+    return {
+      id,
+      title: e.title,
+      folder_id: e.folderId,
+      is_pinned: e.isPinned,
+      is_starred: e.isStarred,
+      is_archived: e.isArchived,
+      created_at: e.createdAt,
+      updated_at: e.updatedAt,
+      tags: e.tagIds
+    };
+  }
+
   /** Instant substring search across titles (sync). Reactive. */
   search(query: string): { id: string; title: string }[] {
     void this._version;
