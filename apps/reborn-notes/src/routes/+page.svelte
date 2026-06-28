@@ -152,9 +152,16 @@
   let detailMovingNoteId = $state<string | null>(null);
   let detailDeleteDialogOpen = $state(false);
 
-  const detailMenuNote = $derived(
-    $activeNoteId ? ($notesStore.find((n) => n.id === $activeNoteId) ?? null) : null
-  );
+  // Prefer the filtered sidebar row (same live data, already in scope), but fall
+  // back to the full index: a note opened via a [[link]] or the Back/Forward
+  // trail lands outside the active search/folder filter and is absent from
+  // $notesStore. Without this fallback its kebab action menu and created/updated
+  // metadata silently vanish (detailMenuNote → null).
+  const detailMenuNote = $derived.by((): NoteListItem | null => {
+    const id = $activeNoteId;
+    if (!id) return null;
+    return $notesStore.find((n) => n.id === id) ?? noteIndex.getItem(id);
+  });
 
   // Tag the open note with its periodic kind (if any) so the editor can swap
   // its placeholder for kind-aware copy ("Zacznij pisać dzisiejszą notatkę…").
