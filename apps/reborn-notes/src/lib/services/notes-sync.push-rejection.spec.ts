@@ -64,6 +64,30 @@ describe('notes-sync - permanent push rejection (sync_error)', () => {
     }
   });
 
+  it('note DELETE/restore paths assert via ensureOk and mark sync_error on permanent failure', () => {
+    const s = src();
+    // Bound each function body to the next export so the assertion cannot borrow
+    // a neighbour's ensureOk / markNoteSyncError.
+    const bodyOf = (sig: string): string => {
+      const start = s.search(new RegExp(sig));
+      expect(start, sig).toBeGreaterThan(-1);
+      const rest = s.slice(start + 1);
+      const next = rest.search(/\nexport (?:async )?function /);
+      return next > -1 ? rest.slice(0, next) : rest;
+    };
+    for (const sig of ['export function pushNoteDelete\\b', 'export function pushNoteRestore\\b']) {
+      const body = bodyOf(sig);
+      expect(body, `${sig} must assert via ensureOk`).toMatch(/ensureOk\(/);
+      expect(body, `${sig} must mark sync_error on permanent failure`).toMatch(/markNoteSyncError/);
+      // Guard the old bare-throw from regressing: `if (!res.ok) throw new Error`
+      // left the note 'pending' and re-pushed the doomed request on every
+      // periodic sync - the native CSRF-403 delete loop (smoke 2026-06-28).
+      expect(body, `${sig} must not bare-throw on !res.ok`).not.toMatch(
+        /if \(!res\.ok\) throw new Error/
+      );
+    }
+  });
+
   it('pushPendingItems batch tallies new sync_errors and raises one aggregated toast', () => {
     const s = src();
     const body = s.slice(
