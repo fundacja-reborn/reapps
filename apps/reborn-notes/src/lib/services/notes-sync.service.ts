@@ -939,11 +939,16 @@ export async function pushPendingItems(): Promise<void> {
   // failed soft-deletes and must be retried via pushNoteDelete. Before this
   // split, a retried archived note would have been POSTed like a new note,
   // resurrecting it on the server.
+  //
+  // is_ephemeral rows are excluded entirely: these are pristine untouched "new
+  // notes" whose push is deferred until the user's first action (#349). The
+  // server must never see them, so the retry sweep must skip them too - the
+  // first deliberate action clears the flag and POSTs the row.
   const pendingNotes = allNotes.filter(
-    (n) => n.sync_status === 'pending' && !n.is_archived
+    (n) => n.sync_status === 'pending' && !n.is_archived && !n.is_ephemeral
   );
   const pendingArchivedNotes = allNotes.filter(
-    (n) => n.sync_status === 'pending' && n.is_archived
+    (n) => n.sync_status === 'pending' && n.is_archived && !n.is_ephemeral
   );
 
   if (
@@ -1322,6 +1327,34 @@ export function pushNoteUpdate(
       }
     )
   );
+}
+
+/**
+ * Push a note mutation, choosing POST-create vs. PATCH-update based on whether
+ * the note has ever reached the server.
+ *
+ * A note created as a deferred-push ephemeral blank (#349) has no server row, so
+ * its first server contact MUST be a POST - a PATCH would 404. Any deliberate
+ * action (edit, rename, move, pin, star, tag) promotes it: the caller clears
+ * `is_ephemeral` on the saved row and passes `wasEphemeral=true` here so the
+ * full row is POSTed (carrying the just-applied change). An already-synced note
+ * takes the normal partial PATCH path.
+ */
+export function pushNoteMutation(
+  row: NoteStoredLocal,
+  wasEphemeral: boolean,
+  patchFields: {
+    title_encrypted?: string;
+    content_encrypted?: string;
+    folder_id?: string | null;
+    metadata_encrypted?: string;
+  }
+): void {
+  if (wasEphemeral) {
+    pushNote(row);
+  } else {
+    pushNoteUpdate(row.id, patchFields);
+  }
 }
 
 export function pushNoteDelete(id: string, permanent = false): void {

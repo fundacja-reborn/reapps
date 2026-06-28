@@ -694,7 +694,10 @@
 
     if (!id) {
       if (prev) {
-        untrack(() => noteDetailService.flushAndSnapshot(prev));
+        // leaveNote discards a pristine ephemeral note (#349) or flushes+snapshots
+        // a touched one. isUntouchedThisLoad() reads prev's state synchronously
+        // here, before reset() clears it below.
+        untrack(() => noteDetailService.leaveNote(prev));
       }
       untrack(() => noteDetailService.reset());
       return;
@@ -739,7 +742,11 @@
     const date = new Date().toISOString().slice(0, 10);
     const settings = await getSettings();
     const prefix = settings?.language === 'pl' ? 'Notatka' : 'Note';
-    const id = await notesStore.create(`${prefix} ${date}`, '');
+    // Create as ephemeral (#349): saved locally with a real id so the editor can
+    // open it, but its push is deferred until the first deliberate action. If the
+    // user backs out without touching it, leaveNote discards it and the server
+    // never sees it.
+    const id = await notesStore.create(`${prefix} ${date}`, '', undefined, { ephemeral: true });
     noteDetailService.setNewNote();
     activeNoteId.set(id);
   }
@@ -1595,6 +1602,11 @@
           saveErrorDialogOpen = true;
         }
       });
+    } else {
+      // No unsaved edits: silently discard a pristine ephemeral note so
+      // navigating away (e.g. to settings) leaves no ghost. Local-only and fast,
+      // so no need to cancel the navigation. No-op for non-ephemeral notes. #349
+      void noteDetailService.leaveNote();
     }
   });
 

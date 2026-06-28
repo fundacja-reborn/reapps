@@ -303,14 +303,19 @@ function createNotesStore() {
     sortBy.set(sort);
   }
 
-  async function create(title: string, content = '', folderId?: string): Promise<string> {
+  async function create(
+    title: string,
+    content = '',
+    folderId?: string,
+    options?: { ephemeral?: boolean }
+  ): Promise<string> {
     const resolvedFolder =
       folderId !== undefined
         ? folderId
         : currentFolderId === undefined
           ? undefined
           : (currentFolderId ?? undefined);
-    const id = await NoteService.createNote(title, content, resolvedFolder);
+    const id = await NoteService.createNote(title, content, resolvedFolder, options);
     refresh();
     return id;
   }

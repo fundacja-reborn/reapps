@@ -25,6 +25,7 @@ import { noteNavHistory } from '$lib/services/note-nav-history.svelte';
 import {
   pushNote,
   pushNoteUpdate,
+  pushNoteMutation,
   pushNoteDelete,
   pushNoteRestore,
   pushNoteVersion,
@@ -238,12 +239,21 @@ export async function createNote(
      * regardless of locale-dependent title formatting.
      */
     periodic?: PeriodicNoteMetadata;
+    /**
+     * Create a pristine "ephemeral" new note (#349): saved locally with a real
+     * id (so the editor can open it) but its push is deferred until the user's
+     * first deliberate action. Implies `skipSync` - the row is flagged
+     * `is_ephemeral` so the sync sweep skips it and the server never sees it
+     * until promoted. Used only by the New Note button.
+     */
+    ephemeral?: boolean;
   }
 ): Promise<string> {
   const now = new Date().toISOString();
   const createdAt = options?.createdAt ?? now;
   const updatedAt = options?.updatedAt ?? now;
   const id = options?.id ?? crypto.randomUUID();
+  const ephemeral = options?.ephemeral === true;
   const metadata: NoteSensitiveMetadata = {
     is_pinned: false,
     is_starred: false,
@@ -265,10 +275,14 @@ export async function createNote(
     sync_version: 0,
     sync_status: 'pending',
     created_at: createdAt,
-    updated_at: updatedAt
+    updated_at: updatedAt,
+    // Local-only: defer the push for a pristine new note until first action (#349).
+    ...(ephemeral ? { is_ephemeral: true } : {})
   };
   await noteStore.save(note);
-  if (!options?.skipSync) {
+  // An ephemeral note is never pushed at create time - the deferred push fires
+  // on the first deliberate action (see pushNoteMutation), not here.
+  if (!options?.skipSync && !ephemeral) {
     pushNote(note);
   }
   noteIndex.update(id, {
@@ -301,17 +315,21 @@ export async function updateNote(
 ): Promise<void> {
   const existing = await noteStore.get(id);
   if (!existing) throw new Error('Note not found');
+  // First edit promotes a pristine ephemeral note: clear the flag so the push
+  // goes out as a POST (create), not a PATCH that would 404 (#349).
+  const wasEphemeral = existing.is_ephemeral === true;
   const updatedAt = options?.updatedAt ?? new Date().toISOString();
   const updated: NoteStoredLocal = {
     ...existing,
     title_encrypted: await encodeText(title),
     content_encrypted: await encodeText(content),
     updated_at: updatedAt,
-    sync_status: 'pending'
+    sync_status: 'pending',
+    ...(wasEphemeral ? { is_ephemeral: false } : {})
   };
   await noteStore.save(updated);
   if (!options?.skipSync) {
-    pushNoteUpdate(id, {
+    pushNoteMutation(updated, wasEphemeral, {
       title_encrypted: updated.title_encrypted,
       content_encrypted: updated.content_encrypted
     });
@@ -327,15 +345,18 @@ export async function updateNote(
 export async function renameNote(id: string, title: string): Promise<void> {
   const existing = await noteStore.get(id);
   if (!existing) throw new Error('Note not found');
+  const wasEphemeral = existing.is_ephemeral === true;
   const now = new Date().toISOString();
   const title_encrypted = await encodeText(title.trim() || 'Untitled');
-  await noteStore.save({
+  const updated: NoteStoredLocal = {
     ...existing,
     title_encrypted,
     updated_at: now,
-    sync_status: 'pending'
-  });
-  pushNoteUpdate(id, { title_encrypted });
+    sync_status: 'pending',
+    ...(wasEphemeral ? { is_ephemeral: false } : {})
+  };
+  await noteStore.save(updated);
+  pushNoteMutation(updated, wasEphemeral, { title_encrypted });
   noteIndex.patch(id, {
     title: title.trim() || 'Untitled',
     updatedAt: now
@@ -345,6 +366,13 @@ export async function renameNote(id: string, title: string): Promise<void> {
 /** Soft-delete (archive) a note. */
 export async function deleteNote(id: string): Promise<void> {
   const existing = await noteStore.get(id);
+  // A pristine ephemeral note never reached the server and holds nothing the
+  // user touched - hard-delete it with zero server contact instead of moving it
+  // to Trash, so it leaves no trace anywhere. #349
+  if (existing?.is_ephemeral) {
+    await discardEphemeralNote(id);
+    return;
+  }
   await noteOperations.archive(id);
 
   // Update cache: mark as archived
@@ -370,10 +398,27 @@ export async function deleteNote(id: string): Promise<void> {
 export async function moveNoteToFolder(id: string, folderId: string | null): Promise<void> {
   await noteOperations.moveToFolder(id, folderId);
   const current = await noteStore.get(id);
-  if (current) await noteStore.save({ ...current, sync_status: 'pending' });
-  // Send null (not undefined) so the server's `'folder_id' in data` check fires
-  // and Prisma actually clears the column when moving to root.
-  pushNoteUpdate(id, { folder_id: folderId });
+  const wasEphemeral = current?.is_ephemeral === true;
+  if (current) {
+    await noteStore.save({
+      ...current,
+      sync_status: 'pending',
+      ...(wasEphemeral ? { is_ephemeral: false } : {})
+    });
+  }
+  if (current && wasEphemeral) {
+    // Moving a pristine new note is a deliberate "keep it" action: promote it
+    // via POST (a PATCH would 404 - the server has no row yet). #349
+    pushNoteMutation(
+      { ...current, sync_status: 'pending', is_ephemeral: false },
+      true,
+      { folder_id: folderId }
+    );
+  } else {
+    // Send null (not undefined) so the server's `'folder_id' in data` check fires
+    // and Prisma actually clears the column when moving to root.
+    pushNoteUpdate(id, { folder_id: folderId });
+  }
   noteIndex.patch(id, { folderId: folderId ?? undefined });
 }
 
@@ -420,19 +465,23 @@ export async function setNotePeriodicMetadata(
     return;
   }
   meta.periodic = periodic;
+  const wasEphemeral = existing.is_ephemeral === true;
   const metadataEncrypted = await cryptoManager.encryptObject(meta);
-  await noteStore.save({
+  const updated: NoteStoredLocal = {
     ...existing,
     metadata_encrypted: metadataEncrypted,
-    sync_status: 'pending'
-  });
-  pushNoteUpdate(id, { metadata_encrypted: metadataEncrypted });
+    sync_status: 'pending',
+    ...(wasEphemeral ? { is_ephemeral: false } : {})
+  };
+  await noteStore.save(updated);
+  pushNoteMutation(updated, wasEphemeral, { metadata_encrypted: metadataEncrypted });
 }
 
 /** Toggle pin status. */
 export async function togglePin(id: string): Promise<void> {
   const existing = await noteStore.get(id);
   if (!existing) return;
+  const wasEphemeral = existing.is_ephemeral === true;
   const newPinned = !existing.is_pinned;
 
   // Update metadata_encrypted with new pin status
@@ -445,14 +494,17 @@ export async function togglePin(id: string): Promise<void> {
   } catch { /* use default */ }
   const metadataEncrypted = await cryptoManager.encryptObject(meta);
 
-  await noteStore.save({
+  const updated: NoteStoredLocal = {
     ...existing,
     is_pinned: newPinned,
     metadata_encrypted: metadataEncrypted,
     updated_at: new Date().toISOString(),
-    sync_status: 'pending'
-  });
-  pushNoteUpdate(id, { metadata_encrypted: metadataEncrypted });
+    sync_status: 'pending',
+    ...(wasEphemeral ? { is_ephemeral: false } : {})
+  };
+  await noteStore.save(updated);
+  // Pinning is a deliberate "keep it" action - promotes a pristine note (#349).
+  pushNoteMutation(updated, wasEphemeral, { metadata_encrypted: metadataEncrypted });
   noteIndex.patch(id, { isPinned: newPinned });
 }
 
@@ -460,6 +512,7 @@ export async function togglePin(id: string): Promise<void> {
 export async function toggleStar(id: string): Promise<void> {
   const existing = await noteStore.get(id);
   if (!existing) return;
+  const wasEphemeral = existing.is_ephemeral === true;
   const newStarred = !existing.is_starred;
 
   // Update metadata_encrypted with new star status
@@ -472,14 +525,17 @@ export async function toggleStar(id: string): Promise<void> {
   } catch { /* use default */ }
   const metadataEncrypted = await cryptoManager.encryptObject(meta);
 
-  await noteStore.save({
+  const updated: NoteStoredLocal = {
     ...existing,
     is_starred: newStarred,
     metadata_encrypted: metadataEncrypted,
     updated_at: new Date().toISOString(),
-    sync_status: 'pending'
-  });
-  pushNoteUpdate(id, { metadata_encrypted: metadataEncrypted });
+    sync_status: 'pending',
+    ...(wasEphemeral ? { is_ephemeral: false } : {})
+  };
+  await noteStore.save(updated);
+  // Starring is a deliberate "keep it" action - promotes a pristine note (#349).
+  pushNoteMutation(updated, wasEphemeral, { metadata_encrypted: metadataEncrypted });
   noteIndex.patch(id, { isStarred: newStarred });
 }
 
@@ -512,6 +568,57 @@ export async function permanentlyDeleteNote(id: string): Promise<void> {
   noteLinkGraph.onNoteRemoved(id);
   noteNavHistory.remove(id);
   pushNoteDelete(id, true);
+}
+
+/**
+ * Hard-delete a pristine ephemeral note's local row with zero server contact (#349).
+ *
+ * Unlike permanentlyDeleteNote, this never calls pushNoteDelete: an ephemeral
+ * note was deferred and never POSTed, so the server has no row to delete -
+ * issuing a DELETE would be a pointless (and 404-prone) round-trip that defeats
+ * the whole point (the server must never learn the note existed). Cleans the
+ * in-memory index, link graph, nav history, and any local version-history rows.
+ */
+export async function discardEphemeralNote(id: string): Promise<void> {
+  await noteHistoryOperations.deleteAllForNote(id);
+  await noteStore.delete(id);
+  noteIndex.remove(id);
+  noteLinkGraph.onNoteRemoved(id);
+  noteNavHistory.remove(id);
+}
+
+/**
+ * Discard the note iff it is still a pristine ephemeral row (#349). Returns true
+ * when it was discarded, false when the note is absent or already promoted (any
+ * deliberate action clears the flag). The caller is responsible for first
+ * confirming the editor has no unsaved changes for this note.
+ */
+export async function discardIfEphemeral(id: string): Promise<boolean> {
+  const existing = await noteStore.get(id);
+  if (!existing?.is_ephemeral) return false;
+  await discardEphemeralNote(id);
+  return true;
+}
+
+/**
+ * Startup sweep: hard-delete any leftover pristine ephemeral notes (#349).
+ *
+ * These are New Note rows the user created but never touched in a prior session,
+ * then closed the tab / reloaded before the in-session discard could run. The
+ * `is_ephemeral` flag is cleared atomically with the first edit's save, so a row
+ * still carrying it provably never received an edit - safe to drop without
+ * decrypting. Never reached the server, so no DELETE is sent. Returns the count
+ * removed.
+ */
+export async function cleanEphemeralNotes(): Promise<number> {
+  const all = (await noteStore.getAll()) as NoteStoredLocal[];
+  const ephemeral = all.filter((n) => n.is_ephemeral === true);
+  if (ephemeral.length === 0) return 0;
+  for (const n of ephemeral) {
+    await discardEphemeralNote(n.id);
+  }
+  logger.info(`Cleaned ${ephemeral.length} leftover ephemeral note(s)`);
+  return ephemeral.length;
 }
 
 /** Permanently delete all notes in trash (and their history). */

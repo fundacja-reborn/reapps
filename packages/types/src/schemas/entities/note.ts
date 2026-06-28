@@ -60,7 +60,10 @@ export const NoteStoredLocalSchema = NoteEncryptedSchema.extend({
   is_starred: z.boolean().optional(),
   // Local-only: reason the last push was permanently rejected (paired with
   // sync_status: 'sync_error'). Never sent to the server. See SyncErrorCode.
-  sync_error_code: z.enum(['too_large', 'quota_exceeded', 'invalid', 'rejected']).optional()
+  sync_error_code: z.enum(['too_large', 'quota_exceeded', 'invalid', 'rejected']).optional(),
+  // Local-only: pristine untouched "new note" whose push is deferred until the
+  // first deliberate action. Never sent to the server. See issue #349.
+  is_ephemeral: z.boolean().optional()
 });
 
 // Export inferred types

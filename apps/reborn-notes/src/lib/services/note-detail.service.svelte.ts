@@ -1,6 +1,6 @@
 import { createLogger } from '@reborn/utils';
 import { notesStore } from '$lib/stores/notes.store';
-import { saveVersionSnapshot, saveBaselineSnapshot } from '$lib/services/note.service';
+import { saveVersionSnapshot, saveBaselineSnapshot, discardIfEphemeral } from '$lib/services/note.service';
 import { t } from '$lib/stores/i18n.store';
 import { get } from 'svelte/store';
 import { MAX_NOTE_CONTENT_BYTES } from '@reborn/types';
@@ -64,11 +64,17 @@ class NoteDetailService {
     const prevId = this.noteId;
     const shouldSnapshot = this.editedSinceLastSnapshot; // capture before await
     if (prevId && prevId !== id) {
-      await this.flushPendingSave(prevId);
-      if (shouldSnapshot) {
-        await saveVersionSnapshot(prevId).catch((e) =>
-          logger.error('Failed to snapshot previous note:', e)
-        );
+      // A pristine ephemeral previous note the user never touched is discarded
+      // instead of flushed+snapshotted, so an accidental New Note leaves no
+      // trace (client or server). #349
+      const discarded = this.isUntouchedThisLoad() && (await discardIfEphemeral(prevId));
+      if (!discarded) {
+        await this.flushPendingSave(prevId);
+        if (shouldSnapshot) {
+          await saveVersionSnapshot(prevId).catch((e) =>
+            logger.error('Failed to snapshot previous note:', e)
+          );
+        }
       }
       this.editedSinceLastSnapshot = false;
     }
@@ -244,6 +250,25 @@ class NoteDetailService {
   }
 
   /**
+   * Leave the currently open note (note switch to null, route navigation).
+   *
+   * If it is a pristine ephemeral blank the user never touched, discard it with
+   * zero server contact (#349) - an accidental New Note click that the user backs
+   * out of leaves no trace. Otherwise flush pending edits + snapshot. Returns
+   * true when handled cleanly (discarded or flushed OK), false only when a flush
+   * failed (e.g. over the size limit) so the caller can keep the user on the note.
+   */
+  async leaveNote(noteId?: string): Promise<boolean> {
+    const id = noteId ?? this.noteId;
+    if (!id) return true;
+    if (this.isUntouchedThisLoad() && (await discardIfEphemeral(id))) {
+      this.editedSinceLastSnapshot = false;
+      return true;
+    }
+    return this.flushAndSnapshot(id);
+  }
+
+  /**
    * Mark this as a new note (sets viewMode hint).
    */
   setNewNote(): void {
@@ -276,6 +301,21 @@ class NoteDetailService {
   }
 
   // ── Private ────────────────────────────────────────────────────
+
+  /**
+   * True when the currently-loaded note has had zero edits this load: no pending
+   * debounced save, nothing edited since the last snapshot, and an empty body.
+   * Gate for silently discarding a pristine ephemeral note on leave (#349).
+   * Reflects this.noteId's in-memory editor state, so call it while that note is
+   * still the open one (e.g. before reassigning this.noteId in loadNote).
+   */
+  private isUntouchedThisLoad(): boolean {
+    return (
+      !this.hasPendingChanges() &&
+      !this.editedSinceLastSnapshot &&
+      this.content.trim() === ''
+    );
+  }
 
   /**
    * Snapshot the open note's pristine (pre-edit) state the first time it's
