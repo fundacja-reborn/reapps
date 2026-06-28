@@ -68,7 +68,8 @@
   import {
     appSettings,
     imageLoadMode,
-    editorMode,
+    editorModeOverride,
+    effectiveEditorMode,
     editorModeIntroSeen,
     periodicNotesSettings,
     confirmBeforeDelete
@@ -380,6 +381,9 @@
 
   // ── Editor ──────────────────────────────────────────────────────
   let viewMode = $state<ViewMode>('edit');
+  // The editing view (edit/split) the user was last in, so Mod+E can restore it
+  // when toggling back from preview instead of always landing on plain edit.
+  let lastEditViewMode: 'edit' | 'split' = 'edit';
   type HistoryMode = 'closed' | 'list' | 'diff';
   let historyMode = $state<HistoryMode>('closed');
   let linkedNotesOpen = $state(false);
@@ -680,6 +684,10 @@
     previousVersion = null;
     historyViewMode = 'preview';
     showEncryptionXRay = false;
+    // The per-note editor-mode override is ephemeral: leaving a note (or opening
+    // another) reverts to the Settings > Behavior default, so an accidental
+    // switch to raw markdown self-heals on reopen.
+    editorModeOverride.set(null);
 
     const prev = prevNoteId;
     prevNoteId = id;
@@ -1488,7 +1496,7 @@
       // its `#slug` link targets (kebab dups of the headings) are never visible,
       // so drop matches there to keep the count/navigation aligned with what the
       // reader sees. Raw editor mode shows the slugs verbatim, so keep them.
-      if (effectiveViewMode === 'edit' && $editorMode === 'live' && matches.length) {
+      if (effectiveViewMode === 'edit' && $effectiveEditorMode === 'live' && matches.length) {
         matches = excludeMatchesInSpans(matches, tocHiddenSpans(text));
       }
       cmMatches = matches;
@@ -1718,6 +1726,23 @@
       if ($activeNoteId != null && historyMode === 'closed' && !activeTrash) {
         e.preventDefault();
         openNoteSearch();
+      }
+      return;
+    }
+    // Mod+E — toggle edit ↔ preview (Obsidian convention). The editing view uses
+    // the mode from Settings > Behavior, or the open note's temporary override;
+    // returning from preview restores the editing view you left (edit or split).
+    // Live note view only — never in version history or trash. We preventDefault
+    // so it also overrides Firefox's Ctrl+E (focus search bar).
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'e' || e.key === 'E') && !e.shiftKey && !e.altKey) {
+      if ($activeNoteId != null && historyMode === 'closed' && !activeTrash) {
+        e.preventDefault();
+        if (effectiveViewMode === 'preview') {
+          viewMode = lastEditViewMode;
+        } else {
+          lastEditViewMode = viewMode === 'split' ? 'split' : 'edit';
+          viewMode = 'preview';
+        }
       }
       return;
     }

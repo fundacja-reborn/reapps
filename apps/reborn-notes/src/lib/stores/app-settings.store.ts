@@ -222,6 +222,29 @@ export const imageLoadMode = derived(appSettings, ($settings) => $settings?.imag
 
 export const editorMode = derived(appSettings, ($settings) => $settings?.editorMode ?? 'live');
 
+/**
+ * Per-note, ephemeral override of the editor mode (live preview vs. markdown
+ * source). `null` means "use the synced default from `editorMode`".
+ *
+ * Set by the in-note header mode menu and reset to `null` whenever the open
+ * note changes (see `+page.svelte`). It is deliberately NOT persisted or
+ * synced: switching a single note to raw markdown stays local to that note and
+ * self-heals on reopen, instead of silently flipping the mode for every note.
+ * A persistent preference belongs in Settings > Behavior (the `editorMode`
+ * field above).
+ */
+export const editorModeOverride = writable<'live' | 'markdown' | null>(null);
+
+/**
+ * The editor mode actually applied to the open note: the per-note override when
+ * present, otherwise the synced default. This is what the editor and find-in-note
+ * read; `editorMode` alone is only the default/baseline.
+ */
+export const effectiveEditorMode = derived(
+  [editorMode, editorModeOverride],
+  ([$editorMode, $override]) => $override ?? $editorMode
+);
+
 export const editorModeIntroSeen = derived(
   appSettings,
   ($settings) => $settings?.editorModeIntroSeen ?? false

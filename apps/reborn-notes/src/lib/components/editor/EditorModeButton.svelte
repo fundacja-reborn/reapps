@@ -15,7 +15,7 @@
     Button
   } from '@reborn/ui';
   import { t } from '$lib/stores/i18n.store';
-  import { appSettings, editorMode } from '$lib/stores/app-settings.store';
+  import { editorModeOverride, effectiveEditorMode } from '$lib/stores/app-settings.store';
 
   let {
     viewMode,
@@ -32,13 +32,14 @@
   let sheetOpen = $state(false);
 
   const isActive = $derived(viewMode === 'edit');
-  const FaceIcon = $derived($editorMode === 'live' ? PencilLine : Pencil);
+  const FaceIcon = $derived($effectiveEditorMode === 'live' ? PencilLine : Pencil);
 
-  async function setEditorMode(value: 'markdown' | 'live') {
+  // Picking a mode here is a per-note override, not a global change: it applies
+  // only to the open note and is reset when the user leaves it (see
+  // `editorModeOverride`). The synced default lives in Settings > Behavior.
+  function setEditorMode(value: 'markdown' | 'live') {
     sheetOpen = false;
-    if ($editorMode !== value) {
-      await appSettings.update('editorMode', value);
-    }
+    editorModeOverride.set(value);
     onActivate();
   }
 </script>
@@ -105,7 +106,7 @@
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup
-          value={$editorMode}
+          value={$effectiveEditorMode}
           onValueChange={(v) => setEditorMode(v as 'markdown' | 'live')}
         >
           <DropdownMenuRadioItem value="markdown">
@@ -128,14 +129,14 @@
       </SheetHeader>
       <div class="mt-4 space-y-1 pb-4">
         <Button
-          variant={$editorMode === 'markdown' ? 'secondary' : 'ghost'}
+          variant={$effectiveEditorMode === 'markdown' ? 'secondary' : 'ghost'}
           class="w-full justify-start"
           onclick={() => setEditorMode('markdown')}
         >
           {$t('editor_mode.markdown')}
         </Button>
         <Button
-          variant={$editorMode === 'live' ? 'secondary' : 'ghost'}
+          variant={$effectiveEditorMode === 'live' ? 'secondary' : 'ghost'}
           class="w-full justify-start"
           onclick={() => setEditorMode('live')}
         >
