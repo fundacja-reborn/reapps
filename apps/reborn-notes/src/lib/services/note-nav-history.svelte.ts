@@ -27,6 +27,7 @@
  */
 import {
   emptyTrail,
+  freshTrail,
   recordVisit,
   stepBack,
   stepForward,
@@ -79,6 +80,17 @@ class NoteNavHistory {
   /** Record a visit to `id` (truncates forward entries, like a browser). */
   visit(id: string): void {
     this._trail = recordVisit(this._trail, id);
+    this._version++;
+  }
+
+  /**
+   * Start a fresh trail at `id` - a top-level open (list pick, new note,
+   * periodic) that must not chain Back to a previously-visited note. After this
+   * `canGoBack` is false, so Back closes the note to its list/section instead.
+   * Only following an internal `note:` link extends the trail, via `visit`.
+   */
+  reset(id: string): void {
+    this._trail = freshTrail(id);
     this._version++;
   }
 
