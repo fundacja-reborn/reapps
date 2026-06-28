@@ -23,6 +23,18 @@ export function emptyTrail(): NavTrail {
   return { entries: [], cursor: -1 };
 }
 
+/**
+ * Start a fresh trail rooted at a single note - a top-level open (list pick,
+ * new note, periodic note, deep link) that is NOT a continuation of the visit
+ * chain. Back from such a note has nothing behind it, so the caller closes the
+ * note back to its list/section rather than chaining to an unrelated note
+ * opened earlier (possibly in a different section). Only following an internal
+ * `note:` link extends the trail, via `recordVisit`.
+ */
+export function freshTrail(id: string): NavTrail {
+  return { entries: [id], cursor: 0 };
+}
+
 export function currentId(t: NavTrail): string | null {
   return t.entries[t.cursor] ?? null;
 }

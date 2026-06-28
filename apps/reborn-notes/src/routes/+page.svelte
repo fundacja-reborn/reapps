@@ -987,6 +987,11 @@
   // for a scroll restore. `suppressHistoryRecord` marks an activeNoteId change
   // that came from Back/Forward itself, so it isn't recorded as a new visit.
   let suppressHistoryRecord = false;
+  // Armed for exactly one activeNoteId change by handleNoteLink, so following an
+  // internal `note:` link EXTENDS the trail (Back returns to the source note).
+  // Every other open (list pick, new note, periodic) leaves it false and starts
+  // a fresh trail, so Back closes the note back to its list/section.
+  let extendNavTrailOnce = false;
   let prevHistoryNoteId: string | null = null;
   let pendingScrollRestore = $state<{ noteId: string; top: number } | null>(null);
 
@@ -1077,6 +1082,10 @@
       }
     }
     pendingAnchor = slug ? { noteId, slug } : null;
+    // Chain onto the trail so Back returns to this source note. Guard the
+    // self-link no-op: if the target is already open, activeNoteId.set won't
+    // fire the recorder, so don't leave the flag armed for the next open.
+    extendNavTrailOnce = noteId !== $activeNoteId;
     activeNoteId.set(noteId);
   }
 
@@ -1175,8 +1184,15 @@
         const el = activeNoteScrollEl();
         if (el) noteNavHistory.saveScroll(prevHistoryNoteId, el.scrollTop);
       }
-      if (id != null && !suppressHistoryRecord) noteNavHistory.visit(id);
+      if (id != null && !suppressHistoryRecord) {
+        // A fresh top-level open starts a new trail so Back closes the note back
+        // to its list/section; only an internal `note:` link (incl. the
+        // Linked-notes panel, which routes through handleNoteLink) extends it.
+        if (extendNavTrailOnce) noteNavHistory.visit(id);
+        else noteNavHistory.reset(id);
+      }
       suppressHistoryRecord = false;
+      extendNavTrailOnce = false;
       prevHistoryNoteId = id;
     });
   });

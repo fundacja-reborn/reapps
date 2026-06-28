@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   emptyTrail,
+  freshTrail,
   recordVisit,
   stepBack,
   stepForward,
@@ -36,6 +37,32 @@ describe('note-nav-history-utils', () => {
     const t = recordVisit(trailOf('a'), 'a');
     expect(t.entries).toEqual(['a']);
     expect(backTargetId(t)).toBeNull();
+  });
+
+  it('freshTrail roots a single-entry trail with no Back/Forward', () => {
+    const t = freshTrail('a');
+    expect(t.entries).toEqual(['a']);
+    expect(currentId(t)).toBe('a');
+    expect(backTargetId(t)).toBeNull();
+    expect(forwardTargetId(t)).toBeNull();
+  });
+
+  it('freshTrail discards an existing chain, so Back closes instead of chaining', () => {
+    // a→b were visited (e.g. an earlier section); a fresh top-level open of c
+    // must not leave b reachable by Back.
+    const existing = trailOf('a', 'b');
+    expect(backTargetId(existing)).toBe('a');
+    const fresh = freshTrail('c');
+    expect(fresh.entries).toEqual(['c']);
+    expect(backTargetId(fresh)).toBeNull();
+  });
+
+  it('a link visit after a fresh open extends the trail', () => {
+    let t = freshTrail('a');
+    t = recordVisit(t, 'b'); // internal-link follow
+    expect(t.entries).toEqual(['a', 'b']);
+    expect(currentId(t)).toBe('b');
+    expect(backTargetId(t)).toBe('a');
   });
 
   it('walks Back and Forward along the trail', () => {
