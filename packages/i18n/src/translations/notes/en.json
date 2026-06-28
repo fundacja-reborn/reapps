@@ -805,6 +805,22 @@
       "create": "Create an account",
       "create_desc": "Keep your notes and sync across devices. Your existing notes are kept."
     },
+    "behavior": {
+      "title": "Behavior",
+      "hub_desc": "How notes open, delete confirmation",
+      "open_mode": "Open notes in",
+      "open_mode_desc": "Which view an existing note opens in when you select it. New notes always open ready to edit.",
+      "open_mode_preview": "Preview (read-only)",
+      "open_mode_edit": "Edit",
+      "open_mode_split": "Split (edit and preview)",
+      "open_mode_device_hint": "Applies to this device only",
+      "open_mode_updated": "Default open mode updated",
+      "confirm_delete": "Confirm before deleting",
+      "confirm_delete_desc": "Ask before moving a note to Trash. Notes in Trash can be restored, but are permanently deleted after 30 days.",
+      "confirm_delete_on": "Confirmation on",
+      "confirm_delete_off": "Confirmation off",
+      "confirm_delete_updated": "Delete confirmation updated"
+    },
     "appearance": {
       "title": "Appearance",
       "hub_desc": "App theme, interface language, date and time format",

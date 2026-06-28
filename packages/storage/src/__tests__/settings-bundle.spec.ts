@@ -33,6 +33,7 @@ const NOTES_FIXTURE: AppSettings = {
   imageLoadMode: 'always',
   editorMode: 'live',
   editorModeIntroSeen: true,
+  confirmBeforeDelete: false,
   periodicNotes: PERIODIC_FIXTURE,
   created_at: '2026-05-01T00:00:00.000Z',
   updated_at: '2026-05-09T10:00:00.000Z'
@@ -71,6 +72,7 @@ describe('settings-bundle: extract', () => {
     expect(app.notifications_enabled).toBe(true);
     expect(app.editorMode).toBe('live');
     expect(app.editorModeIntroSeen).toBe(true);
+    expect(app.confirmBeforeDelete).toBe(false);
     expect(app.periodicNotes).toEqual(PERIODIC_FIXTURE);
   });
 
@@ -109,6 +111,7 @@ describe('settings-bundle: applyBundlesToSettings', () => {
       theme: 'light',
       editorMode: 'markdown',
       editorModeIntroSeen: false,
+      confirmBeforeDelete: true,
       periodicNotes: {
         daily: { ...PERIODIC_FIXTURE.daily, enabled: false },
         weekly: PERIODIC_FIXTURE.weekly,
@@ -118,6 +121,7 @@ describe('settings-bundle: applyBundlesToSettings', () => {
     expect(merged.theme).toBe('light');
     expect(merged.editorMode).toBe('markdown');
     expect(merged.editorModeIntroSeen).toBe(false);
+    expect(merged.confirmBeforeDelete).toBe(true);
     expect(merged.periodicNotes?.daily.enabled).toBe(false);
     expect(merged.language).toBe('pl');
   });
@@ -178,10 +182,12 @@ describe('settings-bundle: migrate (decrypt → unknown JSON → typed bundle)',
       schema_version: 1,
       theme: 'dark',
       editorModeIntroSeen: true,
+      confirmBeforeDelete: true,
       periodicNotes: PERIODIC_FIXTURE
     });
     expect(out.theme).toBe('dark');
     expect(out.editorModeIntroSeen).toBe(true);
+    expect(out.confirmBeforeDelete).toBe(true);
     expect(out.periodicNotes).toEqual(PERIODIC_FIXTURE);
   });
 

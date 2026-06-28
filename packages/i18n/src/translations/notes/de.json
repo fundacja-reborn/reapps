@@ -805,6 +805,22 @@
       "create": "Konto erstellen",
       "create_desc": "Behalte deine Notizen und synchronisiere geräteübergreifend. Deine vorhandenen Notizen bleiben erhalten."
     },
+    "behavior": {
+      "title": "Verhalten",
+      "hub_desc": "Wie Notizen geöffnet werden, Löschbestätigung",
+      "open_mode": "Notizen öffnen in",
+      "open_mode_desc": "Ansicht, in der eine vorhandene Notiz beim Auswählen geöffnet wird. Neue Notizen öffnen sich immer bearbeitungsbereit.",
+      "open_mode_preview": "Vorschau (schreibgeschützt)",
+      "open_mode_edit": "Bearbeiten",
+      "open_mode_split": "Geteilt (Bearbeiten und Vorschau)",
+      "open_mode_device_hint": "Gilt nur für dieses Gerät",
+      "open_mode_updated": "Standard-Öffnungsmodus aktualisiert",
+      "confirm_delete": "Vor dem Löschen bestätigen",
+      "confirm_delete_desc": "Vor dem Verschieben einer Notiz in den Papierkorb nachfragen. Notizen im Papierkorb können wiederhergestellt werden, werden aber nach 30 Tagen endgültig gelöscht.",
+      "confirm_delete_on": "Bestätigung ein",
+      "confirm_delete_off": "Bestätigung aus",
+      "confirm_delete_updated": "Löschbestätigung aktualisiert"
+    },
     "appearance": {
       "title": "Erscheinungsbild",
       "hub_desc": "App-Thema, Sprache der Benutzeroberfläche, Datums- und Zeitformat",

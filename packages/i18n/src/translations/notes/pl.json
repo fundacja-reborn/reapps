@@ -805,6 +805,22 @@
       "create": "Załóż konto",
       "create_desc": "Zachowaj notatki i synchronizuj między urządzeniami. Twoje obecne notatki zostaną zachowane."
     },
+    "behavior": {
+      "title": "Zachowanie",
+      "hub_desc": "Sposób otwierania notatek, potwierdzanie usuwania",
+      "open_mode": "Otwieraj notatki w trybie",
+      "open_mode_desc": "Widok, w którym otwiera się istniejąca notatka po jej wybraniu. Nowe notatki zawsze otwierają się gotowe do edycji.",
+      "open_mode_preview": "Podgląd (tylko do odczytu)",
+      "open_mode_edit": "Edycja",
+      "open_mode_split": "Podział (edycja i podgląd)",
+      "open_mode_device_hint": "Dotyczy tylko tego urządzenia",
+      "open_mode_updated": "Zaktualizowano domyślny tryb otwierania",
+      "confirm_delete": "Potwierdzaj przed usunięciem",
+      "confirm_delete_desc": "Pytaj przed przeniesieniem notatki do Kosza. Notatki w Koszu można przywrócić, ale po 30 dniach są trwale usuwane.",
+      "confirm_delete_on": "Potwierdzanie włączone",
+      "confirm_delete_off": "Potwierdzanie wyłączone",
+      "confirm_delete_updated": "Zaktualizowano potwierdzanie usuwania"
+    },
     "appearance": {
       "title": "Wygląd",
       "hub_desc": "Motyw aplikacji, język interfejsu, format daty i czasu",

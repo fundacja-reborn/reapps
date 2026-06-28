@@ -29,6 +29,7 @@
   import { tagsStore } from '$lib/stores/tags.store';
   import { SidebarTrigger } from '@reborn/ui/sidebar';
   import { t } from '$lib/stores/i18n.store';
+  import { confirmBeforeDelete } from '$lib/stores/app-settings.store';
   import { sessionExpired, isInitialSync, syncProgress } from '$lib/stores/sync-status.store';
   import { requireActiveSession } from '$lib/utils/require-active-session';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
@@ -297,6 +298,11 @@
     menuOpenId = null;
     noteActionSheetOpen = false;
     noteToDelete = id;
+    // When confirmation is disabled (#350), delete straight to Trash (recoverable).
+    if (!$confirmBeforeDelete) {
+      confirmDelete();
+      return;
+    }
     deleteDialogOpen = true;
   }
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick, untrack } from 'svelte';
+  import { get } from 'svelte/store';
   import { beforeNavigate } from '$app/navigation';
   import { base } from '$app/paths';
   import { copyText } from '$lib/utils/clipboard';
@@ -69,8 +70,10 @@
     imageLoadMode,
     editorMode,
     editorModeIntroSeen,
-    periodicNotesSettings
+    periodicNotesSettings,
+    confirmBeforeDelete
   } from '$lib/stores/app-settings.store';
+  import { noteOpenMode } from '$lib/stores/device-prefs.store';
   import EditorModeIntroDialog from '$lib/components/editor/EditorModeIntroDialog.svelte';
   import PeriodicNoteOnboardingDialog from '$lib/components/editor/PeriodicNoteOnboardingDialog.svelte';
   import type { EditorMode } from '@reborn/storage';
@@ -295,6 +298,11 @@
 
   function handleDetailDelete() {
     detailActionSheetOpen = false;
+    // When confirmation is disabled (#350), delete straight to Trash (recoverable).
+    if (!$confirmBeforeDelete) {
+      confirmDetailDelete();
+      return;
+    }
     detailDeleteDialogOpen = true;
   }
 
@@ -687,7 +695,11 @@
     if (untrack(() => noteDetailService.isNewNote)) {
       viewMode = 'edit';
     } else {
-      viewMode = 'preview';
+      // Existing note: open in the per-device default view mode (#351). Read
+      // untracked via get() so changing the preference later doesn't re-run
+      // this effect for the already-open note. effectiveViewMode clamps 'split'
+      // to 'edit' on mobile, so 'split' is safe to set here.
+      viewMode = get(noteOpenMode);
     }
     untrack(() => noteDetailService.loadNote(id));
   });

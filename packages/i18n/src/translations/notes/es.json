@@ -805,6 +805,22 @@
       "create": "Crear una cuenta",
       "create_desc": "Conserva tus notas y sincroniza entre dispositivos. Tus notas actuales se conservan."
     },
+    "behavior": {
+      "title": "Comportamiento",
+      "hub_desc": "Cómo se abren las notas, confirmación de eliminación",
+      "open_mode": "Abrir las notas en",
+      "open_mode_desc": "Vista en la que se abre una nota existente al seleccionarla. Las notas nuevas siempre se abren listas para editar.",
+      "open_mode_preview": "Vista previa (solo lectura)",
+      "open_mode_edit": "Edición",
+      "open_mode_split": "Dividido (edición y vista previa)",
+      "open_mode_device_hint": "Se aplica solo a este dispositivo",
+      "open_mode_updated": "Modo de apertura predeterminado actualizado",
+      "confirm_delete": "Confirmar antes de eliminar",
+      "confirm_delete_desc": "Preguntar antes de mover una nota a la Papelera. Las notas en la Papelera se pueden restaurar, pero se eliminan definitivamente después de 30 días.",
+      "confirm_delete_on": "Confirmación activada",
+      "confirm_delete_off": "Confirmación desactivada",
+      "confirm_delete_updated": "Confirmación de eliminación actualizada"
+    },
     "appearance": {
       "title": "Apariencia",
       "hub_desc": "Tema de la aplicación, idioma de la interfaz, formato de fecha y hora",

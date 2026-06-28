@@ -187,6 +187,7 @@ export class SyncedSettingsService {
         imageLoadMode: 'ask',
         editorMode: 'live',
         editorModeIntroSeen: false,
+        confirmBeforeDelete: true,
         created_at: new Date(serverUpdated).toISOString(),
         updated_at: new Date(serverUpdated).toISOString()
       };
