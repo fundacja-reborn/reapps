@@ -239,7 +239,7 @@
           }}
           use:longPress={() => onenterselection?.()}
           class="note-item-bg group flex cursor-pointer items-start gap-2 rounded-lg p-4 md:p-3 transition-colors
-            {isActive && !selectionMode ? 'is-active text-accent-foreground' : ''}
+            {isActive && !selectionMode ? 'list-row-active text-accent-foreground' : ''}
             {selectionMode && isSelected ? 'bg-primary/10' : ''}
             {selectionMode ? 'select-none' : ''}"
           onclick={handleItemClick}

@@ -183,7 +183,7 @@
                     onclick={() => onselect(tag.id)}
                     class="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors
                       {activeTagId === tag.id
-                      ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                      ? 'list-row-active text-sidebar-accent-foreground font-medium'
                       : 'text-sidebar-foreground hover:bg-sidebar-accent/60'}"
                   >
                     <span

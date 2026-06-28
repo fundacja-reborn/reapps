@@ -11,6 +11,10 @@
 :root {
   --accent: oklch(0.95 0 0);
   --sidebar-accent: oklch(0.95 0 0);
+  /* Selected/active list row — shared by note list, folder tree and tag list.
+     Must stay darker than the note list's hover (#e8e8e8) so the open item is
+     always distinct from a hovered one. */
+  --rn-list-row-active: #dcdcdc;
   --sidebar: oklch(0.98 0 0); /* very subtle gray — columns 1 & 2 */
   --icon-rail: oklch(0.98 0 0); /* slightly darker for icon rail */
   --tag-mix: 13%;
@@ -28,6 +32,7 @@
   --accent-foreground: oklch(0.87 0 0);
   --sidebar: oklch(0.17 0 0);
   --sidebar-accent: oklch(0.2 0 0);
+  --rn-list-row-active: oklch(0.44 0 0); /* lighter than note hover 0.371 */
   --icon-rail: oklch(0.12 0 0);
   --tag-mix: 18%;
   --tag-fg-mix: 55%;
@@ -151,17 +156,21 @@
     background-color: oklch(0.371 0 0);
   }
 
-  /* Open/active note — one step stronger than hover so the open note stays
-     distinct even while another row is hovered (resting < hover < active).
-     Listed after the hover rules so it wins on equal specificity. */
-  .note-item-bg.is-active,
-  .note-item-bg.is-active:hover {
-    background-color: #dadada;
+  /* Selected/active list row — shared by the note list, folder tree and tag
+     list so the open item looks the same everywhere (the var resolves per
+     theme). One step stronger than each list's hover (resting < hover < active)
+     so the open item stays distinct even while another row is hovered. */
+  .list-row-active {
+    background-color: var(--rn-list-row-active);
   }
 
-  .dark .note-item-bg.is-active,
-  .dark .note-item-bg.is-active:hover {
-    background-color: oklch(0.44 0 0);
+  /* Notes own a `.note-item-bg:hover`, so the active shade needs equal
+     specificity and to come after it to win when the open note is also
+     hovered. Folder/tag rows swap classes on select (no hover rule on the
+     active row), so the plain `.list-row-active` above is enough for them. */
+  .note-item-bg.list-row-active,
+  .note-item-bg.list-row-active:hover {
+    background-color: var(--rn-list-row-active);
   }
 }
 

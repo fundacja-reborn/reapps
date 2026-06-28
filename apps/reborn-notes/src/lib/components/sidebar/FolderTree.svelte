@@ -432,7 +432,7 @@
               class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm
                 cursor-pointer transition-colors
                 {isActive
-                ? 'bg-accent text-accent-foreground font-medium'
+                ? 'list-row-active text-accent-foreground font-medium'
                 : 'text-foreground hover:bg-accent/50'}
                 {isDragTarget ? 'ring-1 ring-primary bg-accent/30' : ''}"
               style="padding-left: {depth * 0.75 + 0.5}rem"
