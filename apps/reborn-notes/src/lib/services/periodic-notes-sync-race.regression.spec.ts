@@ -15,25 +15,35 @@ import { resolve } from 'path';
  *
  * The fix gates `getOrCreateNote` over TWO windows:
  *   1. A pull is in flight (`isSyncing`): wait for it to settle (the flag clears
- *      in the pull's `finally`, after the last page is upserted), then re-resolve.
+ *      in the pull's `finally`, after the last page is upserted), then resolve.
  *   2. Cold login, pre-pull window (`lastSyncedAt === null`, not local-only, no
  *      pull in flight yet but one imminent): the layout's runSync does a settings
  *      round-trip + push BEFORE pulling, so `isSyncing` is still false. Ensure a
  *      pull completes first via the single-flight `pullFromServer` (joins the
- *      imminent/in-flight pull, no extra round-trip), then re-resolve.
- * Only after both windows still miss do we create.
+ *      imminent/in-flight pull, no extra round-trip), then resolve.
  *
- * THIRD window (the one the first two fixes missed; smoke 2026-06-28): the
- * duplicate reproduced "directly after Synced", with isSyncing false AND
- * lastSyncedAt non-null - so neither gate window was open. Root cause was not in
- * the resolver at all but in `noteIndex.rebuild()`: it did `this._map.clear()`
- * before an async `build()` that yields between decrypt batches, leaving the
- * index observably EMPTY for the whole rebuild. `refreshStoresAfterPull` runs
- * that rebuild immediately after the pull flips lastSyncedAt -> "Synced", so a
- * periodic-note open in the gap saw zero notes and duplicated today's note. The
- * structural fix is in note-index.svelte.ts: rebuild() must delegate to build()
- * (which swaps a fresh Map in atomically) and never pre-clear. The two test
- * blocks below pin BOTH layers - the resolver gate and the atomic rebuild.
+ * THIRD window (smoke 2026-06-28): the duplicate reproduced "directly after
+ * Synced", with isSyncing false AND lastSyncedAt non-null - so neither gate
+ * window was open. Root cause was not in the resolver but in
+ * `noteIndex.rebuild()`: it did `this._map.clear()` before an async `build()`
+ * that yields between decrypt batches, leaving the index observably EMPTY for the
+ * whole rebuild. `refreshStoresAfterPull` runs that rebuild right after the pull
+ * flips lastSyncedAt -> "Synced", so a periodic-note open in the gap saw zero
+ * notes and duplicated today's note. The structural fix is in note-index.svelte.ts:
+ * rebuild() must delegate to build() (atomic Map swap) and never pre-clear.
+ *
+ * FOURTH window (smoke 2026-06-28, the real one): what was duplicating was not the
+ * NOTE but the FOLDER. `getOrCreateNote` ran `ensureFolder` BEFORE the gate, and
+ * `ensureFolder` resolves the periodic folder against the in-memory `foldersStore`
+ * - which a cold login leaves EMPTY (logout clears IndexedDB *and* settings; the
+ * pull writes folders to IndexedDB but does NOT refresh the in-memory foldersStore
+ * until refreshStoresAfterPull, AFTER the pull). So a click mid-pull saw no folder,
+ * minted a DUPLICATE one, persisted it as settings.folderId, and the note landed
+ * there - which also defeats post-sync note-dedup (it groups by folderId). The fix
+ * moves the gate to the TOP of getOrCreateNote (before ensureFolder) and refreshes
+ * foldersStore from the now-complete IndexedDB once the pull settles, so the folder
+ * is resolved against real data. The first test block below pins this ordering;
+ * the second pins the atomic rebuild.
  *
  * Source-level, like notes-sync.regression.spec.ts: periodic-notes.service pulls
  * in browser-only modules (cryptoManager, reactive stores) that are impractical
@@ -87,24 +97,46 @@ describe('periodic notes - resolver/sync race (PR #356 regression)', () => {
     expect(body).toMatch(/await\s+pullFromServer\(\)/);
   });
 
-  it('both windows re-resolve against the index AFTER settling and create only if still absent', () => {
+  it('gates BEFORE resolving the folder: ensureFolder runs after both settle windows', () => {
     const body = getOrCreateNoteBody();
-
-    const firstResolve = body.indexOf('findExistingPeriodicNote');
-    // The gate settles via either window before the second resolve.
     const inFlightWait = body.search(/await\s+whenFalsy\(\s*isSyncing\s*\)/);
     const coldWait = body.search(/await\s+pullFromServer\(\)/);
-    const createIdx = body.indexOf('createNote(');
-    // The re-resolve sits after BOTH window awaits (it's guarded by a `settled`
-    // flag set in either branch), and before create.
-    const lastWait = Math.max(inFlightWait, coldWait);
-    const secondResolve = body.indexOf('findExistingPeriodicNote', lastWait);
+    const ensureIdx = body.indexOf('ensureFolder(');
+    expect(inFlightWait).toBeGreaterThan(-1);
+    expect(coldWait).toBeGreaterThan(-1);
+    expect(ensureIdx).toBeGreaterThan(-1);
+    // ensureFolder() CREATES a folder when it can't find one, so it must not run
+    // until the pull has settled - otherwise it resolves against the empty
+    // pre-pull foldersStore and mints a duplicate periodic folder (the 2026-06-28
+    // bug). Both settle windows therefore precede it in source order.
+    expect(ensureIdx).toBeGreaterThan(inFlightWait);
+    expect(ensureIdx).toBeGreaterThan(coldWait);
+  });
 
-    expect(firstResolve).toBeGreaterThan(-1);
-    expect(inFlightWait).toBeGreaterThan(firstResolve);
-    expect(coldWait).toBeGreaterThan(firstResolve);
-    expect(secondResolve).toBeGreaterThan(lastWait);
-    expect(createIdx).toBeGreaterThan(secondResolve);
+  it('refreshes foldersStore after settling and before ensureFolder', () => {
+    const body = getOrCreateNoteBody();
+    const refreshIdx = body.search(/await\s+foldersStore\.refresh\(\)/);
+    const lastWait = Math.max(
+      body.search(/await\s+whenFalsy\(\s*isSyncing\s*\)/),
+      body.search(/await\s+pullFromServer\(\)/)
+    );
+    const ensureIdx = body.indexOf('ensureFolder(');
+    // The pull writes folders to IndexedDB but does NOT refresh the in-memory
+    // foldersStore; without this explicit refresh ensureFolder would still read
+    // the empty pre-pull snapshot. Refresh sits after the waits, before resolve.
+    expect(refreshIdx).toBeGreaterThan(lastWait);
+    expect(ensureIdx).toBeGreaterThan(refreshIdx);
+  });
+
+  it('resolves the note and creates only after the folder is resolved', () => {
+    const body = getOrCreateNoteBody();
+    // Match the CALLS (trailing paren) so the doc-comment mentions of these names
+    // don't register as earlier occurrences.
+    const ensureIdx = body.indexOf('ensureFolder(');
+    const resolveIdx = body.indexOf('findExistingPeriodicNote(');
+    const createIdx = body.indexOf('createNote(');
+    expect(resolveIdx).toBeGreaterThan(ensureIdx);
+    expect(createIdx).toBeGreaterThan(resolveIdx);
   });
 });
 

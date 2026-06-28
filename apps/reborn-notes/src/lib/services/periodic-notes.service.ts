@@ -310,6 +310,47 @@ export async function getOrCreateNote(
   const kindCfg = settings[kind];
   const format = kindCfg.format || PERIODIC_NOTES_DEFAULT_FORMATS[kind];
 
+  // Settle the initial-sync window BEFORE resolving the folder, then refresh the
+  // folder store. Both `ensureFolder` and `findExistingPeriodicNote` resolve
+  // against the in-memory `foldersStore` / `noteIndex`, and on a cold login those
+  // start EMPTY: logout clears IndexedDB *and* settings, the stores are rebuilt
+  // from the empty DB, and the paginated pull writes the server's folders/notes
+  // to IndexedDB WITHOUT refreshing the in-memory `foldersStore` until
+  // `refreshStoresAfterPull` runs AFTER the whole pull. Resolving mid-pull meant
+  // `ensureFolder` could not see the real periodic folder and CREATED A DUPLICATE
+  // one (persisted as settings.folderId) - then every periodic note for the
+  // session landed there, which ALSO hides the copies from post-sync note-dedup
+  // (it groups by folderId). The note-resolution gate added in PR #356/#358 sat
+  // AFTER `ensureFolder`, so it never protected the folder. Gate first.
+  //
+  // Two windows (the same ones the old note-level gate covered):
+  //   1. A pull is in flight (isSyncing): wait it out. The flag clears in the
+  //      pull's `finally`, after the last page is upserted into IndexedDB.
+  //   2. Cold login, pre-pull window (lastSyncedAt null, not local-only): the
+  //      layout's runSync does a synced-settings round-trip + pushPendingItems
+  //      BEFORE pullFromServer, so isSyncing is still false here. Join the
+  //      imminent single-flight pull so folders/notes are in IndexedDB first.
+  let settled = false;
+  if (get(isSyncing)) {
+    await whenFalsy(isSyncing);
+    settled = true;
+  } else if (!get(localOnly) && get(lastSyncedAt) === null) {
+    try {
+      const { pullFromServer } = await import('$lib/services/notes-sync.service');
+      await pullFromServer();
+    } catch {
+      // Offline / transient: fall through and resolve against what we have. The
+      // post-sync dedup scan reconciles a rare duplicate once connectivity returns.
+    }
+    settled = true;
+  }
+  // The pull has written to IndexedDB, but the in-memory foldersStore may still be
+  // the empty pre-pull snapshot (refreshStoresAfterPull races the isSyncing flip).
+  // Refresh it from IndexedDB so `ensureFolder` adopts the real folder instead of
+  // minting a duplicate. `noteIndex` is populated incrementally during the pull,
+  // so a refresh there is unnecessary for `findExistingPeriodicNote` below.
+  if (settled) await foldersStore.refresh();
+
   const folderId = await ensureFolder(kind);
 
   // One-time backfill of legacy notes in this folder. Runs at most once per
@@ -329,47 +370,6 @@ export async function getOrCreateNote(
 
   const existing = await findExistingPeriodicNote(folderId, kind, anchorIso);
   if (existing) return { noteId: existing, created: false };
-
-  // A miss in the in-memory index is not authoritative until the server's notes
-  // for this session are actually paged in. The index is built incrementally
-  // during the paginated pull, and the keyset order (updated_at ASC) puts today's
-  // freshly-touched periodic note on the LAST page - so a premature miss would
-  // duplicate a note that's about to arrive. Two windows to cover:
-  //
-  //   1. A pull is in flight (isSyncing): today's note may still be on an
-  //      un-paged page. isSyncing clears in the pull's `finally`, AFTER the last
-  //      page is upserted into the index, so waiting it out is sufficient.
-  //   2. Cold login, pre-pull window: the index was just (re)built from an empty
-  //      IndexedDB and no pull is in flight YET, but one is imminent - the
-  //      layout's runSync does a synced-settings round-trip + pushPendingItems
-  //      BEFORE it calls pullFromServer, and lastSyncedAt is still null. isSyncing
-  //      is false here, so window 1 misses it; we'd create a duplicate of the
-  //      note the pull is about to deliver. Ensure a pull completes first.
-  //      pullFromServer is single-flight, so this JOINS the imminent/in-flight
-  //      pull rather than adding a round-trip, and the index is populated
-  //      incrementally, so the re-resolve below sees today's note. lastSyncedAt
-  //      flips non-null after the first success, so steady-state opens skip this.
-  //
-  // Re-resolve after settling; create only if still absent. Post-sync dedup
-  // (detectAndNotifyPeriodicDuplicates) stays the backstop for any residue.
-  let settled = false;
-  if (get(isSyncing)) {
-    await whenFalsy(isSyncing);
-    settled = true;
-  } else if (!get(localOnly) && get(lastSyncedAt) === null) {
-    try {
-      const { pullFromServer } = await import('$lib/services/notes-sync.service');
-      await pullFromServer();
-    } catch {
-      // Offline / transient: fall through and create now; the post-sync dedup
-      // scan reconciles a rare duplicate once connectivity returns.
-    }
-    settled = true;
-  }
-  if (settled) {
-    const after = await findExistingPeriodicNote(folderId, kind, anchorIso);
-    if (after) return { noteId: after, created: false };
-  }
 
   const noteId = await createNote(title, '', folderId, {
     periodic: { kind, anchor: anchorIso }
