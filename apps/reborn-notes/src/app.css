@@ -11,10 +11,12 @@
 :root {
   --accent: oklch(0.95 0 0);
   --sidebar-accent: oklch(0.95 0 0);
-  /* Selected/active list row — shared by note list, folder tree and tag list.
-     Must stay darker than the note list's hover (#e8e8e8) so the open item is
-     always distinct from a hovered one. */
-  --rn-list-row-active: #dcdcdc;
+  /* Selected/active list row — subtle background shared by note list, folder
+     tree and tag list (only a touch darker than a resting row). On note cards a
+     yellow left bracket (--rn-list-row-accent) carries the "open" signal, so the
+     background stays light instead of doing the work itself. */
+  --rn-list-row-active: #ededed;
+  --rn-list-row-accent: #f5c800; /* left accent bar on the active note card */
   --sidebar: oklch(0.98 0 0); /* very subtle gray — columns 1 & 2 */
   --icon-rail: oklch(0.98 0 0); /* slightly darker for icon rail */
   --tag-mix: 13%;
@@ -32,7 +34,7 @@
   --accent-foreground: oklch(0.87 0 0);
   --sidebar: oklch(0.17 0 0);
   --sidebar-accent: oklch(0.2 0 0);
-  --rn-list-row-active: oklch(0.44 0 0); /* lighter than note hover 0.371 */
+  --rn-list-row-active: oklch(0.32 0 0); /* subtle — lighter than the list bg; the yellow accent stays visible */
   --icon-rail: oklch(0.12 0 0);
   --tag-mix: 18%;
   --tag-fg-mix: 55%;
@@ -156,21 +158,24 @@
     background-color: oklch(0.371 0 0);
   }
 
-  /* Selected/active list row — shared by the note list, folder tree and tag
-     list so the open item looks the same everywhere (the var resolves per
-     theme). One step stronger than each list's hover (resting < hover < active)
-     so the open item stays distinct even while another row is hovered. */
+  /* Selected/active list row — subtle background shared by the note list,
+     folder tree and tag list (var resolves per theme) so the open item reads
+     the same everywhere. Folder/tag rows swap classes on select (no hover rule
+     on the active row), so this plain class is enough for them. */
   .list-row-active {
     background-color: var(--rn-list-row-active);
   }
 
-  /* Notes own a `.note-item-bg:hover`, so the active shade needs equal
-     specificity and to come after it to win when the open note is also
-     hovered. Folder/tag rows swap classes on select (no hover rule on the
-     active row), so the plain `.list-row-active` above is enough for them. */
+  /* Note cards add a left accent bar. It's an INSET box-shadow, not a border:
+     it's clipped to the card's border-radius (curves into the corners like a
+     bracket — no square "hooks") and doesn't touch the box model, so the title,
+     tags and date never shift. Scoped to note cards; folders/tags share only
+     the background above. The `.note-item-bg.list-row-active` pair also re-wins
+     the background over `.note-item-bg:hover` when the open note is hovered. */
   .note-item-bg.list-row-active,
   .note-item-bg.list-row-active:hover {
     background-color: var(--rn-list-row-active);
+    box-shadow: inset 3px 0 0 0 var(--rn-list-row-accent);
   }
 }
 
