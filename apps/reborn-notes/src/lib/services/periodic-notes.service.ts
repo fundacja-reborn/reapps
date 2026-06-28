@@ -37,7 +37,7 @@ import {
 import { foldersStore } from '$lib/stores/folders.store';
 import { notesStore } from '$lib/stores/notes.store';
 import { noteIndex } from '$lib/services/note-index.svelte';
-import { isSyncing } from '$lib/stores/sync-status.store';
+import { isSyncing, lastSyncedAt, localOnly } from '$lib/stores/sync-status.store';
 import { whenFalsy } from '$lib/utils/store-wait';
 import { getSetting } from '$lib/utils/app-settings';
 import { appSettings } from '$lib/stores/app-settings.store';
@@ -330,18 +330,45 @@ export async function getOrCreateNote(
   const existing = await findExistingPeriodicNote(folderId, kind, anchorIso);
   if (existing) return { noteId: existing, created: false };
 
-  // No match in the in-memory index - but the index is built incrementally
-  // during the initial paginated pull, and the keyset order (updated_at ASC)
-  // puts today's freshly-touched periodic note on the LAST page. A miss while a
-  // pull is still in flight may just mean "not paged in yet", not "doesn't
-  // exist": creating now would duplicate a note that's about to arrive. Wait
-  // for the pull to settle (index complete), then resolve once more before
-  // committing to a new note. Steady-state (no pull running) this is a no-op.
-  // Post-sync dedup (detectAndNotifyPeriodicDuplicates) remains the backstop.
+  // A miss in the in-memory index is not authoritative until the server's notes
+  // for this session are actually paged in. The index is built incrementally
+  // during the paginated pull, and the keyset order (updated_at ASC) puts today's
+  // freshly-touched periodic note on the LAST page - so a premature miss would
+  // duplicate a note that's about to arrive. Two windows to cover:
+  //
+  //   1. A pull is in flight (isSyncing): today's note may still be on an
+  //      un-paged page. isSyncing clears in the pull's `finally`, AFTER the last
+  //      page is upserted into the index, so waiting it out is sufficient.
+  //   2. Cold login, pre-pull window: the index was just (re)built from an empty
+  //      IndexedDB and no pull is in flight YET, but one is imminent - the
+  //      layout's runSync does a synced-settings round-trip + pushPendingItems
+  //      BEFORE it calls pullFromServer, and lastSyncedAt is still null. isSyncing
+  //      is false here, so window 1 misses it; we'd create a duplicate of the
+  //      note the pull is about to deliver. Ensure a pull completes first.
+  //      pullFromServer is single-flight, so this JOINS the imminent/in-flight
+  //      pull rather than adding a round-trip, and the index is populated
+  //      incrementally, so the re-resolve below sees today's note. lastSyncedAt
+  //      flips non-null after the first success, so steady-state opens skip this.
+  //
+  // Re-resolve after settling; create only if still absent. Post-sync dedup
+  // (detectAndNotifyPeriodicDuplicates) stays the backstop for any residue.
+  let settled = false;
   if (get(isSyncing)) {
     await whenFalsy(isSyncing);
-    const afterSync = await findExistingPeriodicNote(folderId, kind, anchorIso);
-    if (afterSync) return { noteId: afterSync, created: false };
+    settled = true;
+  } else if (!get(localOnly) && get(lastSyncedAt) === null) {
+    try {
+      const { pullFromServer } = await import('$lib/services/notes-sync.service');
+      await pullFromServer();
+    } catch {
+      // Offline / transient: fall through and create now; the post-sync dedup
+      // scan reconciles a rare duplicate once connectivity returns.
+    }
+    settled = true;
+  }
+  if (settled) {
+    const after = await findExistingPeriodicNote(folderId, kind, anchorIso);
+    if (after) return { noteId: after, created: false };
   }
 
   const noteId = await createNote(title, '', folderId, {
