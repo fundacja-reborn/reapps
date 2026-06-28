@@ -773,7 +773,7 @@
     "option_markdown_description": "Rohe Marker wie ** # [Text](Link) bleiben sichtbar. Für Nutzer, die volle Kontrolle über die Syntax wollen.",
     "recommended": "Empfohlen",
     "hint_switch_before_icon": "Du kannst den Modus jederzeit über die",
-    "hint_switch_after_icon": "Schaltfläche in der Notiz-Kopfzeile oder in Einstellungen → Darstellung wechseln.",
+    "hint_switch_after_icon": "Schaltfläche in der Notiz-Kopfzeile oder in Einstellungen → Verhalten wechseln.",
     "continue_button": "Loslegen"
   },
   "save_status": {
@@ -807,7 +807,7 @@
     },
     "behavior": {
       "title": "Verhalten",
-      "hub_desc": "Wie Notizen geöffnet werden, Löschbestätigung",
+      "hub_desc": "Wie Notizen geöffnet werden, Bearbeitungsmodus, Löschbestätigung",
       "open_mode": "Notizen öffnen in",
       "open_mode_desc": "Ansicht, in der eine vorhandene Notiz beim Auswählen geöffnet wird. Neue Notizen öffnen sich immer bearbeitungsbereit.",
       "open_mode_preview": "Vorschau (schreibgeschützt)",
@@ -815,6 +815,11 @@
       "open_mode_split": "Geteilt (Bearbeiten und Vorschau)",
       "open_mode_device_hint": "Gilt nur für dieses Gerät",
       "open_mode_updated": "Standard-Öffnungsmodus aktualisiert",
+      "editor_mode": "Bearbeitungsmodus",
+      "editor_mode_desc": "Wie Markdown beim Bearbeiten einer Notiz angezeigt wird",
+      "editor_mode_markdown": "Markdown (gesamte Syntax anzeigen)",
+      "editor_mode_live": "Live-Vorschau (Syntax außerhalb des Cursors ausblenden)",
+      "editor_mode_updated": "Bearbeitungsmodus aktualisiert",
       "confirm_delete": "Vor dem Löschen bestätigen",
       "confirm_delete_desc": "Vor dem Verschieben einer Notiz in den Papierkorb nachfragen. Notizen im Papierkorb können wiederhergestellt werden, werden aber nach 30 Tagen endgültig gelöscht.",
       "confirm_delete_on": "Bestätigung ein",
@@ -843,12 +848,7 @@
       "image_loading_always": "Immer automatisch laden",
       "image_loading_never": "Externe Bilder niemals laden",
       "image_loading_updated": "Einstellung zum Laden von Bildern aktualisiert",
-      "image_loading_warning": "Das automatische Laden von Bildern kann Ihre IP-Adresse gegenüber externen Servern offenlegen",
-      "editor_mode": "Bearbeitungsmodus",
-      "editor_mode_desc": "Wie Markdown beim Bearbeiten einer Notiz angezeigt wird",
-      "editor_mode_markdown": "Markdown (gesamte Syntax anzeigen)",
-      "editor_mode_live": "Live-Vorschau (Syntax außerhalb des Cursors ausblenden)",
-      "editor_mode_updated": "Bearbeitungsmodus aktualisiert"
+      "image_loading_warning": "Das automatische Laden von Bildern kann Ihre IP-Adresse gegenüber externen Servern offenlegen"
     },
     "security": {
       "title": "Sicherheit",

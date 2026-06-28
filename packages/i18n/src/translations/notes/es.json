@@ -773,7 +773,7 @@
     "option_markdown_description": "Los marcadores en bruto como ** # [texto](enlace) permanecen visibles. Para usuarios que prefieren control total sobre la sintaxis.",
     "recommended": "Recomendado",
     "hint_switch_before_icon": "Puedes cambiar el modo en cualquier momento con el botón",
-    "hint_switch_after_icon": "en el encabezado de la nota o en Ajustes → Apariencia.",
+    "hint_switch_after_icon": "en el encabezado de la nota o en Ajustes → Comportamiento.",
     "continue_button": "Empezar"
   },
   "save_status": {
@@ -807,7 +807,7 @@
     },
     "behavior": {
       "title": "Comportamiento",
-      "hub_desc": "Cómo se abren las notas, confirmación de eliminación",
+      "hub_desc": "Cómo se abren las notas, modo de edición, confirmación de eliminación",
       "open_mode": "Abrir las notas en",
       "open_mode_desc": "Vista en la que se abre una nota existente al seleccionarla. Las notas nuevas siempre se abren listas para editar.",
       "open_mode_preview": "Vista previa (solo lectura)",
@@ -815,6 +815,11 @@
       "open_mode_split": "Dividido (edición y vista previa)",
       "open_mode_device_hint": "Se aplica solo a este dispositivo",
       "open_mode_updated": "Modo de apertura predeterminado actualizado",
+      "editor_mode": "Modo de edición",
+      "editor_mode_desc": "Cómo se muestra Markdown mientras editas una nota",
+      "editor_mode_markdown": "Markdown (mostrar toda la sintaxis)",
+      "editor_mode_live": "Vista previa en vivo (ocultar sintaxis fuera del cursor)",
+      "editor_mode_updated": "Modo de edición actualizado",
       "confirm_delete": "Confirmar antes de eliminar",
       "confirm_delete_desc": "Preguntar antes de mover una nota a la Papelera. Las notas en la Papelera se pueden restaurar, pero se eliminan definitivamente después de 30 días.",
       "confirm_delete_on": "Confirmación activada",
@@ -843,12 +848,7 @@
       "image_loading_always": "Cargar siempre automáticamente",
       "image_loading_never": "Nunca cargar imágenes externas",
       "image_loading_updated": "Configuración de carga de imágenes actualizada",
-      "image_loading_warning": "Cargar imágenes automáticamente puede revelar su dirección IP a servidores externos",
-      "editor_mode": "Modo de edición",
-      "editor_mode_desc": "Cómo se muestra Markdown mientras editas una nota",
-      "editor_mode_markdown": "Markdown (mostrar toda la sintaxis)",
-      "editor_mode_live": "Vista previa en vivo (ocultar sintaxis fuera del cursor)",
-      "editor_mode_updated": "Modo de edición actualizado"
+      "image_loading_warning": "Cargar imágenes automáticamente puede revelar su dirección IP a servidores externos"
     },
     "security": {
       "title": "Seguridad",

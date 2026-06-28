@@ -773,7 +773,7 @@
     "option_markdown_description": "Raw markers like ** # [text](link) stay visible. For users who prefer full control over the syntax.",
     "recommended": "Recommended",
     "hint_switch_before_icon": "You can switch modes any time using the",
-    "hint_switch_after_icon": "button in the note header or in Settings → Appearance.",
+    "hint_switch_after_icon": "button in the note header or in Settings → Behavior.",
     "continue_button": "Get started"
   },
   "save_status": {
@@ -807,7 +807,7 @@
     },
     "behavior": {
       "title": "Behavior",
-      "hub_desc": "How notes open, delete confirmation",
+      "hub_desc": "How notes open, editor mode, delete confirmation",
       "open_mode": "Open notes in",
       "open_mode_desc": "Which view an existing note opens in when you select it. New notes always open ready to edit.",
       "open_mode_preview": "Preview (read-only)",
@@ -815,6 +815,11 @@
       "open_mode_split": "Split (edit and preview)",
       "open_mode_device_hint": "Applies to this device only",
       "open_mode_updated": "Default open mode updated",
+      "editor_mode": "Editor mode",
+      "editor_mode_desc": "How Markdown is shown while you edit a note",
+      "editor_mode_markdown": "Markdown (show all syntax)",
+      "editor_mode_live": "Live preview (hide syntax outside cursor)",
+      "editor_mode_updated": "Editor mode updated",
       "confirm_delete": "Confirm before deleting",
       "confirm_delete_desc": "Ask before moving a note to Trash. Notes in Trash can be restored, but are permanently deleted after 30 days.",
       "confirm_delete_on": "Confirmation on",
@@ -843,12 +848,7 @@
       "image_loading_always": "Always load automatically",
       "image_loading_never": "Never load external images",
       "image_loading_updated": "Image loading setting updated",
-      "image_loading_warning": "Loading images automatically may reveal your IP address to external servers",
-      "editor_mode": "Editor mode",
-      "editor_mode_desc": "How Markdown is shown while you edit a note",
-      "editor_mode_markdown": "Markdown (show all syntax)",
-      "editor_mode_live": "Live preview (hide syntax outside cursor)",
-      "editor_mode_updated": "Editor mode updated"
+      "image_loading_warning": "Loading images automatically may reveal your IP address to external servers"
     },
     "security": {
       "title": "Security",
