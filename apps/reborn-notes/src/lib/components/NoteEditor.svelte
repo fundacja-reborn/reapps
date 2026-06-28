@@ -24,7 +24,7 @@
     rebuildLivePreview,
     registerCodeBlockView
   } from '$lib/editor/live-preview';
-  import { editorMode } from '$lib/stores/app-settings.store';
+  import { effectiveEditorMode } from '$lib/stores/app-settings.store';
   import type { ImageLoadMode } from '@reborn/storage';
   import { isDataUri } from '$lib/utils/markdown-sanitizer';
   import { copyText } from '$lib/utils/clipboard';
@@ -515,7 +515,7 @@
         placeholderCompartment.of(placeholderExt(placeholder)),
         autocompleteCompartment.of(noteLinkAutocomplete(() => availableNotes, currentNoteId)),
         livePreviewCompartment.of(
-          $editorMode === 'live' && !splitView
+          $effectiveEditorMode === 'live' && !splitView
             ? createLivePreviewExtension(livePreviewOptions(imageLoadMode))
             : []
         ),
@@ -728,15 +728,15 @@
   });
 
   // Sync editor mode (markdown ↔ live preview) AND image-loading preference.
-  // Both `$editorMode` and `imageLoadMode` are read into local consts before
-  // the dispatch — explicit reads with side-effecting bindings can't be
+  // Both `$effectiveEditorMode` and `imageLoadMode` are read into local consts
+  // before the dispatch — explicit reads with side-effecting bindings can't be
   // optimised out, guaranteeing Svelte tracks them as deps. Toggling either
-  // setting reconfigures the compartment and `ImageWidget` re-renders
-  // without a remount. In split view the right pane already renders the
-  // preview, so the editor pane always shows raw Markdown regardless of
-  // editorMode.
+  // setting (or the per-note mode override) reconfigures the compartment and
+  // `ImageWidget` re-renders without a remount. In split view the right pane
+  // already renders the preview, so the editor pane always shows raw Markdown
+  // regardless of editor mode.
   $effect(() => {
-    const mode = $editorMode;
+    const mode = $effectiveEditorMode;
     const currentImageMode = imageLoadMode;
     const live = mode === 'live' && !splitView;
     view?.dispatch({
