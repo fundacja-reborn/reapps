@@ -363,7 +363,7 @@
             {...props}
             type="button"
             onclick={onNewNote}
-            class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg text-sidebar-foreground
+            class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg text-muted-foreground
                    hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
             aria-label={$t('nav.new_note')}
           >
