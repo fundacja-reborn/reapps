@@ -334,6 +334,7 @@
     "folder_name_placeholder": "Ordnernamen eingeben",
     "create_subfolder": "Unterordner erstellen",
     "new_subfolder": "Neuer Unterordner",
+    "new_note_here": "Neue Notiz in diesem Ordner",
     "sync_now": "Jetzt synchronisieren",
     "sync_done": "Ordner synchronisiert",
     "synced_folder": "Synchronisierter Ordner",

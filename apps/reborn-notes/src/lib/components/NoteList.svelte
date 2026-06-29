@@ -4,6 +4,7 @@
   import { SvelteSet } from 'svelte/reactivity';
   import {
     ArrowLeft,
+    FilePlus,
     FolderPlus,
     FolderSync,
     RefreshCw,
@@ -778,6 +779,18 @@
         </button>
       {/if}
 
+      {#if activeFolder}
+        <button
+          type="button"
+          onclick={handleCreate}
+          title={$t('folders.new_note_here')}
+          aria-label={$t('folders.new_note_here')}
+          class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <FilePlus class={headerIconClass} />
+        </button>
+      {/if}
+
       {#if onNewSubfolder}
         <button
           type="button"
@@ -795,6 +808,7 @@
           folder={activeFolder}
           buttonClass={headerBtnClass}
           iconClass={headerIconClass}
+          onNewNote={handleCreate}
           onNewSubfolder={onNewSubfolder}
           onStartRename={startActiveFolderRename}
           onAfterDelete={onback}

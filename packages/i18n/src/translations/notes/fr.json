@@ -334,6 +334,7 @@
     "folder_name_placeholder": "Saisissez le nom du dossier",
     "create_subfolder": "Créer un sous-dossier",
     "new_subfolder": "Nouveau sous-dossier",
+    "new_note_here": "Nouvelle note dans ce dossier",
     "sync_now": "Synchroniser maintenant",
     "sync_done": "Dossier synchronisé",
     "synced_folder": "Dossier synchronisé",

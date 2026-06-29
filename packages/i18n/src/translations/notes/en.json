@@ -334,6 +334,7 @@
     "folder_name_placeholder": "Enter folder name",
     "create_subfolder": "Create Subfolder",
     "new_subfolder": "New subfolder",
+    "new_note_here": "New note in this folder",
     "sync_now": "Sync now",
     "sync_done": "Folder synced",
     "synced_folder": "Synced folder",

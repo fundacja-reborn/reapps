@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     MoreVertical,
+    FilePlus,
     FolderPlus,
     FolderInput,
     Pencil,
@@ -36,6 +37,7 @@
     buttonClass = 'h-9 w-9',
     iconClass = 'h-4 w-4',
     align = 'end',
+    onNewNote,
     onNewSubfolder,
     onStartRename,
     onAfterDelete
@@ -44,6 +46,8 @@
     buttonClass?: string;
     iconClass?: string;
     align?: 'end' | 'start' | 'center';
+    /** Shows "New note in this folder" item only when provided. */
+    onNewNote?: () => void;
     /** Shows "New subfolder" item only when provided. */
     onNewSubfolder?: () => void;
     /** Parent owns the rename UI (e.g. inline input). */
@@ -84,6 +88,11 @@
 
   function openSheet() {
     sheetOpen = true;
+  }
+
+  function handleNewNote() {
+    sheetOpen = false;
+    onNewNote?.();
   }
 
   function handleNewSubfolder() {
@@ -171,6 +180,12 @@
           </DropdownMenuItem>
           <DropdownMenuSeparator />
         {/if}
+        {#if onNewNote}
+          <DropdownMenuItem onclick={handleNewNote}>
+            <FilePlus class="h-3.5 w-3.5" />
+            {$t('folders.new_note_here')}
+          </DropdownMenuItem>
+        {/if}
         {#if onNewSubfolder}
           <DropdownMenuItem onclick={handleNewSubfolder}>
             <FolderPlus class="h-3.5 w-3.5" />
@@ -213,6 +228,12 @@
         <Button variant="ghost" class="w-full justify-start" onclick={handleSyncNow}>
           <RefreshCw class="mr-2 h-4 w-4" />
           {$t('folders.sync_now')}
+        </Button>
+      {/if}
+      {#if onNewNote}
+        <Button variant="ghost" class="w-full justify-start" onclick={handleNewNote}>
+          <FilePlus class="mr-2 h-4 w-4" />
+          {$t('folders.new_note_here')}
         </Button>
       {/if}
       {#if onNewSubfolder}
