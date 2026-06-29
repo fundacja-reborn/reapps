@@ -54,9 +54,9 @@ const DEFAULT_OPTIONS: BuildDecorationsOptions = {
   tocLabels: { refresh: 'Refresh', stale: 'Out of date - refresh', remove: 'Remove' },
   headingLinkLabel: 'Copy link to heading',
   tableLabels: {
-    alignLeft: 'Align left',
-    alignCenter: 'Align center',
-    alignRight: 'Align right',
+    alignLeft: 'Align column left',
+    alignCenter: 'Align column center',
+    alignRight: 'Align column right',
     insertColumnLeft: 'Insert column left',
     insertColumnRight: 'Insert column right',
     deleteColumn: 'Delete column',

@@ -905,6 +905,7 @@ export class TableWidget extends WidgetType {
     if (!active || !wrap || !activeCellEl) {
       colbar.style.display = 'none';
       rowbar.style.display = 'none';
+      this.setColumnHighlight(outer, null);
       return;
     }
 
@@ -937,6 +938,7 @@ export class TableWidget extends WidgetType {
     if (cellRect.right <= wrapRect.left + 1 || cellRect.left >= wrapRect.right - 1) {
       colbar.style.display = 'none';
       rowbar.style.display = 'none';
+      this.setColumnHighlight(outer, null);
       return;
     }
 
@@ -971,6 +973,28 @@ export class TableWidget extends WidgetType {
     rowTop = Math.max(vpTop, Math.min(rowTop, vpBottom - rowH));
     rowbar.style.left = `${Math.round(rowLeft - outerRect.left)}px`;
     rowbar.style.top = `${Math.round(rowTop - outerRect.top)}px`;
+
+    // Tint the whole active column so the column-scoped buttons (alignment,
+    // insert-column, delete-column) visibly act on the column, not just the cell.
+    this.setColumnHighlight(outer, active.col);
+  }
+
+  /**
+   * Tint every cell of the active column (header + body) while its column bar is
+   * visible, signalling that alignment / insert-column / delete-column act on the
+   * whole column - GFM stores alignment per column (in the delimiter row), never
+   * per cell. Idempotent: clears the previous highlight first, so it stays
+   * correct across the widget's ephemeral `toDOM`/`updateDOM` instances. Pass
+   * `col === null` to clear (bars hidden / no active cell).
+   */
+  private setColumnHighlight(outer: HTMLElement, col: number | null): void {
+    outer
+      .querySelectorAll<HTMLElement>('.cm-lp-col-active')
+      .forEach((el) => el.classList.remove('cm-lp-col-active'));
+    if (col === null) return;
+    outer
+      .querySelectorAll<HTMLElement>(`[data-col="${col}"]`)
+      .forEach((el) => el.classList.add('cm-lp-col-active'));
   }
 
   private setBtnActive(bar: HTMLElement, sel: string, on: boolean): void {

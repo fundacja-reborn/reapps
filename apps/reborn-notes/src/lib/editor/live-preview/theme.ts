@@ -573,6 +573,14 @@ export const livePreviewTheme = EditorView.theme({
     boxShadow: 'inset 0 0 0 2px var(--ring, var(--primary))',
     backgroundColor: 'color-mix(in srgb, var(--primary) 8%, transparent)'
   },
+  // Active-column tint, shown while the column bar is visible so alignment /
+  // insert-column / delete-column read as column-scoped (GFM alignment is
+  // per-column, never per-cell). Specificity (0,2,0) sits above the base th
+  // `--muted` background (0,1,1) but below `:focus` (0,2,1), so the focused cell
+  // keeps its stronger ring + tint.
+  '.cm-lp-table .cm-lp-col-active': {
+    backgroundColor: 'color-mix(in srgb, var(--primary) 6%, transparent)'
+  },
 
   // ─── Table structural mini-toolbar (Obsidian-style) ───────────
   // The outer is a non-clipping positioning context for the two floating bars.

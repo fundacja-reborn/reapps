@@ -74,9 +74,9 @@ const DEFAULT_TOC_LABELS: TocWidgetLabels = {
 const DEFAULT_HEADING_LINK_LABEL = 'Copy link to heading';
 
 const DEFAULT_TABLE_LABELS: TableWidgetLabels = {
-  alignLeft: 'Align left',
-  alignCenter: 'Align center',
-  alignRight: 'Align right',
+  alignLeft: 'Align column left',
+  alignCenter: 'Align column center',
+  alignRight: 'Align column right',
   insertColumnLeft: 'Insert column left',
   insertColumnRight: 'Insert column right',
   deleteColumn: 'Delete column',
