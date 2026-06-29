@@ -36,9 +36,7 @@
     UserPlus,
     LogIn,
     Lock,
-    Loader2,
-    PanelLeftClose,
-    PanelLeftOpen
+    Loader2
   } from '@lucide/svelte';
   import * as Tooltip from '@reborn/ui/components/tooltip';
   import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
@@ -64,9 +62,7 @@
     onPeriodic,
     pendingKind = null,
     horizontal = false,
-    alwaysVisible = false,
-    ontogglepanel,
-    panelCollapsed = false
+    alwaysVisible = false
   }: {
     activeSection?: Section;
     onNewNote?: () => void;
@@ -81,11 +77,6 @@
     horizontal?: boolean;
     /** Show icon rail regardless of breakpoint (for mobile master-detail layout) */
     alwaysVisible?: boolean;
-    /** Desktop only: toggle the note-list panel collapsed/expanded. When omitted
-     *  (mobile master-detail), the toggle button is not rendered. */
-    ontogglepanel?: () => void;
-    /** Whether the note-list panel is currently collapsed (drives the toggle's icon/label). */
-    panelCollapsed?: boolean;
   } = $props();
 
   const isMobileQuery = useIsMobile();
@@ -327,34 +318,6 @@
     style="background-color: var(--icon-rail); padding-top: calc(0.5rem + env(safe-area-inset-top, 0px)); padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));"
     aria-label={$t('nav.main_navigation')}
   >
-    <!-- Note-list panel toggle (desktop only; omitted in mobile master-detail) -->
-    {#if ontogglepanel}
-      <Tooltip.Root>
-        <Tooltip.Trigger>
-          {#snippet child({ props })}
-            <button
-              {...props}
-              type="button"
-              onclick={ontogglepanel}
-              class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg text-muted-foreground
-                     hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-              aria-label={panelCollapsed ? $t('nav.show_note_list') : $t('nav.hide_note_list')}
-              aria-pressed={!panelCollapsed}
-            >
-              {#if panelCollapsed}
-                <PanelLeftOpen class="h-6 w-6 md:h-5 md:w-5" />
-              {:else}
-                <PanelLeftClose class="h-6 w-6 md:h-5 md:w-5" />
-              {/if}
-            </button>
-          {/snippet}
-        </Tooltip.Trigger>
-        <Tooltip.Content side="right" sideOffset={6}>
-          {panelCollapsed ? $t('nav.show_note_list') : $t('nav.hide_note_list')}
-        </Tooltip.Content>
-      </Tooltip.Root>
-    {/if}
-
     <!-- New note -->
     <Tooltip.Root>
       <Tooltip.Trigger>

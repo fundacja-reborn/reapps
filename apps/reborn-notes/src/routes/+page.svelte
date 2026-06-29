@@ -123,6 +123,13 @@
   let lastVisitedFolderId = $state<string | null>(null);
   const activeStarred = $derived(activeSection === 'starred');
   const activeTrash = $derived(activeSection === 'trash');
+
+  // The note-list collapse is a focus affordance for an OPEN note. With no note
+  // in the main pane (e.g. right after clicking a rail section, which clears
+  // activeNoteId), a collapsed list would leave an empty pane - so the panel
+  // always returns when no note is open. The collapse toggle lives in the note
+  // header (present only with a note open), not the always-visible rail.
+  const panelCollapsedEffective = $derived($noteListCollapsed && $activeNoteId != null);
   const activeFolderSubfolders = $derived(
     activeSection === 'folders' && activeFolderId
       ? findChildrenOfParent($foldersStore, activeFolderId)
@@ -2254,7 +2261,7 @@
        visible area exactly as the old vv.height pin did. -->
   <SidebarProvider
     class="bg-sidebar overflow-hidden"
-    open={!$noteListCollapsed}
+    open={!panelCollapsedEffective}
     onOpenChange={(o) => devicePrefs.setNoteListCollapsed(!o)}
     style="height: calc(100dvh - var(--rn-banner-h, 0px) - var(--rn-keyboard-inset, 0px)); min-height: 0; --sidebar-width: 24rem;"
   >
@@ -2268,15 +2275,13 @@
       onsectionclick={handleSectionClick}
       onPeriodic={handlePeriodic}
       pendingKind={periodicPendingKind}
-      panelCollapsed={$noteListCollapsed}
-      ontogglepanel={() => devicePrefs.toggleNoteList()}
     />
 
     <!-- ── Note-list panel (collapsible). Outer div animates width; the inner
          keeps a fixed 24rem width so its content never reflows mid-slide. ── -->
     <div
       class="shrink-0 overflow-hidden transition-[width] duration-200 ease-linear"
-      style="width: {$noteListCollapsed ? '0px' : '24rem'}"
+      style="width: {panelCollapsedEffective ? '0px' : '24rem'}"
     >
       <div class="flex h-full w-96 flex-col min-w-0 overflow-hidden bg-sidebar">
         <SidebarHeader class="border-b p-0 gap-0">
@@ -2364,8 +2369,8 @@
          inlined here and the left margin follows the panel's collapsed state). ── -->
     <main
       class="bg-background relative flex flex-1 flex-col min-w-0 overflow-hidden my-2 mr-2 rounded-xl shadow-sm"
-      class:ml-0={!$noteListCollapsed}
-      class:ml-2={$noteListCollapsed}
+      class:ml-0={!panelCollapsedEffective}
+      class:ml-2={panelCollapsedEffective}
     >
       {#if $activeNoteId}
         {#if historyMode === 'diff' && selectedVersion}
@@ -2421,6 +2426,8 @@
             {forwardNoteTitle}
             onnotehistoryback={goBackNote}
             onnotehistoryforward={goForwardNote}
+            noteListCollapsed={$noteListCollapsed}
+            onToggleNoteList={() => devicePrefs.toggleNoteList()}
             onback={() => activeNoteId.set(null)}
             onshowxray={() => {
               showEncryptionXRay = true;
