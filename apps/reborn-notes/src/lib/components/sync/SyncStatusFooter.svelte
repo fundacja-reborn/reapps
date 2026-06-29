@@ -22,6 +22,8 @@
     requestFullReconcileNextPull
   } from '$lib/services/notes-sync.service';
   import { t } from '$lib/stores/i18n.store';
+  import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
+  import { formatSyncTimestamp } from '$lib/utils/date-format';
 
   let manualSyncing = $state(false);
 
@@ -124,16 +126,6 @@
     }
   }
 
-  function formatTime(iso: string | null): string | null {
-    if (!iso) return null;
-    try {
-      const d = new Date(iso);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return null;
-    }
-  }
-
   let Icon = $derived(getIcon($syncStatus.status));
   // Reactive to $syncProgress: getLabel reads it in the 'syncing' case, so the
   // counter ("Syncing notes… 320/2000") updates as pages land.
@@ -147,7 +139,13 @@
       !manualSyncing
   );
   let isSessionExpired = $derived($syncStatus.status === 'session_expired');
-  let timeStr = $derived(formatTime($syncStatus.lastSyncedAt));
+  // Honors the user's 12h/24h and date-format settings; same-day syncs show
+  // just the time, earlier ones add the date (issue #376).
+  let timeStr = $derived(
+    $syncStatus.lastSyncedAt
+      ? formatSyncTimestamp($syncStatus.lastSyncedAt, $dateFormat, $timeFormat)
+      : null
+  );
 </script>
 
 <div

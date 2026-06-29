@@ -10,6 +10,7 @@
     RefreshCw,
     Trash2,
     Search,
+    Info,
     X,
     Pin,
     PinOff,
@@ -968,6 +969,18 @@
     {searchOnly}
     onsavesearch={isTrash ? undefined : () => (saveSearchDialogOpen = true)}
   />
+
+  <!-- Trash retention notice: trashed notes are auto-purged after 30 days
+       (cleanTrash(30) in hooks.client.ts). Pinned above the list so the policy
+       is visible whether trash is full or empty. -->
+  {#if isTrash}
+    <div
+      class="flex items-start gap-1.5 border-b px-4 py-2 text-[11px] leading-snug text-muted-foreground"
+    >
+      <Info class="mt-px h-3.5 w-3.5 shrink-0" />
+      <span>{$t('trash.auto_delete_notice', { values: { days: 30 } })}</span>
+    </div>
+  {/if}
 
   <!-- Notes list -->
   <div class="flex-1 overflow-y-auto px-3">

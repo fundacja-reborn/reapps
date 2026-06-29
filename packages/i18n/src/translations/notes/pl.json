@@ -126,6 +126,8 @@
     "user_menu": "Menu użytkownika",
     "main_navigation": "Nawigacja główna",
     "notes_navigation": "Nawigacja notatek",
+    "show_note_list": "Pokaż listę notatek",
+    "hide_note_list": "Ukryj listę notatek",
     "e2ee_account": "Konto E2EE",
     "reborn_account": "Konto Reborn",
     "log_out": "Wyloguj się",
@@ -642,6 +644,7 @@
     "restore": "Przywróć",
     "delete_permanently": "Usuń trwale",
     "days_until_deletion": "{days} dni do trwałego usunięcia",
+    "auto_delete_notice": "Notatki w koszu są automatycznie usuwane po {days} dniach",
     "empty_message": "Kosz jest pusty",
     "empty_short": "Kosz jest pusty.",
     "confirm_empty": "Czy na pewno chcesz trwale usunąć wszystkie elementy z kosza?",
@@ -681,7 +684,9 @@
   },
   "outline": {
     "title": "Konspekt",
-    "empty": "Ta notatka nie ma jeszcze nagłówków."
+    "empty": "Ta notatka nie ma jeszcze nagłówków.",
+    "pin": "Przypnij konspekt",
+    "unpin": "Odepnij konspekt"
   },
   "toc": {
     "title": "Spis treści",

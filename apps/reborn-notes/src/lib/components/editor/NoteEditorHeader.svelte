@@ -7,6 +7,8 @@
     Waypoints,
     ListTree,
     ArrowLeft,
+    PanelLeftClose,
+    PanelLeftOpen,
     ChevronLeft,
     ChevronRight,
     Lock,
@@ -44,6 +46,8 @@
     onnotehistoryback,
     onnotehistoryforward,
     onback,
+    noteListCollapsed = false,
+    onToggleNoteList,
     onshowxray,
     onrestore,
     onpermanentdelete,
@@ -80,6 +84,10 @@
     /** Go Forward one note in the visit trail (desktop chevron). */
     onnotehistoryforward?: () => void;
     onback: () => void;
+    /** Desktop only: whether the note-list panel is collapsed (drives the toggle icon). */
+    noteListCollapsed?: boolean;
+    /** Desktop only: collapse/expand the note-list panel. Omitted on mobile (no side panel). */
+    onToggleNoteList?: () => void;
     onshowxray: () => void;
     onrestore: () => void;
     onpermanentdelete: () => void;
@@ -122,12 +130,33 @@
     pt-[env(safe-area-inset-top,0px)]
     {isMobile ? 'gap-2 px-3' : 'gap-1 px-3 @lg:gap-2 @lg:px-6'}"
 >
+  <!-- Note-list panel toggle (desktop only). It lives here, not in the icon
+       rail, because it only applies while a note is open; mounting it on the
+       always-present rail would pop the icon in/out and shift the rail. -->
+  {#if !isMobile && onToggleNoteList}
+    <button
+      type="button"
+      onclick={onToggleNoteList}
+      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-foreground
+         hover:bg-accent transition-colors -ml-1"
+      title={noteListCollapsed ? $t('nav.show_note_list') : $t('nav.hide_note_list')}
+      aria-label={noteListCollapsed ? $t('nav.show_note_list') : $t('nav.hide_note_list')}
+      aria-pressed={!noteListCollapsed}
+    >
+      {#if noteListCollapsed}
+        <PanelLeftOpen class="h-4 w-4" />
+      {:else}
+        <PanelLeftClose class="h-4 w-4" />
+      {/if}
+    </button>
+  {/if}
+
   <button
     type="button"
     onclick={onback}
     class="flex shrink-0 items-center justify-center rounded-md text-foreground
-       hover:bg-accent transition-colors -ml-1
-       {isMobile ? 'h-11 w-11' : 'h-8 w-8'}"
+       hover:bg-accent transition-colors
+       {isMobile ? '-ml-1 h-11 w-11' : 'h-8 w-8'}"
     aria-label={$t('nav.back')}
   >
     <ArrowLeft class={isMobile ? 'h-5 w-5' : 'h-4 w-4'} />

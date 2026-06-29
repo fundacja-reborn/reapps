@@ -5,7 +5,7 @@
   import { base } from '$app/paths';
   import { copyText } from '$lib/utils/clipboard';
   import { SvelteSet, SvelteMap } from 'svelte/reactivity';
-  import { FolderPlus, Plus, ArrowLeft, Lock } from '@lucide/svelte';
+  import { FolderPlus, Plus, ArrowLeft, Lock, ListTree, PinOff } from '@lucide/svelte';
 
   // Layout
   import IconNav, { type Section, isPeriodicSection } from '$lib/components/layout/IconNav.svelte';
@@ -14,14 +14,7 @@
   import InitialSyncState from '$lib/components/sync/InitialSyncState.svelte';
   import { isInitialSync } from '$lib/stores/sync-status.store';
   import { platform } from '$lib/platform';
-  import {
-    SidebarProvider,
-    Sidebar,
-    SidebarHeader,
-    SidebarContent,
-    SidebarInset,
-    SidebarTrigger
-  } from '@reborn/ui/sidebar';
+  import { SidebarProvider, SidebarHeader, SidebarContent } from '@reborn/ui/sidebar';
   import * as Tooltip from '@reborn/ui/components/tooltip';
 
   // Content components
@@ -31,6 +24,7 @@
   import VersionHistorySheet from '$lib/components/VersionHistorySheet.svelte';
   import LinkedNotesSheet from '$lib/components/LinkedNotesSheet.svelte';
   import OutlineSheet from '$lib/components/OutlineSheet.svelte';
+  import OutlineTree from '$lib/components/OutlineTree.svelte';
   import FolderTree from '$lib/components/sidebar/FolderTree.svelte';
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
@@ -74,7 +68,12 @@
     periodicNotesSettings,
     confirmBeforeDelete
   } from '$lib/stores/app-settings.store';
-  import { noteOpenMode } from '$lib/stores/device-prefs.store';
+  import {
+    devicePrefs,
+    noteOpenMode,
+    noteListCollapsed,
+    tocPinned
+  } from '$lib/stores/device-prefs.store';
   import EditorModeIntroDialog from '$lib/components/editor/EditorModeIntroDialog.svelte';
   import PeriodicNoteOnboardingDialog from '$lib/components/editor/PeriodicNoteOnboardingDialog.svelte';
   import type { EditorMode } from '@reborn/storage';
@@ -94,7 +93,7 @@
   import { goto } from '$lib/utils/navigation';
   import { createScrollSync } from '$lib/utils/scroll-sync';
   import { scrollToHeading } from '$lib/utils/heading-scroll';
-  import type { DocHeading } from '$lib/utils/heading-outline';
+  import { extractHeadings, type DocHeading } from '$lib/utils/heading-outline';
   import { applyToc, removeToc, hasToc, isTocStale, tocHiddenSpans } from '$lib/utils/toc';
   import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
   import { requireActiveSession } from '$lib/utils/require-active-session';
@@ -124,6 +123,13 @@
   let lastVisitedFolderId = $state<string | null>(null);
   const activeStarred = $derived(activeSection === 'starred');
   const activeTrash = $derived(activeSection === 'trash');
+
+  // The note-list collapse is a focus affordance for an OPEN note. With no note
+  // in the main pane (e.g. right after clicking a rail section, which clears
+  // activeNoteId), a collapsed list would leave an empty pane - so the panel
+  // always returns when no note is open. The collapse toggle lives in the note
+  // header (present only with a note open), not the always-visible rail.
+  const panelCollapsedEffective = $derived($noteListCollapsed && $activeNoteId != null);
   const activeFolderSubfolders = $derived(
     activeSection === 'folders' && activeFolderId
       ? findChildrenOfParent($foldersStore, activeFolderId)
@@ -331,11 +337,30 @@
   }
 
   function toggleOutline() {
+    // When the outline is docked (desktop, pinned, has headings) the header
+    // toggle unpins it - a docked panel has no transient per-note "hide".
+    if (tocDocked) {
+      devicePrefs.setTocPinned(false);
+      return;
+    }
     outlineOpen = !outlineOpen;
     if (outlineOpen) {
       linkedNotesOpen = false;
       if (historyMode !== 'closed') closeHistory();
     }
+  }
+
+  // Dock the outline beside the editor (from the floating drawer's Pin button).
+  // Global, per-device; hands the drawer off to the dock.
+  function pinOutline() {
+    devicePrefs.setTocPinned(true);
+    outlineOpen = false;
+  }
+
+  // Undock (from the docked panel). The outline is fully hidden; the header
+  // button reopens it as a floating drawer.
+  function unpinOutline() {
+    devicePrefs.setTocPinned(false);
   }
 
   function handleDetailOutline() {
@@ -442,6 +467,27 @@
   let isMobile = $state(false);
   let closeSidebarSignal = $state(0);
   const effectiveViewMode = $derived(isMobile && viewMode === 'split' ? 'edit' : viewMode);
+
+  // ── Outline (TOC) presentation ──────────────────────────────────
+  // Desktop + pinned (global, per-device) docks the outline beside the editor,
+  // but only for notes that actually have headings (else the dock auto-hides).
+  // Otherwise the outline is the transient floating drawer toggled by the header
+  // button. `outlineOpen` drives ONLY the floating drawer; the dock is derived.
+  const tocDocked = $derived.by(() => {
+    if (
+      isMobile ||
+      !$tocPinned ||
+      $activeNoteId == null ||
+      historyMode !== 'closed' ||
+      linkedNotesOpen
+    )
+      return false;
+    return extractHeadings(noteDetailService.content).length > 0;
+  });
+  const tocFloating = $derived(outlineOpen && !tocDocked);
+  // Outline visible in any form - drives the header toggle's pressed state and
+  // gates the scroll-spy.
+  const outlineVisible = $derived(tocDocked || tocFloating);
 
   // Mobile drill-down navigation state
   type MobileView = 'list' | 'folder-tree' | 'tag-list';
@@ -1339,7 +1385,7 @@
   // Re-attaches when the preview re-renders (new heading elements) or the note
   // changes; no-op when the panel is closed or no preview is mounted (edit-only).
   $effect(() => {
-    if (!outlineOpen) {
+    if (!outlineVisible) {
       activeOutlineSlug = null;
       return;
     }
@@ -2066,7 +2112,7 @@
               bind:historyMode
               linkedNotesActive={linkedNotesOpen}
               ontogglelinkednotes={toggleLinkedNotes}
-              outlineActive={outlineOpen}
+              outlineActive={outlineVisible}
               ontoggleoutline={toggleOutline}
               canGoBackNote={noteNavHistory.canGoBack}
               canGoForwardNote={noteNavHistory.canGoForward}
@@ -2214,26 +2260,30 @@
        keyboard's height, 0 when closed, so the scroll container shrinks to the
        visible area exactly as the old vv.height pin did. -->
   <SidebarProvider
-    style="height: calc(100dvh - var(--rn-banner-h, 0px) - var(--rn-keyboard-inset, 0px)); min-height: 0; overflow: hidden; --sidebar-width: 24rem;"
+    class="bg-sidebar overflow-hidden"
+    open={!panelCollapsedEffective}
+    onOpenChange={(o) => devicePrefs.setNoteListCollapsed(!o)}
+    style="height: calc(100dvh - var(--rn-banner-h, 0px) - var(--rn-keyboard-inset, 0px)); min-height: 0; --sidebar-width: 24rem;"
   >
-    <Sidebar
-      variant="inset"
-      collapsible="offcanvas"
-      class="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
+    <SidebarAutoClose {closeSidebarSignal} />
+
+    <!-- ── Icon rail (always visible; its first button toggles the note-list
+         panel, mirrored by Cmd/Ctrl+B via the provider). ──────────── -->
+    <IconNav
+      bind:activeSection
+      onNewNote={handleNewNote}
+      onsectionclick={handleSectionClick}
+      onPeriodic={handlePeriodic}
+      pendingKind={periodicPendingKind}
+    />
+
+    <!-- ── Note-list panel (collapsible). Outer div animates width; the inner
+         keeps a fixed 24rem width so its content never reflows mid-slide. ── -->
+    <div
+      class="shrink-0 overflow-hidden transition-[width] duration-200 ease-linear"
+      style="width: {panelCollapsedEffective ? '0px' : '24rem'}"
     >
-      <SidebarAutoClose {closeSidebarSignal} />
-
-      <!-- ── Icon rail (desktop only) ────────────────────────────── -->
-      <IconNav
-        bind:activeSection
-        onNewNote={handleNewNote}
-        onsectionclick={handleSectionClick}
-        onPeriodic={handlePeriodic}
-        pendingKind={periodicPendingKind}
-      />
-
-      <!-- ── Content panel ───────────────────────────────────────── -->
-      <div class="flex flex-1 flex-col min-w-0 overflow-hidden">
+      <div class="flex h-full w-96 flex-col min-w-0 overflow-hidden bg-sidebar">
         <SidebarHeader class="border-b p-0 gap-0">
           <!-- pt + min-h grow together by the iOS notch inset so the content
                keeps its full 3rem box (env() is 0 elsewhere) -->
@@ -2313,10 +2363,15 @@
         </SidebarContent>
         <SyncStatusFooter />
       </div>
-    </Sidebar>
+    </div>
 
-    <!-- ── Column 3: Main content area ─────────────────────────────── -->
-    <SidebarInset class="overflow-hidden flex flex-col min-w-0 bg-background">
+    <!-- ── Editor column (was SidebarInset; the variant=inset card classes are
+         inlined here and the left margin follows the panel's collapsed state). ── -->
+    <main
+      class="bg-background relative flex flex-1 flex-col min-w-0 overflow-hidden my-2 mr-2 rounded-xl shadow-sm"
+      class:ml-0={!panelCollapsedEffective}
+      class:ml-2={panelCollapsedEffective}
+    >
       {#if $activeNoteId}
         {#if historyMode === 'diff' && selectedVersion}
           <HistoryHeader
@@ -2363,7 +2418,7 @@
             bind:historyMode
             linkedNotesActive={linkedNotesOpen}
             ontogglelinkednotes={toggleLinkedNotes}
-            outlineActive={outlineOpen}
+            outlineActive={outlineVisible}
             ontoggleoutline={toggleOutline}
             canGoBackNote={noteNavHistory.canGoBack}
             canGoForwardNote={noteNavHistory.canGoForward}
@@ -2371,6 +2426,8 @@
             {forwardNoteTitle}
             onnotehistoryback={goBackNote}
             onnotehistoryforward={goForwardNote}
+            noteListCollapsed={$noteListCollapsed}
+            onToggleNoteList={() => devicePrefs.toggleNoteList()}
             onback={() => activeNoteId.set(null)}
             onshowxray={() => {
               showEncryptionXRay = true;
@@ -2511,7 +2568,6 @@
         <header
           class="flex min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-border/60 px-6 pt-[env(safe-area-inset-top,0px)]"
         >
-          <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
           <span class="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {activeFolderName}
           </span>
@@ -2537,7 +2593,38 @@
           </div>
         {/if}
       {/if}
-    </SidebarInset>
+    </main>
+
+    <!-- ── Docked outline (desktop, pinned, note has headings). Reserves layout
+         space beside the editor and never closes on outside-click - the whole
+         point of #375 vs. the overlay drawer. ──────────────────────────────── -->
+    {#if tocDocked}
+      <aside
+        class="my-2 mr-2 flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border bg-background shadow-sm"
+        aria-label={$t('outline.title')}
+      >
+        <div class="flex shrink-0 items-center gap-2 border-b px-4 py-3">
+          <ListTree class="h-4 w-4 text-muted-foreground" />
+          <span class="flex-1 truncate text-sm font-semibold">{$t('outline.title')}</span>
+          <button
+            type="button"
+            onclick={unpinOutline}
+            title={$t('outline.unpin')}
+            aria-label={$t('outline.unpin')}
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground
+                   transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <PinOff class="h-4 w-4" />
+          </button>
+        </div>
+        <OutlineTree
+          content={noteDetailService.content}
+          activeSlug={activeOutlineSlug}
+          onnavigate={handleOutlineNavigate}
+          enabled={tocDocked}
+        />
+      </aside>
+    {/if}
   </SidebarProvider>
 {/if}
 
@@ -2630,9 +2717,11 @@
 {#if $activeNoteId}
   <OutlineSheet
     content={noteDetailService.content}
-    open={outlineOpen}
+    open={tocFloating}
     activeSlug={activeOutlineSlug}
     onnavigate={handleOutlineNavigate}
+    showPin={!isMobile}
+    onpin={pinOutline}
     onclose={() => {
       outlineOpen = false;
     }}

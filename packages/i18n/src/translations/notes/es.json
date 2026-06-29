@@ -126,6 +126,8 @@
     "user_menu": "Menú de usuario",
     "main_navigation": "Navegación principal",
     "notes_navigation": "Navegación de notas",
+    "show_note_list": "Mostrar lista de notas",
+    "hide_note_list": "Ocultar lista de notas",
     "e2ee_account": "Cuenta E2EE",
     "reborn_account": "Cuenta Reborn",
     "log_out": "Cerrar sesión",
@@ -642,6 +644,7 @@
     "restore": "Restaurar",
     "delete_permanently": "Eliminar permanentemente",
     "days_until_deletion": "{days} días para la eliminación permanente",
+    "auto_delete_notice": "Las notas de la papelera se eliminan automáticamente después de {days} días",
     "empty_message": "La papelera está vacía",
     "empty_short": "La papelera está vacía.",
     "confirm_empty": "¿Está seguro de que desea eliminar permanentemente todos los elementos de la papelera?",
@@ -681,7 +684,9 @@
   },
   "outline": {
     "title": "Esquema",
-    "empty": "Esta nota aún no tiene encabezados."
+    "empty": "Esta nota aún no tiene encabezados.",
+    "pin": "Anclar esquema",
+    "unpin": "Desanclar esquema"
   },
   "toc": {
     "title": "Tabla de contenido",
