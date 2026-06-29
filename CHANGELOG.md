@@ -1,3 +1,10 @@
+## 0.39.0 (2026-06-29)
+
+### 🚀 Features
+
+- **notes:** render inline markdown in live preview table cells ([#371](https://github.com/fundacja-reborn/reapps/pull/371), [#359](https://github.com/fundacja-reborn/reapps/issues/359))
+- **notes:** structural ops in live preview table mini-toolbar ([#372](https://github.com/fundacja-reborn/reapps/pull/372), [#373](https://github.com/fundacja-reborn/reapps/issues/373), [#349](https://github.com/fundacja-reborn/reapps/issues/349))
+
 ## 0.38.0 (2026-06-28)
 
 ### 🚀 Features
