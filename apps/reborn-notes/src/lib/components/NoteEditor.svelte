@@ -22,8 +22,10 @@
     createLivePreviewExtension,
     getMarkdownExtension,
     rebuildLivePreview,
-    registerCodeBlockView
+    registerCodeBlockView,
+    wrapCellSelection
   } from '$lib/editor/live-preview';
+  import { computeInlineWrap } from '$lib/editor/inline-wrap';
   import { effectiveEditorMode } from '$lib/stores/app-settings.store';
   import type { ImageLoadMode } from '@reborn/storage';
   import { isDataUri } from '$lib/utils/markdown-sanitizer';
@@ -172,56 +174,52 @@
 
   // ── Formatting helpers ──────────────────────────────────────────
 
+  /** The focused Live Preview table cell, if the caret is currently inside one.
+   *  Toolbar/shortcut formatting must target the cell's own contenteditable
+   *  selection, not the (stale) CM6 document selection. */
+  function focusedTableCell(): HTMLElement | null {
+    const el = document.activeElement;
+    if (
+      el instanceof HTMLElement &&
+      (el.tagName === 'TD' || el.tagName === 'TH') &&
+      el.closest('.cm-lp-table-wrap')
+    ) {
+      return el;
+    }
+    return null;
+  }
+
+  /** Keep the editor/cell focused (and its selection alive) when a toolbar
+   *  button is pressed: without this, mousedown moves focus to the button,
+   *  blurring a table cell and losing its selection before the command runs.
+   *  Harmless for normal editing (CM6 keeps its focus + selection). */
+  function keepEditorFocus(node: HTMLElement) {
+    const handler = (e: MouseEvent) => e.preventDefault();
+    node.addEventListener('mousedown', handler);
+    return {
+      destroy() {
+        node.removeEventListener('mousedown', handler);
+      }
+    };
+  }
+
   function wrapSelection(marker: string): boolean {
     if (!view) return false;
+
+    // Inside a Live Preview table cell the editable text lives in the cell's
+    // contenteditable, not the CM6 doc — delegate so the wrap lands on the
+    // cell's selection and round-trips through the table's edit pipeline.
+    const cell = focusedTableCell();
+    if (cell) return wrapCellSelection(cell, marker);
+
     const { state } = view;
     const sel = state.selection.main;
     const selected = state.sliceDoc(sel.from, sel.to);
-
-    let insert: string;
-    let anchor: number;
-    let head: number;
-
-    if (selected) {
-      // Markdown emphasis delimiters must hug non-whitespace: per CommonMark's
-      // flanking rule `** x **` renders literally, only `**x**` is bold. So any
-      // leading/trailing whitespace caught in the selection has to stay OUTSIDE
-      // the markers. Split it off and wrap only the trimmed core; this also
-      // makes toggle-off work when the selection includes surrounding spaces.
-      const leadingWs = (selected.match(/^\s*/) ?? [''])[0];
-      const rest = selected.slice(leadingWs.length);
-      const trailingWs = (rest.match(/\s*$/) ?? [''])[0];
-      const core = rest.slice(0, rest.length - trailingWs.length);
-
-      if (!core) {
-        // Whitespace-only selection: nothing to emphasize. Keep the spaces,
-        // drop empty markers in place, leave the cursor between them to type.
-        insert = `${leadingWs}${marker}${marker}${trailingWs}`;
-        anchor = sel.from + leadingWs.length + marker.length;
-        head = anchor;
-      } else if (
-        core.startsWith(marker) &&
-        core.endsWith(marker) &&
-        core.length > marker.length * 2
-      ) {
-        const unwrapped = core.slice(marker.length, -marker.length);
-        insert = `${leadingWs}${unwrapped}${trailingWs}`;
-        anchor = sel.from + leadingWs.length;
-        head = anchor + unwrapped.length;
-      } else {
-        insert = `${leadingWs}${marker}${core}${marker}${trailingWs}`;
-        anchor = sel.from + leadingWs.length;
-        head = anchor + marker.length * 2 + core.length;
-      }
-    } else {
-      insert = `${marker}${marker}`;
-      anchor = sel.from + marker.length;
-      head = anchor;
-    }
+    const { insert, anchor, head } = computeInlineWrap(selected, marker);
 
     view.dispatch({
       changes: { from: sel.from, to: sel.to, insert },
-      selection: { anchor, head }
+      selection: { anchor: sel.from + anchor, head: sel.from + head }
     });
     view.focus();
     return true;
@@ -823,6 +821,7 @@
       <!-- Inline formatting -->
       <button
         type="button"
+        use:keepEditorFocus
         onclick={() => wrapSelection('**')}
         title={$t('editor.formatting.bold') + ' (Ctrl+B)'}
         class="toolbar-btn"
@@ -832,6 +831,7 @@
       </button>
       <button
         type="button"
+        use:keepEditorFocus
         onclick={() => wrapSelection('_')}
         title={$t('editor.formatting.italic') + ' (Ctrl+I)'}
         class="toolbar-btn"
@@ -841,6 +841,7 @@
       </button>
       <button
         type="button"
+        use:keepEditorFocus
         onclick={() => wrapSelection('~~')}
         title={$t('editor.formatting.strikethrough')}
         class="toolbar-btn"
@@ -850,6 +851,7 @@
       </button>
       <button
         type="button"
+        use:keepEditorFocus
         onclick={() => wrapSelection('`')}
         title={$t('editor.formatting.code')}
         class="toolbar-btn"

@@ -17,6 +17,19 @@
  * Structural changes (new row added) intentionally fail `eq()`, forcing a full
  * `toDOM` rebuild. The handler that triggered the structural change manually
  * re-focuses the appropriate cell after the rebuild.
+ *
+ * Cell content has two presentations (Obsidian-style):
+ *  - **rendered** when the cell is not focused — inline markdown (`**bold**`,
+ *    `*em*`, `` `code` ``, `~~strike~~`, `[t](url)`) is shown formatted, built
+ *    by `table-cell-render`;
+ *  - **raw** when the cell is focused — the markdown source, so it can be
+ *    edited character by character (identical to the old plain-text cell).
+ * The swap happens on `focus`/`blur`. Because a rendered cell's visible text
+ * drops the markdown markers, the canonical source for each rendered cell is
+ * stashed on `dataset.lpSrc` and read back from there at serialization time —
+ * never re-derived from the rendered DOM. Plain (unformatted) cells render
+ * identically in both modes, so they skip the swap and keep native caret
+ * placement on click.
  */
 import type { EditorView } from '@codemirror/view';
 import { WidgetType } from '@codemirror/view';
@@ -29,6 +42,8 @@ import {
   sameTableStructure,
   serializeTable
 } from './table-parse';
+import { buildInlineFragment, cellHasFormatting } from './table-cell-render';
+import { computeInlineWrap } from '../inline-wrap';
 
 /** Annotation marking a transaction as a cell-level table edit. Reserved for
  *  potential future use (e.g. suppressing analytics or scroll-sync); not
@@ -108,7 +123,7 @@ function readDomTable(
   const headerRow = root.querySelector('thead > tr');
   if (headerRow) {
     headerRow.querySelectorAll('th').forEach((th) => {
-      header.push({ text: readCellText(th) });
+      header.push({ text: readCellSource(th) });
     });
   }
   // Pad if DOM has fewer header cells than expected (defensive).
@@ -118,7 +133,7 @@ function readDomTable(
   root.querySelectorAll('tbody > tr').forEach((tr) => {
     const row: { text: string }[] = [];
     tr.querySelectorAll('td').forEach((td) => {
-      row.push({ text: readCellText(td) });
+      row.push({ text: readCellSource(td) });
     });
     while (row.length < cols) row.push({ text: '' });
     rows.push(row);
@@ -139,6 +154,73 @@ function setCellContent(cell: HTMLElement, text: string): void {
     if (part.length > 0) cell.appendChild(document.createTextNode(part));
     if (i < parts.length - 1) cell.appendChild(document.createElement('br'));
   });
+}
+
+/**
+ * Render a non-focused cell with inline markdown formatting applied, and stash
+ * the markdown source on `dataset.lpSrc`. The source — not the formatted DOM —
+ * is what `readCellSource` returns at serialization time, so the markers
+ * survive even though they aren't visible. For plain text this produces the
+ * exact same DOM as `setCellContent`.
+ */
+function renderCellContent(cell: HTMLElement, text: string): void {
+  cell.replaceChildren();
+  cell.appendChild(buildInlineFragment(text));
+  cell.dataset.lpSrc = text;
+}
+
+/**
+ * The markdown source of a cell. The focused cell is read live from the DOM
+ * (it holds raw, editable text); every other cell is rendered, so its visible
+ * text omits markers — we read the stashed `dataset.lpSrc` instead.
+ */
+function readCellSource(cell: HTMLElement): string {
+  if (cell === cell.ownerDocument.activeElement) return readCellText(cell);
+  return cell.dataset.lpSrc ?? readCellText(cell);
+}
+
+/** Collapse the selection to the end of a cell's content. */
+function caretToEnd(cell: HTMLElement): void {
+  const range = document.createRange();
+  const sel = window.getSelection();
+  range.selectNodeContents(cell);
+  range.collapse(false);
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
+/**
+ * Apply an inline markdown wrap (`**`, `_`, `~~`, `` ` ``) to the selection
+ * inside a focused table cell, then push the edit through the cell's normal
+ * serialization pipeline (a synthetic `input`). Operates on the cell's own DOM
+ * selection — when focused the cell holds raw, editable text — mirroring the
+ * CM6 toolbar's `wrapSelection`. Used by the toolbar buttons and the in-cell
+ * Mod-b / Mod-i shortcuts. Returns false when there is no usable selection.
+ */
+export function wrapCellSelection(cell: HTMLElement, marker: string): boolean {
+  const sel = cell.ownerDocument.defaultView?.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  if (!cell.contains(range.commonAncestorContainer)) return false;
+
+  const { insert, anchor, head } = computeInlineWrap(range.toString(), marker);
+
+  range.deleteContents();
+  const textNode = cell.ownerDocument.createTextNode(insert);
+  range.insertNode(textNode);
+
+  // Re-select the wrapped core so a second press toggles it off and the user
+  // sees what changed. `insert` is one text node, so computeInlineWrap's
+  // relative offsets map straight onto it.
+  const newRange = cell.ownerDocument.createRange();
+  newRange.setStart(textNode, Math.min(anchor, insert.length));
+  newRange.setEnd(textNode, Math.min(head, insert.length));
+  sel.removeAllRanges();
+  sel.addRange(newRange);
+
+  // Serialize the table + write back to the CM6 doc via the existing handler.
+  cell.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
 }
 
 /**
@@ -179,29 +261,6 @@ function insertLineBreakAtSelection(cell: HTMLElement): void {
   sel.addRange(newRange);
 }
 
-/**
- * True if `cell`'s current DOM exactly represents `text` (text nodes + `<br>`
- * for `\n`). Used by `updateDOM` to skip touching cells that haven't changed
- * — `setCellContent` would otherwise rebuild children and wipe the caret on
- * every keystroke in the active cell.
- */
-function cellMatchesText(cell: HTMLElement, text: string): boolean {
-  let i = 0;
-  for (const node of Array.from(cell.childNodes)) {
-    if (node instanceof HTMLBRElement) {
-      if (text[i] !== '\n') return false;
-      i += 1;
-    } else if (node.nodeType === Node.TEXT_NODE) {
-      const part = node.textContent ?? '';
-      if (text.slice(i, i + part.length) !== part) return false;
-      i += part.length;
-    } else {
-      return false;
-    }
-  }
-  return i === text.length;
-}
-
 /** Locate a cell DOM node for `(row, col)` — `row === -1` is the header. */
 function cellAt(root: HTMLElement, row: number, col: number): HTMLElement | null {
   if (row === -1) {
@@ -214,18 +273,14 @@ function cellAt(root: HTMLElement, row: number, col: number): HTMLElement | null
   return tr.querySelectorAll<HTMLElement>('td')[col] ?? null;
 }
 
-/** Move browser focus to a cell, placing the caret at the end of its text. */
+/** Move browser focus to a cell, placing the caret at the end of its text.
+ *  The cell's own `focus` listener reveals raw source first (if formatted); the
+ *  caret is then collapsed to the end of that source. */
 function focusCell(root: HTMLElement, row: number, col: number): void {
   const el = cellAt(root, row, col);
   if (!el) return;
   el.focus();
-  // Place caret at end of cell content.
-  const range = document.createRange();
-  const sel = window.getSelection();
-  range.selectNodeContents(el);
-  range.collapse(false);
-  sel?.removeAllRanges();
-  sel?.addRange(range);
+  caretToEnd(el);
 }
 
 export class TableWidget extends WidgetType {
@@ -267,7 +322,7 @@ export class TableWidget extends WidgetType {
       th.dataset.col = String(col);
       const align = alignStyle(this.table.alignments[col]);
       if (align) th.style.textAlign = align;
-      setCellContent(th, cell.text);
+      renderCellContent(th, cell.text);
       this.attachCellListeners(th, { row: -1, col });
       headerTr.appendChild(th);
     });
@@ -286,7 +341,7 @@ export class TableWidget extends WidgetType {
         td.dataset.col = String(col);
         const align = alignStyle(this.table.alignments[col]);
         if (align) td.style.textAlign = align;
-        setCellContent(td, cell.text);
+        renderCellContent(td, cell.text);
         this.attachCellListeners(td, { row: rowIdx, col });
         tr.appendChild(td);
       });
@@ -318,11 +373,14 @@ export class TableWidget extends WidgetType {
 
     const active = document.activeElement;
 
+    // The focused cell holds raw, editable source — never touch it (that would
+    // wipe the caret). Every other cell is re-rendered from its target source
+    // only when that source actually changed, keyed off the stashed `lpSrc`.
     headerCells.forEach((th, col) => {
       const target = this.table.header[col]?.text ?? '';
-      const align = alignStyle(this.table.alignments[col]);
-      th.style.textAlign = align;
-      if (th !== active && !cellMatchesText(th, target)) setCellContent(th, target);
+      th.style.textAlign = alignStyle(this.table.alignments[col]);
+      if (th === active) return;
+      if (th.dataset.lpSrc !== target) renderCellContent(th, target);
     });
 
     bodyRows.forEach((tr, rowIdx) => {
@@ -330,9 +388,9 @@ export class TableWidget extends WidgetType {
       if (cells.length !== cols) return;
       cells.forEach((td, col) => {
         const target = this.table.rows[rowIdx]?.[col]?.text ?? '';
-        const align = alignStyle(this.table.alignments[col]);
-        td.style.textAlign = align;
-        if (td !== active && !cellMatchesText(td, target)) setCellContent(td, target);
+        td.style.textAlign = alignStyle(this.table.alignments[col]);
+        if (td === active) return;
+        if (td.dataset.lpSrc !== target) renderCellContent(td, target);
       });
     });
 
@@ -347,6 +405,21 @@ export class TableWidget extends WidgetType {
   // ─── Event wiring ───────────────────────────────────────────────
 
   private attachCellListeners(cell: HTMLElement, addr: CellAddress): void {
+    // Reveal raw markdown source when the cell is focused (so it can be edited),
+    // and re-render the formatted view when focus leaves. A plain cell renders
+    // identically raw and formatted, so it skips the swap — that keeps the
+    // browser's native click-to-position caret instead of jumping to the end.
+    cell.addEventListener('focus', () => {
+      const src = cell.dataset.lpSrc ?? readCellText(cell);
+      if (cellHasFormatting(src)) {
+        setCellContent(cell, src);
+        caretToEnd(cell);
+      }
+    });
+    cell.addEventListener('blur', () => {
+      renderCellContent(cell, readCellText(cell));
+    });
+
     cell.addEventListener('compositionstart', () => {
       this.composing = true;
     });
@@ -389,6 +462,19 @@ export class TableWidget extends WidgetType {
   ): void {
     const root = this.getRoot(cell);
     if (!root) return;
+
+    // Bold / italic shortcuts. Handle them here because the widget sets
+    // `ignoreEvent() = true`, so CM6's `Mod-b`/`Mod-i` keymap never sees keys
+    // typed inside a cell. Also stops the browser's contenteditable default,
+    // which would inject `<b>`/`<i>` HTML instead of markdown.
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+      const key = e.key.toLowerCase();
+      if (key === 'b' || key === 'i') {
+        e.preventDefault();
+        wrapCellSelection(cell, key === 'b' ? '**' : '_');
+        return;
+      }
+    }
 
     if (e.key === 'Tab') {
       e.preventDefault();
