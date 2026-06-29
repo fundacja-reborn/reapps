@@ -644,6 +644,7 @@
     "restore": "Przywróć",
     "delete_permanently": "Usuń trwale",
     "days_until_deletion": "{days} dni do trwałego usunięcia",
+    "auto_delete_notice": "Notatki w koszu są automatycznie usuwane po {days} dniach",
     "empty_message": "Kosz jest pusty",
     "empty_short": "Kosz jest pusty.",
     "confirm_empty": "Czy na pewno chcesz trwale usunąć wszystkie elementy z kosza?",

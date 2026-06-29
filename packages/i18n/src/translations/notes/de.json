@@ -644,6 +644,7 @@
     "restore": "Wiederherstellen",
     "delete_permanently": "Endgültig löschen",
     "days_until_deletion": "{days} Tage bis zur endgültigen Löschung",
+    "auto_delete_notice": "Notizen im Papierkorb werden nach {days} Tagen automatisch gelöscht",
     "empty_message": "Der Papierkorb ist leer",
     "empty_short": "Papierkorb ist leer.",
     "confirm_empty": "Möchten Sie wirklich alle Elemente im Papierkorb endgültig löschen?",

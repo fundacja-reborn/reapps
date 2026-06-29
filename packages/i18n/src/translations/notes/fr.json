@@ -644,6 +644,7 @@
     "restore": "Restaurer",
     "delete_permanently": "Supprimer définitivement",
     "days_until_deletion": "{days} jours avant la suppression définitive",
+    "auto_delete_notice": "Les notes de la corbeille sont automatiquement supprimées après {days} jours",
     "empty_message": "La corbeille est vide",
     "empty_short": "La corbeille est vide.",
     "confirm_empty": "Êtes-vous sûr de vouloir supprimer définitivement tous les éléments de la corbeille ?",

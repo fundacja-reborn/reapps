@@ -644,6 +644,7 @@
     "restore": "Restore",
     "delete_permanently": "Delete Permanently",
     "days_until_deletion": "{days} days until permanent deletion",
+    "auto_delete_notice": "Trashed notes are automatically deleted after {days} days",
     "empty_message": "Trash is empty",
     "empty_short": "Trash is empty.",
     "confirm_empty": "Are you sure you want to permanently delete all items in trash?",

@@ -644,6 +644,7 @@
     "restore": "Restaurar",
     "delete_permanently": "Eliminar permanentemente",
     "days_until_deletion": "{days} días para la eliminación permanente",
+    "auto_delete_notice": "Las notas de la papelera se eliminan automáticamente después de {days} días",
     "empty_message": "La papelera está vacía",
     "empty_short": "La papelera está vacía.",
     "confirm_empty": "¿Está seguro de que desea eliminar permanentemente todos los elementos de la papelera?",
