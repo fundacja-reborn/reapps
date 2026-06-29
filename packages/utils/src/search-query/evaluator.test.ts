@@ -245,6 +245,55 @@ describe('evaluate — folder and list filters', () => {
   });
 });
 
+describe('evaluate — no: filters (empty folder / tags)', () => {
+  it('no:folder matches an entity with no folder', () => {
+    expect(evaluate(parseQuery('no:folder'), makeEntity({ folderId: null }), makeCtx())).toBe(true);
+  });
+
+  it('no:folder does not match an entity inside a folder', () => {
+    expect(
+      evaluate(parseQuery('no:folder'), makeEntity({ folderId: 'f-1' }), makeCtx())
+    ).toBe(false);
+  });
+
+  it('-no:folder is the inverse (only foldered entities)', () => {
+    expect(
+      evaluate(parseQuery('-no:folder'), makeEntity({ folderId: 'f-1' }), makeCtx())
+    ).toBe(true);
+    expect(
+      evaluate(parseQuery('-no:folder'), makeEntity({ folderId: null }), makeCtx())
+    ).toBe(false);
+  });
+
+  it('no:tag matches an untagged entity', () => {
+    expect(evaluate(parseQuery('no:tag'), makeEntity({ tagIds: [] }), makeCtx())).toBe(true);
+  });
+
+  it('no:tag does not match a tagged entity', () => {
+    expect(
+      evaluate(parseQuery('no:tag'), makeEntity({ tagIds: ['t-1'] }), makeCtx())
+    ).toBe(false);
+  });
+
+  it('composes with other operators (untagged notes outside any folder)', () => {
+    const ast = parseQuery('no:folder no:tag');
+    expect(
+      evaluate(ast, makeEntity({ folderId: null, tagIds: [] }), makeCtx())
+    ).toBe(true);
+    expect(
+      evaluate(ast, makeEntity({ folderId: null, tagIds: ['t-1'] }), makeCtx())
+    ).toBe(false);
+    expect(
+      evaluate(ast, makeEntity({ folderId: 'f-1', tagIds: [] }), makeCtx())
+    ).toBe(false);
+  });
+
+  it('no:folder / no:tag never force the content path (metadata-only)', () => {
+    expect(requiresContent(parseQuery('no:folder'))).toBe(false);
+    expect(requiresContent(parseQuery('no:tag'))).toBe(false);
+  });
+});
+
 describe('evaluate — date filters', () => {
   it('created:>YYYY-MM-DD matches newer entities', () => {
     const ast = parseQuery('created:>2026-04-01');

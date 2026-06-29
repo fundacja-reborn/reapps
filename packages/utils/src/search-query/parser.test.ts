@@ -25,6 +25,10 @@ const is = (
   value: 'starred' | 'pinned' | 'completed' | 'overdue',
   negated = false
 ): Node => ({ kind: 'leaf-filter', filter: { kind: 'is', value, negated } });
+const no = (value: 'folder' | 'tag', negated = false): Node => ({
+  kind: 'leaf-filter',
+  filter: { kind: 'no', value, negated }
+});
 const and = (...children: Node[]): Node => ({ kind: 'and', children });
 const or = (...children: Node[]): Node => ({ kind: 'or', children });
 const not = (child: Node): Node => ({ kind: 'not', child });
@@ -101,6 +105,24 @@ describe('parseQuery — operators', () => {
     expect(ast).toEqual({
       root: and(is('starred'), is('pinned'), is('completed'), is('overdue'))
     });
+  });
+
+  it('parses no: flags (folder, tag)', () => {
+    expect(parseQuery('no:folder')).toEqual({ root: no('folder') });
+    expect(parseQuery('no:tag')).toEqual({ root: no('tag') });
+  });
+
+  it('lowercases no: values', () => {
+    expect(parseQuery('no:Folder')).toEqual({ root: no('folder') });
+  });
+
+  it('parses negated no: flag', () => {
+    expect(parseQuery('-no:folder')).toEqual({ root: no('folder', true) });
+  });
+
+  it('unknown no: value falls back to plain text (graceful degradation)', () => {
+    expect(parseQuery('no:list')).toEqual({ root: text('no:list') });
+    expect(parseQuery('-no:list')).toEqual({ root: text('no:list', true) });
   });
 
   it('combines operators with freetext (implicit AND)', () => {

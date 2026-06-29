@@ -1,4 +1,4 @@
-import type { DateField, Filter, IsFlag, Node, QueryAST } from './ast';
+import type { DateField, Filter, IsFlag, NoFlag, Node, QueryAST } from './ast';
 import { parseDateExpression } from './date-parser';
 
 const IS_FLAGS: ReadonlySet<IsFlag> = new Set([
@@ -8,6 +8,8 @@ const IS_FLAGS: ReadonlySet<IsFlag> = new Set([
   'overdue'
 ]);
 
+const NO_FLAGS: ReadonlySet<NoFlag> = new Set(['folder', 'tag']);
+
 const KNOWN_KEYS = new Set([
   'tag',
   'folder',
@@ -16,7 +18,8 @@ const KNOWN_KEYS = new Set([
   'modified',
   'due',
   'has',
-  'is'
+  'is',
+  'no'
 ]);
 
 /**
@@ -258,6 +261,13 @@ function parseOperator(key: string, value: string, negated: boolean): Filter | n
       const v = value.toLowerCase();
       return IS_FLAGS.has(v as IsFlag)
         ? { kind: 'is', value: v as IsFlag, negated }
+        : null;
+    }
+
+    case 'no': {
+      const v = value.toLowerCase();
+      return NO_FLAGS.has(v as NoFlag)
+        ? { kind: 'no', value: v as NoFlag, negated }
         : null;
     }
 
