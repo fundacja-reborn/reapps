@@ -878,10 +878,6 @@ export class TableWidget extends WidgetType {
     return null;
   }
 
-  private currentAlign(col: number): CellAlign {
-    return this.table.alignments[col] ?? null;
-  }
-
   /**
    * Show, position, and update both toolbars from the current target cell, or
    * hide them when there is none. All reads come from the DOM so it stays
@@ -913,8 +909,14 @@ export class TableWidget extends WidgetType {
     const bodyCount = outer.querySelectorAll('tbody > tr').length;
     const isHeader = active.row === -1;
 
-    // Column bar: highlight the active alignment; block deleting the last column.
-    const al = this.currentAlign(active.col);
+    // Column bar: highlight the active column's alignment, and block deleting the
+    // last column. Read the alignment from the active cell's RENDERED `text-align`
+    // (what the user sees), not from `this.table.alignments`: after a toolbar
+    // alignment change the bound widget instance can lag the doc/DOM (updateDOM
+    // keeps the original toDOM closures), so the instance's alignments would
+    // highlight the wrong icon - or none. `''` (GFM default) maps to no active
+    // button, matching the prior behaviour.
+    const al = activeCellEl.style.textAlign;
     this.setBtnActive(colbar, '.cm-lp-table-align-left', al === 'left');
     this.setBtnActive(colbar, '.cm-lp-table-align-center', al === 'center');
     this.setBtnActive(colbar, '.cm-lp-table-align-right', al === 'right');

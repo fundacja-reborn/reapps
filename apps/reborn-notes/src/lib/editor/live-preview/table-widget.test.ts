@@ -16,6 +16,10 @@
  *     (a downstream symptom of #1's column shift).
  *  4. Pressing Enter after pasting moved the text to the bottom-LEFT cell (also
  *     #1's shift, made permanent by the next serialize).
+ *  5. After toolbar alignment edits, the column bar highlighted the wrong align
+ *     icon (or none) - it read the stale widget instance's
+ *     `this.table.alignments`; now read from the active cell's rendered
+ *     `text-align` in `syncToolbars`.
  *
  * jsdom does not focus a contenteditable element unless it is focusable, so the
  * helpers set `tabIndex` before `focus()` - this makes `document.activeElement`
@@ -30,6 +34,10 @@ import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { createLivePreviewField } from './decorations';
 
 const flush = () => new Promise((r) => setTimeout(r, 10));
+// Longer wait for assertions that must let a refocus `requestAnimationFrame`
+// drain first - jsdom's rAF fires on a ~16ms timer, so 10ms is not enough and
+// a pending refocus would steal focus mid-assertion.
+const settle = () => new Promise((r) => setTimeout(r, 40));
 
 function mountTable(doc: string): EditorView {
   const parent = document.createElement('div');
@@ -85,6 +93,20 @@ function bodyRowTexts(view: EditorView, row: number): string[] {
     (td) => td.textContent ?? ''
   );
 }
+/** Which alignment button (if any) the column bar currently highlights. */
+function activeAlign(view: EditorView): string {
+  const bar = outer(view).querySelector<HTMLElement>('.cm-lp-table-colbar');
+  for (const a of ['left', 'center', 'right']) {
+    if (bar?.querySelector(`.cm-lp-table-align-${a}`)?.classList.contains('is-active')) return a;
+  }
+  return 'none';
+}
+
+const DOC4 = [
+  '| C0 | C1 | C2 | C3 |',
+  '| --- | --- | --- | --- |',
+  '| a | b | c | d |'
+].join('\n');
 
 const DOC = [
   '| Col 1 | Col 2 | Col 3 |',
@@ -173,6 +195,30 @@ describe('TableWidget structural ops (regression)', () => {
     c.dispatchEvent(new Event('input', { bubbles: true }));
     await flush();
     expect(lines(view)[1]).toBe('| ---: | --- | --- |');
+    view.destroy();
+  });
+
+  it('bug5: toolbar alignment highlight tracks the active column, not a stale instance', async () => {
+    const view = mountTable(DOC4);
+    // Diverge the doc/DOM from the first-render instance (all-default) by setting
+    // two columns via the toolbar.
+    clickTool(view, -1, 1, '.cm-lp-table-align-center');
+    await settle();
+    clickTool(view, -1, 3, '.cm-lp-table-align-right');
+    await settle();
+    expect(lines(view)[1]).toBe('| --- | :---: | --- | ---: |');
+    // Revisit each column: the highlighted button must equal that column's
+    // RENDERED alignment, not the stale instance's all-default alignments.
+    const seen: Record<number, string> = {};
+    for (const c of [0, 1, 2, 3]) {
+      const o = outer(view);
+      focusCell(view, -1, c);
+      o.dataset.hr = '-1';
+      o.dataset.hc = String(c); // hover follows the cell, as pointerenter would
+      await settle();
+      seen[c] = activeAlign(view);
+    }
+    expect(seen).toEqual({ 0: 'none', 1: 'center', 2: 'none', 3: 'right' });
     view.destroy();
   });
 });
