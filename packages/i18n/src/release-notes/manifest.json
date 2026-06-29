@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.39.0",
+    "date": "2026-06-29",
+    "items": [
+      { "id": "0.39.0-table-tools", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.39.0-table-cell-formatting", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.39.0-new-note-action", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.39.0-table-empty-cells", "category": "fixed", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.38.0",
     "date": "2026-06-28",
     "items": [
