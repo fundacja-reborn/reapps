@@ -126,6 +126,8 @@
     "user_menu": "Menu utilisateur",
     "main_navigation": "Navigation principale",
     "notes_navigation": "Navigation des notes",
+    "show_note_list": "Afficher la liste des notes",
+    "hide_note_list": "Masquer la liste des notes",
     "e2ee_account": "Compte E2EE",
     "reborn_account": "Compte Reborn",
     "log_out": "Se déconnecter",

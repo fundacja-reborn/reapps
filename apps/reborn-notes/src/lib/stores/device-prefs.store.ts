@@ -21,12 +21,20 @@ export interface DevicePrefs {
    * always open in 'edit' regardless (you just made it to write in it).
    */
   noteOpenMode: NoteOpenMode;
+  /**
+   * Desktop only: the note-list panel (the column between the icon rail and the
+   * editor) is collapsed, leaving just the always-visible icon rail. Lets you
+   * hand the freed width to the editor / docked outline. Ignored on mobile,
+   * which uses a separate master-detail layout.
+   */
+  noteListCollapsed: boolean;
 }
 
 const STORAGE_KEY = 'reborn-notes-device-prefs';
 
 const DEFAULTS: DevicePrefs = {
-  noteOpenMode: 'preview'
+  noteOpenMode: 'preview',
+  noteListCollapsed: false
 };
 
 const NOTE_OPEN_MODES: readonly NoteOpenMode[] = ['preview', 'edit', 'split'];
@@ -40,7 +48,11 @@ function load(): DevicePrefs {
     return {
       noteOpenMode: NOTE_OPEN_MODES.includes(parsed.noteOpenMode as NoteOpenMode)
         ? (parsed.noteOpenMode as NoteOpenMode)
-        : DEFAULTS.noteOpenMode
+        : DEFAULTS.noteOpenMode,
+      noteListCollapsed:
+        typeof parsed.noteListCollapsed === 'boolean'
+          ? parsed.noteListCollapsed
+          : DEFAULTS.noteListCollapsed
     };
   } catch (err) {
     logger.warn('Failed to read device prefs, using defaults', err);
@@ -69,9 +81,27 @@ function createDevicePrefsStore() {
     });
   }
 
+  function setNoteListCollapsed(collapsed: boolean): void {
+    store.update((prev) => {
+      const next = { ...prev, noteListCollapsed: collapsed };
+      persist(next);
+      return next;
+    });
+  }
+
+  function toggleNoteList(): void {
+    store.update((prev) => {
+      const next = { ...prev, noteListCollapsed: !prev.noteListCollapsed };
+      persist(next);
+      return next;
+    });
+  }
+
   return {
     subscribe: store.subscribe,
-    setNoteOpenMode
+    setNoteOpenMode,
+    setNoteListCollapsed,
+    toggleNoteList
   };
 }
 
@@ -79,3 +109,6 @@ export const devicePrefs = createDevicePrefsStore();
 
 /** The view mode an existing note opens in on this device. */
 export const noteOpenMode = derived(devicePrefs, ($p) => $p.noteOpenMode);
+
+/** Desktop: whether the note-list panel is collapsed (icon rail stays visible). */
+export const noteListCollapsed = derived(devicePrefs, ($p) => $p.noteListCollapsed);
