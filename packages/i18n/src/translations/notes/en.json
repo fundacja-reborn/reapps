@@ -334,6 +334,7 @@
     "folder_name_placeholder": "Enter folder name",
     "create_subfolder": "Create Subfolder",
     "new_subfolder": "New subfolder",
+    "new_note_here": "New note in this folder",
     "sync_now": "Sync now",
     "sync_done": "Folder synced",
     "synced_folder": "Synced folder",
@@ -475,7 +476,16 @@
     "table_columns": "Columns",
     "table_rows": "Rows (body)",
     "table_insert": "Insert",
-    "table_cancel": "Cancel"
+    "table_cancel": "Cancel",
+    "table_align_left": "Align column left",
+    "table_align_center": "Align column center",
+    "table_align_right": "Align column right",
+    "table_insert_column_left": "Insert column left",
+    "table_insert_column_right": "Insert column right",
+    "table_delete_column": "Delete column",
+    "table_insert_row_above": "Insert row above",
+    "table_insert_row_below": "Insert row below",
+    "table_delete_row": "Delete row"
   },
   "search": {
     "title": "Search Notes",

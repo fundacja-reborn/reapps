@@ -160,6 +160,17 @@
         stale: $t('toc.stale'),
         remove: $t('toc.remove')
       },
+      tableLabels: {
+        alignLeft: $t('editor.table_align_left'),
+        alignCenter: $t('editor.table_align_center'),
+        alignRight: $t('editor.table_align_right'),
+        insertColumnLeft: $t('editor.table_insert_column_left'),
+        insertColumnRight: $t('editor.table_insert_column_right'),
+        deleteColumn: $t('editor.table_delete_column'),
+        insertRowAbove: $t('editor.table_insert_row_above'),
+        insertRowBelow: $t('editor.table_insert_row_below'),
+        deleteRow: $t('editor.table_delete_row')
+      },
       headingLinkLabel: $t('editor.copy_heading_link'),
       // The widget DOM is inert; the corner buttons act through these. They mutate
       // `noteDetailService.content` upstream (same path as the kebab menu and the

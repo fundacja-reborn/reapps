@@ -83,8 +83,15 @@ describe('#349 create defers the push', () => {
 
   it('handleNewNote creates the New Note as ephemeral', () => {
     const page = readSource('../../routes/+page.svelte');
-    const fn = page.slice(page.indexOf('async function handleNewNote'));
-    expect(fn).toMatch(/notesStore\.create\([^)]*\{\s*ephemeral:\s*true\s*\}\s*\)/s);
+    // The ephemeral create lives in the shared createEphemeralNote helper (#349),
+    // which both new-note entry points (handleNewNote, handleNewNoteInFolder) call.
+    const helper = page.slice(page.indexOf('async function createEphemeralNote'));
+    expect(helper).toMatch(/notesStore\.create\([^)]*\{\s*ephemeral:\s*true\s*\}\s*\)/s);
+    const newNote = page.slice(
+      page.indexOf('async function handleNewNote'),
+      page.indexOf('async function handlePeriodic')
+    );
+    expect(newNote).toMatch(/createEphemeralNote\(\)/);
   });
 });
 

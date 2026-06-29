@@ -334,6 +334,7 @@
     "folder_name_placeholder": "Saisissez le nom du dossier",
     "create_subfolder": "Créer un sous-dossier",
     "new_subfolder": "Nouveau sous-dossier",
+    "new_note_here": "Nouvelle note dans ce dossier",
     "sync_now": "Synchroniser maintenant",
     "sync_done": "Dossier synchronisé",
     "synced_folder": "Dossier synchronisé",
@@ -475,7 +476,16 @@
     "table_columns": "Colonnes",
     "table_rows": "Lignes (corps)",
     "table_insert": "Insérer",
-    "table_cancel": "Annuler"
+    "table_cancel": "Annuler",
+    "table_align_left": "Aligner la colonne à gauche",
+    "table_align_center": "Centrer la colonne",
+    "table_align_right": "Aligner la colonne à droite",
+    "table_insert_column_left": "Insérer une colonne à gauche",
+    "table_insert_column_right": "Insérer une colonne à droite",
+    "table_delete_column": "Supprimer la colonne",
+    "table_insert_row_above": "Insérer une ligne au-dessus",
+    "table_insert_row_below": "Insérer une ligne en dessous",
+    "table_delete_row": "Supprimer la ligne"
   },
   "search": {
     "title": "Rechercher des notes",

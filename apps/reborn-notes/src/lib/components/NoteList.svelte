@@ -779,6 +779,18 @@
         </button>
       {/if}
 
+      {#if activeFolder}
+        <button
+          type="button"
+          onclick={handleCreate}
+          title={$t('folders.new_note_here')}
+          aria-label={$t('folders.new_note_here')}
+          class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <FilePlus class={headerIconClass} />
+        </button>
+      {/if}
+
       {#if onNewSubfolder}
         <button
           type="button"
@@ -796,6 +808,7 @@
           folder={activeFolder}
           buttonClass={headerBtnClass}
           iconClass={headerIconClass}
+          onNewNote={handleCreate}
           onNewSubfolder={onNewSubfolder}
           onStartRename={startActiveFolderRename}
           onAfterDelete={onback}
@@ -925,18 +938,6 @@
 
         {#if !isTrash}
           <NoteListSortMenu bind:sortSheetOpen prominent={rowTwoProminent} />
-        {/if}
-
-        {#if !isTrash && !isPeriodic}
-          <button
-            type="button"
-            onclick={handleCreate}
-            title={$t('nav.new_note')}
-            aria-label={$t('nav.new_note')}
-            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <FilePlus class={rowTwoIconClass} />
-          </button>
         {/if}
 
         {#if isTrash}

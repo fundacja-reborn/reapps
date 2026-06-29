@@ -32,6 +32,7 @@ import { codeLanguages } from './code-languages';
 import { loadedImagesField, type ImageWidgetLabels } from './image-widget';
 import type { CodeCopyLabels } from './code-copy';
 import type { TocWidgetLabels } from './toc-widget';
+import type { TableWidgetLabels } from './table-widget';
 
 /**
  * Runtime options for the Live Preview extension. The Compartment in
@@ -48,6 +49,8 @@ export interface LivePreviewOptions {
   tocLabels?: TocWidgetLabels;
   /** aria-label / tooltip for the per-heading "copy link" button. */
   headingLinkLabel?: string;
+  /** i18n labels for the editable table's structural mini-toolbar. */
+  tableLabels?: TableWidgetLabels;
   /** Owner callbacks for the TOC refresh / remove buttons. */
   tocActions?: TocActions;
 }
@@ -70,13 +73,26 @@ const DEFAULT_TOC_LABELS: TocWidgetLabels = {
 
 const DEFAULT_HEADING_LINK_LABEL = 'Copy link to heading';
 
+const DEFAULT_TABLE_LABELS: TableWidgetLabels = {
+  alignLeft: 'Align column left',
+  alignCenter: 'Align column center',
+  alignRight: 'Align column right',
+  insertColumnLeft: 'Insert column left',
+  insertColumnRight: 'Insert column right',
+  deleteColumn: 'Delete column',
+  insertRowAbove: 'Insert row above',
+  insertRowBelow: 'Insert row below',
+  deleteRow: 'Delete row'
+};
+
 export function createLivePreviewExtension(options: LivePreviewOptions = {}): Extension {
   const field = createLivePreviewField({
     imageLoadMode: options.imageLoadMode ?? 'ask',
     imageLabels: options.imageLabels ?? DEFAULT_LABELS,
     codeLabels: options.codeLabels ?? DEFAULT_CODE_LABELS,
     tocLabels: options.tocLabels ?? DEFAULT_TOC_LABELS,
-    headingLinkLabel: options.headingLinkLabel ?? DEFAULT_HEADING_LINK_LABEL
+    headingLinkLabel: options.headingLinkLabel ?? DEFAULT_HEADING_LINK_LABEL,
+    tableLabels: options.tableLabels ?? DEFAULT_TABLE_LABELS
   });
   return [
     field,
@@ -135,7 +151,12 @@ export {
   getLoadedImages,
   type ImageWidgetLabels
 } from './image-widget';
-export { TableWidget, tableCellEditAnnotation, wrapCellSelection } from './table-widget';
+export {
+  TableWidget,
+  tableCellEditAnnotation,
+  wrapCellSelection,
+  type TableWidgetLabels
+} from './table-widget';
 export {
   highlightCodeToHtml,
   triggerLanguageLoad,

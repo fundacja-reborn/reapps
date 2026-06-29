@@ -18,7 +18,7 @@
 
 <script lang="ts">
   import {
-    PenLine,
+    FilePlus,
     Search,
     BookOpen,
     Star,
@@ -179,7 +179,7 @@
              text-muted-foreground hover:bg-sidebar-accent/60 transition-colors"
       aria-label={$t('nav.new_note')}
     >
-      <PenLine class="h-5 w-5" />
+      <FilePlus class="h-5 w-5" />
       <span class="text-[11px] leading-none">{$t('nav.new_short')}</span>
     </button>
     <!-- Search -->
@@ -330,7 +330,7 @@
                    hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
             aria-label={$t('nav.new_note')}
           >
-            <PenLine class="h-6 w-6 md:h-5 md:w-5" />
+            <FilePlus class="h-6 w-6 md:h-5 md:w-5" />
           </button>
         {/snippet}
       </Tooltip.Trigger>

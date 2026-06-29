@@ -75,35 +75,69 @@ export function escapeCell(text: string): string {
     .replace(/\r?\n/g, '<br>');
 }
 
-function readCell(state: EditorState, cellNode: SyntaxNode): ParsedCell {
-  const raw = state.doc.sliceString(cellNode.from, cellNode.to);
-  return {
-    from: cellNode.from,
-    to: cellNode.to,
-    text: decodeCellText(raw)
-  };
-}
-
-function collectCells(state: EditorState, parent: SyntaxNode): ParsedCell[] {
-  const out: ParsedCell[] = [];
-  let child = parent.firstChild;
-  while (child) {
-    if (child.type.name === 'TableCell') out.push(readCell(state, child));
-    child = child.nextSibling;
+/**
+ * Split one table row line into raw (still-escaped, untrimmed) cell segments at
+ * unescaped pipes. GFM treats a single leading and a single trailing pipe as
+ * optional delimiters, so we drop the empty segment each of those produces.
+ *
+ * Crucially this preserves EMPTY interior cells (`| a |  | c |` → three cells).
+ * `@lezer/markdown` emits no `TableCell` node for an empty cell, so the previous
+ * node-based reader silently collapsed such rows and shifted every cell after
+ * the gap one column to the left (the root cause of pasted/typed text landing in
+ * the wrong column). Splitting the source text ourselves is the only
+ * GFM-faithful way to keep column positions stable.
+ */
+function splitRowCells(line: string): string[] {
+  const cells: string[] = [];
+  let buf = '';
+  let escaped = false;
+  let lastWasSeparator = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (escaped) {
+      buf += ch;
+      escaped = false;
+      lastWasSeparator = false;
+    } else if (ch === '\\') {
+      buf += ch;
+      escaped = true;
+      lastWasSeparator = false;
+    } else if (ch === '|') {
+      cells.push(buf);
+      buf = '';
+      lastWasSeparator = true;
+    } else {
+      buf += ch;
+      lastWasSeparator = false;
+    }
   }
-  return out;
+  cells.push(buf);
+  // A leading pipe makes cells[0] the (empty) text before it; a trailing
+  // unescaped pipe makes the final pushed segment empty. Drop exactly those two
+  // delimiter artifacts - never an interior empty cell.
+  if (cells.length > 1 && /^\s*\|/.test(line)) cells.shift();
+  if (cells.length > 1 && lastWasSeparator) cells.pop();
+  return cells;
 }
 
 /**
- * Parses the delimiter row (`| :--- | ---: | :---: |`) and returns the
- * alignment per column. Robust to extra whitespace and missing leading/trailing
- * pipes (GFM allows both `| a | b |` and `a | b`).
+ * Split a delimiter row (`| :--- | ---: |`) into its per-column segments,
+ * tolerating extra whitespace and missing leading/trailing pipes (GFM allows
+ * both `| a | b |` and `a | b`). The segment count is GFM's authoritative
+ * column count for the table — see `parseTable`.
  */
-function parseAlignments(delimiterText: string, expectedCols: number): CellAlign[] {
+function splitDelimiter(delimiterText: string): string[] {
   const trimmed = delimiterText.trim();
   const inner = trimmed.replace(/^\|/, '').replace(/\|$/, '');
-  const parts = inner.split('|').map((s) => s.trim());
-  const out: CellAlign[] = parts.map((seg) => {
+  return inner.split('|').map((s) => s.trim());
+}
+
+/**
+ * Parse the delimiter row into per-column alignment, padded/truncated to
+ * `expectedCols`.
+ */
+function parseAlignments(delimiterText: string, expectedCols: number): CellAlign[] {
+  const out: CellAlign[] = splitDelimiter(delimiterText).map((seg) => {
     const left = seg.startsWith(':');
     const right = seg.endsWith(':');
     if (left && right) return 'center';
@@ -111,62 +145,90 @@ function parseAlignments(delimiterText: string, expectedCols: number): CellAlign
     if (left) return 'left';
     return null;
   });
-  // Pad / trim so length matches header column count.
+  // Pad / trim so length matches the column count.
   while (out.length < expectedCols) out.push(null);
   return out.slice(0, expectedCols);
 }
 
 /**
+ * Parse a standalone GFM table markdown string (header line / delimiter line /
+ * body lines) into a `SerializeInput` snapshot - no syntax tree required.
+ *
+ * This is the single source of truth for splitting a table into cells. Working
+ * straight from the document text (rather than `@lezer/markdown` `TableCell`
+ * nodes) means:
+ *  - empty interior cells survive (see `splitRowCells`);
+ *  - the widget can read the AUTHORITATIVE current table directly from the doc
+ *    at dispatch time, immune to incremental-parse / stale-widget-instance races
+ *    (see `applyStructuralOp` / `dispatchFromDom` in `table-widget`).
+ *
+ * GFM defines the column count by the delimiter row, so the header and every
+ * body row are normalized to it - short rows gain empty cells, long rows are
+ * truncated, matching how browsers render GFM.
+ */
+export function parseTableMarkdown(md: string): SerializeInput {
+  const lines = md.split('\n');
+  const delimiterLine = lines[1] ?? '';
+  const delimCols = splitDelimiter(delimiterLine).length;
+  const headerCells = (lines[0] !== undefined ? splitRowCells(lines[0]) : []).map(decodeCellText);
+  const cols = Math.max(headerCells.length, delimCols, 1);
+
+  const header = Array.from({ length: cols }, (_, i) => ({ text: headerCells[i] ?? '' }));
+  const alignments = parseAlignments(delimiterLine, cols);
+
+  const rows: { text: string }[][] = [];
+  for (let i = 2; i < lines.length; i++) {
+    // A blank line (e.g. a trailing newline captured by the table node) is not a
+    // row. An all-empty row `|   |   |` still has pipes, so it survives `trim()`.
+    if (lines[i].trim().length === 0) continue;
+    const cells = splitRowCells(lines[i]).map(decodeCellText);
+    rows.push(Array.from({ length: cols }, (_, j) => ({ text: cells[j] ?? '' })));
+  }
+  return { header, rows, alignments };
+}
+
+/**
  * Parse a `Table` node into a structural view. Returns `null` if the node is
- * malformed (no header) — caller should fall back to raw markdown rendering.
+ * malformed (fewer than two lines) - caller should fall back to raw markdown.
+ *
+ * Cells come from `parseTableMarkdown`; this wrapper only adds doc positions.
+ * Positions are line-granular (every cell in a row shares the row's range) - no
+ * consumer reads per-cell positions, so finer granularity would be dead detail.
  */
 export function parseTable(state: EditorState, tableNode: SyntaxNode): ParsedTable | null {
-  let header: ParsedCell[] | null = null;
-  let alignments: CellAlign[] | null = null;
-  const rows: ParsedCell[][] = [];
+  const from = tableNode.from;
+  const to = tableNode.to;
+  const md = state.doc.sliceString(from, to);
+  const lines = md.split('\n');
+  if (lines.length < 2) return null;
 
-  let child = tableNode.firstChild;
-  while (child) {
-    const name = child.type.name;
-    if (name === 'TableHeader') {
-      header = collectCells(state, child);
-    } else if (name === 'TableDelimiter' && header && !alignments) {
-      // Only the *block-level* TableDelimiter (separator row) is a direct
-      // child of the Table node — single-pipe delimiters live inside Header
-      // and Row nodes. So this branch reliably matches the alignment row.
-      const text = state.doc.sliceString(child.from, child.to);
-      alignments = parseAlignments(text, header.length);
-    } else if (name === 'TableRow') {
-      rows.push(collectCells(state, child));
-    }
-    child = child.nextSibling;
-  }
+  const snap = parseTableMarkdown(md);
+  if (snap.header.length === 0) return null;
 
-  if (!header || header.length === 0) return null;
-
-  const cols = header.length;
-  const padded: CellAlign[] =
-    alignments ?? Array.from({ length: cols }, () => null);
-
-  // Normalize each row to header column count — short rows get empty cells,
-  // long rows get truncated. Mirrors how the GFM spec / browser renderers behave.
-  const normRows = rows.map((row) => {
-    if (row.length === cols) return row;
-    if (row.length > cols) return row.slice(0, cols);
-    const out = row.slice();
-    while (out.length < cols) {
-      out.push({ from: tableNode.to, to: tableNode.to, text: '' });
-    }
-    return out;
+  // Running line ranges (doc-absolute) so each cell carries its source line span.
+  let offset = 0;
+  const lineRanges = lines.map((line) => {
+    const range = { from: from + offset, to: from + offset + line.length };
+    offset += line.length + 1; // +1 for the consumed '\n'
+    return range;
   });
 
-  return {
-    from: tableNode.from,
-    to: tableNode.to,
-    header,
-    rows: normRows,
-    alignments: padded
-  };
+  const headerRange = lineRanges[0];
+  const header: ParsedCell[] = snap.header.map((c) => ({
+    from: headerRange.from,
+    to: headerRange.to,
+    text: c.text
+  }));
+
+  // Body rows map back to the non-blank source lines from index 2 onward, in
+  // order - the same lines `parseTableMarkdown` kept.
+  const bodyRanges = lineRanges.filter((_, i) => i >= 2 && lines[i].trim().length > 0);
+  const rows: ParsedCell[][] = snap.rows.map((row, ri) => {
+    const range = bodyRanges[ri] ?? { from, to };
+    return row.map((c) => ({ from: range.from, to: range.to, text: c.text }));
+  });
+
+  return { from, to, header, rows, alignments: snap.alignments };
 }
 
 /** Build the delimiter segment (`---` / `:---` / `---:` / `:---:`). */
@@ -220,6 +282,88 @@ export function serializeTable(table: SerializeInput): string {
 
   const lines = [headerLine, separatorLine, ...bodyLines];
   return lines.join('\n');
+}
+
+// ─── Structural operations ──────────────────────────────────────────
+//
+// Pure transforms over a `SerializeInput` snapshot, used by the table widget's
+// mini-toolbar (add/remove column, insert row mid-table, change alignment).
+// Each returns a fresh snapshot — never mutates its argument — so it can be
+// piped straight into `serializeTable` → `view.dispatch`. They are DOM-free
+// and unit-tested in `table-parse.test.ts`; the widget owns dispatch + refocus.
+
+export type ColumnSide = 'left' | 'right';
+export type RowSide = 'above' | 'below';
+
+/** Snapshot clone so structural ops stay pure (no aliasing into the input). */
+function cloneSnapshot(t: SerializeInput): SerializeInput {
+  return {
+    header: t.header.map((c) => ({ text: c.text })),
+    rows: t.rows.map((r) => r.map((c) => ({ text: c.text }))),
+    alignments: t.alignments.slice()
+  };
+}
+
+/**
+ * Insert an empty column to the `left` or `right` of `atCol`. Header, every
+ * body row, and the alignment list all gain a slot at the same index; the new
+ * column has no explicit alignment (`null`).
+ */
+export function insertColumn(t: SerializeInput, atCol: number, side: ColumnSide): SerializeInput {
+  const next = cloneSnapshot(t);
+  const idx = Math.max(0, Math.min(side === 'left' ? atCol : atCol + 1, next.header.length));
+  next.header.splice(idx, 0, { text: '' });
+  next.rows.forEach((r) => r.splice(idx, 0, { text: '' }));
+  next.alignments.splice(idx, 0, null);
+  return next;
+}
+
+/**
+ * Remove column `atCol` from the header, every body row, and the alignment
+ * list. No-op when only one column remains — a GFM table needs at least one.
+ */
+export function deleteColumn(t: SerializeInput, atCol: number): SerializeInput {
+  const next = cloneSnapshot(t);
+  if (next.header.length <= 1 || atCol < 0 || atCol >= next.header.length) return next;
+  next.header.splice(atCol, 1);
+  next.rows.forEach((r) => r.splice(atCol, 1));
+  next.alignments.splice(atCol, 1);
+  return next;
+}
+
+/**
+ * Insert an empty body row `above` or `below` `atRow`. `atRow === -1` is the
+ * header row, which has no "above" — both sides insert at the top of the body
+ * (index 0), so a header-only table can grow its first body row.
+ */
+export function insertRow(t: SerializeInput, atRow: number, side: RowSide): SerializeInput {
+  const next = cloneSnapshot(t);
+  const blank = Array.from({ length: next.header.length }, () => ({ text: '' }));
+  const idx =
+    atRow === -1 ? 0 : Math.max(0, Math.min(side === 'above' ? atRow : atRow + 1, next.rows.length));
+  next.rows.splice(idx, 0, blank);
+  return next;
+}
+
+/**
+ * Remove body row `atRow`. No-op for the header (`atRow === -1`) or any
+ * out-of-range index; deleting the last body row leaves a valid header-only
+ * table.
+ */
+export function deleteRow(t: SerializeInput, atRow: number): SerializeInput {
+  const next = cloneSnapshot(t);
+  if (atRow < 0 || atRow >= next.rows.length) return next;
+  next.rows.splice(atRow, 1);
+  return next;
+}
+
+/** Set column `atCol`'s alignment (`left`/`right`/`center`/`null`). */
+export function setColumnAlignment(t: SerializeInput, atCol: number, align: CellAlign): SerializeInput {
+  const next = cloneSnapshot(t);
+  if (atCol < 0 || atCol >= next.header.length) return next;
+  while (next.alignments.length < next.header.length) next.alignments.push(null);
+  next.alignments[atCol] = align;
+  return next;
 }
 
 /**

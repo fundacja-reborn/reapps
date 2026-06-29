@@ -39,8 +39,17 @@ import type { SyntaxNode } from '@lezer/common';
 import {
   type ParsedTable,
   type CellAlign,
+  type SerializeInput,
+  type ColumnSide,
+  type RowSide,
   sameTableStructure,
-  serializeTable
+  serializeTable,
+  parseTableMarkdown,
+  insertColumn,
+  deleteColumn,
+  insertRow,
+  deleteRow,
+  setColumnAlignment
 } from './table-parse';
 import { buildInlineFragment, cellHasFormatting } from './table-cell-render';
 import { computeInlineWrap } from '../inline-wrap';
@@ -49,6 +58,49 @@ import { computeInlineWrap } from '../inline-wrap';
  *  potential future use (e.g. suppressing analytics or scroll-sync); not
  *  load-bearing for the edit pipeline itself. */
 export const tableCellEditAnnotation = Annotation.define<true>();
+
+/** i18n labels for the structural mini-toolbar (cannot read Svelte stores in a widget). */
+export interface TableWidgetLabels {
+  alignLeft: string;
+  alignCenter: string;
+  alignRight: string;
+  insertColumnLeft: string;
+  insertColumnRight: string;
+  deleteColumn: string;
+  insertRowAbove: string;
+  insertRowBelow: string;
+  deleteRow: string;
+}
+
+/** Compare two label sets field-by-field so a locale change re-renders the widget. */
+function sameLabels(a: TableWidgetLabels, b: TableWidgetLabels): boolean {
+  return (
+    a.alignLeft === b.alignLeft &&
+    a.alignCenter === b.alignCenter &&
+    a.alignRight === b.alignRight &&
+    a.insertColumnLeft === b.insertColumnLeft &&
+    a.insertColumnRight === b.insertColumnRight &&
+    a.deleteColumn === b.deleteColumn &&
+    a.insertRowAbove === b.insertRowAbove &&
+    a.insertRowBelow === b.insertRowBelow &&
+    a.deleteRow === b.deleteRow
+  );
+}
+
+// Toolbar glyphs — static, self-contained Lucide-style SVGs (16px,
+// `stroke="currentColor"` so they follow the button colour). Never user input;
+// inlined via `innerHTML` like the code-copy / TOC button icons.
+const svg = (inner: string): string =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+
+const ICON_ALIGN_LEFT = svg('<line x1="21" x2="3" y1="6" y2="6"/><line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="18" y2="18"/>');
+const ICON_ALIGN_CENTER = svg('<line x1="21" x2="3" y1="6" y2="6"/><line x1="17" x2="7" y1="12" y2="12"/><line x1="19" x2="5" y1="18" y2="18"/>');
+const ICON_ALIGN_RIGHT = svg('<line x1="21" x2="3" y1="6" y2="6"/><line x1="21" x2="9" y1="12" y2="12"/><line x1="21" x2="7" y1="18" y2="18"/>');
+const ICON_INSERT_COL_LEFT = svg('<path d="M3 19V5"/><path d="M21 12H7"/><path d="m11 18-6-6 6-6"/>');
+const ICON_INSERT_COL_RIGHT = svg('<path d="M21 5v14"/><path d="M17 12H3"/><path d="m13 18 6-6-6-6"/>');
+const ICON_INSERT_ROW_ABOVE = svg('<path d="M5 3h14"/><path d="M12 21V7"/><path d="m8 11 4-4 4 4"/>');
+const ICON_INSERT_ROW_BELOW = svg('<path d="M5 21h14"/><path d="M12 3v14"/><path d="m8 13 4 4 4-4"/>');
+const ICON_DELETE = svg('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>');
 
 /**
  * Look up the current `Table` node containing the widget's DOM root. We do
@@ -291,13 +343,22 @@ export class TableWidget extends WidgetType {
    *  fresh for the lifetime of the DOM root. */
   private view: EditorView | null = null;
 
-  constructor(public readonly table: ParsedTable) {
+  /** Throttle flag for reposition-on-scroll (one rAF per scroll burst). */
+  private scrollScheduled = false;
+
+  constructor(
+    public readonly table: ParsedTable,
+    public readonly labels: TableWidgetLabels
+  ) {
     super();
   }
 
   eq(other: WidgetType): boolean {
     if (!(other instanceof TableWidget)) return false;
-    return sameTableStructure(this.table, other.table);
+    // Structure drives focus retention (same shape → updateDOM keeps the caret).
+    // Labels are compared too so a locale change forces a rebuild with fresh
+    // tooltips; they never change mid-typing, so focus retention is unaffected.
+    return sameTableStructure(this.table, other.table) && sameLabels(this.labels, other.labels);
   }
 
   toDOM(view: EditorView): HTMLElement {
@@ -348,9 +409,42 @@ export class TableWidget extends WidgetType {
       tbody.appendChild(tr);
     });
     tableEl.appendChild(tbody);
-
     root.appendChild(tableEl);
-    return root;
+
+    // Wrap the scroll container in a non-clipping outer so the floating
+    // toolbars (column bar above the table, row bar at its left) can extend
+    // beyond the scroll area. `.cm-lp-table-wrap` sets `overflow-x: auto`,
+    // which CSS promotes overflow-y to `auto` too — anything positioned outside
+    // it would be clipped, hence the separate outer element.
+    const outer = document.createElement('div');
+    outer.className = 'cm-lp-table-outer';
+    outer.appendChild(root);
+    outer.appendChild(this.buildColumnBar(outer));
+    outer.appendChild(this.buildRowBar(outer));
+
+    // Hide the toolbars when the pointer leaves the table (unless a cell still
+    // holds focus) and when focus moves out of the table entirely.
+    outer.addEventListener('pointerleave', () => {
+      delete outer.dataset.hr;
+      delete outer.dataset.hc;
+      this.syncToolbars(outer);
+    });
+    outer.addEventListener('focusout', () => {
+      // Defer so `document.activeElement` settles on the new target first.
+      requestAnimationFrame(() => this.syncToolbars(outer));
+    });
+    // Horizontal table scroll slides the columns under the (outer-anchored)
+    // column bar — realign it. rAF-throttled to one update per scroll burst.
+    root.addEventListener('scroll', () => {
+      if (this.scrollScheduled) return;
+      this.scrollScheduled = true;
+      requestAnimationFrame(() => {
+        this.scrollScheduled = false;
+        this.syncToolbars(outer);
+      });
+    });
+
+    return outer;
   }
 
   /**
@@ -361,7 +455,7 @@ export class TableWidget extends WidgetType {
    */
   updateDOM(dom: HTMLElement, view: EditorView): boolean {
     this.view = view;
-    if (!dom.classList.contains('cm-lp-table-wrap')) return false;
+    if (!dom.classList.contains('cm-lp-table-outer')) return false;
     const tableEl = dom.querySelector<HTMLElement>('table.cm-lp-table');
     if (!tableEl) return false;
 
@@ -394,6 +488,8 @@ export class TableWidget extends WidgetType {
       });
     });
 
+    // Cell widths can shift as text is typed — keep the floating toolbars aligned.
+    this.syncToolbars(dom);
     return true;
   }
 
@@ -415,9 +511,24 @@ export class TableWidget extends WidgetType {
         setCellContent(cell, src);
         caretToEnd(cell);
       }
+      // A focused cell takes over as the toolbars' target (focus beats hover).
+      const outer = cell.closest<HTMLElement>('.cm-lp-table-outer');
+      if (outer) this.syncToolbars(outer);
     });
     cell.addEventListener('blur', () => {
       renderCellContent(cell, readCellText(cell));
+    });
+
+    // Hover targets the toolbars when no cell is focused (mouse discovery).
+    // `outer`'s `pointerleave` clears this; toolbar buttons live outside the
+    // cells, so the last hovered cell stays the target while the pointer is on
+    // a button (which is what its click handler reads).
+    cell.addEventListener('pointerenter', () => {
+      const outer = cell.closest<HTMLElement>('.cm-lp-table-outer');
+      if (!outer) return;
+      outer.dataset.hr = String(addr.row);
+      outer.dataset.hc = String(addr.col);
+      this.syncToolbars(outer);
     });
 
     cell.addEventListener('compositionstart', () => {
@@ -549,42 +660,351 @@ export class TableWidget extends WidgetType {
 
   /** Append an empty body row and focus its first cell after the rebuild. */
   private addRowAndFocus(root: HTMLElement, newRowIdx: number): void {
+    // `root` may be the wrap (keyboard path) or the outer — both contain the
+    // table, which is all `applyStructuralOp` needs.
+    this.applyStructuralOp(
+      root,
+      (snap) => insertRow(snap, snap.rows.length - 1, 'below'),
+      () => ({ row: newRowIdx, col: 0 })
+    );
+  }
+
+  /**
+   * The shared edit core for every structural change (row/column insert &
+   * delete, alignment): snapshot the live DOM, apply a pure transform, serialize
+   * to GFM, and dispatch one change. Because structure differs, CM6 rebuilds the
+   * widget (`eq` false → `toDOM`); the rebuilt DOM replaces ours, so we look it
+   * up by position and re-focus `target` on the next frame. `container` may be
+   * the wrap or the outer — both descend to the table.
+   */
+  private applyStructuralOp(
+    container: HTMLElement,
+    transform: (snap: SerializeInput) => SerializeInput,
+    target: (next: SerializeInput) => CellAddress
+  ): void {
     const view = this.view;
     if (!view) return;
-    const tableEl = root.querySelector<HTMLElement>('table.cm-lp-table');
+    const tableEl = container.querySelector<HTMLElement>('table.cm-lp-table');
     if (!tableEl) return;
     const range = findTableRange(view, tableEl);
     if (!range) return;
 
-    const cols = this.table.header.length;
-    const dom = readDomTable(root, cols);
-    dom.rows.push(Array.from({ length: cols }, () => ({ text: '' })));
-
-    const newMd = serializeTable({
+    // Read the AUTHORITATIVE current table straight from the document text, not
+    // from `this.table`. The widget instance bound to these toolbar handlers can
+    // be stale: a cell edit (or an incremental re-parse) updates the doc through
+    // `updateDOM`, which keeps the original `toDOM`'s button closures - so
+    // `this.table.alignments` may lag behind the doc. The doc is always current.
+    // Cell *content* still comes from the live DOM (the focused cell may hold an
+    // uncommitted keystroke); column count + alignments come from the doc.
+    const current = parseTableMarkdown(view.state.doc.sliceString(range.from, range.to));
+    const cols = current.header.length;
+    const dom = readDomTable(container, cols);
+    const next = transform({
       header: dom.header,
       rows: dom.rows,
-      alignments: this.table.alignments
+      alignments: current.alignments
     });
+    const newMd = serializeTable(next);
+    if (view.state.doc.sliceString(range.from, range.to) === newMd) return; // No-op.
 
     view.dispatch({
       changes: { from: range.from, to: range.to, insert: newMd },
       annotations: tableCellEditAnnotation.of(true)
     });
 
-    // After the dispatch CM6 will rebuild the widget (structure changed →
-    // toDOM, not updateDOM). The new DOM root replaces ours, so we look it
-    // up by position rather than reusing `root`.
+    const tgt = target(next);
     requestAnimationFrame(() => {
       const v = this.view;
-      if (!v) return;
-      // Find the table widget's DOM at the same logical position.
-      const newPos = range.from;
-      const newDom = v.domAtPos(newPos)?.node as Node | null;
-      const newTable = (newDom instanceof HTMLElement
-        ? newDom.querySelector<HTMLElement>('div.cm-lp-table-wrap')
-        : null) ?? v.dom.querySelector<HTMLElement>('div.cm-lp-table-wrap');
-      if (newTable) focusCell(newTable, newRowIdx, 0);
+      // Bail if the editor was torn down between the dispatch and this frame
+      // (e.g. the note was closed): `domAtPos` throws on a destroyed view.
+      if (!v || !v.dom.isConnected) return;
+      const node = v.domAtPos(range.from)?.node as Node | null;
+      const newWrap =
+        (node instanceof HTMLElement
+          ? node.querySelector<HTMLElement>('div.cm-lp-table-wrap')
+          : null) ?? v.dom.querySelector<HTMLElement>('div.cm-lp-table-wrap');
+      if (newWrap) focusCell(newWrap, tgt.row, tgt.col);
     });
+  }
+
+  // ─── Structural mini-toolbar ────────────────────────────────────
+  //
+  // Two contextual bars (Obsidian-style): a column bar floating above the active
+  // column (alignment + insert left/right + delete) and a row bar at the table's
+  // left edge, level with the active row (insert above/below + delete). The
+  // "active" cell is the focused cell, falling back to the last-hovered cell —
+  // both read from the DOM so the toolbars survive the widget's ephemeral
+  // instances. Every button routes through `applyStructuralOp`.
+
+  private buildColumnBar(outer: HTMLElement): HTMLElement {
+    const bar = document.createElement('div');
+    bar.className = 'cm-lp-table-colbar';
+    bar.style.display = 'none';
+    const L = this.labels;
+    bar.append(
+      this.makeBtn('align-left', ICON_ALIGN_LEFT, L.alignLeft, () => this.opAlign(outer, 'left')),
+      this.makeBtn('align-center', ICON_ALIGN_CENTER, L.alignCenter, () => this.opAlign(outer, 'center')),
+      this.makeBtn('align-right', ICON_ALIGN_RIGHT, L.alignRight, () => this.opAlign(outer, 'right')),
+      this.makeSep(),
+      this.makeBtn('insert-col-left', ICON_INSERT_COL_LEFT, L.insertColumnLeft, () =>
+        this.opInsertColumn(outer, 'left')
+      ),
+      this.makeBtn('insert-col-right', ICON_INSERT_COL_RIGHT, L.insertColumnRight, () =>
+        this.opInsertColumn(outer, 'right')
+      ),
+      this.makeSep(),
+      this.makeBtn('delete-col', ICON_DELETE, L.deleteColumn, () => this.opDeleteColumn(outer), true)
+    );
+    return bar;
+  }
+
+  private buildRowBar(outer: HTMLElement): HTMLElement {
+    const bar = document.createElement('div');
+    bar.className = 'cm-lp-table-rowbar';
+    bar.style.display = 'none';
+    const L = this.labels;
+    bar.append(
+      this.makeBtn('insert-row-above', ICON_INSERT_ROW_ABOVE, L.insertRowAbove, () =>
+        this.opInsertRow(outer, 'above')
+      ),
+      this.makeBtn('insert-row-below', ICON_INSERT_ROW_BELOW, L.insertRowBelow, () =>
+        this.opInsertRow(outer, 'below')
+      ),
+      this.makeSep(),
+      this.makeBtn('delete-row', ICON_DELETE, L.deleteRow, () => this.opDeleteRow(outer), true)
+    );
+    return bar;
+  }
+
+  private makeBtn(
+    extraClass: string,
+    icon: string,
+    label: string,
+    onClick: () => void,
+    danger = false
+  ): HTMLButtonElement {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.tabIndex = -1;
+    b.className = `cm-lp-table-btn cm-lp-table-${extraClass}${danger ? ' is-danger' : ''}`;
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    b.innerHTML = icon; // Trusted static SVG (no user input) — same as code-copy / TOC.
+    // Keep the active cell focused (and the hover target intact) on press —
+    // otherwise mousedown blurs the cell and `focusout` would hide the toolbars
+    // before the click handler runs.
+    b.addEventListener('mousedown', (e) => e.preventDefault());
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      onClick();
+    });
+    return b;
+  }
+
+  private makeSep(): HTMLElement {
+    const s = document.createElement('span');
+    s.className = 'cm-lp-table-sep';
+    return s;
+  }
+
+  // ── Toolbar operations ──
+
+  private opAlign(outer: HTMLElement, align: CellAlign): void {
+    const active = this.activeCell(outer);
+    if (!active) return;
+    this.applyStructuralOp(outer, (snap) => setColumnAlignment(snap, active.col, align), () => active);
+  }
+
+  private opInsertColumn(outer: HTMLElement, side: ColumnSide): void {
+    const active = this.activeCell(outer);
+    if (!active) return;
+    const targetCol = side === 'left' ? active.col : active.col + 1;
+    this.applyStructuralOp(
+      outer,
+      (snap) => insertColumn(snap, active.col, side),
+      () => ({ row: active.row, col: targetCol })
+    );
+  }
+
+  private opDeleteColumn(outer: HTMLElement): void {
+    const active = this.activeCell(outer);
+    if (!active) return;
+    this.applyStructuralOp(
+      outer,
+      (snap) => deleteColumn(snap, active.col),
+      (next) => ({ row: active.row, col: Math.min(active.col, next.header.length - 1) })
+    );
+  }
+
+  private opInsertRow(outer: HTMLElement, side: RowSide): void {
+    const active = this.activeCell(outer);
+    if (!active) return;
+    if (active.row === -1 && side === 'above') return; // Header has no "above".
+    const newRowIdx = active.row === -1 ? 0 : side === 'above' ? active.row : active.row + 1;
+    this.applyStructuralOp(
+      outer,
+      (snap) => insertRow(snap, active.row, side),
+      () => ({ row: newRowIdx, col: Math.max(active.col, 0) })
+    );
+  }
+
+  private opDeleteRow(outer: HTMLElement): void {
+    const active = this.activeCell(outer);
+    if (!active || active.row === -1) return; // Header can't be deleted.
+    this.applyStructuralOp(
+      outer,
+      (snap) => deleteRow(snap, active.row),
+      (next) =>
+        next.rows.length === 0
+          ? { row: -1, col: Math.min(active.col, next.header.length - 1) }
+          : {
+              row: Math.min(active.row, next.rows.length - 1),
+              col: Math.min(active.col, next.header.length - 1)
+            }
+    );
+  }
+
+  // ── Toolbar state + geometry ──
+
+  /** The toolbars' target: the focused cell, else the last-hovered cell. */
+  private activeCell(outer: HTMLElement): CellAddress | null {
+    const a = outer.ownerDocument.activeElement;
+    if (a instanceof HTMLElement && (a.tagName === 'TD' || a.tagName === 'TH') && outer.contains(a)) {
+      return { row: Number(a.dataset.row), col: Number(a.dataset.col) };
+    }
+    const hr = outer.dataset.hr;
+    const hc = outer.dataset.hc;
+    if (hr !== undefined && hc !== undefined) return { row: Number(hr), col: Number(hc) };
+    return null;
+  }
+
+  /**
+   * Show, position, and update both toolbars from the current target cell, or
+   * hide them when there is none. All reads come from the DOM so it stays
+   * correct across the widget's ephemeral instances.
+   *
+   * Geometry anchors to the ACTIVE CELL (not the table), so the bars stay next
+   * to where the user is working and never scroll off with a tall/wide table -
+   * the edited cell is by definition on-screen. Positions are bounding-rect
+   * based, relative to the non-clipping `outer`, and kept inside the editor's
+   * scroll viewport via flip (column bar: above ↔ below) and clamp (row bar to
+   * the left edge; both bars on their cross axis).
+   */
+  private syncToolbars(outer: HTMLElement): void {
+    const colbar = outer.querySelector<HTMLElement>('.cm-lp-table-colbar');
+    const rowbar = outer.querySelector<HTMLElement>('.cm-lp-table-rowbar');
+    if (!colbar || !rowbar) return;
+
+    const active = this.activeCell(outer);
+    const wrap = outer.querySelector<HTMLElement>('.cm-lp-table-wrap');
+    const activeCellEl = active ? cellAt(outer, active.row, active.col) : null;
+    if (!active || !wrap || !activeCellEl) {
+      colbar.style.display = 'none';
+      rowbar.style.display = 'none';
+      this.setColumnHighlight(outer, null);
+      return;
+    }
+
+    const colCount = outer.querySelectorAll('thead > tr > th').length;
+    const bodyCount = outer.querySelectorAll('tbody > tr').length;
+    const isHeader = active.row === -1;
+
+    // Column bar: highlight the active column's alignment, and block deleting the
+    // last column. Read the alignment from the active cell's RENDERED `text-align`
+    // (what the user sees), not from `this.table.alignments`: after a toolbar
+    // alignment change the bound widget instance can lag the doc/DOM (updateDOM
+    // keeps the original toDOM closures), so the instance's alignments would
+    // highlight the wrong icon - or none. `''` (GFM default) maps to no active
+    // button, matching the prior behaviour.
+    const al = activeCellEl.style.textAlign;
+    this.setBtnActive(colbar, '.cm-lp-table-align-left', al === 'left');
+    this.setBtnActive(colbar, '.cm-lp-table-align-center', al === 'center');
+    this.setBtnActive(colbar, '.cm-lp-table-align-right', al === 'right');
+    this.setBtnDisabled(colbar, '.cm-lp-table-delete-col', colCount <= 1);
+
+    // Row bar: the header has no "above" and can't be deleted; an empty body
+    // has nothing to delete.
+    this.setBtnDisabled(rowbar, '.cm-lp-table-insert-row-above', isHeader);
+    this.setBtnDisabled(rowbar, '.cm-lp-table-delete-row', isHeader || bodyCount === 0);
+
+    colbar.style.display = 'flex';
+    rowbar.style.display = 'flex';
+
+    const outerRect = outer.getBoundingClientRect();
+    const wrapRect = wrap.getBoundingClientRect();
+    const cellRect = activeCellEl.getBoundingClientRect();
+
+    // Hide both bars when the active column is scrolled out of the table's
+    // horizontal viewport (the wrap clips overflow-x) - a bar pointing at an
+    // off-screen cell would mislead.
+    if (cellRect.right <= wrapRect.left + 1 || cellRect.left >= wrapRect.right - 1) {
+      colbar.style.display = 'none';
+      rowbar.style.display = 'none';
+      this.setColumnHighlight(outer, null);
+      return;
+    }
+
+    // Stay within the editor's scroll viewport (intersected with the window),
+    // so the bars never clip off-screen no matter how large the table is.
+    const view = this.view;
+    const vp = view ? view.scrollDOM.getBoundingClientRect() : null;
+    const vpTop = Math.max(vp ? vp.top : 0, 0);
+    const vpLeft = Math.max(vp ? vp.left : 0, 0);
+    const vpRight = Math.min(vp ? vp.right : window.innerWidth, window.innerWidth);
+    const vpBottom = Math.min(vp ? vp.bottom : window.innerHeight, window.innerHeight);
+    const GAP = 4;
+
+    // Column bar: above the active cell, flipped below when it would clip the
+    // top edge; aligned to the cell's left, clamped within the viewport width.
+    const colW = colbar.offsetWidth;
+    const colH = colbar.offsetHeight;
+    let colTop = cellRect.top - colH - GAP;
+    if (colTop < vpTop) colTop = cellRect.bottom + GAP; // flip below
+    colTop = Math.max(vpTop, Math.min(colTop, vpBottom - colH));
+    const colLeft = Math.max(vpLeft, Math.min(cellRect.left, vpRight - colW));
+    colbar.style.left = `${Math.round(colLeft - outerRect.left)}px`;
+    colbar.style.top = `${Math.round(colTop - outerRect.top)}px`;
+
+    // Row bar: to the left of the active cell, clamped to the viewport's left
+    // edge (so it stays put when a wide table scrolls horizontally); centered on
+    // the cell vertically, clamped within the viewport height.
+    const rowW = rowbar.offsetWidth;
+    const rowH = rowbar.offsetHeight;
+    const rowLeft = Math.max(vpLeft, cellRect.left - rowW - GAP);
+    let rowTop = cellRect.top + (cellRect.height - rowH) / 2;
+    rowTop = Math.max(vpTop, Math.min(rowTop, vpBottom - rowH));
+    rowbar.style.left = `${Math.round(rowLeft - outerRect.left)}px`;
+    rowbar.style.top = `${Math.round(rowTop - outerRect.top)}px`;
+
+    // Tint the whole active column so the column-scoped buttons (alignment,
+    // insert-column, delete-column) visibly act on the column, not just the cell.
+    this.setColumnHighlight(outer, active.col);
+  }
+
+  /**
+   * Tint every cell of the active column (header + body) while its column bar is
+   * visible, signalling that alignment / insert-column / delete-column act on the
+   * whole column - GFM stores alignment per column (in the delimiter row), never
+   * per cell. Idempotent: clears the previous highlight first, so it stays
+   * correct across the widget's ephemeral `toDOM`/`updateDOM` instances. Pass
+   * `col === null` to clear (bars hidden / no active cell).
+   */
+  private setColumnHighlight(outer: HTMLElement, col: number | null): void {
+    outer
+      .querySelectorAll<HTMLElement>('.cm-lp-col-active')
+      .forEach((el) => el.classList.remove('cm-lp-col-active'));
+    if (col === null) return;
+    outer
+      .querySelectorAll<HTMLElement>(`[data-col="${col}"]`)
+      .forEach((el) => el.classList.add('cm-lp-col-active'));
+  }
+
+  private setBtnActive(bar: HTMLElement, sel: string, on: boolean): void {
+    bar.querySelector(sel)?.classList.toggle('is-active', on);
+  }
+
+  private setBtnDisabled(bar: HTMLElement, sel: string, off: boolean): void {
+    bar.querySelector(sel)?.toggleAttribute('disabled', off);
   }
 
   /** Read the current state from DOM and dispatch a doc change. */
@@ -598,15 +1018,21 @@ export class TableWidget extends WidgetType {
     const range = findTableRange(view, tableEl);
     if (!range) return;
 
-    const cols = this.table.header.length;
+    // Authoritative column count + alignments from the doc, not the (possibly
+    // stale) widget instance - same reasoning as `applyStructuralOp`. Without
+    // this, typing in a cell after a column/alignment change could revert that
+    // change, because `this.table` lags the doc when edits flow through
+    // `updateDOM`. Content comes from the live DOM.
+    const currentMd = view.state.doc.sliceString(range.from, range.to);
+    const current = parseTableMarkdown(currentMd);
+    const cols = current.header.length;
     const dom = readDomTable(root, cols);
     const newMd = serializeTable({
       header: dom.header,
       rows: dom.rows,
-      alignments: this.table.alignments
+      alignments: current.alignments
     });
 
-    const currentMd = view.state.doc.sliceString(range.from, range.to);
     if (currentMd === newMd) return; // No-op (defensive — saves an empty tx).
 
     view.dispatch({

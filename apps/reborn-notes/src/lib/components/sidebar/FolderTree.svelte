@@ -14,6 +14,7 @@
     FolderInput,
     MoreHorizontal,
     FolderPlus,
+    FilePlus,
     Pencil,
     RefreshCw,
     Trash2,
@@ -57,6 +58,7 @@
     activeFolderId = null,
     expandedIds,
     onselect,
+    onnewnote = undefined,
     savedSearchesByFolder = undefined,
     onsavedsearchselect = undefined
   }: {
@@ -65,6 +67,8 @@
     activeFolderId?: string | null;
     expandedIds: Set<string>;
     onselect: (id: string | null) => void;
+    /** Create a new note inside the folder (parent owns the create + navigate). */
+    onnewnote?: (folderId: string) => void;
     /** Saved searches parked per folder id - rendered as leaf nodes under the folder. */
     savedSearchesByFolder?: Map<string, SavedSearchDecrypted[]>;
     onsavedsearchselect?: (search: SavedSearchDecrypted) => void;
@@ -190,6 +194,13 @@
     }
   }
 
+  function handleCreateNote(folderId: string, e?: Event) {
+    e?.stopPropagation();
+    menuOpenId = null;
+    folderActionSheetOpen = false;
+    onnewnote?.(folderId);
+  }
+
   async function handleCreateSub(parentId: string, e?: Event) {
     e?.stopPropagation();
     menuOpenId = null;
@@ -286,13 +297,22 @@
         run: (e) => handleSyncNow(syncConfigId, e)
       });
     }
+    if (onnewnote) {
+      actions.push({
+        key: 'new-note',
+        icon: FilePlus,
+        label: $t('folders.new_note_here'),
+        run: (e) => handleCreateNote(folder.id, e),
+        separatorBefore: !!syncConfigId
+      });
+    }
     actions.push(
       {
         key: 'new-subfolder',
         icon: FolderPlus,
         label: $t('folders.new_subfolder'),
         run: (e) => handleCreateSub(folder.id, e),
-        separatorBefore: !!syncConfigId
+        separatorBefore: !!syncConfigId && !onnewnote
       },
       {
         key: 'rename',
@@ -565,6 +585,7 @@
             {activeFolderId}
             {expandedIds}
             {onselect}
+            {onnewnote}
             {savedSearchesByFolder}
             {onsavedsearchselect}
           />
