@@ -574,6 +574,76 @@ export const livePreviewTheme = EditorView.theme({
     backgroundColor: 'color-mix(in srgb, var(--primary) 8%, transparent)'
   },
 
+  // ─── Table structural mini-toolbar (Obsidian-style) ───────────
+  // The outer is a non-clipping positioning context for the two floating bars.
+  // The inner `.cm-lp-table-wrap` keeps `overflow-x: auto` (which CSS promotes
+  // to clipping on both axes), so the bars must live in the outer to be able to
+  // sit above / to the left of the table. All colours use design-system vars,
+  // so light/dark adapt without a `.dark` override.
+  '.cm-lp-table-outer': {
+    position: 'relative',
+    margin: '0'
+  },
+  '.cm-lp-table-colbar, .cm-lp-table-rowbar': {
+    position: 'absolute',
+    zIndex: '5',
+    display: 'none', // toggled to `flex` + positioned in JS (syncToolbars)
+    gap: '1px',
+    padding: '2px',
+    background: 'var(--popover, var(--background))',
+    color: 'var(--popover-foreground, var(--foreground))',
+    border: '1px solid var(--border)',
+    borderRadius: '0.45em',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.18)'
+  },
+  '.cm-lp-table-colbar': { flexDirection: 'row', alignItems: 'center' },
+  '.cm-lp-table-rowbar': { flexDirection: 'column', alignItems: 'center' },
+  '.cm-lp-table-btn': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '1.65em',
+    height: '1.65em',
+    padding: '0',
+    border: 'none',
+    borderRadius: '0.3em',
+    background: 'transparent',
+    color: 'inherit',
+    cursor: 'pointer',
+    lineHeight: '1'
+  },
+  '.cm-lp-table-btn:hover': {
+    background: 'var(--accent)',
+    color: 'var(--accent-foreground)'
+  },
+  '.cm-lp-table-btn.is-active': {
+    background: 'var(--primary)',
+    color: 'var(--primary-foreground)'
+  },
+  '.cm-lp-table-btn.is-danger:hover': {
+    background: 'var(--destructive)',
+    color: 'var(--destructive-foreground)'
+  },
+  '.cm-lp-table-btn[disabled]': {
+    opacity: '0.35',
+    cursor: 'default'
+  },
+  '.cm-lp-table-btn[disabled]:hover': {
+    background: 'transparent',
+    color: 'inherit'
+  },
+  '.cm-lp-table-btn svg': {
+    width: '1em',
+    height: '1em',
+    display: 'block'
+  },
+  '.cm-lp-table-sep': {
+    background: 'var(--border)',
+    flex: '0 0 auto'
+  },
+  '.cm-lp-table-colbar .cm-lp-table-sep': { width: '1px', height: '1.1em', margin: '0 1px' },
+  '.cm-lp-table-rowbar .cm-lp-table-sep': { height: '1px', width: '1.1em', margin: '1px 0' },
+
   // ─── Inline images & placeholders ─────────────────────────────
   // Image widgets are emitted as inline replacements (no `block: true`),
   // so they live inside `.cm-line` flow. Margin must stay 0 — same height-map

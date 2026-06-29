@@ -475,7 +475,16 @@
     "table_columns": "Columnas",
     "table_rows": "Filas (cuerpo)",
     "table_insert": "Insertar",
-    "table_cancel": "Cancelar"
+    "table_cancel": "Cancelar",
+    "table_align_left": "Alinear a la izquierda",
+    "table_align_center": "Centrar",
+    "table_align_right": "Alinear a la derecha",
+    "table_insert_column_left": "Insertar columna a la izquierda",
+    "table_insert_column_right": "Insertar columna a la derecha",
+    "table_delete_column": "Eliminar columna",
+    "table_insert_row_above": "Insertar fila encima",
+    "table_insert_row_below": "Insertar fila debajo",
+    "table_delete_row": "Eliminar fila"
   },
   "search": {
     "title": "Buscar notas",

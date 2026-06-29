@@ -475,7 +475,16 @@
     "table_columns": "Kolumny",
     "table_rows": "Wiersze (dane)",
     "table_insert": "Wstaw",
-    "table_cancel": "Anuluj"
+    "table_cancel": "Anuluj",
+    "table_align_left": "Wyrównaj do lewej",
+    "table_align_center": "Wyśrodkuj",
+    "table_align_right": "Wyrównaj do prawej",
+    "table_insert_column_left": "Wstaw kolumnę z lewej",
+    "table_insert_column_right": "Wstaw kolumnę z prawej",
+    "table_delete_column": "Usuń kolumnę",
+    "table_insert_row_above": "Wstaw wiersz powyżej",
+    "table_insert_row_below": "Wstaw wiersz poniżej",
+    "table_delete_row": "Usuń wiersz"
   },
   "search": {
     "title": "Szukaj notatek",

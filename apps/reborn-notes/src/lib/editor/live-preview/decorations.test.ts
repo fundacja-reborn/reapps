@@ -574,26 +574,40 @@ describe('buildDecorations — inline images', () => {
   const CODE_LABELS = { copy: 'Copy code', copied: 'Copied' };
   const TOC_LABELS = { refresh: 'Refresh', stale: 'Out of date', remove: 'Remove' };
   const HEADING_LINK_LABEL = 'Copy link to heading';
+  const TABLE_LABELS = {
+    alignLeft: 'Align left',
+    alignCenter: 'Align center',
+    alignRight: 'Align right',
+    insertColumnLeft: 'Insert column left',
+    insertColumnRight: 'Insert column right',
+    deleteColumn: 'Delete column',
+    insertRowAbove: 'Insert row above',
+    insertRowBelow: 'Insert row below',
+    deleteRow: 'Delete row'
+  };
   const OPTS_ASK = {
     imageLoadMode: 'ask' as const,
     imageLabels: LABELS,
     codeLabels: CODE_LABELS,
     tocLabels: TOC_LABELS,
-    headingLinkLabel: HEADING_LINK_LABEL
+    headingLinkLabel: HEADING_LINK_LABEL,
+    tableLabels: TABLE_LABELS
   };
   const OPTS_ALWAYS = {
     imageLoadMode: 'always' as const,
     imageLabels: LABELS,
     codeLabels: CODE_LABELS,
     tocLabels: TOC_LABELS,
-    headingLinkLabel: HEADING_LINK_LABEL
+    headingLinkLabel: HEADING_LINK_LABEL,
+    tableLabels: TABLE_LABELS
   };
   const OPTS_NEVER = {
     imageLoadMode: 'never' as const,
     imageLabels: LABELS,
     codeLabels: CODE_LABELS,
     tocLabels: TOC_LABELS,
-    headingLinkLabel: HEADING_LINK_LABEL
+    headingLinkLabel: HEADING_LINK_LABEL,
+    tableLabels: TABLE_LABELS
   };
 
   it('replaces an image with an ImageWidget when cursor is outside', () => {
@@ -982,7 +996,18 @@ describe('buildDecorations — heading copy-link button', () => {
         imageLabels: { load: 'x', base64Blocked: 'y' },
         codeLabels: { copy: 'x', copied: 'y' },
         tocLabels: { refresh: 'x', stale: 'y', remove: 'z' },
-        headingLinkLabel: 'Skopiuj link do nagłówka'
+        headingLinkLabel: 'Skopiuj link do nagłówka',
+        tableLabels: {
+          alignLeft: 'a',
+          alignCenter: 'b',
+          alignRight: 'c',
+          insertColumnLeft: 'd',
+          insertColumnRight: 'e',
+          deleteColumn: 'f',
+          insertRowAbove: 'g',
+          insertRowBelow: 'h',
+          deleteRow: 'i'
+        }
       })
     );
     expect(buttons).toHaveLength(1);

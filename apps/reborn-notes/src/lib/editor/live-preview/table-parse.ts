@@ -95,15 +95,23 @@ function collectCells(state: EditorState, parent: SyntaxNode): ParsedCell[] {
 }
 
 /**
- * Parses the delimiter row (`| :--- | ---: | :---: |`) and returns the
- * alignment per column. Robust to extra whitespace and missing leading/trailing
- * pipes (GFM allows both `| a | b |` and `a | b`).
+ * Split a delimiter row (`| :--- | ---: |`) into its per-column segments,
+ * tolerating extra whitespace and missing leading/trailing pipes (GFM allows
+ * both `| a | b |` and `a | b`). The segment count is GFM's authoritative
+ * column count for the table — see `parseTable`.
  */
-function parseAlignments(delimiterText: string, expectedCols: number): CellAlign[] {
+function splitDelimiter(delimiterText: string): string[] {
   const trimmed = delimiterText.trim();
   const inner = trimmed.replace(/^\|/, '').replace(/\|$/, '');
-  const parts = inner.split('|').map((s) => s.trim());
-  const out: CellAlign[] = parts.map((seg) => {
+  return inner.split('|').map((s) => s.trim());
+}
+
+/**
+ * Parse the delimiter row into per-column alignment, padded/truncated to
+ * `expectedCols`.
+ */
+function parseAlignments(delimiterText: string, expectedCols: number): CellAlign[] {
+  const out: CellAlign[] = splitDelimiter(delimiterText).map((seg) => {
     const left = seg.startsWith(':');
     const right = seg.endsWith(':');
     if (left && right) return 'center';
@@ -111,7 +119,7 @@ function parseAlignments(delimiterText: string, expectedCols: number): CellAlign
     if (left) return 'left';
     return null;
   });
-  // Pad / trim so length matches header column count.
+  // Pad / trim so length matches the column count.
   while (out.length < expectedCols) out.push(null);
   return out.slice(0, expectedCols);
 }
@@ -122,7 +130,7 @@ function parseAlignments(delimiterText: string, expectedCols: number): CellAlign
  */
 export function parseTable(state: EditorState, tableNode: SyntaxNode): ParsedTable | null {
   let header: ParsedCell[] | null = null;
-  let alignments: CellAlign[] | null = null;
+  let delimiterText: string | null = null;
   const rows: ParsedCell[][] = [];
 
   let child = tableNode.firstChild;
@@ -130,12 +138,11 @@ export function parseTable(state: EditorState, tableNode: SyntaxNode): ParsedTab
     const name = child.type.name;
     if (name === 'TableHeader') {
       header = collectCells(state, child);
-    } else if (name === 'TableDelimiter' && header && !alignments) {
+    } else if (name === 'TableDelimiter' && header && delimiterText === null) {
       // Only the *block-level* TableDelimiter (separator row) is a direct
       // child of the Table node — single-pipe delimiters live inside Header
       // and Row nodes. So this branch reliably matches the alignment row.
-      const text = state.doc.sliceString(child.from, child.to);
-      alignments = parseAlignments(text, header.length);
+      delimiterText = state.doc.sliceString(child.from, child.to);
     } else if (name === 'TableRow') {
       rows.push(collectCells(state, child));
     }
@@ -144,9 +151,20 @@ export function parseTable(state: EditorState, tableNode: SyntaxNode): ParsedTab
 
   if (!header || header.length === 0) return null;
 
-  const cols = header.length;
+  // GFM defines the column count by the delimiter row, not the header.
+  // `@lezer/markdown` drops a *trailing empty* header cell (`| A | B |   |`
+  // yields only two `TableCell` nodes), so a freshly-inserted rightmost column
+  // with an empty header would otherwise vanish on the next parse. Trust the
+  // delimiter's segment count and pad the header to match.
+  const delimCols = delimiterText !== null ? splitDelimiter(delimiterText).length : 0;
+  const cols = Math.max(header.length, delimCols);
+  while (header.length < cols) {
+    header.push({ from: tableNode.to, to: tableNode.to, text: '' });
+  }
   const padded: CellAlign[] =
-    alignments ?? Array.from({ length: cols }, () => null);
+    delimiterText !== null
+      ? parseAlignments(delimiterText, cols)
+      : Array.from({ length: cols }, () => null);
 
   // Normalize each row to header column count — short rows get empty cells,
   // long rows get truncated. Mirrors how the GFM spec / browser renderers behave.
@@ -220,6 +238,88 @@ export function serializeTable(table: SerializeInput): string {
 
   const lines = [headerLine, separatorLine, ...bodyLines];
   return lines.join('\n');
+}
+
+// ─── Structural operations ──────────────────────────────────────────
+//
+// Pure transforms over a `SerializeInput` snapshot, used by the table widget's
+// mini-toolbar (add/remove column, insert row mid-table, change alignment).
+// Each returns a fresh snapshot — never mutates its argument — so it can be
+// piped straight into `serializeTable` → `view.dispatch`. They are DOM-free
+// and unit-tested in `table-parse.test.ts`; the widget owns dispatch + refocus.
+
+export type ColumnSide = 'left' | 'right';
+export type RowSide = 'above' | 'below';
+
+/** Snapshot clone so structural ops stay pure (no aliasing into the input). */
+function cloneSnapshot(t: SerializeInput): SerializeInput {
+  return {
+    header: t.header.map((c) => ({ text: c.text })),
+    rows: t.rows.map((r) => r.map((c) => ({ text: c.text }))),
+    alignments: t.alignments.slice()
+  };
+}
+
+/**
+ * Insert an empty column to the `left` or `right` of `atCol`. Header, every
+ * body row, and the alignment list all gain a slot at the same index; the new
+ * column has no explicit alignment (`null`).
+ */
+export function insertColumn(t: SerializeInput, atCol: number, side: ColumnSide): SerializeInput {
+  const next = cloneSnapshot(t);
+  const idx = Math.max(0, Math.min(side === 'left' ? atCol : atCol + 1, next.header.length));
+  next.header.splice(idx, 0, { text: '' });
+  next.rows.forEach((r) => r.splice(idx, 0, { text: '' }));
+  next.alignments.splice(idx, 0, null);
+  return next;
+}
+
+/**
+ * Remove column `atCol` from the header, every body row, and the alignment
+ * list. No-op when only one column remains — a GFM table needs at least one.
+ */
+export function deleteColumn(t: SerializeInput, atCol: number): SerializeInput {
+  const next = cloneSnapshot(t);
+  if (next.header.length <= 1 || atCol < 0 || atCol >= next.header.length) return next;
+  next.header.splice(atCol, 1);
+  next.rows.forEach((r) => r.splice(atCol, 1));
+  next.alignments.splice(atCol, 1);
+  return next;
+}
+
+/**
+ * Insert an empty body row `above` or `below` `atRow`. `atRow === -1` is the
+ * header row, which has no "above" — both sides insert at the top of the body
+ * (index 0), so a header-only table can grow its first body row.
+ */
+export function insertRow(t: SerializeInput, atRow: number, side: RowSide): SerializeInput {
+  const next = cloneSnapshot(t);
+  const blank = Array.from({ length: next.header.length }, () => ({ text: '' }));
+  const idx =
+    atRow === -1 ? 0 : Math.max(0, Math.min(side === 'above' ? atRow : atRow + 1, next.rows.length));
+  next.rows.splice(idx, 0, blank);
+  return next;
+}
+
+/**
+ * Remove body row `atRow`. No-op for the header (`atRow === -1`) or any
+ * out-of-range index; deleting the last body row leaves a valid header-only
+ * table.
+ */
+export function deleteRow(t: SerializeInput, atRow: number): SerializeInput {
+  const next = cloneSnapshot(t);
+  if (atRow < 0 || atRow >= next.rows.length) return next;
+  next.rows.splice(atRow, 1);
+  return next;
+}
+
+/** Set column `atCol`'s alignment (`left`/`right`/`center`/`null`). */
+export function setColumnAlignment(t: SerializeInput, atCol: number, align: CellAlign): SerializeInput {
+  const next = cloneSnapshot(t);
+  if (atCol < 0 || atCol >= next.header.length) return next;
+  while (next.alignments.length < next.header.length) next.alignments.push(null);
+  next.alignments[atCol] = align;
+  return next;
 }
 
 /**

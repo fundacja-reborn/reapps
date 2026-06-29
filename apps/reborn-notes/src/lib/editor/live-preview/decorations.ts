@@ -24,7 +24,7 @@ import type { ImageLoadMode } from '@reborn/storage';
 import { CodeBlockWidget, LinkWidget, TaskCheckboxWidget } from './widgets';
 import { ImageWidget, type ImageWidgetLabels, getLoadedImages } from './image-widget';
 import type { CodeCopyLabels } from './code-copy';
-import { TableWidget } from './table-widget';
+import { TableWidget, type TableWidgetLabels } from './table-widget';
 import { parseTable } from './table-parse';
 import { TocWidget, type TocWidgetLabels } from './toc-widget';
 import { HeadingAnchorWidget } from './heading-anchor-widget';
@@ -43,6 +43,8 @@ export interface BuildDecorationsOptions {
   tocLabels: TocWidgetLabels;
   /** aria-label / tooltip for the per-heading "copy link" button. */
   headingLinkLabel: string;
+  /** i18n labels for the editable table's structural mini-toolbar. */
+  tableLabels: TableWidgetLabels;
 }
 
 const DEFAULT_OPTIONS: BuildDecorationsOptions = {
@@ -50,7 +52,18 @@ const DEFAULT_OPTIONS: BuildDecorationsOptions = {
   imageLabels: { load: 'Load image', base64Blocked: 'Embedded images are not supported' },
   codeLabels: { copy: 'Copy code', copied: 'Copied' },
   tocLabels: { refresh: 'Refresh', stale: 'Out of date - refresh', remove: 'Remove' },
-  headingLinkLabel: 'Copy link to heading'
+  headingLinkLabel: 'Copy link to heading',
+  tableLabels: {
+    alignLeft: 'Align left',
+    alignCenter: 'Align center',
+    alignRight: 'Align right',
+    insertColumnLeft: 'Insert column left',
+    insertColumnRight: 'Insert column right',
+    deleteColumn: 'Delete column',
+    insertRowAbove: 'Insert row above',
+    insertRowBelow: 'Insert row below',
+    deleteRow: 'Delete row'
+  }
 };
 
 /**
@@ -374,7 +387,7 @@ export function buildDecorations(
         if (parsed) {
           ranges.push(
             Decoration.replace({
-              widget: new TableWidget(parsed),
+              widget: new TableWidget(parsed, options.tableLabels),
               block: true
             }).range(parsed.from, parsed.to)
           );

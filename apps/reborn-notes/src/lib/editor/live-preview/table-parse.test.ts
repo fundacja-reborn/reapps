@@ -11,7 +11,14 @@ import {
   escapeCell,
   decodeCellText,
   sameTableStructure,
-  cellText
+  cellText,
+  insertColumn,
+  deleteColumn,
+  insertRow,
+  deleteRow,
+  setColumnAlignment,
+  type SerializeInput,
+  type CellAlign
 } from './table-parse';
 
 function makeState(doc: string) {
@@ -144,6 +151,20 @@ describe('parseTable', () => {
     const state = makeState(doc);
     const parsed = parseTable(state, findTableNode(state)!);
     expect(parsed!.rows[0][0].text).toBe('a\nb\nc');
+  });
+
+  it('keeps a trailing empty header column (delimiter defines column count)', () => {
+    // `@lezer/markdown` drops the trailing empty header cell, emitting only two
+    // TableCell nodes — without trusting the delimiter, a freshly-inserted
+    // rightmost column would vanish on reparse. The delimiter has 3 segments,
+    // so the table must read as 3 columns with an empty last header.
+    const doc = '| A | B |   |\n| --- | --- | :---: |\n| 1 | 2 |   |\n';
+    const state = makeState(doc);
+    const parsed = parseTable(state, findTableNode(state)!);
+    expect(parsed!.header).toHaveLength(3);
+    expect(parsed!.header.map((c) => c.text)).toEqual(['A', 'B', '']);
+    expect(parsed!.alignments).toEqual([null, null, 'center']);
+    expect(parsed!.rows[0]).toHaveLength(3);
   });
 
   it('handles header only (no body rows)', () => {
@@ -321,5 +342,134 @@ describe('sameTableStructure / cellText', () => {
     expect(cellText(t, -1, 0)).toBe('H');
     expect(cellText(t, 0, 0)).toBe('B');
     expect(cellText(t, 99, 0)).toBe(''); // out-of-range
+  });
+});
+
+describe('structural operations', () => {
+  // 2-column, 2-row fixture with distinct alignments so column ops are visible.
+  const base = (): SerializeInput => ({
+    header: [{ text: 'A' }, { text: 'B' }],
+    rows: [
+      [{ text: '1' }, { text: '2' }],
+      [{ text: '3' }, { text: '4' }]
+    ],
+    alignments: ['left', 'right'] as CellAlign[]
+  });
+
+  const texts = (s: SerializeInput) => ({
+    header: s.header.map((c) => c.text),
+    rows: s.rows.map((r) => r.map((c) => c.text)),
+    alignments: s.alignments
+  });
+
+  it('insertColumn left of col 1 adds an empty column before it', () => {
+    const out = insertColumn(base(), 1, 'left');
+    expect(texts(out)).toEqual({
+      header: ['A', '', 'B'],
+      rows: [
+        ['1', '', '2'],
+        ['3', '', '4']
+      ],
+      alignments: ['left', null, 'right']
+    });
+  });
+
+  it('insertColumn right of col 1 appends at the end', () => {
+    const out = insertColumn(base(), 1, 'right');
+    expect(texts(out)).toEqual({
+      header: ['A', 'B', ''],
+      rows: [
+        ['1', '2', ''],
+        ['3', '4', '']
+      ],
+      alignments: ['left', 'right', null]
+    });
+  });
+
+  it('deleteColumn removes the column from header, rows and alignments', () => {
+    const out = deleteColumn(base(), 0);
+    expect(texts(out)).toEqual({
+      header: ['B'],
+      rows: [['2'], ['4']],
+      alignments: ['right']
+    });
+  });
+
+  it('deleteColumn is a no-op when only one column remains', () => {
+    const single: SerializeInput = {
+      header: [{ text: 'A' }],
+      rows: [[{ text: '1' }]],
+      alignments: ['left']
+    };
+    expect(texts(deleteColumn(single, 0))).toEqual(texts(single));
+  });
+
+  it('insertRow above/below splices a blank row at the right index', () => {
+    expect(texts(insertRow(base(), 0, 'above')).rows).toEqual([
+      ['', ''],
+      ['1', '2'],
+      ['3', '4']
+    ]);
+    expect(texts(insertRow(base(), 0, 'below')).rows).toEqual([
+      ['1', '2'],
+      ['', ''],
+      ['3', '4']
+    ]);
+  });
+
+  it('insertRow on the header (-1) inserts a first body row at the top', () => {
+    const headerOnly: SerializeInput = {
+      header: [{ text: 'A' }, { text: 'B' }],
+      rows: [],
+      alignments: [null, null]
+    };
+    expect(texts(insertRow(headerOnly, -1, 'below')).rows).toEqual([['', '']]);
+  });
+
+  it('deleteRow removes a body row and is a no-op on the header', () => {
+    expect(texts(deleteRow(base(), 0)).rows).toEqual([['3', '4']]);
+    expect(texts(deleteRow(base(), -1)).rows).toEqual([
+      ['1', '2'],
+      ['3', '4']
+    ]);
+  });
+
+  it('setColumnAlignment changes only the target column', () => {
+    const out = setColumnAlignment(base(), 0, 'center');
+    expect(out.alignments).toEqual(['center', 'right']);
+  });
+
+  it('setColumnAlignment pads a short alignment list before setting', () => {
+    const short: SerializeInput = {
+      header: [{ text: 'A' }, { text: 'B' }, { text: 'C' }],
+      rows: [],
+      alignments: ['left'] // shorter than header
+    };
+    expect(setColumnAlignment(short, 2, 'right').alignments).toEqual(['left', null, 'right']);
+  });
+
+  it('operations never mutate their input snapshot', () => {
+    const input = base();
+    const snapshot = JSON.stringify(input);
+    insertColumn(input, 0, 'left');
+    deleteColumn(input, 0);
+    insertRow(input, 0, 'below');
+    deleteRow(input, 0);
+    setColumnAlignment(input, 0, 'center');
+    expect(JSON.stringify(input)).toBe(snapshot);
+  });
+
+  it('ops compose into valid GFM that re-parses to the same structure', () => {
+    // Insert a column, insert a row, change alignment, then round-trip.
+    let snap = base();
+    snap = insertColumn(snap, 1, 'right');
+    snap = insertRow(snap, 1, 'below');
+    snap = setColumnAlignment(snap, 2, 'center');
+    const md = serializeTable(snap);
+    const state = makeState(md + '\n');
+    const reparsed = parseTable(state, findTableNode(state)!);
+    expect(reparsed!.header).toHaveLength(3);
+    expect(reparsed!.rows).toHaveLength(3);
+    expect(reparsed!.alignments).toEqual(['left', 'right', 'center']);
   });
 });

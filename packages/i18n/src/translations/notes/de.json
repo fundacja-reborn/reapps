@@ -475,7 +475,16 @@
     "table_columns": "Spalten",
     "table_rows": "Zeilen (Inhalt)",
     "table_insert": "Einfügen",
-    "table_cancel": "Abbrechen"
+    "table_cancel": "Abbrechen",
+    "table_align_left": "Linksbündig",
+    "table_align_center": "Zentriert",
+    "table_align_right": "Rechtsbündig",
+    "table_insert_column_left": "Spalte links einfügen",
+    "table_insert_column_right": "Spalte rechts einfügen",
+    "table_delete_column": "Spalte löschen",
+    "table_insert_row_above": "Zeile oberhalb einfügen",
+    "table_insert_row_below": "Zeile unterhalb einfügen",
+    "table_delete_row": "Zeile löschen"
   },
   "search": {
     "title": "Notizen durchsuchen",
