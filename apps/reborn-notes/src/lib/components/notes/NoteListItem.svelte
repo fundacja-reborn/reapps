@@ -33,7 +33,7 @@
   import type { RowAction } from '$lib/utils/row-action';
   import { t } from '$lib/stores/i18n.store';
   import { tagsStore } from '$lib/stores/tags.store';
-  import { dateFormat } from '$lib/stores/app-settings.store';
+  import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
   import { activeNoteId, notesStore, type NoteListItem } from '$lib/stores/notes.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import { formatNoteDate } from '$lib/utils/date-format';
@@ -308,7 +308,7 @@
               </div>
             {/if}
             <p class="mt-0.5 text-[13px] md:text-xs text-muted-foreground line-clamp-2">
-              {formatNoteDate(displayDate, $dateFormat, $t)}
+              {formatNoteDate(displayDate, $dateFormat, $timeFormat)}
             </p>
             <!-- Visible per-note rejection reason - not just the badge/hover tooltip,
                  so the user knows WHY a note won't sync (and it works on touch). -->
