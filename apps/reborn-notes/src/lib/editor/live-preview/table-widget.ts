@@ -43,6 +43,7 @@ import {
   serializeTable
 } from './table-parse';
 import { buildInlineFragment, cellHasFormatting } from './table-cell-render';
+import { computeInlineWrap } from '../inline-wrap';
 
 /** Annotation marking a transaction as a cell-level table edit. Reserved for
  *  potential future use (e.g. suppressing analytics or scroll-sync); not
@@ -186,6 +187,40 @@ function caretToEnd(cell: HTMLElement): void {
   range.collapse(false);
   sel?.removeAllRanges();
   sel?.addRange(range);
+}
+
+/**
+ * Apply an inline markdown wrap (`**`, `_`, `~~`, `` ` ``) to the selection
+ * inside a focused table cell, then push the edit through the cell's normal
+ * serialization pipeline (a synthetic `input`). Operates on the cell's own DOM
+ * selection — when focused the cell holds raw, editable text — mirroring the
+ * CM6 toolbar's `wrapSelection`. Used by the toolbar buttons and the in-cell
+ * Mod-b / Mod-i shortcuts. Returns false when there is no usable selection.
+ */
+export function wrapCellSelection(cell: HTMLElement, marker: string): boolean {
+  const sel = cell.ownerDocument.defaultView?.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  if (!cell.contains(range.commonAncestorContainer)) return false;
+
+  const { insert, anchor, head } = computeInlineWrap(range.toString(), marker);
+
+  range.deleteContents();
+  const textNode = cell.ownerDocument.createTextNode(insert);
+  range.insertNode(textNode);
+
+  // Re-select the wrapped core so a second press toggles it off and the user
+  // sees what changed. `insert` is one text node, so computeInlineWrap's
+  // relative offsets map straight onto it.
+  const newRange = cell.ownerDocument.createRange();
+  newRange.setStart(textNode, Math.min(anchor, insert.length));
+  newRange.setEnd(textNode, Math.min(head, insert.length));
+  sel.removeAllRanges();
+  sel.addRange(newRange);
+
+  // Serialize the table + write back to the CM6 doc via the existing handler.
+  cell.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
 }
 
 /**
@@ -427,6 +462,19 @@ export class TableWidget extends WidgetType {
   ): void {
     const root = this.getRoot(cell);
     if (!root) return;
+
+    // Bold / italic shortcuts. Handle them here because the widget sets
+    // `ignoreEvent() = true`, so CM6's `Mod-b`/`Mod-i` keymap never sees keys
+    // typed inside a cell. Also stops the browser's contenteditable default,
+    // which would inject `<b>`/`<i>` HTML instead of markdown.
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+      const key = e.key.toLowerCase();
+      if (key === 'b' || key === 'i') {
+        e.preventDefault();
+        wrapCellSelection(cell, key === 'b' ? '**' : '_');
+        return;
+      }
+    }
 
     if (e.key === 'Tab') {
       e.preventDefault();

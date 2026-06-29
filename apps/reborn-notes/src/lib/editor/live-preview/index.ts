@@ -135,7 +135,7 @@ export {
   getLoadedImages,
   type ImageWidgetLabels
 } from './image-widget';
-export { TableWidget, tableCellEditAnnotation } from './table-widget';
+export { TableWidget, tableCellEditAnnotation, wrapCellSelection } from './table-widget';
 export {
   highlightCodeToHtml,
   triggerLanguageLoad,
