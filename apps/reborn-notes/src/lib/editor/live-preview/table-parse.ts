@@ -75,23 +75,49 @@ export function escapeCell(text: string): string {
     .replace(/\r?\n/g, '<br>');
 }
 
-function readCell(state: EditorState, cellNode: SyntaxNode): ParsedCell {
-  const raw = state.doc.sliceString(cellNode.from, cellNode.to);
-  return {
-    from: cellNode.from,
-    to: cellNode.to,
-    text: decodeCellText(raw)
-  };
-}
-
-function collectCells(state: EditorState, parent: SyntaxNode): ParsedCell[] {
-  const out: ParsedCell[] = [];
-  let child = parent.firstChild;
-  while (child) {
-    if (child.type.name === 'TableCell') out.push(readCell(state, child));
-    child = child.nextSibling;
+/**
+ * Split one table row line into raw (still-escaped, untrimmed) cell segments at
+ * unescaped pipes. GFM treats a single leading and a single trailing pipe as
+ * optional delimiters, so we drop the empty segment each of those produces.
+ *
+ * Crucially this preserves EMPTY interior cells (`| a |  | c |` → three cells).
+ * `@lezer/markdown` emits no `TableCell` node for an empty cell, so the previous
+ * node-based reader silently collapsed such rows and shifted every cell after
+ * the gap one column to the left (the root cause of pasted/typed text landing in
+ * the wrong column). Splitting the source text ourselves is the only
+ * GFM-faithful way to keep column positions stable.
+ */
+function splitRowCells(line: string): string[] {
+  const cells: string[] = [];
+  let buf = '';
+  let escaped = false;
+  let lastWasSeparator = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (escaped) {
+      buf += ch;
+      escaped = false;
+      lastWasSeparator = false;
+    } else if (ch === '\\') {
+      buf += ch;
+      escaped = true;
+      lastWasSeparator = false;
+    } else if (ch === '|') {
+      cells.push(buf);
+      buf = '';
+      lastWasSeparator = true;
+    } else {
+      buf += ch;
+      lastWasSeparator = false;
+    }
   }
-  return out;
+  cells.push(buf);
+  // A leading pipe makes cells[0] the (empty) text before it; a trailing
+  // unescaped pipe makes the final pushed segment empty. Drop exactly those two
+  // delimiter artifacts - never an interior empty cell.
+  if (cells.length > 1 && /^\s*\|/.test(line)) cells.shift();
+  if (cells.length > 1 && lastWasSeparator) cells.pop();
+  return cells;
 }
 
 /**
@@ -125,66 +151,84 @@ function parseAlignments(delimiterText: string, expectedCols: number): CellAlign
 }
 
 /**
+ * Parse a standalone GFM table markdown string (header line / delimiter line /
+ * body lines) into a `SerializeInput` snapshot - no syntax tree required.
+ *
+ * This is the single source of truth for splitting a table into cells. Working
+ * straight from the document text (rather than `@lezer/markdown` `TableCell`
+ * nodes) means:
+ *  - empty interior cells survive (see `splitRowCells`);
+ *  - the widget can read the AUTHORITATIVE current table directly from the doc
+ *    at dispatch time, immune to incremental-parse / stale-widget-instance races
+ *    (see `applyStructuralOp` / `dispatchFromDom` in `table-widget`).
+ *
+ * GFM defines the column count by the delimiter row, so the header and every
+ * body row are normalized to it - short rows gain empty cells, long rows are
+ * truncated, matching how browsers render GFM.
+ */
+export function parseTableMarkdown(md: string): SerializeInput {
+  const lines = md.split('\n');
+  const delimiterLine = lines[1] ?? '';
+  const delimCols = splitDelimiter(delimiterLine).length;
+  const headerCells = (lines[0] !== undefined ? splitRowCells(lines[0]) : []).map(decodeCellText);
+  const cols = Math.max(headerCells.length, delimCols, 1);
+
+  const header = Array.from({ length: cols }, (_, i) => ({ text: headerCells[i] ?? '' }));
+  const alignments = parseAlignments(delimiterLine, cols);
+
+  const rows: { text: string }[][] = [];
+  for (let i = 2; i < lines.length; i++) {
+    // A blank line (e.g. a trailing newline captured by the table node) is not a
+    // row. An all-empty row `|   |   |` still has pipes, so it survives `trim()`.
+    if (lines[i].trim().length === 0) continue;
+    const cells = splitRowCells(lines[i]).map(decodeCellText);
+    rows.push(Array.from({ length: cols }, (_, j) => ({ text: cells[j] ?? '' })));
+  }
+  return { header, rows, alignments };
+}
+
+/**
  * Parse a `Table` node into a structural view. Returns `null` if the node is
- * malformed (no header) — caller should fall back to raw markdown rendering.
+ * malformed (fewer than two lines) - caller should fall back to raw markdown.
+ *
+ * Cells come from `parseTableMarkdown`; this wrapper only adds doc positions.
+ * Positions are line-granular (every cell in a row shares the row's range) - no
+ * consumer reads per-cell positions, so finer granularity would be dead detail.
  */
 export function parseTable(state: EditorState, tableNode: SyntaxNode): ParsedTable | null {
-  let header: ParsedCell[] | null = null;
-  let delimiterText: string | null = null;
-  const rows: ParsedCell[][] = [];
+  const from = tableNode.from;
+  const to = tableNode.to;
+  const md = state.doc.sliceString(from, to);
+  const lines = md.split('\n');
+  if (lines.length < 2) return null;
 
-  let child = tableNode.firstChild;
-  while (child) {
-    const name = child.type.name;
-    if (name === 'TableHeader') {
-      header = collectCells(state, child);
-    } else if (name === 'TableDelimiter' && header && delimiterText === null) {
-      // Only the *block-level* TableDelimiter (separator row) is a direct
-      // child of the Table node — single-pipe delimiters live inside Header
-      // and Row nodes. So this branch reliably matches the alignment row.
-      delimiterText = state.doc.sliceString(child.from, child.to);
-    } else if (name === 'TableRow') {
-      rows.push(collectCells(state, child));
-    }
-    child = child.nextSibling;
-  }
+  const snap = parseTableMarkdown(md);
+  if (snap.header.length === 0) return null;
 
-  if (!header || header.length === 0) return null;
-
-  // GFM defines the column count by the delimiter row, not the header.
-  // `@lezer/markdown` drops a *trailing empty* header cell (`| A | B |   |`
-  // yields only two `TableCell` nodes), so a freshly-inserted rightmost column
-  // with an empty header would otherwise vanish on the next parse. Trust the
-  // delimiter's segment count and pad the header to match.
-  const delimCols = delimiterText !== null ? splitDelimiter(delimiterText).length : 0;
-  const cols = Math.max(header.length, delimCols);
-  while (header.length < cols) {
-    header.push({ from: tableNode.to, to: tableNode.to, text: '' });
-  }
-  const padded: CellAlign[] =
-    delimiterText !== null
-      ? parseAlignments(delimiterText, cols)
-      : Array.from({ length: cols }, () => null);
-
-  // Normalize each row to header column count — short rows get empty cells,
-  // long rows get truncated. Mirrors how the GFM spec / browser renderers behave.
-  const normRows = rows.map((row) => {
-    if (row.length === cols) return row;
-    if (row.length > cols) return row.slice(0, cols);
-    const out = row.slice();
-    while (out.length < cols) {
-      out.push({ from: tableNode.to, to: tableNode.to, text: '' });
-    }
-    return out;
+  // Running line ranges (doc-absolute) so each cell carries its source line span.
+  let offset = 0;
+  const lineRanges = lines.map((line) => {
+    const range = { from: from + offset, to: from + offset + line.length };
+    offset += line.length + 1; // +1 for the consumed '\n'
+    return range;
   });
 
-  return {
-    from: tableNode.from,
-    to: tableNode.to,
-    header,
-    rows: normRows,
-    alignments: padded
-  };
+  const headerRange = lineRanges[0];
+  const header: ParsedCell[] = snap.header.map((c) => ({
+    from: headerRange.from,
+    to: headerRange.to,
+    text: c.text
+  }));
+
+  // Body rows map back to the non-blank source lines from index 2 onward, in
+  // order - the same lines `parseTableMarkdown` kept.
+  const bodyRanges = lineRanges.filter((_, i) => i >= 2 && lines[i].trim().length > 0);
+  const rows: ParsedCell[][] = snap.rows.map((row, ri) => {
+    const range = bodyRanges[ri] ?? { from, to };
+    return row.map((c) => ({ from: range.from, to: range.to, text: c.text }));
+  });
+
+  return { from, to, header, rows, alignments: snap.alignments };
 }
 
 /** Build the delimiter segment (`---` / `:---` / `---:` / `:---:`). */

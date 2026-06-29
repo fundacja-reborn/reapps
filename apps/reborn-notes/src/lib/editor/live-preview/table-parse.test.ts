@@ -6,6 +6,7 @@ import { syntaxTree } from '@codemirror/language';
 import type { SyntaxNode } from '@lezer/common';
 import {
   parseTable,
+  parseTableMarkdown,
   serializeTable,
   unescapePipes,
   escapeCell,
@@ -138,6 +139,31 @@ describe('parseTable', () => {
     expect(parsed!.rows[0][1].text).toBe('');
   });
 
+  it('keeps an EMPTY INTERIOR cell in its column (no leftward shift)', () => {
+    // Regression: `@lezer/markdown` emits no TableCell node for an empty cell,
+    // so the old node-based reader collapsed `| a |  | c |` to ['a','c'] and a
+    // pad pushed 'c' into column 1 - pasted/typed text landed one column left of
+    // where the user put it. Slicing the row text keeps every column in place.
+    const doc = '| A | B | C |\n| --- | --- | --- |\n| Nulla |   | PASTED |\n';
+    const state = makeState(doc);
+    const parsed = parseTable(state, findTableNode(state)!);
+    expect(parsed!.rows[0].map((c) => c.text)).toEqual(['Nulla', '', 'PASTED']);
+  });
+
+  it('keeps a leading empty cell in column 0', () => {
+    const doc = '| A | B | C |\n| --- | --- | --- |\n|   | mid | end |\n';
+    const state = makeState(doc);
+    const parsed = parseTable(state, findTableNode(state)!);
+    expect(parsed!.rows[0].map((c) => c.text)).toEqual(['', 'mid', 'end']);
+  });
+
+  it('keeps an escaped pipe inside an otherwise-shifted row', () => {
+    const doc = '| A | B | C |\n| --- | --- | --- |\n| x |   | a \\| b |\n';
+    const state = makeState(doc);
+    const parsed = parseTable(state, findTableNode(state)!);
+    expect(parsed!.rows[0].map((c) => c.text)).toEqual(['x', '', 'a | b']);
+  });
+
   it('decodes <br> in cell text as newlines (Shift+Enter convention)', () => {
     const doc = '| A | B |\n| --- | --- |\n| line1<br>line2 | x |\n';
     const state = makeState(doc);
@@ -183,6 +209,62 @@ describe('parseTable', () => {
     const state = makeState(doc);
     const parsed = parseTable(state, findTableNode(state)!);
     expect(parsed!.rows[0]).toHaveLength(3);
+  });
+});
+
+describe('parseTableMarkdown', () => {
+  it('parses header, alignments and rows from a markdown string (no syntax tree)', () => {
+    const md = '| A | B | C |\n| :--- | ---: | --- |\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |';
+    const t = parseTableMarkdown(md);
+    expect(t.header.map((c) => c.text)).toEqual(['A', 'B', 'C']);
+    expect(t.alignments).toEqual(['left', 'right', null]);
+    expect(t.rows.map((r) => r.map((c) => c.text))).toEqual([
+      ['1', '2', '3'],
+      ['4', '5', '6']
+    ]);
+  });
+
+  it('preserves empty interior + leading cells', () => {
+    const md = '| A | B | C |\n| --- | --- | --- |\n| x |   | z |\n|   | m |   |';
+    const t = parseTableMarkdown(md);
+    expect(t.rows.map((r) => r.map((c) => c.text))).toEqual([
+      ['x', '', 'z'],
+      ['', 'm', '']
+    ]);
+  });
+
+  it('uses the delimiter row as the authoritative column count', () => {
+    // Trailing empty header cell dropped by lezer is irrelevant here (text
+    // parse), but the delimiter still defines 3 columns; a short body row pads.
+    const md = '| A | B |   |\n| --- | --- | --- |\n| 1 |';
+    const t = parseTableMarkdown(md);
+    expect(t.header).toHaveLength(3);
+    expect(t.rows[0].map((c) => c.text)).toEqual(['1', '', '']);
+  });
+
+  it('ignores a trailing blank line but keeps an all-empty row', () => {
+    const md = '| A | B |\n| --- | --- |\n|   |   |\n';
+    const t = parseTableMarkdown(md);
+    expect(t.rows).toHaveLength(1);
+    expect(t.rows[0].map((c) => c.text)).toEqual(['', '']);
+  });
+
+  it('round-trips with serializeTable', () => {
+    const md = serializeTable({
+      header: [{ text: 'H1' }, { text: 'H2' }, { text: 'H3' }],
+      rows: [
+        [{ text: 'a' }, { text: '' }, { text: 'c' }],
+        [{ text: '' }, { text: 'b' }, { text: '' }]
+      ],
+      alignments: ['right', null, 'center']
+    });
+    const t = parseTableMarkdown(md);
+    expect(t.header.map((c) => c.text)).toEqual(['H1', 'H2', 'H3']);
+    expect(t.alignments).toEqual(['right', null, 'center']);
+    expect(t.rows.map((r) => r.map((c) => c.text))).toEqual([
+      ['a', '', 'c'],
+      ['', 'b', '']
+    ]);
   });
 });
 

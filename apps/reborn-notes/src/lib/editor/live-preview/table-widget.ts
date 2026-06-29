@@ -44,6 +44,7 @@ import {
   type RowSide,
   sameTableStructure,
   serializeTable,
+  parseTableMarkdown,
   insertColumn,
   deleteColumn,
   insertRow,
@@ -688,12 +689,20 @@ export class TableWidget extends WidgetType {
     const range = findTableRange(view, tableEl);
     if (!range) return;
 
-    const cols = container.querySelectorAll('thead > tr > th').length;
+    // Read the AUTHORITATIVE current table straight from the document text, not
+    // from `this.table`. The widget instance bound to these toolbar handlers can
+    // be stale: a cell edit (or an incremental re-parse) updates the doc through
+    // `updateDOM`, which keeps the original `toDOM`'s button closures - so
+    // `this.table.alignments` may lag behind the doc. The doc is always current.
+    // Cell *content* still comes from the live DOM (the focused cell may hold an
+    // uncommitted keystroke); column count + alignments come from the doc.
+    const current = parseTableMarkdown(view.state.doc.sliceString(range.from, range.to));
+    const cols = current.header.length;
     const dom = readDomTable(container, cols);
     const next = transform({
       header: dom.header,
       rows: dom.rows,
-      alignments: this.table.alignments
+      alignments: current.alignments
     });
     const newMd = serializeTable(next);
     if (view.state.doc.sliceString(range.from, range.to) === newMd) return; // No-op.
@@ -706,7 +715,9 @@ export class TableWidget extends WidgetType {
     const tgt = target(next);
     requestAnimationFrame(() => {
       const v = this.view;
-      if (!v) return;
+      // Bail if the editor was torn down between the dispatch and this frame
+      // (e.g. the note was closed): `domAtPos` throws on a destroyed view.
+      if (!v || !v.dom.isConnected) return;
       const node = v.domAtPos(range.from)?.node as Node | null;
       const newWrap =
         (node instanceof HTMLElement
@@ -874,9 +885,14 @@ export class TableWidget extends WidgetType {
   /**
    * Show, position, and update both toolbars from the current target cell, or
    * hide them when there is none. All reads come from the DOM so it stays
-   * correct across the widget's ephemeral instances. Geometry is computed with
-   * bounding rects relative to the non-clipping `outer`; the column bar tracks
-   * horizontal scroll, the row bar (pinned to the left edge) does not.
+   * correct across the widget's ephemeral instances.
+   *
+   * Geometry anchors to the ACTIVE CELL (not the table), so the bars stay next
+   * to where the user is working and never scroll off with a tall/wide table -
+   * the edited cell is by definition on-screen. Positions are bounding-rect
+   * based, relative to the non-clipping `outer`, and kept inside the editor's
+   * scroll viewport via flip (column bar: above ↔ below) and clamp (row bar to
+   * the left edge; both bars on their cross axis).
    */
   private syncToolbars(outer: HTMLElement): void {
     const colbar = outer.querySelector<HTMLElement>('.cm-lp-table-colbar');
@@ -885,9 +901,8 @@ export class TableWidget extends WidgetType {
 
     const active = this.activeCell(outer);
     const wrap = outer.querySelector<HTMLElement>('.cm-lp-table-wrap');
-    const headerCell = active ? cellAt(outer, -1, active.col) : null;
     const activeCellEl = active ? cellAt(outer, active.row, active.col) : null;
-    if (!active || !wrap || !headerCell || !activeCellEl) {
+    if (!active || !wrap || !activeCellEl) {
       colbar.style.display = 'none';
       rowbar.style.display = 'none';
       return;
@@ -911,29 +926,51 @@ export class TableWidget extends WidgetType {
 
     colbar.style.display = 'flex';
     rowbar.style.display = 'flex';
+
     const outerRect = outer.getBoundingClientRect();
     const wrapRect = wrap.getBoundingClientRect();
-    const colRect = headerCell.getBoundingClientRect();
-    const rowRect = activeCellEl.getBoundingClientRect();
+    const cellRect = activeCellEl.getBoundingClientRect();
 
-    // Column bar: just above the table, aligned to the active column; clamped to
-    // the visible scroll width and hidden when the column is scrolled off.
-    if (colRect.right <= wrapRect.left + 1 || colRect.left >= wrapRect.right - 1) {
+    // Hide both bars when the active column is scrolled out of the table's
+    // horizontal viewport (the wrap clips overflow-x) - a bar pointing at an
+    // off-screen cell would mislead.
+    if (cellRect.right <= wrapRect.left + 1 || cellRect.left >= wrapRect.right - 1) {
       colbar.style.display = 'none';
-    } else {
-      const barW = colbar.offsetWidth;
-      const barH = colbar.offsetHeight;
-      const minLeft = wrapRect.left - outerRect.left;
-      const maxLeft = wrapRect.right - outerRect.left - barW;
-      const left = Math.max(minLeft, Math.min(colRect.left - outerRect.left, maxLeft));
-      colbar.style.left = `${Math.round(left)}px`;
-      colbar.style.top = `${Math.round(wrapRect.top - outerRect.top - barH - 4)}px`;
+      rowbar.style.display = 'none';
+      return;
     }
 
-    // Row bar: pinned to the table's left edge, centered on the active row.
-    const rowBarH = rowbar.offsetHeight;
-    rowbar.style.left = `${Math.round(wrapRect.left - outerRect.left)}px`;
-    rowbar.style.top = `${Math.round(rowRect.top - outerRect.top + (rowRect.height - rowBarH) / 2)}px`;
+    // Stay within the editor's scroll viewport (intersected with the window),
+    // so the bars never clip off-screen no matter how large the table is.
+    const view = this.view;
+    const vp = view ? view.scrollDOM.getBoundingClientRect() : null;
+    const vpTop = Math.max(vp ? vp.top : 0, 0);
+    const vpLeft = Math.max(vp ? vp.left : 0, 0);
+    const vpRight = Math.min(vp ? vp.right : window.innerWidth, window.innerWidth);
+    const vpBottom = Math.min(vp ? vp.bottom : window.innerHeight, window.innerHeight);
+    const GAP = 4;
+
+    // Column bar: above the active cell, flipped below when it would clip the
+    // top edge; aligned to the cell's left, clamped within the viewport width.
+    const colW = colbar.offsetWidth;
+    const colH = colbar.offsetHeight;
+    let colTop = cellRect.top - colH - GAP;
+    if (colTop < vpTop) colTop = cellRect.bottom + GAP; // flip below
+    colTop = Math.max(vpTop, Math.min(colTop, vpBottom - colH));
+    const colLeft = Math.max(vpLeft, Math.min(cellRect.left, vpRight - colW));
+    colbar.style.left = `${Math.round(colLeft - outerRect.left)}px`;
+    colbar.style.top = `${Math.round(colTop - outerRect.top)}px`;
+
+    // Row bar: to the left of the active cell, clamped to the viewport's left
+    // edge (so it stays put when a wide table scrolls horizontally); centered on
+    // the cell vertically, clamped within the viewport height.
+    const rowW = rowbar.offsetWidth;
+    const rowH = rowbar.offsetHeight;
+    const rowLeft = Math.max(vpLeft, cellRect.left - rowW - GAP);
+    let rowTop = cellRect.top + (cellRect.height - rowH) / 2;
+    rowTop = Math.max(vpTop, Math.min(rowTop, vpBottom - rowH));
+    rowbar.style.left = `${Math.round(rowLeft - outerRect.left)}px`;
+    rowbar.style.top = `${Math.round(rowTop - outerRect.top)}px`;
   }
 
   private setBtnActive(bar: HTMLElement, sel: string, on: boolean): void {
@@ -955,15 +992,21 @@ export class TableWidget extends WidgetType {
     const range = findTableRange(view, tableEl);
     if (!range) return;
 
-    const cols = this.table.header.length;
+    // Authoritative column count + alignments from the doc, not the (possibly
+    // stale) widget instance - same reasoning as `applyStructuralOp`. Without
+    // this, typing in a cell after a column/alignment change could revert that
+    // change, because `this.table` lags the doc when edits flow through
+    // `updateDOM`. Content comes from the live DOM.
+    const currentMd = view.state.doc.sliceString(range.from, range.to);
+    const current = parseTableMarkdown(currentMd);
+    const cols = current.header.length;
     const dom = readDomTable(root, cols);
     const newMd = serializeTable({
       header: dom.header,
       rows: dom.rows,
-      alignments: this.table.alignments
+      alignments: current.alignments
     });
 
-    const currentMd = view.state.doc.sliceString(range.from, range.to);
     if (currentMd === newMd) return; // No-op (defensive — saves an empty tx).
 
     view.dispatch({
