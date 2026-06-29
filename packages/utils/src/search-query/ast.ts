@@ -9,6 +9,7 @@
  *   due:<7d              (task only)
  *   has:link             (forces content-search path)
  *   is:starred | pinned | completed | overdue
+ *   no:folder | tag      (notes only) - entity has no folder / no tags
  *   -OPERATOR            negation prefix on operators (-tag:archived, -is:completed)
  *   "quoted value"       allows whitespace and colons in operator values
  *
@@ -57,13 +58,23 @@ export type IsFlag = 'starred' | 'pinned' | 'completed' | 'overdue';
 
 export type HasFlag = 'link';
 
+/**
+ * Fields the `no:` operator can assert are empty (GitHub-style `no:label`).
+ * `folder` → entity belongs to no folder; `tag` → entity has no tags. Both are
+ * re/notes concepts; the operator parses everywhere but only matches where the
+ * field exists (a task always has `folderId === null`, so `no:folder` there is
+ * a no-op filter - same harmless cross-app leakage as `folder:`/`list:`).
+ */
+export type NoFlag = 'folder' | 'tag';
+
 export type Filter =
   | { kind: 'tag'; value: string; negated: boolean }
   | { kind: 'folder'; value: string; negated: boolean }
   | { kind: 'list'; value: string; negated: boolean }
   | { kind: 'date'; field: DateField; expr: DateExpression; negated: boolean }
   | { kind: 'has'; value: HasFlag; negated: boolean }
-  | { kind: 'is'; value: IsFlag; negated: boolean };
+  | { kind: 'is'; value: IsFlag; negated: boolean }
+  | { kind: 'no'; value: NoFlag; negated: boolean };
 
 /**
  * Tree-shaped AST node. AND / OR are n-ary so a flat sequence like

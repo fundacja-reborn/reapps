@@ -21,6 +21,8 @@ All search runs **client-side** over already-decrypted data - the server never s
 | `is:completed` | re/task | `is:completed` |
 | `is:overdue` | re/task | `is:overdue` |
 | `has:link` | both | `has:link` (matches notes/descriptions containing URLs or Markdown links) |
+| `no:folder` | re/notes | `no:folder` - notes that aren't in any folder |
+| `no:tag` | re/notes | `no:tag` - notes with no tags |
 
 **Modifiers**
 
@@ -157,6 +159,28 @@ modified:yesterday
 ```
 
 Dates are interpreted in your **local timezone**, not UTC - "today" matches your wall clock.
+
+---
+
+## Empty-field filters (`no:`)
+
+> **re/notes**
+
+`no:` matches notes where a container field is *empty* - the mirror image of `folder:` and `tag:`. Two fields are supported:
+
+- `no:folder` - notes that don't live in any folder (they sit at the top level of the notes list, not inside any folder).
+- `no:tag` - notes with no tags attached.
+
+This mirrors the convention GitHub uses for `no:label` / `no:assignee`. Like every operator, `no:` composes with the rest and can be negated:
+
+```
+no:folder                  # loose notes, not filed anywhere
+no:folder no:tag           # neither filed nor tagged - your "inbox" of unsorted notes
+-no:folder                 # the inverse: only notes that ARE in some folder
+folder:projects no:tag     # untagged notes inside Projects (and its subfolders)
+```
+
+Matching is metadata-only, so `no:` filters run on the instant title path and never decrypt note bodies.
 
 ---
 

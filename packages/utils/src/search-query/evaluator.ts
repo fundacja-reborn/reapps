@@ -164,6 +164,13 @@ function matchFilterPositive(
       return false;
     }
 
+    case 'no': {
+      // notes-only structural emptiness; metadata-only, so no body decryption.
+      return filter.value === 'folder'
+        ? entity.folderId === null
+        : entity.tagIds.length === 0;
+    }
+
     case 'is': {
       switch (filter.value) {
         case 'starred':
