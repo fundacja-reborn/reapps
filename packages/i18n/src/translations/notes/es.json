@@ -1421,6 +1421,20 @@
       "preview_dialog_title": "Vista previa del snapshot",
       "show_link": "Mostrar enlace",
       "hide_link": "Ocultar enlace",
+      "count": "{count, plural, =0 {Sin enlaces activos} one {1 enlace} other {# enlaces}}",
+      "search_placeholder": "Buscar enlaces…",
+      "search_no_match": "Ningún enlace coincide con tu búsqueda.",
+      "select_hint": "Selecciona un enlace para ver sus detalles y la vista previa.",
+      "expiring_soon": "Caduca pronto",
+      "links_badge": "{count, plural, one {1 enlace} other {# enlaces}}",
+      "sort_label": "Ordenar",
+      "sort": {
+        "created": "Más recientes",
+        "expires": "Caducan antes",
+        "opens": "Más abiertos",
+        "title": "Título (A-Z)"
+      },
+      "manage_cta": "Gestionar enlaces activos",
       "type": {
         "note": "Nota",
         "task": "Tarea"

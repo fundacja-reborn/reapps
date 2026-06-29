@@ -1421,6 +1421,20 @@
       "preview_dialog_title": "Snapshot-Vorschau",
       "show_link": "Link anzeigen",
       "hide_link": "Link verbergen",
+      "count": "{count, plural, =0 {Keine Freigaben} one {1 Freigabe} other {# Freigaben}}",
+      "search_placeholder": "Freigaben suchen…",
+      "search_no_match": "Keine Freigabe entspricht deiner Suche.",
+      "select_hint": "Wähle eine Freigabe, um Details und Vorschau anzuzeigen.",
+      "expiring_soon": "Läuft bald ab",
+      "links_badge": "{count, plural, one {1 Link} other {# Links}}",
+      "sort_label": "Sortieren",
+      "sort": {
+        "created": "Neueste zuerst",
+        "expires": "Bald ablaufend",
+        "opens": "Meiste Aufrufe",
+        "title": "Titel (A-Z)"
+      },
+      "manage_cta": "Aktive Freigaben verwalten",
       "type": {
         "note": "Notiz",
         "task": "Aufgabe"

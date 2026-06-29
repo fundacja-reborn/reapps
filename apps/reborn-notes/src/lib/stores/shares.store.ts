@@ -22,6 +22,14 @@ import { createLogger } from '@reborn/utils';
 
 const logger = createLogger('Notes-SharesStore');
 
+/**
+ * Currently selected share in the Shares master-detail view (null = none).
+ * Mirrors `activeNoteId` in notes.store: the sidebar list writes it, the main
+ * detail pane reads it. Cleared on crypto lock/reset so a stale selection never
+ * outlives the decrypted payloads it points at.
+ */
+export const activeShareId = writable<string | null>(null);
+
 export type DecodedNoteShare = {
   payload: SharedSnapshotNotePayload;
   url: string;
@@ -166,6 +174,7 @@ function createSharesStore() {
 
   function reset() {
     state.set({ ...initialState, decryptErrors: new Set(), decoded: {}, shares: [] });
+    activeShareId.set(null);
   }
 
   function init() {

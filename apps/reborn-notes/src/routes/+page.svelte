@@ -5,7 +5,7 @@
   import { base } from '$app/paths';
   import { copyText } from '$lib/utils/clipboard';
   import { SvelteSet, SvelteMap } from 'svelte/reactivity';
-  import { FolderPlus, Plus, ArrowLeft, Lock, ListTree, PinOff } from '@lucide/svelte';
+  import { FolderPlus, Plus, ArrowLeft, Lock, ListTree, PinOff, Share2 } from '@lucide/svelte';
 
   // Layout
   import IconNav, { type Section, isPeriodicSection } from '$lib/components/layout/IconNav.svelte';
@@ -46,9 +46,12 @@
   import TagSidebarSection from '$lib/components/tags/TagSidebarSection.svelte';
   import TagListMobile from '$lib/components/tags/TagListMobile.svelte';
   import TagActionSheet from '$lib/components/tags/TagActionSheet.svelte';
+  import SharesList from '$lib/components/shares/SharesList.svelte';
+  import ShareDetailPanel from '$lib/components/shares/ShareDetailPanel.svelte';
 
   // Stores / services
   import { notesStore, activeNoteId, type NoteListItem } from '$lib/stores/notes.store';
+  import { sharesStore, activeShareId } from '$lib/stores/shares.store';
   import * as NoteService from '$lib/services/note.service';
   import { exportNoteAsMarkdown, exportNoteAsPdf } from '$lib/services/export-import.service';
   import * as PeriodicNotesService from '$lib/services/periodic-notes.service';
@@ -511,9 +514,21 @@
     }
   }
 
+  /** Close the Shares detail pane, going through the mobile history stack so the
+   *  hardware back / swipe stays in sync (desktop just clears the selection). */
+  function closeShareDetail() {
+    if (isMobile && mobileHistoryDepth > 0) {
+      history.back();
+    } else {
+      activeShareId.set(null);
+    }
+  }
+
   /** Navigate one level up based on current app state. Called by popstate handler. */
   function navigateUp() {
-    if ($activeNoteId != null) {
+    if (activeSection === 'shares' && $activeShareId != null) {
+      activeShareId.set(null);
+    } else if ($activeNoteId != null) {
       noteDetailService.flushAndSnapshot();
       activeNoteId.set(null);
     } else if (mobileView === 'list' && activeSection === 'folders' && activeFolderId !== undefined) {
@@ -615,10 +630,25 @@
     prevNoteIdForHistory = id;
   });
 
+  // ── Mobile: push history when the share detail opens ───────────
+  let prevShareIdForHistory: string | null = null;
+  $effect(() => {
+    const id = $activeShareId;
+    if (isMobile && id != null && prevShareIdForHistory == null) {
+      pushMobileHistory();
+    }
+    prevShareIdForHistory = id;
+  });
+
   // ── Derived: should main area show note list? ──────────────────
   const showNoteListInMain = $derived(
     (activeSection === 'folders' && activeFolderId !== undefined) ||
       (activeSection === 'tags' && activeTagId !== null)
+  );
+
+  // Mobile detail pane (Panel 2) slides in for an open note OR a selected share.
+  const mobileDetailOpen = $derived(
+    $activeNoteId != null || (activeSection === 'shares' && $activeShareId != null)
   );
 
   /** Mobile-only: sections where NoteList renders its own prominent (h-12) header,
@@ -627,6 +657,7 @@
   const noteListOwnsMobileHeader = $derived(
     activeSection === 'starred' ||
       activeSection === 'trash' ||
+      activeSection === 'shares' ||
       isPeriodicSection(activeSection) ||
       (activeSection === 'folders' && activeFolderId !== undefined) ||
       (activeSection === 'tags' && activeTagId !== null)
@@ -700,6 +731,11 @@
         if (isMobile && (section === 'folders' || section === 'tags')) {
           pushMobileHistory();
         }
+
+        // Leaving any section drops the share selection; entering Shares pulls a
+        // fresh list (mirrors the old dialog's refresh-on-open).
+        activeShareId.set(null);
+        if (section === 'shares') void sharesStore.refresh();
       });
       prevSection = section;
     }
@@ -715,6 +751,9 @@
         notesStore.setTag(tagId);
       } else if (sectionUsesFolderId) {
         notesStore.setFolder(folderId);
+      } else if (section === 'shares') {
+        // Shares view is backed by its own store (sharesStore) - leave the
+        // notes filter as-is.
       } else {
         notesStore.setFolder(undefined);
       }
@@ -1681,6 +1720,21 @@
       isMobile = e.matches;
     });
 
+    // Deep-link: /?section=shares (used by the Settings → Security shortcut)
+    // opens the Shares view, then strips the param so a refresh / back doesn't
+    // re-trigger it. Read before the mobile history guard snapshots the URL.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('section') === 'shares') {
+        activeSection = 'shares';
+      }
+      if (params.has('section')) {
+        history.replaceState(history.state, '', window.location.pathname + window.location.hash);
+      }
+    } catch {
+      // URL parsing / history access can throw in exotic embeds - non-fatal.
+    }
+
     // ── Mobile: virtual history guard entry ──────────────────────
     // Creates a "trampoline" entry so that native back gestures trigger
     // popstate instead of exiting the PWA.
@@ -1863,7 +1917,7 @@
       <!-- ── Panel 1: Icon Rail + List ──────────────────────────────── -->
       <div
         class="absolute inset-0 flex transition-transform duration-300 ease-in-out"
-        class:-translate-x-full={!!$activeNoteId}
+        class:-translate-x-full={mobileDetailOpen}
       >
         <!-- Icon rail (vertical, always visible) -->
         <IconNav
@@ -2005,6 +2059,8 @@
               </div>
             {:else if mobileView === 'tag-list'}
               <TagListMobile {activeTagId} onselect={handleTagSelect} bind:mobileNewTagInput />
+            {:else if activeSection === 'shares'}
+              <SharesList />
             {:else}
               <NoteList
                 {activeFolderName}
@@ -2053,7 +2109,7 @@
       <!-- ── Panel 2: Note Editor ───────────────────────────────────── -->
       <div
         class="absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-in-out"
-        class:translate-x-full={!$activeNoteId}
+        class:translate-x-full={!mobileDetailOpen}
         ontouchstart={handleSwipeStart}
         ontouchend={handleSwipeEnd}
         role="region"
@@ -2236,6 +2292,8 @@
               {/if}
             </div>
           {/if}
+        {:else if activeSection === 'shares' && $activeShareId}
+          <ShareDetailPanel shareId={$activeShareId} onback={closeShareDetail} />
         {:else if $isInitialSync}
           <InitialSyncState compact />
         {:else}
@@ -2350,6 +2408,8 @@
               searchOnly
               oncreate={handleNewNote}
             />
+          {:else if activeSection === 'shares'}
+            <SharesList />
           {:else}
             <NoteList
               {activeFolderName}
@@ -2540,6 +2600,22 @@
                 onclose={() => (showEncryptionXRay = false)}
               />
             {/if}
+          </div>
+        {/if}
+      {:else if activeSection === 'shares'}
+        {#if $activeShareId}
+          <ShareDetailPanel shareId={$activeShareId} onback={closeShareDetail} />
+        {:else}
+          <header
+            class="flex min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-border/60 px-6 pt-[env(safe-area-inset-top,0px)]"
+          >
+            <span class="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+              {$t('share.list.title')}
+            </span>
+          </header>
+          <div class="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+            <Share2 class="h-8 w-8 opacity-40" />
+            <p class="max-w-xs text-center text-sm">{$t('share.list.select_hint')}</p>
           </div>
         {/if}
       {:else if showNoteListInMain}

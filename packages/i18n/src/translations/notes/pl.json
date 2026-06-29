@@ -1421,6 +1421,20 @@
       "preview_dialog_title": "Podgląd snapshotu",
       "show_link": "Pokaż link",
       "hide_link": "Ukryj link",
+      "count": "{count, plural, =0 {Brak udostępnień} one {1 udostępnienie} few {# udostępnienia} many {# udostępnień} other {# udostępnienia}}",
+      "search_placeholder": "Szukaj udostępnień…",
+      "search_no_match": "Brak udostępnień pasujących do wyszukiwania.",
+      "select_hint": "Wybierz udostępnienie, aby zobaczyć szczegóły i podgląd.",
+      "expiring_soon": "Wkrótce wygasa",
+      "links_badge": "{count, plural, one {1 link} few {# linki} many {# linków} other {# linku}}",
+      "sort_label": "Sortuj",
+      "sort": {
+        "created": "Najnowsze",
+        "expires": "Najbliższe wygaśnięcie",
+        "opens": "Najczęściej otwierane",
+        "title": "Tytuł (A-Z)"
+      },
+      "manage_cta": "Zarządzaj udostępnieniami",
       "type": {
         "note": "Notatka",
         "task": "Zadanie"
