@@ -683,7 +683,9 @@
   },
   "outline": {
     "title": "Esquema",
-    "empty": "Esta nota aún no tiene encabezados."
+    "empty": "Esta nota aún no tiene encabezados.",
+    "pin": "Anclar esquema",
+    "unpin": "Desanclar esquema"
   },
   "toc": {
     "title": "Tabla de contenido",

@@ -683,7 +683,9 @@
   },
   "outline": {
     "title": "Konspekt",
-    "empty": "Ta notatka nie ma jeszcze nagłówków."
+    "empty": "Ta notatka nie ma jeszcze nagłówków.",
+    "pin": "Przypnij konspekt",
+    "unpin": "Odepnij konspekt"
   },
   "toc": {
     "title": "Spis treści",

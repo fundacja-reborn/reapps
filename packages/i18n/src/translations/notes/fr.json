@@ -683,7 +683,9 @@
   },
   "outline": {
     "title": "Plan",
-    "empty": "Cette note n'a pas encore de titres."
+    "empty": "Cette note n'a pas encore de titres.",
+    "pin": "Épingler le plan",
+    "unpin": "Détacher le plan"
   },
   "toc": {
     "title": "Table des matières",

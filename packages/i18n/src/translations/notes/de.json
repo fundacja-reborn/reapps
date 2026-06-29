@@ -683,7 +683,9 @@
   },
   "outline": {
     "title": "Gliederung",
-    "empty": "Diese Notiz hat noch keine Überschriften."
+    "empty": "Diese Notiz hat noch keine Überschriften.",
+    "pin": "Gliederung anheften",
+    "unpin": "Gliederung lösen"
   },
   "toc": {
     "title": "Inhaltsverzeichnis",

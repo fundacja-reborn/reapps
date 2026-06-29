@@ -5,7 +5,7 @@
   import { base } from '$app/paths';
   import { copyText } from '$lib/utils/clipboard';
   import { SvelteSet, SvelteMap } from 'svelte/reactivity';
-  import { FolderPlus, Plus, ArrowLeft, Lock } from '@lucide/svelte';
+  import { FolderPlus, Plus, ArrowLeft, Lock, ListTree, PinOff } from '@lucide/svelte';
 
   // Layout
   import IconNav, { type Section, isPeriodicSection } from '$lib/components/layout/IconNav.svelte';
@@ -24,6 +24,7 @@
   import VersionHistorySheet from '$lib/components/VersionHistorySheet.svelte';
   import LinkedNotesSheet from '$lib/components/LinkedNotesSheet.svelte';
   import OutlineSheet from '$lib/components/OutlineSheet.svelte';
+  import OutlineTree from '$lib/components/OutlineTree.svelte';
   import FolderTree from '$lib/components/sidebar/FolderTree.svelte';
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
@@ -67,7 +68,12 @@
     periodicNotesSettings,
     confirmBeforeDelete
   } from '$lib/stores/app-settings.store';
-  import { devicePrefs, noteOpenMode, noteListCollapsed } from '$lib/stores/device-prefs.store';
+  import {
+    devicePrefs,
+    noteOpenMode,
+    noteListCollapsed,
+    tocPinned
+  } from '$lib/stores/device-prefs.store';
   import EditorModeIntroDialog from '$lib/components/editor/EditorModeIntroDialog.svelte';
   import PeriodicNoteOnboardingDialog from '$lib/components/editor/PeriodicNoteOnboardingDialog.svelte';
   import type { EditorMode } from '@reborn/storage';
@@ -87,7 +93,7 @@
   import { goto } from '$lib/utils/navigation';
   import { createScrollSync } from '$lib/utils/scroll-sync';
   import { scrollToHeading } from '$lib/utils/heading-scroll';
-  import type { DocHeading } from '$lib/utils/heading-outline';
+  import { extractHeadings, type DocHeading } from '$lib/utils/heading-outline';
   import { applyToc, removeToc, hasToc, isTocStale, tocHiddenSpans } from '$lib/utils/toc';
   import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
   import { requireActiveSession } from '$lib/utils/require-active-session';
@@ -324,11 +330,30 @@
   }
 
   function toggleOutline() {
+    // When the outline is docked (desktop, pinned, has headings) the header
+    // toggle unpins it - a docked panel has no transient per-note "hide".
+    if (tocDocked) {
+      devicePrefs.setTocPinned(false);
+      return;
+    }
     outlineOpen = !outlineOpen;
     if (outlineOpen) {
       linkedNotesOpen = false;
       if (historyMode !== 'closed') closeHistory();
     }
+  }
+
+  // Dock the outline beside the editor (from the floating drawer's Pin button).
+  // Global, per-device; hands the drawer off to the dock.
+  function pinOutline() {
+    devicePrefs.setTocPinned(true);
+    outlineOpen = false;
+  }
+
+  // Undock (from the docked panel). The outline is fully hidden; the header
+  // button reopens it as a floating drawer.
+  function unpinOutline() {
+    devicePrefs.setTocPinned(false);
   }
 
   function handleDetailOutline() {
@@ -435,6 +460,27 @@
   let isMobile = $state(false);
   let closeSidebarSignal = $state(0);
   const effectiveViewMode = $derived(isMobile && viewMode === 'split' ? 'edit' : viewMode);
+
+  // ── Outline (TOC) presentation ──────────────────────────────────
+  // Desktop + pinned (global, per-device) docks the outline beside the editor,
+  // but only for notes that actually have headings (else the dock auto-hides).
+  // Otherwise the outline is the transient floating drawer toggled by the header
+  // button. `outlineOpen` drives ONLY the floating drawer; the dock is derived.
+  const tocDocked = $derived.by(() => {
+    if (
+      isMobile ||
+      !$tocPinned ||
+      $activeNoteId == null ||
+      historyMode !== 'closed' ||
+      linkedNotesOpen
+    )
+      return false;
+    return extractHeadings(noteDetailService.content).length > 0;
+  });
+  const tocFloating = $derived(outlineOpen && !tocDocked);
+  // Outline visible in any form - drives the header toggle's pressed state and
+  // gates the scroll-spy.
+  const outlineVisible = $derived(tocDocked || tocFloating);
 
   // Mobile drill-down navigation state
   type MobileView = 'list' | 'folder-tree' | 'tag-list';
@@ -1332,7 +1378,7 @@
   // Re-attaches when the preview re-renders (new heading elements) or the note
   // changes; no-op when the panel is closed or no preview is mounted (edit-only).
   $effect(() => {
-    if (!outlineOpen) {
+    if (!outlineVisible) {
       activeOutlineSlug = null;
       return;
     }
@@ -2059,7 +2105,7 @@
               bind:historyMode
               linkedNotesActive={linkedNotesOpen}
               ontogglelinkednotes={toggleLinkedNotes}
-              outlineActive={outlineOpen}
+              outlineActive={outlineVisible}
               ontoggleoutline={toggleOutline}
               canGoBackNote={noteNavHistory.canGoBack}
               canGoForwardNote={noteNavHistory.canGoForward}
@@ -2367,7 +2413,7 @@
             bind:historyMode
             linkedNotesActive={linkedNotesOpen}
             ontogglelinkednotes={toggleLinkedNotes}
-            outlineActive={outlineOpen}
+            outlineActive={outlineVisible}
             ontoggleoutline={toggleOutline}
             canGoBackNote={noteNavHistory.canGoBack}
             canGoForwardNote={noteNavHistory.canGoForward}
@@ -2541,6 +2587,37 @@
         {/if}
       {/if}
     </main>
+
+    <!-- ── Docked outline (desktop, pinned, note has headings). Reserves layout
+         space beside the editor and never closes on outside-click - the whole
+         point of #375 vs. the overlay drawer. ──────────────────────────────── -->
+    {#if tocDocked}
+      <aside
+        class="my-2 mr-2 flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border bg-background shadow-sm"
+        aria-label={$t('outline.title')}
+      >
+        <div class="flex shrink-0 items-center gap-2 border-b px-4 py-3">
+          <ListTree class="h-4 w-4 text-muted-foreground" />
+          <span class="flex-1 truncate text-sm font-semibold">{$t('outline.title')}</span>
+          <button
+            type="button"
+            onclick={unpinOutline}
+            title={$t('outline.unpin')}
+            aria-label={$t('outline.unpin')}
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground
+                   transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <PinOff class="h-4 w-4" />
+          </button>
+        </div>
+        <OutlineTree
+          content={noteDetailService.content}
+          activeSlug={activeOutlineSlug}
+          onnavigate={handleOutlineNavigate}
+          enabled={tocDocked}
+        />
+      </aside>
+    {/if}
   </SidebarProvider>
 {/if}
 
@@ -2633,9 +2710,11 @@
 {#if $activeNoteId}
   <OutlineSheet
     content={noteDetailService.content}
-    open={outlineOpen}
+    open={tocFloating}
     activeSlug={activeOutlineSlug}
     onnavigate={handleOutlineNavigate}
+    showPin={!isMobile}
+    onpin={pinOutline}
     onclose={() => {
       outlineOpen = false;
     }}

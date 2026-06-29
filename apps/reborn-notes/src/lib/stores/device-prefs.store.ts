@@ -28,13 +28,21 @@ export interface DevicePrefs {
    * which uses a separate master-detail layout.
    */
   noteListCollapsed: boolean;
+  /**
+   * Desktop only: the outline (table of contents) is docked beside the editor
+   * instead of opening as a transient overlay drawer. Global across notes on
+   * this device; the dock auto-hides for notes that have no headings. Ignored
+   * on mobile, which always uses the drawer.
+   */
+  tocPinned: boolean;
 }
 
 const STORAGE_KEY = 'reborn-notes-device-prefs';
 
 const DEFAULTS: DevicePrefs = {
   noteOpenMode: 'preview',
-  noteListCollapsed: false
+  noteListCollapsed: false,
+  tocPinned: false
 };
 
 const NOTE_OPEN_MODES: readonly NoteOpenMode[] = ['preview', 'edit', 'split'];
@@ -52,7 +60,9 @@ function load(): DevicePrefs {
       noteListCollapsed:
         typeof parsed.noteListCollapsed === 'boolean'
           ? parsed.noteListCollapsed
-          : DEFAULTS.noteListCollapsed
+          : DEFAULTS.noteListCollapsed,
+      tocPinned:
+        typeof parsed.tocPinned === 'boolean' ? parsed.tocPinned : DEFAULTS.tocPinned
     };
   } catch (err) {
     logger.warn('Failed to read device prefs, using defaults', err);
@@ -97,11 +107,20 @@ function createDevicePrefsStore() {
     });
   }
 
+  function setTocPinned(pinned: boolean): void {
+    store.update((prev) => {
+      const next = { ...prev, tocPinned: pinned };
+      persist(next);
+      return next;
+    });
+  }
+
   return {
     subscribe: store.subscribe,
     setNoteOpenMode,
     setNoteListCollapsed,
-    toggleNoteList
+    toggleNoteList,
+    setTocPinned
   };
 }
 
@@ -112,3 +131,6 @@ export const noteOpenMode = derived(devicePrefs, ($p) => $p.noteOpenMode);
 
 /** Desktop: whether the note-list panel is collapsed (icon rail stays visible). */
 export const noteListCollapsed = derived(devicePrefs, ($p) => $p.noteListCollapsed);
+
+/** Desktop: whether the outline is docked beside the editor (global, this device). */
+export const tocPinned = derived(devicePrefs, ($p) => $p.tocPinned);

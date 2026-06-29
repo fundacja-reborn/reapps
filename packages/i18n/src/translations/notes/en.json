@@ -683,7 +683,9 @@
   },
   "outline": {
     "title": "Outline",
-    "empty": "No headings in this note yet."
+    "empty": "No headings in this note yet.",
+    "pin": "Pin outline",
+    "unpin": "Unpin outline"
   },
   "toc": {
     "title": "Table of contents",
