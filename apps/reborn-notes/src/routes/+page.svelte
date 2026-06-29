@@ -718,6 +718,20 @@
   // ── New note ─────────────────────────────────────────────────────
   let editorModeIntroOpen = $state(false);
 
+  /** Create an ephemeral note (#349: saved locally with a real id so the editor
+   *  can open it, but its push is deferred until the first deliberate action; if
+   *  the user backs out untouched, leaveNote discards it and the server never
+   *  sees it) in `folderId` - or the store's current folder when omitted - then
+   *  open it in the editor. */
+  async function createEphemeralNote(folderId?: string) {
+    const date = new Date().toISOString().slice(0, 10);
+    const settings = await getSettings();
+    const prefix = settings?.language === 'pl' ? 'Notatka' : 'Note';
+    const id = await notesStore.create(`${prefix} ${date}`, '', folderId, { ephemeral: true });
+    noteDetailService.setNewNote();
+    activeNoteId.set(id);
+  }
+
   async function handleNewNote() {
     if (!$editorModeIntroSeen) {
       editorModeIntroOpen = true;
@@ -739,16 +753,19 @@
       activeTagId = null;
       await tick();
     }
-    const date = new Date().toISOString().slice(0, 10);
-    const settings = await getSettings();
-    const prefix = settings?.language === 'pl' ? 'Notatka' : 'Note';
-    // Create as ephemeral (#349): saved locally with a real id so the editor can
-    // open it, but its push is deferred until the first deliberate action. If the
-    // user backs out without touching it, leaveNote discards it and the server
-    // never sees it.
-    const id = await notesStore.create(`${prefix} ${date}`, '', undefined, { ephemeral: true });
-    noteDetailService.setNewNote();
-    activeNoteId.set(id);
+    await createEphemeralNote();
+  }
+
+  /** "New note in this folder" from the folder tree (right-click menu / kebab):
+   *  navigate into the folder so the note shows in context, then create it there. */
+  async function handleNewNoteInFolder(folderId: string) {
+    if (!$editorModeIntroSeen) {
+      editorModeIntroOpen = true;
+      return;
+    }
+    await handleFolderSelect(folderId);
+    await tick();
+    await createEphemeralNote(folderId);
   }
 
   async function handlePeriodic(kind: PeriodicKind) {
@@ -1933,6 +1950,7 @@
                       activeFolderId={activeFolderId ?? null}
                       {expandedIds}
                       onselect={handleFolderSelect}
+                      onnewnote={handleNewNoteInFolder}
                       {savedSearchesByFolder}
                       onsavedsearchselect={handleSavedSearchSelect}
                     />
@@ -2259,6 +2277,7 @@
                     activeFolderId={activeFolderId ?? null}
                     {expandedIds}
                     onselect={handleFolderSelect}
+                    onnewnote={handleNewNoteInFolder}
                     {savedSearchesByFolder}
                     onsavedsearchselect={handleSavedSearchSelect}
                   />
