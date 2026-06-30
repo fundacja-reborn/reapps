@@ -47,7 +47,6 @@
   import SavedSearchList from './notes/SavedSearchList.svelte';
   import SavedSearchRow from './notes/SavedSearchRow.svelte';
   import { savedSearchesStore } from '$lib/stores/saved-searches.store';
-  import { searchHandoff } from '$lib/stores/search-handoff.store';
   import type { SaveScope } from '$lib/utils/search-scope';
   import type { SavedSearchDecrypted } from '@reborn/types';
   import SubfolderList from './SubfolderList.svelte';
@@ -252,20 +251,6 @@
     // set than the one the user saved.
     searchInContent = search.search_in_content;
   }
-
-  // One-shot query handoff (saved search clicked outside the search section,
-  // e.g. a node parked in the folder tree). The sender switches the section
-  // first and sets the store after a tick, so the section-change reset above
-  // has already run - consuming here cannot be clobbered by it.
-  $effect(() => {
-    const pending = $searchHandoff;
-    if (pending === null) return;
-    untrack(() => {
-      searchHandoff.set(null);
-      searchInput = pending.query;
-      searchInContent = pending.searchInContent;
-    });
-  });
 
   function onWindowClick() {
     menuOpenId = null;

@@ -56,6 +56,7 @@
     nodes,
     depth = 0,
     activeFolderId = null,
+    activeSavedSearchId = null,
     expandedIds,
     onselect,
     onnewnote = undefined,
@@ -66,6 +67,9 @@
     nodes: FolderWithChildren[];
     depth?: number;
     activeFolderId?: string | null;
+    /** Id of the smart folder (pinned saved search) currently open in the main
+     *  list - highlights its row, mirroring activeFolderId for real folders. */
+    activeSavedSearchId?: string | null;
     expandedIds: Set<string>;
     onselect: (id: string | null) => void;
     /** Create a new note inside the folder (parent owns the create + navigate). */
@@ -434,6 +438,7 @@
         {search}
         context="tree"
         depth={0}
+        active={search.id === activeSavedSearchId}
         onselect={(s) => onsavedsearchselect?.(s)}
       />
     {/each}
@@ -604,6 +609,7 @@
                 {search}
                 context="tree"
                 depth={depth + 1}
+                active={search.id === activeSavedSearchId}
                 onselect={(s) => onsavedsearchselect?.(s)}
               />
             {/each}
@@ -614,6 +620,7 @@
             nodes={folder.children ?? []}
             depth={depth + 1}
             {activeFolderId}
+            {activeSavedSearchId}
             {expandedIds}
             {onselect}
             {onnewnote}
