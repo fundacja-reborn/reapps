@@ -1814,26 +1814,37 @@ export function pushSavedSearchDelete(id: string): void {
 
 // ── Note version sync ──────────────────────────────────────────────
 
-/** Push a single note version to server (fire-and-forget). Marks as synced on success. */
+/**
+ * Push a single note version to server (fire-and-forget). Marks as synced on success.
+ *
+ * Serialized through the note's per-entity chain (not a bare pushSilently): the
+ * versions endpoint requires the parent note to exist, so a version push must run
+ * AFTER any in-flight create/update for that note. Without this it can overtake a
+ * freshly-promoted note's POST /api/notes and 404 (the parent row is not there
+ * yet), churning three doomed retries. A failed push leaves the local row
+ * 'pending' for the next pushPendingVersions() sweep. See guideline 36.
+ */
 export function pushNoteVersion(entry: NoteHistoryEntry): void {
-  void pushSilently(async (idempotencyKey) => {
-    const res = await authFetch(`${API_BASE}/notes/${entry.note_id}/versions`, {
-      method: 'POST',
-      headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify({
-        id: entry.id,
-        title_encrypted: entry.title_encrypted,
-        content_encrypted: entry.content_encrypted,
-        created_at: entry.created_at
-      })
-    });
-    if (!res.ok) throw new Error(`POST /api/notes/${entry.note_id}/versions: ${res.status}`);
-    // Mark as synced locally
-    const current = await noteHistoryStore.get(entry.id);
-    if (current) {
-      await noteHistoryStore.save({ ...current, sync_status: 'synced' });
-    }
-  });
+  void serializePerEntity('note', entry.note_id, () =>
+    pushSilently(async (idempotencyKey) => {
+      const res = await authFetch(`${API_BASE}/notes/${entry.note_id}/versions`, {
+        method: 'POST',
+        headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({
+          id: entry.id,
+          title_encrypted: entry.title_encrypted,
+          content_encrypted: entry.content_encrypted,
+          created_at: entry.created_at
+        })
+      });
+      if (!res.ok) throw new Error(`POST /api/notes/${entry.note_id}/versions: ${res.status}`);
+      // Mark as synced locally
+      const current = await noteHistoryStore.get(entry.id);
+      if (current) {
+        await noteHistoryStore.save({ ...current, sync_status: 'synced' });
+      }
+    })
+  );
 }
 
 /**
