@@ -1,6 +1,6 @@
 {
   "name": "@reborn-apps/reborn-notes",
-  "version": "0.39.0",
+  "version": "0.40.0",
   "private": true,
   "scripts": {
     "dev": "vite dev",
