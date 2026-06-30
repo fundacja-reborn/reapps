@@ -251,7 +251,7 @@
                   <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
                       <span class="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {$t('share.list.type.note')}
+                        {$t('share.list.snapshot_eyebrow')}
                       </span>
                       {#if share.has_password}
                         <span class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
