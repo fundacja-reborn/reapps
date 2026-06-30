@@ -3,7 +3,7 @@
     ArrowLeft,
     Copy,
     Share2,
-    Trash2,
+    Link2Off,
     Lock,
     AlertTriangle,
     ChevronDown,
@@ -13,7 +13,7 @@
   import { t } from '$lib/stores/i18n.store';
   import { shareLink } from '$lib/utils/native-share';
   import { copyText } from '$lib/utils/clipboard';
-  import { Button, toastStore } from '@reborn/ui';
+  import { toastStore } from '@reborn/ui';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
   import NoteSnapshotView from '$lib/components/notes/NoteSnapshotView.svelte';
   import { sharesStore, activeShareId } from '$lib/stores/shares.store';
@@ -127,26 +127,47 @@
         {/if}
       </p>
     </div>
+    <!-- Labelled on desktop (the header has room and icon-only actions read as
+         ambiguous), icon-only on the cramped mobile header. -->
     {#if entry}
-      <Button variant="ghost" size="icon" aria-label={$t('share.create.copy_link')} onclick={copyUrl}>
+      <button
+        type="button"
+        onclick={copyUrl}
+        class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-sm
+               text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        aria-label={$t('share.create.copy_link')}
+      >
         <Copy class="h-4 w-4" />
-      </Button>
+        <span class="hidden md:inline">{$t('share.create.copy_link')}</span>
+      </button>
       {#if isNative}
-        <Button variant="ghost" size="icon" aria-label={$t('share.create.share_cta')} onclick={shareUrl}>
+        <button
+          type="button"
+          onclick={shareUrl}
+          class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-sm
+                 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          aria-label={$t('share.create.share_cta')}
+        >
           <Share2 class="h-4 w-4" />
-        </Button>
+          <span class="hidden md:inline">{$t('share.create.share_cta')}</span>
+        </button>
       {/if}
     {/if}
     {#if share && !share.revoked_at}
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={$t('share.list.revoke_action')}
+      <!-- Revoke kills the public link permanently - not a recoverable trash like a
+           note. A Link2Off glyph + explicit label disambiguate it from note delete. -->
+      <button
+        type="button"
         disabled={revoking}
         onclick={() => (confirmRevokeOpen = true)}
+        class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-sm
+               text-destructive transition-colors hover:bg-destructive/10
+               disabled:pointer-events-none disabled:opacity-50"
+        aria-label={$t('share.list.revoke_action')}
       >
-        <Trash2 class="h-4 w-4 text-destructive" />
-      </Button>
+        <Link2Off class="h-4 w-4" />
+        <span class="hidden md:inline">{$t('share.list.revoke_action')}</span>
+      </button>
     {/if}
   </header>
 
@@ -163,7 +184,7 @@
       <div class="mx-auto flex max-w-3xl flex-col gap-4 px-4 md:px-6 py-4">
         <!-- Public link URL (hidden by default) -->
         {#if entry}
-          <div class="flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-3">
+          <div class="relative flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-3">
             <button
               type="button"
               class="inline-flex w-fit items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
@@ -176,7 +197,18 @@
               {/if}
             </button>
             {#if urlShown}
-              <p class="break-all font-mono text-xs text-muted-foreground">{entry.url}</p>
+              <!-- Copy affordance pinned top-right, mirroring note code blocks. -->
+              <button
+                type="button"
+                onclick={copyUrl}
+                class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-md border
+                       bg-background text-muted-foreground opacity-70 transition hover:text-foreground hover:opacity-100"
+                aria-label={$t('share.create.copy_link')}
+                title={$t('share.create.copy_link')}
+              >
+                <Copy class="h-3.5 w-3.5" />
+              </button>
+              <p class="break-all pr-9 font-mono text-xs text-muted-foreground">{entry.url}</p>
             {/if}
           </div>
         {/if}

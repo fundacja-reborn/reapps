@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { RefreshCw, AlertTriangle, FileText, Lock, ArrowDownUp, Search, X, Clock } from '@lucide/svelte';
+  import { RefreshCw, AlertTriangle, Lock, ArrowDownUp, Search, X, Clock } from '@lucide/svelte';
   import {
     Button,
     DropdownMenu,
@@ -96,18 +96,25 @@
 </script>
 
 <div class="flex h-full flex-col overflow-hidden">
-  <!-- Header: title + count + sort + refresh. Grows by the iOS notch inset on
-       mobile (where this list owns the panel header); compact h-10 on desktop. -->
+  <!-- Header mirrors NoteList: row 1 = title, row 2 = count + actions, then
+       search. Row 1 grows by the iOS notch inset on mobile (where this list owns
+       the panel header) and is compact h-10 on desktop. -->
   <div
-    class="flex shrink-0 items-center gap-1 px-5 pt-[env(safe-area-inset-top,0px)]
-           min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:min-h-10 md:pt-0"
+    class="flex shrink-0 items-center gap-1 px-5
+           min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)]
+           md:min-h-0 md:h-10 md:pt-0"
   >
-    <div class="min-w-0 flex-1">
-      <p class="truncate text-sm font-medium md:font-normal">{$t('share.list.title')}</p>
-      <p class="text-xs text-muted-foreground">
-        {$t('share.list.count', { values: { count: rows.length } })}
-      </p>
-    </div>
+    <span class="min-w-0 flex-1 truncate text-sm font-medium md:font-normal">
+      {$t('share.list.title')}
+    </span>
+  </div>
+
+  <!-- Row 2: count + sort + refresh. Prominent sizing on mobile (h-14 / h-11),
+       compact on desktop (h-10 / h-9) - same tap targets as NoteList's row 2. -->
+  <div class="flex h-14 md:h-10 shrink-0 items-center gap-1 pl-5 pr-5">
+    <span class="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+      {$t('share.list.count', { values: { count: rows.length } })}
+    </span>
 
     <DropdownMenu>
       <DropdownMenuTrigger>
@@ -117,10 +124,10 @@
             type="button"
             title={$t('share.list.sort_label')}
             aria-label={$t('share.list.sort_label')}
-            class="flex h-9 w-9 md:h-7 md:w-7 shrink-0 items-center justify-center rounded-md
+            class="flex h-11 w-11 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-md
                    text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
-            <ArrowDownUp class="h-4 w-4 md:h-3.5 md:w-3.5" />
+            <ArrowDownUp class="h-5 w-5 md:h-4 md:w-4" />
           </button>
         {/snippet}
       </DropdownMenuTrigger>
@@ -146,16 +153,16 @@
       disabled={isLoading}
       title={$t('share.list.retry_action')}
       aria-label={$t('share.list.retry_action')}
-      class="flex h-9 w-9 md:h-7 md:w-7 shrink-0 items-center justify-center rounded-md
+      class="flex h-11 w-11 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-md
              text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground
              disabled:pointer-events-none disabled:opacity-50"
     >
-      <RefreshCw class="h-4 w-4 md:h-3.5 md:w-3.5 {isLoading ? 'animate-spin' : ''}" />
+      <RefreshCw class="h-5 w-5 md:h-4 md:w-4 {isLoading ? 'animate-spin' : ''}" />
     </button>
   </div>
 
-  <!-- Search -->
-  <div class="px-3 pb-2">
+  <!-- Search (matches NoteListSearchBar) -->
+  <div class="shrink-0 px-3 pb-2">
     <div class="relative">
       <Search
         class="absolute left-2.5 top-1/2 h-4 w-4 md:h-3.5 md:w-3.5 -translate-y-1/2 text-muted-foreground"
@@ -164,15 +171,16 @@
         type="text"
         placeholder={$t('share.list.search_placeholder')}
         bind:value={searchInput}
-        class="w-full rounded-md border bg-background py-2.5 md:py-2 pl-8 md:pl-7 pr-9 text-sm md:text-xs
-               placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        class="w-full rounded-md border bg-background py-2.5 md:py-2 pl-8 md:pl-7 pr-10 md:pr-8 text-sm md:text-xs
+               focus:outline-none focus:ring-1 focus:ring-primary"
         aria-label={$t('share.list.search_placeholder')}
       />
       {#if searchInput}
         <button
           type="button"
           onclick={() => (searchInput = '')}
-          class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          class="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-9 md:h-7 md:w-7 items-center justify-center
+                 text-muted-foreground hover:text-foreground"
           aria-label={$t('notes.clear_search')}
         >
           <X class="h-4 w-4 md:h-3.5 md:w-3.5" />
@@ -181,10 +189,8 @@
     </div>
   </div>
 
-  <div class="mx-3 border-t"></div>
-
   <!-- List -->
-  <div class="flex-1 overflow-y-auto px-2 py-2">
+  <div class="flex-1 overflow-y-auto px-3">
     {#if isLoading && rows.length === 0}
       <div class="flex justify-center py-8">
         <RefreshCw class="h-5 w-5 animate-spin text-muted-foreground" />
@@ -203,56 +209,59 @@
         {searchInput ? $t('share.list.search_no_match') : $t('share.list.empty')}
       </p>
     {:else}
-      {#each rows as share (share.id)}
-        {@const title = titleOf(share)}
-        {@const expiringSoon = isExpiringSoon(share)}
-        {@const links = linkCountFor(share)}
-        <button
-          type="button"
-          onclick={() => activeShareId.set(share.id)}
-          class="group mb-0.5 flex w-full items-start gap-2 rounded-md px-2 py-2 text-left transition-colors
-            {$activeShareId === share.id
-            ? 'list-row-active text-sidebar-accent-foreground'
-            : 'text-sidebar-foreground hover:bg-sidebar-accent/60'}"
-          aria-current={$activeShareId === share.id ? 'true' : undefined}
-        >
-          <FileText class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span class="min-w-0 flex-1">
-            <span class="flex items-center gap-1.5">
-              <span class="min-w-0 flex-1 truncate text-sm font-medium">
-                {title || $t('share.list.untitled')}
-              </span>
-              {#if share.has_password}
-                <Lock
-                  class="h-3 w-3 shrink-0 text-muted-foreground"
-                  aria-label={$t('share.list.password_protected')}
-                />
-              {/if}
-            </span>
-            <span
-              class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground"
+      <ul class="flex flex-col gap-2 py-1" role="list">
+        {#each rows as share (share.id)}
+          {@const title = titleOf(share)}
+          {@const expiringSoon = isExpiringSoon(share)}
+          {@const links = linkCountFor(share)}
+          <li>
+            <button
+              type="button"
+              onclick={() => activeShareId.set(share.id)}
+              class="note-item-bg group flex w-full cursor-pointer items-start gap-2 rounded-lg p-4 md:p-3 text-left transition-colors
+                {$activeShareId === share.id ? 'list-row-active text-accent-foreground' : ''}"
+              aria-current={$activeShareId === share.id ? 'true' : undefined}
             >
-              {#if expiringSoon}
-                <span class="inline-flex items-center gap-0.5 font-medium text-amber-600 dark:text-amber-400">
-                  <Clock class="h-3 w-3" />{$t('share.list.expiring_soon')}
-                </span>
-              {/if}
-              <span
-                >{$t('share.list.column.expires')}: {share.expires_at
-                  ? formatDate(share.expires_at)
-                  : $t('share.create.expires.never')}</span
-              >
-              <span aria-hidden="true">·</span>
-              <span>{$t('share.list.column.access_count')}: {formatOpens(share)}</span>
-              {#if links > 1}
-                <span class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  {$t('share.list.links_badge', { values: { count: links } })}
-                </span>
-              {/if}
-            </span>
-          </span>
-        </button>
-      {/each}
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start gap-1">
+                  <p class="min-w-0 flex-1 line-clamp-2 text-base md:text-sm font-normal leading-snug text-foreground">
+                    {title || $t('share.list.untitled')}
+                  </p>
+                  {#if share.has_password}
+                    <Lock
+                      class="mt-1.5 h-3.5 w-3.5 md:mt-1 md:h-3 md:w-3 shrink-0 text-muted-foreground"
+                      aria-label={$t('share.list.password_protected')}
+                    />
+                  {/if}
+                </div>
+                <div
+                  class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] md:text-xs text-muted-foreground"
+                >
+                  {#if expiringSoon}
+                    <span class="inline-flex items-center gap-0.5 font-medium text-amber-600 dark:text-amber-400">
+                      <Clock class="h-3 w-3" />{$t('share.list.expiring_soon')}
+                    </span>
+                  {/if}
+                  <span
+                    >{$t('share.list.column.expires')}: {share.expires_at
+                      ? formatDate(share.expires_at)
+                      : $t('share.create.expires.never')}</span
+                  >
+                  <span aria-hidden="true">·</span>
+                  <span>{$t('share.list.column.access_count')}: {formatOpens(share)}</span>
+                  {#if links > 1}
+                    <span
+                      class="rounded-full border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    >
+                      {$t('share.list.links_badge', { values: { count: links } })}
+                    </span>
+                  {/if}
+                </div>
+              </div>
+            </button>
+          </li>
+        {/each}
+      </ul>
     {/if}
   </div>
 </div>
