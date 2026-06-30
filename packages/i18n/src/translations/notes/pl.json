@@ -522,7 +522,11 @@
     "actions": "Akcje zapisanego wyszukiwania",
     "rename": "Zmień nazwę",
     "move_to_folder": "Przypnij do folderu…",
-    "unpark": "Odepnij od folderu",
+    "pin_picker_title": "Przypnij do folderu",
+    "pin_to_top_level": "Przypnij do głównego poziomu",
+    "pin_here": "Przypnij tutaj",
+    "dont_pin": "Nie przypinaj",
+    "unpark": "Odepnij",
     "delete": "Usuń",
     "delete_confirm_title": "Usunąć \"{name}\"?",
     "delete_confirm_desc": "Usuwany jest tylko zapisany widok - notatki pozostają nietknięte."

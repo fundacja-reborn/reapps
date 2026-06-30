@@ -522,7 +522,11 @@
     "actions": "Actions de la recherche enregistrée",
     "rename": "Renommer",
     "move_to_folder": "Épingler au dossier…",
-    "unpark": "Détacher du dossier",
+    "pin_picker_title": "Épingler au dossier",
+    "pin_to_top_level": "Épingler au niveau supérieur",
+    "pin_here": "Épingler ici",
+    "dont_pin": "Ne pas épingler",
+    "unpark": "Détacher",
     "delete": "Supprimer",
     "delete_confirm_title": "Supprimer « {name} » ?",
     "delete_confirm_desc": "Seule la vue enregistrée est supprimée - vos notes ne sont pas affectées."

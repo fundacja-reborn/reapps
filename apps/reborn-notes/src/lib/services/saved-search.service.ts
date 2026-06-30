@@ -55,18 +55,21 @@ async function decode(stored: string): Promise<string> {
   }
 }
 
-async function decodeMetadata(stored?: string): Promise<SavedSearchSensitiveMetadata> {
-  // Missing or undecryptable metadata degrades to the conservative default
-  // (title-only search) instead of erroring - same posture as the name/query codec.
-  if (!stored) return { search_in_content: false };
+async function decodeMetadata(
+  stored?: string
+): Promise<Required<SavedSearchSensitiveMetadata>> {
+  // Missing or undecryptable metadata degrades to the conservative defaults
+  // (title-only search, not root-pinned) instead of erroring - same posture as
+  // the name/query codec.
+  if (!stored) return { search_in_content: false, pinned_to_root: false };
   if (!cryptoManager.isInitialized()) {
     throw new Error('[E2E] decode saved-search metadata called without master key loaded');
   }
   try {
     const meta = await cryptoManager.decryptObject<SavedSearchSensitiveMetadata>(stored);
-    return { search_in_content: !!meta.search_in_content };
+    return { search_in_content: !!meta.search_in_content, pinned_to_root: !!meta.pinned_to_root };
   } catch {
-    return { search_in_content: false };
+    return { search_in_content: false, pinned_to_root: false };
   }
 }
 
@@ -77,6 +80,10 @@ async function toDecrypted(enc: SavedSearchEncrypted): Promise<SavedSearchDecryp
     name: await decode(enc.name_encrypted),
     query: await decode(enc.query_encrypted),
     search_in_content: meta.search_in_content,
+    // Folder-pin wins over root-pin: a search with a live folder_id is shown in
+    // the folder tree, never duplicated at the top level (mutual exclusivity is
+    // enforced on write, this is defense in depth for any legacy both-set row).
+    pinned_to_root: meta.pinned_to_root && !enc.folder_id,
     folder_id: enc.folder_id,
     position: enc.position,
     created_at: enc.created_at,
@@ -118,7 +125,11 @@ export async function createSavedSearch(
   // Always store the bundle, even for the default false - a row where
   // metadata_encrypted is only present when the toggle is on would leak the
   // toggle state to the server through the mere existence of the ciphertext.
-  const metadata: SavedSearchSensitiveMetadata = { search_in_content: searchInContent };
+  // New searches are never pinned, so root-pin starts false.
+  const metadata: SavedSearchSensitiveMetadata = {
+    search_in_content: searchInContent,
+    pinned_to_root: false
+  };
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
   const search: SavedSearchEncrypted = {
@@ -156,23 +167,71 @@ export async function renameSavedSearch(id: string, name: string): Promise<void>
 }
 
 /**
+ * Set a saved search's pin location. The three states are mutually exclusive:
+ *   - `{ folderId }` parks it under a folder (plaintext FK, clears root-pin)
+ *   - `{ root: true }` pins it to the top level as a smart folder (root-pin
+ *     flag in the encrypted bundle, clears folder_id)
+ *   - `{ none: true }` unpins it entirely (search-panel list only)
+ *
+ * The root-pin flag lives inside `metadata_encrypted`, so flipping it re-encrypts
+ * the bundle and the change rides the existing metadata reconciliation/push path
+ * (notes-sync.service compares metadata_encrypted). The bundle is only re-encoded
+ * when the flag actually flips, to avoid needless ciphertext churn / pushes when
+ * merely re-parking between folders.
+ */
+async function setSavedSearchPin(
+  id: string,
+  target: { folderId: string } | { root: true } | { none: true }
+): Promise<void> {
+  const existing = await savedSearchStore.get(id);
+  if (!existing) throw new Error('Saved search not found');
+
+  const nextFolderId = 'folderId' in target ? target.folderId : null;
+  const nextRoot = 'root' in target;
+
+  const meta = await decodeMetadata(existing.metadata_encrypted);
+  const rootChanged = meta.pinned_to_root !== nextRoot;
+  if (rootChanged && !cryptoManager.isInitialized()) {
+    throw new Error('[E2E] encode saved-search metadata called without master key loaded');
+  }
+  const metadata_encrypted = rootChanged
+    ? await cryptoManager.encryptObject({ ...meta, pinned_to_root: nextRoot })
+    : existing.metadata_encrypted;
+
+  const { folder_id: _previous, ...rest } = existing;
+  await savedSearchStore.save({
+    ...rest,
+    ...(nextFolderId ? { folder_id: nextFolderId } : {}),
+    metadata_encrypted,
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending'
+  });
+  // folder_id always goes on the wire (server needs `'folder_id' in data` to act);
+  // metadata only when the root flag flipped (otherwise its ciphertext is unchanged).
+  pushSavedSearchUpdate(id, {
+    folder_id: nextFolderId,
+    ...(rootChanged ? { metadata_encrypted } : {})
+  });
+}
+
+/**
  * Park a saved search in a folder (renders as a node in the folder tree),
- * or unpark it with `null` (search-panel list only).
+ * or unpark it with `null` (search-panel list only). Setting a folder clears
+ * any top-level pin; `null` clears every pin (folder and root alike).
  */
 export async function moveSavedSearchToFolder(
   id: string,
   folderId: string | null
 ): Promise<void> {
-  const existing = await savedSearchStore.get(id);
-  if (!existing) throw new Error('Saved search not found');
-  const { folder_id: _previous, ...rest } = existing;
-  await savedSearchStore.save({
-    ...rest,
-    ...(folderId ? { folder_id: folderId } : {}),
-    updated_at: new Date().toISOString(),
-    sync_status: 'pending'
-  });
-  pushSavedSearchUpdate(id, { folder_id: folderId });
+  await setSavedSearchPin(id, folderId ? { folderId } : { none: true });
+}
+
+/**
+ * Pin a saved search to the top level of the folder tree as a smart folder.
+ * Clears any folder-pin (mutually exclusive).
+ */
+export async function pinSavedSearchToRoot(id: string): Promise<void> {
+  await setSavedSearchPin(id, { root: true });
 }
 
 /** Delete a saved search (local hard delete + server push). */

@@ -1089,6 +1089,12 @@
     return map;
   });
 
+  // Searches pinned to the top level (smart folders) render above the folder list.
+  // folder_id wins over the root flag, so a folder-pinned search never shows here.
+  const rootPinnedSearches = $derived(
+    $savedSearchesStore.filter((s) => s.pinned_to_root && !s.folder_id)
+  );
+
   /**
    * Clicking a parked saved search jumps to the search section and replays
    * its query. The handoff store is set AFTER a tick so NoteList's
@@ -2128,6 +2134,7 @@
                       onselect={handleFolderSelect}
                       onnewnote={handleNewNoteInFolder}
                       {savedSearchesByFolder}
+                      {rootPinnedSearches}
                       onsavedsearchselect={handleSavedSearchSelect}
                     />
                   {/if}
@@ -2467,6 +2474,7 @@
                     onselect={handleFolderSelect}
                     onnewnote={handleNewNoteInFolder}
                     {savedSearchesByFolder}
+                    {rootPinnedSearches}
                     onsavedsearchselect={handleSavedSearchSelect}
                   />
                 {/if}

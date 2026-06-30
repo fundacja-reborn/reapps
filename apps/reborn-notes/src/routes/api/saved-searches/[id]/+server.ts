@@ -8,9 +8,11 @@ import { getUserFromToken } from '$lib/server/auth';
 const logger = createLogger('Notes-API-SavedSearch');
 
 /**
- * PATCH /api/saved-searches/[id] — update name, query, folder parking and/or position.
- * Body: { name_encrypted?, query_encrypted?, folder_id?, position? }
- * `folder_id: null` explicitly unparks the search from the folder tree.
+ * PATCH /api/saved-searches/[id] - update name, query, metadata, folder parking
+ * and/or position.
+ * Body: { name_encrypted?, query_encrypted?, metadata_encrypted?, folder_id?, position? }
+ * `folder_id: null` explicitly unparks the search from the folder tree;
+ * `metadata_encrypted` carries the behavioral bundle (search-in-content + root-pin).
  */
 export const PATCH: RequestHandler = async ({ request, params }) => {
   try {

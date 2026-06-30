@@ -158,7 +158,7 @@
                 {$t('saved_searches.move_to_folder')}
               </DropdownMenuItem>
             {/if}
-            {#if search.folder_id}
+            {#if search.folder_id || search.pinned_to_root}
               <DropdownMenuItem onclick={unpark}>
                 <FolderX class="h-3.5 w-3.5" />
                 {$t('saved_searches.unpark')}
@@ -197,7 +197,7 @@
             {$t('saved_searches.move_to_folder')}
           </Button>
         {/if}
-        {#if search.folder_id}
+        {#if search.folder_id || search.pinned_to_root}
           <Button variant="ghost" class="w-full justify-start" onclick={() => unpark()}>
             <FolderX class="mr-2 h-4 w-4" />
             {$t('saved_searches.unpark')}
