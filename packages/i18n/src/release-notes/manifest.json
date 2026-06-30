@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.41.0",
+    "date": "2026-06-30",
+    "items": [
+      { "id": "0.41.0-smart-folders-in-pane", "category": "improved", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.40.0",
     "date": "2026-06-30",
     "items": [

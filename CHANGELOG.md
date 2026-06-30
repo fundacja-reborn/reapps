@@ -1,3 +1,9 @@
+## 0.41.0 (2026-06-30)
+
+### 🚀 Features
+
+- **notes:** open smart folders in the main pane like folders ([#394](https://github.com/fundacja-reborn/reapps/pull/394), [#389](https://github.com/fundacja-reborn/reapps/issues/389), [#379](https://github.com/fundacja-reborn/reapps/issues/379), [#384](https://github.com/fundacja-reborn/reapps/issues/384), [#388](https://github.com/fundacja-reborn/reapps/issues/388))
+
 ## 0.40.0 (2026-06-30)
 
 ### 🚀 Features
