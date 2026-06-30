@@ -6,13 +6,11 @@
     searchInput = $bindable(''),
     searchInContent = $bindable(false),
     searchInputEl = $bindable<HTMLInputElement | null>(null),
-    searchOnly = false,
     onsavesearch
   }: {
     searchInput: string;
     searchInContent: boolean;
     searchInputEl?: HTMLInputElement | null;
-    searchOnly?: boolean;
     /** Optional "save this search" affordance (shown when a query is typed). */
     onsavesearch?: () => void;
   } = $props();
@@ -32,8 +30,10 @@
 </script>
 
 <!-- Mobile: px-4 + mt-2 places search in the unified app-bar/meta spacing rhythm;
-     desktop keeps the previous compact px-3 with no top margin via md:. -->
-<div class="shrink-0 px-4 pb-2 md:px-3 {searchOnly ? 'pt-3' : 'mt-2 md:mt-0'}">
+     desktop keeps the previous compact px-3 with no top margin via md:. The
+     count/sort toolbar always sits above this box, so the rhythm is identical
+     across every list view (including the dedicated search view). -->
+<div class="shrink-0 px-4 pb-2 md:px-3 mt-2 md:mt-0">
   <div class="relative">
     <Search class="absolute left-2.5 top-1/2 h-4 w-4 md:h-3.5 md:w-3.5 -translate-y-1/2 text-muted-foreground" />
     <input
