@@ -822,8 +822,8 @@
   {/if}
 
   <!-- Row 2: count + per-list actions; swaps to the selection toolbar in
-       multi-select. Folder/all views render it under the title (above); the
-       dedicated search view renders it under the search box so bulk actions
+       multi-select. Folder/all views render it under the title; the dedicated
+       search view renders it above the search box (same order) so bulk actions
        (move/pin/star/delete) reach search results too (#374). -->
   {#snippet listToolbar()}
     {#if selectionMode}
@@ -972,22 +972,22 @@
     {/if}
   {/snippet}
 
+  <!-- Search view has no panel header, so the count + selection toolbar ride
+       above the search box - same toolbar-over-filter order as every other
+       list view. Gated on results (or an active selection) so an empty
+       result set stays clean. -->
+  {#if searchOnly && ($notesStore.length > 0 || selectionMode)}
+    {@render listToolbar()}
+  {/if}
+
   <!-- Search bar. No save affordance in trash: the trash bucket has no query
        operator, so a saved view could never reproduce a trash-scoped result. -->
   <NoteListSearchBar
     bind:searchInput
     bind:searchInContent
     bind:searchInputEl
-    {searchOnly}
     onsavesearch={isTrash ? undefined : () => (saveSearchDialogOpen = true)}
   />
-
-  <!-- Search view has no panel header, so the count + selection toolbar ride
-       under the search box instead. Gated on results (or an active selection)
-       so an empty search stays clean. -->
-  {#if searchOnly && ($notesStore.length > 0 || selectionMode)}
-    {@render listToolbar()}
-  {/if}
 
   <!-- Trash retention notice: trashed notes are auto-purged after 30 days
        (cleanTrash(30) in hooks.client.ts). Pinned above the list so the policy
