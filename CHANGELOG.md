@@ -1,3 +1,23 @@
+## 0.40.0 (2026-06-30)
+
+### 🚀 Features
+
+- **notes:** add no:folder and no:tag search operators ([#378](https://github.com/fundacja-reborn/reapps/pull/378))
+- **notes:** collapsible note list and pinnable outline dock ([#379](https://github.com/fundacja-reborn/reapps/pull/379), [#375](https://github.com/fundacja-reborn/reapps/issues/375), [#376](https://github.com/fundacja-reborn/reapps/issues/376))
+- **notes:** shares sidebar master-detail view ([#380](https://github.com/fundacja-reborn/reapps/pull/380))
+- **notes:** open source note from share detail ([#381](https://github.com/fundacja-reborn/reapps/pull/381))
+- **notes:** align per-note share dialog with share detail panel ([#382](https://github.com/fundacja-reborn/reapps/pull/382))
+- **notes:** show snapshot rank and date in active shares list ([#385](https://github.com/fundacja-reborn/reapps/pull/385))
+- **notes:** pin saved searches to top level as smart folders ([#389](https://github.com/fundacja-reborn/reapps/pull/389), [#374](https://github.com/fundacja-reborn/reapps/issues/374))
+
+### 🩹 Fixes
+
+- **notes:** unify mobile note-list header into a compact app-bar ([#383](https://github.com/fundacja-reborn/reapps/pull/383))
+- **notes:** show multiselect toolbar in search results ([#387](https://github.com/fundacja-reborn/reapps/pull/387), [#374](https://github.com/fundacja-reborn/reapps/issues/374))
+- **notes:** restore last folder when entering Folders view ([#388](https://github.com/fundacja-reborn/reapps/pull/388), [#384](https://github.com/fundacja-reborn/reapps/issues/384))
+- **notes:** render search-view toolbar above the search box ([#390](https://github.com/fundacja-reborn/reapps/pull/390))
+- **ui:** use pointer cursor on dropdown items and share-detail buttons ([#386](https://github.com/fundacja-reborn/reapps/pull/386))
+
 ## 0.39.0 (2026-06-29)
 
 ### 🚀 Features
