@@ -1426,7 +1426,7 @@
       "search_no_match": "No shares match your search.",
       "select_hint": "Select a share to view its details and preview.",
       "expiring_soon": "Expiring soon",
-      "links_badge": "{count, plural, one {1 link} other {# links}}",
+      "snapshot_rank_label": "Snapshot {k} of {n} for this note",
       "sort_label": "Sort",
       "sort": {
         "created": "Newest first",

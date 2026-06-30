@@ -13,9 +13,10 @@
   import type { OwnShareListItem } from '@reborn/types';
 
   // One row per active share LINK (flat list). A note shared more than once shows
-  // one row per link, distinguished by expiry / opens and an "N links" pill -
-  // matches the rail badge (which counts links) and avoids the snapshot-divergence
-  // ambiguity of grouping by note (each link is its own point-in-time snapshot).
+  // one row per snapshot, distinguished by its creation date and a "k/n" ordinal
+  // pill ("snapshot k of n for this note"). k is the snapshot's 1-based position
+  // by created_at (stable across list re-sorts); n is the note's total active
+  // snapshot count - so two rows with the same title are no longer ambiguous.
   type ShareSort = 'created' | 'expires' | 'opens' | 'title';
 
   let searchInput = $state('');
@@ -75,17 +76,41 @@
     }
   }
 
+  // Full date + time - matches ShareDetailPanel's "Created" field. Used as the
+  // row tooltip so the compact date-only label still exposes the exact moment.
+  function formatDateTime(iso: string | null): string {
+    if (!iso) return '-';
+    try {
+      return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    } catch {
+      return iso;
+    }
+  }
+
   function formatOpens(s: OwnShareListItem): string {
     return s.max_access_count !== null
       ? `${s.access_count} / ${s.max_access_count}`
       : String(s.access_count);
   }
 
-  // Number of active links pointing at the same source note (>1 => show a pill).
-  function linkCountFor(s: OwnShareListItem): number {
+  // Ordinal position of this snapshot among all active shares of the same source
+  // note: k = 1-based rank by created_at (oldest = 1), n = total snapshots for the
+  // note (same source as the former "N links" pill - presentation change only).
+  // k is derived from created_at alone, NOT the list's current sort, so badge
+  // numbers stay stable when the user re-sorts; id breaks created_at ties so every
+  // sibling keeps a distinct, stable k.
+  function snapshotRankFor(s: OwnShareListItem): { k: number; n: number } {
     const src = decoded[s.id]?.payload.source_id;
-    if (!src) return 1;
-    return $sharesBySourceId.get(src)?.length ?? 1;
+    const siblings = src ? $sharesBySourceId.get(src) : undefined;
+    const n = siblings?.length ?? 1;
+    if (!siblings || n < 2) return { k: 1, n };
+    const ordered = [...siblings].sort((a, b) => {
+      const da = new Date(a.created_at).getTime();
+      const db = new Date(b.created_at).getTime();
+      return da !== db ? da - db : a.id.localeCompare(b.id);
+    });
+    const k = ordered.findIndex((x) => x.id === s.id) + 1;
+    return { k: k || 1, n };
   }
 
   const SORT_OPTIONS: { value: ShareSort; label: string }[] = $derived([
@@ -217,7 +242,7 @@
         {#each rows as share (share.id)}
           {@const title = titleOf(share)}
           {@const expiringSoon = isExpiringSoon(share)}
-          {@const links = linkCountFor(share)}
+          {@const rank = snapshotRankFor(share)}
           {@const expRel = share.expires_at ? formatExpiryRelative(share.expires_at, $locale ?? 'en') : null}
           <li>
             <button
@@ -247,6 +272,10 @@
                       <Clock class="h-3 w-3" />{$t('share.list.expiring_soon')}
                     </span>
                   {/if}
+                  <span title={formatDateTime(share.created_at)}
+                    >{$t('share.list.column.created')}: {formatDate(share.created_at)}</span
+                  >
+                  <span aria-hidden="true">·</span>
                   <span
                     >{$t('share.list.column.expires')}: {share.expires_at
                       ? formatDate(share.expires_at)
@@ -254,11 +283,16 @@
                   >
                   <span aria-hidden="true">·</span>
                   <span>{$t('share.list.column.access_count')}: {formatOpens(share)}</span>
-                  {#if links > 1}
+                  {#if rank.n > 1}
+                    {@const rankLabel = $t('share.list.snapshot_rank_label', {
+                      values: { k: rank.k, n: rank.n }
+                    })}
                     <span
                       class="rounded-full border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                      title={rankLabel}
+                      aria-label={rankLabel}
                     >
-                      {$t('share.list.links_badge', { values: { count: links } })}
+                      {rank.k}/{rank.n}
                     </span>
                   {/if}
                 </div>

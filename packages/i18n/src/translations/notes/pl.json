@@ -1426,7 +1426,7 @@
       "search_no_match": "Brak udostępnień pasujących do wyszukiwania.",
       "select_hint": "Wybierz udostępnienie, aby zobaczyć szczegóły i podgląd.",
       "expiring_soon": "Wkrótce wygasa",
-      "links_badge": "{count, plural, one {1 link} few {# linki} many {# linków} other {# linku}}",
+      "snapshot_rank_label": "Snapshot {k} z {n} dla tej notatki",
       "sort_label": "Sortuj",
       "sort": {
         "created": "Najnowsze",
