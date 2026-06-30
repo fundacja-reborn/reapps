@@ -43,6 +43,11 @@ function createSavedSearchesStore() {
     await refresh();
   }
 
+  async function pinToRoot(id: string): Promise<void> {
+    await SavedSearchService.pinSavedSearchToRoot(id);
+    await refresh();
+  }
+
   async function remove(id: string): Promise<void> {
     await SavedSearchService.deleteSavedSearch(id);
     await refresh();
@@ -56,6 +61,7 @@ function createSavedSearchesStore() {
     create,
     rename,
     move,
+    pinToRoot,
     remove
   };
 }

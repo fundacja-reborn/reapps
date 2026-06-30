@@ -522,7 +522,11 @@
     "actions": "Aktionen für gespeicherte Suche",
     "rename": "Umbenennen",
     "move_to_folder": "An Ordner anheften…",
-    "unpark": "Vom Ordner lösen",
+    "pin_picker_title": "An Ordner anheften",
+    "pin_to_top_level": "Auf oberster Ebene anheften",
+    "pin_here": "Hier anheften",
+    "dont_pin": "Nicht anheften",
+    "unpark": "Lösen",
     "delete": "Löschen",
     "delete_confirm_title": "„{name}“ löschen?",
     "delete_confirm_desc": "Nur die gespeicherte Ansicht wird entfernt - Ihre Notizen bleiben unberührt."

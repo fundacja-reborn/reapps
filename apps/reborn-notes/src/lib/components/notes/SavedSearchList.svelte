@@ -26,6 +26,12 @@
     await savedSearchesStore.move(movingSearch.id, folderId);
     movingSearch = null;
   }
+
+  async function handlePinRoot() {
+    if (!movingSearch) return;
+    await savedSearchesStore.pinToRoot(movingSearch.id);
+    movingSearch = null;
+  }
 </script>
 
 <div class="py-2">
@@ -41,10 +47,17 @@
 
 <MoveToFolderMenu
   selection={movingSearch
-    ? { kind: 'single', id: movingSearch.id, currentFolderId: movingSearch.folder_id ?? null }
+    ? {
+        kind: 'single',
+        id: movingSearch.id,
+        currentFolderId: movingSearch.folder_id ?? null,
+        currentPinnedToRoot: movingSearch.pinned_to_root
+      }
     : null}
   bind:open={moveOpen}
   forceSheet
+  mode="pin"
   onmove={(folderId) => handleMove(folderId)}
+  onpinroot={handlePinRoot}
   onclose={() => (movingSearch = null)}
 />

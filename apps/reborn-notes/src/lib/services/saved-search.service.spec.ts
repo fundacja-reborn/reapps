@@ -56,6 +56,7 @@ const {
   getAllSavedSearches,
   renameSavedSearch,
   moveSavedSearchToFolder,
+  pinSavedSearchToRoot,
   deleteSavedSearch
 } = await import('./saved-search.service');
 
@@ -110,8 +111,13 @@ describe('createSavedSearch', () => {
 
     const withContent = rows.find((r) => r.id === idOn)!;
     const titlesOnly = rows.find((r) => r.id === idOff)!;
-    expect(withContent.metadata_encrypted).toBe('encobj:{"search_in_content":true}');
-    expect(titlesOnly.metadata_encrypted).toBe('encobj:{"search_in_content":false}');
+    // New searches are never pinned, so the bundle carries pinned_to_root: false.
+    expect(withContent.metadata_encrypted).toBe(
+      'encobj:{"search_in_content":true,"pinned_to_root":false}'
+    );
+    expect(titlesOnly.metadata_encrypted).toBe(
+      'encobj:{"search_in_content":false,"pinned_to_root":false}'
+    );
   });
 
   it('rejects empty name or query', async () => {
@@ -146,6 +152,26 @@ describe('getAllSavedSearches', () => {
     expect(byId.get('off')).toBe(false);
     expect(byId.get('legacy')).toBe(false);
     expect(byId.get('corrupt')).toBe(false);
+  });
+
+  it('derives pinned_to_root from metadata, with folder_id winning over the flag', async () => {
+    seed({ id: 'root', metadata_encrypted: 'encobj:{"pinned_to_root":true}' });
+    // Both set (legacy/inconsistent row): folder-pin wins, never shown at root.
+    seed({
+      id: 'both',
+      folder_id: 'f1',
+      metadata_encrypted: 'encobj:{"pinned_to_root":true}'
+    });
+    seed({ id: 'plain' }); // no metadata
+    seed({ id: 'flag-false', metadata_encrypted: 'encobj:{"pinned_to_root":false}' });
+
+    const all = await getAllSavedSearches();
+    const byId = new Map(all.map((s) => [s.id, s.pinned_to_root]));
+
+    expect(byId.get('root')).toBe(true);
+    expect(byId.get('both')).toBe(false);
+    expect(byId.get('plain')).toBe(false);
+    expect(byId.get('flag-false')).toBe(false);
   });
 });
 
@@ -182,6 +208,79 @@ describe('moveSavedSearchToFolder', () => {
     const updated = rows.find((r) => r.id === 's-1')!;
     expect('folder_id' in updated).toBe(false);
     expect(pushUpdateSpy).toHaveBeenCalledWith('s-1', { folder_id: null });
+  });
+
+  it('pinning to a folder clears an existing root-pin and pushes the new bundle', async () => {
+    seed({
+      id: 's-1',
+      metadata_encrypted: 'encobj:{"search_in_content":false,"pinned_to_root":true}'
+    });
+
+    await moveSavedSearchToFolder('s-1', 'folder-9');
+
+    const updated = rows.find((r) => r.id === 's-1')!;
+    expect(updated.folder_id).toBe('folder-9');
+    expect(updated.metadata_encrypted).toBe(
+      'encobj:{"search_in_content":false,"pinned_to_root":false}'
+    );
+    expect(pushUpdateSpy).toHaveBeenCalledWith('s-1', {
+      folder_id: 'folder-9',
+      metadata_encrypted: 'encobj:{"search_in_content":false,"pinned_to_root":false}'
+    });
+  });
+
+  it('does not re-encode metadata when the root flag is unchanged (folder-pin churn-free)', async () => {
+    seed({
+      id: 's-1',
+      metadata_encrypted: 'encobj:{"search_in_content":true,"pinned_to_root":false}'
+    });
+
+    await moveSavedSearchToFolder('s-1', 'folder-9');
+
+    const updated = rows.find((r) => r.id === 's-1')!;
+    // Bundle untouched, and metadata_encrypted stays out of the PATCH payload.
+    expect(updated.metadata_encrypted).toBe(
+      'encobj:{"search_in_content":true,"pinned_to_root":false}'
+    );
+    expect(pushUpdateSpy).toHaveBeenCalledWith('s-1', { folder_id: 'folder-9' });
+  });
+});
+
+describe('pinSavedSearchToRoot', () => {
+  it('sets the root flag, clears the folder, and pushes bundle + null folder_id', async () => {
+    seed({
+      id: 's-1',
+      folder_id: 'folder-9',
+      metadata_encrypted: 'encobj:{"search_in_content":true,"pinned_to_root":false}'
+    });
+
+    await pinSavedSearchToRoot('s-1');
+
+    const updated = rows.find((r) => r.id === 's-1')!;
+    expect('folder_id' in updated).toBe(false);
+    expect(updated.metadata_encrypted).toBe(
+      'encobj:{"search_in_content":true,"pinned_to_root":true}'
+    );
+    expect(updated.sync_status).toBe('pending');
+    expect(pushUpdateSpy).toHaveBeenCalledWith('s-1', {
+      folder_id: null,
+      metadata_encrypted: 'encobj:{"search_in_content":true,"pinned_to_root":true}'
+    });
+  });
+
+  it('backfills a missing bundle when pinning a legacy row to root', async () => {
+    seed({ id: 's-1' }); // no metadata bundle at all
+
+    await pinSavedSearchToRoot('s-1');
+
+    const updated = rows.find((r) => r.id === 's-1')!;
+    expect(updated.metadata_encrypted).toBe(
+      'encobj:{"search_in_content":false,"pinned_to_root":true}'
+    );
+    expect(pushUpdateSpy).toHaveBeenCalledWith('s-1', {
+      folder_id: null,
+      metadata_encrypted: 'encobj:{"search_in_content":false,"pinned_to_root":true}'
+    });
   });
 });
 
