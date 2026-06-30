@@ -522,7 +522,11 @@
     "actions": "Acciones de la búsqueda guardada",
     "rename": "Renombrar",
     "move_to_folder": "Fijar en carpeta…",
-    "unpark": "Quitar de la carpeta",
+    "pin_picker_title": "Fijar en carpeta",
+    "pin_to_top_level": "Fijar en el nivel superior",
+    "pin_here": "Fijar aquí",
+    "dont_pin": "No fijar",
+    "unpark": "Desfijar",
     "delete": "Eliminar",
     "delete_confirm_title": "¿Eliminar \"{name}\"?",
     "delete_confirm_desc": "Solo se elimina la vista guardada: sus notas no se ven afectadas."

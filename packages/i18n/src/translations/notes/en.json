@@ -522,7 +522,11 @@
     "actions": "Saved search actions",
     "rename": "Rename",
     "move_to_folder": "Pin to folder…",
-    "unpark": "Unpin from folder",
+    "pin_picker_title": "Pin to folder",
+    "pin_to_top_level": "Pin to top level",
+    "pin_here": "Pin here",
+    "dont_pin": "Don't pin",
+    "unpark": "Unpin",
     "delete": "Delete",
     "delete_confirm_title": "Delete \"{name}\"?",
     "delete_confirm_desc": "Only the saved view is removed - your notes are not affected."

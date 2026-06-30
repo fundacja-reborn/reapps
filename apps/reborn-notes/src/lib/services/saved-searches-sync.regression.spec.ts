@@ -84,6 +84,9 @@ describe('saved searches - push sync', () => {
     expect(fn).toMatch(/res\.status === 404 && fields\.folder_id/);
     expect(fn).toMatch(/Folder not found/);
     expect(fn).toMatch(/throw new Error\(`PATCH \/api\/saved-searches/);
+    // The PATCH must carry metadata_encrypted, otherwise toggling the root-pin
+    // flag (it lives in the encrypted bundle) would never reach the server.
+    expect(fn).toMatch(/metadata_encrypted\?:\s*string/);
   });
 
   it('pushSavedSearchDelete does not clobber sync_version (same bug class as folders/tags)', () => {

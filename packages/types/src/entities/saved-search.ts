@@ -15,6 +15,13 @@ export interface SavedSearchDecrypted {
   query: string;
   /** Whether the "search in content" toggle was on when the search was saved. */
   search_in_content: boolean;
+  /**
+   * Whether the search is pinned to the top level of the folder tree as a
+   * "smart folder". Mutually exclusive with `folder_id` (folder-pin) - a search
+   * with a `folder_id` is treated as folder-pinned regardless of this flag.
+   * Derived from the encrypted metadata bundle, so the server never learns it.
+   */
+  pinned_to_root: boolean;
   folder_id?: string;
   position: number;
   created_at: string;
@@ -24,10 +31,14 @@ export interface SavedSearchDecrypted {
 /**
  * Behavioral metadata bundle, encrypted as one JSON object (same pattern as
  * NoteSensitiveMetadata). The server must not learn which saved searches scan
- * note bodies - that correlates with how sensitive the underlying query is.
+ * note bodies - that correlates with how sensitive the underlying query is - nor
+ * which are pinned to the top level (root-pin is an encrypted flag, unlike the
+ * plaintext `folder_id` FK that folder-pins must use for the SetNull relation).
  */
 export interface SavedSearchSensitiveMetadata {
   search_in_content: boolean;
+  /** Pinned to the top level of the folder tree (smart folder). Absent ⇒ false. */
+  pinned_to_root?: boolean;
 }
 
 export interface SavedSearchEncrypted extends SyncableEncryptedEntity {

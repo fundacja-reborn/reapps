@@ -5,6 +5,7 @@
     ChevronRight,
     Folder as FolderIcon,
     Search,
+    SearchCheck,
     Check,
     FileText,
     X
@@ -25,16 +26,26 @@
    * Move target — single note keeps the "already here" disabled state and auto-navigates
    * to the parent of the current folder on open; multi-note skips both (selected notes
    * may span folders, and there's no single "current folder" to compare against).
+   *
+   * `currentPinnedToRoot` is only meaningful in pin mode (saved searches): it lets the
+   * picker show the top-level pin as the current state and disable the redundant actions.
    */
   export type MoveSelection =
-    | { kind: 'single'; id: string; currentFolderId: string | null }
+    | {
+        kind: 'single';
+        id: string;
+        currentFolderId: string | null;
+        currentPinnedToRoot?: boolean;
+      }
     | { kind: 'multi'; count: number };
 
   let {
     selection,
     open = $bindable(false),
     forceSheet = false,
+    mode = 'move',
     onmove,
+    onpinroot,
     onclose
   }: {
     selection: MoveSelection | null;
@@ -42,12 +53,22 @@
     /** Force the bottom-sheet variant on desktop too — used by bulk move which has no
      *  anchoring button for the absolute desktop popup. */
     forceSheet?: boolean;
+    /** `'pin'` repurposes the picker for parking a saved search (smart folder): the
+     *  title becomes "Pin to folder", a "Pin to top level" action appears, and the
+     *  "No folder" row becomes "Don't pin". Default `'move'` keeps note-move wording. */
+    mode?: 'move' | 'pin';
     onmove: (folderId: string | null, e?: Event) => void;
+    /** Pin mode only: pin the saved search to the top level (root smart folder). */
+    onpinroot?: () => void;
     onclose?: () => void;
   } = $props();
 
   const isMobileQuery = useIsMobile();
   const useSheet = $derived(forceSheet || isMobileQuery.value);
+  const isPin = $derived(mode === 'pin');
+  const pickerTitle = $derived(
+    isPin ? $t('saved_searches.pin_picker_title') : $t('notes.move_to')
+  );
 
   let currentParentId = $state<string | null>(null);
   let searchQuery = $state('');
@@ -73,6 +94,16 @@
   // different folders, so no single folder can be highlighted as "current".
   const currentFolderId = $derived(
     selection?.kind === 'single' ? selection.currentFolderId : null
+  );
+  // Pin mode only: is the saved search currently pinned to the top level?
+  const currentRoot = $derived(
+    selection?.kind === 'single' ? !!selection.currentPinnedToRoot : false
+  );
+  // The "No folder" / "Don't pin" row reflects the current state. In move mode that's
+  // "note has no folder"; in pin mode it's "search is not pinned anywhere" (neither a
+  // folder nor the top level), so a folder- or root-pinned search keeps it actionable.
+  const noneIsCurrent = $derived(
+    isPin ? currentFolderId === null && !currentRoot : currentFolderId === null
   );
 
   // Auto-navigate to the parent of the note's current folder when opened (single mode only).
@@ -123,12 +154,29 @@
 
   function doMove(folderId: string | null, e?: Event) {
     if (!selection) return;
-    if (selection.kind === 'single' && folderId === (selection.currentFolderId ?? null)) {
+    // The "already here" no-op only maps cleanly to move mode, where pin state is
+    // fully captured by folder_id. In pin mode the disabled states guard redundancy.
+    if (
+      mode === 'move' &&
+      selection.kind === 'single' &&
+      folderId === (selection.currentFolderId ?? null)
+    ) {
       // no-op: already in this folder
       closeMenu();
       return;
     }
     onmove(folderId, e);
+    closeMenu();
+  }
+
+  function doPinRoot(e?: Event) {
+    e?.stopPropagation();
+    if (currentRoot) {
+      // no-op: already pinned to the top level
+      closeMenu();
+      return;
+    }
+    onpinroot?.();
     closeMenu();
   }
 
@@ -227,21 +275,41 @@
       </div>
     {/if}
 
-    <!-- Primary action row: "No folder" at root, "Move here" otherwise -->
-    <div class="mt-2 px-2">
+    <!-- Primary action row: "No folder"/"Don't pin" at root, "Move/Pin here" otherwise -->
+    <div class="mt-2 space-y-1 px-2">
       {#if isRoot}
+        {#if isPin}
+          <!-- Pin to top level (smart folder) - pin mode only -->
+          <button
+            type="button"
+            role="menuitem"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent
+              {currentRoot ? 'text-muted-foreground' : 'text-foreground'}"
+            onclick={doPinRoot}
+            disabled={currentRoot}
+            aria-current={currentRoot ? 'true' : undefined}
+          >
+            <SearchCheck class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span class="min-w-0 flex-1 truncate">{$t('saved_searches.pin_to_top_level')}</span>
+            {#if currentRoot}
+              <Check class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            {/if}
+          </button>
+        {/if}
         <button
           type="button"
           role="menuitem"
           class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent
-            {currentFolderId === null ? 'text-muted-foreground' : 'text-foreground'}"
+            {noneIsCurrent ? 'text-muted-foreground' : 'text-foreground'}"
           onclick={(e) => doMove(null, e)}
-          disabled={currentFolderId === null}
-          aria-current={currentFolderId === null ? 'true' : undefined}
+          disabled={noneIsCurrent}
+          aria-current={noneIsCurrent ? 'true' : undefined}
         >
           <FileText class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <span class="min-w-0 flex-1 truncate">{$t('notes.no_folder')}</span>
-          {#if currentFolderId === null}
+          <span class="min-w-0 flex-1 truncate">
+            {isPin ? $t('saved_searches.dont_pin') : $t('notes.no_folder')}
+          </span>
+          {#if noneIsCurrent}
             <Check class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           {/if}
         </button>
@@ -256,7 +324,9 @@
           aria-current={currentFolderId === currentParentId ? 'true' : undefined}
         >
           <Check class="h-3.5 w-3.5 shrink-0" />
-          <span class="min-w-0 flex-1 truncate">{$t('notes.move_here')}</span>
+          <span class="min-w-0 flex-1 truncate">
+            {isPin ? $t('saved_searches.pin_here') : $t('notes.move_here')}
+          </span>
         </button>
       {/if}
     </div>
@@ -349,14 +419,14 @@
     class="absolute right-0 top-7 z-50 w-[300px] overflow-hidden rounded-md border bg-popover shadow-md"
     role="dialog"
     tabindex="-1"
-    aria-label={$t('notes.move_to')}
+    aria-label={pickerTitle}
     onkeydown={handleContainerKeydown}
     onclick={(e) => e.stopPropagation()}
   >
     <p
       class="border-b px-3 pb-1.5 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
     >
-      {$t('notes.move_to')}
+      {pickerTitle}
     </p>
     <div class="max-h-[min(60vh,26rem)] overflow-y-auto">
       {@render body()}
@@ -369,7 +439,7 @@
   <Sheet bind:open>
     <SheetContent side="bottom" class="flex h-auto max-h-[75dvh] flex-col p-0">
       <SheetHeader class="border-b px-4 py-3">
-        <SheetTitle class="text-left text-sm">{$t('notes.move_to')}</SheetTitle>
+        <SheetTitle class="text-left text-sm">{pickerTitle}</SheetTitle>
       </SheetHeader>
       <div class="flex-1 overflow-y-auto pb-4">
         {@render body()}
