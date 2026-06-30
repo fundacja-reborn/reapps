@@ -209,7 +209,7 @@
     <button
       type="button"
       onclick={close}
-      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground
+      class="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground
              transition-colors hover:bg-accent hover:text-foreground"
       aria-label={$t('nav.back')}
     >
@@ -234,7 +234,7 @@
       <button
         type="button"
         onclick={copyUrl}
-        class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-sm
+        class="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm
                text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         aria-label={$t('share.create.copy_link')}
       >
@@ -251,7 +251,7 @@
               type="button"
               title={$t('share.list.column.actions')}
               aria-label={$t('share.list.column.actions')}
-              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground
+              class="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground
                      transition-colors hover:bg-accent hover:text-foreground"
             >
               <Ellipsis class="h-5 w-5" />
@@ -330,7 +330,7 @@
               <button
                 type="button"
                 onclick={copyUrl}
-                class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-md border
+                class="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border
                        bg-background text-muted-foreground opacity-70 transition hover:text-foreground hover:opacity-100"
                 aria-label={$t('share.create.copy_link')}
                 title={$t('share.create.copy_link')}
