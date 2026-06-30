@@ -974,9 +974,10 @@
 
   <!-- Search view has no panel header, so the count + selection toolbar ride
        above the search box - same toolbar-over-filter order as every other
-       list view. Gated on results (or an active selection) so an empty
-       result set stays clean. -->
-  {#if searchOnly && ($notesStore.length > 0 || selectionMode)}
+       list view. Always rendered in search mode (even at 0 matches, where it
+       reads "0 notes", like an empty folder) so the search box keeps a fixed
+       row and never jumps as results appear or disappear. -->
+  {#if searchOnly}
     {@render listToolbar()}
   {/if}
 
