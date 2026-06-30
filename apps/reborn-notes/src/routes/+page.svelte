@@ -707,10 +707,28 @@
   // non-periodic analogue of how handlePeriodic lets periodic sections keep their
   // freshly-opened note. Currently armed by "Open source note" from a share.
   let pendingOpenNoteId: string | null = null;
+
+  /**
+   * #384: entering the Folders section on desktop should land on a folder, not
+   * an empty pane. Prefer the last folder visited this session; if it was since
+   * deleted (or there is none yet), fall back to the first top-level folder;
+   * with no folders at all, stay unscoped (undefined) so the create/empty state
+   * shows. Session-scoped by design - it rides on `lastVisitedFolderId`, which
+   * is ephemeral and resets on reload.
+   */
+  function resolveFoldersEntryFolderId(): string | undefined {
+    if (
+      lastVisitedFolderId &&
+      flattenFolderTree($foldersStore).some((f) => f.id === lastVisitedFolderId)
+    ) {
+      return lastVisitedFolderId;
+    }
+    return $foldersStore[0]?.id;
+  }
+
   $effect(() => {
     const section = activeSection;
     const sectionUsesFolderId = section === 'folders' || isPeriodicSection(section);
-    const folderId = sectionUsesFolderId ? activeFolderId : undefined;
     const tagId = activeSection === 'tags' ? activeTagId : null;
 
     if (section !== prevSection) {
@@ -718,11 +736,24 @@
         // Reset mobile history stack when switching sections via IconNav
         if (isMobile) resetMobileHistory();
 
-        // Only periodic transitions arrive with an already-set activeFolderId
-        // (handlePeriodic sets it in the same batch). Clearing for everything else
-        // covers folders→folders is impossible (no transition), periodic→folders
-        // (must drop the periodic folder id), and any→all/starred/etc.
-        if (!isPeriodicSection(section)) activeFolderId = undefined;
+        // Entering a section resets the folder scope, with two exceptions.
+        // Periodic transitions arrive with activeFolderId already set
+        // (handlePeriodic, same batch), so they keep it. Entering Folders on
+        // desktop restores the last folder visited this session (fallback: first
+        // folder) so the main pane isn't an empty dead-end (#384); mobile keeps
+        // showing the folder tree, so it still clears. Everything else
+        // (all/starred/tags/...) clears to undefined.
+        //
+        // Note creation reads the store's currentFolderId (set by setFolder
+        // below), not activeFolderId directly - and every non-Folders section
+        // clears it - so a restored folder never leaks into notes made elsewhere.
+        if (isPeriodicSection(section)) {
+          // keep handlePeriodic's folder id
+        } else if (section === 'folders' && !isMobile) {
+          activeFolderId = resolveFoldersEntryFolderId();
+        } else {
+          activeFolderId = undefined;
+        }
         if (section !== 'tags') {
           activeTagId = null;
           tagManager.resetSection();
@@ -753,7 +784,11 @@
       prevSection = section;
     }
 
-    // untrack: store updates are write-only side effects —
+    // Read after the section-change reset above, so a restored Folders-entry id
+    // (#384) reaches the notes filter (setFolder) in this same pass.
+    const folderId = sectionUsesFolderId ? activeFolderId : undefined;
+
+    // untrack: store updates are write-only side effects -
     // this effect should only react to section/folder/tag changes, not store internals.
     untrack(() => {
       if (section === 'trash') {
