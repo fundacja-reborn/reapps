@@ -59,7 +59,6 @@
   import { foldersStore } from '$lib/stores/folders.store';
   import { tagsStore } from '$lib/stores/tags.store';
   import { savedSearchesStore } from '$lib/stores/saved-searches.store';
-  import { searchHandoff } from '$lib/stores/search-handoff.store';
   import type { SavedSearchDecrypted } from '@reborn/types';
   import { getSettings } from '$lib/utils/app-settings';
   import {
@@ -121,6 +120,18 @@
   let activeSection = $state<Section>('all');
   let activeFolderId = $state<string | null | undefined>(undefined);
   let activeTagId = $state<string | null>(null);
+  // Active smart folder: a pinned saved search opened in the main list (NOT the
+  // Search section). Lives alongside activeFolderId under the 'folders' section -
+  // when set, activeFolderId is undefined and the list's membership filter is the
+  // saved query (notesStore.setSmartFolder, driven by the section effect below).
+  // Derived from the store by id so renaming the open search reflows the header;
+  // the guard effect drops it if the search is deleted while open.
+  let activeSavedSearchId = $state<string | null>(null);
+  const activeSavedSearch = $derived(
+    activeSavedSearchId !== null
+      ? ($savedSearchesStore.find((s) => s.id === activeSavedSearchId) ?? null)
+      : null
+  );
   // Last folder the user visited — used to scroll the folder tree back to that
   // node after exiting all the way up to the tree root, so deep trees keep context.
   let lastVisitedFolderId = $state<string | null>(null);
@@ -533,6 +544,8 @@
       activeNoteId.set(null);
     } else if (mobileView === 'list' && activeSection === 'folders' && activeFolderId !== undefined) {
       void exitCurrentFolder();
+    } else if (mobileView === 'list' && activeSection === 'folders' && activeSavedSearchId !== null) {
+      exitSmartFolder();
     } else if (mobileView === 'list' && activeSection === 'tags' && activeTagId !== null) {
       activeTagId = null;
       activeNoteId.set(null);
@@ -643,6 +656,7 @@
   // ── Derived: should main area show note list? ──────────────────
   const showNoteListInMain = $derived(
     (activeSection === 'folders' && activeFolderId !== undefined) ||
+      (activeSection === 'folders' && activeSavedSearchId !== null) ||
       (activeSection === 'tags' && activeTagId !== null)
   );
 
@@ -660,12 +674,18 @@
       activeSection === 'shares' ||
       isPeriodicSection(activeSection) ||
       (activeSection === 'folders' && activeFolderId !== undefined) ||
+      (activeSection === 'folders' && activeSavedSearchId !== null) ||
       (activeSection === 'tags' && activeTagId !== null)
   );
 
   // ── Derived labels ───────────────────────────────────────────────
   const activeFolderName = $derived.by(() => {
     if (activeSection === 'search') return $t('nav.search');
+    // Smart folder: header shows the saved search's name (falls back if the
+    // search vanished mid-render, before the guard effect clears the id).
+    if (activeSection === 'folders' && activeSavedSearchId !== null) {
+      return activeSavedSearch?.name ?? $t('nav.folders');
+    }
     if (activeSection === 'trash') return $t('nav.trash');
     if (activeSection === 'starred') return $t('nav.starred');
     if (activeSection === 'all') return $t('nav.all_notes');
@@ -730,6 +750,9 @@
     const section = activeSection;
     const sectionUsesFolderId = section === 'folders' || isPeriodicSection(section);
     const tagId = activeSection === 'tags' ? activeTagId : null;
+    // Only the Folders section hosts smart folders. Tracked here so opening one
+    // (activeSavedSearchId set by handleSavedSearchSelect) re-runs this effect.
+    const savedSearchId = section === 'folders' ? activeSavedSearchId : null;
 
     if (section !== prevSection) {
       untrack(() => {
@@ -754,6 +777,9 @@
         } else {
           activeFolderId = undefined;
         }
+        // A section switch always exits any open smart folder - entering Folders
+        // fresh lands on a real folder (#384), not the previously-open smart one.
+        activeSavedSearchId = null;
         if (section !== 'tags') {
           activeTagId = null;
           tagManager.resetSection();
@@ -797,6 +823,13 @@
         notesStore.setStarred(true);
       } else if (section === 'tags' && tagId) {
         notesStore.setTag(tagId);
+      } else if (savedSearchId) {
+        // Smart folder: membership = the saved query, scope = whole vault. Read
+        // the query untracked (activeSavedSearch is store-derived) so this effect
+        // tracks only nav state, not every saved-searches store tick.
+        const search = activeSavedSearch;
+        if (search) notesStore.setSmartFolder(search.query, search.search_in_content);
+        else notesStore.setFolder(undefined);
       } else if (sectionUsesFolderId) {
         notesStore.setFolder(folderId);
       } else if (section === 'shares') {
@@ -806,6 +839,15 @@
         notesStore.setFolder(undefined);
       }
     });
+  });
+
+  // Drop a smart folder whose saved search was deleted while open: its row
+  // vanishes from the tree, so without this the stale results + header name
+  // would linger. Falls back to the folder tree (mobile) / empty pane (desktop).
+  $effect(() => {
+    if (activeSavedSearchId !== null && activeSavedSearch === null) {
+      untrack(() => exitSmartFolder());
+    }
   });
 
   // Load note content when active note changes
@@ -983,10 +1025,11 @@
     // Fires on every IconNav click. Resets sub-selection when re-clicking the
     // already-active section so users can always get back to the section root.
     if (section !== activeSection) return;
-    if (section === 'folders' && activeFolderId !== undefined) {
+    if (section === 'folders' && (activeFolderId !== undefined || activeSavedSearchId !== null)) {
       await noteDetailService.flushAndSnapshot();
       if (isMobile) resetMobileHistory();
       activeFolderId = undefined;
+      activeSavedSearchId = null;
       activeNoteId.set(null);
       if (isMobile) {
         mobileView = 'folder-tree';
@@ -1008,6 +1051,8 @@
   async function applyFolderSelection(id: string | null | undefined) {
     await noteDetailService.flushAndSnapshot();
     activeFolderId = id;
+    // Selecting a real folder (or the tree root) leaves any open smart folder.
+    activeSavedSearchId = null;
     activeNoteId.set(null);
     if (id) {
       lastVisitedFolderId = id;
@@ -1040,6 +1085,14 @@
 
   function handleFolderBack() {
     void exitCurrentFolder();
+  }
+
+  /** Leave the open smart folder, returning to the folder tree (mobile) / root.
+   *  Leaves any open note untouched - it's independent of the smart folder, and
+   *  closing it here (e.g. from the deleted-search guard) could drop pending edits. */
+  function exitSmartFolder() {
+    activeSavedSearchId = null;
+    if (isMobile) mobileView = 'folder-tree';
   }
 
   async function handleTagSelect(tagId: string) {
@@ -1096,21 +1149,23 @@
   );
 
   /**
-   * Clicking a parked saved search jumps to the search section and replays
-   * its query. The handoff store is set AFTER a tick so NoteList's
-   * section-change reset (which clears the input) has already run - see
-   * search-handoff.store.ts.
+   * Clicking a pinned saved search opens it as a smart folder: results render in
+   * the main list (desktop) / list view (mobile) with the folder tree intact, and
+   * the saved query becomes the list's membership filter (notesStore.setSmartFolder,
+   * wired by the section effect). The in-list search box then sub-filters WITHIN it.
+   * Stays in the Folders section so the rail keeps Folders active - the Search
+   * section remains for ad-hoc queries, independent of smart folders.
    */
   async function handleSavedSearchSelect(search: SavedSearchDecrypted) {
     await noteDetailService.flushAndSnapshot();
-    activeSection = 'search';
+    activeSection = 'folders';
+    activeFolderId = undefined;
+    activeSavedSearchId = search.id;
     activeNoteId.set(null);
     if (isMobile) {
       mobileView = 'list';
       pushMobileHistory();
     }
-    await tick();
-    searchHandoff.set({ query: search.query, searchInContent: search.search_in_content });
   }
 
   // ── Autosave (delegated to noteDetailService) ─────────────────
@@ -2130,6 +2185,7 @@
                     <FolderTree
                       nodes={$foldersStore}
                       activeFolderId={activeFolderId ?? null}
+                      {activeSavedSearchId}
                       {expandedIds}
                       onselect={handleFolderSelect}
                       onnewnote={handleNewNoteInFolder}
@@ -2158,10 +2214,13 @@
                 autoFocusSearch={activeSection === 'search'}
                 searchOnly={activeSection === 'search'}
                 prominentHeader={noteListOwnsMobileHeader}
-                onback={activeSection === 'folders' && activeFolderId !== undefined
+                onback={activeSection === 'folders' &&
+                (activeFolderId !== undefined || activeSavedSearchId !== null)
                   ? () => {
                       if (isMobile && mobileHistoryDepth > 0) {
                         history.back();
+                      } else if (activeSavedSearchId !== null) {
+                        exitSmartFolder();
                       } else {
                         void exitCurrentFolder();
                       }
@@ -2470,6 +2529,7 @@
                   <FolderTree
                     nodes={$foldersStore}
                     activeFolderId={activeFolderId ?? null}
+                    {activeSavedSearchId}
                     {expandedIds}
                     onselect={handleFolderSelect}
                     onnewnote={handleNewNoteInFolder}

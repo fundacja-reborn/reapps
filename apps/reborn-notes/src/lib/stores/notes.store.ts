@@ -20,6 +20,7 @@ import {
 import { foldersStore } from '$lib/stores/folders.store';
 import { buildSearchContext } from '$lib/services/search-context';
 import { getDescendantFolderIds } from '$lib/utils/folder-helpers';
+import { combineAnd } from '$lib/utils/search-compose';
 
 export type { SortBy, NoteListItem };
 
@@ -33,6 +34,13 @@ function createNotesStore() {
   const searchQuery = writable('');
   const sortBy = writable<SortBy>('updated_at');
   const searchInContent = writable(false);
+
+  // Smart-folder membership filter: a saved-search query ANDed into every
+  // refresh, defining WHICH notes belong to the open smart folder. The
+  // interactive `searchQuery` (the in-list search box) then narrows WITHIN it.
+  // Empty string = no smart folder active (normal folder/all-notes view).
+  const baseQuery = writable('');
+  const baseSearchInContent = writable(false);
 
   // Filter state (mutually exclusive: folder, tag, starred, or trash)
   let currentFolderId: string | null | undefined = undefined;
@@ -108,9 +116,11 @@ function createNotesStore() {
     error.set(null);
 
     try {
-      const ast = parseQuery(get(searchQuery));
+      const ast = combineAnd(parseQuery(get(baseQuery)), parseQuery(get(searchQuery)));
       const filterOpts = buildFilterOptions();
-      const wantsContent = requiresContent(ast) || (get(searchInContent) && !isAstEmpty(ast));
+      const wantsContent =
+        requiresContent(ast) ||
+        ((get(searchInContent) || get(baseSearchInContent)) && !isAstEmpty(ast));
 
       if (wantsContent) {
         // Body-aware path takes over fully. Don't pre-populate `_raw` from the
@@ -251,11 +261,19 @@ function createNotesStore() {
     }
   }
 
+  /** A concrete scope change (folder/tag/starred/trash) exits any open smart
+   *  folder - the membership filter belongs to the smart folder alone. */
+  function resetBaseQuery() {
+    baseQuery.set('');
+    baseSearchInContent.set(false);
+  }
+
   function setFolder(folderId: string | null | undefined) {
     currentFolderId = folderId;
     currentTagId = null;
     currentStarred = false;
     currentTrash = false;
+    resetBaseQuery();
     refresh();
   }
 
@@ -264,6 +282,7 @@ function createNotesStore() {
     currentFolderId = undefined;
     currentStarred = false;
     currentTrash = false;
+    resetBaseQuery();
     refresh();
   }
 
@@ -274,6 +293,7 @@ function createNotesStore() {
       currentFolderId = undefined;
       currentTrash = false;
     }
+    resetBaseQuery();
     refresh();
   }
 
@@ -284,6 +304,23 @@ function createNotesStore() {
       currentFolderId = undefined;
       currentStarred = false;
     }
+    resetBaseQuery();
+    refresh();
+  }
+
+  /**
+   * Open a smart folder (a pinned saved search): scope becomes the whole vault
+   * (like all-notes) and `query` becomes the base membership filter ANDed into
+   * every refresh. The in-list search box (setSearch) then narrows WITHIN it.
+   * Mutually exclusive with folder/tag/starred/trash scope, like the others.
+   */
+  function setSmartFolder(query: string, inContent: boolean) {
+    currentFolderId = undefined;
+    currentTagId = null;
+    currentStarred = false;
+    currentTrash = false;
+    baseQuery.set(query);
+    baseSearchInContent.set(inContent);
     refresh();
   }
 
@@ -390,6 +427,7 @@ function createNotesStore() {
     setTag,
     setStarred,
     setTrash,
+    setSmartFolder,
     setSearch,
     setSearchInContent,
     setSort,

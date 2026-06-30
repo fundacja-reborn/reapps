@@ -22,6 +22,7 @@
     search,
     context,
     depth = 0,
+    active = false,
     onselect,
     onrequestmove
   }: {
@@ -30,6 +31,8 @@
     context: 'panel' | 'tree';
     /** Indentation level (tree context only). */
     depth?: number;
+    /** Tree context: this smart folder is the one currently open in the main list. */
+    active?: boolean;
     onselect: (search: SavedSearchDecrypted) => void;
     /** Panel only: open the folder picker for parking this search. */
     onrequestmove?: (search: SavedSearchDecrypted) => void;
@@ -88,7 +91,10 @@
 
 <li role={context === 'tree' ? 'treeitem' : 'listitem'} aria-selected={context === 'tree' ? false : undefined}>
   <div
-    class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm cursor-pointer transition-colors text-foreground hover:bg-accent/50"
+    class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm cursor-pointer transition-colors
+      {active
+      ? 'list-row-active text-accent-foreground font-medium'
+      : 'text-foreground hover:bg-accent/50'}"
     style="padding-left: {depth * 0.75 + 0.5}rem"
     role="button"
     tabindex="0"
