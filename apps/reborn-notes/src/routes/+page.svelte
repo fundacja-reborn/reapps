@@ -1026,14 +1026,24 @@
     // already-active section so users can always get back to the section root.
     if (section !== activeSection) return;
     if (section === 'folders' && (activeFolderId !== undefined || activeSavedSearchId !== null)) {
-      await noteDetailService.flushAndSnapshot();
-      if (isMobile) resetMobileHistory();
-      activeFolderId = undefined;
-      activeSavedSearchId = null;
-      activeNoteId.set(null);
       if (isMobile) {
+        // Collapse back to the full-screen folder tree.
+        await noteDetailService.flushAndSnapshot();
+        resetMobileHistory();
+        activeFolderId = undefined;
+        activeSavedSearchId = null;
+        activeNoteId.set(null);
         mobileView = 'folder-tree';
         pushMobileHistory();
+      } else if (activeSavedSearchId !== null) {
+        // Desktop keeps the folder tree permanently in the sidebar, so a plain
+        // folder has no "tree root" to collapse to - clearing it would just
+        // strand an empty "All notes" pane (#384). Only an open smart folder has
+        // somewhere to back out to: exit it onto the entry folder. A plain folder
+        // selection is left as-is, so re-clicking the active rail icon is a no-op.
+        await noteDetailService.flushAndSnapshot();
+        activeNoteId.set(null);
+        exitSmartFolder();
       }
     } else if (section === 'tags' && activeTagId !== null) {
       await noteDetailService.flushAndSnapshot();
@@ -1087,12 +1097,18 @@
     void exitCurrentFolder();
   }
 
-  /** Leave the open smart folder, returning to the folder tree (mobile) / root.
+  /** Leave the open smart folder: back to the folder tree (mobile) or onto the
+   *  entry folder (desktop). Desktop has no empty tree-root state (#384), so
+   *  landing on undefined would strand a headerless empty "All notes" pane.
    *  Leaves any open note untouched - it's independent of the smart folder, and
    *  closing it here (e.g. from the deleted-search guard) could drop pending edits. */
   function exitSmartFolder() {
     activeSavedSearchId = null;
-    if (isMobile) mobileView = 'folder-tree';
+    if (isMobile) {
+      mobileView = 'folder-tree';
+    } else {
+      activeFolderId = resolveFoldersEntryFolderId();
+    }
   }
 
   async function handleTagSelect(tagId: string) {
@@ -2489,10 +2505,13 @@
     >
       <div class="flex h-full w-96 flex-col min-w-0 overflow-hidden bg-sidebar">
         <SidebarHeader class="border-b p-0 gap-0">
-          <!-- pt + min-h grow together by the iOS notch inset so the content
-               keeps its full 3rem box (env() is 0 elsewhere) -->
+          <!-- The editor card to the right floats with a my-2 (0.5rem) top
+               margin, so its header separator sits 0.5rem below the column top.
+               Mirror that offset here (min-h 3.5rem + a matching 0.5rem pt, both
+               growing with the iOS notch inset, env() is 0 elsewhere) so the
+               logo's separator lines up with the editor header's. -->
           <div
-            class="flex min-h-[calc(3rem+env(safe-area-inset-top,0px))] items-center gap-2 px-5 pt-[env(safe-area-inset-top,0px)]"
+            class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center gap-2 px-5 pt-[calc(0.5rem+env(safe-area-inset-top,0px))]"
           >
             <img src="{base}/logo-black.svg" alt="re/notes" class="h-4 w-auto block dark:hidden" />
             <img
