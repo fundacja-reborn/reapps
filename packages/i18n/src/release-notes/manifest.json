@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.40.0",
+    "date": "2026-06-30",
+    "items": [
+      { "id": "0.40.0-shares-view", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.40.0-collapsible-note-list", "category": "new", "apps": ["notes"], "platforms": ["web"] },
+      { "id": "0.40.0-outline-dock", "category": "new", "apps": ["notes"], "platforms": ["web"] },
+      { "id": "0.40.0-root-saved-searches", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.40.0-no-folder-tag-search", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.40.0-share-safety", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.40.0-mobile-header", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.40.0-search-bulk-actions", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.40.0-folders-view", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.40.0-time-format", "category": "fixed", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.39.0",
     "date": "2026-06-29",
     "items": [
