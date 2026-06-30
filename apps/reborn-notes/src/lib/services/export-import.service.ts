@@ -210,6 +210,17 @@ export async function exportNoteAsMarkdown(
 }
 
 /**
+ * Export a raw markdown string as a .md download. Unlike `exportNoteAsMarkdown`
+ * this adds NO frontmatter and takes the content verbatim - it exports a share
+ * snapshot's FROZEN markdown (the exact text that was shared at snapshot time),
+ * not a live note. Reuses the same download + filename-sanitising path.
+ */
+export async function exportMarkdownString(title: string, content: string): Promise<void> {
+  const blob = new Blob([content], { type: 'text/markdown; charset=utf-8' });
+  await downloadBlob(blob, `${sanitizeFilename(title)}.md`);
+}
+
+/**
  * Style block injected into the off-screen container that jsPDF rasterizes.
  * html2canvas reads computed styles from a real DOM element, so the rules
  * below define the visual output. No `@page` — page geometry is set on the

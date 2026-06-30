@@ -1421,6 +1421,28 @@
       "preview_dialog_title": "Snapshot preview",
       "show_link": "Show link",
       "hide_link": "Hide link",
+      "count": "{count, plural, =0 {No shares} one {1 share} other {# shares}}",
+      "search_placeholder": "Search shares…",
+      "search_no_match": "No shares match your search.",
+      "select_hint": "Select a share to view its details and preview.",
+      "expiring_soon": "Expiring soon",
+      "links_badge": "{count, plural, one {1 link} other {# links}}",
+      "sort_label": "Sort",
+      "sort": {
+        "created": "Newest first",
+        "expires": "Expiring soonest",
+        "opens": "Most opened",
+        "title": "Title (A-Z)"
+      },
+      "manage_cta": "Manage active shares",
+      "export_markdown": "Export as Markdown",
+      "copy_markdown": "Copy as Markdown",
+      "copied_markdown": "Copied as Markdown",
+      "link_key_warning": "This link contains the decryption key and grants full access to the snapshot. Share it carefully.",
+      "opens_unlimited": "no limit",
+      "expired": "Expired",
+      "snapshot_stale": "Note changed since shared",
+      "snapshot_eyebrow": "Shared snapshot",
       "type": {
         "note": "Note",
         "task": "Task"

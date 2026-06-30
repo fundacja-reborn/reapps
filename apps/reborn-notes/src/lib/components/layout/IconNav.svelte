@@ -5,6 +5,7 @@
     | 'folders'
     | 'tags'
     | 'trash'
+    | 'shares'
     | 'search'
     | 'periodic-daily'
     | 'periodic-weekly'
@@ -52,7 +53,6 @@
   import type { PeriodicKind } from '@reborn/storage';
   import { activeSharesCount } from '$lib/stores/shares.store';
   import { requireActiveSession } from '$lib/utils/require-active-session';
-  import ManageSharesDialog from '../notes/ManageSharesDialog.svelte';
   import AccountRequiredDialog from '../shared/AccountRequiredDialog.svelte';
 
   let {
@@ -82,7 +82,6 @@
   const isMobileQuery = useIsMobile();
   let loggingOut = $state(false);
   let userSheetOpen = $state(false);
-  let sharesDialogOpen = $state(false);
   // Local-only mode: sharing needs a server account - nudge to register instead.
   let accountRequiredOpen = $state(false);
 
@@ -103,7 +102,8 @@
       description: $t('share.session_required.view')
     });
     if (!ok) return;
-    sharesDialogOpen = true;
+    activeSection = 'shares';
+    onsectionclick?.('shares');
   }
 
   // Refresh `now` every minute so tooltips stay accurate across midnight /
@@ -267,8 +267,11 @@
       type="button"
       onclick={handleOpenShares}
       class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
-        text-muted-foreground hover:bg-sidebar-accent/60"
+        {activeSection === 'shares'
+        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+        : 'text-muted-foreground hover:bg-sidebar-accent/60'}"
       aria-label={$t('nav.shares')}
+      aria-current={activeSection === 'shares' ? 'page' : undefined}
     >
       <span class="relative">
         <Share2 class="h-5 w-5" />
@@ -456,9 +459,12 @@
             {...props}
             type="button"
             onclick={handleOpenShares}
-            class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg
-                   text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+            class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg transition-colors
+              {activeSection === 'shares'
+              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+              : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
             aria-label={$t('nav.shares')}
+            aria-current={activeSection === 'shares' ? 'page' : undefined}
           >
             <span class="relative">
               <Share2 class="h-6 w-6 md:h-5 md:w-5" />
@@ -642,8 +648,6 @@
   </nav>
 {/if}
 
-<!-- Shares manage dialog (mounted once, used by both nav modes) -->
-<ManageSharesDialog bind:open={sharesDialogOpen} sourceId={null} />
 <AccountRequiredDialog bind:open={accountRequiredOpen} />
 
 <!-- Mobile: User menu Sheet -->

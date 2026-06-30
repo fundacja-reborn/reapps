@@ -1421,6 +1421,28 @@
       "preview_dialog_title": "Aperçu du snapshot",
       "show_link": "Afficher le lien",
       "hide_link": "Masquer le lien",
+      "count": "{count, plural, =0 {Aucun partage actif} one {1 partage} other {# partages}}",
+      "search_placeholder": "Rechercher des partages…",
+      "search_no_match": "Aucun partage ne correspond à votre recherche.",
+      "select_hint": "Sélectionnez un partage pour voir ses détails et son aperçu.",
+      "expiring_soon": "Expire bientôt",
+      "links_badge": "{count, plural, one {1 lien} other {# liens}}",
+      "sort_label": "Trier",
+      "sort": {
+        "created": "Plus récents",
+        "expires": "Expirent bientôt",
+        "opens": "Plus ouverts",
+        "title": "Titre (A-Z)"
+      },
+      "manage_cta": "Gérer les partages actifs",
+      "export_markdown": "Exporter en Markdown",
+      "copy_markdown": "Copier en Markdown",
+      "copied_markdown": "Copié en Markdown",
+      "link_key_warning": "Ce lien contient la clé de déchiffrement et donne un accès complet au snapshot. Partagez-le avec prudence.",
+      "opens_unlimited": "sans limite",
+      "expired": "Expiré",
+      "snapshot_stale": "Note modifiée depuis le partage",
+      "snapshot_eyebrow": "Snapshot partagé",
       "type": {
         "note": "Note",
         "task": "Tâche"
