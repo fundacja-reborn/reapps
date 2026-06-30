@@ -747,6 +747,16 @@ export async function saveBaselineSnapshot(noteId: string): Promise<void> {
   const entry = await noteStore.get(noteId);
   if (!entry) return;
 
+  // A never-promoted ephemeral note (#349) has no server row yet — the debounced
+  // first-edit save creates it later (pushNoteMutation → POST /api/notes). Both
+  // the server-history pull (syncNoteVersionsFromServer) and the version push
+  // target /api/notes/{id}/versions, which 404s until the parent note exists, so
+  // capturing a baseline here only churns doomed requests. It is pointless anyway:
+  // the pristine state of a brand-new blank note is empty. The edited state still
+  // gets versioned by the later checkpoint/leave snapshot, once the note is on the
+  // server. See guideline 36 (version-push ordering).
+  if (entry.is_ephemeral) return;
+
   return serializeVersionWrite(noteId, async () => {
     // Materialize server history before deciding (best-effort, online-only).
     // Without this, a cold-start local miss makes us duplicate a server version.

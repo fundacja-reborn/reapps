@@ -136,3 +136,51 @@ describe('note version history - baseline server-reconcile + write serialization
     expect(baseline).toMatch(/serializeVersionWrite\(\s*noteId\s*,/);
   });
 });
+
+/**
+ * Regression: a brand-new note is created lazily on its first edit (#349), so it
+ * has no server row until the debounced save POSTs it to /api/notes. The version
+ * paths target /api/notes/{id}/versions, which 404s while the parent note is
+ * missing - producing a swallowed GET 404 plus three doomed POST retries on the
+ * first keystroke of every new note. Two guards keep version sync from running
+ * before the note exists on the server:
+ *   1. saveBaselineSnapshot bails on an ephemeral note (its pristine state is an
+ *      empty blank - no baseline worth keeping, and the note has no server row).
+ *   2. pushNoteVersion runs inside the note's per-entity chain, so it queues
+ *      behind any in-flight create/update instead of overtaking it (closes the
+ *      leave-immediately-after-first-edit race where the note is promoted but its
+ *      POST /api/notes is still in flight).
+ */
+function notesSyncSrc(): string {
+  return readSource('./notes-sync.service.ts');
+}
+
+describe('note version history - no version push before the note exists on the server', () => {
+  it('saveBaselineSnapshot bails on an ephemeral (not-yet-created) note before any server contact', () => {
+    const fn = sliceServiceFn(
+      noteServiceSrc(),
+      'export async function saveBaselineSnapshot',
+      '\nexport '
+    );
+    const ephemeralGuardIdx = fn.search(/if\s*\(\s*entry\.is_ephemeral\s*\)\s*return/);
+    expect(ephemeralGuardIdx, 'must skip ephemeral notes').toBeGreaterThan(-1);
+    // The guard precedes BOTH the server-history pull and the version write/push,
+    // so a not-yet-created note makes zero /versions requests.
+    const realSyncCall = fn.search(/await\s+syncNoteVersionsFromServer\s*\(/);
+    const writeIdx = fn.search(/saveVersion\s*\(/);
+    expect(realSyncCall).toBeGreaterThan(ephemeralGuardIdx);
+    expect(writeIdx).toBeGreaterThan(ephemeralGuardIdx);
+  });
+
+  it('pushNoteVersion is serialized through the note per-entity chain, not a bare pushSilently', () => {
+    const fn = sliceServiceFn(notesSyncSrc(), 'export function pushNoteVersion', '\nexport ');
+    // Must enter the same FIFO as pushNote/pushNoteUpdate, keyed by the parent note,
+    // so the version push waits for an in-flight create/update to finish.
+    expect(fn).toMatch(/serializePerEntity\(\s*'note'\s*,\s*entry\.note_id\s*,/);
+    // The upload still runs through pushSilently (retry/backoff) INSIDE the chain.
+    const chainIdx = fn.search(/serializePerEntity\(/);
+    const silentIdx = fn.search(/pushSilently\(/);
+    expect(chainIdx).toBeGreaterThan(-1);
+    expect(silentIdx).toBeGreaterThan(chainIdx);
+  });
+});
