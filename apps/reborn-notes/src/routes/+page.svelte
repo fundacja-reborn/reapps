@@ -2504,14 +2504,17 @@
       style="width: {panelCollapsedEffective ? '0px' : '24rem'}"
     >
       <div class="flex h-full w-96 flex-col min-w-0 overflow-hidden bg-sidebar">
-        <SidebarHeader class="border-b p-0 gap-0">
+        <SidebarHeader class="p-0 gap-0">
           <!-- The editor card to the right floats with a my-2 (0.5rem) top
                margin, so its header separator sits 0.5rem below the column top.
                Mirror that offset here (min-h 3.5rem + a matching 0.5rem pt, both
-               growing with the iOS notch inset, env() is 0 elsewhere) so the
-               logo's separator lines up with the editor header's. -->
+               growing with the iOS notch inset, env() is 0 elsewhere). border-b
+               sits on THIS box, not the SidebarHeader wrapper: with border-box it
+               counts inside the 3.5rem height - exactly like the editor header's
+               own border-b - so both separators land on the same pixel row. A
+               border on the auto-height wrapper would render 1px lower instead. -->
           <div
-            class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center gap-2 px-5 pt-[calc(0.5rem+env(safe-area-inset-top,0px))]"
+            class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center gap-2 border-b px-5 pt-[calc(0.5rem+env(safe-area-inset-top,0px))]"
           >
             <img src="{base}/logo-black.svg" alt="re/notes" class="h-4 w-auto block dark:hidden" />
             <img
