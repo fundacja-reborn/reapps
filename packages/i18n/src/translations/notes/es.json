@@ -1442,6 +1442,7 @@
       "opens_unlimited": "sin límite",
       "expired": "Caducado",
       "snapshot_stale": "Nota modificada desde que se compartió",
+      "snapshot_eyebrow": "Snapshot compartido",
       "type": {
         "note": "Nota",
         "task": "Tarea"

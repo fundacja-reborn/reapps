@@ -181,7 +181,7 @@
     <div class="min-w-0 flex-1">
       <p class="truncate text-sm font-medium">{headline}</p>
       <p class="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-        <span>{$t('share.list.type.note')}</span>
+        <span>{$t('share.list.snapshot_eyebrow')}</span>
         {#if share?.has_password}
           <span class="inline-flex items-center gap-0.5">
             <Lock class="h-3 w-3" />{$t('share.list.password_protected')}

@@ -1442,6 +1442,7 @@
       "opens_unlimited": "no limit",
       "expired": "Expired",
       "snapshot_stale": "Note changed since shared",
+      "snapshot_eyebrow": "Shared snapshot",
       "type": {
         "note": "Note",
         "task": "Task"

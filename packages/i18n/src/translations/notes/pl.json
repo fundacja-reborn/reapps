@@ -1442,6 +1442,7 @@
       "opens_unlimited": "bez limitu",
       "expired": "Wygasło",
       "snapshot_stale": "Notatka zmieniona od udostępnienia",
+      "snapshot_eyebrow": "Udostępniony snapshot",
       "type": {
         "note": "Notatka",
         "task": "Zadanie"

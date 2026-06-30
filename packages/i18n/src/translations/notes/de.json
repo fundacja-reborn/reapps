@@ -1442,6 +1442,7 @@
       "opens_unlimited": "kein Limit",
       "expired": "Abgelaufen",
       "snapshot_stale": "Notiz seit dem Teilen geändert",
+      "snapshot_eyebrow": "Geteilter Snapshot",
       "type": {
         "note": "Notiz",
         "task": "Aufgabe"
