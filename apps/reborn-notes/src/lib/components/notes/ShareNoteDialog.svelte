@@ -26,7 +26,7 @@
     encryptSnapshotPayload,
     buildShareUrl
   } from '@reborn/crypto';
-  import { Eye, EyeOff } from '@lucide/svelte';
+  import { Eye, EyeOff, Lock } from '@lucide/svelte';
   import {
     SHARE_EXPIRY_PRESETS,
     SHARE_MAX_ACCESS_COUNT_LIMIT,
@@ -363,7 +363,17 @@
     {:else if stage === 'success'}
       <div class="flex flex-col gap-4 py-2">
         <p class="text-sm text-muted-foreground">{$t('share.create.success_title')}</p>
-        <Input value={resultUrl} readonly class="font-mono text-xs" />
+        <div class="flex flex-col gap-2">
+          <Input value={resultUrl} readonly class="font-mono text-xs" />
+          <!-- The link carries the decryption key in its fragment, so anyone with
+               it can read the snapshot. Same warning shown on the share detail
+               surfaces - here it lands at the most critical moment: just before
+               the user copies / sends the link. -->
+          <p class="flex items-start gap-1 text-[11px] leading-snug text-muted-foreground">
+            <Lock class="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+            <span>{$t('share.list.link_key_warning')}</span>
+          </p>
+        </div>
       </div>
       <DialogFooter>
         <Button variant="outline" onclick={close}>{$t('share.create.close_cta')}</Button>
