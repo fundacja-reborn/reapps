@@ -1443,6 +1443,8 @@
       "expired": "Expiré",
       "snapshot_stale": "Note modifiée depuis le partage",
       "snapshot_eyebrow": "Snapshot partagé",
+      "open_source_note": "Ouvrir la note source",
+      "source_note_deleted": "Note source indisponible",
       "type": {
         "note": "Note",
         "task": "Tâche"

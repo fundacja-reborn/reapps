@@ -1443,6 +1443,8 @@
       "expired": "Abgelaufen",
       "snapshot_stale": "Notiz seit dem Teilen geändert",
       "snapshot_eyebrow": "Geteilter Snapshot",
+      "open_source_note": "Quellnotiz öffnen",
+      "source_note_deleted": "Quellnotiz nicht mehr verfügbar",
       "type": {
         "note": "Notiz",
         "task": "Aufgabe"

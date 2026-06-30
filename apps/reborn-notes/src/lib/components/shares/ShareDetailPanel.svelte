@@ -12,7 +12,9 @@
     Ellipsis,
     Download,
     ClipboardCopy,
-    FileClock
+    FileClock,
+    FileText,
+    FileX2
   } from '@lucide/svelte';
   import { t, locale } from '$lib/stores/i18n.store';
   import { shareLink } from '$lib/utils/native-share';
@@ -33,7 +35,15 @@
   import { formatExpiryRelative } from '$lib/utils/expiry-format';
   import type { OwnShareListItem } from '@reborn/types';
 
-  let { shareId, onback }: { shareId: string; onback?: () => void } = $props();
+  let {
+    shareId,
+    onback,
+    onopensource
+  }: {
+    shareId: string;
+    onback?: () => void;
+    onopensource?: (sourceId: string) => void;
+  } = $props();
 
   const storeState = $derived($sharesStore);
   const share = $derived<OwnShareListItem | null>(
@@ -67,18 +77,45 @@
   // the shared text changed.
   const sourceId = $derived(entry?.payload.source_id ?? null);
   let sourceUpdatedAt = $state<string | null>(null);
+  // 'loading' until the lookup resolves, then 'open' (live note present on this
+  // device, can jump to it) or 'gone' (deleted, never synced here, or trashed).
+  // Same gate as the stale hint above: a trashed note is treated as gone. Drives
+  // the "Open source note" row - an enabled jump vs a visible "no longer
+  // available" reason (shown inline, not hover-only, so it reads on mobile).
+  let sourceNoteState = $state<'loading' | 'open' | 'gone'>('loading');
   $effect(() => {
     const sid = sourceId;
     sourceUpdatedAt = null;
-    if (!sid) return;
+    sourceNoteState = 'loading';
+    if (!sid) {
+      sourceNoteState = 'gone';
+      return;
+    }
     let cancelled = false;
     void notesStore.loadNote(sid).then((n) => {
-      if (!cancelled) sourceUpdatedAt = n && !n.is_archived ? n.updated_at : null;
+      if (cancelled) return;
+      if (n && !n.is_archived) {
+        sourceUpdatedAt = n.updated_at;
+        sourceNoteState = 'open';
+      } else {
+        sourceUpdatedAt = null;
+        sourceNoteState = 'gone';
+      }
     });
     return () => {
       cancelled = true;
     };
   });
+
+  // Delegate the actual navigation to the page (activeSection/activeNoteId live
+  // there): switch to All notes and open the live source note. Guarded so a click
+  // during the brief 'loading' window or on a gone note is a no-op here - the
+  // page handler also re-validates as the source of truth.
+  function openSourceNote() {
+    const sid = sourceId;
+    if (!sid || sourceNoteState !== 'open') return;
+    onopensource?.(sid);
+  }
   const snapshotStale = $derived(
     !!(
       sourceUpdatedAt
@@ -223,6 +260,21 @@
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" class="min-w-48">
           {#if entry}
+            <!-- Navigational: jump to the live source note. Top of the menu,
+                 separated from the snapshot/content actions below it and the
+                 destructive Revoke at the bottom. When the note was deleted or
+                 trashed the item is disabled and its label becomes the reason, so
+                 it reads in the open menu without a hover-only tooltip. -->
+            {#if sourceNoteState === 'gone'}
+              <DropdownMenuItem disabled>
+                <FileX2 class="mr-2 h-4 w-4" />{$t('share.list.source_note_deleted')}
+              </DropdownMenuItem>
+            {:else}
+              <DropdownMenuItem disabled={sourceNoteState !== 'open'} onclick={openSourceNote}>
+                <FileText class="mr-2 h-4 w-4" />{$t('share.list.open_source_note')}
+              </DropdownMenuItem>
+            {/if}
+            <DropdownMenuSeparator />
             {#if isNative}
               <DropdownMenuItem onclick={shareUrl}>
                 <Share2 class="mr-2 h-4 w-4" />{$t('share.create.share_cta')}
@@ -265,19 +317,15 @@
       <div class="mx-auto flex max-w-3xl flex-col gap-4 px-4 md:px-6 py-4">
         <!-- Public link URL (hidden by default) -->
         {#if entry}
-          <div class="relative flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-3">
-            <button
-              type="button"
-              class="inline-flex w-fit items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
-              onclick={() => (urlShown = !urlShown)}
-            >
-              {#if urlShown}
+          {#if urlShown}
+            <div class="relative flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-3">
+              <button
+                type="button"
+                class="inline-flex w-fit cursor-pointer items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                onclick={() => (urlShown = false)}
+              >
                 <ChevronUp class="h-3 w-3" />{$t('share.list.hide_link')}
-              {:else}
-                <ChevronDown class="h-3 w-3" />{$t('share.list.show_link')}
-              {/if}
-            </button>
-            {#if urlShown}
+              </button>
               <!-- Copy affordance pinned top-right, mirroring note code blocks. -->
               <button
                 type="button"
@@ -296,8 +344,21 @@
                 <Lock class="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                 <span>{$t('share.list.link_key_warning')}</span>
               </p>
-            {/if}
-          </div>
+            </div>
+          {:else}
+            <!-- Collapsed: the whole block is the expand affordance (full-width,
+                 pointer cursor + hover), not just the small label - bigger target
+                 and signals interactivity like a link. -->
+            <button
+              type="button"
+              onclick={() => (urlShown = true)}
+              class="flex w-full cursor-pointer items-center gap-1 rounded-lg border bg-muted/30 p-3
+                     text-[11px] uppercase tracking-wider text-muted-foreground transition-colors
+                     hover:bg-muted/50 hover:text-foreground"
+            >
+              <ChevronDown class="h-3 w-3" />{$t('share.list.show_link')}
+            </button>
+          {/if}
         {/if}
 
         <!-- Source note changed since the snapshot was frozen (informational). -->
