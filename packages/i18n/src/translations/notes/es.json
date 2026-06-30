@@ -1426,7 +1426,7 @@
       "search_no_match": "Ningún enlace coincide con tu búsqueda.",
       "select_hint": "Selecciona un enlace para ver sus detalles y la vista previa.",
       "expiring_soon": "Caduca pronto",
-      "links_badge": "{count, plural, one {1 enlace} other {# enlaces}}",
+      "snapshot_rank_label": "Snapshot {k} de {n} para esta nota",
       "sort_label": "Ordenar",
       "sort": {
         "created": "Más recientes",

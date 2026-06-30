@@ -1426,7 +1426,7 @@
       "search_no_match": "Aucun partage ne correspond à votre recherche.",
       "select_hint": "Sélectionnez un partage pour voir ses détails et son aperçu.",
       "expiring_soon": "Expire bientôt",
-      "links_badge": "{count, plural, one {1 lien} other {# liens}}",
+      "snapshot_rank_label": "Snapshot {k} sur {n} pour cette note",
       "sort_label": "Trier",
       "sort": {
         "created": "Plus récents",
