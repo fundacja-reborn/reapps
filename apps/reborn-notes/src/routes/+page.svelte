@@ -1973,7 +1973,10 @@
                  keeps its full 3.5rem box and stays vertically centered
                  (env() is 0 elsewhere) -->
             <div
-              class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-1 border-b border-sidebar-border px-3 pt-[env(safe-area-inset-top,0px)]"
+              class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-1 px-3 pt-[env(safe-area-inset-top,0px)] {activeSection ===
+                'all' || activeSection === 'search'
+                ? ''
+                : 'border-b border-sidebar-border'}"
             >
               {#if mobileView === 'folder-tree' || mobileView === 'tag-list'}
                 <button
@@ -2055,7 +2058,9 @@
                   {activeFolderName}
                 </span>
               {:else if activeSection === 'all' || activeSection === 'search'}
-                <span class="px-2">
+                <!-- px-1 inside the px-3 bar lands the logo at the same 16px inset
+                     as the px-4 title/meta rows in NoteList (unified app-bar). -->
+                <span class="px-1">
                   <img
                     src="{base}/logo-black.svg"
                     alt="re/notes"

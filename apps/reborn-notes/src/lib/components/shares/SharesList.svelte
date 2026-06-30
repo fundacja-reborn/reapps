@@ -101,18 +101,21 @@
        search. Row 1 grows by the iOS notch inset on mobile (where this list owns
        the panel header) and is compact h-10 on desktop. -->
   <div
-    class="flex shrink-0 items-center gap-1 px-5
+    class="flex shrink-0 items-center gap-1 px-4 md:px-5
            min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)]
            md:min-h-0 md:h-10 md:pt-0"
   >
-    <span class="min-w-0 flex-1 truncate text-sm font-medium md:font-normal">
+    <h1
+      class="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight md:text-sm md:font-normal md:tracking-normal"
+    >
       {$t('share.list.title')}
-    </span>
+    </h1>
   </div>
 
-  <!-- Row 2: count + sort + refresh. Prominent sizing on mobile (h-14 / h-11),
-       compact on desktop (h-10 / h-9) - same tap targets as NoteList's row 2. -->
-  <div class="flex h-14 md:h-10 shrink-0 items-center gap-1 pl-5 pr-5">
+  <!-- Row 2 (meta): count + sort + refresh. Mobile sits mt-2 below the app-bar
+       (h-11 tap targets define its height); desktop stays the compact h-10 / h-9
+       band - same rhythm as NoteList's meta row. -->
+  <div class="flex shrink-0 items-center gap-1 mt-2 px-4 md:mt-0 md:h-10 md:px-5">
     <span class="min-w-0 flex-1 truncate text-xs text-muted-foreground">
       {$t('share.list.count', { values: { count: rows.length } })}
     </span>
@@ -162,8 +165,8 @@
     </button>
   </div>
 
-  <!-- Search (matches NoteListSearchBar) -->
-  <div class="shrink-0 px-3 pb-2">
+  <!-- Search (matches NoteListSearchBar): mobile px-4 + mt-2, desktop px-3. -->
+  <div class="shrink-0 px-4 pb-2 md:px-3 mt-2 md:mt-0">
     <div class="relative">
       <Search
         class="absolute left-2.5 top-1/2 h-4 w-4 md:h-3.5 md:w-3.5 -translate-y-1/2 text-muted-foreground"
