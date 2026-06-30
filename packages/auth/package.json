@@ -6,10 +6,12 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "reborn-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
     "./server": {
+      "reborn-source": "./src/server.ts",
       "types": "./dist/server.d.ts",
       "import": "./dist/server.js"
     }
