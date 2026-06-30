@@ -1443,6 +1443,8 @@
       "expired": "Wygasło",
       "snapshot_stale": "Notatka zmieniona od udostępnienia",
       "snapshot_eyebrow": "Udostępniony snapshot",
+      "open_source_note": "Otwórz notatkę źródłową",
+      "source_note_deleted": "Notatka źródłowa już niedostępna",
       "type": {
         "note": "Notatka",
         "task": "Zadanie"

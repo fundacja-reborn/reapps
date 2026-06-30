@@ -12,7 +12,10 @@
     Ellipsis,
     Download,
     ClipboardCopy,
-    FileClock
+    FileClock,
+    FileText,
+    FileX2,
+    ArrowRight
   } from '@lucide/svelte';
   import { t, locale } from '$lib/stores/i18n.store';
   import { shareLink } from '$lib/utils/native-share';
@@ -33,7 +36,15 @@
   import { formatExpiryRelative } from '$lib/utils/expiry-format';
   import type { OwnShareListItem } from '@reborn/types';
 
-  let { shareId, onback }: { shareId: string; onback?: () => void } = $props();
+  let {
+    shareId,
+    onback,
+    onopensource
+  }: {
+    shareId: string;
+    onback?: () => void;
+    onopensource?: (sourceId: string) => void;
+  } = $props();
 
   const storeState = $derived($sharesStore);
   const share = $derived<OwnShareListItem | null>(
@@ -67,18 +78,45 @@
   // the shared text changed.
   const sourceId = $derived(entry?.payload.source_id ?? null);
   let sourceUpdatedAt = $state<string | null>(null);
+  // 'loading' until the lookup resolves, then 'open' (live note present on this
+  // device, can jump to it) or 'gone' (deleted, never synced here, or trashed).
+  // Same gate as the stale hint above: a trashed note is treated as gone. Drives
+  // the "Open source note" row - an enabled jump vs a visible "no longer
+  // available" reason (shown inline, not hover-only, so it reads on mobile).
+  let sourceNoteState = $state<'loading' | 'open' | 'gone'>('loading');
   $effect(() => {
     const sid = sourceId;
     sourceUpdatedAt = null;
-    if (!sid) return;
+    sourceNoteState = 'loading';
+    if (!sid) {
+      sourceNoteState = 'gone';
+      return;
+    }
     let cancelled = false;
     void notesStore.loadNote(sid).then((n) => {
-      if (!cancelled) sourceUpdatedAt = n && !n.is_archived ? n.updated_at : null;
+      if (cancelled) return;
+      if (n && !n.is_archived) {
+        sourceUpdatedAt = n.updated_at;
+        sourceNoteState = 'open';
+      } else {
+        sourceUpdatedAt = null;
+        sourceNoteState = 'gone';
+      }
     });
     return () => {
       cancelled = true;
     };
   });
+
+  // Delegate the actual navigation to the page (activeSection/activeNoteId live
+  // there): switch to All notes and open the live source note. Guarded so a click
+  // during the brief 'loading' window or on a gone note is a no-op here - the
+  // page handler also re-validates as the source of truth.
+  function openSourceNote() {
+    const sid = sourceId;
+    if (!sid || sourceNoteState !== 'open') return;
+    onopensource?.(sid);
+  }
   const snapshotStale = $derived(
     !!(
       sourceUpdatedAt
@@ -263,6 +301,40 @@
       </div>
     {:else}
       <div class="mx-auto flex max-w-3xl flex-col gap-4 px-4 md:px-6 py-4">
+        <!-- Jump from this frozen snapshot to the live source note. Only shown
+             once the snapshot is decoded (we have the payload's source_id). When
+             the note is gone the same slot shows a visible reason rather than a
+             disabled control with a hover-only tooltip. -->
+        {#if entry}
+          {#if sourceNoteState === 'gone'}
+            <div
+              class="flex items-center gap-2 rounded-lg border border-dashed bg-muted/20 px-3 py-2.5
+                     text-sm text-muted-foreground"
+            >
+              <FileX2 class="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span class="min-w-0 flex-1">{$t('share.list.source_note_deleted')}</span>
+            </div>
+          {:else}
+            <button
+              type="button"
+              onclick={openSourceNote}
+              disabled={sourceNoteState !== 'open'}
+              class="group flex w-full items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2.5
+                     text-left text-sm transition-colors hover:bg-accent
+                     disabled:opacity-60 disabled:hover:bg-muted/30"
+            >
+              <FileText class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate font-medium">
+                {$t('share.list.open_source_note')}
+              </span>
+              <ArrowRight
+                class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                aria-hidden="true"
+              />
+            </button>
+          {/if}
+        {/if}
+
         <!-- Public link URL (hidden by default) -->
         {#if entry}
           <div class="relative flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-3">
