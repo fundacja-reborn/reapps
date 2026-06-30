@@ -701,6 +701,12 @@
 
   // ── Sync store filters to nav state ─────────────────────────────
   let prevSection: Section | null = null;
+  // Cross-section "open this note" request. A handler sets this id right before
+  // switching to a (non-periodic) destination section; the section-sync effect
+  // below adopts it after its flush instead of clearing activeNoteId. The
+  // non-periodic analogue of how handlePeriodic lets periodic sections keep their
+  // freshly-opened note. Currently armed by "Open source note" from a share.
+  let pendingOpenNoteId: string | null = null;
   $effect(() => {
     const section = activeSection;
     const sectionUsesFolderId = section === 'folders' || isPeriodicSection(section);
@@ -721,10 +727,17 @@
           activeTagId = null;
           tagManager.resetSection();
         }
-        // Periodic sections own activeNoteId via handlePeriodic — don't clear it
+        // Periodic sections own activeNoteId via handlePeriodic - don't clear it
         // here or the freshly-opened periodic note would deselect on first paint.
+        // A pending cross-section open (pendingOpenNoteId, e.g. "open source note"
+        // from a share) is adopted after the flush instead of cleared, so the
+        // requested note survives the transition. The clear is async (.then), so
+        // setting activeNoteId here before the flush resolves would lose the race -
+        // adopting inside the same continuation is what makes it deterministic.
         if (!isPeriodicSection(section)) {
-          noteDetailService.flushAndSnapshot().then(() => activeNoteId.set(null));
+          const adoptNoteId = pendingOpenNoteId;
+          pendingOpenNoteId = null;
+          noteDetailService.flushAndSnapshot().then(() => activeNoteId.set(adoptNoteId));
         }
 
         // Push history entry for drill-down sections (folders/tags)
@@ -1223,6 +1236,29 @@
     // fire the recorder, so don't leave the flag armed for the next open.
     extendNavTrailOnce = noteId !== $activeNoteId;
     activeNoteId.set(noteId);
+  }
+
+  /** "Open source note" from a share's detail panel: jump from the frozen
+   *  snapshot to the live note it was created from. Re-validate first (the note
+   *  may have been deleted or trashed since the panel rendered - the panel
+   *  disables the action proactively, this is the render→click safety net), then
+   *  arm pendingOpenNoteId and switch to All notes. The section-sync effect adopts
+   *  the id after its flush. Only ever called from the Shares section, so the
+   *  section transition (and thus the adopt) is guaranteed to fire. */
+  async function handleOpenSourceNote(sourceId: string) {
+    const note = await notesStore.loadNote(sourceId);
+    if (!note) {
+      toastStore.error($t('notes.note_not_found'));
+      return;
+    }
+    if (note.is_archived) {
+      toastStore.info($t('notes.note_in_trash'));
+      return;
+    }
+    pendingOpenNoteId = sourceId;
+    activeSection = 'all';
+    activeFolderId = undefined;
+    activeTagId = null;
   }
 
   // ── Note link picker ─────────────────────────────────────────────
@@ -2293,7 +2329,11 @@
             </div>
           {/if}
         {:else if activeSection === 'shares' && $activeShareId}
-          <ShareDetailPanel shareId={$activeShareId} onback={closeShareDetail} />
+          <ShareDetailPanel
+            shareId={$activeShareId}
+            onback={closeShareDetail}
+            onopensource={handleOpenSourceNote}
+          />
         {:else if $isInitialSync}
           <InitialSyncState compact />
         {:else}
@@ -2604,7 +2644,11 @@
         {/if}
       {:else if activeSection === 'shares'}
         {#if $activeShareId}
-          <ShareDetailPanel shareId={$activeShareId} onback={closeShareDetail} />
+          <ShareDetailPanel
+            shareId={$activeShareId}
+            onback={closeShareDetail}
+            onopensource={handleOpenSourceNote}
+          />
         {:else}
           <header
             class="flex min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-border/60 px-6 pt-[env(safe-area-inset-top,0px)]"

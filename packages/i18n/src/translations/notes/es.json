@@ -1443,6 +1443,8 @@
       "expired": "Caducado",
       "snapshot_stale": "Nota modificada desde que se compartió",
       "snapshot_eyebrow": "Snapshot compartido",
+      "open_source_note": "Abrir la nota original",
+      "source_note_deleted": "Nota original no disponible",
       "type": {
         "note": "Nota",
         "task": "Tarea"
