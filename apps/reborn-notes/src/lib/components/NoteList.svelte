@@ -652,9 +652,9 @@
 
   // Row 2 (count + actions, selection toolbar) always uses the prominent
   // sizing on mobile so the tap targets/icons match drill-in views like
-  // Favorites/Trash/Folder. Row 1 (title) still follows `prominentHeader`.
+  // Favorites/Trash/Folder. On mobile it sits mt-2 below the app-bar instead of
+  // owning a fixed-height band. Row 1 (title) still follows `prominentHeader`.
   const rowTwoProminent = $derived(prominentHeader || isMobileQuery.value);
-  const rowTwoHeight = $derived(rowTwoProminent ? 'h-14' : 'h-10');
   const rowTwoBtnClass = $derived(rowTwoProminent ? 'h-11 w-11' : 'h-9 w-9');
   const rowTwoIconClass = $derived(rowTwoProminent ? 'h-5 w-5' : 'h-4 w-4');
 
@@ -726,9 +726,9 @@
          also takes the iOS notch inset; min-h grows by the same amount so the
          content keeps its full 3.5rem box (env() is 0 elsewhere). -->
     <div
-      class="flex shrink-0 items-center gap-1 {prominentHeader
-        ? 'min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)]'
-        : 'h-10'} {onback ? 'px-3' : 'px-5'}"
+      class="shrink-0 items-center gap-1 {prominentHeader
+        ? 'flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] px-4 pt-[env(safe-area-inset-top,0px)]'
+        : `hidden h-10 md:flex ${onback ? 'px-3' : 'px-5'}`}"
     >
       {#if onback}
         <button
@@ -755,12 +755,14 @@
           }}
           onblur={commitActiveFolderRename}
         />
+      {:else if prominentHeader}
+        <!-- Mobile app-bar title: single shared token across all views (logo
+             stands in for All Notes; see +page.svelte). -->
+        <h1 class="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight">
+          {activeFolderName}
+        </h1>
       {:else}
-        <span
-          class="min-w-0 flex-1 truncate text-sm {prominentHeader
-            ? 'font-medium'
-            : 'font-normal'}">{activeFolderName}</span
-        >
+        <span class="min-w-0 flex-1 truncate text-sm font-normal">{activeFolderName}</span>
       {/if}
 
       {#if activeFolderSyncId && !editingActiveFolder}
@@ -820,7 +822,9 @@
     <!-- Row 2: count + per-list actions, swaps to selection toolbar in multi-select. -->
     {#if selectionMode}
       <div
-        class="flex shrink-0 items-center gap-1 {rowTwoHeight} {onback ? 'px-3' : 'px-5'}"
+        class="flex shrink-0 items-center gap-1 {rowTwoProminent
+          ? 'mt-2 px-4'
+          : `h-10 ${onback ? 'px-3' : 'px-5'}`}"
         role="toolbar"
         aria-label={$t('notes.multiselect.count', { values: { count: selectedIds.size } })}
       >
@@ -919,7 +923,9 @@
       </div>
     {:else}
       <div
-        class="flex {rowTwoHeight} shrink-0 items-center gap-1 pl-5 {onback ? 'pr-3' : 'pr-5'}"
+        class="flex shrink-0 items-center gap-1 {rowTwoProminent
+          ? 'mt-2 px-4'
+          : `h-10 pl-5 ${onback ? 'pr-3' : 'pr-5'}`}"
       >
         <span class="min-w-0 flex-1 truncate text-xs text-muted-foreground">
           {$t('notes.notes_count', { values: { count: $notesStore.length } })}
@@ -974,8 +980,11 @@
        (cleanTrash(30) in hooks.client.ts). Pinned above the list so the policy
        is visible whether trash is full or empty. -->
   {#if isTrash}
+    <!-- Mobile keeps the lineless header system (no border); desktop retains its
+         existing divider via md:border-b. py-2 + the list's py-1 gives the same
+         info-bar -> first card rhythm as search -> first card elsewhere. -->
     <div
-      class="flex items-start gap-1.5 border-b px-4 py-2 text-[11px] leading-snug text-muted-foreground"
+      class="flex items-start gap-1.5 px-4 py-2 text-[11px] leading-snug text-muted-foreground md:border-b"
     >
       <Info class="mt-px h-3.5 w-3.5 shrink-0" />
       <span>{$t('trash.auto_delete_notice', { values: { days: 30 } })}</span>
