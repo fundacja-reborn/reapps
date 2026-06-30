@@ -1,7 +1,7 @@
 <script lang="ts">
   import {
     RefreshCw,
-    Trash2,
+    Link2Off,
     Copy,
     Share2,
     Lock,
@@ -13,9 +13,10 @@
     Plus
   } from '@lucide/svelte';
   import { SvelteSet } from 'svelte/reactivity';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale } from '$lib/stores/i18n.store';
   import { shareLink } from '$lib/utils/native-share';
   import { copyText } from '$lib/utils/clipboard';
+  import { formatExpiryRelative } from '$lib/utils/expiry-format';
   import {
     Dialog,
     DialogContent,
@@ -34,6 +35,8 @@
   } from '$lib/stores/shares.store';
   import type { OwnShareListItem, SharedSnapshotNotePayload } from '@reborn/types';
   import NoteSnapshotView from './NoteSnapshotView.svelte';
+  import ConfirmDialog from '../shared/ConfirmDialog.svelte';
+  import SnapshotStaleBadge from '../shares/SnapshotStaleBadge.svelte';
 
   let {
     open = $bindable(false),
@@ -55,6 +58,8 @@
   let previewOpen = $state(false);
   let previewScrollEl = $state<HTMLDivElement | null>(null);
   let revoking = $state<string | null>(null);
+  let confirmRevokeShare = $state<OwnShareListItem | null>(null);
+  let confirmRevokeOpen = $state(false);
 
   const storeState = $derived($sharesStore);
   const decoded = $derived(storeState.decoded);
@@ -92,7 +97,7 @@
   function formatOpens(s: OwnShareListItem): string {
     return s.max_access_count !== null
       ? `${s.access_count} / ${s.max_access_count}`
-      : String(s.access_count);
+      : `${s.access_count} (${$t('share.list.opens_unlimited')})`;
   }
 
   async function copyUrl(id: string) {
@@ -132,12 +137,22 @@
     previewOpen = true;
   }
 
-  async function revoke(share: OwnShareListItem) {
+  function askRevoke(share: OwnShareListItem) {
+    confirmRevokeShare = share;
+    confirmRevokeOpen = true;
+  }
+
+  // Revoke kills the public link permanently (not a recoverable trash), so it
+  // goes through a confirm step - matching the share detail panel.
+  async function doRevoke() {
+    const share = confirmRevokeShare;
+    if (!share) return;
     revoking = share.id;
     const ok = await sharesStore.revoke(share.slug);
     if (ok) toastStore.success($t('share.list.revoked_toast'));
     else toastStore.error($t('share.list.revoke_error'));
     revoking = null;
+    confirmRevokeShare = null;
   }
 
   $effect(() => {
@@ -249,10 +264,16 @@
                       {:else if inactive}
                         <span class="text-[10px] uppercase tracking-wider text-destructive">{$t('share.list.revoked_label')}</span>
                       {/if}
+                      {#if entry && !inactive}
+                        <SnapshotStaleBadge
+                          sourceId={entry.payload.source_id}
+                          sharedAt={entry.payload.shared_at}
+                        />
+                      {/if}
                     </div>
                     {#if entry}
                       <p class="truncate text-sm font-medium">
-                        {entry.payload.title || $t('share.list.untitled')}
+                        {entry.payload.display_name?.trim() || entry.payload.title || $t('share.list.untitled')}
                       </p>
                     {:else if hasDecryptError}
                       <p class="inline-flex items-center gap-1 text-sm text-muted-foreground">
@@ -299,9 +320,9 @@
                       size="icon"
                       aria-label={$t('share.list.revoke_action')}
                       disabled={revoking === share.id}
-                      onclick={() => revoke(share)}
+                      onclick={() => askRevoke(share)}
                     >
-                      <Trash2 class="h-4 w-4 text-destructive" />
+                      <Link2Off class="h-4 w-4 text-destructive" />
                     </Button>
                   {/if}
                 </div>
@@ -311,7 +332,7 @@
                 <div class="flex flex-col gap-1">
                   <button
                     type="button"
-                    class="inline-flex w-fit items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                    class="inline-flex w-fit cursor-pointer items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
                     onclick={() => toggleUrl(share.id)}
                   >
                     {#if urlShown}
@@ -324,6 +345,10 @@
                   </button>
                   {#if urlShown}
                     <p class="break-all font-mono text-xs text-muted-foreground">{entry.url}</p>
+                    <p class="mt-1 flex items-start gap-1 text-[11px] leading-snug text-muted-foreground">
+                      <Lock class="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span>{$t('share.list.link_key_warning')}</span>
+                    </p>
                   {/if}
                 </div>
               {/if}
@@ -332,7 +357,17 @@
                 <span>{$t('share.list.column.created')}: {formatDate(share.created_at)}</span>
                 <span>
                   {$t('share.list.column.expires')}:
-                  {share.expires_at ? formatDate(share.expires_at) : $t('share.create.expires.never')}
+                  {#if share.expires_at}
+                    {@const rel = formatExpiryRelative(share.expires_at, $locale ?? 'en')}
+                    {formatDate(share.expires_at)}
+                    {#if rel?.expired}
+                      <span class="text-destructive">({$t('share.list.expired')})</span>
+                    {:else if rel}
+                      <span>({rel.text})</span>
+                    {/if}
+                  {:else}
+                    {$t('share.create.expires.never')}
+                  {/if}
                 </span>
                 <span>{$t('share.list.column.access_count')}: {formatOpens(share)}</span>
                 {#if share.last_accessed_at}
@@ -368,3 +403,12 @@
     {/if}
   </DialogContent>
 </Dialog>
+
+<ConfirmDialog
+  bind:open={confirmRevokeOpen}
+  title={$t('share.list.confirm_revoke_title')}
+  description={$t('share.list.confirm_revoke_desc')}
+  confirmText={$t('share.list.revoke_action')}
+  destructive
+  onConfirm={doRevoke}
+/>
