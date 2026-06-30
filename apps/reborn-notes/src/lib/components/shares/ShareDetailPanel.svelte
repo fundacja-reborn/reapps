@@ -8,15 +8,29 @@
     AlertTriangle,
     ChevronDown,
     ChevronUp,
-    Eye
+    Eye,
+    Ellipsis,
+    Download,
+    ClipboardCopy,
+    FileClock
   } from '@lucide/svelte';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale } from '$lib/stores/i18n.store';
   import { shareLink } from '$lib/utils/native-share';
   import { copyText } from '$lib/utils/clipboard';
-  import { toastStore } from '@reborn/ui';
+  import {
+    toastStore,
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator
+  } from '@reborn/ui';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
   import NoteSnapshotView from '$lib/components/notes/NoteSnapshotView.svelte';
+  import { exportMarkdownString } from '$lib/services/export-import.service';
   import { sharesStore, activeShareId } from '$lib/stores/shares.store';
+  import { notesStore } from '$lib/stores/notes.store';
+  import { formatExpiryRelative } from '$lib/utils/expiry-format';
   import type { OwnShareListItem } from '@reborn/types';
 
   let { shareId, onback }: { shareId: string; onback?: () => void } = $props();
@@ -44,6 +58,35 @@
   // Native build only: OS share sheet. Web is copy-only (DCE'd via the define).
   const isNative = __REBORN_NATIVE__;
 
+  // Stale hint: load the source note (by the id baked into the encrypted payload)
+  // only to read its updated_at, and compare it to when the snapshot was taken.
+  // loadNote returns null when the note isn't on this device (or was deleted) ->
+  // no badge. Archived (trashed) notes are treated as "gone", so we suppress the
+  // badge rather than flag a trash-induced bump. NOTE: updated_at also moves on
+  // non-content edits (pin / move), so this is an informational hint, not a proof
+  // the shared text changed.
+  const sourceId = $derived(entry?.payload.source_id ?? null);
+  let sourceUpdatedAt = $state<string | null>(null);
+  $effect(() => {
+    const sid = sourceId;
+    sourceUpdatedAt = null;
+    if (!sid) return;
+    let cancelled = false;
+    void notesStore.loadNote(sid).then((n) => {
+      if (!cancelled) sourceUpdatedAt = n && !n.is_archived ? n.updated_at : null;
+    });
+    return () => {
+      cancelled = true;
+    };
+  });
+  const snapshotStale = $derived(
+    !!(
+      sourceUpdatedAt
+      && entry?.payload.shared_at
+      && new Date(sourceUpdatedAt).getTime() > new Date(entry.payload.shared_at).getTime()
+    )
+  );
+
   const headline = $derived(
     entry
       ? entry.payload.display_name?.trim() || entry.payload.title || $t('share.list.untitled')
@@ -62,7 +105,7 @@
   function formatOpens(s: OwnShareListItem): string {
     return s.max_access_count !== null
       ? `${s.access_count} / ${s.max_access_count}`
-      : String(s.access_count);
+      : `${s.access_count} (${$t('share.list.opens_unlimited')})`;
   }
 
   async function copyUrl() {
@@ -79,6 +122,25 @@
       dialogTitle: $t('share.create.share_sheet_title')
     });
     if (!ok) await copyUrl();
+  }
+
+  // Copy / export the FROZEN snapshot markdown (entry.payload.content) - the exact
+  // text that was shared, not the live note. No frontmatter (export), no server hit.
+  async function copyMarkdown() {
+    if (!entry) return;
+    if (await copyText(entry.payload.content)) toastStore.success($t('share.list.copied_markdown'));
+    else toastStore.error($t('share.create.copy_failed'));
+  }
+
+  async function exportMarkdown() {
+    if (!entry) return;
+    const name =
+      entry.payload.display_name?.trim() || entry.payload.title || $t('share.list.untitled');
+    try {
+      await exportMarkdownString(name, entry.payload.content);
+    } catch {
+      toastStore.error($t('notes.export_failed'));
+    }
   }
 
   async function doRevoke() {
@@ -127,8 +189,10 @@
         {/if}
       </p>
     </div>
-    <!-- Labelled on desktop (the header has room and icon-only actions read as
-         ambiguous), icon-only on the cramped mobile header. -->
+    <!-- Copy link stays inline + labelled: it is the primary, most-used action.
+         The rarer / destructive actions live in the kebab, where every item is
+         labelled (so nothing reads as an icon-only guess) and the header stays
+         uncluttered on the narrow mobile layout. -->
     {#if entry}
       <button
         type="button"
@@ -140,34 +204,51 @@
         <Copy class="h-4 w-4" />
         <span class="hidden md:inline">{$t('share.create.copy_link')}</span>
       </button>
-      {#if isNative}
-        <button
-          type="button"
-          onclick={shareUrl}
-          class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-sm
-                 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          aria-label={$t('share.create.share_cta')}
-        >
-          <Share2 class="h-4 w-4" />
-          <span class="hidden md:inline">{$t('share.create.share_cta')}</span>
-        </button>
-      {/if}
     {/if}
-    {#if share && !share.revoked_at}
-      <!-- Revoke kills the public link permanently - not a recoverable trash like a
-           note. A Link2Off glyph + explicit label disambiguate it from note delete. -->
-      <button
-        type="button"
-        disabled={revoking}
-        onclick={() => (confirmRevokeOpen = true)}
-        class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-sm
-               text-destructive transition-colors hover:bg-destructive/10
-               disabled:pointer-events-none disabled:opacity-50"
-        aria-label={$t('share.list.revoke_action')}
-      >
-        <Link2Off class="h-4 w-4" />
-        <span class="hidden md:inline">{$t('share.list.revoke_action')}</span>
-      </button>
+    {#if entry || (share && !share.revoked_at)}
+      <DropdownMenu>
+        <DropdownMenuTrigger>
+          {#snippet child({ props })}
+            <button
+              {...props}
+              type="button"
+              title={$t('share.list.column.actions')}
+              aria-label={$t('share.list.column.actions')}
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground
+                     transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Ellipsis class="h-5 w-5" />
+            </button>
+          {/snippet}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" class="min-w-48">
+          {#if entry}
+            {#if isNative}
+              <DropdownMenuItem onclick={shareUrl}>
+                <Share2 class="mr-2 h-4 w-4" />{$t('share.create.share_cta')}
+              </DropdownMenuItem>
+            {/if}
+            <DropdownMenuItem onclick={exportMarkdown}>
+              <Download class="mr-2 h-4 w-4" />{$t('share.list.export_markdown')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onclick={copyMarkdown}>
+              <ClipboardCopy class="mr-2 h-4 w-4" />{$t('share.list.copy_markdown')}
+            </DropdownMenuItem>
+          {/if}
+          {#if share && !share.revoked_at}
+            <!-- Revoke kills the public link permanently - not a recoverable trash
+                 like a note. Separated + destructive-coloured at the bottom. -->
+            {#if entry}<DropdownMenuSeparator />{/if}
+            <DropdownMenuItem
+              class="text-destructive focus:text-destructive"
+              disabled={revoking}
+              onclick={() => (confirmRevokeOpen = true)}
+            >
+              <Link2Off class="mr-2 h-4 w-4" />{$t('share.list.revoke_action')}
+            </DropdownMenuItem>
+          {/if}
+        </DropdownMenuContent>
+      </DropdownMenu>
     {/if}
   </header>
 
@@ -209,7 +290,24 @@
                 <Copy class="h-3.5 w-3.5" />
               </button>
               <p class="break-all pr-9 font-mono text-xs text-muted-foreground">{entry.url}</p>
+              <!-- Privacy nudge: the link carries the decryption key in its
+                   fragment, so anyone with it can read the snapshot. -->
+              <p class="mt-1 flex items-start gap-1 text-[11px] leading-snug text-muted-foreground">
+                <Lock class="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                <span>{$t('share.list.link_key_warning')}</span>
+              </p>
             {/if}
+          </div>
+        {/if}
+
+        <!-- Source note changed since the snapshot was frozen (informational). -->
+        {#if snapshotStale}
+          <div
+            class="flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10
+                   px-3 py-2 text-xs text-amber-700 dark:text-amber-400"
+          >
+            <FileClock class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>{$t('share.list.snapshot_stale')}</span>
           </div>
         {/if}
 
@@ -222,7 +320,17 @@
           <div>
             <dt class="text-muted-foreground">{$t('share.list.column.expires')}</dt>
             <dd class="mt-0.5 font-medium">
-              {share.expires_at ? formatDate(share.expires_at) : $t('share.create.expires.never')}
+              {#if share.expires_at}
+                {@const rel = formatExpiryRelative(share.expires_at, $locale ?? 'en')}
+                {formatDate(share.expires_at)}
+                {#if rel?.expired}
+                  <span class="font-normal text-destructive">({$t('share.list.expired')})</span>
+                {:else if rel}
+                  <span class="font-normal text-muted-foreground">({rel.text})</span>
+                {/if}
+              {:else}
+                {$t('share.create.expires.never')}
+              {/if}
             </dd>
           </div>
           <div>

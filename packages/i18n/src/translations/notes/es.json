@@ -1435,6 +1435,13 @@
         "title": "Título (A-Z)"
       },
       "manage_cta": "Gestionar enlaces activos",
+      "export_markdown": "Exportar como Markdown",
+      "copy_markdown": "Copiar como Markdown",
+      "copied_markdown": "Copiado como Markdown",
+      "link_key_warning": "Este enlace contiene la clave de descifrado y da acceso completo al snapshot. Compártelo con cuidado.",
+      "opens_unlimited": "sin límite",
+      "expired": "Caducado",
+      "snapshot_stale": "Nota modificada desde que se compartió",
       "type": {
         "note": "Nota",
         "task": "Tarea"

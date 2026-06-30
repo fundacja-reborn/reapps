@@ -1435,6 +1435,13 @@
         "title": "Tytuł (A-Z)"
       },
       "manage_cta": "Zarządzaj udostępnieniami",
+      "export_markdown": "Eksportuj jako Markdown",
+      "copy_markdown": "Kopiuj jako Markdown",
+      "copied_markdown": "Skopiowano jako Markdown",
+      "link_key_warning": "Ten link zawiera klucz deszyfrujący i daje pełny dostęp do snapshotu. Udostępniaj go ostrożnie.",
+      "opens_unlimited": "bez limitu",
+      "expired": "Wygasło",
+      "snapshot_stale": "Notatka zmieniona od udostępnienia",
       "type": {
         "note": "Notatka",
         "task": "Zadanie"

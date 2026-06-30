@@ -1435,6 +1435,13 @@
         "title": "Titel (A-Z)"
       },
       "manage_cta": "Aktive Freigaben verwalten",
+      "export_markdown": "Als Markdown exportieren",
+      "copy_markdown": "Als Markdown kopieren",
+      "copied_markdown": "Als Markdown kopiert",
+      "link_key_warning": "Dieser Link enthält den Entschlüsselungsschlüssel und gewährt vollen Zugriff auf den Snapshot. Teile ihn mit Bedacht.",
+      "opens_unlimited": "kein Limit",
+      "expired": "Abgelaufen",
+      "snapshot_stale": "Notiz seit dem Teilen geändert",
       "type": {
         "note": "Notiz",
         "task": "Aufgabe"

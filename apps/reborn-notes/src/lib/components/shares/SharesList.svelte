@@ -7,8 +7,9 @@
     DropdownMenuItem,
     DropdownMenuTrigger
   } from '@reborn/ui';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale } from '$lib/stores/i18n.store';
   import { activeShares, activeShareId, sharesBySourceId, sharesStore } from '$lib/stores/shares.store';
+  import { formatExpiryRelative } from '$lib/utils/expiry-format';
   import type { OwnShareListItem } from '@reborn/types';
 
   // One row per active share LINK (flat list). A note shared more than once shows
@@ -214,6 +215,7 @@
           {@const title = titleOf(share)}
           {@const expiringSoon = isExpiringSoon(share)}
           {@const links = linkCountFor(share)}
+          {@const expRel = share.expires_at ? formatExpiryRelative(share.expires_at, $locale ?? 'en') : null}
           <li>
             <button
               type="button"
@@ -245,7 +247,7 @@
                   <span
                     >{$t('share.list.column.expires')}: {share.expires_at
                       ? formatDate(share.expires_at)
-                      : $t('share.create.expires.never')}</span
+                      : $t('share.create.expires.never')}{#if expRel && !expRel.expired} ({expRel.text}){/if}</span
                   >
                   <span aria-hidden="true">·</span>
                   <span>{$t('share.list.column.access_count')}: {formatOpens(share)}</span>

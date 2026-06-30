@@ -1435,6 +1435,13 @@
         "title": "Titre (A-Z)"
       },
       "manage_cta": "Gérer les partages actifs",
+      "export_markdown": "Exporter en Markdown",
+      "copy_markdown": "Copier en Markdown",
+      "copied_markdown": "Copié en Markdown",
+      "link_key_warning": "Ce lien contient la clé de déchiffrement et donne un accès complet au snapshot. Partagez-le avec prudence.",
+      "opens_unlimited": "sans limite",
+      "expired": "Expiré",
+      "snapshot_stale": "Note modifiée depuis le partage",
       "type": {
         "note": "Note",
         "task": "Tâche"

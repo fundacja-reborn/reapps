@@ -1435,6 +1435,13 @@
         "title": "Title (A-Z)"
       },
       "manage_cta": "Manage active shares",
+      "export_markdown": "Export as Markdown",
+      "copy_markdown": "Copy as Markdown",
+      "copied_markdown": "Copied as Markdown",
+      "link_key_warning": "This link contains the decryption key and grants full access to the snapshot. Share it carefully.",
+      "opens_unlimited": "no limit",
+      "expired": "Expired",
+      "snapshot_stale": "Note changed since shared",
       "type": {
         "note": "Note",
         "task": "Task"
