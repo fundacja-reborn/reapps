@@ -592,20 +592,11 @@
         {/if}
       </ContextMenu>
 
-      <!-- Children (recursive) + saved searches parked in this folder -->
+      <!-- Saved searches parked in this folder render ABOVE its subfolders -
+           same "searches before folders" rule as root-pin and the folder
+           drill-down view, and keeps a parked search visible without scrolling
+           past a deep subtree. -->
       {#if isExpanded && hasChildren}
-        {#if (folder.children?.length ?? 0) > 0}
-          <FolderTree
-            nodes={folder.children ?? []}
-            depth={depth + 1}
-            {activeFolderId}
-            {expandedIds}
-            {onselect}
-            {onnewnote}
-            {savedSearchesByFolder}
-            {onsavedsearchselect}
-          />
-        {/if}
         {#if parkedSearches.length > 0}
           <ul class="select-none" role="group">
             {#each parkedSearches as search (search.id)}
@@ -617,6 +608,18 @@
               />
             {/each}
           </ul>
+        {/if}
+        {#if (folder.children?.length ?? 0) > 0}
+          <FolderTree
+            nodes={folder.children ?? []}
+            depth={depth + 1}
+            {activeFolderId}
+            {expandedIds}
+            {onselect}
+            {onnewnote}
+            {savedSearchesByFolder}
+            {onsavedsearchselect}
+          />
         {/if}
       {/if}
     </li>
