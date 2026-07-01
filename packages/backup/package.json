@@ -1,6 +1,6 @@
 {
   "name": "@reborn/backup",
-  "version": "0.42.0",
+  "version": "0.42.1",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
