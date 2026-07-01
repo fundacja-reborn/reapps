@@ -133,10 +133,6 @@
 
   function startRename(folder: FolderWithChildren, e?: Event) {
     e?.stopPropagation();
-    // Clear the menu open-state before the kebab unmounts under the rename input,
-    // so the controlled dropdown can't spuriously re-open when rename ends and the
-    // kebab remounts.
-    menuOpenId = null;
     editingId = folder.id;
     editingName = folder.name;
     // Focus after DOM update
@@ -558,10 +554,7 @@
                     <MoreHorizontal class="h-3.5 w-3.5" />
                   </button>
                 {:else}
-                  <DropdownMenu
-                    open={menuOpenId === folder.id}
-                    onOpenChange={(o) => setFolderMenuOpen(folder.id, o)}
-                  >
+                  <DropdownMenu onOpenChange={(o) => setFolderMenuOpen(folder.id, o)}>
                     <DropdownMenuTrigger>
                       {#snippet child({ props })}
                         <button
