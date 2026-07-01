@@ -1944,11 +1944,15 @@ async function pushPendingVersions(): Promise<void> {
   // correctly not pushed, yet its pending version 404-looped). Partition by the
   // parent's local state, using sync_version > 0 as the "on server" signal (NOT
   // sync_status - a trashed never-synced note is marked 'synced' locally):
-  //   - parent gone, or present but can never reach the server (trashed/ephemeral
-  //     and never synced) → the version is orphaned; drop it so it stops looping.
   //   - parent on the server (sync_version > 0) → safe to push.
-  //   - parent still en route (a normal pending note POSTed earlier this sweep) →
-  //     defer to the next sweep once it lands.
+  //   - parent gone entirely (`!parent`, e.g. permanently deleted) → the version
+  //     is orphaned for good; drop it so it stops looping.
+  //   - parent present but not yet on the server (never-synced / pending /
+  //     ephemeral / trashed-never-synced) → DEFER (skip this sweep), do NOT drop.
+  //     Skipping already breaks the 404 loop; dropping would lose history for a
+  //     note that can still reach the server (a trashed note restored, then
+  //     POSTed). When such a note is eventually removed for good, the `!parent`
+  //     branch reaps its now-orphaned versions.
   const pushable: NoteHistoryEntry[] = [];
   const orphanIds: string[] = [];
   for (const v of pending) {
@@ -1957,14 +1961,12 @@ async function pushPendingVersions(): Promise<void> {
       orphanIds.push(v.id);
     } else if ((parent.sync_version ?? 0) > 0) {
       pushable.push(v);
-    } else if (parent.is_ephemeral || parent.is_archived) {
-      orphanIds.push(v.id);
     }
-    // else: a normal pending note not yet on the server - defer (skip this sweep).
+    // else: parent present but not on the server yet - defer to a later sweep.
   }
   if (orphanIds.length > 0) {
     await noteHistoryStore.deleteMany(orphanIds);
-    logger.debug(`Dropped ${orphanIds.length} orphaned pending versions (parent note not on server)`);
+    logger.debug(`Dropped ${orphanIds.length} orphaned pending versions (parent note gone)`);
   }
   if (pushable.length === 0) return;
 
