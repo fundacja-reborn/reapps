@@ -1050,38 +1050,7 @@ export async function pushPendingItems(): Promise<void> {
   await settleInBatches(pendingNotes, (n) =>
     serializePerEntity('note', n.id, () =>
       pushSilently(
-        async (idempotencyKey) => {
-          const pushedFields = {
-            title_encrypted: n.title_encrypted,
-            content_encrypted: n.content_encrypted,
-            folder_id: n.folder_id ?? null,
-            metadata_encrypted: n.metadata_encrypted ?? null
-          };
-          const payload = {
-            id: n.id,
-            ...pushedFields,
-            metadata_encrypted: n.metadata_encrypted ?? undefined,
-            created_at: n.created_at
-          };
-          validateEncryptedPayload(payload as Record<string, unknown>);
-          const res = await authFetch(`${API_BASE}/notes`, {
-            method: 'POST',
-            headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-            body: JSON.stringify(payload)
-          });
-          await ensureOk(res, 'POST /api/notes');
-          const { data: resData } = await res.json();
-          const current = await noteStore.get(n.id);
-          if (current) {
-            const stillDirty = pushedFieldsDiffer(current, pushedFields);
-            await noteStore.save({
-              ...current,
-              sync_status: stillDirty ? 'pending' : 'synced',
-              sync_error_code: undefined,
-              sync_version: resData?.sync_version ?? 1
-            });
-          }
-        },
+        (idempotencyKey) => pushNotePayload(n, idempotencyKey),
         async (err) => {
           await markNoteSyncError(n.id, err.code);
           newNoteSyncErrors++;
@@ -1238,44 +1207,82 @@ function pushedFieldsDiffer(current: object, pushed: Record<string, unknown>): b
   return false;
 }
 
+/**
+ * POST one note (create-or-update upsert), shared by `pushNote` (fire-and-forget
+ * after a local write) and `pushPendingItems` (retry sweep).
+ *
+ * A 404 here means the note's `folder_id` references a folder the server does
+ * not have: the folder was deleted on another device (Prisma `SetNull`'d the
+ * note server-side, so the server row now sits at folder_id=null) while this
+ * client kept the dead FK locally, or a folder whose own push has not landed
+ * yet. Notes were the ONE entity missing the unpark recovery that folders and
+ * saved searches already have, so a note whose folder vanished wedged in
+ * 'pending' re-POSTing the dead FK forever (the 404 is classified transient -
+ * see push-error.ts). We unpark (folder_id → null), retry once, and mirror the
+ * unparking locally so the pull-side reconcile stops re-flagging the row.
+ * Mirrors `pushSavedSearchPayload`. See guideline 36.
+ */
+async function pushNotePayload(
+  note: NoteEncrypted | NoteStoredLocal,
+  idempotencyKey: string
+): Promise<void> {
+  const pushedFields = {
+    title_encrypted: note.title_encrypted,
+    content_encrypted: note.content_encrypted,
+    folder_id: note.folder_id ?? null,
+    metadata_encrypted: note.metadata_encrypted ?? null
+  };
+  const payload = {
+    id: note.id,
+    ...pushedFields,
+    metadata_encrypted: note.metadata_encrypted ?? undefined,
+    created_at: note.created_at
+  };
+  validateEncryptedPayload(payload as Record<string, unknown>);
+  let res = await authFetch(`${API_BASE}/notes`, {
+    method: 'POST',
+    headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(payload)
+  });
+  // POST is an upsert and checks the folder BEFORE writing, so a 404 with a
+  // folder_id present can only be "Folder not found" - no body sniff needed.
+  let unparked = false;
+  if (res.status === 404 && pushedFields.folder_id) {
+    logger.warn(`Note ${note.id}: folder ${pushedFields.folder_id} gone on server - unparking`);
+    unparked = true;
+    pushedFields.folder_id = null;
+    res = await authFetch(`${API_BASE}/notes`, {
+      method: 'POST',
+      headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({ ...payload, folder_id: null })
+    });
+  }
+  await ensureOk(res, 'POST /api/notes');
+  const { data } = await res.json();
+  const current = await noteStore.get(note.id);
+  if (current) {
+    // Mirror the unparking before the dirty-compare, so the compare (and the
+    // next pull's reconcile) sees an empty folder on both sides instead of
+    // re-flagging the row. Local rows use `undefined` for "no folder" (the wire
+    // uses null); pushedFieldsDiffer treats the two as equal.
+    const next = unparked ? { ...current, folder_id: undefined } : current;
+    const stillDirty = pushedFieldsDiffer(next, pushedFields);
+    if (stillDirty) {
+      logger.debug(`Note ${note.id} changed during push - keeping sync_status=pending`);
+    }
+    await noteStore.save({
+      ...next,
+      sync_status: stillDirty ? 'pending' : 'synced',
+      sync_error_code: undefined,
+      sync_version: data?.sync_version ?? 1
+    });
+  }
+}
+
 export function pushNote(note: NoteEncrypted | NoteStoredLocal): void {
   void serializePerEntity('note', note.id, () =>
     pushSilently(
-      async (idempotencyKey) => {
-        const pushedFields = {
-          title_encrypted: note.title_encrypted,
-          content_encrypted: note.content_encrypted,
-          folder_id: note.folder_id ?? null,
-          metadata_encrypted: note.metadata_encrypted ?? null
-        };
-        const payload = {
-          id: note.id,
-          ...pushedFields,
-          metadata_encrypted: note.metadata_encrypted ?? undefined,
-          created_at: note.created_at
-        };
-        validateEncryptedPayload(payload as Record<string, unknown>);
-        const res = await authFetch(`${API_BASE}/notes`, {
-          method: 'POST',
-          headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
-          body: JSON.stringify(payload)
-        });
-        await ensureOk(res, 'POST /api/notes');
-        const { data } = await res.json();
-        const current = await noteStore.get(note.id);
-        if (current) {
-          const stillDirty = pushedFieldsDiffer(current, pushedFields);
-          if (stillDirty) {
-            logger.debug(`Note ${note.id} changed during push - keeping sync_status=pending`);
-          }
-          await noteStore.save({
-            ...current,
-            sync_status: stillDirty ? 'pending' : 'synced',
-            sync_error_code: undefined,
-            sync_version: data?.sync_version ?? 1
-          });
-        }
-      },
+      (idempotencyKey) => pushNotePayload(note, idempotencyKey),
       async (err) => {
         await markNoteSyncError(note.id, err.code);
         notifyNoteSyncError(err.code);
@@ -1300,21 +1307,52 @@ export function pushNoteUpdate(
     pushSilently(
       async (idempotencyKey) => {
         validateEncryptedPayload(fields as Record<string, unknown>);
-        const res = await authFetch(`${API_BASE}/notes/${id}`, {
+        let res = await authFetch(`${API_BASE}/notes/${id}`, {
           method: 'PATCH',
           headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
           body: JSON.stringify(fields)
         });
+        // A 404 on a note PATCH is ambiguous: either the note is not on the
+        // server yet (folder push ordering - throw and let the pending sweep
+        // POST the full row later) or the note's target folder was deleted on
+        // another device ("Folder not found" - unpark to null + retry, else the
+        // dead FK re-pushes forever; the 404 is classified transient). We only
+        // sniff the body when a folder_id is in play. Mirrors pushSavedSearchUpdate.
+        let unparked = false;
+        if (res.status === 404 && fields.folder_id) {
+          let errMsg = '';
+          try {
+            errMsg = (await res.json())?.error ?? '';
+          } catch {
+            /* no body */
+          }
+          if (errMsg !== 'Folder not found') {
+            throw new Error(`PATCH /api/notes/${id}: 404`);
+          }
+          logger.warn(`Note ${id}: folder ${fields.folder_id} gone on server - unparking`);
+          unparked = true;
+          res = await authFetch(`${API_BASE}/notes/${id}`, {
+            method: 'PATCH',
+            headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
+            body: JSON.stringify({ ...fields, folder_id: null })
+          });
+        }
         await ensureOk(res, `PATCH /api/notes/${id}`);
         const { data } = await res.json();
         const current = await noteStore.get(id);
         if (current) {
-          const stillDirty = pushedFieldsDiffer(current, fields);
+          // Mirror the unparking on both the local row and the dirty-compare, so
+          // the pull-side reconcile stops re-flagging the note. The wire retry
+          // sent folder_id null; the local row uses undefined for "no folder"
+          // (pushedFieldsDiffer treats null/undefined as equal).
+          const effectiveFields = unparked ? { ...fields, folder_id: null } : fields;
+          const base = unparked ? { ...current, folder_id: undefined } : current;
+          const stillDirty = pushedFieldsDiffer(base, effectiveFields);
           if (stillDirty) {
             logger.debug(`Note ${id} changed during push - keeping sync_status=pending`);
           }
           await noteStore.save({
-            ...current,
+            ...base,
             sync_status: stillDirty ? 'pending' : 'synced',
             sync_error_code: undefined,
             sync_version: data?.sync_version ?? current.sync_version ?? 1
