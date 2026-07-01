@@ -1,3 +1,9 @@
+## 0.42.1 (2026-07-01)
+
+### 🩹 Fixes
+
+- **notes:** unpark notes whose folder was deleted on the server ([#398](https://github.com/fundacja-reborn/reapps/pull/398))
+
 ## 0.42.0 (2026-07-01)
 
 ### 🚀 Features
