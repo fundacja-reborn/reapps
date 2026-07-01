@@ -132,6 +132,14 @@
       ? ($savedSearchesStore.find((s) => s.id === activeSavedSearchId) ?? null)
       : null
   );
+  // The open smart folder's query + toggle, funnelled through their own $derived so
+  // value-equality memoization applies: editing the active smart folder's query
+  // changes these (re-running the section effect to refresh the list in place),
+  // while an unrelated saved-searches store tick that reproduces the same string
+  // does not. Reading the whole activeSavedSearch object in the effect instead
+  // would re-fire on every tick (refresh() yields freshly decrypted objects).
+  const activeSmartFolderQuery = $derived(activeSavedSearch?.query ?? null);
+  const activeSmartFolderInContent = $derived(activeSavedSearch?.search_in_content ?? false);
   // Last folder the user visited — used to scroll the folder tree back to that
   // node after exiting all the way up to the tree root, so deep trees keep context.
   let lastVisitedFolderId = $state<string | null>(null);
@@ -753,6 +761,12 @@
     // Only the Folders section hosts smart folders. Tracked here so opening one
     // (activeSavedSearchId set by handleSavedSearchSelect) re-runs this effect.
     const savedSearchId = section === 'folders' ? activeSavedSearchId : null;
+    // Track the open smart folder's query + toggle too, so editing the currently
+    // open smart folder's query re-runs this effect and refreshes the list in
+    // place. The $derived above give value-equality memoization, so this fires on
+    // an actual edit, not on every saved-searches store tick.
+    const smartQuery = savedSearchId ? activeSmartFolderQuery : null;
+    const smartInContent = savedSearchId ? activeSmartFolderInContent : false;
 
     if (section !== prevSection) {
       untrack(() => {
@@ -824,11 +838,10 @@
       } else if (section === 'tags' && tagId) {
         notesStore.setTag(tagId);
       } else if (savedSearchId) {
-        // Smart folder: membership = the saved query, scope = whole vault. Read
-        // the query untracked (activeSavedSearch is store-derived) so this effect
-        // tracks only nav state, not every saved-searches store tick.
-        const search = activeSavedSearch;
-        if (search) notesStore.setSmartFolder(search.query, search.search_in_content);
+        // Smart folder: membership = the saved query, scope = whole vault. Uses
+        // the tracked smartQuery/smartInContent (read above) so both opening a
+        // smart folder AND editing the open one's query refresh the list in place.
+        if (smartQuery !== null) notesStore.setSmartFolder(smartQuery, smartInContent);
         else notesStore.setFolder(undefined);
       } else if (sectionUsesFolderId) {
         notesStore.setFolder(folderId);
