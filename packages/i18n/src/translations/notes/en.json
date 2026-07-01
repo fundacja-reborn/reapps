@@ -518,6 +518,13 @@
       "save": "Save",
       "cancel": "Cancel"
     },
+    "edit_query": "Edit query",
+    "query_updated_toast": "Query updated for \"{name}\"",
+    "query_update_failed_toast": "Could not update the query",
+    "edit_dialog": {
+      "title": "Edit query",
+      "description": "Change what this saved view matches. Results stay live and update to the new query."
+    },
     "item_label": "Saved search: {name}",
     "actions": "Saved search actions",
     "rename": "Rename",

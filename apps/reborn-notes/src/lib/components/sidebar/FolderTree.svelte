@@ -133,6 +133,10 @@
 
   function startRename(folder: FolderWithChildren, e?: Event) {
     e?.stopPropagation();
+    // Clear the menu open-state before the kebab unmounts under the rename input,
+    // so the controlled dropdown can't spuriously re-open when rename ends and the
+    // kebab remounts.
+    menuOpenId = null;
     editingId = folder.id;
     editingName = folder.name;
     // Focus after DOM update
@@ -200,6 +204,14 @@
     } else {
       menuOpenId = menuOpenId === id ? null : id;
     }
+  }
+
+  // Keep menuOpenId in sync with the desktop kebab / right-click menu open state
+  // so the owning row can hold a background while its menu is open (otherwise the
+  // hover is lost the moment the pointer moves onto the menu, and it's unclear
+  // which row the menu belongs to).
+  function setFolderMenuOpen(id: string, isOpen: boolean) {
+    menuOpenId = isOpen ? id : menuOpenId === id ? null : menuOpenId;
   }
 
   function handleCreateNote(folderId: string, e?: Event) {
@@ -459,7 +471,7 @@
     >
       <!-- Desktop right-click opens the same folder actions as the kebab (#348).
            Disabled on mobile and while renaming inline. -->
-      <ContextMenu>
+      <ContextMenu onOpenChange={(o) => setFolderMenuOpen(folder.id, o)}>
         <ContextMenuTrigger disabled={isMobileQuery.value || editingId === folder.id}>
           {#snippet child({ props: triggerProps })}
             <div
@@ -474,7 +486,9 @@
                 cursor-pointer transition-colors
                 {isActive
                 ? 'list-row-active text-accent-foreground font-medium'
-                : 'text-foreground hover:bg-accent/50'}
+                : menuOpenId === folder.id
+                  ? 'bg-accent/50 text-foreground'
+                  : 'text-foreground hover:bg-accent/50'}
                 {isDragTarget ? 'ring-1 ring-primary bg-accent/30' : ''}"
               style="padding-left: {depth * 0.75 + 0.5}rem"
               role="button"
@@ -544,7 +558,10 @@
                     <MoreHorizontal class="h-3.5 w-3.5" />
                   </button>
                 {:else}
-                  <DropdownMenu>
+                  <DropdownMenu
+                    open={menuOpenId === folder.id}
+                    onOpenChange={(o) => setFolderMenuOpen(folder.id, o)}
+                  >
                     <DropdownMenuTrigger>
                       {#snippet child({ props })}
                         <button

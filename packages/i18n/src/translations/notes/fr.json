@@ -518,6 +518,13 @@
       "save": "Enregistrer",
       "cancel": "Annuler"
     },
+    "edit_query": "Modifier la requête",
+    "query_updated_toast": "Requête mise à jour pour \"{name}\"",
+    "query_update_failed_toast": "Impossible de mettre à jour la requête",
+    "edit_dialog": {
+      "title": "Modifier la requête",
+      "description": "Modifiez ce que cette vue enregistrée renvoie. Les résultats restent dynamiques et reflètent la nouvelle requête."
+    },
     "item_label": "Recherche enregistrée : {name}",
     "actions": "Actions de la recherche enregistrée",
     "rename": "Renommer",

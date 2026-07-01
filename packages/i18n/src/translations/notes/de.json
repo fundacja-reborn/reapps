@@ -518,6 +518,13 @@
       "save": "Speichern",
       "cancel": "Abbrechen"
     },
+    "edit_query": "Abfrage bearbeiten",
+    "query_updated_toast": "Abfrage für \"{name}\" aktualisiert",
+    "query_update_failed_toast": "Die Abfrage konnte nicht aktualisiert werden",
+    "edit_dialog": {
+      "title": "Abfrage bearbeiten",
+      "description": "Ändern Sie, was diese gespeicherte Ansicht erfasst. Die Ergebnisse bleiben dynamisch und übernehmen die neue Abfrage."
+    },
     "item_label": "Gespeicherte Suche: {name}",
     "actions": "Aktionen für gespeicherte Suche",
     "rename": "Umbenennen",

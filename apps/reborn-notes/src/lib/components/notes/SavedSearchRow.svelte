@@ -1,5 +1,13 @@
 <script lang="ts">
-  import { SearchCheck, MoreHorizontal, Pencil, Trash2, FolderInput, FolderX } from '@lucide/svelte';
+  import {
+    SearchCheck,
+    SearchCode,
+    MoreHorizontal,
+    Pencil,
+    Trash2,
+    FolderInput,
+    FolderX
+  } from '@lucide/svelte';
   import {
     Button,
     DropdownMenu,
@@ -17,12 +25,14 @@
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import ConfirmDialog from '../shared/ConfirmDialog.svelte';
+  import EditSavedSearchQueryDialog from './EditSavedSearchQueryDialog.svelte';
 
   let {
     search,
     context,
     depth = 0,
     active = false,
+    highlight = false,
     onselect,
     onrequestmove
   }: {
@@ -33,6 +43,8 @@
     depth?: number;
     /** Tree context: this smart folder is the one currently open in the main list. */
     active?: boolean;
+    /** Momentary flash after this search was just saved, so the new row stands out. */
+    highlight?: boolean;
     onselect: (search: SavedSearchDecrypted) => void;
     /** Panel only: open the folder picker for parking this search. */
     onrequestmove?: (search: SavedSearchDecrypted) => void;
@@ -47,6 +59,9 @@
 
   function startRename(e?: Event) {
     e?.stopPropagation();
+    // Clear the menu open-state before the kebab unmounts under the rename input,
+    // so it can't spuriously re-open when rename ends and the kebab remounts.
+    menuOpen = false;
     actionSheetOpen = false;
     editing = true;
     editingName = search.name;
@@ -64,10 +79,22 @@
   // ── Actions ─────────────────────────────────────────────────────
   let actionSheetOpen = $state(false);
   let deleteDialogOpen = $state(false);
+  let editQueryDialogOpen = $state(false);
+  // Desktop kebab open state - held so the row keeps a background while its menu
+  // is open (otherwise moving the pointer onto the menu drops the hover, and you
+  // lose track of which row the menu belongs to).
+  let menuOpen = $state(false);
+  const rowMenuActive = $derived(menuOpen || actionSheetOpen);
 
   function handleMenuButton(e: Event) {
     e.stopPropagation();
     actionSheetOpen = true;
+  }
+
+  function startEditQuery(e?: Event) {
+    e?.stopPropagation();
+    actionSheetOpen = false;
+    editQueryDialogOpen = true;
   }
 
   function requestMove(e?: Event) {
@@ -94,7 +121,10 @@
     class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm cursor-pointer transition-colors
       {active
       ? 'list-row-active text-accent-foreground font-medium'
-      : 'text-foreground hover:bg-accent/50'}"
+      : rowMenuActive
+        ? 'bg-accent/50 text-foreground'
+        : 'text-foreground hover:bg-accent/50'}"
+    class:saved-search-just-saved={highlight}
     style="padding-left: {depth * 0.75 + 0.5}rem"
     role="button"
     tabindex="0"
@@ -138,7 +168,7 @@
           <MoreHorizontal class="h-3.5 w-3.5" />
         </button>
       {:else}
-        <DropdownMenu>
+        <DropdownMenu bind:open={menuOpen}>
           <DropdownMenuTrigger>
             {#snippet child({ props })}
               <button
@@ -157,6 +187,10 @@
             <DropdownMenuItem onclick={startRename}>
               <Pencil class="h-3.5 w-3.5" />
               {$t('saved_searches.rename')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onclick={startEditQuery}>
+              <SearchCode class="h-3.5 w-3.5" />
+              {$t('saved_searches.edit_query')}
             </DropdownMenuItem>
             {#if context === 'panel'}
               <DropdownMenuItem onclick={requestMove}>
@@ -197,6 +231,10 @@
           <Pencil class="mr-2 h-4 w-4" />
           {$t('saved_searches.rename')}
         </Button>
+        <Button variant="ghost" class="w-full justify-start" onclick={() => startEditQuery()}>
+          <SearchCode class="mr-2 h-4 w-4" />
+          {$t('saved_searches.edit_query')}
+        </Button>
         {#if context === 'panel'}
           <Button variant="ghost" class="w-full justify-start" onclick={() => requestMove()}>
             <FolderInput class="mr-2 h-4 w-4" />
@@ -221,6 +259,8 @@
     </SheetContent>
   </Sheet>
 {/if}
+
+<EditSavedSearchQueryDialog bind:open={editQueryDialogOpen} {search} />
 
 <ConfirmDialog
   bind:open={deleteDialogOpen}

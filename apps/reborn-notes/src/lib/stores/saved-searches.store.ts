@@ -38,6 +38,15 @@ function createSavedSearchesStore() {
     await refresh();
   }
 
+  async function updateQuery(
+    id: string,
+    query: string,
+    searchInContent: boolean
+  ): Promise<void> {
+    await SavedSearchService.updateSavedSearchQuery(id, query, searchInContent);
+    await refresh();
+  }
+
   async function move(id: string, folderId: string | null): Promise<void> {
     await SavedSearchService.moveSavedSearchToFolder(id, folderId);
     await refresh();
@@ -60,6 +69,7 @@ function createSavedSearchesStore() {
     refresh,
     create,
     rename,
+    updateQuery,
     move,
     pinToRoot,
     remove

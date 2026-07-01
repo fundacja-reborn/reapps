@@ -19,7 +19,8 @@
     query,
     searchInContent = false,
     scope = null,
-    inSearchSection = false
+    inSearchSection = false,
+    onsaved
   }: {
     open: boolean;
     /** The query string currently in the search bar. */
@@ -34,6 +35,8 @@
     scope?: SaveScope | null;
     /** Picks the toast variant: outside the search section, hint where saved views live. */
     inSearchSection?: boolean;
+    /** Called with the new saved-search id after a successful save. */
+    onsaved?: (id: string) => void;
   } = $props();
 
   let name = $state('');
@@ -59,7 +62,12 @@
     const trimmedName = name.trim();
     const pinFolderId = scope?.kind === 'folder' && pinToFolder ? scope.folderId : undefined;
     try {
-      await savedSearchesStore.create(trimmedName, composedQuery, searchInContent, pinFolderId);
+      const newId = await savedSearchesStore.create(
+        trimmedName,
+        composedQuery,
+        searchInContent,
+        pinFolderId
+      );
       if (pinFolderId && scope?.kind === 'folder') {
         toastStore.success(
           $t('saved_searches.saved_toast_pinned', {
@@ -74,6 +82,7 @@
         toastStore.success($t('saved_searches.saved_toast', { values: { name: trimmedName } }));
       }
       open = false;
+      onsaved?.(newId);
     } catch {
       toastStore.error($t('saved_searches.save_failed_toast'));
     } finally {
