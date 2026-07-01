@@ -195,17 +195,24 @@ export async function deleteFolder(
     for (const note of notes) {
       if (mode === 'cascade') {
         // Soft-delete: same path as deleteNote() - archive locally, push DELETE.
+        // Also clear folder_id (like detach): the folder is being deleted, so the
+        // server SetNulls the note anyway. Without this the trashed note keeps the
+        // dead FK, and the archived-note retry sweep PATCHes it with a folder the
+        // server no longer has -> 404 "Folder not found" -> recovered by the note
+        // unpark, but a whole bulk-cascade would log that storm needlessly.
         await noteOperations.archive(note.id);
         const archived = await noteStore.get(note.id);
         const wasSynced = note.sync_status !== 'pending';
         if (archived) {
           await noteStore.save({
             ...archived,
+            folder_id: undefined,
             sync_status: wasSynced ? 'pending' : 'synced'
           });
         }
         noteIndex.patch(note.id, {
           isArchived: true,
+          folderId: undefined,
           updatedAt: new Date().toISOString()
         });
         if (wasSynced) pushNoteDelete(note.id);
