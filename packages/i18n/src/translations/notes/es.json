@@ -518,6 +518,13 @@
       "save": "Guardar",
       "cancel": "Cancelar"
     },
+    "edit_query": "Editar consulta",
+    "query_updated_toast": "Consulta actualizada para \"{name}\"",
+    "query_update_failed_toast": "No se pudo actualizar la consulta",
+    "edit_dialog": {
+      "title": "Editar consulta",
+      "description": "Cambia lo que coincide con esta vista guardada. Los resultados se mantienen al día y reflejan la nueva consulta."
+    },
     "item_label": "Búsqueda guardada: {name}",
     "actions": "Acciones de la búsqueda guardada",
     "rename": "Renombrar",

@@ -177,6 +177,23 @@
     background-color: var(--rn-list-row-active);
     box-shadow: inset 3px 0 0 0 var(--rn-list-row-accent);
   }
+
+  /* Momentary flash on a saved-search row right after it is created, so a
+     first-time user spots where the new saved view landed. One-shot: fades from
+     the active-row tint to transparent, then the row's normal hover/active rules
+     take back over (the class is dropped by a timer once the flash ends). */
+  .saved-search-just-saved {
+    animation: rn-saved-search-flash 2.2s ease-out;
+  }
+
+  @keyframes rn-saved-search-flash {
+    0% {
+      background-color: var(--rn-list-row-active);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
 }
 
 /* CodeMirror base styles */

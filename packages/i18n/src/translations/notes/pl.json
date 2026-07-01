@@ -518,6 +518,13 @@
       "save": "Zapisz",
       "cancel": "Anuluj"
     },
+    "edit_query": "Edytuj zapytanie",
+    "query_updated_toast": "Zaktualizowano zapytanie dla \"{name}\"",
+    "query_update_failed_toast": "Nie udało się zaktualizować zapytania",
+    "edit_dialog": {
+      "title": "Edytuj zapytanie",
+      "description": "Zmień, co dopasowuje ten zapisany widok. Wyniki są zawsze aktualne i odzwierciedlą nowe zapytanie."
+    },
     "item_label": "Zapisane wyszukiwanie: {name}",
     "actions": "Akcje zapisanego wyszukiwania",
     "rename": "Zmień nazwę",

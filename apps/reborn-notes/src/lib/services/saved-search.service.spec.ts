@@ -55,6 +55,7 @@ const {
   createSavedSearch,
   getAllSavedSearches,
   renameSavedSearch,
+  updateSavedSearchQuery,
   moveSavedSearchToFolder,
   pinSavedSearchToRoot,
   deleteSavedSearch
@@ -185,6 +186,56 @@ describe('renameSavedSearch', () => {
     expect(updated.name_encrypted).toBe('enc:New Name');
     expect(updated.sync_status).toBe('pending');
     expect(pushUpdateSpy).toHaveBeenCalledWith('s-1', { name_encrypted: 'enc:New Name' });
+  });
+});
+
+describe('updateSavedSearchQuery', () => {
+  it('re-encrypts the query, marks pending and pushes only the query when the toggle is unchanged', async () => {
+    seed({
+      id: 's-1',
+      query_encrypted: 'enc:tag:old',
+      metadata_encrypted: 'encobj:{"search_in_content":false,"pinned_to_root":false}'
+    });
+
+    await updateSavedSearchQuery('s-1', '  tag:new is:starred  ', false);
+
+    const updated = rows.find((r) => r.id === 's-1')!;
+    expect(updated.query_encrypted).toBe('enc:tag:new is:starred');
+    expect(updated.sync_status).toBe('pending');
+    // Toggle unchanged → bundle untouched and left out of the PATCH payload.
+    expect(updated.metadata_encrypted).toBe(
+      'encobj:{"search_in_content":false,"pinned_to_root":false}'
+    );
+    expect(pushUpdateSpy).toHaveBeenCalledWith('s-1', {
+      query_encrypted: 'enc:tag:new is:starred'
+    });
+  });
+
+  it('re-encodes the metadata bundle and pushes it when the content toggle flips (root-pin preserved)', async () => {
+    seed({
+      id: 's-1',
+      query_encrypted: 'enc:tag:x',
+      metadata_encrypted: 'encobj:{"search_in_content":false,"pinned_to_root":true}'
+    });
+
+    await updateSavedSearchQuery('s-1', '"phrase"', true);
+
+    const updated = rows.find((r) => r.id === 's-1')!;
+    expect(updated.query_encrypted).toBe('enc:"phrase"');
+    expect(updated.metadata_encrypted).toBe(
+      'encobj:{"search_in_content":true,"pinned_to_root":true}'
+    );
+    expect(pushUpdateSpy).toHaveBeenCalledWith('s-1', {
+      query_encrypted: 'enc:"phrase"',
+      metadata_encrypted: 'encobj:{"search_in_content":true,"pinned_to_root":true}'
+    });
+  });
+
+  it('rejects an empty query and does not push', async () => {
+    seed({ id: 's-1' });
+
+    await expect(updateSavedSearchQuery('s-1', '   ', false)).rejects.toThrow();
+    expect(pushUpdateSpy).not.toHaveBeenCalled();
   });
 });
 

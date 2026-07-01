@@ -167,6 +167,45 @@ export async function renameSavedSearch(id: string, name: string): Promise<void>
 }
 
 /**
+ * Update an existing saved search's query (and the body-search toggle it was
+ * saved with). The query is re-encrypted just like the name; the toggle lives in
+ * the encrypted metadata bundle, so it is only re-encoded when it actually flips
+ * (avoids needless ciphertext churn / pushes when only the query text changed).
+ */
+export async function updateSavedSearchQuery(
+  id: string,
+  query: string,
+  searchInContent: boolean
+): Promise<void> {
+  const existing = await savedSearchStore.get(id);
+  if (!existing) throw new Error('Saved search not found');
+  const trimmedQuery = query.trim().slice(0, MAX_SAVED_SEARCH_QUERY_CHARS);
+  if (!trimmedQuery) throw new Error('Saved search query must not be empty');
+  const query_encrypted = await encode(trimmedQuery, 'query');
+
+  const meta = await decodeMetadata(existing.metadata_encrypted);
+  const contentChanged = meta.search_in_content !== searchInContent;
+  if (contentChanged && !cryptoManager.isInitialized()) {
+    throw new Error('[E2E] encode saved-search metadata called without master key loaded');
+  }
+  const metadata_encrypted = contentChanged
+    ? await cryptoManager.encryptObject({ ...meta, search_in_content: searchInContent })
+    : existing.metadata_encrypted;
+
+  await savedSearchStore.save({
+    ...existing,
+    query_encrypted,
+    metadata_encrypted,
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending'
+  });
+  pushSavedSearchUpdate(id, {
+    query_encrypted,
+    ...(contentChanged ? { metadata_encrypted } : {})
+  });
+}
+
+/**
  * Set a saved search's pin location. The three states are mutually exclusive:
  *   - `{ folderId }` parks it under a folder (plaintext FK, clears root-pin)
  *   - `{ root: true }` pins it to the top level as a smart folder (root-pin

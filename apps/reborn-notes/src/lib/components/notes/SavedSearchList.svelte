@@ -6,9 +6,12 @@
   import MoveToFolderMenu from './MoveToFolderMenu.svelte';
 
   let {
-    onselect
+    onselect,
+    highlightId = null
   }: {
     onselect: (search: SavedSearchDecrypted) => void;
+    /** Id of a just-saved search to flash momentarily so the user spots the new row. */
+    highlightId?: string | null;
   } = $props();
 
   // ── Park in folder (shared picker, sheet variant on all breakpoints -
@@ -40,7 +43,13 @@
   </p>
   <ul class="select-none">
     {#each $savedSearchesStore as search (search.id)}
-      <SavedSearchRow {search} context="panel" {onselect} onrequestmove={requestMove} />
+      <SavedSearchRow
+        {search}
+        context="panel"
+        highlight={search.id === highlightId}
+        {onselect}
+        onrequestmove={requestMove}
+      />
     {/each}
   </ul>
 </div>

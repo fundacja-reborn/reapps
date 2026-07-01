@@ -236,6 +236,12 @@
 
   // ── Saved searches ─────────────────────────────────────────────
   let saveSearchDialogOpen = $state(false);
+  // Id of a just-saved search, flashed in the saved-searches list so a first-time
+  // user sees where the saved view landed. The list only renders on an empty
+  // query, so a save also clears the box (see handleSearchSaved) to reveal it.
+  let justSavedSearchId = $state<string | null>(null);
+  let justSavedResetTimer: ReturnType<typeof setTimeout> | undefined;
+  onDestroy(() => clearTimeout(justSavedResetTimer));
 
   // Searches pinned to the folder being browsed - shown alongside the
   // subfolder cards so a pin made from this very view doesn't "vanish"
@@ -250,6 +256,20 @@
     // content-phrase view silently returns a different (usually empty) result
     // set than the one the user saved.
     searchInContent = search.search_in_content;
+  }
+
+  function handleSearchSaved(id: string) {
+    // Only meaningful in the search section, where the saved-searches list is the
+    // empty-query view. Clearing the box drops the user onto that list with the
+    // new entry flashed at the top, so it never "vanishes" behind the results.
+    // Elsewhere the list isn't shown, so leave the current query untouched.
+    if (!searchOnly) return;
+    clearSearch();
+    justSavedSearchId = id;
+    clearTimeout(justSavedResetTimer);
+    justSavedResetTimer = setTimeout(() => {
+      justSavedSearchId = null;
+    }, 2500);
   }
 
   function onWindowClick() {
@@ -1020,7 +1040,7 @@
     {/if}
     {#if searchOnly && !searchInput}
       {#if $savedSearchesStore.length > 0}
-        <SavedSearchList onselect={applySavedSearch} />
+        <SavedSearchList onselect={applySavedSearch} highlightId={justSavedSearchId} />
       {:else}
         <div class="px-4 py-12 text-center">
           <Search class="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
@@ -1137,6 +1157,7 @@
   {searchInContent}
   scope={saveScope}
   inSearchSection={searchOnly}
+  onsaved={handleSearchSaved}
 />
 
 <ConfirmDialog
