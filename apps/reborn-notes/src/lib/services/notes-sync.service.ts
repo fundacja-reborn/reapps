@@ -1865,6 +1865,16 @@ export function pushSavedSearchDelete(id: string): void {
 export function pushNoteVersion(entry: NoteHistoryEntry): void {
   void serializePerEntity('note', entry.note_id, () =>
     pushSilently(async (idempotencyKey) => {
+      // The versions endpoint gates on `findFirst(note)` and 404s if the parent
+      // note is not on the server. `sync_status` is NOT a reliable "on server"
+      // signal - a never-synced note trashed via folder cascade is marked
+      // 'synced' locally without ever being POSTed - so gate on sync_version > 0
+      // (the same signal the archived-note retry uses). Leave the row 'pending'
+      // for pushPendingVersions(), which decides push/defer/drop once the note
+      // lands (or is confirmed gone). Avoids three doomed 404 retries here.
+      const parent = await noteStore.get(entry.note_id);
+      if (!parent || (parent.sync_version ?? 0) === 0) return;
+
       const res = await authFetch(`${API_BASE}/notes/${entry.note_id}/versions`, {
         method: 'POST',
         headers: { ...JSON_HEADERS, 'Idempotency-Key': idempotencyKey },
@@ -1926,8 +1936,40 @@ async function pushPendingVersions(): Promise<void> {
   const pending = allVersions.filter((v) => v.sync_status === 'pending');
   if (pending.length === 0) return;
 
-  logger.info(`Pushing ${pending.length} pending note versions`);
-  await settleInBatches(pending, (entry) =>
+  // A version POST 404s unless its parent note already exists on the server (the
+  // endpoint gates on `findFirst(note)`). Without partitioning, a version whose
+  // parent never reached the server re-POSTs every sweep forever - the same
+  // doomed-retry loop the note-folder unpark fixes, but for versions (surfaced by
+  // a folder cascade-delete that trashed a never-synced note: the note is
+  // correctly not pushed, yet its pending version 404-looped). Partition by the
+  // parent's local state, using sync_version > 0 as the "on server" signal (NOT
+  // sync_status - a trashed never-synced note is marked 'synced' locally):
+  //   - parent gone, or present but can never reach the server (trashed/ephemeral
+  //     and never synced) → the version is orphaned; drop it so it stops looping.
+  //   - parent on the server (sync_version > 0) → safe to push.
+  //   - parent still en route (a normal pending note POSTed earlier this sweep) →
+  //     defer to the next sweep once it lands.
+  const pushable: NoteHistoryEntry[] = [];
+  const orphanIds: string[] = [];
+  for (const v of pending) {
+    const parent = await noteStore.get(v.note_id);
+    if (!parent) {
+      orphanIds.push(v.id);
+    } else if ((parent.sync_version ?? 0) > 0) {
+      pushable.push(v);
+    } else if (parent.is_ephemeral || parent.is_archived) {
+      orphanIds.push(v.id);
+    }
+    // else: a normal pending note not yet on the server - defer (skip this sweep).
+  }
+  if (orphanIds.length > 0) {
+    await noteHistoryStore.deleteMany(orphanIds);
+    logger.debug(`Dropped ${orphanIds.length} orphaned pending versions (parent note not on server)`);
+  }
+  if (pushable.length === 0) return;
+
+  logger.info(`Pushing ${pushable.length} pending note versions`);
+  await settleInBatches(pushable, (entry) =>
     pushSilently(async (idempotencyKey) => {
       const res = await authFetch(`${API_BASE}/notes/${entry.note_id}/versions`, {
         method: 'POST',

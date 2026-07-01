@@ -335,9 +335,15 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(fn).not.toMatch(/Promise\.allSettled\s*\(/);
 
     // The tail version push still shares the cap. The bulk pull-side version
-    // fetch is gone - history is fetched per-note on demand in stage 2a.
-    const versionsFn = src.slice(src.indexOf('async function pushPendingVersions'));
-    expect(versionsFn.slice(0, 900)).toMatch(/settleInBatches\(\s*pending\b/);
+    // fetch is gone - history is fetched per-note on demand in stage 2a. Only
+    // versions whose parent note is on the server (sync_version > 0) are pushed
+    // through the bounded helper; orphaned ones are dropped so a missing parent
+    // never 404-loops the sweep.
+    const versionsStart = src.indexOf('async function pushPendingVersions');
+    const versionsFn = src.slice(versionsStart, versionsStart + 2400);
+    expect(versionsFn).toMatch(/settleInBatches\(\s*pushable\b/);
+    expect(versionsFn).toMatch(/sync_version\s*\?\?\s*0\)\s*>\s*0/);
+    expect(versionsFn).toMatch(/deleteMany\(orphanIds\)/);
     // The bespoke pull-versions batch constant is gone (unified onto the helper).
     expect(src).not.toMatch(/PULL_VERSIONS_BATCH_SIZE/);
   });
