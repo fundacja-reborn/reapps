@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.42.0",
+    "date": "2026-07-01",
+    "items": [
+      { "id": "0.42.0-saved-search-editing", "category": "improved", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.41.0",
     "date": "2026-06-30",
     "items": [
