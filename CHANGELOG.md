@@ -1,3 +1,9 @@
+## 0.42.0 (2026-07-01)
+
+### 🚀 Features
+
+- **notes:** saved-search UX - reveal, edit query, menu highlight ([#396](https://github.com/fundacja-reborn/reapps/pull/396))
+
 ## 0.41.0 (2026-06-30)
 
 ### 🚀 Features
