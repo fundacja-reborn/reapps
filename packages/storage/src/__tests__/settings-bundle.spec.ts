@@ -34,6 +34,7 @@ const NOTES_FIXTURE: AppSettings = {
   editorMode: 'live',
   editorModeIntroSeen: true,
   confirmBeforeDelete: false,
+  folderSortMode: 'custom',
   periodicNotes: PERIODIC_FIXTURE,
   created_at: '2026-05-01T00:00:00.000Z',
   updated_at: '2026-05-09T10:00:00.000Z'
@@ -73,14 +74,17 @@ describe('settings-bundle: extract', () => {
     expect(app.editorMode).toBe('live');
     expect(app.editorModeIntroSeen).toBe(true);
     expect(app.confirmBeforeDelete).toBe(false);
+    expect(app.folderSortMode).toBe('custom');
     expect(app.periodicNotes).toEqual(PERIODIC_FIXTURE);
   });
 
-  it('extractAppBundle omits periodicNotes when undefined (Task case)', () => {
+  it('extractAppBundle omits Notes-only keys when undefined (Task case)', () => {
     const taskFixture: AppSettings = { ...NOTES_FIXTURE, app_name: 'reborn-task' };
     delete taskFixture.periodicNotes;
+    delete taskFixture.folderSortMode;
     const app = extractAppBundle(taskFixture);
     expect('periodicNotes' in app).toBe(false);
+    expect('folderSortMode' in app).toBe(false);
   });
 });
 
@@ -112,6 +116,7 @@ describe('settings-bundle: applyBundlesToSettings', () => {
       editorMode: 'markdown',
       editorModeIntroSeen: false,
       confirmBeforeDelete: true,
+      folderSortMode: 'alphabetical',
       periodicNotes: {
         daily: { ...PERIODIC_FIXTURE.daily, enabled: false },
         weekly: PERIODIC_FIXTURE.weekly,
@@ -122,6 +127,7 @@ describe('settings-bundle: applyBundlesToSettings', () => {
     expect(merged.editorMode).toBe('markdown');
     expect(merged.editorModeIntroSeen).toBe(false);
     expect(merged.confirmBeforeDelete).toBe(true);
+    expect(merged.folderSortMode).toBe('alphabetical');
     expect(merged.periodicNotes?.daily.enabled).toBe(false);
     expect(merged.language).toBe('pl');
   });
@@ -183,16 +189,23 @@ describe('settings-bundle: migrate (decrypt → unknown JSON → typed bundle)',
       theme: 'dark',
       editorModeIntroSeen: true,
       confirmBeforeDelete: true,
+      folderSortMode: 'custom',
       periodicNotes: PERIODIC_FIXTURE
     });
     expect(out.theme).toBe('dark');
     expect(out.editorModeIntroSeen).toBe(true);
     expect(out.confirmBeforeDelete).toBe(true);
+    expect(out.folderSortMode).toBe('custom');
     expect(out.periodicNotes).toEqual(PERIODIC_FIXTURE);
   });
 
   it('migrateAppBundle ignores invalid periodicNotes shape (drops)', () => {
     const out = migrateAppBundle({ periodicNotes: 'not-an-object' });
     expect(out.periodicNotes).toBeUndefined();
+  });
+
+  it('migrateAppBundle drops unknown folderSortMode values', () => {
+    const out = migrateAppBundle({ folderSortMode: 'by-size' });
+    expect(out.folderSortMode).toBeUndefined();
   });
 });

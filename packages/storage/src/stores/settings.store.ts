@@ -8,6 +8,7 @@ const logger = createLogger('SettingsStore');
  */
 export type ImageLoadMode = 'ask' | 'always' | 'never';
 export type EditorMode = 'markdown' | 'live';
+export type FolderSortMode = 'alphabetical' | 'custom';
 
 export type PeriodicKind = 'daily' | 'weekly' | 'monthly';
 
@@ -79,6 +80,15 @@ export interface AppSettings {
    * deletes always confirm regardless of this flag.
    */
   confirmBeforeDelete: boolean;
+  /**
+   * Notes-only: sibling order of the folder tree. 'alphabetical' (default)
+   * sorts by decrypted name client-side; 'custom' renders the user-arranged
+   * `order_index` (drag between rows / move up-down), falling back to name
+   * where a group was never rearranged. Synced across devices via the Notes
+   * app bundle - the order_index values it renders sync through regular
+   * folder sync anyway. Optional so reborn-task settings don't carry it.
+   */
+  folderSortMode?: FolderSortMode;
   /**
    * Notes-only: per-kind settings for Daily / Weekly / Monthly Notes (Obsidian-style).
    * Local & device-specific - not synced. Optional in the type so reborn-task settings
@@ -198,7 +208,10 @@ export const settingsOperations = {
           editorModeIntroSeen: false,
           confirmBeforeDelete: true,
           ...(appName === 'reborn-notes'
-            ? { periodicNotes: structuredClone(PERIODIC_NOTES_DEFAULTS) }
+            ? {
+                folderSortMode: 'alphabetical' as const,
+                periodicNotes: structuredClone(PERIODIC_NOTES_DEFAULTS)
+              }
             : {}),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()

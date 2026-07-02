@@ -26,6 +26,7 @@
   import OutlineSheet from '$lib/components/OutlineSheet.svelte';
   import OutlineTree from '$lib/components/OutlineTree.svelte';
   import FolderTree from '$lib/components/sidebar/FolderTree.svelte';
+  import FolderSortMenu from '$lib/components/sidebar/FolderSortMenu.svelte';
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
   import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
@@ -2151,6 +2152,7 @@
                   {mobileView === 'folder-tree' ? $t('nav.folders') : $t('nav.tags')}
                 </span>
                 {#if mobileView === 'folder-tree'}
+                  <FolderSortMenu prominent />
                   <button
                     type="button"
                     onclick={handleNewFolder}
@@ -2587,6 +2589,7 @@
             >
               <div class="flex h-10 shrink-0 items-center gap-1 px-5">
                 <span class="min-w-0 flex-1 truncate text-sm font-normal">{$t('nav.folders')}</span>
+                <FolderSortMenu />
                 <button
                   type="button"
                   onclick={handleNewFolder}

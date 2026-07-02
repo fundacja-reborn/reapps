@@ -1,5 +1,30 @@
 import type { FolderWithChildren } from '@reborn/types';
 
+// Locale-aware, case-insensitive, numeric-friendly - shared by both sibling
+// sort modes (folder.service applies them after decryption).
+const folderNameCollator = new Intl.Collator(undefined, {
+  sensitivity: 'base',
+  numeric: true
+});
+
+/** Alphabetical sibling order (default folder sort mode). */
+export function sortFoldersByName<T extends { name: string }>(folders: T[]): T[] {
+  return [...folders].sort((a, b) => folderNameCollator.compare(a.name, b.name));
+}
+
+/**
+ * Custom sibling order: the user-arranged `order_index`, with a name tiebreak
+ * so groups that were never rearranged (order_index ties, e.g. legacy all-zero
+ * rows) still read alphabetically instead of insertion-ordered.
+ */
+export function sortFoldersByCustomOrder<
+  T extends { name: string; order_index: number }
+>(folders: T[]): T[] {
+  return [...folders].sort(
+    (a, b) => a.order_index - b.order_index || folderNameCollator.compare(a.name, b.name)
+  );
+}
+
 /** Flatten a nested folder tree into a flat array of {id, name}. */
 export function flattenFolderTree(
   nodes: FolderWithChildren[],
