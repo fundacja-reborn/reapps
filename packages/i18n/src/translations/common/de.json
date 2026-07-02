@@ -124,6 +124,7 @@
       "totp_submit_button": "Verifizieren",
       "totp_verifying": "Verifizierung...",
       "totp_error_invalid": "Ungültiger Code. Bitte versuchen Sie es erneut.",
+      "challenge_expired": "Die Verifizierungssitzung ist abgelaufen. Geben Sie Ihr Passwort erneut ein.",
       "use_recovery": "Wiederherstellungscode verwenden",
       "use_app": "Authenticator-App verwenden",
       "recovery_label": "Wiederherstellungscode",
@@ -140,6 +141,7 @@
         "code_required": "2FA-Code ist erforderlich.",
         "recovery_required": "Wiederherstellungscode ist erforderlich.",
         "verification_failed": "Überprüfung fehlgeschlagen.",
+        "challenge_expired": "Ihre Verifizierungssitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
         "decrypt_failed": "2FA-Geheimnis konnte nicht verarbeitet werden. Bitte stellen Sie sicher, dass Ihr Passwort korrekt ist.",
         "secret_format": "Ungültiges 2FA-Geheimnisformat."
       }

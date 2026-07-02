@@ -13,9 +13,12 @@ export {
   verifyToken,
   generateSingleUseToken,
   verifySingleUseToken,
+  consumeSingleUseToken,
   extractTokenFromHeader,
   getTokenConfig,
-  blacklistAccessToken
+  blacklistAccessToken,
+  TWO_FACTOR_CHALLENGE_PURPOSE,
+  TWO_FACTOR_CHALLENGE_TTL_MINUTES
 } from './utils/jwt';
 export type { TokenPair, TokenPayload } from './utils/jwt';
 

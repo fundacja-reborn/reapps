@@ -1127,6 +1127,7 @@
       "code_6_digits": "Kod musi mieć 6 cyfr",
       "invalid_code": "Nieprawidłowy kod weryfikacyjny. Spróbuj ponownie.",
       "failed": "Weryfikacja 2FA nie powiodła się",
+      "challenge_expired": "Sesja weryfikacji wygasła. Zaloguj się ponownie.",
       "verifying": "Weryfikacja…",
       "verify": "Zweryfikuj",
       "code_label": "Kod weryfikacyjny",

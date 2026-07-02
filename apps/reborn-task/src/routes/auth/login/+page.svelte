@@ -76,11 +76,17 @@
 			if (result.twoFactorRequired) {
 				logger.info('2FA required, redirecting...');
 				loading = false;
+				if (!result.challengeToken) {
+					error = 'Login failed';
+					return;
+				}
 				// Save password temporarily for E2E decryption after 2FA verification
 				sessionStorage.setItem('2fa_pending_password', password);
+				// The challenge token is a credential - keep it out of the URL
+				// (browser history); the 2FA page reads it from sessionStorage.
+				sessionStorage.setItem('2fa_challenge_token', result.challengeToken);
 				// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local temp variable
 				const params = new URLSearchParams({
-					userId: result.userId || '',
 					returnTo: returnTo
 				});
 				if (result.encryptedMasterKey) {

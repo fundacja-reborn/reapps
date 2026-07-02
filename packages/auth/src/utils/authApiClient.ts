@@ -59,6 +59,7 @@ export function createAuthApiClient(options: AuthApiClientOptions = {}): IAuthAp
         refreshToken: data.refreshToken,
         twoFactorRequired: data.twoFactorRequired,
         userId: data.userId,
+        challengeToken: data.challengeToken,
         message: data.message
       };
     },

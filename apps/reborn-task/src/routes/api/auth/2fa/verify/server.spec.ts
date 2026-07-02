@@ -21,13 +21,21 @@ const mockLockout = {
 
 vi.mock('$lib/server/rate-limit', () => ({ twoFactorLockout: mockLockout }));
 
+const mockChallenge = {
+	verifySingleUseToken: vi.fn(),
+	consumeSingleUseToken: vi.fn()
+};
+
 vi.mock('@reborn/auth/server', () => ({
 	generateTokens: vi.fn().mockResolvedValue({
 		accessToken: 'mock-access',
 		refreshToken: 'mock-refresh'
 	}),
 	REFRESH_TOKEN_TTL_SECONDS: 60 * 60 * 24 * 30,
-	refreshTokenExpiryDate: () => new Date(Date.now() + 60 * 60 * 24 * 30 * 1000)
+	refreshTokenExpiryDate: () => new Date(Date.now() + 60 * 60 * 24 * 30 * 1000),
+	TWO_FACTOR_CHALLENGE_PURPOSE: '2fa_challenge',
+	verifySingleUseToken: mockChallenge.verifySingleUseToken,
+	consumeSingleUseToken: mockChallenge.consumeSingleUseToken
 }));
 
 vi.mock('@reborn/utils', () => ({
@@ -53,6 +61,9 @@ vi.mock('otpauth', () => {
 // ── Helpers ──────────────────────────────────────────────────────
 
 const MOCK_USER_ID = '550e8400-e29b-41d4-a716-446655440000';
+/** Opaque challenge token from /login (audit 012 S4) - verified via the mocked verifySingleUseToken. */
+const CHALLENGE = 'mock-challenge-token';
+const CHALLENGE_JTI = 'mock-jti';
 
 const mockUser = {
 	id: MOCK_USER_ID,
@@ -111,6 +122,13 @@ beforeEach(() => {
 
 	mockLockout.isLocked.mockReturnValue(false);
 	mockLockout.retryAfter.mockReturnValue(0);
+
+	// Default: valid, unconsumed challenge token resolving to MOCK_USER_ID
+	mockChallenge.verifySingleUseToken.mockResolvedValue({
+		userId: MOCK_USER_ID,
+		jti: CHALLENGE_JTI,
+		expiresAt: Math.floor(Date.now() / 1000) + 300
+	});
 });
 
 // ── Tests ────────────────────────────────────────────────────────
@@ -128,7 +146,7 @@ describe('POST /api/auth/2fa/verify (reborn-task)', () => {
 		});
 		mockPrisma.recoveryCode.update.mockResolvedValue({});
 
-		const { status, data } = await callEndpoint({ userId: MOCK_USER_ID, code });
+		const { status, data } = await callEndpoint({ challengeToken: CHALLENGE, code });
 
 		expect(status).toBe(200);
 		expect(data.success).toBe(true);
@@ -167,7 +185,10 @@ describe('POST /api/auth/2fa/verify (reborn-task)', () => {
 		});
 		mockPrisma.recoveryCode.update.mockResolvedValue({});
 
-		const { status, data } = await callEndpoint({ userId: MOCK_USER_ID, code: 'abcde-fghij' });
+		const { status, data } = await callEndpoint({
+			challengeToken: CHALLENGE,
+			code: 'abcde-fghij'
+		});
 
 		expect(status).toBe(200);
 		expect(data.success).toBe(true);
@@ -192,7 +213,7 @@ describe('POST /api/auth/2fa/verify (reborn-task)', () => {
 		});
 		mockPrisma.recoveryCode.update.mockResolvedValue({});
 
-		const { status, data } = await callEndpoint({ userId: MOCK_USER_ID, code });
+		const { status, data } = await callEndpoint({ challengeToken: CHALLENGE, code });
 
 		expect(status).toBe(200);
 		expect(data.success).toBe(true);
@@ -202,7 +223,10 @@ describe('POST /api/auth/2fa/verify (reborn-task)', () => {
 	it('should reject invalid recovery code not found in DB', async () => {
 		mockPrisma.recoveryCode.findFirst.mockResolvedValue(null);
 
-		const { status, data } = await callEndpoint({ userId: MOCK_USER_ID, code: 'XXXXX-YYYYY' });
+		const { status, data } = await callEndpoint({
+			challengeToken: CHALLENGE,
+			code: 'XXXXX-YYYYY'
+		});
 
 		expect(status).toBe(400);
 		expect(data.success).toBe(false);
@@ -214,7 +238,10 @@ describe('POST /api/auth/2fa/verify (reborn-task)', () => {
 		// findFirst returns null because query filters is_used: false
 		mockPrisma.recoveryCode.findFirst.mockResolvedValue(null);
 
-		const { status, data } = await callEndpoint({ userId: MOCK_USER_ID, code: 'USED1-CODE2' });
+		const { status, data } = await callEndpoint({
+			challengeToken: CHALLENGE,
+			code: 'USED1-CODE2'
+		});
 
 		expect(status).toBe(400);
 		expect(data.success).toBe(false);
@@ -222,7 +249,7 @@ describe('POST /api/auth/2fa/verify (reborn-task)', () => {
 
 	// (f) Empty code → 400
 	it('should reject empty code', async () => {
-		const { status, data } = await callEndpoint({ userId: MOCK_USER_ID, code: '' });
+		const { status, data } = await callEndpoint({ challengeToken: CHALLENGE, code: '' });
 
 		expect(status).toBe(400);
 		expect(data.error).toBe('Invalid verification code');
@@ -231,7 +258,7 @@ describe('POST /api/auth/2fa/verify (reborn-task)', () => {
 	// (g) Code > 20 characters → 400
 	it('should reject code exceeding 20 characters', async () => {
 		const { status, data } = await callEndpoint({
-			userId: MOCK_USER_ID,
+			challengeToken: CHALLENGE,
 			code: 'A'.repeat(21)
 		});
 
@@ -239,12 +266,33 @@ describe('POST /api/auth/2fa/verify (reborn-task)', () => {
 		expect(data.error).toBe('Invalid verification code');
 	});
 
-	// (h) Missing userId → 400
-	it('should reject request without userId', async () => {
+	// (h) Missing challenge token → 400 (audit 012 S4: raw userId no longer accepted)
+	it('should reject request without challengeToken', async () => {
 		const { status, data } = await callEndpoint({ code: '123456' });
 
 		expect(status).toBe(400);
-		expect(data.error).toBe('Missing userId');
+		expect(data.error).toBe('Missing challenge token');
+	});
+
+	// (h2) Legacy body shape {userId, code} → 400 (contract hardening regression guard)
+	it('should reject legacy userId-based request', async () => {
+		const { status, data } = await callEndpoint({ userId: MOCK_USER_ID, code: '123456' });
+
+		expect(status).toBe(400);
+		expect(data.error).toBe('Missing challenge token');
+		expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+	});
+
+	// (h3) Invalid / expired / consumed challenge → 401, no code evaluation
+	it('should reject invalid or expired challenge token with 401', async () => {
+		mockChallenge.verifySingleUseToken.mockResolvedValue(null);
+
+		const { status, data } = await callEndpoint({ challengeToken: CHALLENGE, code: '123456' });
+
+		expect(status).toBe(401);
+		expect(data.error).toBe('Invalid or expired challenge');
+		expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+		expect(mockChallenge.consumeSingleUseToken).not.toHaveBeenCalled();
 	});
 
 	// (i) Locked user (rate limit) → 429
@@ -253,7 +301,7 @@ describe('POST /api/auth/2fa/verify (reborn-task)', () => {
 		mockLockout.retryAfter.mockReturnValue(600);
 
 		const { status, data, response } = await callEndpoint({
-			userId: MOCK_USER_ID,
+			challengeToken: CHALLENGE,
 			code: '123456'
 		});
 
@@ -264,12 +312,26 @@ describe('POST /api/auth/2fa/verify (reborn-task)', () => {
 
 	// (j) TOTP 6-digit code → 200 (sanity, no regression)
 	it('should accept valid 6-digit TOTP code', async () => {
-		const { status, data } = await callEndpoint({ userId: MOCK_USER_ID, code: '123456' });
+		const { status, data } = await callEndpoint({ challengeToken: CHALLENGE, code: '123456' });
 
 		expect(status).toBe(200);
 		expect(data.success).toBe(true);
 		expect(data.data.access_token).toBe('mock-access');
 		// refresh_token is sent as httpOnly cookie, not in JSON body
 		expect(mockLockout.reset).toHaveBeenCalledWith(MOCK_USER_ID);
+		// Challenge consumed exactly once, on success (single-use)
+		expect(mockChallenge.consumeSingleUseToken).toHaveBeenCalledWith(
+			CHALLENGE_JTI,
+			expect.any(Number)
+		);
+	});
+
+	// (j2) Failed TOTP keeps the challenge unconsumed (typo must not burn it)
+	it('should NOT consume the challenge on a failed TOTP attempt', async () => {
+		const { status } = await callEndpoint({ challengeToken: CHALLENGE, code: '654321' });
+
+		expect(status).toBe(400);
+		expect(mockChallenge.consumeSingleUseToken).not.toHaveBeenCalled();
+		expect(mockLockout.recordFailure).toHaveBeenCalledWith(MOCK_USER_ID);
 	});
 });

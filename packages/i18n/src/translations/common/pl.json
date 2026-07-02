@@ -124,6 +124,7 @@
       "totp_submit_button": "Zweryfikuj",
       "totp_verifying": "Weryfikacja...",
       "totp_error_invalid": "Nieprawidłowy kod. Spróbuj ponownie.",
+      "challenge_expired": "Sesja weryfikacji wygasła. Wprowadź hasło ponownie.",
       "use_recovery": "Użyj kodu zapasowego",
       "use_app": "Użyj kodu z aplikacji",
       "recovery_label": "Kod zapasowy",
@@ -140,6 +141,7 @@
         "code_required": "Kod 2FA jest wymagany.",
         "recovery_required": "Kod zapasowy jest wymagany.",
         "verification_failed": "Weryfikacja nie powiodła się.",
+        "challenge_expired": "Sesja weryfikacji wygasła. Zaloguj się ponownie.",
         "decrypt_failed": "Nie udało się przetworzyć sekretu 2FA. Upewnij się, że hasło jest poprawne.",
         "secret_format": "Nieprawidłowy format sekretu 2FA."
       }

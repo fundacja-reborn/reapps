@@ -4,14 +4,17 @@ import {
   verifyToken,
   generateSingleUseToken,
   verifySingleUseToken,
+  consumeSingleUseToken,
   extractTokenFromHeader,
   getTokenConfig
 } from '../utils/jwt';
+import { clearBlacklist } from '../utils/tokenBlacklist';
 import { REFRESH_TOKEN_TTL_TIMESPAN } from '../config/token-ttl';
 
 // Mock environment variable
 beforeEach(() => {
   vi.stubEnv('JWT_SECRET', 'test-secret-key-for-testing');
+  clearBlacklist();
 });
 
 describe('JWT Utils', () => {
@@ -116,6 +119,7 @@ describe('JWT Utils', () => {
       expect(result).toBeTruthy();
       expect(result?.userId).toBe(userId);
       expect(result?.jti).toBeTruthy();
+      expect(result?.expiresAt).toBeGreaterThan(Math.floor(Date.now() / 1000));
     });
 
     it('should reject token with wrong purpose', async () => {
@@ -133,6 +137,24 @@ describe('JWT Utils', () => {
       const result = await verifySingleUseToken(accessToken, 'password-reset');
 
       expect(result).toBeNull();
+    });
+
+    it('should reject a consumed token but allow retries before consumption', async () => {
+      const userId = 'user-123';
+      const purpose = '2fa_challenge';
+      const token = await generateSingleUseToken(userId, purpose, 5);
+
+      // Multiple verifications succeed while the token is unconsumed
+      // (a failed TOTP attempt must not burn the challenge)
+      const first = await verifySingleUseToken(token, purpose);
+      const second = await verifySingleUseToken(token, purpose);
+      expect(first).toBeTruthy();
+      expect(second).toBeTruthy();
+
+      consumeSingleUseToken(first!.jti, first!.expiresAt);
+
+      const afterConsume = await verifySingleUseToken(token, purpose);
+      expect(afterConsume).toBeNull();
     });
   });
 

@@ -24,7 +24,7 @@
 	import { Shield, RefreshCw, KeyRound } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 
-	let userId = $state('');
+	let challengeToken = $state('');
 	let encryptedMasterKey = $state('');
 	let masterKeySalt = $state('');
 	let returnTo = $state('/');
@@ -38,12 +38,14 @@
 	$effect(() => {
 		if (browser) {
 			const url = new URL($page.url);
-			userId = url.searchParams.get('userId') ?? '';
+			// The challenge token (proof of the password step, audit 012 S4) is a
+			// credential - it travels via sessionStorage, not the URL.
+			challengeToken = sessionStorage.getItem('2fa_challenge_token') ?? '';
 			encryptedMasterKey = url.searchParams.get('emk') ?? '';
 			masterKeySalt = url.searchParams.get('ms') ?? '';
 			returnTo = url.searchParams.get('returnTo') ?? '/';
 
-			if (!userId) {
+			if (!challengeToken) {
 				untrack(() => goto('/auth/login'));
 			}
 		}
@@ -69,19 +71,28 @@
 			const res = await fetch(`${API_BASE}/auth/2fa/verify`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
-				body: JSON.stringify({ userId, code: codeToVerify })
+				body: JSON.stringify({ challengeToken, code: codeToVerify })
 			});
 			const body = await res.json();
 
 			if (!res.ok || !body.success) {
-				error =
-					body.error === 'Invalid verification code'
-						? $t('auth.two_factor.invalid_code')
-						: (body.error ?? $t('auth.two_factor.failed'));
+				if (res.status === 401) {
+					// Challenge token expired (5-min TTL) or already used - the user
+					// must restart from the password step. The back-to-login link is
+					// right below the form.
+					sessionStorage.removeItem('2fa_challenge_token');
+					error = $t('auth.two_factor.challenge_expired');
+				} else {
+					error =
+						body.error === 'Invalid verification code'
+							? $t('auth.two_factor.invalid_code')
+							: (body.error ?? $t('auth.two_factor.failed'));
+				}
 				isLoading = false;
 				return;
 			}
 
+			sessionStorage.removeItem('2fa_challenge_token');
 			const { data } = body;
 
 			// Save credentials to localStorage (same format as reborn-task - SSO-compatible)

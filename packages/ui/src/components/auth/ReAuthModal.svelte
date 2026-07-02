@@ -37,8 +37,8 @@
     description?: string;
     /** Called with the password. Returns a ReAuthResult. */
     onSubmitPassword?: (password: string) => Promise<ReAuthResult>;
-    /** Called with a TOTP or recovery code once 2FA is required. */
-    onSubmitTotp?: (userId: string, code: string) => Promise<ReAuthResult>;
+    /** Called with the password-step challenge token and a TOTP or recovery code once 2FA is required. */
+    onSubmitTotp?: (challengeToken: string, code: string) => Promise<ReAuthResult>;
     /** Called when the dialog closes. Receives `true` if a re-auth succeeded, `false` if cancelled. */
     onClose?: (success: boolean) => void;
   }>();
@@ -50,7 +50,7 @@
   let showPassword = $state(false);
   let totpCode = $state('');
   let useRecovery = $state(false);
-  let pendingUserId = $state<string | null>(null);
+  let pendingChallenge = $state<string | null>(null);
   let loading = $state(false);
   let error = $state<string | null>(null);
   let succeeded = $state(false);
@@ -61,7 +61,7 @@
     showPassword = false;
     totpCode = '';
     useRecovery = false;
-    pendingUserId = null;
+    pendingChallenge = null;
     loading = false;
     error = null;
     succeeded = false;
@@ -92,6 +92,8 @@
         return $t('auth.session.error_auth_failed');
       case 'invalid_totp':
         return $t('auth.session.totp_error_invalid');
+      case 'challenge_expired':
+        return $t('auth.session.challenge_expired');
       case 'locked':
         return $t('auth.session.error_locked', { values: { seconds: result.retryAfter } });
       case 'two_factor_required':
@@ -123,7 +125,7 @@
       }
 
       if (result.kind === 'two_factor_required') {
-        pendingUserId = result.userId;
+        pendingChallenge = result.challengeToken;
         step = 'totp';
         totpCode = '';
         error = null;
@@ -141,7 +143,7 @@
   async function handleTotpSubmit(event: Event) {
     event.preventDefault();
     const trimmed = totpCode.trim();
-    if (!trimmed || loading || !pendingUserId) return;
+    if (!trimmed || loading || !pendingChallenge) return;
 
     if (!useRecovery && trimmed.length !== 6) {
       error = $t('auth.session.totp_error_invalid');
@@ -152,7 +154,7 @@
     error = null;
 
     try {
-      const result = (await onSubmitTotp?.(pendingUserId, trimmed)) ?? {
+      const result = (await onSubmitTotp?.(pendingChallenge, trimmed)) ?? {
         kind: 'error',
         message: $t('auth.session.error_unknown')
       };
@@ -161,6 +163,14 @@
         succeeded = true;
         open = false;
         return;
+      }
+
+      // The challenge token has a short TTL - when it expires mid-step, send
+      // the user back to the password step to mint a fresh one.
+      if (result.kind === 'challenge_expired') {
+        pendingChallenge = null;
+        step = 'password';
+        totpCode = '';
       }
 
       error = describeResult(result);

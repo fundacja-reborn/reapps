@@ -23,8 +23,8 @@
     visible?: boolean;
     /** Submit password — may return `two_factor_required` to trigger TOTP step. */
     onReAuth?: (password: string) => Promise<ReAuthResult>;
-    /** Submit TOTP / recovery code after `two_factor_required`. */
-    onVerifyTotp?: (userId: string, code: string) => Promise<ReAuthResult>;
+    /** Submit the challenge token + TOTP / recovery code after `two_factor_required`. */
+    onVerifyTotp?: (challengeToken: string, code: string) => Promise<ReAuthResult>;
   }>();
 
   let modalOpen = $state(false);

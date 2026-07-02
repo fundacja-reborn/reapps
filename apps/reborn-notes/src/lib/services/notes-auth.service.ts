@@ -29,7 +29,8 @@ export interface LoginResult {
   success: boolean;
   message?: string;
   twoFactorRequired?: boolean;
-  userId?: string;
+  /** Short-lived signed token proving the password step passed - required by /2fa/verify. */
+  challengeToken?: string;
   encryptedMasterKey?: string;
   masterKeySalt?: string;
 }
@@ -40,7 +41,7 @@ interface ReAuthResponseBody {
   error?: string;
   data?: {
     twoFactorRequired?: boolean;
-    userId?: string;
+    challengeToken?: string;
     access_token?: string;
     /** Present only for native clients (sent the native header). */
     refresh_token?: string;
@@ -75,7 +76,7 @@ export async function loginInNotes(username: string, password: string): Promise<
       return {
         success: false,
         twoFactorRequired: true,
-        userId: data.userId,
+        challengeToken: data.challengeToken,
         encryptedMasterKey: data.encryptedMasterKey,
         masterKeySalt: data.masterKeySalt
       };
@@ -266,8 +267,9 @@ export async function reAuthenticate(password: string): Promise<ReAuthResult> {
   const { data } = body;
 
   if (data?.twoFactorRequired) {
-    if (!data.userId) return { kind: 'error', message: 'Missing userId in 2FA response' };
-    return { kind: 'two_factor_required', userId: data.userId };
+    if (!data.challengeToken)
+      return { kind: 'error', message: 'Missing challenge token in 2FA response' };
+    return { kind: 'two_factor_required', challengeToken: data.challengeToken };
   }
 
   if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
@@ -294,13 +296,16 @@ export async function reAuthenticate(password: string): Promise<ReAuthResult> {
  * Re-authenticate after session expiry - TOTP step (invoked from ReAuthModal
  * after {@link reAuthenticate} returned `two_factor_required`).
  */
-export async function verifyTotpForReauth(userId: string, code: string): Promise<ReAuthResult> {
+export async function verifyTotpForReauth(
+  challengeToken: string,
+  code: string
+): Promise<ReAuthResult> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE}/auth/2fa/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
-      body: JSON.stringify({ userId, code })
+      body: JSON.stringify({ challengeToken, code })
     });
   } catch (err) {
     return { kind: 'error', message: err instanceof Error ? err.message : 'Network error' };
@@ -311,6 +316,10 @@ export async function verifyTotpForReauth(userId: string, code: string): Promise
     const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 0;
     return { kind: 'locked', retryAfter: Number.isFinite(retryAfter) ? retryAfter : 0 };
   }
+
+  // Challenge token expired or already consumed - the modal returns to the
+  // password step so a fresh one can be minted.
+  if (res.status === 401) return { kind: 'challenge_expired' };
 
   let body: ReAuthResponseBody;
   try {

@@ -67,9 +67,17 @@
     }
 
     if (result.twoFactorRequired) {
+      if (!result.challengeToken) {
+        error = $t('auth.login.errors.server_error');
+        loading = false;
+        return;
+      }
       sessionStorage.setItem('2fa_pending_password', password);
+      // The challenge token is a credential - keep it out of the URL
+      // (browser history); the 2FA page reads it from sessionStorage.
+      sessionStorage.setItem('2fa_challenge_token', result.challengeToken);
       // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local temp variable
-      const params = new URLSearchParams({ userId: result.userId ?? '', returnTo });
+      const params = new URLSearchParams({ returnTo });
       if (result.encryptedMasterKey) params.set('emk', result.encryptedMasterKey);
       if (result.masterKeySalt) params.set('ms', result.masterKeySalt);
       await goto(`/auth/2fa?${params.toString()}`);

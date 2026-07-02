@@ -63,6 +63,12 @@ export interface TokenPair {
   refreshToken: string;
 }
 
+// 2FA challenge token (audit 012 S4): issued by /login after the password step
+// when 2FA is enabled, required by /2fa/verify instead of a raw userId - so the
+// second factor cannot be attempted without first proving password knowledge.
+export const TWO_FACTOR_CHALLENGE_PURPOSE = '2fa_challenge';
+export const TWO_FACTOR_CHALLENGE_TTL_MINUTES = 5;
+
 export interface TokenPayload extends JWTPayload {
   userId: string;
   tokenType: 'access' | 'refresh';
@@ -236,12 +242,14 @@ export async function generateSingleUseToken(
  * Verify a single-use token
  * @param token - Token to verify
  * @param expectedPurpose - Expected token purpose
- * @returns Promise<{userId: string, jti: string} | null> - User ID and token ID if valid
+ * @returns Promise<{userId, jti, expiresAt} | null> - Token identity if valid
+ *          and not yet consumed. Pass `jti` + `expiresAt` to
+ *          {@link consumeSingleUseToken} once the token has served its purpose.
  */
 export async function verifySingleUseToken(
   token: string,
   expectedPurpose: string
-): Promise<{ userId: string; jti: string } | null> {
+): Promise<{ userId: string; jti: string; expiresAt: number } | null> {
   try {
     const secret = getJwtSecret();
     const verifyOptions = { issuer: JWT_CONFIG.issuer };
@@ -262,20 +270,44 @@ export async function verifySingleUseToken(
     }
 
     // Ensure required fields are present
-    if (!payload.userId || typeof payload.userId !== 'string' || !payload.jti) {
+    if (
+      !payload.userId ||
+      typeof payload.userId !== 'string' ||
+      !payload.jti ||
+      typeof payload.exp !== 'number'
+    ) {
       logger.warn('Single-use token missing required fields');
+      return null;
+    }
+
+    // Reject tokens already consumed via consumeSingleUseToken
+    if (isTokenBlacklisted(payload.jti)) {
+      logger.debug('Single-use token already consumed:', { jti: payload.jti });
       return null;
     }
 
     logger.debug('Single-use token verified successfully');
     return {
       userId: payload.userId as string,
-      jti: payload.jti
+      jti: payload.jti,
+      expiresAt: payload.exp
     };
   } catch (error) {
     logger.debug('Single-use token verification failed:', error);
     return null;
   }
+}
+
+/**
+ * Consume a single-use token: blacklist its jti until the token's natural
+ * expiry, so every subsequent verifySingleUseToken() for it returns null.
+ * Call only AFTER the action the token authorizes has succeeded - a failed
+ * attempt keeps the token valid for a retry within its TTL.
+ * @param jti - Token ID from verifySingleUseToken
+ * @param expiresAt - Token expiry (seconds since epoch) from verifySingleUseToken
+ */
+export function consumeSingleUseToken(jti: string, expiresAt: number): void {
+  blacklistToken(jti, expiresAt);
 }
 
 /**

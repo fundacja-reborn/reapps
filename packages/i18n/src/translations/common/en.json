@@ -124,6 +124,7 @@
       "totp_submit_button": "Verify",
       "totp_verifying": "Verifying...",
       "totp_error_invalid": "Invalid code. Please try again.",
+      "challenge_expired": "Verification session expired. Enter your password again.",
       "use_recovery": "Use a recovery code",
       "use_app": "Use authenticator app",
       "recovery_label": "Recovery code",
@@ -140,6 +141,7 @@
         "code_required": "2FA code is required.",
         "recovery_required": "Recovery code is required.",
         "verification_failed": "Verification failed.",
+        "challenge_expired": "Your verification session has expired. Please sign in again.",
         "decrypt_failed": "Failed to process 2FA secret. Please ensure your password is correct.",
         "secret_format": "Invalid 2FA secret format."
       }

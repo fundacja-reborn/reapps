@@ -1,7 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createLogger } from '@reborn/utils';
-import { generateTokens, REFRESH_TOKEN_TTL_SECONDS, refreshTokenExpiryDate } from '@reborn/auth/server';
+import {
+  consumeSingleUseToken,
+  generateTokens,
+  REFRESH_TOKEN_TTL_SECONDS,
+  refreshTokenExpiryDate,
+  TWO_FACTOR_CHALLENGE_PURPOSE,
+  verifySingleUseToken
+} from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 import { v4 as uuidv4 } from 'uuid';
 import * as OTPAuth from 'otpauth';
@@ -18,14 +25,25 @@ const ISSUER = 'Reborn Apps';
 export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
     const body = await request.json();
-    const { userId, code } = body ?? {};
+    const { challengeToken, code } = body ?? {};
 
-    if (!userId || typeof userId !== 'string' || userId.length > 36) {
-      return json({ success: false, error: 'Missing userId' }, { status: 400 });
+    if (!challengeToken || typeof challengeToken !== 'string' || challengeToken.length > 2048) {
+      return json({ success: false, error: 'Missing challenge token' }, { status: 400 });
     }
     if (!code || typeof code !== 'string' || code.length > 20) {
       return json({ success: false, error: 'Invalid verification code' }, { status: 400 });
     }
+
+    // The challenge token (issued by /login after a successful password step)
+    // is the only accepted proof of identity here - a bare userId is not,
+    // so the second factor cannot be attempted without the password
+    // (audit 012 S4). Consumed only after a SUCCESSFUL code check below:
+    // a typo in the TOTP must not force the user back to the password step.
+    const challenge = await verifySingleUseToken(challengeToken, TWO_FACTOR_CHALLENGE_PURPOSE);
+    if (!challenge) {
+      return json({ success: false, error: 'Invalid or expired challenge' }, { status: 401 });
+    }
+    const userId = challenge.userId;
 
     // Per-userId lockout check
     if (twoFactorLockout.isLocked(userId)) {
@@ -82,7 +100,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       }
     }
 
-    // 2FA verified, clear lockout
+    // 2FA verified - consume the challenge (single-use) and clear lockout
+    consumeSingleUseToken(challenge.jti, challenge.expiresAt);
     twoFactorLockout.reset(userId);
 
     // Generate tokens
