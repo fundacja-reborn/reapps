@@ -15,7 +15,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		if (token) {
 			try {
-				const tokenData = await verifyToken(token);
+				const tokenData = await verifyToken(token, 'access');
 				userId = tokenData?.userId;
 			} catch {
 				// Token might be expired but we still want to clear data

@@ -76,6 +76,14 @@
     } catch (err: unknown) {
       logger.error('Failed to wipe local data on passcode reset:', err);
     }
+    // Auto-backup config + recovery phrase are keyed by the local user id -
+    // wipe them while the marker below still resolves that id.
+    try {
+      const { clearAutoBackupState } = await import('$lib/services/auto-backup');
+      await clearAutoBackupState();
+    } catch (err: unknown) {
+      logger.error('Failed to clear auto-backup state on passcode reset:', err);
+    }
     localStorage.removeItem(LOCAL_MODE_KEY);
     localStorage.removeItem(LOCAL_USER_ID_KEY);
     // Hard redirect guarantees all in-memory state is dropped.

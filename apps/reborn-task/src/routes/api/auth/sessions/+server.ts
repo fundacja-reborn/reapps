@@ -12,7 +12,7 @@ async function getTokenInfo(
 	const token = authHeader?.replace('Bearer ', '');
 	if (!token) return null;
 	try {
-		const data = await verifyToken(token);
+		const data = await verifyToken(token, 'access');
 		if (!data?.userId) return null;
 		return { userId: data.userId, sessionId: data.sessionId };
 	} catch {

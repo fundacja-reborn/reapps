@@ -11,7 +11,7 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
 		const token = request.headers.get('authorization')?.replace('Bearer ', '');
 		if (!token) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
-		const tokenData = await verifyToken(token);
+		const tokenData = await verifyToken(token, 'access');
 		if (!tokenData?.userId) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
 		const sessionId = params.id;

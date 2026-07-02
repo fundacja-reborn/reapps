@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const tokenData = await verifyToken(token);
+		const tokenData = await verifyToken(token, 'access');
 		if (!tokenData?.userId) {
 			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 		}
@@ -56,7 +56,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const tokenData = await verifyToken(token);
+		const tokenData = await verifyToken(token, 'access');
 		if (!tokenData?.userId) {
 			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 		}
@@ -140,7 +140,7 @@ export const PUT: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const tokenData = await verifyToken(token);
+		const tokenData = await verifyToken(token, 'access');
 		if (!tokenData?.userId) {
 			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 		}
@@ -213,7 +213,7 @@ export const DELETE: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const tokenData = await verifyToken(token);
+		const tokenData = await verifyToken(token, 'access');
 		if (!tokenData?.userId) {
 			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 		}

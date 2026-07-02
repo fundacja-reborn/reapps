@@ -412,6 +412,19 @@ function createAuthStore() {
     // gate armed would strand the next account on a biometric lock screen with
     // no key to unlock. Re-enable is a one-tap opt-in after the next login.
     cryptoManager.setAppLockEnabled(false);
+
+    // Wipe this user's auto-backup config + recovery phrase BEFORE the session
+    // keys are removed (the entries are keyed by the current user id). Left in
+    // place, the next account could keep silently backing up into a folder the
+    // previous owner controls, encrypted with a phrase the previous owner
+    // knows. Never throws (best-effort inside), but the import can - guard it.
+    try {
+      const { clearAutoBackupState } = await import('$lib/services/auto-backup');
+      await clearAutoBackupState();
+    } catch (err) {
+      logger.error('Failed to clear auto-backup state on logout:', err);
+    }
+
     localStorage.removeItem(CREDENTIALS_KEY);
     localStorage.removeItem(ACCESS_TOKEN_KEY);
 

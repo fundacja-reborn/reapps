@@ -19,7 +19,7 @@ export const DELETE: RequestHandler = async ({ request, cookies }) => {
 
 		let userId: string;
 		try {
-			const tokenData = await verifyToken(token);
+			const tokenData = await verifyToken(token, 'access');
 			if (!tokenData?.userId) {
 				return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 			}

@@ -108,7 +108,9 @@ export function createAuthMiddleware(options: AuthMiddlewareOptions) {
         return;
       }
 
-      // Verify token
+      // Verify token via the injected callback. Callers must supply a verifier
+      // that accepts ACCESS tokens only (refresh JWTs must not authenticate
+      // requests) - e.g. `(t) => verifyToken(t, 'access')` from utils/jwt.
       const tokenData = await verifyToken(token);
 
       if (!tokenData) {
