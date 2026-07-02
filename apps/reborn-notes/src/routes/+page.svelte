@@ -1034,6 +1034,40 @@
     pendingNewFolderDraft.set({ parentId: activeFolderId });
   }
 
+  // ── Folder drag: drop-to-root zone (#401) ────────────────────────
+  // The whole sidebar folders panel (header + space around the tree) accepts a
+  // dragged FOLDER and reparents it to the top level. Tree rows stopPropagation
+  // on drop, so this only fires for drops outside them; dragover still bubbles
+  // from rows - the closest() check keeps the highlight (and preventDefault)
+  // off while hovering an actual row, where dropping means "move INTO".
+  let rootDropActive = $state(false);
+
+  function rootZoneDragOver(e: DragEvent) {
+    if (!e.dataTransfer?.types.includes('text/folder-id')) return;
+    if ((e.target as Element).closest('[data-folder-id]')) {
+      rootDropActive = false;
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    rootDropActive = true;
+  }
+
+  function rootZoneDragLeave() {
+    rootDropActive = false;
+  }
+
+  async function rootZoneDrop(e: DragEvent) {
+    rootDropActive = false;
+    if (!e.dataTransfer?.types.includes('text/folder-id')) return;
+    e.preventDefault();
+    const draggedId = e.dataTransfer.getData('text/folder-id');
+    if (!draggedId) return;
+    // Already at the top level - skip the pointless order bump + sync push.
+    if ($foldersStore.some((f) => f.id === draggedId)) return;
+    await foldersStore.move(draggedId, null);
+  }
+
   async function handleSectionClick(section: Section) {
     // Fires on every IconNav click. Resets sub-selection when re-clicking the
     // already-active section so users can always get back to the section root.
@@ -2540,7 +2574,17 @@
 
         <SidebarContent class="p-0 gap-0">
           {#if activeSection === 'folders'}
-            <div class="flex flex-col overflow-hidden h-full">
+            <!-- Drop target only - keyboard/AT users move folders via the row
+                 menu's "Move to…" picker instead, so no role is warranted. -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="flex flex-col overflow-hidden h-full rounded-md {rootDropActive
+                ? 'ring-1 ring-inset ring-primary bg-accent/20'
+                : ''}"
+              ondragover={rootZoneDragOver}
+              ondragleave={rootZoneDragLeave}
+              ondrop={rootZoneDrop}
+            >
               <div class="flex h-10 shrink-0 items-center gap-1 px-5">
                 <span class="min-w-0 flex-1 truncate text-sm font-normal">{$t('nav.folders')}</span>
                 <button

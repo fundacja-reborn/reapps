@@ -1,13 +1,23 @@
 <script module>
   import { writable } from 'svelte/store';
+  import type { FolderWithChildren } from '@reborn/types';
   // Shared across all FolderTree instances (including recursive children).
   // Set to a folder ID to immediately enter rename mode for that folder.
   export const pendingRenameId = writable<string | null>(null);
+  // Folder currently being moved via the "Move to…" picker. Module-level so a row
+  // action at any depth can request it while only the ROOT instance hosts the
+  // single picker sheet.
+  export const movingFolder = writable<FolderWithChildren | null>(null);
+  // While a folder row is dragged: ids of that folder and its whole subtree.
+  // dataTransfer payloads are unreadable during dragover, so rows consult this
+  // store instead to refuse drops that would move a folder into itself.
+  export const dragBlockedIds = writable<Set<string> | null>(null);
 </script>
 
 <script lang="ts">
   import {
     ChevronRight,
+    CornerUpRight,
     Folder,
     FolderOpen,
     FolderSync,
@@ -40,18 +50,22 @@
   } from '@reborn/ui';
   import type { RowAction } from '$lib/utils/row-action';
   import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
-  import type { FolderWithChildren, SavedSearchDecrypted } from '@reborn/types';
+  // FolderWithChildren comes from the module script import above (module and
+  // instance scripts compile into one module - re-importing here would clash).
+  import type { SavedSearchDecrypted } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
   import { notesStore } from '$lib/stores/notes.store';
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
+  import { getDescendantFolderIds } from '$lib/utils/folder-helpers';
   import type {
     DeleteFolderMode,
     DeleteFolderProgressCallback
   } from '$lib/services/folder.service';
   import DeleteFolderDialog from './DeleteFolderDialog.svelte';
   import ImportMarkdownToFolderDialog from '$lib/components/import/ImportMarkdownToFolderDialog.svelte';
+  import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
   import SavedSearchRow from '$lib/components/notes/SavedSearchRow.svelte';
   import FolderTree from './FolderTree.svelte';
 
@@ -257,6 +271,36 @@
     folderToDelete = null;
   }
 
+  // ── Move folder ("Move to…" picker) ─────────────────────────────
+  // Any instance can request a move; the picker itself is hosted once, by the
+  // root instance (see markup below), listening on the module-level store.
+  function handleRequestMove(folder: FolderWithChildren, e?: Event) {
+    e?.stopPropagation();
+    menuOpenId = null;
+    folderActionSheetOpen = false;
+    movingFolder.set(folder);
+  }
+
+  // A backdrop dismiss closes the sheet via bind:open without the picker's
+  // onclose, which can leave a stale request in the module store - clear it on
+  // (re)mount so the sheet doesn't resurrect after switching sections/views.
+  // svelte-ignore state_referenced_locally (depth is fixed per instance)
+  if (depth === 0) movingFolder.set(null);
+
+  let moveSheetOpen = $state(false);
+  $effect(() => {
+    if (depth === 0 && $movingFolder) moveSheetOpen = true;
+  });
+
+  async function handleMoveTo(folderId: string | null) {
+    const folder = $movingFolder;
+    if (!folder) return;
+    await foldersStore.move(folder.id, folderId);
+    // Reveal the new location, mirroring the drag&drop path.
+    if (folderId) expandedIds.add(folderId);
+    movingFolder.set(null);
+  }
+
   // ── Import .md files / folder tree to folder ────────────────────
   let importDialogOpen = $state(false);
   let importMode = $state<'files' | 'folder'>('files');
@@ -343,6 +387,12 @@
         run: (e) => startRename(folder, e)
       },
       {
+        key: 'move',
+        icon: CornerUpRight,
+        label: $t('folders.move_to'),
+        run: (e) => handleRequestMove(folder, e)
+      },
+      {
         key: 'import-md',
         icon: Upload,
         label: $t('folders.import_markdown.action'),
@@ -369,16 +419,31 @@
   // ── Drag & Drop ─────────────────────────────────────────────────
   // Folder rows are sorted alphabetically (see folder.service.getFolderTree),
   // so sibling reorder is meaningless - drop on a row only ever means
-  // "move dragged folder/note INTO this folder".
+  // "move dragged folder/note INTO this folder". Moving a folder to the TOP
+  // level goes through the panel's root drop zone (+page.svelte) or the
+  // "Move to…" picker instead.
   let dragOverId = $state<string | null>(null);
 
   function onDragStart(folder: FolderWithChildren, e: DragEvent) {
     e.dataTransfer!.effectAllowed = 'move';
     e.dataTransfer!.setData('text/plain', folder.id);
     e.dataTransfer!.setData('text/folder-id', folder.id);
+    // The dragged node lives in THIS instance, so its subtree is known here:
+    // publish it for all instances to refuse cycle-creating drops.
+    dragBlockedIds.set(new Set(getDescendantFolderIds([folder], folder.id)));
+  }
+
+  function onDragEnd() {
+    dragBlockedIds.set(null);
   }
 
   function onDragOver(folder: FolderWithChildren, e: DragEvent) {
+    // No preventDefault for the dragged folder's own subtree - the browser
+    // keeps the no-drop cursor and never fires drop there.
+    if ($dragBlockedIds?.has(folder.id)) {
+      dragOverId = null;
+      return;
+    }
     e.preventDefault();
     e.dataTransfer!.dropEffect = 'move';
     dragOverId = folder.id;
@@ -390,28 +455,29 @@
 
   async function onDrop(target: FolderWithChildren, e: DragEvent) {
     e.preventDefault();
-    e.stopPropagation(); // prevent bubbling to AppSidebar root handler
+    e.stopPropagation(); // prevent bubbling to the panel's root drop zone
 
-    // Handle note drop - move note into this folder
-    const noteId = e.dataTransfer!.getData('text/note-id');
-    if (noteId) {
-      await notesStore.move(noteId, target.id);
+    try {
+      // Handle note drop - move note into this folder
+      const noteId = e.dataTransfer!.getData('text/note-id');
+      if (noteId) {
+        await notesStore.move(noteId, target.id);
+        return;
+      }
+
+      const draggedId =
+        e.dataTransfer!.getData('text/folder-id') || e.dataTransfer!.getData('text/plain');
+      if (!draggedId || draggedId === target.id) return;
+      // Cycle guard (dragover already refuses these; keep drop safe too).
+      if ($dragBlockedIds?.has(target.id)) return;
+
+      // Move dragged folder into target
+      await foldersStore.move(draggedId, target.id);
+      expandedIds.add(target.id);
+    } finally {
       dragOverId = null;
-      return;
+      dragBlockedIds.set(null);
     }
-
-    const draggedId =
-      e.dataTransfer!.getData('text/folder-id') || e.dataTransfer!.getData('text/plain');
-    if (!draggedId || draggedId === target.id) {
-      dragOverId = null;
-      return;
-    }
-
-    // Move dragged folder into target
-    await foldersStore.move(draggedId, target.id);
-    expandedIds.add(target.id);
-
-    dragOverId = null;
   }
 </script>
 
@@ -481,6 +547,7 @@
               data-folder-id={folder.id}
               draggable="true"
               ondragstart={(e) => onDragStart(folder, e)}
+              ondragend={onDragEnd}
               ondragover={(e) => onDragOver(folder, e)}
               ondragleave={onDragLeave}
               ondrop={(e) => onDrop(folder, e)}
@@ -685,6 +752,14 @@
       <Button
         variant="ghost"
         class="w-full justify-start"
+        onclick={() => activeMenuFolder && handleRequestMove(activeMenuFolder)}
+      >
+        <CornerUpRight class="mr-2 h-4 w-4" />
+        {$t('folders.move_to')}
+      </Button>
+      <Button
+        variant="ghost"
+        class="w-full justify-start"
         onclick={() => activeMenuFolder && handleImportHere(activeMenuFolder)}
       >
         <Upload class="mr-2 h-4 w-4" />
@@ -716,6 +791,27 @@
   folderName={folderToDelete?.name ?? ''}
   onConfirm={confirmDeleteFolder}
 />
+
+<!-- "Move to…" picker - one instance for the whole tree, hosted at the root.
+     Sheet variant on all breakpoints: recursive tree rows inside a scroll
+     container are no anchor for the desktop popup (precedent: saved-search
+     park + bulk move). -->
+{#if depth === 0}
+  <MoveToFolderMenu
+    selection={$movingFolder
+      ? {
+          kind: 'single',
+          id: $movingFolder.id,
+          currentFolderId: $movingFolder.parent_id ?? null
+        }
+      : null}
+    bind:open={moveSheetOpen}
+    forceSheet
+    mode="move-folder"
+    onmove={(folderId) => handleMoveTo(folderId)}
+    onclose={() => movingFolder.set(null)}
+  />
+{/if}
 
 <!-- Hidden file inputs for "Import .md here" / "Import folder here" - triggered from the menu -->
 <input
