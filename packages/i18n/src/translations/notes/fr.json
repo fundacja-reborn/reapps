@@ -993,6 +993,7 @@
       "import_json": "Importer JSON",
       "encrypted_prompt": "{name} est chiffré. Saisissez le mot de passe utilisé lors de l'exportation :",
       "import_portable_additive_note": "Cela ajoute une nouvelle copie à votre compte. Réimporter la même sauvegarde crée des doublons au lieu de mettre à jour un import précédent.",
+      "import_cross_account_error": "Cette sauvegarde chiffrée a été créée sur un autre compte et ne peut donc pas être lue ici. Pour transférer des notes entre comptes, utilisez l'option « Sauvegarde chiffrée portable » (protégée par mot de passe).",
       "backup_password": "Mot de passe de la sauvegarde",
       "decrypting": "Déchiffrement…",
       "decrypt_import": "Déchiffrer et importer",

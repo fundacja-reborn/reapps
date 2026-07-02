@@ -55,6 +55,24 @@ describe('SessionManager', () => {
     expect(session.isLoading).toBe(false);
   });
 
+  it('drops a stale isLocalOnly flag when authenticating (login from local-only mode)', () => {
+    // Regression (audit 012 S5): setSession() merges, so a login that replaced a
+    // local-only session used to keep isLocalOnly=true and raw session.isLocalOnly
+    // readers (nav menus, guards) still rendered local mode after a real login.
+    const user: AuthUser = {
+      id: '123',
+      username: 'testuser',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z'
+    };
+
+    sessionManager.setSession({ isLocalOnly: true, isAuthenticated: false });
+    sessionManager.setAuthenticated(user, true);
+
+    expect(sessionManager.getCurrentSession().isLocalOnly).toBe(false);
+    expect(sessionManager.getCurrentSession().isAuthenticated).toBe(true);
+  });
+
   it('should clear session', () => {
     const user: AuthUser = {
       id: '123',

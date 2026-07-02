@@ -993,6 +993,7 @@
       "import_json": "JSON importieren",
       "encrypted_prompt": "{name} ist verschlüsselt. Geben Sie das beim Export verwendete Passwort ein:",
       "import_portable_additive_note": "Dadurch wird eine neue Kopie zu Ihrem Konto hinzugefügt. Wird dieselbe Sicherung erneut importiert, entstehen Duplikate, statt einen früheren Import zu aktualisieren.",
+      "import_cross_account_error": "Diese verschlüsselte Sicherung wurde in einem anderen Konto erstellt und kann hier nicht gelesen werden. Um Notizen zwischen Konten zu übertragen, verwenden Sie die Option „Portable verschlüsselte Sicherung“ (passwortgeschützt).",
       "backup_password": "Sicherungspasswort",
       "decrypting": "Entschlüsseln…",
       "decrypt_import": "Entschlüsseln & importieren",

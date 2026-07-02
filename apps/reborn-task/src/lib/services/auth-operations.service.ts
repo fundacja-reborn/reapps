@@ -144,6 +144,26 @@ export class AuthOperationsService {
 			// Database is now initialized in @reborn/storage package
 			logger.info('Using @reborn/storage for data management');
 
+			// A real account session owns this device now: drop the local-only
+			// markers and flip the sync gate BEFORE the initialSync() kick below.
+			// Both flows (password login and the 2FA second step) funnel through
+			// completeLogin -> onStorageInit('login'), so this is the single choke
+			// point. Without it the login left local mode half-converted: every
+			// sync path gates on `localOnly` (still true), so the account's first
+			// pull silently no-oped until a hard reload, and the stale markers
+			// resurrected a ghost local-only session (no key, no data) at the next
+			// logged-out boot - in BOTH apps, the markers are origin-shared. Port
+			// of the Notes fix from #314 (audit 012 S5).
+			let wasLocalOnly = false;
+			if (context === 'login') {
+				const { clearLocalModeMarkers, readLocalModeFromStorage, localOnly } = await import(
+					'$lib/stores/local-mode.store'
+				);
+				wasLocalOnly = readLocalModeFromStorage().active;
+				clearLocalModeMarkers();
+				localOnly.set(false);
+			}
+
 			// Clear any previous user's data from IndexedDB ONLY on login — prevents
 			// ghost tasks when switching users or after account deletion + re-register.
 			// On 'restore' (same user, master key loaded from IndexedDB on app start)
@@ -231,6 +251,22 @@ export class AuthOperationsService {
 							const { listOperationsService } = await import('./list-operations.service');
 							await listOperationsService.ensureDefaultList(userId);
 							await taskListStore.loadLists();
+						}
+						// Login replaced a local-only session within the same SPA session:
+						// the decrypted in-memory stores still hold the LOCAL data snapshot.
+						// The +layout unlock effect that refreshes them after a normal login
+						// never re-fires here (the master key stayed in memory, hasE2E never
+						// toggled), so refresh them now that the account pull has landed.
+						// Mirrors the refreshAfterReauth() store-refresh block.
+						if (wasLocalOnly) {
+							const { refreshDecryptedLists } = await import('$lib/stores/decrypted-lists.store');
+							const { refreshDecryptedSubtasks } = await import(
+								'$lib/stores/decrypted-subtasks.store'
+							);
+							await Promise.all([refreshDecryptedLists(), refreshDecryptedSubtasks()]);
+							await taskTitleIndex.rebuild();
+							const { taskCounts } = await import('$lib/stores/task-counts.store');
+							taskCounts.refresh();
 						}
 					})
 					.catch((syncError) => {

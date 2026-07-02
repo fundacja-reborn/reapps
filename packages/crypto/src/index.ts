@@ -45,6 +45,9 @@ export {
   KNOWN_SENSITIVE_FIELDS
 } from './encryption-validation';
 
+// Cross-key readability probe (wrong-account backup import / stale IDB rows)
+export { isEncryptedDataReadable } from './decrypt-probe';
+
 // Password-based envelope encryption (PBKDF2 + AES-GCM) for portable backups
 export {
   encryptWithPassword,

@@ -64,7 +64,7 @@ describe('reborn-task data-import — cross-account encrypted guard (regression)
 		const enc = src.slice(encStart, encEnd);
 
 		// The guard must run BEFORE any save loop (the first `for` in the method).
-		const guardIdx = enc.indexOf('isEncryptedBackupReadable');
+		const guardIdx = enc.indexOf('isEncryptedDataReadable');
 		const firstLoopIdx = enc.indexOf('for (const list of');
 		expect(guardIdx).toBeGreaterThan(-1);
 		expect(firstLoopIdx).toBeGreaterThan(guardIdx);
