@@ -1,11 +1,5 @@
 import { taskStore, listStore, subtaskStore, addOperation } from '@reborn/storage';
-import {
-	cryptoManager,
-	deriveKeyFromPassword,
-	decryptData,
-	base64ToArrayBuffer,
-	isEncryptedDataReadable
-} from '@reborn/crypto';
+import { cryptoManager, decryptWithPasswordOrPhrase, isEncryptedDataReadable } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import { schemas } from '@reborn/types';
 import { get } from 'svelte/store';
@@ -222,13 +216,16 @@ export class DataImportService {
 		envelope: PortableEncryptedExport,
 		password: string
 	): Promise<unknown> {
-		const salt = base64ToArrayBuffer(envelope.salt);
-		const iv = base64ToArrayBuffer(envelope.iv);
-		const ciphertext = base64ToArrayBuffer(envelope.data);
-		const key = await deriveKeyFromPassword(password, salt);
+		// Phrase-tolerant decrypt: when the typed secret parses as a recovery
+		// phrase, the helper retries with its normalized form after the raw input
+		// fails - a phrase re-typed from paper with numbering/capitals must not
+		// read as "wrong password" (audit 012 N4; mirrors the notes importer).
 		let decrypted: string;
 		try {
-			decrypted = (await decryptData(ciphertext, key, iv, 'string')) as string;
+			decrypted = await decryptWithPasswordOrPhrase(
+				{ salt: envelope.salt, iv: envelope.iv, data: envelope.data },
+				password
+			);
 		} catch {
 			throw new Error('Nieprawidłowe hasło lub uszkodzony plik backupu.');
 		}

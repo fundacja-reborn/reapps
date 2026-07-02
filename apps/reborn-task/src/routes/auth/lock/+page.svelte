@@ -19,7 +19,7 @@
 	} from '@reborn/ui';
 	import { Eye, EyeOff, Lock } from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
-	import { cryptoManager } from '@reborn/crypto';
+	import { cryptoManager, LocalPasscodeThrottledError } from '@reborn/crypto';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { createLogger } from '@reborn/utils';
 
@@ -33,6 +33,32 @@
 	let resetting = $state(false);
 	let isRedirecting = false;
 
+	// Failure-throttle countdown (audit 012 N6): after repeated wrong passcodes
+	// the crypto layer refuses attempts for a growing window - surface it as a
+	// ticking "try again in m:ss" instead of a misleading "wrong passcode".
+	let retryDelayMs = $state(0);
+	let retryTimer: ReturnType<typeof setInterval> | null = null;
+
+	const retryTimeLabel = $derived.by(() => {
+		const total = Math.ceil(retryDelayMs / 1000);
+		return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+	});
+
+	function syncRetryDelay() {
+		retryDelayMs = cryptoManager.getLocalPasscodeRetryDelayMs();
+		if (retryDelayMs <= 0 && retryTimer) {
+			clearInterval(retryTimer);
+			retryTimer = null;
+		}
+	}
+
+	function watchRetryDelay() {
+		syncRetryDelay();
+		if (retryDelayMs > 0 && !retryTimer) {
+			retryTimer = setInterval(syncRetryDelay, 500);
+		}
+	}
+
 	const returnTo = $derived.by(() => $page.url.searchParams.get('returnTo') || '/');
 
 	// Nothing to unlock (no passcode set) or the key is already in memory → leave.
@@ -41,11 +67,16 @@
 			isRedirecting = true;
 			goto(returnTo);
 		}
+		// A reload inside an open throttle window resumes the countdown.
+		watchRetryDelay();
+		return () => {
+			if (retryTimer) clearInterval(retryTimer);
+		};
 	});
 
 	async function handleUnlock(event: Event) {
 		event.preventDefault();
-		if (!passcode || loading) return;
+		if (!passcode || loading || retryDelayMs > 0) return;
 		loading = true;
 		error = null;
 		try {
@@ -57,10 +88,15 @@
 			} else {
 				error = $t('local_mode.passcode.wrong');
 				passcode = '';
+				watchRetryDelay();
 			}
 		} catch (err: unknown) {
-			logger.error('Passcode unlock failed:', err);
-			error = $t('local_mode.passcode.wrong');
+			if (err instanceof LocalPasscodeThrottledError) {
+				watchRetryDelay();
+			} else {
+				logger.error('Passcode unlock failed:', err);
+				error = $t('local_mode.passcode.wrong');
+			}
 		} finally {
 			loading = false;
 		}
@@ -112,7 +148,13 @@
 		</div>
 
 		<form onsubmit={handleUnlock} class="space-y-4">
-			{#if error}
+			{#if retryDelayMs > 0}
+				<Alert variant="destructive">
+					<AlertDescription>
+						{$t('local_mode.passcode.throttled', { values: { time: retryTimeLabel } })}
+					</AlertDescription>
+				</Alert>
+			{:else if error}
 				<Alert variant="destructive">
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
@@ -140,7 +182,7 @@
 				</div>
 			</div>
 
-			<Button type="submit" disabled={loading || !passcode} class="w-full">
+			<Button type="submit" disabled={loading || !passcode || retryDelayMs > 0} class="w-full">
 				{loading
 					? $t('local_mode.passcode.unlocking')
 					: $t('local_mode.passcode.unlock_cta')}

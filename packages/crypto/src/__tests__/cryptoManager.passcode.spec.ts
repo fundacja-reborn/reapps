@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CryptoManager } from '../cryptoManager';
+import { CryptoManager, type MasterKeyVault } from '../cryptoManager';
+import { LocalPasscodeThrottledError, LOCAL_PASSCODE_FREE_ATTEMPTS } from '../local-passcode';
 
 /**
  * Local-mode passcode: optional at-rest wrap of the local master key.
@@ -67,6 +68,13 @@ describe('CryptoManager - local passcode', () => {
       const m = freshManager();
       await m.setMasterKey(await m.generateMasterKey());
       await expect(m.enableLocalPasscode('')).rejects.toThrow('Passcode must not be empty');
+    });
+
+    it('enforces the shared minimum length below the UI (audit 012 N6)', async () => {
+      const m = freshManager();
+      await m.setMasterKey(await m.generateMasterKey());
+      await expect(m.enableLocalPasscode('12345')).rejects.toThrow('at least 6 characters');
+      expect(m.isLocalPasscodeEnabled()).toBe(false);
     });
   });
 
@@ -162,6 +170,15 @@ describe('CryptoManager - local passcode', () => {
       const cold = freshManager();
       await cold.waitForRestore();
       expect(await cold.unlockWithLocalPasscode(PASSCODE)).toBe(true);
+    });
+
+    it('rejects a too-short new passcode (audit 012 N6)', async () => {
+      const m = freshManager();
+      await m.setMasterKey(await m.generateMasterKey());
+      await m.enableLocalPasscode(PASSCODE);
+      await expect(m.changeLocalPasscode(PASSCODE, '123')).rejects.toThrow(
+        'at least 6 characters'
+      );
     });
   });
 
@@ -262,6 +279,122 @@ describe('CryptoManager - local passcode', () => {
 
       expect(await m.decryptString(before)).toBe('before passcode');
       expect(await m.decryptString(during)).toBe('after enabling');
+    });
+  });
+
+  describe('failure throttle (audit 012 N6)', () => {
+    const ATTEMPTS_KEY = 'reborn_local_passcode_attempts';
+
+    /** A cold, locked instance with a wrap for PASSCODE already persisted. */
+    async function lockedManager() {
+      const setup = freshManager();
+      await setup.setMasterKey(await setup.generateMasterKey());
+      await setup.enableLocalPasscode(PASSCODE);
+      const cold = freshManager();
+      await cold.waitForRestore();
+      return cold;
+    }
+
+    it('throttles after the free attempts, even for the correct passcode', async () => {
+      const cold = await lockedManager();
+      for (let i = 0; i < LOCAL_PASSCODE_FREE_ATTEMPTS; i++) {
+        expect(await cold.unlockWithLocalPasscode(WRONG)).toBe(false);
+      }
+      expect(cold.getLocalPasscodeRetryDelayMs()).toBeGreaterThan(0);
+      await expect(cold.unlockWithLocalPasscode(PASSCODE)).rejects.toThrow(
+        LocalPasscodeThrottledError
+      );
+      expect(cold.isInitialized()).toBe(false);
+    });
+
+    it('allows the attempt again once the window passes, and success clears the counter', async () => {
+      const cold = await lockedManager();
+      for (let i = 0; i < LOCAL_PASSCODE_FREE_ATTEMPTS; i++) {
+        await cold.unlockWithLocalPasscode(WRONG);
+      }
+      // Rewind the persisted window instead of faking timers - also proves the
+      // record is read from storage, not process memory.
+      const rec = JSON.parse(ls().getItem(ATTEMPTS_KEY) as string);
+      ls().setItem(ATTEMPTS_KEY, JSON.stringify({ ...rec, lockedUntil: Date.now() - 1 }));
+
+      expect(await cold.unlockWithLocalPasscode(PASSCODE)).toBe(true);
+      expect(ls().getItem(ATTEMPTS_KEY)).toBeNull();
+      expect(cold.getLocalPasscodeRetryDelayMs()).toBe(0);
+    });
+
+    it('drops the counter with the wrap (reset path)', async () => {
+      const cold = await lockedManager();
+      for (let i = 0; i < LOCAL_PASSCODE_FREE_ATTEMPTS; i++) {
+        await cold.unlockWithLocalPasscode(WRONG);
+      }
+      expect(ls().getItem(ATTEMPTS_KEY)).not.toBeNull();
+      cold.forgetLocalPasscode();
+      expect(ls().getItem(ATTEMPTS_KEY)).toBeNull();
+    });
+  });
+
+  describe('purge verification on enable (audit 012 N7)', () => {
+    /** Vault whose clear() resolves but silently leaves the entry behind. */
+    function stickyVault(): MasterKeyVault {
+      let stored: string | null = null;
+      return {
+        save: async (raw: string) => {
+          stored = raw;
+        },
+        load: async () => stored,
+        clear: async () => {
+          /* pretends to succeed without deleting */
+        }
+      };
+    }
+
+    it('rolls back and throws when a raw key copy survives the purge', async () => {
+      const m = freshManager();
+      m.setMasterKeyVault(stickyVault());
+      await m.setMasterKey(await m.generateMasterKey());
+
+      await expect(m.enableLocalPasscode(PASSCODE)).rejects.toThrow('passcode not enabled');
+      // Consistent no-passcode baseline: wrap rolled back, session key intact.
+      expect(m.isLocalPasscodeEnabled()).toBe(false);
+      expect(ls().getItem(WRAP_KEY)).toBeNull();
+      expect(m.isInitialized()).toBe(true);
+    });
+
+    it('propagates a vault clear() failure instead of reporting success', async () => {
+      const m = freshManager();
+      let stored: string | null = null;
+      m.setMasterKeyVault({
+        save: async (raw: string) => {
+          stored = raw;
+        },
+        load: async () => stored,
+        clear: async () => {
+          throw new Error('keystore unavailable');
+        }
+      });
+      await m.setMasterKey(await m.generateMasterKey());
+
+      await expect(m.enableLocalPasscode(PASSCODE)).rejects.toThrow('passcode not enabled');
+      expect(m.isLocalPasscodeEnabled()).toBe(false);
+    });
+
+    it('succeeds with a vault that really deletes', async () => {
+      const m = freshManager();
+      let stored: string | null = null;
+      m.setMasterKeyVault({
+        save: async (raw: string) => {
+          stored = raw;
+        },
+        load: async () => stored,
+        clear: async () => {
+          stored = null;
+        }
+      });
+      await m.setMasterKey(await m.generateMasterKey());
+
+      await m.enableLocalPasscode(PASSCODE);
+      expect(m.isLocalPasscodeEnabled()).toBe(true);
+      expect(stored).toBeNull();
     });
   });
 });

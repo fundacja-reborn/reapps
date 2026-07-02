@@ -24,12 +24,18 @@
   import { t } from '$lib/stores/i18n.store';
   import { goto } from '$lib/utils/navigation';
   import { authStore } from '$lib/stores/auth.store';
-  import { cryptoManager } from '@reborn/crypto';
+  import {
+    cryptoManager,
+    LOCAL_PASSCODE_MIN_LENGTH,
+    isTriviallyGuessablePasscode
+  } from '@reborn/crypto';
   import { createLogger } from '@reborn/utils';
   import { get } from 'svelte/store';
 
   const logger = createLogger('PasscodeSettingsPage');
-  const MIN_LENGTH = 6;
+  // Enforced by the crypto layer (enable/change throw below it) - the UI just
+  // mirrors the shared constant for validation copy (audit 012 N6).
+  const MIN_LENGTH = LOCAL_PASSCODE_MIN_LENGTH;
 
   let enabled = $state(false);
 
@@ -66,6 +72,14 @@
     if (confirmPasscode !== newPasscode) return $t('local_mode.passcode.mismatch');
     return null;
   });
+
+  // Soft quality nudge, never a blocker: flags repeated / sequential patterns
+  // ("111111", "123456") while typing (audit 012 N6).
+  const weakWarning = $derived(
+    newPasscode.length >= MIN_LENGTH && isTriviallyGuessablePasscode(newPasscode)
+      ? $t('local_mode.passcode.weak_warning')
+      : null
+  );
 
   function resetForm() {
     currentPasscode = '';
@@ -204,6 +218,8 @@
             </div>
             {#if newError}
               <p class="text-sm text-destructive">{newError}</p>
+            {:else if weakWarning}
+              <p class="text-xs text-amber-600 dark:text-amber-400">{weakWarning}</p>
             {:else}
               <p class="text-xs text-muted-foreground">
                 {$t('local_mode.passcode.min_length', { values: { min: MIN_LENGTH } })}

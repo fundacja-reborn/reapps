@@ -52,9 +52,20 @@ export { isEncryptedDataReadable } from './decrypt-probe';
 export {
   encryptWithPassword,
   decryptWithPassword,
+  decryptWithPasswordOrPhrase,
   PASSWORD_ENVELOPE_ALGORITHM
 } from './password-envelope';
 export type { PasswordEnvelopeParts } from './password-envelope';
+
+// Local-mode passcode policy (shared min length, failure throttle, soft quality)
+export {
+  LOCAL_PASSCODE_MIN_LENGTH,
+  LOCAL_PASSCODE_FREE_ATTEMPTS,
+  LOCAL_PASSCODE_MAX_DELAY_MS,
+  localPasscodeRetryDelayMs,
+  isTriviallyGuessablePasscode,
+  LocalPasscodeThrottledError
+} from './local-passcode';
 
 // Backup recovery phrase (user-held secret that encrypts automated backups)
 export {

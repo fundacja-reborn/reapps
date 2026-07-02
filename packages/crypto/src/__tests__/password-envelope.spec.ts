@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   encryptWithPassword,
   decryptWithPassword,
+  decryptWithPasswordOrPhrase,
   PASSWORD_ENVELOPE_ALGORITHM
 } from '../password-envelope';
 import {
@@ -68,5 +69,39 @@ describe('Password envelope', () => {
 
   it('exposes the algorithm marker used by existing envelopes', () => {
     expect(PASSWORD_ENVELOPE_ALGORITHM).toBe('aes-256-gcm-pbkdf2');
+  });
+});
+
+describe('decryptWithPasswordOrPhrase (audit 012 N4)', () => {
+  // 12 valid BIP-0039 words in canonical (normalized) form - the exact string
+  // the auto-backup engine feeds the KDF.
+  const PHRASE =
+    'abandon ability able about above absent absorb abstract absurd abuse access accident';
+  // The same phrase as a user re-types it from paper: numbered lines, capitals.
+  const RETYPED = PHRASE.split(' ')
+    .map((w, i) => `${i + 1}. ${w[0].toUpperCase()}${w.slice(1)}`)
+    .join('\n');
+
+  it('accepts a re-typed recovery phrase (numbering, capitals, line breaks)', async () => {
+    const envelope = await encryptWithPassword('backup payload', PHRASE);
+    expect(await decryptWithPasswordOrPhrase(envelope, RETYPED)).toBe('backup payload');
+  });
+
+  it('keeps a deliberate password working even when it parses as a phrase', async () => {
+    // Raw input is tried FIRST: a password that merely looks like a
+    // denormalized phrase must not be silently rewritten.
+    const envelope = await encryptWithPassword('payload', RETYPED);
+    expect(await decryptWithPasswordOrPhrase(envelope, RETYPED)).toBe('payload');
+  });
+
+  it('behaves exactly like decryptWithPassword for a non-phrase password', async () => {
+    const envelope = await encryptWithPassword('payload', 'just a password');
+    expect(await decryptWithPasswordOrPhrase(envelope, 'just a password')).toBe('payload');
+  });
+
+  it('still rejects a wrong phrase (both candidates fail)', async () => {
+    const envelope = await encryptWithPassword('payload', PHRASE);
+    const wrong = RETYPED.replace('Abandon', 'Zebra');
+    await expect(decryptWithPasswordOrPhrase(envelope, wrong)).rejects.toThrow();
   });
 });

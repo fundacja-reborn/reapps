@@ -88,6 +88,8 @@
       "mismatch": "Die Codes stimmen nicht überein.",
       "wrong": "Falscher Code.",
       "wrong_current": "Der aktuelle Code ist falsch.",
+      "throttled": "Zu viele Fehlversuche. Versuche es in {time} erneut.",
+      "weak_warning": "Dieser Code scheint leicht zu erraten. Vermeide wiederholte oder aufeinanderfolgende Zeichen.",
       "save_failed": "Code konnte nicht gespeichert werden. Bitte versuche es erneut.",
       "success_enabled": "Code festgelegt.",
       "success_changed": "Code geändert.",

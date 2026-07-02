@@ -35,9 +35,7 @@ import { createMarkdownListRenderers } from '$lib/utils/markdown-to-html';
 import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
 import {
-  deriveKeyFromPassword,
-  decryptData,
-  base64ToArrayBuffer,
+  decryptWithPasswordOrPhrase,
   encryptWithPassword,
   cryptoManager,
   isEncryptedDataReadable
@@ -161,8 +159,31 @@ async function downloadBlob(blob: Blob, filename: string): Promise<void> {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function sanitizeFilename(name: string): string {
-  return (name.replace(/[\\/:*?"<>|\n\r\t]/g, '_').trim() || 'untitled').slice(0, 100);
+/**
+ * Windows reserved device names - refused by the OS as a file's base name
+ * (the part before the first dot), in any casing, so `con.md` is as broken
+ * as `CON`.
+ */
+const WINDOWS_RESERVED_NAME_RE = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
+
+/**
+ * Make a note title / folder name safe as a single path segment in a download
+ * or ZIP entry. Beyond stripping separator and control characters, dot-only
+ * names must not survive: a folder named ".." becomes a `../note.md` ZIP entry
+ * that a naive extractor writes OUTSIDE the target directory (zip-slip), and
+ * "." vanishes. Trailing dots and Windows reserved device names would make the
+ * archive fail to extract on Windows. (Audit 012 N5.)
+ *
+ * Exported for unit tests.
+ */
+export function sanitizeFilename(name: string): string {
+  let safe = name
+    .replace(/[\\/:*?"<>|\n\r\t]/g, '_')
+    .trim()
+    .slice(0, 100)
+    .replace(/[\s.]+$/, '');
+  if (WINDOWS_RESERVED_NAME_RE.test(safe)) safe = `_${safe}`;
+  return safe || 'untitled';
 }
 
 function buildFrontmatter(note: NoteDecrypted, tagNames: string[]): string {
@@ -928,15 +949,17 @@ export async function importJsonBackup(
   if (parsed.version === 2 || parsed.version === 3) {
     // Password-encrypted envelope. Both versions share the same PBKDF2 +
     // AES-GCM wrapper; they differ only in what the ciphertext decrypts to.
+    // Phrase-tolerant decrypt: an auto-backup is keyed by the recovery phrase,
+    // which the restoring user re-types from paper - the helper retries with
+    // the normalized phrase form when the raw input fails (audit 012 N4).
     if (!password) throw new Error('Ten backup jest zaszyfrowany. Podaj hasło.');
     const envelope = parsed as BackupV2 | BackupV3;
-    const salt = base64ToArrayBuffer(envelope.salt);
-    const iv = base64ToArrayBuffer(envelope.iv);
-    const ciphertext = base64ToArrayBuffer(envelope.data);
-    const key = await deriveKeyFromPassword(password, salt);
     let decrypted: string;
     try {
-      decrypted = (await decryptData(ciphertext, key, iv, 'string')) as string;
+      decrypted = await decryptWithPasswordOrPhrase(
+        { salt: envelope.salt, iv: envelope.iv, data: envelope.data },
+        password
+      );
     } catch {
       throw new Error('Nieprawidłowe hasło lub uszkodzony plik backupu.');
     }
