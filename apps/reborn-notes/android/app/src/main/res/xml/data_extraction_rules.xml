@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Read by Android 12+ (API 31+); older versions are covered in full by
+     allowBackup="false" in AndroidManifest.xml.
+
+     Exclude every domain from every transfer type: the data directory holds
+     decrypted shadow indexes (WebView IndexedDB) and the localStorage access
+     token, and the Zero Knowledge invariant is that only ciphertext ever
+     leaves the device. cloud-backup is already disabled by
+     allowBackup="false" (kept here as belt and braces); device-transfer and
+     cross-platform-transfer are NOT governed by allowBackup on Android 12+,
+     so these rules are what actually blocks them. path="." means the entire
+     domain directory, recursively.
+
+     Restore cost is nil by design: a new device gets a fresh login and
+     re-syncs ciphertext from the server; local-only data is covered by the
+     app's phrase-encrypted portable backup (auto-backup service). -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </device-transfer>
+    <cross-platform-transfer platform="ios">
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cross-platform-transfer>
+</data-extraction-rules>

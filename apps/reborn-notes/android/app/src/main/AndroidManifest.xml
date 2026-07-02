@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Zero Knowledge backup posture: the app's data directory holds DECRYPTED
+         state (WebView IndexedDB shadow indexes - note titles, folder names -
+         plus the localStorage access token), so it must never ride OS backups
+         off the device. allowBackup="false" disables cloud backup on every API
+         level, but on Android 12+ it no longer governs device-to-device
+         transfer - dataExtractionRules excludes everything from that (and from
+         cloud backup, belt and braces) too. The sanctioned backup is the app's
+         own phrase-encrypted portable backup (auto-backup service). Mirror this
+         posture in any future native shell (reborn-task). -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
