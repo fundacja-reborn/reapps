@@ -1,30 +1,30 @@
 import { describe, it, expect } from 'vitest';
 import {
   LOCAL_PASSCODE_MIN_LENGTH,
-  LOCAL_PASSCODE_FREE_ATTEMPTS,
-  LOCAL_PASSCODE_MAX_DELAY_MS,
-  localPasscodeRetryDelayMs,
+  UNLOCK_THROTTLE_FREE_ATTEMPTS,
+  UNLOCK_THROTTLE_MAX_DELAY_MS,
+  unlockThrottleDelayMs,
   isTriviallyGuessablePasscode,
   LocalPasscodeThrottledError
 } from '../local-passcode';
 
 describe('local passcode policy (audit 012 N6)', () => {
-  describe('localPasscodeRetryDelayMs', () => {
+  describe('unlockThrottleDelayMs', () => {
     it('gives no delay for the free attempts', () => {
-      for (let count = 0; count < LOCAL_PASSCODE_FREE_ATTEMPTS; count++) {
-        expect(localPasscodeRetryDelayMs(count)).toBe(0);
+      for (let count = 0; count < UNLOCK_THROTTLE_FREE_ATTEMPTS; count++) {
+        expect(unlockThrottleDelayMs(count)).toBe(0);
       }
     });
 
     it('starts at 10 s and doubles per failure', () => {
-      expect(localPasscodeRetryDelayMs(LOCAL_PASSCODE_FREE_ATTEMPTS)).toBe(10_000);
-      expect(localPasscodeRetryDelayMs(LOCAL_PASSCODE_FREE_ATTEMPTS + 1)).toBe(20_000);
-      expect(localPasscodeRetryDelayMs(LOCAL_PASSCODE_FREE_ATTEMPTS + 2)).toBe(40_000);
+      expect(unlockThrottleDelayMs(UNLOCK_THROTTLE_FREE_ATTEMPTS)).toBe(10_000);
+      expect(unlockThrottleDelayMs(UNLOCK_THROTTLE_FREE_ATTEMPTS + 1)).toBe(20_000);
+      expect(unlockThrottleDelayMs(UNLOCK_THROTTLE_FREE_ATTEMPTS + 2)).toBe(40_000);
     });
 
     it('caps at 15 minutes and survives absurd counts without overflow', () => {
-      expect(localPasscodeRetryDelayMs(50)).toBe(LOCAL_PASSCODE_MAX_DELAY_MS);
-      expect(localPasscodeRetryDelayMs(10_000)).toBe(LOCAL_PASSCODE_MAX_DELAY_MS);
+      expect(unlockThrottleDelayMs(50)).toBe(UNLOCK_THROTTLE_MAX_DELAY_MS);
+      expect(unlockThrottleDelayMs(10_000)).toBe(UNLOCK_THROTTLE_MAX_DELAY_MS);
     });
   });
 

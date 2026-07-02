@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CryptoManager, type MasterKeyVault } from '../cryptoManager';
-import { LocalPasscodeThrottledError, LOCAL_PASSCODE_FREE_ATTEMPTS } from '../local-passcode';
+import { LocalPasscodeThrottledError, UNLOCK_THROTTLE_FREE_ATTEMPTS } from '../local-passcode';
 
 /**
  * Local-mode passcode: optional at-rest wrap of the local master key.
@@ -297,7 +297,7 @@ describe('CryptoManager - local passcode', () => {
 
     it('throttles after the free attempts, even for the correct passcode', async () => {
       const cold = await lockedManager();
-      for (let i = 0; i < LOCAL_PASSCODE_FREE_ATTEMPTS; i++) {
+      for (let i = 0; i < UNLOCK_THROTTLE_FREE_ATTEMPTS; i++) {
         expect(await cold.unlockWithLocalPasscode(WRONG)).toBe(false);
       }
       expect(cold.getLocalPasscodeRetryDelayMs()).toBeGreaterThan(0);
@@ -309,7 +309,7 @@ describe('CryptoManager - local passcode', () => {
 
     it('allows the attempt again once the window passes, and success clears the counter', async () => {
       const cold = await lockedManager();
-      for (let i = 0; i < LOCAL_PASSCODE_FREE_ATTEMPTS; i++) {
+      for (let i = 0; i < UNLOCK_THROTTLE_FREE_ATTEMPTS; i++) {
         await cold.unlockWithLocalPasscode(WRONG);
       }
       // Rewind the persisted window instead of faking timers - also proves the
@@ -324,7 +324,7 @@ describe('CryptoManager - local passcode', () => {
 
     it('drops the counter with the wrap (reset path)', async () => {
       const cold = await lockedManager();
-      for (let i = 0; i < LOCAL_PASSCODE_FREE_ATTEMPTS; i++) {
+      for (let i = 0; i < UNLOCK_THROTTLE_FREE_ATTEMPTS; i++) {
         await cold.unlockWithLocalPasscode(WRONG);
       }
       expect(ls().getItem(ATTEMPTS_KEY)).not.toBeNull();

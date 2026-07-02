@@ -60,9 +60,9 @@ export type { PasswordEnvelopeParts } from './password-envelope';
 // Local-mode passcode policy (shared min length, failure throttle, soft quality)
 export {
   LOCAL_PASSCODE_MIN_LENGTH,
-  LOCAL_PASSCODE_FREE_ATTEMPTS,
-  LOCAL_PASSCODE_MAX_DELAY_MS,
-  localPasscodeRetryDelayMs,
+  UNLOCK_THROTTLE_FREE_ATTEMPTS,
+  UNLOCK_THROTTLE_MAX_DELAY_MS,
+  unlockThrottleDelayMs,
   isTriviallyGuessablePasscode,
   LocalPasscodeThrottledError
 } from './local-passcode';
