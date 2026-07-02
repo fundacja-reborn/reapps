@@ -49,6 +49,7 @@ export class AuthApiAdapter implements IAuthApiClient {
 			if (data.data.twoFactorRequired) {
 				result.twoFactorRequired = true;
 				result.userId = data.data.userId;
+				result.challengeToken = data.data.challengeToken;
 			}
 
 			// IMPORTANT: Set token in sync service immediately

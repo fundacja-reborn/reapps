@@ -3,8 +3,11 @@ import { json } from '@sveltejs/kit';
 import {
   handleLogin,
   createDefaultHandlerOptions,
+  generateSingleUseToken,
   REFRESH_TOKEN_TTL_SECONDS,
-  refreshTokenExpiryDate
+  refreshTokenExpiryDate,
+  TWO_FACTOR_CHALLENGE_PURPOSE,
+  TWO_FACTOR_CHALLENGE_TTL_MINUTES
 } from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 import { loginLockout } from '$lib/server/rate-limit';
@@ -87,11 +90,20 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
               where: { token: result.data.refreshToken }
             });
           }
+          // Short-lived challenge token binds /2fa/verify to this password-
+          // verified login: the second factor cannot be attempted with a bare
+          // userId (audit 012 S4).
+          const challengeToken = await generateSingleUseToken(
+            result.data.user.id,
+            TWO_FACTOR_CHALLENGE_PURPOSE,
+            TWO_FACTOR_CHALLENGE_TTL_MINUTES
+          );
           return json({
             success: true,
             data: {
               twoFactorRequired: true,
               userId: result.data.user.id,
+              challengeToken,
               encryptedMasterKey: result.data.encryptedMasterKey,
               masterKeySalt: result.data.masterKeySalt
             }

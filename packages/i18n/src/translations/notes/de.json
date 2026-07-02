@@ -1127,6 +1127,7 @@
       "code_6_digits": "Der Code muss 6 Ziffern haben",
       "invalid_code": "Ungültiger Bestätigungscode. Bitte versuchen Sie es erneut.",
       "failed": "2FA-Verifizierung fehlgeschlagen",
+      "challenge_expired": "Ihre Verifizierungssitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
       "verifying": "Überprüfung…",
       "verify": "Überprüfen",
       "code_label": "Bestätigungscode",

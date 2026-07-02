@@ -19,7 +19,7 @@
   } = $props<{
     username?: string;
     onReAuth?: (password: string) => Promise<ReAuthResult>;
-    onVerifyTotp?: (userId: string, code: string) => Promise<ReAuthResult>;
+    onVerifyTotp?: (challengeToken: string, code: string) => Promise<ReAuthResult>;
   }>();
 
   let open = $state(false);

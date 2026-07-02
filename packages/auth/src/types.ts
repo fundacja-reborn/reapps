@@ -38,6 +38,8 @@ export interface LoginResult {
   refreshToken?: string;
   twoFactorRequired?: boolean;
   userId?: string;
+  /** Short-lived signed token proving the password step passed - required by /2fa/verify. */
+  challengeToken?: string;
   message?: string;
 }
 

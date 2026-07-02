@@ -124,6 +124,7 @@
       "totp_submit_button": "Vérifier",
       "totp_verifying": "Vérification...",
       "totp_error_invalid": "Code invalide. Veuillez réessayer.",
+      "challenge_expired": "La session de vérification a expiré. Entrez à nouveau votre mot de passe.",
       "use_recovery": "Utiliser un code de récupération",
       "use_app": "Utiliser l'application d'authentification",
       "recovery_label": "Code de récupération",
@@ -140,6 +141,7 @@
         "code_required": "Le code 2FA est requis.",
         "recovery_required": "Le code de récupération est requis.",
         "verification_failed": "La vérification a échoué.",
+        "challenge_expired": "Votre session de vérification a expiré. Veuillez vous reconnecter.",
         "decrypt_failed": "Impossible de traiter le secret 2FA. Veuillez vérifier que votre mot de passe est correct.",
         "secret_format": "Format du secret 2FA invalide."
       }

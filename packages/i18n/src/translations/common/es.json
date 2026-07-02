@@ -124,6 +124,7 @@
       "totp_submit_button": "Verificar",
       "totp_verifying": "Verificando...",
       "totp_error_invalid": "Código no válido. Inténtelo de nuevo.",
+      "challenge_expired": "La sesión de verificación ha expirado. Introduzca su contraseña de nuevo.",
       "use_recovery": "Usar código de recuperación",
       "use_app": "Usar aplicación de autenticación",
       "recovery_label": "Código de recuperación",
@@ -140,6 +141,7 @@
         "code_required": "El código 2FA es obligatorio.",
         "recovery_required": "El código de recuperación es obligatorio.",
         "verification_failed": "La verificación falló.",
+        "challenge_expired": "Su sesión de verificación ha expirado. Inicie sesión de nuevo.",
         "decrypt_failed": "No se pudo procesar el secreto 2FA. Por favor, asegúrese de que su contraseña sea correcta.",
         "secret_format": "Formato de secreto 2FA no válido."
       }

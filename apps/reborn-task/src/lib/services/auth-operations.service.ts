@@ -28,7 +28,7 @@ interface ReAuthResponseBody {
 	error?: string;
 	data?: {
 		twoFactorRequired?: boolean;
-		userId?: string;
+		challengeToken?: string;
 		access_token?: string;
 	};
 }
@@ -1133,9 +1133,9 @@ export class AuthOperationsService {
 		const { data } = body;
 
 		if (data?.twoFactorRequired) {
-			if (!data.userId)
-				return { kind: 'error', message: 'Missing userId in 2FA response' };
-			return { kind: 'two_factor_required', userId: data.userId };
+			if (!data.challengeToken)
+				return { kind: 'error', message: 'Missing challenge token in 2FA response' };
+			return { kind: 'two_factor_required', challengeToken: data.challengeToken };
 		}
 
 		if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
@@ -1148,7 +1148,7 @@ export class AuthOperationsService {
 	 * Re-authenticate after session expiry — TOTP step (invoked from
 	 * ReAuthModal after {@link reAuthenticate} returned `two_factor_required`).
 	 */
-	async verifyTotpForReauth(userId: string, code: string): Promise<ReAuthResult> {
+	async verifyTotpForReauth(challengeToken: string, code: string): Promise<ReAuthResult> {
 		if (!browser) return { kind: 'error', message: 'Not in browser' };
 
 		const { PUBLIC_BASE_PATH } = await import('$env/static/public');
@@ -1157,7 +1157,7 @@ export class AuthOperationsService {
 			res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa/verify`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ userId, code })
+				body: JSON.stringify({ challengeToken, code })
 			});
 		} catch (err) {
 			return {
@@ -1171,6 +1171,10 @@ export class AuthOperationsService {
 			const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 0;
 			return { kind: 'locked', retryAfter: Number.isFinite(retryAfter) ? retryAfter : 0 };
 		}
+
+		// Challenge token expired or already consumed - the modal returns to the
+		// password step so a fresh one can be minted.
+		if (res.status === 401) return { kind: 'challenge_expired' };
 
 		let body: ReAuthResponseBody;
 		try {

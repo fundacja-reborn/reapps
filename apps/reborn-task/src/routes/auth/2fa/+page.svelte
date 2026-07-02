@@ -25,7 +25,7 @@
 
 	const logger = createLogger('2FAVerifyPage');
 
-	let userId = $state('');
+	let challengeToken = $state('');
 	let returnTo = $state('/all');
 	let encryptedMasterKey = $state('');
 	let masterKeySalt = $state('');
@@ -39,12 +39,14 @@
 	$effect(() => {
 		if (browser) {
 			const url = new URL($page.url);
-			userId = url.searchParams.get('userId') || '';
+			// The challenge token (proof of the password step, audit 012 S4) is a
+			// credential - it travels via sessionStorage, not the URL.
+			challengeToken = sessionStorage.getItem('2fa_challenge_token') || '';
 			returnTo = url.searchParams.get('returnTo') || '/all';
 			encryptedMasterKey = url.searchParams.get('emk') || '';
 			masterKeySalt = url.searchParams.get('ms') || '';
 
-			if (!userId) {
+			if (!challengeToken) {
 				untrack(() => goto('/auth/login'));
 			}
 		}
@@ -70,19 +72,29 @@
 			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa/verify`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ userId, code: codeToVerify })
+				body: JSON.stringify({ challengeToken, code: codeToVerify })
 			});
 
 			const data = await response.json();
 
 			if (!response.ok || !data.success) {
-				error =
-					data.error === 'Invalid verification code'
-						? $t('settings.profile.verification_code_invalid') || 'Invalid verification code'
-						: data.error || '2FA verification failed';
+				if (response.status === 401) {
+					// Challenge token expired (5-min TTL) or already used - the user
+					// must restart from the password step. The back-to-login link is
+					// right below the form.
+					sessionStorage.removeItem('2fa_challenge_token');
+					error = $t('auth.2fa.errors.challenge_expired');
+				} else {
+					error =
+						data.error === 'Invalid verification code'
+							? $t('settings.profile.verification_code_invalid') || 'Invalid verification code'
+							: data.error || '2FA verification failed';
+				}
 				isLoading = false;
 				return;
 			}
+
+			sessionStorage.removeItem('2fa_challenge_token');
 
 			// Store access token (refresh token is managed via httpOnly cookie)
 			if (data.data.access_token) {

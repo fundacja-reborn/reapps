@@ -317,12 +317,14 @@
 		visible={$sessionExpired && navigator.onLine}
 		username={$session?.user?.username ?? ''}
 		onReAuth={(password) => authOperationsService.reAuthenticate(password)}
-		onVerifyTotp={(userId, code) => authOperationsService.verifyTotpForReauth(userId, code)}
+		onVerifyTotp={(challengeToken, code) =>
+			authOperationsService.verifyTotpForReauth(challengeToken, code)}
 	/>
 	<RequireSessionModal
 		username={$session?.user?.username ?? ''}
 		onReAuth={(password) => authOperationsService.reAuthenticate(password)}
-		onVerifyTotp={(userId, code) => authOperationsService.verifyTotpForReauth(userId, code)}
+		onVerifyTotp={(challengeToken, code) =>
+			authOperationsService.verifyTotpForReauth(challengeToken, code)}
 	/>
 	<div class="svelte-app-ready min-h-screen bg-background text-foreground transition-colors">
 		{#if children}

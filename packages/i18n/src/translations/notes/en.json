@@ -1127,6 +1127,7 @@
       "code_6_digits": "Code must be 6 digits",
       "invalid_code": "Invalid verification code. Please try again.",
       "failed": "2FA verification failed",
+      "challenge_expired": "Your verification session has expired. Please sign in again.",
       "verifying": "Verifying…",
       "verify": "Verify",
       "code_label": "Verification code",

@@ -14,6 +14,10 @@ export const GET: RequestHandler = async ({ request, url }) => {
     if (!userId) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
     const since = url.searchParams.get('since');
+    // Unparseable `since` → 400, not an Invalid-Date Prisma 500 (audit 012 N8).
+    if (since && Number.isNaN(Date.parse(since))) {
+      return json({ success: false, error: 'Invalid since parameter' }, { status: 400 });
+    }
     const where: Prisma.FolderWhereInput = { user_id: userId, is_archived: false };
     if (since) where.updated_at = { gt: new Date(since) };
 

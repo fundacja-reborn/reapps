@@ -95,6 +95,13 @@ export const GET: RequestHandler = async ({ request, url }) => {
     const wantReconcile = url.searchParams.get('reconcile') === 'true';
     const paginated = limitRaw !== null || cursorRaw !== null;
 
+    // Unparseable `since` would reach Prisma as Invalid Date and 500; a 500
+    // reads as transient to the sync client and would be retried forever
+    // (audit 012 N8).
+    if (since && Number.isNaN(Date.parse(since))) {
+      return json({ success: false, error: 'Invalid since parameter' }, { status: 400 });
+    }
+
     // Filter shared by the page query, the delta count and the all_ids scan.
     const baseWhere: Prisma.NoteWhereInput = { user_id: userId };
     if (!includeArchived) baseWhere.deleted_at = null;

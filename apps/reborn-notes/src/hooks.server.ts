@@ -17,7 +17,12 @@ import { getAppLoadingStrings } from '$lib/server/app-loading-strings';
 
 const BASE = process.env.PUBLIC_BASE_PATH ?? '';
 const RATE_LIMITED_AUTH = new Set([`${BASE}/api/auth/login`, `${BASE}/api/auth/2fa/verify`]);
-const RATE_LIMITED_REFRESH = new Set([`${BASE}/api/auth/refresh`]);
+const RATE_LIMITED_REFRESH = new Set([
+  `${BASE}/api/auth/refresh`,
+  // Native (Capacitor) refresh takes the token in the body instead of the
+  // cookie but is the same unauthenticated DB-hitting operation (audit 012 N1).
+  `${BASE}/api/auth/refresh-native`
+]);
 const RATE_LIMITED_REGISTER = new Set([`${BASE}/api/auth/register`]);
 const RATE_LIMITED_POW = new Set([`${BASE}/api/auth/pow`]);
 
