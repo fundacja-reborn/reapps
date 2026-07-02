@@ -37,6 +37,8 @@
     "mismatch": "Passcodes do not match.",
     "wrong": "Wrong passcode.",
     "wrong_current": "Current passcode is incorrect.",
+    "throttled": "Too many failed attempts. Try again in {time}.",
+    "weak_warning": "This passcode looks easy to guess. Avoid repeated or sequential characters.",
     "save_failed": "Could not save the passcode. Please try again.",
     "success_enabled": "Passcode set.",
     "success_changed": "Passcode changed.",

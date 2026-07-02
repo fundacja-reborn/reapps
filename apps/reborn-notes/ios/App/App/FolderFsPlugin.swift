@@ -233,7 +233,7 @@ public class FolderFsPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelega
                     return
                 }
 
-                let fileURL = self.resolveChild(root: root, relativePath: relPath)
+                let fileURL = try self.resolveChild(root: root, relativePath: relPath)
                 try self.ensureDownloaded(fileURL)
                 let content = try self.coordinatedRead(fileURL)
                 let mtimeMs = ((try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?
@@ -245,15 +245,35 @@ public class FolderFsPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelega
         }
     }
 
+    /// Error for a relative path that tries to leave the bookmarked folder.
+    private struct PathTraversalError: LocalizedError {
+        let path: String
+        var errorDescription: String? { "Path escapes the bookmarked folder: \(path)" }
+    }
+
     /// Map a `<leaf>/<sub>/<file>` relative path (leaf == root.lastPathComponent) to a
-    /// child URL under `root` by dropping the leaf segment.
-    private func resolveChild(root: URL, relativePath: String) -> URL {
+    /// child URL under `root` by dropping the leaf segment. Every path reaching this
+    /// comes from our own JS (listFiles results / backupFilename()), which never emits
+    /// dot segments or absolute paths - so reject them outright rather than resolve
+    /// them: a `..` would climb OUT of the security-scoped folder (defense-in-depth,
+    /// audit 012 N3; Android is already immune via leafName()/documentId).
+    private func resolveChild(root: URL, relativePath: String) throws -> URL {
+        guard !relativePath.hasPrefix("/") else {
+            throw PathTraversalError(path: relativePath)
+        }
+        // split(separator:) drops empty subsequences, so "a//b" cannot smuggle
+        // an empty segment through.
         var segments = relativePath.split(separator: "/").map(String.init)
         if let first = segments.first, first == root.lastPathComponent {
             segments.removeFirst()
         }
         var url = root
-        for seg in segments { url.appendPathComponent(seg) }
+        for seg in segments {
+            guard seg != "." && seg != ".." else {
+                throw PathTraversalError(path: relativePath)
+            }
+            url.appendPathComponent(seg)
+        }
         return url
     }
 
@@ -348,7 +368,7 @@ public class FolderFsPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelega
                     staleBookmark = fresh.base64EncodedString()
                 }
 
-                let fileURL = self.resolveChild(root: root, relativePath: relPath)
+                let fileURL = try self.resolveChild(root: root, relativePath: relPath)
                 try self.coordinatedWrite(fileURL, content: content)
 
                 var result: [String: Any] = [:]
@@ -409,7 +429,7 @@ public class FolderFsPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelega
                     staleBookmark = fresh.base64EncodedString()
                 }
 
-                let fileURL = self.resolveChild(root: root, relativePath: relPath)
+                let fileURL = try self.resolveChild(root: root, relativePath: relPath)
                 if FileManager.default.fileExists(atPath: fileURL.path) {
                     try self.coordinatedRemove(fileURL)
                 }

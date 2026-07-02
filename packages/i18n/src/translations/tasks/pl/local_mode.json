@@ -37,6 +37,8 @@
     "mismatch": "Kody się nie zgadzają.",
     "wrong": "Nieprawidłowy kod.",
     "wrong_current": "Obecny kod jest nieprawidłowy.",
+    "throttled": "Zbyt wiele nieudanych prób. Spróbuj ponownie za {time}.",
+    "weak_warning": "Ten kod wygląda na łatwy do odgadnięcia. Unikaj powtarzających się lub kolejnych znaków.",
     "save_failed": "Nie udało się zapisać kodu. Spróbuj ponownie.",
     "success_enabled": "Kod dostępu ustawiony.",
     "success_changed": "Kod dostępu zmieniony.",

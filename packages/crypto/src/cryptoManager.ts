@@ -17,6 +17,11 @@ import {
   importKey
 } from './encryption';
 import { assertEncrypted } from './encryption-validation';
+import {
+  LOCAL_PASSCODE_MIN_LENGTH,
+  LocalPasscodeThrottledError,
+  unlockThrottleDelayMs
+} from './local-passcode';
 import { createLogger } from '@reborn/utils';
 
 const logger = createLogger('CryptoManager');
@@ -84,6 +89,15 @@ export class CryptoManager {
    */
   private readonly LOCAL_PASSCODE_WRAP_KEY = 'reborn_local_passcode_wrap';
   private readonly WRAP_FORMAT_VERSION = 1;
+  /**
+   * localStorage key for the local-passcode failure throttle:
+   * `{ count, lockedUntil }` - consecutive failed unlock attempts and the epoch
+   * ms before which the next attempt is refused. Same storage tier as the wrap
+   * it protects (and the same caveat: same-origin script can clear it - this is
+   * on-device friction against typed guesses, not a cryptographic boundary).
+   * See audit 012 N6.
+   */
+  private readonly LOCAL_PASSCODE_ATTEMPTS_KEY = 'reborn_local_passcode_attempts';
   /**
    * localStorage flag for the native App Lock (biometric gate). When set on a
    * native build, the master key is NOT auto-read from the vault at cold start:
@@ -298,8 +312,14 @@ export class CryptoManager {
     }
   }
 
-  private async clearKeyFromIDB(): Promise<void> {
-    if (typeof indexedDB === 'undefined') return;
+  /**
+   * Best-effort by default (errors are logged, not thrown) - most callers are
+   * defensive sweeps where a failed delete must not break logout/lock. Returns
+   * whether the delete transaction actually completed so paths that PROMISE the
+   * raw key is gone (enableLocalPasscode) can refuse to report success.
+   */
+  private async clearKeyFromIDB(): Promise<boolean> {
+    if (typeof indexedDB === 'undefined') return true;
     try {
       const db = await this.openIDB();
       await new Promise<void>((resolve, reject) => {
@@ -310,8 +330,10 @@ export class CryptoManager {
       });
       db.close();
       logger.debug('Master key cleared from IndexedDB');
+      return true;
     } catch (error) {
       logger.error('Failed to clear master key from IndexedDB:', error);
+      return false;
     }
   }
 
@@ -1174,6 +1196,58 @@ export class CryptoManager {
   private removeLocalPasscodeWrap(): void {
     if (typeof window === 'undefined' || !window.localStorage) return;
     window.localStorage.removeItem(this.LOCAL_PASSCODE_WRAP_KEY);
+    // No wrap, nothing to guess - a stale counter would otherwise throttle the
+    // next passcode the user sets.
+    this.clearLocalPasscodeAttempts();
+  }
+
+  // ── Local-passcode failure throttle (audit 012 N6) ───────────
+  //
+  // Identifiers feeding the stored record avoid the word "passcode" - CodeQL's
+  // clear-text-storage query taints setItem VALUES by name heuristics (see
+  // local-passcode.ts naming note). The record itself is non-secret counters.
+
+  /** Parsed failure record, or the zero state when absent/invalid. */
+  private readUnlockThrottleRecord(): { count: number; lockedUntil: number } {
+    const zero = { count: 0, lockedUntil: 0 };
+    if (typeof window === 'undefined' || !window.localStorage) return zero;
+    const raw = window.localStorage.getItem(this.LOCAL_PASSCODE_ATTEMPTS_KEY);
+    if (!raw) return zero;
+    try {
+      const rec = JSON.parse(raw) as { count?: number; lockedUntil?: number };
+      return {
+        count: typeof rec.count === 'number' && rec.count > 0 ? Math.floor(rec.count) : 0,
+        lockedUntil: typeof rec.lockedUntil === 'number' ? rec.lockedUntil : 0
+      };
+    } catch {
+      return zero;
+    }
+  }
+
+  /** Record one failed unlock and (past the free attempts) open a delay window. */
+  private recordUnlockThrottleFailure(): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    const count = this.readUnlockThrottleRecord().count + 1;
+    const delayMs = unlockThrottleDelayMs(count);
+    window.localStorage.setItem(
+      this.LOCAL_PASSCODE_ATTEMPTS_KEY,
+      JSON.stringify({ count, lockedUntil: delayMs > 0 ? Date.now() + delayMs : 0 })
+    );
+  }
+
+  private clearLocalPasscodeAttempts(): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    window.localStorage.removeItem(this.LOCAL_PASSCODE_ATTEMPTS_KEY);
+  }
+
+  /**
+   * Milliseconds until the next local-passcode unlock attempt is allowed - 0
+   * when an attempt is allowed now. Lock screens poll this for the countdown;
+   * `unlockWithLocalPasscode` enforces it by throwing
+   * {@link LocalPasscodeThrottledError} inside the window.
+   */
+  public getLocalPasscodeRetryDelayMs(): number {
+    return Math.max(0, this.readUnlockThrottleRecord().lockedUntil - Date.now());
   }
 
   /**
@@ -1223,6 +1297,9 @@ export class CryptoManager {
       throw new Error('Cannot set a local passcode without an unlocked master key');
     }
     if (!passcode) throw new Error('Passcode must not be empty');
+    if (passcode.length < LOCAL_PASSCODE_MIN_LENGTH) {
+      throw new Error(`Passcode must be at least ${LOCAL_PASSCODE_MIN_LENGTH} characters`);
+    }
     if (typeof window === 'undefined' || !window.localStorage) {
       throw new Error('Local passcode requires a browser environment');
     }
@@ -1230,15 +1307,32 @@ export class CryptoManager {
     const { encryptedMasterKey, salt } = await this.encryptMasterKey(this.masterKey, passcode);
     this.writeLocalPasscodeWrap(encryptedMasterKey, salt);
 
-    // Purge every cleartext at-rest copy - the wrap is now the only on-disk form.
-    await this.clearKeyFromIDB();
-    if (this.vault) {
-      await this.vault.clear().catch((err) => {
-        logger.error('Failed to clear vault while enabling local passcode:', err);
+    // Purge every cleartext at-rest copy - the wrap must become the only
+    // on-disk form. Unlike the defensive sweeps elsewhere this purge is the
+    // very promise being made to the user, so a failed or silently no-op'd
+    // delete must NOT report success: verify by reading back, and on any
+    // surviving copy roll the wrap back so the device stays in the consistent
+    // no-passcode baseline instead of a half-enabled state (audit 012 N7).
+    try {
+      const idbCleared = await this.clearKeyFromIDB();
+      if (!idbCleared || (await this.restoreKeyFromIDB()) !== null) {
+        throw new Error('raw master key still present in IndexedDB');
+      }
+      if (this.vault) {
+        await this.vault.clear();
+        if ((await this.vault.load().catch(() => null)) !== null) {
+          throw new Error('raw master key still present in the platform vault');
+        }
+      }
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        window.sessionStorage.removeItem(this.TEMP_KEY_STORAGE_KEY);
+      }
+    } catch (error) {
+      this.removeLocalPasscodeWrap();
+      logger.error('Failed to purge raw key copies - local passcode NOT enabled:', error);
+      throw new Error('Failed to remove the unprotected key copy - passcode not enabled', {
+        cause: error
       });
-    }
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-      window.sessionStorage.removeItem(this.TEMP_KEY_STORAGE_KEY);
     }
 
     logger.info('Local passcode enabled - master key wrapped at-rest');
@@ -1255,6 +1349,13 @@ export class CryptoManager {
       logger.warn('unlockWithLocalPasscode called with no passcode wrap present');
       return false;
     }
+    // Failure throttle: refuse attempts inside the delay window so repeated
+    // on-device guessing costs real time on top of PBKDF2 (audit 012 N6).
+    const waitMs = this.getLocalPasscodeRetryDelayMs();
+    if (waitMs > 0) {
+      logger.warn('Local passcode unlock throttled after repeated failures');
+      throw new LocalPasscodeThrottledError(waitMs);
+    }
     try {
       const key = await this.decryptMasterKey(record.wrapped, record.salt, passcode);
       this.masterKey = key;
@@ -1262,12 +1363,14 @@ export class CryptoManager {
       // Memory-only on purpose: do NOT persist to IndexedDB/sessionStorage/vault,
       // and do NOT broadcast `unlocked` (peers have no at-rest key to read).
       await this.verifyEncryption();
+      this.clearLocalPasscodeAttempts();
       logger.info('Local master key unlocked with passcode');
       return true;
     } catch {
       logger.warn('Local passcode unlock failed (wrong passcode or corrupt wrap)');
       this.masterKey = null;
       this.initialized = false;
+      this.recordUnlockThrottleFailure();
       return false;
     }
   }
@@ -1285,6 +1388,9 @@ export class CryptoManager {
       throw new Error('Cannot change the local passcode without an unlocked master key');
     }
     if (!newPasscode) throw new Error('New passcode must not be empty');
+    if (newPasscode.length < LOCAL_PASSCODE_MIN_LENGTH) {
+      throw new Error(`Passcode must be at least ${LOCAL_PASSCODE_MIN_LENGTH} characters`);
+    }
 
     const record = this.readLocalPasscodeWrapRecord();
     if (!record) throw new Error('No local passcode is set');

@@ -19,6 +19,7 @@ import {
   arrayBufferToBase64,
   base64ToArrayBuffer
 } from './encryption';
+import { isValidRecoveryPhrase, normalizeRecoveryPhrase } from './recovery-phrase';
 
 /** Algorithm marker stored in envelopes; matches existing v3 / portable files. */
 export const PASSWORD_ENVELOPE_ALGORITHM = 'aes-256-gcm-pbkdf2';
@@ -74,4 +75,35 @@ export async function decryptWithPassword(
     'string'
   );
   return plaintext as string;
+}
+
+/**
+ * {@link decryptWithPassword}, tolerant of recovery-phrase re-typing. The KDF
+ * canonically receives the NORMALIZED phrase (see `normalizeRecoveryPhrase`),
+ * but a user restoring a backup types the phrase from paper - with numbering,
+ * capitals or line breaks - and the raw form then fails as a generic "wrong
+ * password", which reads as a corrupt backup (audit 012 N4). When the input
+ * parses as a valid recovery phrase whose normalized form differs, that form
+ * is tried as a second candidate. The raw input stays FIRST so a deliberate
+ * password that merely looks like a phrase keeps working; the extra attempt
+ * costs one more PBKDF2 derivation, only on the failure path.
+ */
+export async function decryptWithPasswordOrPhrase(
+  envelope: PasswordEnvelopeParts,
+  input: string
+): Promise<string> {
+  const candidates = [input];
+  if (isValidRecoveryPhrase(input)) {
+    const normalized = normalizeRecoveryPhrase(input);
+    if (normalized !== input) candidates.push(normalized);
+  }
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      return await decryptWithPassword(envelope, candidate);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }

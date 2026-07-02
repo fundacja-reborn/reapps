@@ -37,6 +37,8 @@
     "mismatch": "Los códigos no coinciden.",
     "wrong": "Código incorrecto.",
     "wrong_current": "El código actual es incorrecto.",
+    "throttled": "Demasiados intentos fallidos. Inténtalo de nuevo en {time}.",
+    "weak_warning": "Este código parece fácil de adivinar. Evita caracteres repetidos o consecutivos.",
     "save_failed": "No se pudo guardar el código. Inténtalo de nuevo.",
     "success_enabled": "Código establecido.",
     "success_changed": "Código cambiado.",
