@@ -24,7 +24,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       return json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tokenData = await verifyToken(token);
+    const tokenData = await verifyToken(token, 'access');
     if (!tokenData?.userId) {
       return json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }

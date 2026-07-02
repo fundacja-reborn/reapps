@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     let userId: string | undefined;
     if (token) {
       try {
-        const tokenData = await verifyToken(token);
+        const tokenData = await verifyToken(token, 'access');
         userId = tokenData?.userId;
       } catch {
         logger.warn('Invalid token during logout');

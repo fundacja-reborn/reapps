@@ -36,7 +36,7 @@ function hashCode(code: string): string {
 function getUserId(authHeader: string | null): Promise<string | null> {
 	const token = authHeader?.replace('Bearer ', '');
 	if (!token) return Promise.resolve(null);
-	return verifyToken(token)
+	return verifyToken(token, 'access')
 		.then((data) => data?.userId ?? null)
 		.catch(() => null);
 }

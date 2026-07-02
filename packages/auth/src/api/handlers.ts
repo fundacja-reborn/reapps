@@ -70,7 +70,9 @@ export function createDefaultHandlerOptions(
     hashPassword,
     verifyPassword,
     generateTokens: generateJwtTokens,
-    verifyToken: (token: string) => verifyJwtToken(token),
+    // Access tokens only: refresh JWTs verify with the same secret but must
+    // not authenticate session/data reads (they bypass rotation + revocation).
+    verifyToken: (token: string) => verifyJwtToken(token, 'access'),
     generateEncryptionKey: async (password: string) => {
       const result = await generateMasterKeyForUser(password);
       return {
@@ -374,7 +376,8 @@ export async function handleSession(
     }
 
     const { dbClient } = options;
-    const verifyTokenFn = options.verifyToken || ((token: string) => verifyJwtToken(token));
+    const verifyTokenFn =
+      options.verifyToken || ((token: string) => verifyJwtToken(token, 'access'));
 
     // Verify token
     const tokenData = await verifyTokenFn(token);

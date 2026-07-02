@@ -16,7 +16,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		if (token) {
 			try {
-				const tokenData = await verifyToken(token);
+				const tokenData = await verifyToken(token, 'access');
 				userId = tokenData?.userId;
 			} catch (error: unknown) {
 				// Token might be invalid, but we still want to clear cookies
