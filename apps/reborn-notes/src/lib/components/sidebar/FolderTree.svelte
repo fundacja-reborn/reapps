@@ -46,7 +46,10 @@
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
-  import type { DeleteFolderMode } from '$lib/services/folder.service';
+  import type {
+    DeleteFolderMode,
+    DeleteFolderProgressCallback
+  } from '$lib/services/folder.service';
   import DeleteFolderDialog from './DeleteFolderDialog.svelte';
   import ImportMarkdownToFolderDialog from '$lib/components/import/ImportMarkdownToFolderDialog.svelte';
   import SavedSearchRow from '$lib/components/notes/SavedSearchRow.svelte';
@@ -92,7 +95,7 @@
     if (!pendingId) return;
     const found = nodes.find((n) => n.id === pendingId);
     if (found) {
-      pendingRenameId.set(null); // claim — clear so sibling instances don't also trigger
+      pendingRenameId.set(null); // claim - clear so sibling instances don't also trigger
       editingId = pendingId;
       editingName = found.name;
       setTimeout(() => editInputEl?.select(), 0);
@@ -241,10 +244,13 @@
     deleteFolderDialogOpen = true;
   }
 
-  async function confirmDeleteFolder(mode: DeleteFolderMode) {
+  async function confirmDeleteFolder(
+    mode: DeleteFolderMode,
+    onProgress: DeleteFolderProgressCallback
+  ) {
     if (folderToDelete) {
-      await foldersStore.remove(folderToDelete.id, mode);
-      // Cascade soft-deletes notes — refresh the visible note list so they
+      await foldersStore.remove(folderToDelete.id, mode, onProgress);
+      // Cascade soft-deletes notes - refresh the visible note list so they
       // disappear from the current folder/All-notes view immediately.
       if (mode === 'cascade') notesStore.refresh();
     }
@@ -301,7 +307,7 @@
     }
   });
 
-  // Single source of truth for a folder's actions — fed to both the desktop kebab
+  // Single source of truth for a folder's actions - fed to both the desktop kebab
   // (DropdownMenu) and the desktop right-click ContextMenu, so they can't drift.
   function folderActions(folder: FolderWithChildren, syncConfigId: string | null): RowAction[] {
     const actions: RowAction[] = [];
@@ -362,7 +368,7 @@
 
   // ── Drag & Drop ─────────────────────────────────────────────────
   // Folder rows are sorted alphabetically (see folder.service.getFolderTree),
-  // so sibling reorder is meaningless — drop on a row only ever means
+  // so sibling reorder is meaningless - drop on a row only ever means
   // "move dragged folder/note INTO this folder".
   let dragOverId = $state<string | null>(null);
 
@@ -386,7 +392,7 @@
     e.preventDefault();
     e.stopPropagation(); // prevent bubbling to AppSidebar root handler
 
-    // Handle note drop — move note into this folder
+    // Handle note drop - move note into this folder
     const noteId = e.dataTransfer!.getData('text/note-id');
     if (noteId) {
       await notesStore.move(noteId, target.id);

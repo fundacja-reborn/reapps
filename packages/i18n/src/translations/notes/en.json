@@ -360,7 +360,12 @@
       "mode_cascade_hint": "Notes (including those in subfolders) will be moved to Trash and can be restored from there.",
       "confirm_detach": "Delete folder",
       "confirm_cascade": "Delete folder and notes",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "progress_preparing": "Preparing…",
+      "progress_notes_detach": "Moving note {current} of {total} to All Notes…",
+      "progress_notes_cascade": "Moving note {current} of {total} to Trash…",
+      "progress_folders": "Deleting folder {current} of {total}…",
+      "progress_finishing": "Finishing…"
     },
     "import_markdown": {
       "action": "Import .md here",

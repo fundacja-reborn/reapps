@@ -4,6 +4,7 @@ import type { FolderWithChildren } from '@reborn/types';
 import * as FolderService from '$lib/services/folder.service';
 import type {
   DeleteFolderMode,
+  DeleteFolderProgressCallback,
   FolderDeleteSummary
 } from '$lib/services/folder.service';
 
@@ -45,8 +46,12 @@ function createFoldersStore() {
     await refresh();
   }
 
-  async function remove(id: string, mode: DeleteFolderMode = 'detach'): Promise<void> {
-    await FolderService.deleteFolder(id, mode);
+  async function remove(
+    id: string,
+    mode: DeleteFolderMode = 'detach',
+    onProgress?: DeleteFolderProgressCallback
+  ): Promise<void> {
+    await FolderService.deleteFolder(id, mode, onProgress);
     await refresh();
   }
 

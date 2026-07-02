@@ -360,7 +360,12 @@
       "mode_cascade_hint": "Les notes (y compris celles des sous-dossiers) seront placées dans la corbeille et pourront y être restaurées.",
       "confirm_detach": "Supprimer le dossier",
       "confirm_cascade": "Supprimer le dossier et les notes",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "progress_preparing": "Préparation…",
+      "progress_notes_detach": "Déplacement de la note {current} sur {total} vers Toutes les notes…",
+      "progress_notes_cascade": "Déplacement de la note {current} sur {total} vers la corbeille…",
+      "progress_folders": "Suppression du dossier {current} sur {total}…",
+      "progress_finishing": "Finalisation…"
     },
     "import_markdown": {
       "action": "Importer .md ici",

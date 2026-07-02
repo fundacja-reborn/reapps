@@ -28,7 +28,10 @@
   import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
-  import type { DeleteFolderMode } from '$lib/services/folder.service';
+  import type {
+    DeleteFolderMode,
+    DeleteFolderProgressCallback
+  } from '$lib/services/folder.service';
   import DeleteFolderDialog from './DeleteFolderDialog.svelte';
   import ImportMarkdownToFolderDialog from '$lib/components/import/ImportMarkdownToFolderDialog.svelte';
 
@@ -52,7 +55,7 @@
     onNewSubfolder?: () => void;
     /** Parent owns the rename UI (e.g. inline input). */
     onStartRename: () => void;
-    /** Called after a successful delete — parent can navigate back to parent folder. */
+    /** Called after a successful delete - parent can navigate back to parent folder. */
     onAfterDelete?: () => void;
   } = $props();
 
@@ -138,9 +141,12 @@
     deleteDialogOpen = true;
   }
 
-  async function confirmDeleteFolder(mode: DeleteFolderMode) {
+  async function confirmDeleteFolder(
+    mode: DeleteFolderMode,
+    onProgress: DeleteFolderProgressCallback
+  ) {
     if (!folder) return;
-    await foldersStore.remove(folder.id, mode);
+    await foldersStore.remove(folder.id, mode, onProgress);
     if (mode === 'cascade') notesStore.refresh();
     onAfterDelete?.();
   }
