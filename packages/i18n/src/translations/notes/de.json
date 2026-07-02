@@ -360,7 +360,12 @@
       "mode_cascade_hint": "Notizen (auch aus Unterordnern) werden in den Papierkorb verschoben und können von dort wiederhergestellt werden.",
       "confirm_detach": "Ordner löschen",
       "confirm_cascade": "Ordner und Notizen löschen",
-      "cancel": "Abbrechen"
+      "cancel": "Abbrechen",
+      "progress_preparing": "Wird vorbereitet…",
+      "progress_notes_detach": "Notiz {current} von {total} wird in „Alle Notizen“ verschoben…",
+      "progress_notes_cascade": "Notiz {current} von {total} wird in den Papierkorb verschoben…",
+      "progress_folders": "Ordner {current} von {total} wird gelöscht…",
+      "progress_finishing": "Wird abgeschlossen…"
     },
     "import_markdown": {
       "action": ".md hierher importieren",

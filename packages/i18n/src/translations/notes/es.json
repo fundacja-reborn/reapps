@@ -360,7 +360,12 @@
       "mode_cascade_hint": "Las notas (incluidas las de las subcarpetas) se moverán a la papelera y se podrán restaurar desde allí.",
       "confirm_detach": "Eliminar carpeta",
       "confirm_cascade": "Eliminar carpeta y notas",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "progress_preparing": "Preparando…",
+      "progress_notes_detach": "Moviendo nota {current} de {total} a Todas las notas…",
+      "progress_notes_cascade": "Moviendo nota {current} de {total} a la papelera…",
+      "progress_folders": "Eliminando carpeta {current} de {total}…",
+      "progress_finishing": "Finalizando…"
     },
     "import_markdown": {
       "action": "Importar .md aquí",

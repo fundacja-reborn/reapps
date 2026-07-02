@@ -360,7 +360,12 @@
       "mode_cascade_hint": "Notatki (również z podfolderów) trafią do kosza i będzie można je stamtąd przywrócić.",
       "confirm_detach": "Usuń folder",
       "confirm_cascade": "Usuń folder i notatki",
-      "cancel": "Anuluj"
+      "cancel": "Anuluj",
+      "progress_preparing": "Przygotowywanie…",
+      "progress_notes_detach": "Przenoszenie notatki {current} z {total} do „Wszystkie notatki”…",
+      "progress_notes_cascade": "Przenoszenie notatki {current} z {total} do kosza…",
+      "progress_folders": "Usuwanie folderu {current} z {total}…",
+      "progress_finishing": "Kończenie…"
     },
     "import_markdown": {
       "action": "Importuj .md tutaj",

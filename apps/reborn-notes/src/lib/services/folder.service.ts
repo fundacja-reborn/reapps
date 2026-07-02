@@ -174,6 +174,18 @@ export async function getFolderDeleteSummary(id: string): Promise<FolderDeleteSu
   return { subfolderCount: descendantIds.length, noteCount };
 }
 
+/** Progress of a long-running deleteFolder, reported once per processed item. */
+export interface DeleteFolderProgress {
+  /** 'notes' while notes are detached/trashed, 'folders' while folder records are deleted. */
+  phase: 'notes' | 'folders';
+  /** Items completed in the current phase. */
+  current: number;
+  /** Item count of the current phase (notes across the subtree, or folders incl. the root). */
+  total: number;
+}
+
+export type DeleteFolderProgressCallback = (progress: DeleteFolderProgress) => void;
+
 /**
  * Delete a folder, with control over what happens to the notes inside.
  *
@@ -183,12 +195,31 @@ export async function getFolderDeleteSummary(id: string): Promise<FolderDeleteSu
  * - `cascade`: notes are soft-deleted (moved to Trash) following the same
  *   path as `deleteNote`. They remain restorable from the trash for the
  *   normal retention window.
+ *
+ * `onProgress` reports per-item progress (notes first, then folders) so the
+ * UI can render a bar during large deletions - a subtree with hundreds of
+ * notes means many seconds of sequential IndexedDB work. When omitted, the
+ * up-front note count sweep is skipped entirely, so programmatic callers
+ * (e.g. the periodic-folder dedup) pay no extra reads.
  */
 export async function deleteFolder(
   id: string,
-  mode: DeleteFolderMode = 'detach'
+  mode: DeleteFolderMode = 'detach',
+  onProgress?: DeleteFolderProgressCallback
 ): Promise<void> {
   const folderIds = [id, ...(await folderOperations.getDescendantIds(id))];
+
+  // Count notes up front so the progress bar gets a stable total. The sweep
+  // re-reads what the loop below reads again, but these are cheap IndexedDB
+  // reads next to the per-note write+sync work that dominates the runtime.
+  let noteTotal = 0;
+  if (onProgress) {
+    for (const fid of folderIds) {
+      noteTotal += (await noteQueries.byFolder(fid)).length;
+    }
+    if (noteTotal > 0) onProgress({ phase: 'notes', current: 0, total: noteTotal });
+  }
+  let notesDone = 0;
 
   for (const fid of folderIds) {
     const notes = await noteQueries.byFolder(fid);
@@ -227,6 +258,13 @@ export async function deleteFolder(
         // to avoid a 404; it stays ephemeral and is cleaned up. #349
         if (!current?.is_ephemeral) pushNoteUpdate(note.id, { folder_id: null });
       }
+      notesDone += 1;
+      // Clamped: a note that appeared between the count sweep and this loop
+      // must not push `current` past `total` - the progress bar and the
+      // "{current} of {total}" copy both assume current <= total.
+      if (onProgress && noteTotal > 0) {
+        onProgress({ phase: 'notes', current: Math.min(notesDone, noteTotal), total: noteTotal });
+      }
     }
   }
 
@@ -256,12 +294,17 @@ export async function deleteFolder(
   }
 
   // Then delete folders bottom-up (descendants first, root last).
+  onProgress?.({ phase: 'folders', current: 0, total: folderIds.length });
+  let foldersDone = 0;
   for (const fid of folderIds.slice(1).reverse()) {
     await folderOperations.deleteFolder(fid);
     pushFolderDelete(fid);
+    foldersDone += 1;
+    onProgress?.({ phase: 'folders', current: foldersDone, total: folderIds.length });
   }
   await folderOperations.deleteFolder(id);
   pushFolderDelete(id);
+  onProgress?.({ phase: 'folders', current: folderIds.length, total: folderIds.length });
 }
 
 // `options.skipSync` defers the push to the caller (see renameFolder above).
