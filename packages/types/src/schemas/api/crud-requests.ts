@@ -86,13 +86,21 @@ export const DeleteListRequestSchema = z.object({
 
 // ─── reborn-notes: Notes ─────────────────────────────────────────────
 
+// Any Date.parse-able timestamp (offline-first clients send ISO strings).
+// Guards the server against `new Date(garbage)` → Invalid Date → Prisma 500
+// (audit 012 N8): unparseable input now fails validation with a 400.
+const parseableDate = z
+  .string()
+  .max(64)
+  .refine((v) => !Number.isNaN(Date.parse(v)), { message: 'Invalid date format' });
+
 export const CreateNoteRequestSchema = z.object({
   id: z.string().uuid(),
   title_encrypted: z.string().min(1).max(MAX_ENCRYPTED_NOTE_TITLE_BYTES),
   content_encrypted: z.string().max(MAX_ENCRYPTED_CONTENT_BYTES).optional(),
   metadata_encrypted: z.string().max(MAX_ENCRYPTED_NOTE_METADATA_BYTES).optional(),
   folder_id: z.string().uuid().optional().nullable(),
-  created_at: z.string().optional()
+  created_at: parseableDate.optional()
 });
 
 export const UpdateNoteRequestSchema = z.object({
@@ -143,7 +151,7 @@ export const CreateSavedSearchRequestSchema = z.object({
     .nullable(),
   folder_id: z.string().uuid().optional().nullable(),
   position: z.number().int().min(0).optional(),
-  created_at: z.string().optional()
+  created_at: parseableDate.optional()
 });
 
 export const UpdateSavedSearchRequestSchema = z.object({

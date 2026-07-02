@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     const refreshToken = body?.refresh_token;
-    if (!refreshToken || typeof refreshToken !== 'string') {
+    if (!refreshToken || typeof refreshToken !== 'string' || refreshToken.length > 2048) {
       return json({ success: false, error: 'No refresh token provided' }, { status: 401 });
     }
 

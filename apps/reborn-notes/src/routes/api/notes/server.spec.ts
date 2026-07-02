@@ -103,6 +103,16 @@ describe('GET /api/notes - legacy (un-paginated) mode', () => {
     const args = mockPrisma.note.findMany.mock.calls[0][0];
     expect(args.where.updated_at).toEqual({ gt: new Date('2026-02-01T00:00:00.000Z') });
   });
+
+  // Audit 012 N8: unparseable since must 400 instead of reaching Prisma as an
+  // Invalid Date (500 reads as transient to the sync client → endless retry).
+  it('rejects an unparseable `since` with 400', async () => {
+    const { status, body } = await callGet('?since=not-a-date');
+
+    expect(status).toBe(400);
+    expect(body.error).toBe('Invalid since parameter');
+    expect(mockPrisma.note.findMany).not.toHaveBeenCalled();
+  });
 });
 
 describe('GET /api/notes - paginated delta mode', () => {

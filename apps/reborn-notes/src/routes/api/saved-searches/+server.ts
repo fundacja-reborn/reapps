@@ -7,6 +7,14 @@ import { getUserFromToken } from '$lib/server/auth';
 
 const logger = createLogger('Notes-API-SavedSearches');
 
+/**
+ * Hard cap on saved-search rows per user (audit 012 N2): SavedSearch sits
+ * outside the byte-based storage quota, so without a cap an authenticated
+ * client could grow the table without bound. 100 is far above real usage
+ * (the UI lists them in a flat sidebar section).
+ */
+const MAX_SAVED_SEARCHES_PER_USER = 100;
+
 /** GET /api/saved-searches — fetch all saved searches for the authenticated user. */
 export const GET: RequestHandler = async ({ request, url }) => {
   try {
@@ -14,6 +22,10 @@ export const GET: RequestHandler = async ({ request, url }) => {
     if (!userId) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
     const since = url.searchParams.get('since');
+    // Unparseable `since` → 400, not an Invalid-Date Prisma 500 (audit 012 N8).
+    if (since && Number.isNaN(Date.parse(since))) {
+      return json({ success: false, error: 'Invalid since parameter' }, { status: 400 });
+    }
     const where: Prisma.SavedSearchWhereInput = { user_id: userId };
     if (since) where.updated_at = { gt: new Date(since) };
 
@@ -68,6 +80,23 @@ export const POST: RequestHandler = async ({ request }) => {
     });
     if (existingSearch && existingSearch.user_id !== userId) {
       return json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Row cap applies to creates only - updates of existing rows stay allowed.
+    // 422 (not 5xx) so the offline push marks the item sync_error instead of
+    // retrying forever.
+    if (!existingSearch) {
+      const count = await prisma.savedSearch.count({ where: { user_id: userId } });
+      if (count >= MAX_SAVED_SEARCHES_PER_USER) {
+        return json(
+          {
+            success: false,
+            error: 'SAVED_SEARCH_LIMIT_EXCEEDED',
+            limit: MAX_SAVED_SEARCHES_PER_USER
+          },
+          { status: 422 }
+        );
+      }
     }
 
     // Folder FK must exist and belong to the user. 404 lets the client push

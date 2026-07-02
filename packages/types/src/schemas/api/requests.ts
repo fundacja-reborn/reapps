@@ -55,14 +55,16 @@ export const RegisterRequestSchema = z.object({
  * Refresh token request schema
  */
 export const RefreshTokenRequestSchema = z.object({
-  refresh_token: z.string()
+  refresh_token: z.string().max(2048)
 });
 
 /**
- * Two-factor verification request schema
+ * Two-factor verification request schema.
+ * `challengeToken` is the short-lived single-use token issued by /login after
+ * the password step (audit 012 S4) - a raw userId is no longer accepted.
  */
 export const TwoFactorVerifyRequestSchema = z.object({
-  userId: z.string(),
+  challengeToken: z.string().max(2048),
   code: z.string().length(6)
 });
 
