@@ -17,9 +17,20 @@
  */
 
 import { getSecureStorage } from '$lib/utils/native-secure-storage';
+import { autoBackupScopeId } from './prefs';
 
-/** Distinct from the master key's `'master_key'` - a separate vault entry. */
-const RECOVERY_PHRASE_KEY = 'recovery_phrase';
+/**
+ * Distinct from the master key's `'master_key'` - a separate vault entry,
+ * keyed per user (same scope id as the localStorage prefs): on a shared
+ * device the next account must never read - or unknowingly back up with -
+ * the previous owner's phrase.
+ */
+const RECOVERY_PHRASE_KEY_PREFIX = 'recovery_phrase';
+
+/** Pre-scoping global key (early native builds) - only ever deleted now. */
+const LEGACY_RECOVERY_PHRASE_KEY = 'recovery_phrase';
+
+const phraseKey = (scopeId: string): string => `${RECOVERY_PHRASE_KEY_PREFIX}_${scopeId}`;
 
 /**
  * Store the recovery phrase. Unlike load/clear this does NOT swallow errors:
@@ -29,27 +40,36 @@ const RECOVERY_PHRASE_KEY = 'recovery_phrase';
  */
 export async function saveRecoveryPhrase(phrase: string): Promise<void> {
   if (!__REBORN_NATIVE__) return;
+  const scopeId = autoBackupScopeId();
+  if (!scopeId) throw new Error('No session to scope the recovery phrase to');
   const storage = await getSecureStorage();
-  await storage.setItem(RECOVERY_PHRASE_KEY, phrase);
+  await storage.setItem(phraseKey(scopeId), phrase);
 }
 
-/** The stored recovery phrase, or null when absent / unreadable / on web. */
+/** The current user's stored recovery phrase, or null when absent / unreadable / on web. */
 export async function loadRecoveryPhrase(): Promise<string | null> {
   if (!__REBORN_NATIVE__) return null;
   try {
+    const scopeId = autoBackupScopeId();
+    if (!scopeId) return null;
     const storage = await getSecureStorage();
-    return await storage.getItem(RECOVERY_PHRASE_KEY);
+    return await storage.getItem(phraseKey(scopeId));
   } catch {
     return null;
   }
 }
 
-/** Remove the stored phrase (disabling backups / logout). Best-effort. */
+/**
+ * Remove the current user's stored phrase (disabling backups / logout), plus
+ * the legacy unscoped entry from builds before per-user scoping. Best-effort.
+ */
 export async function clearRecoveryPhrase(): Promise<void> {
   if (!__REBORN_NATIVE__) return;
   try {
     const storage = await getSecureStorage();
-    await storage.removeItem(RECOVERY_PHRASE_KEY);
+    const scopeId = autoBackupScopeId();
+    if (scopeId) await storage.removeItem(phraseKey(scopeId));
+    await storage.removeItem(LEGACY_RECOVERY_PHRASE_KEY);
   } catch {
     // A failed delete must not block the flow.
   }

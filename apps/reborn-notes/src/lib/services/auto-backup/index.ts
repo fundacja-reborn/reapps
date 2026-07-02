@@ -12,10 +12,18 @@
 
 import { runAutoBackup, type AutoBackupOutcome } from '@reborn/backup';
 import { cryptoManager } from '@reborn/crypto';
+import { createLogger } from '@reborn/utils';
 import { buildEncryptedBackup } from '$lib/services/export-import.service';
-import { loadAutoBackupConfig, loadAutoBackupState, saveAutoBackupState } from './prefs';
+import {
+  clearAutoBackupPrefs,
+  loadAutoBackupConfig,
+  loadAutoBackupState,
+  saveAutoBackupState
+} from './prefs';
 import { getLastDataChangeAt } from './watermark';
 import { verifyBackup } from './verify';
+
+const logger = createLogger('Notes-AutoBackup');
 
 /**
  * Run one "back up if due" cycle for reborn-notes.
@@ -54,6 +62,27 @@ export async function runNotesAutoBackupIfDue(
     saveState: async (next) => saveAutoBackupState(next),
     verifyBackup
   });
+}
+
+/**
+ * Wipe the CURRENT user's auto-backup footprint on this device: config +
+ * runtime state (localStorage) and the recovery phrase (OS vault). Called on
+ * logout and on the local-only wipe, BEFORE the session keys are removed -
+ * the entries are keyed by the session's user id, so this is the last moment
+ * they are addressable. Best-effort by design: a failed wipe is logged but
+ * must never block the logout flow (per-user keying already prevents another
+ * account from reading what might remain).
+ */
+export async function clearAutoBackupState(): Promise<void> {
+  try {
+    clearAutoBackupPrefs();
+    if (!__REBORN_NATIVE__) return;
+    // Lazy import keeps the native secure-storage bridge out of the web bundle.
+    const { clearRecoveryPhrase } = await import('./recovery-phrase-vault');
+    await clearRecoveryPhrase();
+  } catch (err) {
+    logger.error('Failed to clear auto-backup state:', err);
+  }
 }
 
 export {
