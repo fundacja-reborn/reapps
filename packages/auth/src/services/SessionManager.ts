@@ -134,10 +134,17 @@ export class SessionManager implements ISessionManager {
 
   /**
    * Set user authentication
+   *
+   * Explicitly drops `isLocalOnly`: an authenticated session is by definition
+   * not local-only. setSession() merges, so without this a login that replaced
+   * a local-only session would keep the stale flag and every raw
+   * `session.isLocalOnly` read (nav menus, guards) would still render local
+   * mode. Mirrors the single-write-path `commit()` fix in reborn-notes (#314).
    */
   setAuthenticated(user: AuthUser, hasE2E = true): void {
     this.setSession({
       isAuthenticated: true,
+      isLocalOnly: false,
       isInitialized: true,
       hasE2E,
       user,

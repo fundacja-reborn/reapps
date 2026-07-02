@@ -993,6 +993,7 @@
       "import_json": "Importar JSON",
       "encrypted_prompt": "{name} está cifrado. Introduzca la contraseña usada durante la exportación:",
       "import_portable_additive_note": "Esto añade una copia nueva a su cuenta. Volver a importar el mismo archivo crea duplicados en lugar de actualizar una importación anterior.",
+      "import_cross_account_error": "Esta copia de seguridad cifrada se creó en otra cuenta, por lo que no se puede leer aquí. Para mover notas entre cuentas, use la opción «Copia de seguridad cifrada portable» (protegida con contraseña).",
       "backup_password": "Contraseña de la copia de seguridad",
       "decrypting": "Descifrando…",
       "decrypt_import": "Descifrar e importar",

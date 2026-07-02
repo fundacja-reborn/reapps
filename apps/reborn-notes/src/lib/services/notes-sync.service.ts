@@ -20,7 +20,8 @@ import {
   noteTagQueries,
   noteHistoryStore,
   initializeStorage,
-  isDatabaseInitialized
+  isDatabaseInitialized,
+  clearAllUserData
 } from '@reborn/storage';
 import type {
   NoteEncrypted,
@@ -31,7 +32,7 @@ import type {
   SavedSearchEncrypted,
   SyncErrorCode
 } from '@reborn/types';
-import { cryptoManager } from '@reborn/crypto';
+import { cryptoManager, isEncryptedDataReadable } from '@reborn/crypto';
 import { extractShadowIndexes } from './shadow-index-extractor';
 import { get } from 'svelte/store';
 import { API_BASE } from '$lib/utils/api-base';
@@ -912,6 +913,12 @@ export async function markAllLocalDataPending(): Promise<void> {
   logger.info(`Marked ${ops.length} local records pending for account upload`);
 }
 
+// Cross-key push guard - set once the pending rows were confirmed to decrypt
+// with the current master key (or a recovery wipe just emptied the DB). Never
+// reset within a JS session: every same-session key switch goes through a
+// login/logout flow that hard-reloads the page or clears IndexedDB first.
+let pendingRowsKeyChecked = false;
+
 /**
  * Push all locally-pending items (folders, tags, notes) to the server.
  * Called during manual sync to ensure local-only items reach the server.
@@ -960,6 +967,52 @@ export async function pushPendingItems(): Promise<void> {
     0
   )
     return;
+
+  // Pending rows must decrypt with the CURRENT master key before they are
+  // pushed. Notes created in local-only mode are all pending; when the user
+  // then logs into an EXISTING account in the peer Task app, Task swaps the
+  // shared-origin key to the account key but wipes only its own DB - Notes
+  // still holds ciphertexts under the abandoned local key. Pushing them would
+  // permanently attach unreadable records to the account (wrong key, valid
+  // iv:ciphertext format - the Encryption Guard cannot tell). Probe one
+  // ciphertext per entity kind; on a mismatch wipe local data and let the
+  // caller's follow-up pull repopulate (every push site pairs push with pull).
+  // Offline the push is just skipped - a wipe without a pull would destroy the
+  // only copy. Mirrors Task's recoverFromKeyMismatch (audit 012 S6).
+  if (!pendingRowsKeyChecked) {
+    const readable = await isEncryptedDataReadable(
+      [
+        (pendingNotes[0] ?? pendingArchivedNotes[0])?.title_encrypted,
+        pendingFolders[0]?.name_encrypted,
+        pendingTags[0]?.name_encrypted,
+        pendingSavedSearches[0]?.name_encrypted
+      ],
+      (ciphertext) => cryptoManager.decryptText(ciphertext)
+    );
+    if (!readable) {
+      if (!navigator.onLine) {
+        logger.error(
+          'Pending rows do not decrypt with the current master key and we are offline - skipping push (recovery needs a pull)'
+        );
+        return;
+      }
+      logger.warn(
+        'Pending rows are encrypted under a different master key - wiping local data; the follow-up pull restores the account state'
+      );
+      await clearAllUserData();
+      // Full pull next: the delta watermark belongs to the wiped data set.
+      clearNotesDeltaWatermark();
+      // The in-memory index/stores still hold the stale rows - reset them so
+      // the UI shows the pull result, not the just-wiped foreign-key data.
+      const { noteIndex } = await import('$lib/services/note-index.svelte');
+      const { notesStore } = await import('$lib/stores/notes.store');
+      noteIndex.clear();
+      notesStore.refresh();
+      pendingRowsKeyChecked = true;
+      return;
+    }
+    pendingRowsKeyChecked = true;
+  }
 
   logger.info(
     `Pushing pending items: ${pendingFolders.length} folders, ${pendingTags.length} tags, ${pendingSavedSearches.length} saved searches, ${pendingNotes.length} notes, ${pendingArchivedNotes.length} archived notes`

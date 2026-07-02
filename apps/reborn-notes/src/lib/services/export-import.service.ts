@@ -39,7 +39,8 @@ import {
   decryptData,
   base64ToArrayBuffer,
   encryptWithPassword,
-  cryptoManager
+  cryptoManager,
+  isEncryptedDataReadable
 } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import * as NoteService from './note.service';
@@ -960,6 +961,37 @@ export async function importJsonBackup(
     backupData = (parsed as BackupV1).data;
   } else {
     throw new Error('Nieznany format backupu.');
+  }
+
+  // Account-key formats (v1/v2) are readable only on the account that created
+  // them: on any other account every field fails the AES-GCM auth check, so
+  // the loops below would import unreadable rows (blank titles, default shadow
+  // indexes) that then bounce off the server's ownership guard on every push.
+  // Probe one ciphertext per entity kind and stop with a clear message
+  // pointing at the portable (password) backup - the supported cross-account
+  // path. v3 never gets here unreadable (its payload was just re-encrypted
+  // with the current key), and without a loaded key we keep the legacy
+  // behavior of importing ciphertext as-is for a later same-account unlock.
+  // Mirrors the Task guard from #338 (audit 012 S3).
+  if (parsed.version !== 3 && cryptoManager.isInitialized()) {
+    const probeField = (row: Record<string, unknown> | undefined, field: string) => {
+      const value = row?.[field];
+      return typeof value === 'string' ? value : undefined;
+    };
+    const readable = await isEncryptedDataReadable(
+      [
+        probeField(backupData.folders?.[0], 'name_encrypted'),
+        probeField(backupData.notes?.[0], 'title_encrypted'),
+        probeField(backupData.tags?.[0], 'name_encrypted')
+      ],
+      (ciphertext) => cryptoManager.decryptText(ciphertext)
+    );
+    if (!readable) {
+      // Dynamic import: the i18n store runs browser-only setup at module scope,
+      // which would break the node-side specs that import this service.
+      const { t } = await import('$lib/stores/i18n.store');
+      throw new Error(get(t)('settings_page.export_import.import_cross_account_error'));
+    }
   }
 
   const now = new Date().toISOString();

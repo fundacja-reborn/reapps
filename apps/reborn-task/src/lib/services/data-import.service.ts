@@ -3,7 +3,8 @@ import {
 	cryptoManager,
 	deriveKeyFromPassword,
 	decryptData,
-	base64ToArrayBuffer
+	base64ToArrayBuffer,
+	isEncryptedDataReadable
 } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import { schemas } from '@reborn/types';
@@ -13,7 +14,6 @@ import { t } from '$lib/stores/i18n.store';
 import { taskCounts } from '$lib/stores/task-counts.store';
 import { taskIndex } from './task-title-index.svelte';
 import { remapPortableIds } from './portable-import-utils';
-import { isEncryptedBackupReadable } from './encrypted-import-guard';
 import type { ExportData, PortableEncryptedExport } from './data-export.service';
 import type {
 	ListEncrypted,
@@ -253,7 +253,7 @@ export class DataImportService {
 		// same-account restore decrypts on the first probe and proceeds. (Portable
 		// and decrypted imports never reach here: they carry plaintext re-encrypted
 		// with the current key.)
-		const readable = await isEncryptedBackupReadable(
+		const readable = await isEncryptedDataReadable(
 			[
 				exportData.data.lists[0]?.name_encrypted,
 				exportData.data.tasks[0]?.title_encrypted,
