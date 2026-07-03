@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     MoreVertical,
+    CornerUpRight,
     FilePlus,
     FolderPlus,
     FolderInput,
@@ -34,6 +35,7 @@
   } from '$lib/services/folder.service';
   import DeleteFolderDialog from './DeleteFolderDialog.svelte';
   import ImportMarkdownToFolderDialog from '$lib/components/import/ImportMarkdownToFolderDialog.svelte';
+  import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
 
   let {
     folder,
@@ -106,6 +108,21 @@
   function handleStartRename() {
     sheetOpen = false;
     onStartRename();
+  }
+
+  // ── Move folder ("Move to…" picker) ────────────────────────────
+  // Self-hosted picker: this menu also renders in views where the sidebar
+  // FolderTree (and its picker) may not be mounted.
+  let moveOpen = $state(false);
+
+  function handleMove() {
+    sheetOpen = false;
+    moveOpen = true;
+  }
+
+  async function handleMoveTo(folderId: string | null) {
+    if (!folder) return;
+    await foldersStore.move(folder.id, folderId);
   }
 
   function handleImportHere() {
@@ -202,6 +219,10 @@
           <Pencil class="h-3.5 w-3.5" />
           {$t('folders.rename')}
         </DropdownMenuItem>
+        <DropdownMenuItem onclick={handleMove}>
+          <CornerUpRight class="h-3.5 w-3.5" />
+          {$t('folders.move_to')}
+        </DropdownMenuItem>
         <DropdownMenuItem onclick={handleImportHere}>
           <Upload class="h-3.5 w-3.5" />
           {$t('folders.import_markdown.action')}
@@ -252,6 +273,10 @@
         <Pencil class="mr-2 h-4 w-4" />
         {$t('folders.rename')}
       </Button>
+      <Button variant="ghost" class="w-full justify-start" onclick={handleMove}>
+        <CornerUpRight class="mr-2 h-4 w-4" />
+        {$t('folders.move_to')}
+      </Button>
       <Button variant="ghost" class="w-full justify-start" onclick={handleImportHere}>
         <Upload class="mr-2 h-4 w-4" />
         {$t('folders.import_markdown.action')}
@@ -277,6 +302,18 @@
   folderId={folder?.id ?? null}
   folderName={folder?.name ?? ''}
   onConfirm={confirmDeleteFolder}
+/>
+
+<!-- "Move to…" picker - sheet on all breakpoints (this menu has no stable
+     anchor for the desktop popup; precedent: saved-search park + bulk move). -->
+<MoveToFolderMenu
+  selection={folder
+    ? { kind: 'single', id: folder.id, currentFolderId: folder.parent_id ?? null }
+    : null}
+  bind:open={moveOpen}
+  forceSheet
+  mode="move-folder"
+  onmove={(folderId) => handleMoveTo(folderId)}
 />
 
 <!-- Hidden file inputs for "Import .md here" / "Import folder here" - triggered from the menu -->

@@ -4,6 +4,7 @@
     ArrowLeft,
     ChevronRight,
     Folder as FolderIcon,
+    FolderUp,
     Search,
     SearchCheck,
     Check,
@@ -18,7 +19,8 @@
     buildBreadcrumb,
     buildPathString,
     flattenFolderTree,
-    getAncestorIds
+    getAncestorIds,
+    getDescendantFolderIds
   } from '$lib/utils/folder-helpers';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
 
@@ -29,6 +31,9 @@
    *
    * `currentPinnedToRoot` is only meaningful in pin mode (saved searches): it lets the
    * picker show the top-level pin as the current state and disable the redundant actions.
+   *
+   * In `move-folder` mode the selection is the folder being moved: `id` is its folder id
+   * and `currentFolderId` is its CURRENT PARENT (null when it sits at the top level).
    */
   export type MoveSelection =
     | {
@@ -55,8 +60,11 @@
     forceSheet?: boolean;
     /** `'pin'` repurposes the picker for parking a saved search (smart folder): the
      *  title becomes "Pin to folder", a "Pin to top level" action appears, and the
-     *  "No folder" row becomes "Don't pin". Default `'move'` keeps note-move wording. */
-    mode?: 'move' | 'pin';
+     *  "No folder" row becomes "Don't pin". `'move-folder'` moves a FOLDER instead of a
+     *  note: the "No folder" row becomes "Top level" (reparent to root) and the moved
+     *  folder plus its whole subtree are excluded as targets (a folder cannot be moved
+     *  into itself). Default `'move'` keeps note-move wording. */
+    mode?: 'move' | 'pin' | 'move-folder';
     onmove: (folderId: string | null, e?: Event) => void;
     /** Pin mode only: pin the saved search to the top level (root smart folder). */
     onpinroot?: () => void;
@@ -66,6 +74,7 @@
   const isMobileQuery = useIsMobile();
   const useSheet = $derived(forceSheet || isMobileQuery.value);
   const isPin = $derived(mode === 'pin');
+  const isFolderMove = $derived(mode === 'move-folder');
   const pickerTitle = $derived(
     isPin ? $t('saved_searches.pin_picker_title') : $t('notes.move_to')
   );
@@ -76,6 +85,14 @@
   let containerEl = $state<HTMLDivElement | null>(null);
 
   const tree = $derived($foldersStore);
+  // Folder move only: the moved folder and its whole subtree are invalid targets
+  // (reparenting into them would create a cycle) — greyed out in the list and
+  // dropped from search results.
+  const excludedIds = $derived(
+    isFolderMove && selection?.kind === 'single'
+      ? new Set(getDescendantFolderIds(tree, selection.id))
+      : null
+  );
   const currentLevel = $derived(findChildrenOfParent(tree, currentParentId));
   const breadcrumb = $derived(buildBreadcrumb(tree, currentParentId));
   const isRoot = $derived(currentParentId === null);
@@ -84,7 +101,9 @@
   const searchResults = $derived(
     searchActive
       ? flattenFolderTree(tree)
-          .filter((f) => f.name.toLowerCase().includes(searchTerm))
+          .filter(
+            (f) => f.name.toLowerCase().includes(searchTerm) && !excludedIds?.has(f.id)
+          )
           .map((f) => ({ id: f.id, name: f.name, path: buildPathString(tree, f.id) }))
           .slice(0, 50)
       : []
@@ -154,10 +173,11 @@
 
   function doMove(folderId: string | null, e?: Event) {
     if (!selection) return;
-    // The "already here" no-op only maps cleanly to move mode, where pin state is
-    // fully captured by folder_id. In pin mode the disabled states guard redundancy.
+    // The "already here" no-op maps cleanly to both move modes, where the current
+    // location is fully captured by currentFolderId (note's folder / folder's parent).
+    // In pin mode the disabled states guard redundancy instead.
     if (
-      mode === 'move' &&
+      mode !== 'pin' &&
       selection.kind === 'single' &&
       folderId === (selection.currentFolderId ?? null)
     ) {
@@ -188,6 +208,7 @@
   function handleRowClick(folderId: string, e?: Event) {
     e?.stopPropagation();
     if (folderId === currentFolderId) return;
+    if (excludedIds?.has(folderId)) return;
     if (hasSubfolders(folderId)) {
       drillInto(folderId, e);
     } else {
@@ -305,9 +326,17 @@
           disabled={noneIsCurrent}
           aria-current={noneIsCurrent ? 'true' : undefined}
         >
-          <FileText class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          {#if isFolderMove}
+            <FolderUp class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          {:else}
+            <FileText class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          {/if}
           <span class="min-w-0 flex-1 truncate">
-            {isPin ? $t('saved_searches.dont_pin') : $t('notes.no_folder')}
+            {isPin
+              ? $t('saved_searches.dont_pin')
+              : isFolderMove
+                ? $t('folders.top_level')
+                : $t('notes.no_folder')}
           </span>
           {#if noneIsCurrent}
             <Check class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -341,24 +370,27 @@
         {#each currentLevel as folder (folder.id)}
           {@const subcount = folder.children?.length ?? 0}
           {@const isCurrent = folder.id === currentFolderId}
+          {@const isExcluded = excludedIds?.has(folder.id) ?? false}
           <div class="group flex items-stretch">
             <button
               type="button"
               role="menuitem"
               class="flex min-w-0 flex-1 items-center gap-2 rounded-l-md px-2 py-2 text-left text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent
-                {isCurrent ? 'text-muted-foreground' : 'text-foreground'}"
+                {isCurrent || isExcluded ? 'text-muted-foreground' : 'text-foreground'}"
               onclick={(e) => handleRowClick(folder.id, e)}
-              disabled={isCurrent}
+              disabled={isCurrent || isExcluded}
               aria-current={isCurrent ? 'true' : undefined}
               title={isCurrent ? $t('notes.folder_current_location') : folder.name}
             >
               <FolderIcon class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span class="min-w-0 flex-1 truncate">{folder.name}</span>
+              <span class="min-w-0 flex-1 truncate {isExcluded ? 'opacity-50' : ''}">
+                {folder.name}
+              </span>
               {#if isCurrent}
                 <Check class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               {/if}
             </button>
-            {#if subcount > 0}
+            {#if subcount > 0 && !isExcluded}
               <button
                 type="button"
                 class="flex shrink-0 items-center justify-center gap-0.5 rounded-r-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"
