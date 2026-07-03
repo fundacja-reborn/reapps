@@ -322,27 +322,28 @@ export async function deleteFolder(
 }
 
 // `options.skipSync` defers the push to the caller (see renameFolder above).
+// The storage layer marks the row `pending` atomically with the move itself,
+// so there is no window where a sync pull could revert the fresh parent_id.
 export async function moveFolderToParent(
   id: string,
   newParentId: string | null,
   options?: { skipSync?: boolean }
 ): Promise<void> {
   await folderOperations.moveFolder(id, newParentId);
-  const current = await folderStore.get(id);
-  if (current) await folderStore.save({ ...current, sync_status: 'pending' });
   if (!options?.skipSync) pushFolderUpdate(id, { parent_id: newParentId });
 }
 
+// The storage layer writes order_index + `pending` in one batch (no window
+// for a pull to revert a not-yet-pending row) and skips ids deleted or
+// reparented remotely mid-gesture - push only what was actually written,
+// so the server never gets a 404 PATCH or an index for a foreign group.
 export async function reorderSiblings(
   parentId: string | null,
   orderedIds: string[]
 ): Promise<void> {
-  await folderOperations.reorderFolders(parentId, orderedIds);
-  for (const folderId of orderedIds) {
-    const current = await folderStore.get(folderId);
-    if (current) await folderStore.save({ ...current, sync_status: 'pending' });
-  }
+  const reordered = await folderOperations.reorderFolders(parentId, orderedIds);
+  const written = new Set(reordered);
   orderedIds.forEach((folderId, index) => {
-    pushFolderUpdate(folderId, { order_index: index });
+    if (written.has(folderId)) pushFolderUpdate(folderId, { order_index: index });
   });
 }

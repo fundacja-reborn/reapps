@@ -125,12 +125,14 @@ export const folderOperations = {
   },
 
   /**
-   * Move folder to new parent
+   * Move folder to new parent. Marks the row `sync_status: 'pending'` in the
+   * same write - a sync pull landing between the move and a separate pending
+   * mark could revert it with the older server row.
    */
   moveFolder: async (folderId: string, newParentId: string | null): Promise<void> => {
     const folder = await folderStore.get(folderId);
     if (!folder) throw new Error('Folder not found');
-    
+
     // Check for circular reference
     if (newParentId) {
       const parentPath = await folderQueries.getFolderPath(newParentId);
@@ -138,18 +140,19 @@ export const folderOperations = {
         throw new Error('Cannot move folder to its own descendant');
       }
     }
-    
+
     // Get new siblings for ordering
-    const newSiblings = newParentId 
+    const newSiblings = newParentId
       ? await folderQueries.getChildren(newParentId)
       : await folderQueries.getRootFolders();
-    
+
     const maxOrder = Math.max(...newSiblings.map(s => s.order_index), -1);
-    
+
     await folderStore.save({
       ...folder,
       parent_id: newParentId ?? undefined,
       order_index: maxOrder + 1,
+      sync_status: 'pending',
       updated_at: new Date().toISOString()
     });
   },
@@ -190,16 +193,33 @@ export const folderOperations = {
   },
 
   /**
-   * Reorder folders
+   * Reorder folders within one sibling group.
+   *
+   * The new `order_index` and `sync_status: 'pending'` are written in a single
+   * batch, so a sync pull can never observe a reordered row that is not yet
+   * pending (pull would overwrite it with the older server row). Ids missing
+   * locally or no longer children of `parentId` (deleted / moved remotely
+   * mid-gesture) are skipped; surviving rows keep their position-derived
+   * index so the local state matches what the caller pushes.
+   *
+   * Returns the ids actually written, in `folderIds` order.
    */
-  reorderFolders: async (parentId: string | null, folderIds: string[]): Promise<void> => {
+  reorderFolders: async (parentId: string | null, folderIds: string[]): Promise<string[]> => {
     const folders = await folderStore.getMany(folderIds);
-    const updated = folders.map((folder, index) => ({
-      ...folder,
-      order_index: index,
-      updated_at: new Date().toISOString()
-    }));
+    const byId = new Map(folders.map(folder => [folder.id, folder]));
+    const updated: FolderEncrypted[] = [];
+    folderIds.forEach((folderId, index) => {
+      const folder = byId.get(folderId);
+      if (!folder || (folder.parent_id ?? null) !== parentId) return;
+      updated.push({
+        ...folder,
+        order_index: index,
+        sync_status: 'pending',
+        updated_at: new Date().toISOString()
+      });
+    });
     await folderStore.saveMany(updated);
+    return updated.map(folder => folder.id);
   },
 
   /**
