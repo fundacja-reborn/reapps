@@ -682,6 +682,43 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(code).toMatch(/settleInBatches\(\s*tagRemoves\b/);
   });
 
+  it('pullFolders/pullTags/pullSavedSearches batch upserts via saveMany (rule 16)', () => {
+    // Same O(n²)-refresh trap as pullNotes above, on the smaller tables: a
+    // per-row save() refreshes the whole table on every call inside the
+    // Promise.all fan-out. Each helper must buffer its upserts (reconciliation
+    // rows ride the same buffer) and flush them with a single saveMany().
+    const src = readSource('./notes-sync.service.ts');
+    const stripComments = (s: string) => s.replace(/\/\/.*$/gm, '');
+
+    const folders = stripComments(
+      src.slice(src.indexOf('async function pullFolders'), src.indexOf('async function pullTags'))
+    );
+    expect(folders).toMatch(/folderStore\.saveMany\(/);
+    // The only per-row save left is the post-sweep parent_id cycle repair,
+    // which re-reads the current row and touches at most a few cycle members -
+    // the pull fan-out itself must ride the buffer.
+    expect(folders.match(/folderStore\.save\(/g) ?? []).toHaveLength(1);
+    expect(folders.indexOf('folderStore.save(')).toBeGreaterThan(folders.indexOf('deleteMany'));
+
+    const tags = stripComments(
+      src.slice(
+        src.indexOf('async function pullTags'),
+        src.indexOf('async function pullSavedSearches')
+      )
+    );
+    expect(tags).toMatch(/tagStore\.saveMany\(/);
+    expect(tags).not.toMatch(/tagStore\.save\(/);
+
+    const searches = stripComments(
+      src.slice(
+        src.indexOf('async function pullSavedSearches'),
+        src.indexOf('const NOTES_PAGE_SIZE')
+      )
+    );
+    expect(searches).toMatch(/savedSearchStore\.saveMany\(/);
+    expect(searches).not.toMatch(/savedSearchStore\.save\(/);
+  });
+
   it('post-pull reconciler runs in +layout.svelte runSync and onMount paths', () => {
     const layout = readSource('../../routes/+layout.svelte');
     expect(layout).toMatch(/from '\$lib\/services\/shadow-index-reconciler\.service'/);

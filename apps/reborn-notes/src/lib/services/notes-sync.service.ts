@@ -21,14 +21,17 @@ import {
   noteHistoryStore,
   initializeStorage,
   isDatabaseInitialized,
-  clearAllUserData
+  clearAllUserData,
+  // The storage-layer TagEncrypted extends the base @reborn/types one with the
+  // local-only usage fields (usage_count / last_used_at) that the pull carries
+  // over on upsert - the buffered writes must be typed against it.
+  type TagEncrypted
 } from '@reborn/storage';
 import type {
   NoteEncrypted,
   NoteStoredLocal,
   NoteHistoryEntry,
   FolderEncrypted,
-  TagEncrypted,
   SavedSearchEncrypted,
   SyncErrorCode
 } from '@reborn/types';
@@ -299,6 +302,12 @@ async function pullFolders(): Promise<void> {
   if (!res.ok) throw new Error(`GET /api/folders: ${res.status}`);
   const { data } = await res.json();
 
+  // Buffer every write and flush it in ONE saveMany below: a per-row save()
+  // refreshes the whole table each time, and inside Promise.all that stacks
+  // up to the O(n²) burst that OOM-killed the Android WebView in pullNotes
+  // (guideline 36, rule 16). Reconciliation rows ride the same buffer.
+  const foldersToWrite: FolderEncrypted[] = [];
+
   await Promise.all(
     (
       data as Array<{
@@ -331,12 +340,12 @@ async function pullFolders(): Promise<void> {
             localFolder.order_index !== f.order_index)
         ) {
           logger.warn(`Reconciling orphaned folder edit ${f.id} - marking pending`);
-          await folderStore.save({ ...localFolder, sync_status: 'pending' });
+          foldersToWrite.push({ ...localFolder, sync_status: 'pending' });
         }
         return;
       }
 
-      const folder: FolderEncrypted = {
+      foldersToWrite.push({
         id: f.id,
         user_id: userId,
         parent_id: f.parent_id ?? undefined,
@@ -347,10 +356,16 @@ async function pullFolders(): Promise<void> {
         sync_status: 'synced',
         created_at: f.created_at,
         updated_at: f.updated_at
-      };
-      await folderStore.save(folder);
+      });
     })
   );
+
+  if (foldersToWrite.length > 0) {
+    const result = await folderStore.saveMany(foldersToWrite);
+    if (result.failed > 0) {
+      logger.warn(`pullFolders: ${result.failed}/${foldersToWrite.length} folder writes failed`);
+    }
+  }
 
   // Remove local folders that no longer exist on the server (deleted on another device).
   // Only remove 'synced' items - 'pending' items were created/edited locally and not yet
@@ -411,6 +426,9 @@ async function pullTags(): Promise<void> {
   if (!res.ok) throw new Error(`GET /api/tags: ${res.status}`);
   const { data } = await res.json();
 
+  // Buffered writes, one saveMany - see pullFolders() / guideline 36 rule 16.
+  const tagsToWrite: TagEncrypted[] = [];
+
   await Promise.all(
     (
       data as Array<{
@@ -439,12 +457,12 @@ async function pullTags(): Promise<void> {
             (localTag.color_encrypted ?? null) !== (t.color_encrypted ?? null))
         ) {
           logger.warn(`Reconciling orphaned tag edit ${t.id} - marking pending`);
-          await tagStore.save({ ...localTag, sync_status: 'pending' });
+          tagsToWrite.push({ ...localTag, sync_status: 'pending' });
         }
         return;
       }
 
-      await tagStore.save({
+      tagsToWrite.push({
         id: t.id,
         user_id: userId,
         name_encrypted: t.name_encrypted,
@@ -457,6 +475,13 @@ async function pullTags(): Promise<void> {
       });
     })
   );
+
+  if (tagsToWrite.length > 0) {
+    const result = await tagStore.saveMany(tagsToWrite);
+    if (result.failed > 0) {
+      logger.warn(`pullTags: ${result.failed}/${tagsToWrite.length} tag writes failed`);
+    }
+  }
 
   // Remove local tags that no longer exist on the server (hard-deleted on another device).
   // Synced-mid-pull tags are excluded via the pre-pull snapshot - see pullFolders().
@@ -487,6 +512,9 @@ async function pullSavedSearches(): Promise<void> {
   const res = await authFetch(`${API_BASE}/saved-searches`);
   if (!res.ok) throw new Error(`GET /api/saved-searches: ${res.status}`);
   const { data } = await res.json();
+
+  // Buffered writes, one saveMany - see pullFolders() / guideline 36 rule 16.
+  const searchesToWrite: SavedSearchEncrypted[] = [];
 
   await Promise.all(
     (
@@ -525,12 +553,12 @@ async function pullSavedSearches(): Promise<void> {
             local.position !== s.position)
         ) {
           logger.warn(`Reconciling orphaned saved-search edit ${s.id} - marking pending`);
-          await savedSearchStore.save({ ...local, sync_status: 'pending' });
+          searchesToWrite.push({ ...local, sync_status: 'pending' });
         }
         return;
       }
 
-      const record: SavedSearchEncrypted = {
+      searchesToWrite.push({
         id: s.id,
         user_id: userId,
         name_encrypted: s.name_encrypted,
@@ -542,10 +570,18 @@ async function pullSavedSearches(): Promise<void> {
         sync_status: 'synced',
         created_at: s.created_at,
         updated_at: s.updated_at
-      };
-      await savedSearchStore.save(record);
+      });
     })
   );
+
+  if (searchesToWrite.length > 0) {
+    const result = await savedSearchStore.saveMany(searchesToWrite);
+    if (result.failed > 0) {
+      logger.warn(
+        `pullSavedSearches: ${result.failed}/${searchesToWrite.length} saved-search writes failed`
+      );
+    }
+  }
 
   // Remove local saved searches that no longer exist on the server (hard-deleted on another
   // device). Synced-mid-pull rows are excluded via the pre-pull snapshot - see pullFolders().
