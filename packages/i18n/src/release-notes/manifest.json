@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.43.0",
+    "date": "2026-07-03",
+    "items": [
+      { "id": "0.43.0-folder-custom-order", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.0-folder-touch-drag", "category": "new", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.0-folder-delete-progress", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.0-backup-phrase-import", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.0-local-passcode-hardening", "category": "improved", "apps": ["notes", "task"], "platforms": "all" },
+      { "id": "0.43.0-sync-pull-race", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.0-undecryptable-rows", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.0-folder-move-to", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.0-2fa-challenge", "category": "fixed", "apps": ["notes", "task"], "platforms": "all" },
+      { "id": "0.43.0-token-type-gates", "category": "fixed", "apps": ["notes", "task"], "platforms": "all" },
+      { "id": "0.43.0-cross-account-import", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.0-local-mode-switch", "category": "fixed", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.42.1",
     "date": "2026-07-01",
     "items": [
