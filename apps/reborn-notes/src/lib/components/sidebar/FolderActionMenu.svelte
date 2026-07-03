@@ -122,7 +122,14 @@
 
   async function handleMoveTo(folderId: string | null) {
     if (!folder) return;
-    await foldersStore.move(folder.id, folderId);
+    try {
+      await foldersStore.move(folder.id, folderId);
+    } catch {
+      // Folder or its target deleted remotely mid-pick - tell the user and
+      // refresh so the stale row disappears (audit 013 O56).
+      toastStore.error($t('folders.move_failed_missing'));
+      foldersStore.refresh();
+    }
   }
 
   function handleImportHere() {

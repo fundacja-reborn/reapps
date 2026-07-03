@@ -342,6 +342,7 @@
     "sort_custom": "Ordre personnalisé",
     "move_up": "Monter",
     "move_down": "Descendre",
+    "move_failed_missing": "Déplacement impossible : ce dossier n'existe plus. Il a peut-être été supprimé sur un autre appareil.",
     "no_folders": "Aucun dossier pour le moment",
     "no_folders_short": "Aucun dossier pour le moment.",
     "folder_name": "Nom du dossier",
