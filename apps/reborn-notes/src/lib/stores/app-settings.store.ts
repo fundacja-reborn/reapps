@@ -222,6 +222,11 @@ export const imageLoadMode = derived(appSettings, ($settings) => $settings?.imag
 
 export const editorMode = derived(appSettings, ($settings) => $settings?.editorMode ?? 'live');
 
+export const folderSortMode = derived(
+  appSettings,
+  ($settings) => $settings?.folderSortMode ?? 'alphabetical'
+);
+
 /**
  * Per-note, ephemeral override of the editor mode (live preview vs. markdown
  * source). `null` means "use the synced default from `editorMode`".

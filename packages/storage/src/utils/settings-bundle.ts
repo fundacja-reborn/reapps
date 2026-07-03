@@ -58,6 +58,7 @@ export interface AppSettingsBundle {
   editorMode?: AppSettings['editorMode'];
   editorModeIntroSeen?: AppSettings['editorModeIntroSeen'];
   confirmBeforeDelete?: AppSettings['confirmBeforeDelete'];
+  folderSortMode?: AppSettings['folderSortMode'];
   periodicNotes?: AppSettings['periodicNotes'];
 }
 
@@ -88,6 +89,9 @@ export function extractAppBundle(s: AppSettings): AppSettingsBundle {
     editorModeIntroSeen: s.editorModeIntroSeen,
     confirmBeforeDelete: s.confirmBeforeDelete
   };
+  if (s.folderSortMode !== undefined) {
+    bundle.folderSortMode = s.folderSortMode;
+  }
   if (s.periodicNotes !== undefined) {
     bundle.periodicNotes = s.periodicNotes;
   }
@@ -123,6 +127,7 @@ export function applyBundlesToSettings(
     if (app.editorMode !== undefined) merged.editorMode = app.editorMode;
     if (app.editorModeIntroSeen !== undefined) merged.editorModeIntroSeen = app.editorModeIntroSeen;
     if (app.confirmBeforeDelete !== undefined) merged.confirmBeforeDelete = app.confirmBeforeDelete;
+    if (app.folderSortMode !== undefined) merged.folderSortMode = app.folderSortMode;
     if (app.periodicNotes !== undefined) merged.periodicNotes = app.periodicNotes;
   }
   return merged;
@@ -167,6 +172,9 @@ export function migrateAppBundle(raw: unknown): AppSettingsBundle {
   if (typeof obj.editorMode === 'string') out.editorMode = obj.editorMode as AppSettings['editorMode'];
   if (typeof obj.editorModeIntroSeen === 'boolean') out.editorModeIntroSeen = obj.editorModeIntroSeen;
   if (typeof obj.confirmBeforeDelete === 'boolean') out.confirmBeforeDelete = obj.confirmBeforeDelete;
+  if (obj.folderSortMode === 'alphabetical' || obj.folderSortMode === 'custom') {
+    out.folderSortMode = obj.folderSortMode;
+  }
   if (typeof obj.periodicNotes === 'object' && obj.periodicNotes !== null) {
     out.periodicNotes = obj.periodicNotes as AppSettings['periodicNotes'];
   }

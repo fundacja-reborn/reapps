@@ -27,6 +27,8 @@ import {
   pushSavedSearchUpdate
 } from './notes-sync.service';
 import { noteIndex } from '$lib/services/note-index.svelte';
+import { getSetting } from '$lib/utils/app-settings';
+import { sortFoldersByCustomOrder, sortFoldersByName } from '$lib/utils/folder-helpers';
 
 // ── User identity ─────────────────────────────────────────────────
 
@@ -70,20 +72,15 @@ async function toDecrypted(enc: FolderEncrypted): Promise<Omit<FolderWithChildre
 
 // ── Public API ───────────────────────────────────────────────────
 
-// Locale-aware, case-insensitive alphabetical sort applied after decryption.
-// The storage layer orders by `order_index` (ciphertext-friendly), but users
-// only ever see decrypted names - sort here so the order matches what they read.
-const folderNameCollator = new Intl.Collator(undefined, {
-  sensitivity: 'base',
-  numeric: true
-});
-
-function sortFoldersByName<T extends { name: string }>(folders: T[]): T[] {
-  return [...folders].sort((a, b) => folderNameCollator.compare(a.name, b.name));
-}
-
+// Sibling sort is applied here, after decryption - the storage layer can only
+// order by `order_index` (ciphertext-friendly). Which comparator runs depends
+// on the user's folderSortMode setting: 'alphabetical' (default) sorts by
+// decrypted name; 'custom' renders the user-arranged order_index with a name
+// tiebreak (see sortFoldersByCustomOrder in folder-helpers).
 export async function getFolderTree(): Promise<FolderWithChildren[]> {
   const all = await folderQueries.getFolderTree();
+  const mode = (await getSetting('folderSortMode')) ?? 'alphabetical';
+  const sortSiblings = mode === 'custom' ? sortFoldersByCustomOrder : sortFoldersByName;
 
   async function convertNode(
     node: FolderEncrypted & { children: (typeof node)[] }
@@ -92,12 +89,12 @@ export async function getFolderTree(): Promise<FolderWithChildren[]> {
     const children = await Promise.all(node.children.map(convertNode));
     return {
       ...decrypted,
-      children: sortFoldersByName(children)
+      children: sortSiblings(children)
     };
   }
 
   const tree = await Promise.all(all.map(convertNode as never));
-  return sortFoldersByName(tree as FolderWithChildren[]);
+  return sortSiblings(tree as FolderWithChildren[]);
 }
 
 // `options.skipSync` defers the network push to the caller - used by batch

@@ -37,6 +37,7 @@ export type {
   AppSettings,
   ImageLoadMode,
   EditorMode,
+  FolderSortMode,
   PeriodicKind,
   PeriodicKindSettings,
   PeriodicNotesSettings

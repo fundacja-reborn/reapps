@@ -6,7 +6,9 @@ import {
   getAncestorIds,
   getDescendantFolderIds,
   flattenFolderTree,
-  flattenFoldersWithDepth
+  flattenFoldersWithDepth,
+  sortFoldersByCustomOrder,
+  sortFoldersByName
 } from './folder-helpers';
 import type { FolderWithChildren } from '@reborn/types';
 
@@ -145,5 +147,44 @@ describe('existing helpers still work', () => {
 
   it('getAncestorIds returns parent→root order', () => {
     expect(getAncestorIds('guide', tree)).toEqual(['devsub', 'reapps', 'dev']);
+  });
+});
+
+describe('sibling sort comparators', () => {
+  const make = (name: string, order_index: number) => ({ name, order_index });
+
+  it('sortFoldersByName is locale-aware, case-insensitive and numeric-friendly', () => {
+    const sorted = sortFoldersByName([
+      make('zeta', 0),
+      make('Alpha', 0),
+      make('item 10', 0),
+      make('item 2', 0)
+    ]);
+    expect(sorted.map((f) => f.name)).toEqual(['Alpha', 'item 2', 'item 10', 'zeta']);
+  });
+
+  it('sortFoldersByCustomOrder follows order_index', () => {
+    const sorted = sortFoldersByCustomOrder([
+      make('Alpha', 2),
+      make('Beta', 0),
+      make('Gamma', 1)
+    ]);
+    expect(sorted.map((f) => f.name)).toEqual(['Beta', 'Gamma', 'Alpha']);
+  });
+
+  it('sortFoldersByCustomOrder falls back to name on order_index ties (untouched groups)', () => {
+    const sorted = sortFoldersByCustomOrder([
+      make('zeta', 0),
+      make('Alpha', 0),
+      make('beta', 0)
+    ]);
+    expect(sorted.map((f) => f.name)).toEqual(['Alpha', 'beta', 'zeta']);
+  });
+
+  it('sort helpers do not mutate their input', () => {
+    const input = [make('b', 1), make('a', 0)];
+    sortFoldersByCustomOrder(input);
+    sortFoldersByName(input);
+    expect(input.map((f) => f.name)).toEqual(['b', 'a']);
   });
 });

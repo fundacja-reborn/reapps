@@ -16,6 +16,8 @@
 
 <script lang="ts">
   import {
+    ArrowDown,
+    ArrowUp,
     ChevronRight,
     CornerUpRight,
     Folder,
@@ -55,6 +57,7 @@
   import type { SavedSearchDecrypted } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
   import { notesStore } from '$lib/stores/notes.store';
+  import { folderSortMode } from '$lib/stores/app-settings.store';
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
@@ -72,6 +75,7 @@
   let {
     nodes,
     depth = 0,
+    parentId = null,
     activeFolderId = null,
     activeSavedSearchId = null,
     expandedIds,
@@ -83,6 +87,9 @@
   }: {
     nodes: FolderWithChildren[];
     depth?: number;
+    /** Parent folder of this sibling group - null at the root level. Custom
+     *  sort reorder writes (drag between rows, move up/down) target it. */
+    parentId?: string | null;
     activeFolderId?: string | null;
     /** Id of the smart folder (pinned saved search) currently open in the main
      *  list - highlights its row, mirroring activeFolderId for real folders. */
@@ -391,7 +398,29 @@
         icon: CornerUpRight,
         label: $t('folders.move_to'),
         run: (e) => handleRequestMove(folder, e)
-      },
+      }
+    );
+    // Custom sort only: neighbour swaps, hidden at the group's edges.
+    if ($folderSortMode === 'custom') {
+      const idx = nodes.findIndex((n) => n.id === folder.id);
+      if (idx > 0) {
+        actions.push({
+          key: 'move-up',
+          icon: ArrowUp,
+          label: $t('folders.move_up'),
+          run: (e) => handleNudge(folder, -1, e)
+        });
+      }
+      if (idx !== -1 && idx < nodes.length - 1) {
+        actions.push({
+          key: 'move-down',
+          icon: ArrowDown,
+          label: $t('folders.move_down'),
+          run: (e) => handleNudge(folder, 1, e)
+        });
+      }
+    }
+    actions.push(
       {
         key: 'import-md',
         icon: Upload,
@@ -417,12 +446,15 @@
   }
 
   // ── Drag & Drop ─────────────────────────────────────────────────
-  // Folder rows are sorted alphabetically (see folder.service.getFolderTree),
-  // so sibling reorder is meaningless - drop on a row only ever means
-  // "move dragged folder/note INTO this folder". Moving a folder to the TOP
-  // level goes through the panel's root drop zone (+page.svelte) or the
-  // "Move to…" picker instead.
-  let dragOverId = $state<string | null>(null);
+  // In the default alphabetical sort, sibling order is derived from names, so
+  // a drop on a row only ever means "move dragged folder/note INTO it". In
+  // custom sort the row splits into three vertical bands: the outer quarters
+  // insert the dragged FOLDER before/after the row (reorder), the middle keeps
+  // meaning "into". Moving a folder to the TOP level goes through the panel's
+  // root drop zone (+page.svelte), a between-rows drop at depth 0, or the
+  // "Move to…" picker.
+  type DropZone = 'into' | 'before' | 'after';
+  let dropTarget = $state<{ id: string; zone: DropZone } | null>(null);
 
   function onDragStart(folder: FolderWithChildren, e: DragEvent) {
     e.dataTransfer!.effectAllowed = 'move';
@@ -437,25 +469,59 @@
     dragBlockedIds.set(null);
   }
 
+  function dropZoneFromEvent(e: DragEvent): DropZone {
+    // Notes have no sibling order among folders - they always move INTO.
+    if ($folderSortMode !== 'custom' || e.dataTransfer!.types.includes('text/note-id')) {
+      return 'into';
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    if (y < rect.height * 0.25) return 'before';
+    if (y > rect.height * 0.75) return 'after';
+    return 'into';
+  }
+
   function onDragOver(folder: FolderWithChildren, e: DragEvent) {
     // No preventDefault for the dragged folder's own subtree - the browser
     // keeps the no-drop cursor and never fires drop there.
     if ($dragBlockedIds?.has(folder.id)) {
-      dragOverId = null;
+      dropTarget = null;
       return;
     }
     e.preventDefault();
     e.dataTransfer!.dropEffect = 'move';
-    dragOverId = folder.id;
+    dropTarget = { id: folder.id, zone: dropZoneFromEvent(e) };
   }
 
   function onDragLeave() {
-    dragOverId = null;
+    dropTarget = null;
+  }
+
+  // Insert the dragged folder before/after `targetId` within this instance's
+  // sibling group. A cross-parent drag reparents first (move() appends at the
+  // group's end), then the whole group's order_index is rewritten.
+  async function reorderAround(
+    draggedId: string,
+    targetId: string,
+    zone: 'before' | 'after'
+  ) {
+    // Group parent inside the dragged subtree would cycle (belt & braces -
+    // rows of that subtree already refuse dragover, so it can't be reached).
+    if (parentId && $dragBlockedIds?.has(parentId)) return;
+    const ids = nodes.map((n) => n.id).filter((id) => id !== draggedId);
+    const targetIdx = ids.indexOf(targetId);
+    if (targetIdx === -1) return;
+    ids.splice(zone === 'after' ? targetIdx + 1 : targetIdx, 0, draggedId);
+    if (!nodes.some((n) => n.id === draggedId)) {
+      await foldersStore.move(draggedId, parentId);
+    }
+    await foldersStore.reorder(parentId, ids);
   }
 
   async function onDrop(target: FolderWithChildren, e: DragEvent) {
     e.preventDefault();
     e.stopPropagation(); // prevent bubbling to the panel's root drop zone
+    const zone: DropZone = dropTarget?.id === target.id ? dropTarget.zone : 'into';
 
     try {
       // Handle note drop - move note into this folder
@@ -471,13 +537,32 @@
       // Cycle guard (dragover already refuses these; keep drop safe too).
       if ($dragBlockedIds?.has(target.id)) return;
 
-      // Move dragged folder into target
-      await foldersStore.move(draggedId, target.id);
-      expandedIds.add(target.id);
+      if (zone === 'into') {
+        // Move dragged folder into target
+        await foldersStore.move(draggedId, target.id);
+        expandedIds.add(target.id);
+      } else {
+        await reorderAround(draggedId, target.id, zone);
+      }
     } finally {
-      dragOverId = null;
+      dropTarget = null;
       dragBlockedIds.set(null);
     }
+  }
+
+  // ── Move up / move down (custom sort only) ──────────────────────
+  // Keyboard- and touch-reachable counterpart of drag-between-rows: swap the
+  // folder with its neighbour in this sibling group.
+  async function handleNudge(folder: FolderWithChildren, dir: -1 | 1, e?: Event) {
+    e?.stopPropagation();
+    menuOpenId = null;
+    folderActionSheetOpen = false;
+    const ids = nodes.map((n) => n.id);
+    const i = ids.indexOf(folder.id);
+    const j = i + dir;
+    if (i === -1 || j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+    await foldersStore.reorder(parentId, ids);
   }
 </script>
 
@@ -528,7 +613,7 @@
     {@const isActive = activeFolderId === folder.id}
     {@const parkedSearches = savedSearchesByFolder?.get(folder.id) ?? []}
     {@const hasChildren = (folder.children?.length ?? 0) > 0 || parkedSearches.length > 0}
-    {@const isDragTarget = dragOverId === folder.id}
+    {@const dropZone = dropTarget?.id === folder.id ? dropTarget.zone : null}
     {@const syncConfigId = $syncedFolderConfigs.get(folder.id) ?? null}
     {@const rowActions = folderActions(folder, syncConfigId)}
 
@@ -558,7 +643,7 @@
                 : menuOpenId === folder.id
                   ? 'bg-accent/50 text-foreground'
                   : 'text-foreground hover:bg-accent/50'}
-                {isDragTarget ? 'ring-1 ring-primary bg-accent/30' : ''}"
+                {dropZone === 'into' ? 'ring-1 ring-primary bg-accent/30' : ''}"
               style="padding-left: {depth * 0.75 + 0.5}rem"
               role="button"
               tabindex="0"
@@ -566,6 +651,13 @@
               onkeydown={(e) => e.key === 'Enter' && handleRowSelect(folder)}
               aria-label={$t('folders.folder_label', { values: { name: folder.name } })}
             >
+              <!-- Custom sort: insertion line for a between-rows drop -->
+              {#if dropZone === 'before' || dropZone === 'after'}
+                <div
+                  class="pointer-events-none absolute inset-x-1 z-10 h-0.5 rounded-full bg-primary
+                    {dropZone === 'before' ? 'top-0' : 'bottom-0'}"
+                ></div>
+              {/if}
               <!-- Folder icon (synced top-level folders get a distinct sync glyph) -->
               {#if syncConfigId}
                 <FolderSync
@@ -702,6 +794,7 @@
           <FolderTree
             nodes={folder.children ?? []}
             depth={depth + 1}
+            parentId={folder.id}
             {activeFolderId}
             {activeSavedSearchId}
             {expandedIds}
@@ -757,6 +850,29 @@
         <CornerUpRight class="mr-2 h-4 w-4" />
         {$t('folders.move_to')}
       </Button>
+      {#if $folderSortMode === 'custom' && activeMenuFolder}
+        {@const menuIdx = nodes.findIndex((n) => n.id === activeMenuFolder.id)}
+        {#if menuIdx > 0}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => activeMenuFolder && handleNudge(activeMenuFolder, -1)}
+          >
+            <ArrowUp class="mr-2 h-4 w-4" />
+            {$t('folders.move_up')}
+          </Button>
+        {/if}
+        {#if menuIdx !== -1 && menuIdx < nodes.length - 1}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => activeMenuFolder && handleNudge(activeMenuFolder, 1)}
+          >
+            <ArrowDown class="mr-2 h-4 w-4" />
+            {$t('folders.move_down')}
+          </Button>
+        {/if}
+      {/if}
       <Button
         variant="ghost"
         class="w-full justify-start"
