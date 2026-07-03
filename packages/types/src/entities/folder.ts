@@ -11,6 +11,14 @@ export interface FolderDecrypted {
   created_at: string;
   updated_at: string;
   deleted_at?: string;
+  /**
+   * True when the folder's ciphertext could not be decrypted with the current
+   * master key (foreign key epoch / corrupted data). Such a row keeps an empty
+   * name; the UI renders an explicit placeholder and offers rename (repair) or
+   * deletion. The folder's structure and contents stay fully usable - only the
+   * name is ciphertext.
+   */
+  decrypt_failed?: boolean;
 }
 
 export interface FolderEncrypted extends SyncableEncryptedEntity {
@@ -30,8 +38,8 @@ export interface FolderWithChildren extends FolderDecrypted {
 /** Maximum plaintext folder name size in bytes. */
 export const MAX_FOLDER_NAME_BYTES = 500; // ~250 Unicode chars
 
-/** Maximum encrypted folder name — server Zod. */
+/** Maximum encrypted folder name - server Zod. */
 export const MAX_ENCRYPTED_FOLDER_NAME_BYTES = 750;
 
-/** Maximum encrypted folder metadata bundle — server Zod. Contains color, icon. */
+/** Maximum encrypted folder metadata bundle - server Zod. Contains color, icon. */
 export const MAX_ENCRYPTED_FOLDER_METADATA_BYTES = 2_000;

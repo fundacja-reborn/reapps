@@ -29,7 +29,7 @@ export interface PeriodicNoteMetadata {
 export interface NoteSensitiveMetadata {
   is_starred?: boolean;
   is_pinned?: boolean;
-  tags?: string[]; // tag IDs — filtering moved client-side
+  tags?: string[]; // tag IDs - filtering moved client-side
   /** Set when this note was created by the Periodic Notes feature. */
   periodic?: PeriodicNoteMetadata;
 }
@@ -48,9 +48,17 @@ export interface NoteDecrypted {
   created_at: string;
   updated_at: string;
   deleted_at?: string;
+  /**
+   * True when any of the note's ciphertexts (title, content) could not be
+   * decrypted with the current master key (foreign key epoch / corrupted data).
+   * Such a row keeps empty title/content; the UI renders an explicit
+   * placeholder, never opens the editor for it (a save would overwrite the
+   * ciphertext), and only offers deletion.
+   */
+  decrypt_failed?: boolean;
 }
 
-// ─── Encrypted type (server/sync — no plaintext sensitive data) ──────
+// ─── Encrypted type (server/sync - no plaintext sensitive data) ──────
 
 /** Wire format sent to/from server. is_starred/is_pinned inside metadata_encrypted. */
 export interface NoteEncrypted extends SyncableEncryptedEntity {
@@ -58,10 +66,10 @@ export interface NoteEncrypted extends SyncableEncryptedEntity {
   title_encrypted: string;
   content_encrypted: string;
   metadata_encrypted?: string; // Contains NoteSensitiveMetadata
-  is_archived?: boolean; // Operational (like deleted_at) — stays plain
+  is_archived?: boolean; // Operational (like deleted_at) - stays plain
 }
 
-// ─── Local storage type (IndexedDB — shadow indexes for queries) ─────
+// ─── Local storage type (IndexedDB - shadow indexes for queries) ─────
 
 // `SyncErrorCode` moved to `../base` (both apps produce it now); re-exported
 // there. NoteStoredLocal still pairs it with `sync_status: 'sync_error'`.
@@ -92,17 +100,17 @@ export interface NoteStoredLocal extends NoteEncrypted {
 /** Maximum number of version snapshots kept per note (client and server). */
 export const MAX_NOTE_VERSIONS = 10;
 
-/** Maximum plaintext size of a single note (title + content) in bytes — enforced client-side. */
+/** Maximum plaintext size of a single note (title + content) in bytes - enforced client-side. */
 export const MAX_NOTE_CONTENT_BYTES = 500_000; // 500 KB
 
-/** Maximum encrypted payload size per note field — enforced server-side via Zod. */
+/** Maximum encrypted payload size per note field - enforced server-side via Zod. */
 export const MAX_ENCRYPTED_CONTENT_BYTES = 750_000; // ~500 KB plaintext + encryption overhead
 
-/** Maximum encrypted note title size — server Zod. */
+/** Maximum encrypted note title size - server Zod. */
 export const MAX_ENCRYPTED_NOTE_TITLE_BYTES = 1_500; // ~1 KB plaintext + encryption overhead
 
-/** Maximum encrypted metadata bundle size — server Zod. Contains is_starred, is_pinned, tag IDs. */
-export const MAX_ENCRYPTED_NOTE_METADATA_BYTES = 10_000; // ~7 KB plaintext — enough for ~200 tag UUIDs
+/** Maximum encrypted metadata bundle size - server Zod. Contains is_starred, is_pinned, tag IDs. */
+export const MAX_ENCRYPTED_NOTE_METADATA_BYTES = 10_000; // ~7 KB plaintext - enough for ~200 tag UUIDs
 
 /** Default per-user storage quota in bytes (configurable via USER_STORAGE_LIMIT_BYTES env). */
 export const DEFAULT_USER_STORAGE_LIMIT_BYTES = 104_857_600; // 100 MB
@@ -117,7 +125,7 @@ export interface NoteHistoryEntry {
   created_at: string;
 }
 
-/** Decrypted version snapshot — used only in UI (on-demand decryption). */
+/** Decrypted version snapshot - used only in UI (on-demand decryption). */
 export interface NoteHistoryDecrypted {
   id: string;
   note_id: string;

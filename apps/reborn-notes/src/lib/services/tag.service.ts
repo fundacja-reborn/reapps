@@ -2,7 +2,7 @@
  * Tag service for Reborn Notes.
  *
  * Wraps @reborn/storage tag/noteTag operations with E2E encryption via CryptoManager.
- * Tag names and colors are always encrypted with the user's master key — E2E must be unlocked before use.
+ * Tag names and colors are always encrypted with the user's master key - E2E must be unlocked before use.
  */
 import {
   tagStore,
@@ -19,6 +19,7 @@ import { pushTag, pushTagUpdate, pushTagDelete, pushNoteUpdate, pushNoteMutation
 import { noteStore } from '@reborn/storage';
 import type { NoteSensitiveMetadata, NoteStoredLocal } from '@reborn/types';
 import { noteIndex } from '$lib/services/note-index.svelte';
+import { createUndecryptableRowCache, decodeTextField } from './undecryptable-rows';
 
 // ── User identity ─────────────────────────────────────────────────
 
@@ -48,18 +49,6 @@ async function encodeName(name: string): Promise<string> {
   return cryptoManager.encryptText(name);
 }
 
-async function decodeName(stored: string): Promise<string> {
-  if (!stored) return '';
-  if (!cryptoManager.isInitialized()) {
-    throw new Error('[E2E] decodeName called without master key loaded');
-  }
-  try {
-    return await cryptoManager.decryptText(stored);
-  } catch {
-    return ''; // deszyfrowanie nie powiodło się (uszkodzone dane)
-  }
-}
-
 async function encodeColor(color: string): Promise<string> {
   if (!cryptoManager.isInitialized()) {
     throw new Error('[E2E] encodeColor called without master key loaded');
@@ -67,23 +56,38 @@ async function encodeColor(color: string): Promise<string> {
   return cryptoManager.encryptText(color);
 }
 
-async function decodeColor(stored: string): Promise<string> {
-  if (!stored) return '';
-  if (!cryptoManager.isInitialized()) {
-    throw new Error('[E2E] decodeColor called without master key loaded');
-  }
-  try {
-    return await cryptoManager.decryptText(stored);
-  } catch {
-    return ''; // deszyfrowanie nie powiodło się (uszkodzone dane)
-  }
+// Session cache of rows that already failed to decrypt - see
+// undecryptable-rows.ts for the shared pattern (guideline 63, #15).
+const undecryptableRows = createUndecryptableRowCache();
+
+// Like folders, a tag's function survives an undecryptable row: note
+// relationships live outside the ciphertext, and a rename (plus re-picking the
+// color) re-encrypts under the current key and repairs the row. The UI keeps
+// selection active and offers rename + delete.
+function toUndecryptable(enc: TagEncrypted): TagDecrypted {
+  return {
+    id: enc.id,
+    name: '',
+    color: undefined,
+    created_at: enc.created_at,
+    updated_at: enc.updated_at,
+    decrypt_failed: true
+  };
 }
 
 async function toDecrypted(enc: TagEncrypted): Promise<TagDecrypted> {
+  if (undecryptableRows.has(enc.id, enc.updated_at)) return toUndecryptable(enc);
+  const name = await decodeTextField(enc.name_encrypted, 'tag name');
+  const color = await decodeTextField(enc.color_encrypted, 'tag color');
+  if (name === null || color === null) {
+    undecryptableRows.mark(enc.id, enc.updated_at);
+    return toUndecryptable(enc);
+  }
+  undecryptableRows.clear(enc.id);
   return {
     id: enc.id,
-    name: await decodeName(enc.name_encrypted),
-    color: enc.color_encrypted ? await decodeColor(enc.color_encrypted) : undefined,
+    name,
+    color: color || undefined,
     created_at: enc.created_at,
     updated_at: enc.updated_at
   };
@@ -101,7 +105,7 @@ export async function getAllTags(): Promise<TagDecrypted[]> {
 /**
  * Create a new tag. Returns the new tag ID.
  *
- * `options.skipSync` defers the network push to the caller — used by batch
+ * `options.skipSync` defers the network push to the caller - used by batch
  * importers that bulk-push everything via `pushPendingItems()` at the end so
  * folders/tags land before any note that references them.
  */
@@ -235,7 +239,7 @@ export async function setTagsForNote(noteId: string, tagIds: string[], options?:
     try {
       await tagOperations.incrementUsage(tagId);
     } catch {
-      // tag may have been deleted concurrently — ignore
+      // tag may have been deleted concurrently - ignore
     }
   }
   for (const tagId of toRemove) {
@@ -246,7 +250,7 @@ export async function setTagsForNote(noteId: string, tagIds: string[], options?:
       // ignore
     }
   }
-  // Update metadata_encrypted with new tag IDs (E2E — tags stay encrypted)
+  // Update metadata_encrypted with new tag IDs (E2E - tags stay encrypted)
   const existing = await noteStore.get(noteId);
   if (existing) {
     let meta: NoteSensitiveMetadata = {

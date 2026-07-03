@@ -1,5 +1,5 @@
 /**
- * NoteIndex — in-memory cache of decrypted note metadata for list views.
+ * NoteIndex - in-memory cache of decrypted note metadata for list views.
  *
  * Security: RAM-only, NEVER persisted to IndexedDB/localStorage/sessionStorage.
  * Cleared on lock/logout. Rebuilt after sync.
@@ -7,9 +7,9 @@
  *
  * Consumers: NoteList, NotePicker, autocomplete [[, search sidebar.
  *
- * Replaces the old NoteTitleIndex — now stores all metadata needed for list rendering:
+ * Replaces the old NoteTitleIndex - now stores all metadata needed for list rendering:
  * title, folderId, isPinned, isStarred, isArchived, createdAt, updatedAt, tagIds.
- * Full content is NEVER stored here — loaded on demand by note-detail.service.
+ * Full content is NEVER stored here - loaded on demand by note-detail.service.
  */
 import { noteStore, noteTagStore, noteTagQueries } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
@@ -28,9 +28,12 @@ export interface NoteIndexEntry {
   createdAt: string;
   updatedAt: string;
   tagIds: string[];
+  /** Row's ciphertext failed to decrypt (see undecryptable-rows.ts) - the list
+   *  renders an explicit placeholder and the row cannot be opened. */
+  decryptFailed?: boolean;
 }
 
-/** Lightweight note type for list views — NoteDecrypted minus content. */
+/** Lightweight note type for list views - NoteDecrypted minus content. */
 export type NoteListItem = Omit<NoteDecrypted, 'content' | 'deleted_at'>;
 
 export type SortBy = 'updated_at' | 'created_at' | 'title';
@@ -59,7 +62,7 @@ export interface FilterResult {
 
 /**
  * AST-driven filter options. Mirrors the pre-filter slice of FilterOptions
- * (folder/tag/starred/archived) — body content is NOT handled here. Operators
+ * (folder/tag/starred/archived) - body content is NOT handled here. Operators
  * that need decrypted content (`has:link`, freetext-in-body) are evaluated by
  * the content-search path in `notes.store.ts`, which streams one body at a
  * time through the bare `evaluate()` + `toSearchEntity()` helpers.
@@ -78,17 +81,17 @@ export interface FilterByAstOptions {
 const BATCH_SIZE = 100;
 
 class NoteIndex {
-  /** Internal map — NOT reactive on purpose; we bump _version to signal changes. */
+  /** Internal map - NOT reactive on purpose; we bump _version to signal changes. */
   private _map = new Map<string, NoteIndexEntry>();
 
-  /** Svelte 5 reactive version counter — consumers that read derived data re-render. */
+  /** Svelte 5 reactive version counter - consumers that read derived data re-render. */
   private _version = $state(0);
 
   private _building = $state(false);
 
   // ── Bulk operations ────────────────────────────────────────────
 
-  /** Build the cache from scratch (after unlock). Non-blocking — processes in batches. */
+  /** Build the cache from scratch (after unlock). Non-blocking - processes in batches. */
   async build(): Promise<void> {
     if (!cryptoManager.isInitialized()) return;
     // The link graph shadows the same note set; invalidate it so it rebuilds
@@ -122,7 +125,8 @@ class NoteIndex {
             isArchived: e.isArchived,
             createdAt: e.createdAt,
             updatedAt: e.updatedAt,
-            tagIds: tagMap.get(e.id) ?? []
+            tagIds: tagMap.get(e.id) ?? [],
+            ...(e.decryptFailed ? { decryptFailed: true } : {})
           });
         }
         // Yield to event loop between batches
@@ -143,9 +147,10 @@ class NoteIndex {
    * each page lands in the index without an O(n) rebuild per page (which would
    * re-deserialize the whole notes table every page = the O(n²) trap PR #353
    * removed). Tags are read from the (already-applied) note-tag relations, so
-   * call this AFTER the page's tag deltas are written. Same crypto guard as
-   * build(): a row that fails to decrypt is skipped; a later full rebuild
-   * (refreshStoresAfterPull) reconciles it.
+   * call this AFTER the page's tag deltas are written. An undecryptable row
+   * lands flagged (decryptFailed) like in build(); the catch below only guards
+   * transient errors (e.g. crypto not ready), where skipping is right - a
+   * later full rebuild (refreshStoresAfterPull) reconciles it.
    */
   async upsertFromStore(ids: string[]): Promise<void> {
     if (!cryptoManager.isInitialized() || ids.length === 0) return;
@@ -163,7 +168,8 @@ class NoteIndex {
           isArchived: e.isArchived,
           createdAt: e.createdAt,
           updatedAt: e.updatedAt,
-          tagIds
+          tagIds,
+          ...(e.decryptFailed ? { decryptFailed: true } : {})
         });
         changed = true;
       } catch {
@@ -213,7 +219,7 @@ class NoteIndex {
     this._version++;
   }
 
-  /** Partial update — merges with existing entry. */
+  /** Partial update - merges with existing entry. */
   patch(id: string, partial: Partial<NoteIndexEntry>): void {
     const existing = this._map.get(id);
     if (!existing) return;
@@ -229,11 +235,13 @@ class NoteIndex {
 
   // ── Read API (backward-compatible with NoteTitleIndex) ─────────
 
-  /** All non-archived titles sorted by updatedAt desc. Reactive via _version. */
+  /** All non-archived titles sorted by updatedAt desc. Reactive via _version.
+   *  Excludes undecryptable rows - they feed [[link]] autocomplete and pickers,
+   *  where a blank garbage target must not be offered. */
   getAll(): { id: string; title: string }[] {
     void this._version;
     return Array.from(this._map.entries())
-      .filter(([, e]) => !e.isArchived)
+      .filter(([, e]) => !e.isArchived && !e.decryptFailed)
       .sort((a, b) => b[1].updatedAt.localeCompare(a[1].updatedAt))
       .map(([id, e]) => ({ id, title: e.title }));
   }
@@ -265,7 +273,8 @@ class NoteIndex {
       is_archived: e.isArchived,
       created_at: e.createdAt,
       updated_at: e.updatedAt,
-      tags: e.tagIds
+      tags: e.tagIds,
+      ...(e.decryptFailed ? { decrypt_failed: true } : {})
     };
   }
 
@@ -288,7 +297,7 @@ class NoteIndex {
 
   /**
    * Snapshot of all non-archived entries for dedup / lookup callers (e.g.
-   * the markdown import pipeline). Returns a new array each call — safe
+   * the markdown import pipeline). Returns a new array each call - safe
    * to mutate. Excludes archived notes; importer should not collide with
    * trashed titles.
    */
@@ -312,7 +321,7 @@ class NoteIndex {
   /**
    * Unified filtering + sorting + pagination over the in-memory index.
    *
-   * All operations are synchronous on the Map — no IndexedDB hit, no decryption.
+   * All operations are synchronous on the Map - no IndexedDB hit, no decryption.
    * Typical cost: <1ms for 10K entries.
    */
   getFiltered(options: FilterOptions = {}): FilterResult {
@@ -336,7 +345,7 @@ class NoteIndex {
     // archived filter
     entries = entries.filter(([, e]) => e.isArchived === archived);
 
-    // folder filter — folderIds (set) takes precedence over folderId (single)
+    // folder filter - folderIds (set) takes precedence over folderId (single)
     if (folderIds !== undefined) {
       const set = new Set(folderIds);
       entries = entries.filter(([, e]) => e.folderId !== undefined && set.has(e.folderId));
@@ -367,7 +376,7 @@ class NoteIndex {
 
     // 2. Sort (pinned always first, then by sort key)
     entries.sort((a, b) => {
-      // Pinned first (skip in archived/trash mode — no pin concept)
+      // Pinned first (skip in archived/trash mode - no pin concept)
       if (!archived) {
         if (a[1].isPinned && !b[1].isPinned) return -1;
         if (!a[1].isPinned && b[1].isPinned) return 1;
@@ -397,7 +406,8 @@ class NoteIndex {
       is_archived: e.isArchived,
       created_at: e.createdAt,
       updated_at: e.updatedAt,
-      tags: e.tagIds
+      tags: e.tagIds,
+      ...(e.decryptFailed ? { decrypt_failed: true } : {})
     }));
 
     return {
@@ -413,7 +423,7 @@ class NoteIndex {
    * Pre-filter (folder/tag/starred/archived) narrows the candidate set, then
    * each remaining entry is mapped to a SearchEntity (with `body = undefined`)
    * and evaluated against the AST. Operators that require content
-   * (`has:link`, freetext-in-body) are NOT served here — the caller must take
+   * (`has:link`, freetext-in-body) are NOT served here - the caller must take
    * the body-aware path in `notes.store.ts → triggerContentSearch`.
    *
    * Operator → entity mapping for notes:
@@ -422,7 +432,7 @@ class NoteIndex {
    *   - `is:completed`/`is:overdue`/`due:`     → always false (notes have no completion/due semantics)
    *   - `list:`       → always false (notes have no lists)
    *
-   * The active/trash split is handled by the `archived` pre-filter above —
+   * The active/trash split is handled by the `archived` pre-filter above -
    * there is no public `is:trashed` operator.
    */
   getFilteredByAst(
@@ -494,7 +504,8 @@ class NoteIndex {
       is_archived: e.isArchived,
       created_at: e.createdAt,
       updated_at: e.updatedAt,
-      tags: e.tagIds
+      tags: e.tagIds,
+      ...(e.decryptFailed ? { decrypt_failed: true } : {})
     }));
 
     return { items, total, hasMore: start + pageSize < total };

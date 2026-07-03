@@ -195,6 +195,16 @@
     onselect(folder.id);
   }
 
+  // Undecryptable rows (foreign key epoch / corrupted ciphertext) render an
+  // explicit placeholder instead of a blank name. Unlike saved searches
+  // (Delete-only, #410), the name is a folder's ONLY ciphertext: selection,
+  // expansion and the subtree stay fully usable, and a rename re-encrypts the
+  // name under the current key - i.e. repairs the row - so the menu offers
+  // Rename + Delete.
+  function folderDisplayName(folder: FolderWithChildren): string {
+    return folder.decrypt_failed ? $t('folders.undecryptable') : folder.name;
+  }
+
   // ── Context menu (kebab) ────────────────────────────────────────
   const isMobileQuery = useIsMobile();
   let menuOpenId = $state<string | null>(null);
@@ -374,6 +384,24 @@
   // Single source of truth for a folder's actions - fed to both the desktop kebab
   // (DropdownMenu) and the desktop right-click ContextMenu, so they can't drift.
   function folderActions(folder: FolderWithChildren, syncConfigId: string | null): RowAction[] {
+    if (folder.decrypt_failed) {
+      return [
+        {
+          key: 'rename',
+          icon: Pencil,
+          label: $t('folders.rename'),
+          run: (e) => startRename(folder, e)
+        },
+        {
+          key: 'delete',
+          icon: Trash2,
+          label: $t('folders.delete_folder'),
+          run: (e) => handleDelete(folder, e),
+          destructive: true,
+          separatorBefore: true
+        }
+      ];
+    }
     const actions: RowAction[] = [];
     if (syncConfigId) {
       actions.push({
@@ -996,7 +1024,8 @@
               tabindex="0"
               onclick={() => handleRowSelect(folder)}
               onkeydown={(e) => e.key === 'Enter' && handleRowSelect(folder)}
-              aria-label={$t('folders.folder_label', { values: { name: folder.name } })}
+              aria-label={$t('folders.folder_label', { values: { name: folderDisplayName(folder) } })}
+              title={folder.decrypt_failed ? $t('folders.undecryptable_hint') : undefined}
             >
               <!-- Custom sort: insertion line for a between-rows drop. Starts
                    at the row's own indent so the target LEVEL is visible
@@ -1034,6 +1063,10 @@
                   }}
                   onblur={() => commitRename(folder.id)}
                 />
+              {:else if folder.decrypt_failed}
+                <span class="min-w-0 flex-1 truncate italic text-muted-foreground"
+                  >{folderDisplayName(folder)}</span
+                >
               {:else}
                 <span class="min-w-0 flex-1 truncate">{folder.name}</span>
               {/if}
@@ -1164,9 +1197,30 @@
 <Sheet bind:open={folderActionSheetOpen}>
   <SheetContent side="bottom" class="h-auto">
     <SheetHeader>
-      <SheetTitle>{activeMenuFolder?.name ?? ''}</SheetTitle>
+      <SheetTitle>{activeMenuFolder ? folderDisplayName(activeMenuFolder) : ''}</SheetTitle>
     </SheetHeader>
     <div class="mt-4 space-y-1">
+      {#if activeMenuFolder?.decrypt_failed}
+        <p class="px-3 pb-2 text-sm text-muted-foreground">
+          {$t('folders.undecryptable_hint')}
+        </p>
+        <Button
+          variant="ghost"
+          class="w-full justify-start"
+          onclick={() => activeMenuFolder && handleStartRename(activeMenuFolder)}
+        >
+          <Pencil class="mr-2 h-4 w-4" />
+          {$t('folders.rename')}
+        </Button>
+        <Button
+          variant="ghost"
+          class="w-full justify-start text-destructive hover:text-destructive"
+          onclick={() => activeMenuFolder && handleDelete(activeMenuFolder)}
+        >
+          <Trash2 class="mr-2 h-4 w-4" />
+          {$t('folders.delete_folder')}
+        </Button>
+      {:else}
       {#if activeMenuSyncId}
         <Button
           variant="ghost"
@@ -1248,6 +1302,7 @@
         <Trash2 class="mr-2 h-4 w-4" />
         {$t('folders.delete_folder')}
       </Button>
+      {/if}
     </div>
   </SheetContent>
 </Sheet>
@@ -1255,7 +1310,7 @@
 <DeleteFolderDialog
   bind:open={deleteFolderDialogOpen}
   folderId={folderToDelete?.id ?? null}
-  folderName={folderToDelete?.name ?? ''}
+  folderName={folderToDelete ? folderDisplayName(folderToDelete) : ''}
   onConfirm={confirmDeleteFolder}
 />
 

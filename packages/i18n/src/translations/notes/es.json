@@ -141,6 +141,8 @@
     "support": "Apóyanos"
   },
   "notes": {
+    "undecryptable": "No se puede descifrar",
+    "undecryptable_hint": "No se pudo descifrar esta nota con su clave de cifrado. Solo puede eliminarla.",
     "title": "Notas",
     "new_note": "Nueva nota",
     "edit_note": "Editar nota",
@@ -324,6 +326,8 @@
     }
   },
   "folders": {
+    "undecryptable": "No se puede descifrar",
+    "undecryptable_hint": "No se pudo descifrar el nombre de esta carpeta con su clave de cifrado. Su contenido no se ve afectado - cámbiele el nombre para repararla o elimínela.",
     "title": "Carpetas",
     "new_folder": "Nueva carpeta",
     "edit_folder": "Editar carpeta",
@@ -399,6 +403,8 @@
     }
   },
   "tags": {
+    "undecryptable": "No se puede descifrar",
+    "undecryptable_hint": "No se pudo descifrar el nombre de esta etiqueta con su clave de cifrado. Cámbiele el nombre para repararla o elimínela.",
     "title": "Etiquetas",
     "new_tag": "Nueva etiqueta",
     "edit_tag": "Editar etiqueta",

@@ -209,7 +209,16 @@
 
   {#if !activeTrash}
     <!-- Save status indicator (before E2EE to avoid layout shift) -->
-    {#if noteDetailService.saveStatus === 'over_limit'}
+    {#if noteDetailService.decryptFailed}
+      <!-- Undecryptable note (defense in depth - such notes normally can't be
+           opened from the list): edits/saves are no-ops, say why. -->
+      <span
+        class="flex h-7 w-7 shrink-0 items-center justify-center text-destructive"
+        title={$t('notes.undecryptable_hint')}
+      >
+        <AlertTriangle class="h-4 w-4" />
+      </span>
+    {:else if noteDetailService.saveStatus === 'over_limit'}
       <span
         class="flex h-7 w-7 shrink-0 items-center justify-center text-destructive"
         title={$t('notes.errors.size_limit_exceeded', {

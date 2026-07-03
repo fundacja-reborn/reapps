@@ -141,6 +141,8 @@
     "support": "Support us"
   },
   "notes": {
+    "undecryptable": "Cannot decrypt",
+    "undecryptable_hint": "This note could not be decrypted with your encryption key. It can only be deleted.",
     "title": "Notes",
     "new_note": "New Note",
     "edit_note": "Edit Note",
@@ -324,6 +326,8 @@
     }
   },
   "folders": {
+    "undecryptable": "Cannot decrypt",
+    "undecryptable_hint": "This folder's name could not be decrypted with your encryption key. Its contents are unaffected - rename the folder to fix it, or delete it.",
     "title": "Folders",
     "new_folder": "New Folder",
     "edit_folder": "Edit Folder",
@@ -399,6 +403,8 @@
     }
   },
   "tags": {
+    "undecryptable": "Cannot decrypt",
+    "undecryptable_hint": "This tag's name could not be decrypted with your encryption key. Rename the tag to fix it, or delete it.",
     "title": "Tags",
     "new_tag": "New Tag",
     "edit_tag": "Edit Tag",

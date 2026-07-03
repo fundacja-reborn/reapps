@@ -115,7 +115,13 @@
                 style={tag.color ? `background-color: ${tag.color}` : ''}
                 class:bg-muted-foreground={!tag.color}
               ></span>
-              <span class="min-w-0 flex-1 truncate text-left text-sm">{tag.name}</span>
+              {#if tag.decrypt_failed}
+                <span class="min-w-0 flex-1 truncate text-left text-sm italic text-muted-foreground"
+                  >{$t('tags.undecryptable')}</span
+                >
+              {:else}
+                <span class="min-w-0 flex-1 truncate text-left text-sm">{tag.name}</span>
+              {/if}
             </button>
             <button
               type="button"

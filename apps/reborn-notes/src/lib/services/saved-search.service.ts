@@ -26,6 +26,7 @@ import {
   pushSavedSearchUpdate,
   pushSavedSearchDelete
 } from './notes-sync.service';
+import { createUndecryptableRowCache, decodeTextField } from './undecryptable-rows';
 
 // ── User identity ─────────────────────────────────────────────────
 
@@ -41,19 +42,6 @@ async function encode(value: string, what: 'name' | 'query'): Promise<string> {
     throw new Error(`[E2E] encode saved-search ${what} called without master key loaded`);
   }
   return cryptoManager.encryptText(value);
-}
-
-/** `null` = ciphertext present but undecryptable (wrong key epoch / corruption). */
-async function decode(stored: string): Promise<string | null> {
-  if (!stored) return '';
-  if (!cryptoManager.isInitialized()) {
-    throw new Error('[E2E] decode saved-search called without master key loaded');
-  }
-  try {
-    return await cryptoManager.decryptText(stored);
-  } catch {
-    return null;
-  }
 }
 
 async function decodeMetadata(
@@ -79,12 +67,9 @@ const METADATA_DEFAULTS: Required<SavedSearchSensitiveMetadata> = {
   pinned_to_root: false
 };
 
-// Rows that already failed to decrypt this session, keyed by id with the
-// updated_at they failed at. Refreshes run after every sync pull and re-decode
-// every row - without this cache a permanently undecryptable row would repeat
-// the same crypto errors in the console on each cycle. A changed updated_at
-// (row rewritten, possibly from a device holding the right key) retries.
-const undecryptableRows = new Map<string, string>();
+// Session cache of rows that already failed to decrypt - see
+// undecryptable-rows.ts for the shared pattern (guideline 63, #15).
+const undecryptableRows = createUndecryptableRowCache();
 
 function toUndecryptable(enc: SavedSearchEncrypted): SavedSearchDecrypted {
   return {
@@ -102,15 +87,15 @@ function toUndecryptable(enc: SavedSearchEncrypted): SavedSearchDecrypted {
 }
 
 async function toDecrypted(enc: SavedSearchEncrypted): Promise<SavedSearchDecrypted> {
-  if (undecryptableRows.get(enc.id) === enc.updated_at) return toUndecryptable(enc);
+  if (undecryptableRows.has(enc.id, enc.updated_at)) return toUndecryptable(enc);
   const meta = await decodeMetadata(enc.metadata_encrypted);
-  const name = await decode(enc.name_encrypted);
-  const query = await decode(enc.query_encrypted);
+  const name = await decodeTextField(enc.name_encrypted, 'saved-search name');
+  const query = await decodeTextField(enc.query_encrypted, 'saved-search query');
   if (meta === null || name === null || query === null) {
-    undecryptableRows.set(enc.id, enc.updated_at);
+    undecryptableRows.mark(enc.id, enc.updated_at);
     return toUndecryptable(enc);
   }
-  undecryptableRows.delete(enc.id);
+  undecryptableRows.clear(enc.id);
   return {
     id: enc.id,
     name,

@@ -42,8 +42,12 @@
       : $tagsStore
   );
 
-  // Single source of truth for a tag's actions — fed to both the kebab
+  // Single source of truth for a tag's actions - fed to both the kebab
   // (DropdownMenu) and the right-click ContextMenu, so they can't drift.
+  // An undecryptable tag (foreign key epoch / corrupted ciphertext) keeps
+  // rename - the name is the tag's whole ciphertext, so renaming re-encrypts
+  // it under the current key and repairs the row - plus delete; the color
+  // picker is pointless on a row whose color degraded to none.
   function tagActions(tag: TagDecrypted): RowAction[] {
     return [
       {
@@ -52,12 +56,16 @@
         label: $t('tags.rename'),
         run: () => tagManager.startRenameTag(tag.id, tag.name)
       },
-      {
-        key: 'color',
-        icon: Palette,
-        label: $t('tags.tag_color'),
-        run: () => tagManager.startColorPicker(tag.id)
-      },
+      ...(tag.decrypt_failed
+        ? []
+        : [
+            {
+              key: 'color',
+              icon: Palette,
+              label: $t('tags.tag_color'),
+              run: () => tagManager.startColorPicker(tag.id)
+            }
+          ]),
       {
         key: 'delete',
         icon: Trash2,
@@ -191,7 +199,14 @@
                       style={tag.color ? `background-color: ${tag.color}` : ''}
                       class:bg-muted-foreground={!tag.color}
                     ></span>
-                    <span class="min-w-0 flex-1 truncate text-left text-sm">{tag.name}</span>
+                    {#if tag.decrypt_failed}
+                      <span
+                        class="min-w-0 flex-1 truncate text-left text-sm italic text-muted-foreground"
+                        title={$t('tags.undecryptable_hint')}>{$t('tags.undecryptable')}</span
+                      >
+                    {:else}
+                      <span class="min-w-0 flex-1 truncate text-left text-sm">{tag.name}</span>
+                    {/if}
                   </button>
                   <DropdownMenu>
                     <DropdownMenuTrigger>

@@ -63,16 +63,16 @@
   }: {
     note: NoteListItem;
     isTrash?: boolean;
-    /** Folder path to show under the title — used for search results from subfolders. */
+    /** Folder path to show under the title - used for search results from subfolders. */
     breadcrumb?: string;
     movingNoteId: string | null;
     /** Whether the parent NoteList is currently in multi-select mode. */
     selectionMode?: boolean;
     /** Whether this item is currently selected. */
     isSelected?: boolean;
-    /** Long-press / Cmd-click on a non-selection list — enter selection mode with this item. */
+    /** Long-press / Cmd-click on a non-selection list - enter selection mode with this item. */
     onenterselection?: () => void;
-    /** Click while in selection mode — toggle this item. opts.shift = range from last anchor. */
+    /** Click while in selection mode - toggle this item. opts.shift = range from last anchor. */
     ontoggleselect?: (opts?: { shift?: boolean }) => void;
     onmenuopen: (noteId: string) => void;
     onpin: (noteId: string, e?: Event) => void;
@@ -116,7 +116,17 @@
     }
   });
 
-  // Single source of truth for the row's actions — fed to both the desktop kebab
+  // Undecryptable rows (foreign key epoch / corrupted ciphertext) render an
+  // explicit placeholder instead of a blank title and never open the editor -
+  // its debounced save would overwrite the ciphertext with an empty body. The
+  // menu shrinks to deletion (trash rows keep restore + permanent delete: both
+  // operate on the row, not its plaintext). Selection mode still works, so
+  // bulk delete can sweep several ghosts at once.
+  const displayTitle = $derived(
+    note.decrypt_failed ? $t('notes.undecryptable') : note.title || $t('notes.untitled')
+  );
+
+  // Single source of truth for the row's actions - fed to both the desktop kebab
   // (DropdownMenu) and the desktop right-click ContextMenu, so they can't drift.
   const noteActions: RowAction[] = $derived(
     isTrash
@@ -136,7 +146,17 @@
             separatorBefore: true
           }
         ]
-      : [
+      : note.decrypt_failed
+        ? [
+            {
+              key: 'delete',
+              icon: Trash2,
+              label: $t('notes.delete_note'),
+              run: (e) => ondelete(note.id, e),
+              destructive: true
+            }
+          ]
+        : [
           {
             key: 'pin',
             icon: note.is_pinned ? PinOff : Pin,
@@ -193,7 +213,7 @@
 
   function handleItemClick(e: MouseEvent) {
     if (selectionMode) {
-      // Click in selection mode never opens the note — toggle selection instead.
+      // Click in selection mode never opens the note - toggle selection instead.
       // shift-click extends from the last anchor; cmd/ctrl-click also toggles single.
       ontoggleselect?.({ shift: e.shiftKey });
       return;
@@ -204,6 +224,7 @@
       onenterselection?.();
       return;
     }
+    if (note.decrypt_failed) return; // inert - never open the editor on a ghost
     activeNoteId.set(note.id);
   }
 
@@ -211,7 +232,7 @@
     if (e.key !== 'Enter') return;
     if (selectionMode) {
       ontoggleselect?.({ shift: e.shiftKey });
-    } else {
+    } else if (!note.decrypt_failed) {
       activeNoteId.set(note.id);
     }
   }
@@ -238,7 +259,9 @@
             e.dataTransfer!.setData('text/plain', note.id);
           }}
           use:longPress={() => onenterselection?.()}
-          class="note-item-bg group flex cursor-pointer items-start gap-2 rounded-lg p-4 md:p-3 transition-colors
+          class="note-item-bg group flex {note.decrypt_failed && !selectionMode
+            ? 'cursor-default'
+            : 'cursor-pointer'} items-start gap-2 rounded-lg p-4 md:p-3 transition-colors
             {isActive && !selectionMode ? 'list-row-active text-accent-foreground' : ''}
             {selectionMode && isSelected ? 'bg-primary/10' : ''}
             {selectionMode ? 'select-none' : ''}"
@@ -274,8 +297,12 @@
 
           <div class="min-w-0 flex-1">
             <div class="flex items-start gap-1">
-              <p class="min-w-0 flex-1 line-clamp-2 text-base md:text-sm font-normal leading-snug text-foreground">
-                {note.title || $t('notes.untitled')}
+              <p
+                class="min-w-0 flex-1 line-clamp-2 text-base md:text-sm font-normal leading-snug
+                  {note.decrypt_failed ? 'italic text-muted-foreground' : 'text-foreground'}"
+                title={note.decrypt_failed ? $t('notes.undecryptable_hint') : undefined}
+              >
+                {displayTitle}
               </p>
               <!-- Star indicator -->
               {#if note.is_starred}
@@ -319,7 +346,7 @@
             {/if}
           </div>
 
-          <!-- Kebab menu button (hidden in selection mode — bulk actions live in the selection bar) -->
+          <!-- Kebab menu button (hidden in selection mode - bulk actions live in the selection bar) -->
           <div class="shrink-0 mt-1.5 md:-mt-1 {selectionMode ? 'invisible pointer-events-none' : ''}">
             {#if isMobileQuery.value}
               <button
