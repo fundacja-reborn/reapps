@@ -496,6 +496,26 @@
     return zoneForPoint((e.currentTarget as HTMLElement).getBoundingClientRect(), e.clientY);
   }
 
+  // The bottom band of an EXPANDED folder's row visually points at the slot
+  // before its first child, so make the semantics match the picture
+  // (Finder-style): retarget to that child. Without this the same 1-2 px gap
+  // hides two different levels ("after the whole subtree" vs "first inside"),
+  // and "after the subtree" reads as a no-op when the dragged row already sits
+  // there. Inserting after the subtree instead = drop before the next row
+  // below it (the line indent shows the level).
+  function normalizeRowZone(targetId: string, zone: DropZone): { id: string; zone: DropZone } {
+    if (zone === 'after' && expandedIds.has(targetId)) {
+      const firstChild = findChildrenOfParent($foldersStore, targetId)[0];
+      // A blocked first child means it's the dragged row itself - keep the
+      // raw meaning then, it's the only way to drag a first child out to
+      // "right after its parent".
+      if (firstChild && !$dragBlockedIds?.has(firstChild.id)) {
+        return { id: firstChild.id, zone: 'before' };
+      }
+    }
+    return { id: targetId, zone };
+  }
+
   function onDragOver(folder: FolderWithChildren, e: DragEvent) {
     // No preventDefault for the dragged folder's own subtree - the browser
     // keeps the no-drop cursor and never fires drop there.
@@ -505,7 +525,7 @@
     }
     e.preventDefault();
     e.dataTransfer!.dropEffect = 'move';
-    dropTarget.set({ id: folder.id, zone: dropZoneFromEvent(e) });
+    dropTarget.set(normalizeRowZone(folder.id, dropZoneFromEvent(e)));
   }
 
   function onDragLeave(folder: FolderWithChildren) {
@@ -535,28 +555,35 @@
     await foldersStore.reorder(groupParentId, ids);
   }
 
-  // Desktop drop between rows targets THIS instance's sibling group.
-  async function reorderAround(
+  // Place `draggedId` before/after the row `targetRowId`, wherever that row's
+  // sibling group lives in the tree (normalizeRowZone may have retargeted the
+  // indicator outside this instance's group, and the touch gesture can drop
+  // on any row). Shared by the desktop drop and the touch drop.
+  async function insertRelativeToRow(
     draggedId: string,
-    targetId: string,
-    zone: 'before' | 'after'
+    targetRowId: string,
+    zone: 'before' | 'after',
+    blocked: Set<string> | null
   ) {
-    // Group parent inside the dragged subtree would cycle (belt & braces -
-    // rows of that subtree already refuse dragover, so it can't be reached).
-    if (parentId && $dragBlockedIds?.has(parentId)) return;
+    const located = findParentAndSiblings($foldersStore, targetRowId);
+    if (!located) return;
+    // Target group hanging inside the dragged subtree would cycle.
+    if (located.parentId && blocked?.has(located.parentId)) return;
     await insertIntoGroup(
       draggedId,
-      targetId,
+      targetRowId,
       zone,
-      parentId,
-      nodes.map((n) => n.id)
+      located.parentId,
+      located.siblings.map((f) => f.id)
     );
   }
 
   async function onDrop(target: FolderWithChildren, e: DragEvent) {
     e.preventDefault();
     e.stopPropagation(); // prevent bubbling to the panel's root drop zone
-    const zone: DropZone = $dropTarget?.id === target.id ? $dropTarget.zone : 'into';
+    // The indicator is authoritative: normalizeRowZone may have retargeted it
+    // to the first child while the drop event still fires on the hovered row.
+    const indicated = $dropTarget;
 
     try {
       // Handle note drop - move note into this folder
@@ -568,16 +595,17 @@
 
       const draggedId =
         e.dataTransfer!.getData('text/folder-id') || e.dataTransfer!.getData('text/plain');
-      if (!draggedId || draggedId === target.id) return;
+      const eff = indicated ?? { id: target.id, zone: 'into' as DropZone };
+      if (!draggedId || draggedId === eff.id) return;
       // Cycle guard (dragover already refuses these; keep drop safe too).
-      if ($dragBlockedIds?.has(target.id)) return;
+      if ($dragBlockedIds?.has(eff.id)) return;
 
-      if (zone === 'into') {
+      if (eff.zone === 'into') {
         // Move dragged folder into target
-        await foldersStore.move(draggedId, target.id);
-        expandedIds.add(target.id);
+        await foldersStore.move(draggedId, eff.id);
+        expandedIds.add(eff.id);
       } else {
-        await reorderAround(draggedId, target.id, zone);
+        await insertRelativeToRow(draggedId, eff.id, eff.zone, $dragBlockedIds);
       }
     } finally {
       dropTarget.set(null);
@@ -736,7 +764,8 @@
       return;
     }
     const zone = zoneForPoint(rowEl.getBoundingClientRect(), pointerY);
-    dropTarget.set({ id: targetId, zone });
+    const normalized = normalizeRowZone(targetId, zone);
+    dropTarget.set(normalized);
     setSpringTarget(zone === 'into' ? targetId : null);
   }
 
@@ -815,17 +844,7 @@
       await foldersStore.move(dragged.id, target.id);
       expandedIds.add(target.id);
     } else {
-      const located = findParentAndSiblings($foldersStore, target.id);
-      if (!located) return;
-      // Target group hanging inside the dragged subtree would cycle.
-      if (located.parentId && blocked?.has(located.parentId)) return;
-      await insertIntoGroup(
-        dragged.id,
-        target.id,
-        target.zone,
-        located.parentId,
-        located.siblings.map((f) => f.id)
-      );
+      await insertRelativeToRow(dragged.id, target.id, target.zone, blocked);
     }
   }
 
@@ -979,11 +998,15 @@
               onkeydown={(e) => e.key === 'Enter' && handleRowSelect(folder)}
               aria-label={$t('folders.folder_label', { values: { name: folder.name } })}
             >
-              <!-- Custom sort: insertion line for a between-rows drop -->
+              <!-- Custom sort: insertion line for a between-rows drop. Starts
+                   at the row's own indent so the target LEVEL is visible
+                   (a gap between a nested row and a shallower one offers two
+                   valid levels - the indent says which one this drop takes). -->
               {#if dropZone === 'before' || dropZone === 'after'}
                 <div
-                  class="pointer-events-none absolute inset-x-1 z-10 h-0.5 rounded-full bg-primary
+                  class="pointer-events-none absolute right-1 z-10 h-0.5 rounded-full bg-primary
                     {dropZone === 'before' ? 'top-0' : 'bottom-0'}"
+                  style="left: {depth * 0.75 + 0.5}rem"
                 ></div>
               {/if}
               <!-- Folder icon (synced top-level folders get a distinct sync glyph) -->
