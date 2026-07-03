@@ -41,8 +41,11 @@ describe('saved searches - pull sync', () => {
     expect(fn).toMatch(/metadata_encrypted \?\? null/);
     expect(fn).toMatch(/folder_id \?\? null/);
     expect(fn).toMatch(/position !== s\.position/);
-    // Rows hard-deleted on another device disappear locally - but only synced ones.
+    // Rows hard-deleted on another device disappear locally - but only rows that
+    // were ALREADY synced before the pull started (a row pushed mid-pull is not
+    // an orphan: the server response was built before its POST landed).
     expect(fn).toMatch(/sync_status === 'synced' && !serverIds\.has/);
+    expect(fn).toMatch(/prePullSyncedIds\.has\(s\.id\)/);
     expect(fn).toMatch(/deleteMany\(orphanIds\)/);
   });
 });
