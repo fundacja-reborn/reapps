@@ -76,16 +76,20 @@ export const folderQueries = {
    */
   getFolderPath: async (folderId: string): Promise<FolderEncrypted[]> => {
     const path: FolderEncrypted[] = [];
+    // Sync can briefly land a parent_id cycle (concurrent cross-device moves;
+    // repaired at pull) - the visited set keeps this walk from hanging on it.
+    const visited = new Set<string>();
     let currentId: string | null = folderId;
-    
-    while (currentId) {
+
+    while (currentId && !visited.has(currentId)) {
+      visited.add(currentId);
       const folder = await folderStore.get(currentId);
       if (!folder) break;
-      
+
       path.unshift(folder);
       currentId = folder.parent_id ?? null;
     }
-    
+
     return path;
   },
 
