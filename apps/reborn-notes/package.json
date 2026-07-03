@@ -86,6 +86,7 @@
     "marked": "18.0.5",
     "otpauth": "9.5.1",
     "qrcode": "1.5.4",
+    "svelte-dnd-action": "0.9.69",
     "svelte-i18n": "4.0.1",
     "uuid": "14.0.0"
   }

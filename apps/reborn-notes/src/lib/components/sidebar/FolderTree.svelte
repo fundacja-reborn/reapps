@@ -50,6 +50,9 @@
     SheetTitle,
     toastStore
   } from '@reborn/ui';
+  import { flip } from 'svelte/animate';
+  import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME, TRIGGERS } from 'svelte-dnd-action';
+  import type { DndEvent } from 'svelte-dnd-action';
   import type { RowAction } from '$lib/utils/row-action';
   import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
   // FolderWithChildren comes from the module script import above (module and
@@ -60,7 +63,7 @@
   import { folderSortMode } from '$lib/stores/app-settings.store';
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import { t } from '$lib/stores/i18n.store';
-  import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
+  import { useIsMobile, useIsTouchDevice } from '$lib/utils/mediaQuery.svelte';
   import { getDescendantFolderIds } from '$lib/utils/folder-helpers';
   import type {
     DeleteFolderMode,
@@ -457,6 +460,10 @@
   let dropTarget = $state<{ id: string; zone: DropZone } | null>(null);
 
   function onDragStart(folder: FolderWithChildren, e: DragEvent) {
+    // The touch-reorder zone installs a cancelling `ondragstart` on every
+    // <li> (svelte-dnd-action does this even while drag-disabled) - keep the
+    // native dragstart from bubbling into it or desktop drags die instantly.
+    e.stopPropagation();
     e.dataTransfer!.effectAllowed = 'move';
     e.dataTransfer!.setData('text/plain', folder.id);
     e.dataTransfer!.setData('text/folder-id', folder.id);
@@ -564,6 +571,64 @@
     [ids[i], ids[j]] = [ids[j]!, ids[i]!];
     await foldersStore.reorder(parentId, ids);
   }
+
+  // ── Touch reorder (long-press drag, custom sort only) ───────────
+  // HTML5 DnD doesn't exist on touch, so each sibling group is also a
+  // svelte-dnd-action zone (nested zones, one per group): hold a row for
+  // 300 ms (moving earlier scrolls instead), then drag within the group.
+  // Cross-parent moves stay in the "Move to…" picker. The zone only unlocks
+  // on coarse-pointer mobile viewports - mouse keeps the native HTML5 path,
+  // and wide touch viewports (tablets) keep the long-press ContextMenu.
+  const isTouchQuery = useIsTouchDevice();
+  const LONG_PRESS_MS = 300;
+  const touchReorderEnabled = $derived(
+    $folderSortMode === 'custom' && isMobileQuery.value && isTouchQuery.value
+  );
+
+  // Local order the dnd zone shuffles while a drag is in flight; mirrors
+  // `nodes` whenever no drag is active.
+  // svelte-ignore state_referenced_locally (initial copy - the effect below re-syncs)
+  let dragItems = $state<FolderWithChildren[]>([...nodes]);
+  let dndActive = $state(false);
+
+  $effect(() => {
+    const current = nodes;
+    if (!dndActive) dragItems = [...current];
+  });
+
+  function isDragShadow(folder: FolderWithChildren): boolean {
+    return SHADOW_ITEM_MARKER_PROPERTY_NAME in folder;
+  }
+
+  // The floating clone mirrors the whole <li> (row plus expanded subtree) -
+  // strip nested lists so only the row follows the finger.
+  function stripSubtreeFromDragClone(el?: HTMLElement) {
+    el?.querySelectorAll('ul').forEach((u) => u.remove());
+  }
+
+  function handleDndConsider(e: CustomEvent<DndEvent<FolderWithChildren>>) {
+    dndActive = true;
+    dragItems = e.detail.items;
+    if (e.detail.info.trigger === TRIGGERS.DRAG_STARTED && 'vibrate' in navigator) {
+      navigator.vibrate(50);
+    }
+  }
+
+  async function handleDndFinalize(e: CustomEvent<DndEvent<FolderWithChildren>>) {
+    dragItems = e.detail.items;
+    try {
+      const ids = e.detail.items.map((f) => f.id);
+      const before = nodes.map((n) => n.id);
+      // A drop back in place (or outside the zone) finalizes with the
+      // original order - skip the write so an untouched lazy-seeded group
+      // isn't materialized (see guideline: lazy seeding of order_index).
+      if (ids.length === before.length && ids.some((id, i) => id !== before[i])) {
+        await foldersStore.reorder(parentId, ids);
+      }
+    } finally {
+      dndActive = false;
+    }
+  }
 </script>
 
 <!-- Close menus when clicking outside -->
@@ -573,42 +638,72 @@
   }}
 />
 
-<ul class="select-none" role="tree">
-  {#if showDraft}
-    <li role="treeitem" aria-selected="false">
-      <div
-        class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm bg-accent/30"
-        style="padding-left: {depth * 0.75 + 0.5}rem"
-      >
-        <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
-        <input
-          bind:this={draftInputEl}
-          bind:value={draftName}
-          class="min-w-0 flex-1 rounded-md border bg-background px-2 py-0.5 text-sm caret-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          onkeydown={(e) => {
-            if (e.key === 'Enter') commitDraft();
-            if (e.key === 'Escape') cancelDraft();
-          }}
-          onblur={commitDraft}
-          aria-label={$t('folders.new_folder')}
+<!-- Draft row and root-pinned smart folders live OUTSIDE the folder list:
+     the list is a svelte-dnd-action zone, and the zone's children must map
+     1:1 onto its `items` (the folders). -->
+{#if showDraft || (depth === 0 && rootPinnedSearches && rootPinnedSearches.length > 0)}
+  <ul class="select-none" role="tree">
+    {#if showDraft}
+      <li role="treeitem" aria-selected="false">
+        <div
+          class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm bg-accent/30"
+          style="padding-left: {depth * 0.75 + 0.5}rem"
+        >
+          <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            bind:this={draftInputEl}
+            bind:value={draftName}
+            class="min-w-0 flex-1 rounded-md border bg-background px-2 py-0.5 text-sm caret-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            onkeydown={(e) => {
+              if (e.key === 'Enter') commitDraft();
+              if (e.key === 'Escape') cancelDraft();
+            }}
+            onblur={commitDraft}
+            aria-label={$t('folders.new_folder')}
+          />
+        </div>
+      </li>
+    {/if}
+    <!-- Top-level smart folders (root-pinned saved searches) render above the
+         folder list. Root instance only; not a drop target (a leaf, not a real
+         folder) and not part of the reorder zone. -->
+    {#if depth === 0 && rootPinnedSearches && rootPinnedSearches.length > 0}
+      {#each rootPinnedSearches as search (search.id)}
+        <SavedSearchRow
+          {search}
+          context="tree"
+          depth={0}
+          active={search.id === activeSavedSearchId}
+          onselect={(s) => onsavedsearchselect?.(s)}
         />
-      </div>
-    </li>
-  {/if}
-  <!-- Top-level smart folders (root-pinned saved searches) render above the folder
-       list. Root instance only; not a drop target (a leaf, not a real folder). -->
-  {#if depth === 0 && rootPinnedSearches && rootPinnedSearches.length > 0}
-    {#each rootPinnedSearches as search (search.id)}
-      <SavedSearchRow
-        {search}
-        context="tree"
-        depth={0}
-        active={search.id === activeSavedSearchId}
-        onselect={(s) => onsavedsearchselect?.(s)}
-      />
-    {/each}
-  {/if}
-  {#each nodes as folder (folder.id)}
+      {/each}
+    {/if}
+  </ul>
+{/if}
+
+<!-- autoAriaDisabled keeps the tree/treeitem roles (the zone would rewrite
+     them to list/listitem); the -1 tab indexes keep the pre-zone tab order
+     (rows already carry tabindex 0). Keyboard reorder = menu move up/down. -->
+<ul
+  class="select-none"
+  role="tree"
+  use:dndzone={{
+    items: dragItems,
+    dragDisabled: !touchReorderEnabled,
+    delayTouchStart: LONG_PRESS_MS,
+    flipDurationMs: 200,
+    morphDisabled: true,
+    dropFromOthersDisabled: true,
+    dropTargetStyle: {},
+    zoneTabIndex: -1,
+    zoneItemTabIndex: -1,
+    autoAriaDisabled: true,
+    transformDraggedElement: stripSubtreeFromDragClone
+  }}
+  onconsider={handleDndConsider}
+  onfinalize={handleDndFinalize}
+>
+  {#each dragItems as folder (folder.id)}
     {@const isExpanded = expandedIds.has(folder.id)}
     {@const isActive = activeFolderId === folder.id}
     {@const parkedSearches = savedSearchesByFolder?.get(folder.id) ?? []}
@@ -616,11 +711,13 @@
     {@const dropZone = dropTarget?.id === folder.id ? dropTarget.zone : null}
     {@const syncConfigId = $syncedFolderConfigs.get(folder.id) ?? null}
     {@const rowActions = folderActions(folder, syncConfigId)}
+    {@const isShadow = isDragShadow(folder)}
 
     <li
       role="treeitem"
       aria-expanded={hasChildren ? isExpanded : undefined}
       aria-selected={activeFolderId === folder.id}
+      animate:flip={{ duration: 200 }}
     >
       <!-- Desktop right-click opens the same folder actions as the kebab (#348).
            Disabled on mobile and while renaming inline. -->
@@ -630,7 +727,7 @@
             <div
               {...triggerProps}
               data-folder-id={folder.id}
-              draggable="true"
+              draggable={!touchReorderEnabled}
               ondragstart={(e) => onDragStart(folder, e)}
               ondragend={onDragEnd}
               ondragover={(e) => onDragOver(folder, e)}
@@ -689,8 +786,13 @@
 
               <!-- Chevron (right side, only when has children) -->
               {#if hasChildren && editingId !== folder.id}
+                <!-- touchstart must not reach the dnd zone's item listener: its
+                     tap path re-dispatches a synthetic click (a second toggle
+                     would collapse right back) and a press-and-hold on an
+                     action control must not arm a row drag. -->
                 <button
                   type="button"
+                  ontouchstart={(e) => e.stopPropagation()}
                   onclick={(e) => {
                     e.stopPropagation();
                     if (isExpanded) expandedIds.delete(folder.id);
@@ -709,8 +811,10 @@
               <!-- Kebab menu button (visible on hover) -->
               {#if editingId !== folder.id}
                 {#if isMobileQuery.value}
+                  <!-- touchstart guard: same reason as the chevron above -->
                   <button
                     type="button"
+                    ontouchstart={(e) => e.stopPropagation()}
                     onclick={(e) => toggleMenu(folder.id, e)}
                     class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                     aria-label={$t('folders.folder_actions')}
@@ -775,8 +879,9 @@
       <!-- Saved searches parked in this folder render ABOVE its subfolders -
            same "searches before folders" rule as root-pin and the folder
            drill-down view, and keeps a parked search visible without scrolling
-           past a deep subtree. -->
-      {#if isExpanded && hasChildren}
+           past a deep subtree. Hidden for the drag placeholder (isShadow) so
+           only the row marks the drop position while touch-dragging. -->
+      {#if isExpanded && hasChildren && !isShadow}
         {#if parkedSearches.length > 0}
           <ul class="select-none" role="group">
             {#each parkedSearches as search (search.id)}
