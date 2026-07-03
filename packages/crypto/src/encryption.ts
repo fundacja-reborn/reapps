@@ -255,8 +255,10 @@ export function base64ToArrayBuffer(base64: string): Uint8Array {
     }
     return bytes;
   } catch (error) {
+    // Deliberately not logging the input itself: it is ciphertext (or a
+    // corrupted stand-in for one), and "never log ciphertext" is cheaper to
+    // enforce than to reason about per call-site (audit 013 O53).
     logger.error('Failed to convert base64 to ArrayBuffer:', error);
-    logger.error('Input base64 string:', base64);
     throw new Error(
       `Failed to decode base64 string: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error }
