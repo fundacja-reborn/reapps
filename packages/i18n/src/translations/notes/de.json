@@ -141,6 +141,8 @@
     "support": "Unterstütze uns"
   },
   "notes": {
+    "undecryptable": "Entschlüsselung nicht möglich",
+    "undecryptable_hint": "Diese Notiz konnte mit Ihrem Schlüssel nicht entschlüsselt werden. Sie kann nur gelöscht werden.",
     "title": "Notizen",
     "new_note": "Neue Notiz",
     "edit_note": "Notiz bearbeiten",
@@ -324,6 +326,8 @@
     }
   },
   "folders": {
+    "undecryptable": "Entschlüsselung nicht möglich",
+    "undecryptable_hint": "Der Name dieses Ordners konnte mit Ihrem Schlüssel nicht entschlüsselt werden. Der Inhalt ist davon nicht betroffen - benennen Sie den Ordner um, um ihn zu reparieren, oder löschen Sie ihn.",
     "title": "Ordner",
     "new_folder": "Neuer Ordner",
     "edit_folder": "Ordner bearbeiten",
@@ -399,6 +403,8 @@
     }
   },
   "tags": {
+    "undecryptable": "Entschlüsselung nicht möglich",
+    "undecryptable_hint": "Der Name dieses Tags konnte mit Ihrem Schlüssel nicht entschlüsselt werden. Benennen Sie das Tag um, um es zu reparieren, oder löschen Sie es.",
     "title": "Tags",
     "new_tag": "Neues Tag",
     "edit_tag": "Tag bearbeiten",

@@ -19,9 +19,20 @@
 <Sheet bind:open={tagManager.tagActionSheetOpen}>
   <SheetContent side="bottom" class="h-auto">
     <SheetHeader>
-      <SheetTitle>{activeMenuTag?.name ?? ''}</SheetTitle>
+      <SheetTitle
+        >{activeMenuTag?.decrypt_failed
+          ? $t('tags.undecryptable')
+          : (activeMenuTag?.name ?? '')}</SheetTitle
+      >
     </SheetHeader>
     <div class="mt-4 space-y-1">
+      {#if activeMenuTag?.decrypt_failed}
+        <!-- Rename repairs the row (the name is the tag's whole ciphertext);
+             the color picker is pointless on a row whose color degraded. -->
+        <p class="px-3 pb-2 text-sm text-muted-foreground">
+          {$t('tags.undecryptable_hint')}
+        </p>
+      {/if}
       <Button
         variant="ghost"
         class="w-full justify-start"
@@ -32,15 +43,17 @@
         <Pencil class="mr-2 h-4 w-4" />
         {$t('tags.rename')}
       </Button>
-      <Button
-        variant="ghost"
-        class="w-full justify-start"
-        onclick={() =>
-          activeMenuTag && tagManager.startColorPicker(activeMenuTag.id)}
-      >
-        <Palette class="mr-2 h-4 w-4" />
-        {$t('tags.tag_color')}
-      </Button>
+      {#if !activeMenuTag?.decrypt_failed}
+        <Button
+          variant="ghost"
+          class="w-full justify-start"
+          onclick={() =>
+            activeMenuTag && tagManager.startColorPicker(activeMenuTag.id)}
+        >
+          <Palette class="mr-2 h-4 w-4" />
+          {$t('tags.tag_color')}
+        </Button>
+      {/if}
       <Button
         variant="ghost"
         class="w-full justify-start text-destructive hover:text-destructive"

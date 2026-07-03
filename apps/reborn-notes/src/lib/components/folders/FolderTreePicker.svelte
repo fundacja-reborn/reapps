@@ -288,10 +288,17 @@
               onclick={(e) => selectFolder(folder.id, e)}
               disabled={isCurrent}
               aria-current={isCurrent ? 'true' : undefined}
-              title={folder.name}
+              title={folder.decrypt_failed ? $t('folders.undecryptable_hint') : folder.name}
             >
               <FolderIcon class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span class="min-w-0 flex-1 truncate">{folder.name}</span>
+              {#if folder.decrypt_failed}
+                <!-- Still a valid move target - only its NAME is undecryptable. -->
+                <span class="min-w-0 flex-1 truncate italic text-muted-foreground"
+                  >{$t('folders.undecryptable')}</span
+                >
+              {:else}
+                <span class="min-w-0 flex-1 truncate">{folder.name}</span>
+              {/if}
               {#if isCurrent}
                 <Check class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               {/if}

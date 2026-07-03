@@ -97,10 +97,33 @@
        action list scrolls. -->
   <SheetContent side="bottom" class="flex max-h-[85dvh] flex-col">
     <SheetHeader class="shrink-0 pr-8 text-left">
-      <SheetTitle class="line-clamp-2 text-left">{note?.title || $t('notes.untitled')}</SheetTitle>
+      <SheetTitle class="line-clamp-2 text-left"
+        >{note?.decrypt_failed
+          ? $t('notes.undecryptable')
+          : note?.title || $t('notes.untitled')}</SheetTitle
+      >
     </SheetHeader>
     <div class="flex-1 space-y-1 overflow-y-auto">
-      {#if isTrash}
+      {#if note?.decrypt_failed && !isTrash}
+        <!-- Undecryptable note: deletion only (see NoteListItem). Trash rows
+             fall through - restore / permanent delete are both row-level ops. -->
+        <p class="px-3 pb-2 text-sm text-muted-foreground">
+          {$t('notes.undecryptable_hint')}
+        </p>
+        <Button
+          variant="ghost"
+          class="w-full justify-start text-destructive hover:text-destructive"
+          onclick={() => note && ondelete(note.id)}
+        >
+          <Trash2 class="mr-2 h-4 w-4" />
+          {$t('notes.delete_note')}
+        </Button>
+      {:else if isTrash}
+        {#if note?.decrypt_failed}
+          <p class="px-3 pb-2 text-sm text-muted-foreground">
+            {$t('notes.undecryptable_hint')}
+          </p>
+        {/if}
         <Button
           variant="ghost"
           class="w-full justify-start"

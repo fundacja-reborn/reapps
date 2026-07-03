@@ -25,13 +25,14 @@ export function sortFoldersByCustomOrder<
   );
 }
 
-/** Flatten a nested folder tree into a flat array of {id, name}. */
+/** Flatten a nested folder tree into a flat array of {id, name}. Carries the
+ *  decrypt_failed flag so name consumers can render the placeholder. */
 export function flattenFolderTree(
   nodes: FolderWithChildren[],
-  result: { id: string; name: string }[] = []
-): { id: string; name: string }[] {
+  result: { id: string; name: string; decrypt_failed?: boolean }[] = []
+): { id: string; name: string; decrypt_failed?: boolean }[] {
   for (const f of nodes) {
-    result.push({ id: f.id, name: f.name });
+    result.push({ id: f.id, name: f.name, ...(f.decrypt_failed ? { decrypt_failed: true } : {}) });
     flattenFolderTree(f.children ?? [], result);
   }
   return result;

@@ -6,6 +6,13 @@ export interface TagDecrypted {
   color?: string;
   created_at: string;
   updated_at: string;
+  /**
+   * True when any of the tag's ciphertexts (name, color) could not be decrypted
+   * with the current master key (foreign key epoch / corrupted data). Such a row
+   * keeps an empty name and no color; the UI renders an explicit placeholder and
+   * offers rename (repair) or deletion.
+   */
+  decrypt_failed?: boolean;
 }
 
 export interface TagEncrypted extends SyncableEncryptedEntity {
@@ -24,8 +31,8 @@ export interface NoteTag {
 /** Maximum plaintext tag name size in bytes. */
 export const MAX_TAG_NAME_BYTES = 200; // ~100 Unicode chars
 
-/** Maximum encrypted tag name — server Zod. */
+/** Maximum encrypted tag name - server Zod. */
 export const MAX_ENCRYPTED_TAG_NAME_BYTES = 350;
 
-/** Maximum encrypted tag color — server Zod. Color is ~7 chars (#RRGGBB), encrypted ~100-150 bytes. */
+/** Maximum encrypted tag color - server Zod. Color is ~7 chars (#RRGGBB), encrypted ~100-150 bytes. */
 export const MAX_ENCRYPTED_TAG_COLOR_BYTES = 200;

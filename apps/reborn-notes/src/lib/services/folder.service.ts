@@ -29,6 +29,7 @@ import {
 import { noteIndex } from '$lib/services/note-index.svelte';
 import { getSetting } from '$lib/utils/app-settings';
 import { sortFoldersByCustomOrder, sortFoldersByName } from '$lib/utils/folder-helpers';
+import { createUndecryptableRowCache, decodeTextField } from './undecryptable-rows';
 
 // ── User identity ─────────────────────────────────────────────────
 
@@ -46,23 +47,39 @@ async function encodeName(name: string): Promise<string> {
   return cryptoManager.encryptText(name);
 }
 
-async function decodeName(stored: string): Promise<string> {
-  if (!stored) return '';
-  if (!cryptoManager.isInitialized()) {
-    throw new Error('[E2E] decodeName called without master key loaded');
-  }
-  try {
-    return await cryptoManager.decryptText(stored);
-  } catch {
-    return ''; // deszyfrowanie nie powiodło się (uszkodzone dane)
-  }
-}
+// Session cache of rows that already failed to decrypt - see
+// undecryptable-rows.ts for the shared pattern (guideline 63, #15).
+const undecryptableRows = createUndecryptableRowCache();
 
-async function toDecrypted(enc: FolderEncrypted): Promise<Omit<FolderWithChildren, 'children'>> {
+// The name is the folder's ONLY ciphertext: structure (parent_id), ordering and
+// contents stay fully usable on an undecryptable row, and a rename re-encrypts
+// the name under the current key (= repairs the row). The UI therefore keeps
+// selection/expansion active and offers rename + delete.
+function toUndecryptable(enc: FolderEncrypted): Omit<FolderWithChildren, 'children'> {
   return {
     id: enc.id,
     parent_id: enc.parent_id,
-    name: await decodeName(enc.name_encrypted),
+    name: '',
+    order_index: enc.order_index,
+    is_archived: enc.is_archived,
+    created_at: enc.created_at,
+    updated_at: enc.updated_at,
+    decrypt_failed: true
+  };
+}
+
+async function toDecrypted(enc: FolderEncrypted): Promise<Omit<FolderWithChildren, 'children'>> {
+  if (undecryptableRows.has(enc.id, enc.updated_at)) return toUndecryptable(enc);
+  const name = await decodeTextField(enc.name_encrypted, 'folder name');
+  if (name === null) {
+    undecryptableRows.mark(enc.id, enc.updated_at);
+    return toUndecryptable(enc);
+  }
+  undecryptableRows.clear(enc.id);
+  return {
+    id: enc.id,
+    parent_id: enc.parent_id,
+    name,
     order_index: enc.order_index,
     is_archived: enc.is_archived,
     created_at: enc.created_at,

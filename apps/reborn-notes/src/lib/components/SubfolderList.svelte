@@ -91,7 +91,15 @@
             onkeydown={(e) => e.key === 'Enter' && onselect(folder.id)}
           >
             <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span class="min-w-0 flex-1 truncate">{folder.name}</span>
+            {#if folder.decrypt_failed}
+              <!-- Name is the only ciphertext - the folder itself stays browsable. -->
+              <span
+                class="min-w-0 flex-1 truncate italic text-muted-foreground"
+                title={$t('folders.undecryptable_hint')}>{$t('folders.undecryptable')}</span
+              >
+            {:else}
+              <span class="min-w-0 flex-1 truncate">{folder.name}</span>
+            {/if}
             <ChevronRight
               class="h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground"
             />

@@ -141,6 +141,8 @@
     "support": "Soutenez-nous"
   },
   "notes": {
+    "undecryptable": "Déchiffrement impossible",
+    "undecryptable_hint": "Impossible de déchiffrer cette note avec votre clé de chiffrement. Elle peut uniquement être supprimée.",
     "title": "Notes",
     "new_note": "Nouvelle note",
     "edit_note": "Modifier la note",
@@ -324,6 +326,8 @@
     }
   },
   "folders": {
+    "undecryptable": "Déchiffrement impossible",
+    "undecryptable_hint": "Impossible de déchiffrer le nom de ce dossier avec votre clé de chiffrement. Son contenu n'est pas affecté - renommez le dossier pour le réparer, ou supprimez-le.",
     "title": "Dossiers",
     "new_folder": "Nouveau dossier",
     "edit_folder": "Modifier le dossier",
@@ -399,6 +403,8 @@
     }
   },
   "tags": {
+    "undecryptable": "Déchiffrement impossible",
+    "undecryptable_hint": "Impossible de déchiffrer le nom de ce tag avec votre clé de chiffrement. Renommez-le pour le réparer, ou supprimez-le.",
     "title": "Tags",
     "new_tag": "Nouveau tag",
     "edit_tag": "Modifier le tag",

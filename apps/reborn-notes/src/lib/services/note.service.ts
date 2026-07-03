@@ -2,7 +2,7 @@
  * Note service for Reborn Notes.
  *
  * Wraps @reborn/storage note operations with E2E encryption via CryptoManager.
- * Notes are always encrypted with the user's master key — E2E must be unlocked before use.
+ * Notes are always encrypted with the user's master key - E2E must be unlocked before use.
  */
 import {
   noteStore,
@@ -31,6 +31,7 @@ import {
   pushNoteVersion,
   pullNoteVersionsForNote
 } from './notes-sync.service';
+import { createUndecryptableRowCache, decodeTextField } from './undecryptable-rows';
 
 const logger = createLogger('Note-Service');
 
@@ -52,24 +53,45 @@ async function encodeText(text: string): Promise<string> {
   return cryptoManager.encryptText(text);
 }
 
-async function decodeText(stored: string): Promise<string> {
-  if (!stored) return '';
-  if (!cryptoManager.isInitialized()) {
-    throw new Error('[E2E] decodeText called without master key loaded');
-  }
-  try {
-    return await cryptoManager.decryptText(stored);
-  } catch {
-    return ''; // deszyfrowanie nie powiodło się (uszkodzone dane)
-  }
-}
+// Session cache of rows that already failed to decrypt - see
+// undecryptable-rows.ts for the shared pattern (guideline 63, #15). Shared by
+// BOTH decode paths (full toDecrypted and the title-only NoteIndex path), so a
+// row marked by either one is served from the cache by the other.
+const undecryptableRows = createUndecryptableRowCache();
 
-async function toDecrypted(enc: NoteStoredLocal): Promise<NoteDecrypted> {
+// A note's ciphertext IS its value - unlike folders/tags there is no
+// rename-repair, so the UI renders the placeholder inert (opening the editor
+// and saving would overwrite the ciphertext with an empty body) and only
+// offers deletion.
+function toUndecryptable(enc: NoteStoredLocal): NoteDecrypted {
   return {
     id: enc.id,
     folder_id: enc.folder_id,
-    title: await decodeText(enc.title_encrypted),
-    content: await decodeText(enc.content_encrypted),
+    title: '',
+    content: '',
+    is_pinned: enc.is_pinned,
+    is_starred: enc.is_starred,
+    is_archived: enc.is_archived,
+    created_at: enc.created_at,
+    updated_at: enc.updated_at,
+    decrypt_failed: true
+  };
+}
+
+async function toDecrypted(enc: NoteStoredLocal): Promise<NoteDecrypted> {
+  if (undecryptableRows.has(enc.id, enc.updated_at)) return toUndecryptable(enc);
+  const title = await decodeTextField(enc.title_encrypted, 'note title');
+  const content = await decodeTextField(enc.content_encrypted, 'note content');
+  if (title === null || content === null) {
+    undecryptableRows.mark(enc.id, enc.updated_at);
+    return toUndecryptable(enc);
+  }
+  undecryptableRows.clear(enc.id);
+  return {
+    id: enc.id,
+    folder_id: enc.folder_id,
+    title,
+    content,
     // Shadow indexes (available directly on NoteStoredLocal)
     is_pinned: enc.is_pinned,
     is_starred: enc.is_starred,
@@ -79,7 +101,7 @@ async function toDecrypted(enc: NoteStoredLocal): Promise<NoteDecrypted> {
   };
 }
 
-/** Decrypt only the title (skip content_encrypted) — used by NoteIndex cache. */
+/** Decrypt only the title (skip content_encrypted) - used by NoteIndex cache. */
 export async function decryptTitleOnly(enc: NoteStoredLocal): Promise<{
   id: string;
   title: string;
@@ -89,17 +111,31 @@ export async function decryptTitleOnly(enc: NoteStoredLocal): Promise<{
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
+  decryptFailed: boolean;
 }> {
+  // Cache-hit also covers content-only corruption found by toDecrypted: the
+  // index entry then flags the row even though its title alone would decode.
+  // The reverse gap (content corrupt, title fine, index built first) closes
+  // the moment the full decode runs. Deliberately no clear() on success -
+  // a title-only decode cannot prove the content is healthy.
+  let title: string | null = '';
+  let decryptFailed = true;
+  if (!undecryptableRows.has(enc.id, enc.updated_at)) {
+    title = await decodeTextField(enc.title_encrypted, 'note title');
+    if (title === null) undecryptableRows.mark(enc.id, enc.updated_at);
+    else decryptFailed = false;
+  }
   return {
     id: enc.id,
-    title: await decodeText(enc.title_encrypted),
+    title: title ?? '',
     folderId: enc.folder_id,
     // Shadow indexes (available directly on NoteStoredLocal)
     isPinned: enc.is_pinned ?? false,
     isStarred: enc.is_starred ?? false,
     isArchived: enc.is_archived ?? false,
     createdAt: enc.created_at,
-    updatedAt: enc.updated_at
+    updatedAt: enc.updated_at,
+    decryptFailed
   };
 }
 
@@ -129,7 +165,7 @@ export function filterNotes(notes: NoteDecrypted[], query: string): NoteDecrypte
   );
 }
 
-/** Filter notes by title only (default search — fast, no content scan). */
+/** Filter notes by title only (default search - fast, no content scan). */
 export function filterNotesByTitle(notes: NoteDecrypted[], query: string): NoteDecrypted[] {
   if (!query.trim()) return notes;
   const q = query.toLowerCase();
@@ -300,11 +336,11 @@ export async function createNote(
 }
 
 /**
- * Update note title and/or content. Does NOT create version history — use saveVersionSnapshot().
+ * Update note title and/or content. Does NOT create version history - use saveVersionSnapshot().
  *
  * `options.updatedAt` lets importers preserve the source file's modified
  * timestamp (e.g. Obsidian frontmatter) when overwriting an existing note.
- * `options.skipSync` defers the network push to the caller — used by batch
+ * `options.skipSync` defers the network push to the caller - used by batch
  * importers that bulk-push at the end to avoid per-file race conditions.
  */
 export async function updateNote(
@@ -381,7 +417,7 @@ export async function deleteNote(id: string): Promise<void> {
     updatedAt: new Date().toISOString()
   });
 
-  // Note never reached the server — skip DELETE and mark as synced locally.
+  // Note never reached the server - skip DELETE and mark as synced locally.
   if (!existing || existing.sync_status === 'pending') {
     const archived = await noteStore.get(id);
     if (archived) await noteStore.save({ ...archived, sync_status: 'synced' });
@@ -680,7 +716,7 @@ function serializeVersionWrite<T>(noteId: string, run: () => Promise<T>): Promis
 }
 
 /**
- * Save a version snapshot for a note (copies ciphertext from IndexedDB — zero re-encryption).
+ * Save a version snapshot for a note (copies ciphertext from IndexedDB - zero re-encryption).
  * Skips if note content is identical to the latest version. Prunes to MAX_NOTE_VERSIONS.
  */
 export async function saveVersionSnapshot(noteId: string): Promise<void> {
@@ -688,7 +724,7 @@ export async function saveVersionSnapshot(noteId: string): Promise<void> {
     const existing = await noteStore.get(noteId);
     if (!existing) return;
 
-    // Compare with latest version — skip if identical (avoid duplicate snapshots)
+    // Compare with latest version - skip if identical (avoid duplicate snapshots)
     const latest = await noteHistoryQueries.getForNote(noteId);
     if (latest.length > 0) {
       const top = latest[0];
@@ -726,14 +762,14 @@ export async function saveVersionSnapshot(noteId: string): Promise<void> {
  * an editing session. Unlike `saveVersionSnapshot`, it reconciles with the
  * server FIRST.
  *
- * Why: version history is lazy (no longer pulled during sync — guideline 36), so
+ * Why: version history is lazy (no longer pulled during sync - guideline 36), so
  * on a cold start the LOCAL history store is empty even for a note that already
  * has versions on the server. Writing a baseline against an empty local history
- * would duplicate the pre-edit state — which is already a server version from a
- * previous session — and that twin surfaces the moment the panel pulls server
+ * would duplicate the pre-edit state - which is already a server version from a
+ * previous session - and that twin surfaces the moment the panel pulls server
  * history. So we pull the note's server versions first, then skip if any version
  * already holds this exact pre-edit ciphertext. A never-versioned note still
- * gets its baseline (nothing on the server to dedup against — this is the case
+ * gets its baseline (nothing on the server to dedup against - this is the case
  * the original bug lost); an already-versioned note writes nothing (its pre-edit
  * state is already recoverable from the server).
  *
@@ -742,12 +778,12 @@ export async function saveVersionSnapshot(noteId: string): Promise<void> {
  * re-encryption) to the same versions endpoint as every other snapshot.
  */
 export async function saveBaselineSnapshot(noteId: string): Promise<void> {
-  // Capture the pristine entry before anything awaits — the debounced save runs
+  // Capture the pristine entry before anything awaits - the debounced save runs
   // later, so IndexedDB still holds the pre-edit state at this point.
   const entry = await noteStore.get(noteId);
   if (!entry) return;
 
-  // A never-promoted ephemeral note (#349) has no server row yet — the debounced
+  // A never-promoted ephemeral note (#349) has no server row yet - the debounced
   // first-edit save creates it later (pushNoteMutation → POST /api/notes). Both
   // the server-history pull (syncNoteVersionsFromServer) and the version push
   // target /api/notes/{id}/versions, which 404s until the parent note exists, so
@@ -790,7 +826,7 @@ export async function saveBaselineSnapshot(noteId: string): Promise<void> {
   });
 }
 
-/** Get version history for a note — raw encrypted entries (newest first). */
+/** Get version history for a note - raw encrypted entries (newest first). */
 export async function getNoteHistory(noteId: string): Promise<NoteHistoryEntry[]> {
   return noteHistoryQueries.getForNote(noteId);
 }
@@ -829,14 +865,16 @@ export async function getNoteHistoryDecrypted(noteId: string): Promise<NoteHisto
     entries.map(async (e) => ({
       id: e.id,
       note_id: e.note_id,
-      title: await decodeText(e.title_encrypted),
-      content: await decodeText(e.content_encrypted),
+      // Version rows have no decrypt_failed surface (panel rows are ephemeral
+      // UI) - an undecryptable snapshot degrades to empty fields as before.
+      title: (await decodeTextField(e.title_encrypted, 'note version title')) ?? '',
+      content: (await decodeTextField(e.content_encrypted, 'note version content')) ?? '',
       created_at: e.created_at
     }))
   );
 }
 
-/** Restore a specific version — overwrites current note content. */
+/** Restore a specific version - overwrites current note content. */
 export async function restoreNoteVersion(
   noteId: string,
   entry: NoteHistoryDecrypted

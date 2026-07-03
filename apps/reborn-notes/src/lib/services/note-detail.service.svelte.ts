@@ -19,12 +19,21 @@ interface NoteEditState {
 }
 
 class NoteDetailService {
-  // ── Reactive state (Svelte 5 runes — used in .svelte files) ──
+  // ── Reactive state (Svelte 5 runes - used in .svelte files) ──
   title = $state('');
   content = $state('');
   folderId = $state<string | null | undefined>(undefined);
   saveStatus = $state<SaveStatus>('idle');
   isNewNote = $state(false);
+  /**
+   * The loaded note's ciphertext failed to decrypt (see undecryptable-rows.ts).
+   * The editor buffer is left empty and every write path below is a no-op:
+   * saving would overwrite the (possibly foreign-keyed) ciphertext with an
+   * empty body. Normally unreachable - list rows of such notes don't open -
+   * but programmatic setters of activeNoteId (nav history, deep links) funnel
+   * through loadNote, so the guard lives here.
+   */
+  decryptFailed = $state(false);
 
   /** Current note size in bytes (title + content). */
   contentSize = $derived(new Blob([this.title, this.content]).size);
@@ -41,7 +50,7 @@ class NoteDetailService {
   private contentDebounceTimer?: ReturnType<typeof setTimeout>;
   private readonly DEBOUNCE_MS = 2000;
 
-  // Checkpoint timer — saves version snapshot every 30 minutes of editing
+  // Checkpoint timer - saves version snapshot every 30 minutes of editing
   private checkpointTimer?: ReturnType<typeof setInterval>;
   private readonly CHECKPOINT_MS = 30 * 60 * 1000; // 30 min
   private editedSinceLastSnapshot = false;
@@ -89,6 +98,7 @@ class NoteDetailService {
     this.baselineCaptured = false;
     const note = await notesStore.loadNote(id);
     if (note) {
+      this.decryptFailed = note.decrypt_failed === true;
       this.title = note.title;
       this.content = note.content;
       this.folderId = note.folder_id ?? null;
@@ -108,6 +118,9 @@ class NoteDetailService {
 
     const note = await notesStore.loadNote(id);
     if (!note) return;
+    // A pull can rewrite the open note into an undecryptable state (foreign
+    // key epoch). Keep the in-memory plaintext - it is the best copy there is.
+    if (note.decrypt_failed) return;
 
     if (this.title !== note.title) this.title = note.title;
     if (this.content !== note.content) this.content = note.content;
@@ -119,6 +132,7 @@ class NoteDetailService {
    * Set title with debounce. Captures value synchronously.
    */
   setTitleDebounced(title: string): void {
+    if (this.decryptFailed) return;
     this.captureBaselineSnapshot();
     this.title = title;
     this.pendingTitle = title;
@@ -138,6 +152,7 @@ class NoteDetailService {
    * Set content with debounce. Captures value synchronously.
    */
   setContentDebounced(content: string): void {
+    if (this.decryptFailed) return;
     this.captureBaselineSnapshot();
     this.content = content;
     this.pendingContent = content;
@@ -192,12 +207,13 @@ class NoteDetailService {
 
   /**
    * Flush all pending changes immediately.
-   * Uses internal noteId — never reads reactive store.
+   * Uses internal noteId - never reads reactive store.
    * Returns true on success, false on failure.
    */
   async flushPendingSave(noteId?: string): Promise<boolean> {
     this.clearTimers();
 
+    if (this.decryptFailed) return true; // nothing legitimate to write
     if (!this.hasPendingChanges() && this.saveStatus !== 'dirty') return true;
 
     // Block save if note exceeds size limit
@@ -294,6 +310,7 @@ class NoteDetailService {
     this.folderId = undefined;
     this.saveStatus = 'idle';
     this.isNewNote = false;
+    this.decryptFailed = false;
     this.pendingTitle = null;
     this.pendingContent = null;
     this.editedSinceLastSnapshot = false;
@@ -381,7 +398,7 @@ class NoteDetailService {
 
   private async save(): Promise<void> {
     const id = this.noteId;
-    if (!id) return;
+    if (!id || this.decryptFailed) return;
 
     // Block save if note exceeds size limit
     if (this.isOverLimit) {

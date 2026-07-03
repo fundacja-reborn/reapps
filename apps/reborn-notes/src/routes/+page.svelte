@@ -700,6 +700,7 @@
     if (activeSection === 'all') return $t('nav.all_notes');
     if (activeSection === 'tags') {
       const tag = $tagsStore.find((t) => t.id === activeTagId);
+      if (tag?.decrypt_failed) return $t('tags.undecryptable');
       return tag ? tag.name : $t('nav.tags');
     }
     if (isPeriodicSection(activeSection)) {
@@ -714,18 +715,18 @@
     }
     if (activeFolderId === undefined) return $t('nav.all_notes');
     if (activeFolderId === null) return $t('nav.no_folder');
-    return (
-      flattenFolderTree($foldersStore).find((f) => f.id === activeFolderId)?.name ??
-      $t('nav.folders')
-    );
+    const folder = flattenFolderTree($foldersStore).find((f) => f.id === activeFolderId);
+    if (folder?.decrypt_failed) return $t('folders.undecryptable');
+    return folder?.name ?? $t('nav.folders');
   });
 
   let activeNoteFolderName = $derived.by(() => {
     if (!$activeNoteId || noteDetailService.folderId == null) return null;
-    return (
-      flattenFolderTree($foldersStore).find((f) => f.id === noteDetailService.folderId)?.name ??
-      null
+    const folder = flattenFolderTree($foldersStore).find(
+      (f) => f.id === noteDetailService.folderId
     );
+    if (folder?.decrypt_failed) return $t('folders.undecryptable');
+    return folder?.name ?? null;
   });
 
   // ── Sync store filters to nav state ─────────────────────────────

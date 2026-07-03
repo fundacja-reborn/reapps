@@ -141,6 +141,8 @@
     "support": "Wesprzyj nas"
   },
   "notes": {
+    "undecryptable": "Nie można odszyfrować",
+    "undecryptable_hint": "Tej notatki nie udało się odszyfrować Twoim kluczem szyfrowania. Można ją tylko usunąć.",
     "title": "Notatki",
     "new_note": "Nowa notatka",
     "edit_note": "Edytuj notatkę",
@@ -324,6 +326,8 @@
     }
   },
   "folders": {
+    "undecryptable": "Nie można odszyfrować",
+    "undecryptable_hint": "Nazwy tego folderu nie udało się odszyfrować Twoim kluczem szyfrowania. Zawartość folderu jest nienaruszona - zmień jego nazwę, aby go naprawić, albo go usuń.",
     "title": "Foldery",
     "new_folder": "Nowy folder",
     "edit_folder": "Edytuj folder",
@@ -399,6 +403,8 @@
     }
   },
   "tags": {
+    "undecryptable": "Nie można odszyfrować",
+    "undecryptable_hint": "Nazwy tego tagu nie udało się odszyfrować Twoim kluczem szyfrowania. Zmień jego nazwę, aby go naprawić, albo go usuń.",
     "title": "Tagi",
     "new_tag": "Nowy tag",
     "edit_tag": "Edytuj tag",
