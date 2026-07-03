@@ -136,9 +136,8 @@ export async function refreshStoresAfterPull(): Promise<void> {
   // pre-filter, zero decryption) and only decrypts on an actual collision.
   void (async () => {
     try {
-      const { detectAndNotifyPeriodicDuplicates } = await import(
-        '$lib/services/periodic-dedup.service'
-      );
+      const { detectAndNotifyPeriodicDuplicates } =
+        await import('$lib/services/periodic-dedup.service');
       await detectAndNotifyPeriodicDuplicates();
     } catch (e) {
       logger.warn('Periodic duplicate scan failed', e);
@@ -280,6 +279,21 @@ async function pullFolders(): Promise<void> {
   // `idb-cleanup.service.ts`.
   const userId = get(authStore).userId;
   if (!userId) return;
+  // Snapshot the already-synced ids BEFORE the request leaves. The orphan-
+  // delete below may only remove items from this set: an item that turned
+  // 'synced' while the pull was in flight (e.g. created and POSTed by a live
+  // folder-sync import racing this pull) is absent from the server's response
+  // only because that response was built before its POST landed - deleting it
+  // locally would hard-drop a record the server actually has. It then
+  // resurrects on a later pull, and in the gap live folder sync re-imports its
+  // file as a duplicate note. An item synced before this snapshot is genuinely
+  // authoritative: the server already knew it when answering, so its absence
+  // means a real remote delete.
+  const prePullSyncedIds = new Set(
+    ((await folderStore.getAll()) as FolderEncrypted[])
+      .filter((f) => f.sync_status === 'synced')
+      .map((f) => f.id)
+  );
   const res = await authFetch(`${API_BASE}/folders`);
   if (!res.ok) throw new Error(`GET /api/folders: ${res.status}`);
   const { data } = await res.json();
@@ -338,11 +352,15 @@ async function pullFolders(): Promise<void> {
   );
 
   // Remove local folders that no longer exist on the server (deleted on another device).
-  // Only remove 'synced' items - 'pending' items were created/edited locally and not yet pushed.
+  // Only remove 'synced' items - 'pending' items were created/edited locally and not yet
+  // pushed, and items that became synced mid-pull (pre-pull snapshot miss) were acked by
+  // the server AFTER this response was built, so they are not orphans.
   const serverFolderIds = new Set((data as Array<{ id: string }>).map((f) => f.id));
   const allLocalFolders = (await folderStore.getAll()) as FolderEncrypted[];
   const orphanIds = allLocalFolders
-    .filter((f) => f.sync_status === 'synced' && !serverFolderIds.has(f.id))
+    .filter(
+      (f) => f.sync_status === 'synced' && !serverFolderIds.has(f.id) && prePullSyncedIds.has(f.id)
+    )
     .map((f) => f.id);
   if (orphanIds.length > 0) {
     await folderStore.deleteMany(orphanIds);
@@ -354,6 +372,13 @@ async function pullTags(): Promise<void> {
   // See pullFolders() for rationale on the userId guard.
   const userId = get(authStore).userId;
   if (!userId) return;
+  // Pre-request snapshot of synced ids - see pullFolders() for the rationale
+  // (a tag pushed mid-pull must survive the orphan-delete sweep).
+  const prePullSyncedIds = new Set(
+    ((await tagStore.getAll()) as TagEncrypted[])
+      .filter((t) => t.sync_status === 'synced')
+      .map((t) => t.id)
+  );
   const res = await authFetch(`${API_BASE}/tags`);
   if (!res.ok) throw new Error(`GET /api/tags: ${res.status}`);
   const { data } = await res.json();
@@ -406,10 +431,13 @@ async function pullTags(): Promise<void> {
   );
 
   // Remove local tags that no longer exist on the server (hard-deleted on another device).
+  // Synced-mid-pull tags are excluded via the pre-pull snapshot - see pullFolders().
   const serverTagIds = new Set((data as Array<{ id: string }>).map((t) => t.id));
   const allLocalTags = (await tagStore.getAll()) as TagEncrypted[];
   const orphanTagIds = allLocalTags
-    .filter((t) => t.sync_status === 'synced' && !serverTagIds.has(t.id))
+    .filter(
+      (t) => t.sync_status === 'synced' && !serverTagIds.has(t.id) && prePullSyncedIds.has(t.id)
+    )
     .map((t) => t.id);
   if (orphanTagIds.length > 0) {
     await tagStore.deleteMany(orphanTagIds);
@@ -421,6 +449,13 @@ async function pullSavedSearches(): Promise<void> {
   // See pullFolders() for rationale on the userId guard.
   const userId = get(authStore).userId;
   if (!userId) return;
+  // Pre-request snapshot of synced ids - see pullFolders() for the rationale
+  // (a saved search pushed mid-pull must survive the orphan-delete sweep).
+  const prePullSyncedIds = new Set(
+    ((await savedSearchStore.getAll()) as SavedSearchEncrypted[])
+      .filter((s) => s.sync_status === 'synced')
+      .map((s) => s.id)
+  );
   const res = await authFetch(`${API_BASE}/saved-searches`);
   if (!res.ok) throw new Error(`GET /api/saved-searches: ${res.status}`);
   const { data } = await res.json();
@@ -484,11 +519,12 @@ async function pullSavedSearches(): Promise<void> {
     })
   );
 
-  // Remove local saved searches that no longer exist on the server (hard-deleted on another device).
+  // Remove local saved searches that no longer exist on the server (hard-deleted on another
+  // device). Synced-mid-pull rows are excluded via the pre-pull snapshot - see pullFolders().
   const serverIds = new Set((data as Array<{ id: string }>).map((s) => s.id));
   const allLocal = (await savedSearchStore.getAll()) as SavedSearchEncrypted[];
   const orphanIds = allLocal
-    .filter((s) => s.sync_status === 'synced' && !serverIds.has(s.id))
+    .filter((s) => s.sync_status === 'synced' && !serverIds.has(s.id) && prePullSyncedIds.has(s.id))
     .map((s) => s.id);
   if (orphanIds.length > 0) {
     await savedSearchStore.deleteMany(orphanIds);
@@ -587,6 +623,26 @@ async function pullNotes(): Promise<string[]> {
   const hasLocalNotes = (await noteStore.count()) > 0;
   const since = hasLocalNotes ? readWatermark(userId) : null;
 
+  // Pre-pull snapshot of already-synced ids - see pullFolders() for the full
+  // rationale. The orphan-delete below may only remove notes that were synced
+  // BEFORE the first request left: a note POSTed and acked while this pull is
+  // paging (e.g. a live folder-sync import racing the pull) is missing from
+  // all_ids only because that set was captured server-side ahead of its POST.
+  // Sweeping it hard-deletes a note the server has; it resurrects on a later
+  // delta while folder sync re-imports its file in the gap - a duplicate note.
+  // Taken only when the sweep can actually fire (reconcile, or a no-watermark
+  // bulk against an old server, where the empty-store snapshot is free):
+  // noteStore.getAll() deserializes every content blob, which the 5-min delta
+  // pulls deliberately avoid.
+  let prePullSyncedIds: Set<string> | null = null;
+  if (reconcile || !since) {
+    prePullSyncedIds = new Set(
+      ((await noteStore.getAll()) as NoteStoredLocal[])
+        .filter((n) => n.sync_status === 'synced')
+        .map((n) => n.id)
+    );
+  }
+
   // Dynamic imports (same rationale as refreshStoresAfterPull): avoids a
   // sync-service <-> note-index/notes-store import cycle. Cached by the bundler.
   const { noteIndex } = await import('$lib/services/note-index.svelte');
@@ -661,12 +717,17 @@ async function pullNotes(): Promise<string[]> {
 
   // Orphan-delete ONLY from the authoritative all_ids (never from page contents:
   // a delta page holds just the changed notes). Skipped entirely when allIds is
-  // null (old server, or a non-reconcile periodic pull).
+  // null (old server, or a non-reconcile periodic pull). Intersected with the
+  // pre-pull snapshot so a note that became synced mid-pull is never swept.
   if (allIds) {
     const serverIds = allIds;
+    // allIds implies the snapshot was taken (reconcile or !since). If that
+    // invariant ever breaks, an empty set means "delete nothing" rather than
+    // re-opening the mid-pull race.
+    const preSynced = prePullSyncedIds ?? new Set<string>();
     const allLocalNotes = (await noteStore.getAll()) as NoteStoredLocal[];
     const orphanNoteIds = allLocalNotes
-      .filter((n) => n.sync_status === 'synced' && !serverIds.has(n.id))
+      .filter((n) => n.sync_status === 'synced' && !serverIds.has(n.id) && preSynced.has(n.id))
       .map((n) => n.id);
     if (orphanNoteIds.length > 0) {
       await noteStore.deleteMany(orphanNoteIds);
@@ -752,10 +813,7 @@ async function writeNotesPage(
         //      response was dropped before we could mirror the new version locally.
         // We only adjust is_archived here - content fields stay as they are so
         // local edits aren't clobbered.
-        if (
-          localNote.sync_status === 'synced' &&
-          !!localNote.is_archived !== serverArchived
-        ) {
+        if (localNote.sync_status === 'synced' && !!localNote.is_archived !== serverArchived) {
           logger.info(
             `Reconciling archive state for note ${n.id}: local=${localNote.is_archived} server=${serverArchived}`
           );

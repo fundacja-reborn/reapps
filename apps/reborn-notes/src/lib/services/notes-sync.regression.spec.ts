@@ -265,12 +265,10 @@ describe('notes-sync - regression (offline data loss)', () => {
     // Sanity: folders and tags push in SEPARATE sweeps (if they shared one,
     // layering wouldn't matter). Between the folders POST and the tags POST
     // there must be a fresh `await settleInBatches(pendingTags, …)`.
-    const foldersPostIdx = fn.indexOf("'/api/folders'") >= 0
-      ? fn.indexOf("'/api/folders'")
-      : fn.indexOf('/api/folders');
-    const tagsPostIdx = fn.indexOf("'/api/tags'") >= 0
-      ? fn.indexOf("'/api/tags'")
-      : fn.indexOf('/api/tags');
+    const foldersPostIdx =
+      fn.indexOf("'/api/folders'") >= 0 ? fn.indexOf("'/api/folders'") : fn.indexOf('/api/folders');
+    const tagsPostIdx =
+      fn.indexOf("'/api/tags'") >= 0 ? fn.indexOf("'/api/tags'") : fn.indexOf('/api/tags');
     expect(foldersPostIdx).toBeGreaterThan(-1);
     expect(tagsPostIdx).toBeGreaterThan(-1);
     const between = fn.slice(foldersPostIdx, tagsPostIdx);
@@ -371,9 +369,7 @@ describe('notes-sync - regression (offline data loss)', () => {
     // and keeps the batched write: saveMany is one transaction per note, avoiding
     // the per-row churn that OOM'd the Android WebView on the notes path (PR #353).
     const syncSrc = readSource('./notes-sync.service.ts');
-    expect(syncSrc).toMatch(
-      /export async function pullNoteVersionsForNote\(noteId: string\)/
-    );
+    expect(syncSrc).toMatch(/export async function pullNoteVersionsForNote\(noteId: string\)/);
     const helper = syncSrc.slice(
       syncSrc.indexOf('export async function pullNoteVersionsForNote'),
       syncSrc.indexOf('async function pushPendingVersions')
@@ -470,12 +466,8 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(importFolderStart).toBeGreaterThan(helpersStart);
     const helpers = src.slice(helpersStart, importFolderStart);
 
-    expect(helpers).toMatch(
-      /FolderService\.createFolder\([^)]*\{\s*skipSync:\s*true\s*\}\s*\)/
-    );
-    expect(helpers).toMatch(
-      /TagService\.createTag\([^)]*\{\s*skipSync:\s*true\s*\}\s*\)/
-    );
+    expect(helpers).toMatch(/FolderService\.createFolder\([^)]*\{\s*skipSync:\s*true\s*\}\s*\)/);
+    expect(helpers).toMatch(/TagService\.createTag\([^)]*\{\s*skipSync:\s*true\s*\}\s*\)/);
 
     // No direct pushNote/pushFolder/pushTag calls inside importFolder -
     // pushPendingItems() is the single push path so order is enforced.
@@ -496,13 +488,13 @@ describe('notes-sync - regression (offline data loss)', () => {
     // weight we don't use. See guideline 44.
     const src = readSource('./export-import.service.ts');
 
-    const folderLoopStart = src.indexOf("for (const folder of backupData.folders");
+    const folderLoopStart = src.indexOf('for (const folder of backupData.folders');
     const folderSafeParseIdx = src.indexOf('FolderEncryptedSchema.safeParse', folderLoopStart);
     expect(folderSafeParseIdx).toBeGreaterThan(folderLoopStart);
     const folderPreValidate = src.slice(folderLoopStart, folderSafeParseIdx);
     expect(folderPreValidate).toMatch(/normalized\.user_id\s*=\s*userId/);
 
-    const tagLoopStart = src.indexOf("for (const tag of backupData.tags");
+    const tagLoopStart = src.indexOf('for (const tag of backupData.tags');
     const tagSafeParseIdx = src.indexOf('TagEncryptedSchema.safeParse', tagLoopStart);
     expect(tagSafeParseIdx).toBeGreaterThan(tagLoopStart);
     const tagPreValidate = src.slice(tagLoopStart, tagSafeParseIdx);
@@ -557,7 +549,9 @@ describe('notes-sync - regression (offline data loss)', () => {
     // included. Ensure we never silently re-use the v1 flag.
     const cleanupSrc = readSource('./idb-cleanup.service.ts');
     expect(cleanupSrc).toMatch(/idb-null-fk-cleanup-v2/);
-    expect(cleanupSrc).not.toMatch(/^const\s+FLAG_KEY\s*=\s*'reborn-notes:idb-null-fk-cleanup-v1'/m);
+    expect(cleanupSrc).not.toMatch(
+      /^const\s+FLAG_KEY\s*=\s*'reborn-notes:idb-null-fk-cleanup-v1'/m
+    );
   });
 
   it('v1 export sanitizer stamps current userId into records with invalid user_id', () => {
@@ -597,9 +591,7 @@ describe('notes-sync - regression (offline data loss)', () => {
       }
     }
     for (const argList of eachCall(fullExport, 'normalizeExportUuids')) {
-      expect(argList, `normalizeExportUuids call must thread userId: ${argList}`).toMatch(
-        /userId/
-      );
+      expect(argList, `normalizeExportUuids call must thread userId: ${argList}`).toMatch(/userId/);
     }
   });
 
@@ -778,6 +770,48 @@ describe('notes-sync - paginated delta sync (stage 2b)', () => {
     // The old "diff against the response body" orphan path must be gone - in
     // delta mode the body is only the changed notes, so it is NOT authoritative.
     expect(code).not.toMatch(/serverNoteIds/);
+  });
+
+  it('orphan-delete only sweeps items that were synced BEFORE the pull started', () => {
+    // A note created and POSTed while the reconcile pull is paging (live folder
+    // sync imports a brand-new file mid-pull) turns 'synced' AFTER the server
+    // built all_ids, so it is absent from that set. Sweeping it hard-deleted a
+    // note the server has: it resurrected on a later delta while folder sync
+    // re-imported its file in the gap - the duplicate-note incident of
+    // 2026-07-03. Every pull helper must intersect its sweep with a snapshot
+    // of synced ids taken before its first request.
+    const code = pullNotesSrc().replace(/\/\/.*$/gm, '');
+    // Snapshot is gated to sweep-capable runs and taken before the paging loop.
+    expect(code).toMatch(/if\s*\(reconcile \|\| !since\)/);
+    expect(code.indexOf('prePullSyncedIds')).toBeGreaterThan(-1);
+    expect(code.indexOf('prePullSyncedIds')).toBeLessThan(code.indexOf('do {'));
+    // The sweep requires membership in the snapshot, with an empty-set fail-safe.
+    expect(code).toMatch(/preSynced\.has\(n\.id\)/);
+    expect(code).toMatch(/prePullSyncedIds \?\? new Set/);
+
+    // Same pattern in the three single-request pull helpers.
+    const src = readSource('./notes-sync.service.ts').replace(/\/\/.*$/gm, '');
+    const helpers = [
+      ['async function pullFolders', 'async function pullTags', /prePullSyncedIds\.has\(f\.id\)/],
+      [
+        'async function pullTags',
+        'async function pullSavedSearches',
+        /prePullSyncedIds\.has\(t\.id\)/
+      ],
+      [
+        'async function pullSavedSearches',
+        'const NOTES_PAGE_SIZE',
+        /prePullSyncedIds\.has\(s\.id\)/
+      ]
+    ] as const;
+    for (const [start, end, sweepRe] of helpers) {
+      const fn = src.slice(src.indexOf(start), src.indexOf(end));
+      // Snapshot precedes the fetch...
+      expect(fn.indexOf('prePullSyncedIds')).toBeGreaterThan(-1);
+      expect(fn.indexOf('prePullSyncedIds')).toBeLessThan(fn.indexOf('authFetch'));
+      // ...and gates the sweep.
+      expect(fn).toMatch(sweepRe);
+    }
   });
 
   it('reads the delta watermark behind a count() guard and advances it after the pull', () => {
