@@ -342,6 +342,7 @@
     "sort_custom": "Własna kolejność",
     "move_up": "Przesuń w górę",
     "move_down": "Przesuń w dół",
+    "move_failed_missing": "Nie można przenieść: ten folder już nie istnieje. Mógł zostać usunięty na innym urządzeniu.",
     "no_folders": "Brak folderów",
     "no_folders_short": "Brak folderów.",
     "folder_name": "Nazwa folderu",

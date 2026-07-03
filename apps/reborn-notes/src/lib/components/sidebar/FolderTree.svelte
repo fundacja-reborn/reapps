@@ -20,6 +20,20 @@
   export const dropTarget = writable<{ id: string; zone: DropZone } | null>(null);
   // Row lifted by an active touch drag - dimmed while its clone follows the finger.
   export const touchDraggingId = writable<string | null>(null);
+  // One touch gesture at a time across ALL tree instances. Rows live in
+  // recursive component instances, so the per-instance guards (pressTimer /
+  // touchDragging) cannot see a press started at another depth - a second
+  // concurrent long-press would overwrite the shared dragBlockedIds /
+  // touchDraggingId stores and corrupt the first gesture's cycle guard.
+  let touchGestureActive = false;
+  function claimTouchGesture(): boolean {
+    if (touchGestureActive) return false;
+    touchGestureActive = true;
+    return true;
+  }
+  function releaseTouchGesture() {
+    touchGestureActive = false;
+  }
 </script>
 
 <script lang="ts">
@@ -325,10 +339,18 @@
   async function handleMoveTo(folderId: string | null) {
     const folder = $movingFolder;
     if (!folder) return;
-    await foldersStore.move(folder.id, folderId);
-    // Reveal the new location, mirroring the drag&drop path.
-    if (folderId) expandedIds.add(folderId);
-    movingFolder.set(null);
+    try {
+      await foldersStore.move(folder.id, folderId);
+      // Reveal the new location, mirroring the drag&drop path.
+      if (folderId) expandedIds.add(folderId);
+    } catch {
+      // Folder or its target deleted remotely mid-pick - tell the user and
+      // refresh so the stale row disappears (audit 013 O56).
+      toastStore.error($t('folders.move_failed_missing'));
+      foldersStore.refresh();
+    } finally {
+      movingFolder.set(null);
+    }
   }
 
   // ── Import .md files / folder tree to folder ────────────────────
@@ -635,6 +657,12 @@
       } else {
         await insertRelativeToRow(draggedId, eff.id, eff.zone, $dragBlockedIds);
       }
+    } catch {
+      // Dragged row or drop target deleted remotely mid-gesture - surface it
+      // instead of an unhandled rejection, refresh to drop the stale row
+      // (audit 013 O56).
+      toastStore.error($t('folders.move_failed_missing'));
+      foldersStore.refresh();
     } finally {
       dropTarget.set(null);
       dragBlockedIds.set(null);
@@ -694,6 +722,9 @@
     // Chevron / kebab / rename input own their taps - no drag from controls.
     if ((e.target as HTMLElement).closest('button, input')) return;
     if (pressTimer || touchDragging) return; // second finger while active
+    // Cross-instance latch: a press at another tree depth is a separate
+    // component instance - the guards above can't see it (audit 013 N3).
+    if (!claimTouchGesture()) return;
     pressFolder = folder;
     pressPointerId = e.pointerId;
     pressStart = { x: e.clientX, y: e.clientY };
@@ -867,12 +898,18 @@
     // A release without movement still produces a click on the row - swallow
     // it so dropping doesn't also open the folder.
     suppressNextClick();
-    if (target.zone === 'into') {
-      if (blocked?.has(target.id)) return;
-      await foldersStore.move(dragged.id, target.id);
-      expandedIds.add(target.id);
-    } else {
-      await insertRelativeToRow(dragged.id, target.id, target.zone, blocked);
+    try {
+      if (target.zone === 'into') {
+        if (blocked?.has(target.id)) return;
+        await foldersStore.move(dragged.id, target.id);
+        expandedIds.add(target.id);
+      } else {
+        await insertRelativeToRow(dragged.id, target.id, target.zone, blocked);
+      }
+    } catch {
+      // Same stale-target handling as the desktop onDrop (audit 013 O56).
+      toastStore.error($t('folders.move_failed_missing'));
+      foldersStore.refresh();
     }
   }
 
@@ -894,6 +931,11 @@
   }
 
   function cancelPress() {
+    // Release the cross-instance latch only when this instance owns a gesture
+    // (pressFolder set) - the unmount cleanup below calls cancelPress on every
+    // instance, and an unconditional release would free a latch held by the
+    // still-running gesture of another instance.
+    if (pressFolder) releaseTouchGesture();
     if (pressTimer) {
       clearTimeout(pressTimer);
       pressTimer = null;

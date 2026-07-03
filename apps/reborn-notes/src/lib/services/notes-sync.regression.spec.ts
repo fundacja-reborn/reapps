@@ -243,6 +243,29 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(pullNotes).toMatch(/sync_status.*===.*'synced'/);
   });
 
+  it('pullFolders repairs parent_id cycles after the orphan sweep (audit 013 N2)', () => {
+    // The server accepts concurrent cross-device moves that close a parent_id
+    // cycle; cycle members are unreachable from the roots and silently vanish
+    // from every folder view. Pull must detect cycles over the post-sweep
+    // local mirror, reparent one member per cycle to the root with
+    // sync_status:'pending' in the SAME save, and push the repair.
+    const src = readSource('./notes-sync.service.ts');
+    const pullFolders = src.slice(
+      src.indexOf('async function pullFolders'),
+      src.indexOf('async function pullTags')
+    );
+    const orphanSweepIdx = pullFolders.search(/folderStore\.deleteMany/);
+    const repairIdx = pullFolders.search(/planCycleRepairs/);
+    expect(orphanSweepIdx).toBeGreaterThan(-1);
+    expect(repairIdx).toBeGreaterThan(orphanSweepIdx);
+    // The repair write clears the parent and marks pending atomically…
+    expect(pullFolders).toMatch(
+      /parent_id:\s*undefined,\s*\n\s*sync_status:\s*'pending'/
+    );
+    // …and the repaired parent lands on the server like a user move.
+    expect(pullFolders).toMatch(/pushFolderUpdate\(folderId,\s*\{\s*parent_id:\s*null\s*\}\)/);
+  });
+
   it('pushPendingItems pushes folders BFS-by-layer (parent before child)', () => {
     // Server's POST /api/folders FK-checks parent_id and 404s if the parent
     // isn't on the server yet. A flat fan-out would 404-spam mid-batch on

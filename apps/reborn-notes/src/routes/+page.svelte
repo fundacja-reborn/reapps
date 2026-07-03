@@ -1067,7 +1067,14 @@
     if (!draggedId) return;
     // Already at the top level - skip the pointless order bump + sync push.
     if ($foldersStore.some((f) => f.id === draggedId)) return;
-    await foldersStore.move(draggedId, null);
+    try {
+      await foldersStore.move(draggedId, null);
+    } catch {
+      // Dragged folder deleted remotely mid-gesture - surface it instead of
+      // an unhandled rejection and refresh the tree (audit 013 O56).
+      toastStore.error($t('folders.move_failed_missing'));
+      foldersStore.refresh();
+    }
   }
 
   async function handleSectionClick(section: Section) {

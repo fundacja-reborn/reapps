@@ -342,6 +342,7 @@
     "sort_custom": "Orden personalizado",
     "move_up": "Subir",
     "move_down": "Bajar",
+    "move_failed_missing": "No se puede mover: esta carpeta ya no existe. Puede que se haya eliminado en otro dispositivo.",
     "no_folders": "Aún no hay carpetas",
     "no_folders_short": "Aún no hay carpetas.",
     "folder_name": "Nombre de la carpeta",

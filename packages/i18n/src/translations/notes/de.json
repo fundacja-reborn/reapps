@@ -342,6 +342,7 @@
     "sort_custom": "Eigene Reihenfolge",
     "move_up": "Nach oben",
     "move_down": "Nach unten",
+    "move_failed_missing": "Verschieben nicht möglich: Dieser Ordner existiert nicht mehr. Er wurde möglicherweise auf einem anderen Gerät gelöscht.",
     "no_folders": "Noch keine Ordner",
     "no_folders_short": "Noch keine Ordner.",
     "folder_name": "Ordnername",

@@ -342,6 +342,7 @@
     "sort_custom": "Custom order",
     "move_up": "Move up",
     "move_down": "Move down",
+    "move_failed_missing": "Couldn't move: this folder no longer exists. It may have been deleted on another device.",
     "no_folders": "No folders yet",
     "no_folders_short": "No folders yet.",
     "folder_name": "Folder name",
