@@ -93,6 +93,16 @@ export interface FolderFsPlugin {
    * picked with `{ write: true }`.
    */
   deleteFile(options: { bookmark: string; path: string }): Promise<{ staleBookmark?: string }>;
+  /**
+   * Relinquish the OS-level persisted grant behind a bookmark that the app is
+   * about to forget - the mirror of {@link pickDirectory}. `write` must echo the
+   * mode the folder was picked with so the released modes match the persisted
+   * ones. Android releases the SAF grant (which otherwise dangles in the OS until
+   * uninstall); iOS resolves as a no-op - a plain security-scoped bookmark holds
+   * no OS-level grant, deleting the bookmark string is the release. Releasing an
+   * unknown grant is a no-op, so the call is safe to repeat.
+   */
+  releaseDirectory(options: { bookmark: string; write?: boolean }): Promise<void>;
 }
 
 let plugin: FolderFsPlugin | null = null;
