@@ -12,6 +12,14 @@
   // dataTransfer payloads are unreadable during dragover, so rows consult this
   // store instead to refuse drops that would move a folder into itself.
   export const dragBlockedIds = writable<Set<string> | null>(null);
+  // Row the active drag would drop on, and how (ring = into, insertion line =
+  // before/after). Module-level because the touch drag is owned by the
+  // instance where the press started, while the hovered row can belong to any
+  // other instance in the recursion; the desktop dragover path writes it too.
+  export type DropZone = 'into' | 'before' | 'after';
+  export const dropTarget = writable<{ id: string; zone: DropZone } | null>(null);
+  // Row lifted by an active touch drag - dimmed while its clone follows the finger.
+  export const touchDraggingId = writable<string | null>(null);
 </script>
 
 <script lang="ts">
@@ -50,6 +58,7 @@
     SheetTitle,
     toastStore
   } from '@reborn/ui';
+  import { flip } from 'svelte/animate';
   import type { RowAction } from '$lib/utils/row-action';
   import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
   // FolderWithChildren comes from the module script import above (module and
@@ -61,7 +70,11 @@
   import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
-  import { getDescendantFolderIds } from '$lib/utils/folder-helpers';
+  import {
+    findChildrenOfParent,
+    findParentAndSiblings,
+    getDescendantFolderIds
+  } from '$lib/utils/folder-helpers';
   import type {
     DeleteFolderMode,
     DeleteFolderProgressCallback
@@ -445,7 +458,7 @@
     return actions;
   }
 
-  // ── Drag & Drop ─────────────────────────────────────────────────
+  // ── Drag & Drop (desktop, HTML5) ────────────────────────────────
   // In the default alphabetical sort, sibling order is derived from names, so
   // a drop on a row only ever means "move dragged folder/note INTO it". In
   // custom sort the row splits into three vertical bands: the outer quarters
@@ -453,8 +466,6 @@
   // meaning "into". Moving a folder to the TOP level goes through the panel's
   // root drop zone (+page.svelte), a between-rows drop at depth 0, or the
   // "Move to…" picker.
-  type DropZone = 'into' | 'before' | 'after';
-  let dropTarget = $state<{ id: string; zone: DropZone } | null>(null);
 
   function onDragStart(folder: FolderWithChildren, e: DragEvent) {
     e.dataTransfer!.effectAllowed = 'move';
@@ -469,59 +480,110 @@
     dragBlockedIds.set(null);
   }
 
-  function dropZoneFromEvent(e: DragEvent): DropZone {
-    // Notes have no sibling order among folders - they always move INTO.
-    if ($folderSortMode !== 'custom' || e.dataTransfer!.types.includes('text/note-id')) {
-      return 'into';
-    }
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const y = e.clientY - rect.top;
+  // Which band of a row the pointer is in - shared by the desktop dragover
+  // and the touch drag. Reorder bands exist only in custom sort.
+  function zoneForPoint(rect: DOMRect, clientY: number): DropZone {
+    if ($folderSortMode !== 'custom') return 'into';
+    const y = clientY - rect.top;
     if (y < rect.height * 0.25) return 'before';
     if (y > rect.height * 0.75) return 'after';
     return 'into';
+  }
+
+  function dropZoneFromEvent(e: DragEvent): DropZone {
+    // Notes have no sibling order among folders - they always move INTO.
+    if (e.dataTransfer!.types.includes('text/note-id')) return 'into';
+    return zoneForPoint((e.currentTarget as HTMLElement).getBoundingClientRect(), e.clientY);
+  }
+
+  // The bottom band of an EXPANDED folder's row visually points at the slot
+  // before its first child, so make the semantics match the picture
+  // (Finder-style): retarget to that child. Without this the same 1-2 px gap
+  // hides two different levels ("after the whole subtree" vs "first inside"),
+  // and "after the subtree" reads as a no-op when the dragged row already sits
+  // there. Inserting after the subtree instead = drop before the next row
+  // below it (the line indent shows the level).
+  function normalizeRowZone(targetId: string, zone: DropZone): { id: string; zone: DropZone } {
+    if (zone === 'after' && expandedIds.has(targetId)) {
+      const firstChild = findChildrenOfParent($foldersStore, targetId)[0];
+      // A blocked first child means it's the dragged row itself - keep the
+      // raw meaning then, it's the only way to drag a first child out to
+      // "right after its parent".
+      if (firstChild && !$dragBlockedIds?.has(firstChild.id)) {
+        return { id: firstChild.id, zone: 'before' };
+      }
+    }
+    return { id: targetId, zone };
   }
 
   function onDragOver(folder: FolderWithChildren, e: DragEvent) {
     // No preventDefault for the dragged folder's own subtree - the browser
     // keeps the no-drop cursor and never fires drop there.
     if ($dragBlockedIds?.has(folder.id)) {
-      dropTarget = null;
+      dropTarget.set(null);
       return;
     }
     e.preventDefault();
     e.dataTransfer!.dropEffect = 'move';
-    dropTarget = { id: folder.id, zone: dropZoneFromEvent(e) };
+    dropTarget.set(normalizeRowZone(folder.id, dropZoneFromEvent(e)));
   }
 
-  function onDragLeave() {
-    dropTarget = null;
+  function onDragLeave(folder: FolderWithChildren) {
+    // Only clear our own indicator - dragenter on the next row may already
+    // have written to the shared store before this leave fires.
+    dropTarget.update((t) => (t?.id === folder.id ? null : t));
   }
 
-  // Insert the dragged folder before/after `targetId` within this instance's
-  // sibling group. A cross-parent drag reparents first (move() appends at the
-  // group's end), then the whole group's order_index is rewritten.
-  async function reorderAround(
+  // Place `draggedId` before/after `targetId` inside the sibling group under
+  // `groupParentId`. A cross-parent drag reparents first (move() appends at
+  // the group's end), then the whole group's order_index is rewritten.
+  // Shared by the desktop between-rows drop and the touch drop.
+  async function insertIntoGroup(
     draggedId: string,
     targetId: string,
-    zone: 'before' | 'after'
+    zone: 'before' | 'after',
+    groupParentId: string | null,
+    siblingIds: string[]
   ) {
-    // Group parent inside the dragged subtree would cycle (belt & braces -
-    // rows of that subtree already refuse dragover, so it can't be reached).
-    if (parentId && $dragBlockedIds?.has(parentId)) return;
-    const ids = nodes.map((n) => n.id).filter((id) => id !== draggedId);
+    const ids = siblingIds.filter((id) => id !== draggedId);
     const targetIdx = ids.indexOf(targetId);
     if (targetIdx === -1) return;
     ids.splice(zone === 'after' ? targetIdx + 1 : targetIdx, 0, draggedId);
-    if (!nodes.some((n) => n.id === draggedId)) {
-      await foldersStore.move(draggedId, parentId);
+    if (!siblingIds.includes(draggedId)) {
+      await foldersStore.move(draggedId, groupParentId);
     }
-    await foldersStore.reorder(parentId, ids);
+    await foldersStore.reorder(groupParentId, ids);
+  }
+
+  // Place `draggedId` before/after the row `targetRowId`, wherever that row's
+  // sibling group lives in the tree (normalizeRowZone may have retargeted the
+  // indicator outside this instance's group, and the touch gesture can drop
+  // on any row). Shared by the desktop drop and the touch drop.
+  async function insertRelativeToRow(
+    draggedId: string,
+    targetRowId: string,
+    zone: 'before' | 'after',
+    blocked: Set<string> | null
+  ) {
+    const located = findParentAndSiblings($foldersStore, targetRowId);
+    if (!located) return;
+    // Target group hanging inside the dragged subtree would cycle.
+    if (located.parentId && blocked?.has(located.parentId)) return;
+    await insertIntoGroup(
+      draggedId,
+      targetRowId,
+      zone,
+      located.parentId,
+      located.siblings.map((f) => f.id)
+    );
   }
 
   async function onDrop(target: FolderWithChildren, e: DragEvent) {
     e.preventDefault();
     e.stopPropagation(); // prevent bubbling to the panel's root drop zone
-    const zone: DropZone = dropTarget?.id === target.id ? dropTarget.zone : 'into';
+    // The indicator is authoritative: normalizeRowZone may have retargeted it
+    // to the first child while the drop event still fires on the hovered row.
+    const indicated = $dropTarget;
 
     try {
       // Handle note drop - move note into this folder
@@ -533,19 +595,20 @@
 
       const draggedId =
         e.dataTransfer!.getData('text/folder-id') || e.dataTransfer!.getData('text/plain');
-      if (!draggedId || draggedId === target.id) return;
+      const eff = indicated ?? { id: target.id, zone: 'into' as DropZone };
+      if (!draggedId || draggedId === eff.id) return;
       // Cycle guard (dragover already refuses these; keep drop safe too).
-      if ($dragBlockedIds?.has(target.id)) return;
+      if ($dragBlockedIds?.has(eff.id)) return;
 
-      if (zone === 'into') {
+      if (eff.zone === 'into') {
         // Move dragged folder into target
-        await foldersStore.move(draggedId, target.id);
-        expandedIds.add(target.id);
+        await foldersStore.move(draggedId, eff.id);
+        expandedIds.add(eff.id);
       } else {
-        await reorderAround(draggedId, target.id, zone);
+        await insertRelativeToRow(draggedId, eff.id, eff.zone, $dragBlockedIds);
       }
     } finally {
-      dropTarget = null;
+      dropTarget.set(null);
       dragBlockedIds.set(null);
     }
   }
@@ -564,6 +627,287 @@
     [ids[i], ids[j]] = [ids[j]!, ids[i]!];
     await foldersStore.reorder(parentId, ids);
   }
+
+  // ── Touch drag (long-press) ──────────────────────────────────────
+  // HTML5 DnD doesn't exist on touch, so rows implement their own pointer
+  // gesture with the same semantics as the desktop drag: hold a row for
+  // 300 ms (moving earlier scrolls instead), a clone of the row follows the
+  // finger, hovered rows show the desktop indicators (ring = into, insertion
+  // line = reorder in custom sort), and dwelling over a collapsed folder
+  // spring-loads it open so the drop can land inside it. Mouse pointers keep
+  // the native HTML5 path; the gesture is limited to mobile viewports, where
+  // the long-press ContextMenu is disabled (tablets keep their ContextMenu).
+  // The instance where the press starts owns the whole gesture (window
+  // listeners); cross-instance state flows through the module stores, and the
+  // drop resolves the target's sibling group from the full store tree.
+  const LONG_PRESS_MS = 300;
+  const PRE_ARM_SLOP_PX = 8;
+  const SPRING_LOAD_MS = 600;
+  const EDGE_SCROLL_ZONE_PX = 56;
+  const EDGE_SCROLL_MAX_PX_PER_FRAME = 12;
+
+  let pressTimer: ReturnType<typeof setTimeout> | null = null;
+  let pressFolder: FolderWithChildren | null = null;
+  let pressPointerId = -1;
+  let pressStart = { x: 0, y: 0 };
+  let pointerX = 0;
+  let pointerY = 0;
+  let touchDragging = false;
+  let dragRowEl: HTMLElement | null = null;
+  let cloneEl: HTMLElement | null = null;
+  let springTimer: ReturnType<typeof setTimeout> | null = null;
+  let springTargetId: string | null = null;
+  let scrollContainer: HTMLElement | null = null;
+  let scrollRaf = 0;
+
+  function onRowPointerDown(folder: FolderWithChildren, e: PointerEvent) {
+    if (e.pointerType === 'mouse' || !isMobileQuery.value) return;
+    if (editingId === folder.id) return;
+    // Chevron / kebab / rename input own their taps - no drag from controls.
+    if ((e.target as HTMLElement).closest('button, input')) return;
+    if (pressTimer || touchDragging) return; // second finger while active
+    pressFolder = folder;
+    pressPointerId = e.pointerId;
+    pressStart = { x: e.clientX, y: e.clientY };
+    pointerX = e.clientX;
+    pointerY = e.clientY;
+    dragRowEl = e.currentTarget as HTMLElement;
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
+    pressTimer = setTimeout(startTouchDrag, LONG_PRESS_MS);
+  }
+
+  function startTouchDrag() {
+    pressTimer = null;
+    const folder = pressFolder;
+    const rowEl = dragRowEl;
+    if (!folder || !rowEl || !rowEl.isConnected) {
+      cancelPress();
+      return;
+    }
+    touchDragging = true;
+    // Same cycle guard as the desktop drag: the dragged subtree can't be a target.
+    dragBlockedIds.set(new Set(getDescendantFolderIds([folder], folder.id)));
+    touchDraggingId.set(folder.id);
+    if ('vibrate' in navigator) navigator.vibrate(50);
+    // pointermove alone can't stop native scrolling - block touchmove for the
+    // rest of the gesture (the pre-arm phase deliberately leaves it free).
+    window.addEventListener('touchmove', blockScroll, { passive: false });
+    // Holding still past the OS threshold must not pop selection/context UI.
+    window.addEventListener('contextmenu', blockEvent, true);
+    makeClone(rowEl);
+    scrollContainer = findScrollParent(rowEl);
+    scrollRaf = requestAnimationFrame(edgeScrollLoop);
+    updateTouchDropTarget();
+  }
+
+  function blockScroll(e: TouchEvent) {
+    e.preventDefault();
+  }
+
+  function blockEvent(e: Event) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function makeClone(rowEl: HTMLElement) {
+    const rect = rowEl.getBoundingClientRect();
+    const clone = rowEl.cloneNode(true) as HTMLElement;
+    clone.classList.add('bg-background');
+    clone.style.pointerEvents = 'none';
+    clone.style.position = 'fixed';
+    clone.style.left = `${rect.left}px`;
+    clone.style.top = `${rect.top}px`;
+    clone.style.width = `${rect.width}px`;
+    clone.style.margin = '0';
+    clone.style.zIndex = '9999';
+    clone.style.opacity = '0.92';
+    clone.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.18)';
+    clone.style.willChange = 'transform';
+    document.body.appendChild(clone);
+    cloneEl = clone;
+    positionClone();
+  }
+
+  function positionClone() {
+    if (!cloneEl) return;
+    cloneEl.style.transform = `translate3d(${pointerX - pressStart.x}px, ${pointerY - pressStart.y}px, 0)`;
+  }
+
+  function onPointerMove(e: PointerEvent) {
+    if (e.pointerId !== pressPointerId) return;
+    pointerX = e.clientX;
+    pointerY = e.clientY;
+    if (!touchDragging) {
+      // Finger moved before the hold elapsed - it's a scroll, not a drag.
+      if (
+        Math.abs(pointerX - pressStart.x) >= PRE_ARM_SLOP_PX ||
+        Math.abs(pointerY - pressStart.y) >= PRE_ARM_SLOP_PX
+      ) {
+        cancelPress();
+      }
+      return;
+    }
+    positionClone();
+    updateTouchDropTarget();
+  }
+
+  function updateTouchDropTarget() {
+    // The clone has pointer-events: none, so it never shadows the hit test.
+    const el = document.elementFromPoint(pointerX, pointerY);
+    const rowEl = el?.closest<HTMLElement>('[data-folder-id]') ?? null;
+    const targetId = rowEl?.getAttribute('data-folder-id');
+    if (!rowEl || !targetId || targetId === pressFolder?.id || $dragBlockedIds?.has(targetId)) {
+      dropTarget.set(null);
+      setSpringTarget(null);
+      return;
+    }
+    const zone = zoneForPoint(rowEl.getBoundingClientRect(), pointerY);
+    const normalized = normalizeRowZone(targetId, zone);
+    dropTarget.set(normalized);
+    setSpringTarget(zone === 'into' ? targetId : null);
+  }
+
+  // Dwelling over a collapsed folder opens it mid-drag, so the drop can land
+  // between its (now visible) children or on them. Freshly revealed rows are
+  // immediately valid targets - the hit test reads the live DOM.
+  function setSpringTarget(id: string | null) {
+    if (id === springTargetId) return;
+    if (springTimer) {
+      clearTimeout(springTimer);
+      springTimer = null;
+    }
+    springTargetId = id;
+    if (!id || expandedIds.has(id)) return;
+    const hasContent =
+      findChildrenOfParent($foldersStore, id).length > 0 ||
+      (savedSearchesByFolder?.get(id)?.length ?? 0) > 0;
+    if (!hasContent) return;
+    springTimer = setTimeout(() => {
+      springTimer = null;
+      if (touchDragging && springTargetId === id) expandedIds.add(id);
+    }, SPRING_LOAD_MS);
+  }
+
+  function findScrollParent(el: HTMLElement): HTMLElement | null {
+    let cur: HTMLElement | null = el.parentElement;
+    while (cur) {
+      const style = getComputedStyle(cur);
+      if (/(auto|scroll)/.test(style.overflowY) && cur.scrollHeight > cur.clientHeight) {
+        return cur;
+      }
+      cur = cur.parentElement;
+    }
+    return null;
+  }
+
+  // Keeps scrolling while the finger dwells in the container's edge zones
+  // (pointermove stops firing for a stationary finger, hence the rAF loop).
+  function edgeScrollLoop() {
+    if (!touchDragging) return;
+    if (scrollContainer) {
+      const rect = scrollContainer.getBoundingClientRect();
+      let delta = 0;
+      if (pointerY < rect.top + EDGE_SCROLL_ZONE_PX) {
+        const intensity = (rect.top + EDGE_SCROLL_ZONE_PX - pointerY) / EDGE_SCROLL_ZONE_PX;
+        delta = -Math.ceil(intensity * EDGE_SCROLL_MAX_PX_PER_FRAME);
+      } else if (pointerY > rect.bottom - EDGE_SCROLL_ZONE_PX) {
+        const intensity = (pointerY - (rect.bottom - EDGE_SCROLL_ZONE_PX)) / EDGE_SCROLL_ZONE_PX;
+        delta = Math.ceil(intensity * EDGE_SCROLL_MAX_PX_PER_FRAME);
+      }
+      if (delta !== 0) {
+        const before = scrollContainer.scrollTop;
+        scrollContainer.scrollTop = before + delta;
+        if (scrollContainer.scrollTop !== before) updateTouchDropTarget();
+      }
+    }
+    scrollRaf = requestAnimationFrame(edgeScrollLoop);
+  }
+
+  async function onPointerUp(e: PointerEvent) {
+    if (e.pointerId !== pressPointerId) return;
+    if (!touchDragging) {
+      cancelPress(); // plain tap - the native click still selects the row
+      return;
+    }
+    const dragged = pressFolder;
+    const target = $dropTarget;
+    const blocked = $dragBlockedIds;
+    teardownTouchDrag();
+    if (!dragged || !target || target.id === dragged.id) return;
+    // A release without movement still produces a click on the row - swallow
+    // it so dropping doesn't also open the folder.
+    suppressNextClick();
+    if (target.zone === 'into') {
+      if (blocked?.has(target.id)) return;
+      await foldersStore.move(dragged.id, target.id);
+      expandedIds.add(target.id);
+    } else {
+      await insertRelativeToRow(dragged.id, target.id, target.zone, blocked);
+    }
+  }
+
+  function onPointerCancel(e: PointerEvent) {
+    if (e.pointerId !== pressPointerId) return;
+    if (touchDragging) teardownTouchDrag();
+    else cancelPress();
+  }
+
+  function suppressNextClick() {
+    const squelch = (ev: MouseEvent) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+    };
+    window.addEventListener('click', squelch, { capture: true, once: true });
+    // If no click follows (finger moved during the drag), don't let the
+    // squelch linger and eat the next genuine tap.
+    setTimeout(() => window.removeEventListener('click', squelch, { capture: true }), 400);
+  }
+
+  function cancelPress() {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+    pressFolder = null;
+    pressPointerId = -1;
+    dragRowEl = null;
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerCancel);
+  }
+
+  function teardownTouchDrag() {
+    touchDragging = false;
+    if (springTimer) {
+      clearTimeout(springTimer);
+      springTimer = null;
+    }
+    springTargetId = null;
+    if (scrollRaf) {
+      cancelAnimationFrame(scrollRaf);
+      scrollRaf = 0;
+    }
+    scrollContainer = null;
+    cloneEl?.remove();
+    cloneEl = null;
+    dropTarget.set(null);
+    dragBlockedIds.set(null);
+    touchDraggingId.set(null);
+    window.removeEventListener('touchmove', blockScroll);
+    window.removeEventListener('contextmenu', blockEvent, true);
+    cancelPress();
+  }
+
+  // The gesture owner may unmount mid-drag (remote sync can drop this
+  // subtree) - its window listeners and clone must not outlive it.
+  $effect(() => {
+    return () => {
+      if (touchDragging) teardownTouchDrag();
+      else cancelPress();
+    };
+  });
 </script>
 
 <!-- Close menus when clicking outside -->
@@ -613,7 +957,7 @@
     {@const isActive = activeFolderId === folder.id}
     {@const parkedSearches = savedSearchesByFolder?.get(folder.id) ?? []}
     {@const hasChildren = (folder.children?.length ?? 0) > 0 || parkedSearches.length > 0}
-    {@const dropZone = dropTarget?.id === folder.id ? dropTarget.zone : null}
+    {@const dropZone = $dropTarget?.id === folder.id ? $dropTarget.zone : null}
     {@const syncConfigId = $syncedFolderConfigs.get(folder.id) ?? null}
     {@const rowActions = folderActions(folder, syncConfigId)}
 
@@ -621,6 +965,7 @@
       role="treeitem"
       aria-expanded={hasChildren ? isExpanded : undefined}
       aria-selected={activeFolderId === folder.id}
+      animate:flip={{ duration: 200 }}
     >
       <!-- Desktop right-click opens the same folder actions as the kebab (#348).
            Disabled on mobile and while renaming inline. -->
@@ -634,8 +979,9 @@
               ondragstart={(e) => onDragStart(folder, e)}
               ondragend={onDragEnd}
               ondragover={(e) => onDragOver(folder, e)}
-              ondragleave={onDragLeave}
+              ondragleave={() => onDragLeave(folder)}
               ondrop={(e) => onDrop(folder, e)}
+              onpointerdown={(e) => onRowPointerDown(folder, e)}
               class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm
                 cursor-pointer transition-colors
                 {isActive
@@ -643,7 +989,8 @@
                 : menuOpenId === folder.id
                   ? 'bg-accent/50 text-foreground'
                   : 'text-foreground hover:bg-accent/50'}
-                {dropZone === 'into' ? 'ring-1 ring-primary bg-accent/30' : ''}"
+                {dropZone === 'into' ? 'ring-1 ring-primary bg-accent/30' : ''}
+                {$touchDraggingId === folder.id ? 'opacity-50' : ''}"
               style="padding-left: {depth * 0.75 + 0.5}rem"
               role="button"
               tabindex="0"
@@ -651,11 +998,15 @@
               onkeydown={(e) => e.key === 'Enter' && handleRowSelect(folder)}
               aria-label={$t('folders.folder_label', { values: { name: folder.name } })}
             >
-              <!-- Custom sort: insertion line for a between-rows drop -->
+              <!-- Custom sort: insertion line for a between-rows drop. Starts
+                   at the row's own indent so the target LEVEL is visible
+                   (a gap between a nested row and a shallower one offers two
+                   valid levels - the indent says which one this drop takes). -->
               {#if dropZone === 'before' || dropZone === 'after'}
                 <div
-                  class="pointer-events-none absolute inset-x-1 z-10 h-0.5 rounded-full bg-primary
+                  class="pointer-events-none absolute right-1 z-10 h-0.5 rounded-full bg-primary
                     {dropZone === 'before' ? 'top-0' : 'bottom-0'}"
+                  style="left: {depth * 0.75 + 0.5}rem"
                 ></div>
               {/if}
               <!-- Folder icon (synced top-level folders get a distinct sync glyph) -->
