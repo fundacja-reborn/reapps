@@ -37,6 +37,19 @@ describe('notes-sync - cross-key pending guard (audit 012 S6)', () => {
     expect(firstPushIdx).toBeGreaterThan(probeIdx);
   });
 
+  it('never runs the probe without a loaded master key (audit 013 S1)', () => {
+    // The probe cannot tell "wrong key" from "no key in memory" - decryptText
+    // rejects either way. The offline→online handler calls pushPendingItems()
+    // on every route, including /auth/unlock: a fresh tab opened offline with
+    // unsynced edits would probe all-fail once connectivity returned and the
+    // online branch wiped those edits before they ever reached the server.
+    // The gate must be an early return that precedes the probe.
+    const gateIdx = body.indexOf('if (!cryptoManager.isInitialized()) return;');
+    const probeIdx = body.indexOf('isEncryptedDataReadable');
+    expect(gateIdx).toBeGreaterThan(-1);
+    expect(gateIdx).toBeLessThan(probeIdx);
+  });
+
   it('probes one ciphertext per pending entity kind', () => {
     expect(body).toMatch(/pendingNotes\[0\] \?\? pendingArchivedNotes\[0\]/);
     expect(body).toMatch(/pendingFolders\[0\]\?\.name_encrypted/);

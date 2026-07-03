@@ -988,6 +988,14 @@ let pendingRowsKeyChecked = false;
  */
 export async function pushPendingItems(): Promise<void> {
   if (!isAuthenticated()) return;
+  // Authenticated but locked (master key not in memory - e.g. a fresh tab
+  // parked on /auth/unlock when the offline→online handler fires): the
+  // cross-key probe below cannot tell "wrong key" from "no key loaded",
+  // decryptText rejects either way, so it would misread every pending row as
+  // foreign and the online branch would wipe not-yet-pushed offline edits.
+  // Without the key row ownership cannot be verified - defer the push to the
+  // post-unlock sync, like the import guard does (audit 013 S1).
+  if (!cryptoManager.isInitialized()) return;
 
   const [allFolders, allTags, allSavedSearches, allNotes] = await Promise.all([
     folderStore.getAll() as Promise<FolderEncrypted[]>,
