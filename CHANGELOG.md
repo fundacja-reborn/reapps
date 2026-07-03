@@ -1,3 +1,23 @@
+## 0.43.0 (2026-07-03)
+
+### 🚀 Features
+
+- **notes:** show progress while deleting a folder with many notes ([#400](https://github.com/fundacja-reborn/reapps/pull/400))
+- **notes:** manual folder ordering behind a folder sort menu ([#408](https://github.com/fundacja-reborn/reapps/pull/408), [#401](https://github.com/fundacja-reborn/reapps/issues/401))
+- **notes:** long-press touch reorder for folders ([#409](https://github.com/fundacja-reborn/reapps/pull/409), [#106](https://github.com/fundacja-reborn/reapps/issues/106))
+
+### 🩹 Fixes
+
+- **notes:** exclude app data from OS device backups ([#403](https://github.com/fundacja-reborn/reapps/pull/403))
+- **notes:** allow moving folders to the top level ([#401](https://github.com/fundacja-reborn/reapps/pull/401), [#407](https://github.com/fundacja-reborn/reapps/pull/407))
+- **notes:** surface undecryptable saved searches instead of blank rows ([#410](https://github.com/fundacja-reborn/reapps/pull/410))
+- **notes:** surface undecryptable folders, tags and notes in lists ([#411](https://github.com/fundacja-reborn/reapps/pull/411), [#410](https://github.com/fundacja-reborn/reapps/issues/410), [#15](https://github.com/fundacja-reborn/reapps/issues/15))
+- **notes:** stop pull orphan-delete racing mid-pull pushes ([#412](https://github.com/fundacja-reborn/reapps/pull/412), [#356](https://github.com/fundacja-reborn/reapps/issues/356))
+- **security:** audit 012 W1 auto-backup isolation + S1 typed token gates ([#402](https://github.com/fundacja-reborn/reapps/pull/402))
+- **security:** audit 012 S3/S5/S6 cross-account consistency guards ([#404](https://github.com/fundacja-reborn/reapps/pull/404), [#338](https://github.com/fundacja-reborn/reapps/issues/338), [#314](https://github.com/fundacja-reborn/reapps/issues/314))
+- **security:** audit 012 S4 challenge token + N1/N2/N8 hardening ([#405](https://github.com/fundacja-reborn/reapps/pull/405))
+- **security:** audit 012 N3-N7 client-side hardening batch ([#406](https://github.com/fundacja-reborn/reapps/pull/406), [#405](https://github.com/fundacja-reborn/reapps/issues/405))
+
 ## 0.42.1 (2026-07-01)
 
 ### 🩹 Fixes
