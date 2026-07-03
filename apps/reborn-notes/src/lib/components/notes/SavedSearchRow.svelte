@@ -94,6 +94,14 @@
   let menuOpen = $state(false);
   const rowMenuActive = $derived(menuOpen || actionSheetOpen);
 
+  // Undecryptable rows (foreign key epoch / corrupted ciphertext) render an
+  // explicit placeholder instead of a blank name and only offer deletion -
+  // every other action would either operate on garbage or re-encrypt it under
+  // the current key as if it were real data.
+  const displayName = $derived(
+    search.decrypt_failed ? $t('saved_searches.undecryptable') : search.name
+  );
+
   function handleMenuButton(e: Event) {
     e.stopPropagation();
     actionSheetOpen = true;
@@ -126,36 +134,48 @@
   // Single source of truth for the desktop actions - feeds both the kebab
   // (DropdownMenu) and the right-click ContextMenu, so they can't drift (mirrors
   // FolderTree.folderActions). The mobile Sheet lists the same actions by hand.
-  const rowActions = $derived<RowAction[]>([
-    { key: 'rename', icon: Pencil, label: $t('saved_searches.rename'), run: startRename },
-    {
-      key: 'edit-query',
-      icon: SearchCode,
-      label: $t('saved_searches.edit_query'),
-      run: startEditQuery
-    },
-    ...(context === 'panel'
+  const rowActions = $derived<RowAction[]>(
+    search.decrypt_failed
       ? [
           {
-            key: 'move',
-            icon: FolderInput,
-            label: $t('saved_searches.move_to_folder'),
-            run: requestMove
+            key: 'delete',
+            icon: Trash2,
+            label: $t('saved_searches.delete'),
+            run: requestDelete,
+            destructive: true
           }
         ]
-      : []),
-    ...(search.folder_id || search.pinned_to_root
-      ? [{ key: 'unpark', icon: FolderX, label: $t('saved_searches.unpark'), run: unpark }]
-      : []),
-    {
-      key: 'delete',
-      icon: Trash2,
-      label: $t('saved_searches.delete'),
-      run: requestDelete,
-      destructive: true,
-      separatorBefore: true
-    }
-  ]);
+      : [
+          { key: 'rename', icon: Pencil, label: $t('saved_searches.rename'), run: startRename },
+          {
+            key: 'edit-query',
+            icon: SearchCode,
+            label: $t('saved_searches.edit_query'),
+            run: startEditQuery
+          },
+          ...(context === 'panel'
+            ? [
+                {
+                  key: 'move',
+                  icon: FolderInput,
+                  label: $t('saved_searches.move_to_folder'),
+                  run: requestMove
+                }
+              ]
+            : []),
+          ...(search.folder_id || search.pinned_to_root
+            ? [{ key: 'unpark', icon: FolderX, label: $t('saved_searches.unpark'), run: unpark }]
+            : []),
+          {
+            key: 'delete',
+            icon: Trash2,
+            label: $t('saved_searches.delete'),
+            run: requestDelete,
+            destructive: true,
+            separatorBefore: true
+          }
+        ]
+  );
 </script>
 
 <li role={context === 'tree' ? 'treeitem' : 'listitem'} aria-selected={context === 'tree' ? false : undefined}>
@@ -166,7 +186,9 @@
       {#snippet child({ props: triggerProps })}
         <div
           {...triggerProps}
-          class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm cursor-pointer transition-colors
+          class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm {search.decrypt_failed
+            ? 'cursor-default'
+            : 'cursor-pointer'} transition-colors
             {active
             ? 'list-row-active text-accent-foreground font-medium'
             : rowMenuActive
@@ -176,10 +198,11 @@
           style="padding-left: {depth * 0.75 + 0.5}rem"
           role="button"
           tabindex="0"
-          onclick={() => !editing && onselect(search)}
-          onkeydown={(e) => e.key === 'Enter' && !editing && onselect(search)}
-          aria-label={$t('saved_searches.item_label', { values: { name: search.name } })}
-          title={search.query}
+          onclick={() => !editing && !search.decrypt_failed && onselect(search)}
+          onkeydown={(e) =>
+            e.key === 'Enter' && !editing && !search.decrypt_failed && onselect(search)}
+          aria-label={$t('saved_searches.item_label', { values: { name: displayName } })}
+          title={search.decrypt_failed ? $t('saved_searches.undecryptable_hint') : search.query}
         >
           <SearchCheck class="h-4 w-4 shrink-0 text-muted-foreground" />
 
@@ -195,6 +218,8 @@
               }}
               onblur={commitRename}
             />
+          {:else if search.decrypt_failed}
+            <span class="min-w-0 flex-1 truncate italic text-muted-foreground">{displayName}</span>
           {:else}
             <span class="min-w-0 flex-1 truncate">{search.name}</span>
             {#if context === 'panel'}
@@ -275,28 +300,34 @@
   <Sheet bind:open={actionSheetOpen}>
     <SheetContent side="bottom" class="h-auto">
       <SheetHeader>
-        <SheetTitle>{search.name}</SheetTitle>
+        <SheetTitle>{displayName}</SheetTitle>
       </SheetHeader>
       <div class="mt-4 space-y-1">
-        <Button variant="ghost" class="w-full justify-start" onclick={() => startRename()}>
-          <Pencil class="mr-2 h-4 w-4" />
-          {$t('saved_searches.rename')}
-        </Button>
-        <Button variant="ghost" class="w-full justify-start" onclick={() => startEditQuery()}>
-          <SearchCode class="mr-2 h-4 w-4" />
-          {$t('saved_searches.edit_query')}
-        </Button>
-        {#if context === 'panel'}
-          <Button variant="ghost" class="w-full justify-start" onclick={() => requestMove()}>
-            <FolderInput class="mr-2 h-4 w-4" />
-            {$t('saved_searches.move_to_folder')}
+        {#if search.decrypt_failed}
+          <p class="px-3 pb-2 text-sm text-muted-foreground">
+            {$t('saved_searches.undecryptable_hint')}
+          </p>
+        {:else}
+          <Button variant="ghost" class="w-full justify-start" onclick={() => startRename()}>
+            <Pencil class="mr-2 h-4 w-4" />
+            {$t('saved_searches.rename')}
           </Button>
-        {/if}
-        {#if search.folder_id || search.pinned_to_root}
-          <Button variant="ghost" class="w-full justify-start" onclick={() => unpark()}>
-            <FolderX class="mr-2 h-4 w-4" />
-            {$t('saved_searches.unpark')}
+          <Button variant="ghost" class="w-full justify-start" onclick={() => startEditQuery()}>
+            <SearchCode class="mr-2 h-4 w-4" />
+            {$t('saved_searches.edit_query')}
           </Button>
+          {#if context === 'panel'}
+            <Button variant="ghost" class="w-full justify-start" onclick={() => requestMove()}>
+              <FolderInput class="mr-2 h-4 w-4" />
+              {$t('saved_searches.move_to_folder')}
+            </Button>
+          {/if}
+          {#if search.folder_id || search.pinned_to_root}
+            <Button variant="ghost" class="w-full justify-start" onclick={() => unpark()}>
+              <FolderX class="mr-2 h-4 w-4" />
+              {$t('saved_searches.unpark')}
+            </Button>
+          {/if}
         {/if}
         <Button
           variant="ghost"
@@ -315,7 +346,7 @@
 
 <ConfirmDialog
   bind:open={deleteDialogOpen}
-  title={$t('saved_searches.delete_confirm_title', { values: { name: search.name } })}
+  title={$t('saved_searches.delete_confirm_title', { values: { name: displayName } })}
   description={$t('saved_searches.delete_confirm_desc')}
   confirmText={$t('saved_searches.delete')}
   cancelText={$t('saved_searches.dialog.cancel')}

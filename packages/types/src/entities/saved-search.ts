@@ -26,6 +26,13 @@ export interface SavedSearchDecrypted {
   position: number;
   created_at: string;
   updated_at: string;
+  /**
+   * True when any of the row's ciphertexts could not be decrypted with the
+   * current master key (foreign key epoch / corrupted data). Such a row keeps
+   * empty name/query and default metadata; the UI renders an explicit
+   * placeholder and only offers deletion.
+   */
+  decrypt_failed?: boolean;
 }
 
 /**
@@ -57,11 +64,11 @@ export const MAX_SAVED_SEARCH_NAME_CHARS = 100;
 /** Maximum plaintext saved-search query length in characters (client-side). */
 export const MAX_SAVED_SEARCH_QUERY_CHARS = 512;
 
-/** Maximum encrypted saved-search name — server Zod. Mirrors folder names. */
+/** Maximum encrypted saved-search name - server Zod. Mirrors folder names. */
 export const MAX_ENCRYPTED_SAVED_SEARCH_NAME_BYTES = 750;
 
-/** Maximum encrypted saved-search query — server Zod. 512 plaintext chars fit with margin. */
+/** Maximum encrypted saved-search query - server Zod. 512 plaintext chars fit with margin. */
 export const MAX_ENCRYPTED_SAVED_SEARCH_QUERY_BYTES = 2_000;
 
-/** Maximum encrypted saved-search metadata bundle — server Zod. Tiny JSON flag object. */
+/** Maximum encrypted saved-search metadata bundle - server Zod. Tiny JSON flag object. */
 export const MAX_ENCRYPTED_SAVED_SEARCH_METADATA_BYTES = 500;

@@ -7,14 +7,25 @@ const deleteSpy = vi.fn();
 const pushSpy = vi.fn();
 const pushUpdateSpy = vi.fn();
 const pushDeleteSpy = vi.fn();
+// Spies (not plain functions) so the undecryptable-row tests can assert that
+// known-bad rows are NOT re-decrypted on later refreshes. `bad:` ciphertexts
+// simulate a foreign-key-epoch row; `encobj:not-json` does the same for the
+// metadata bundle (JSON.parse throws).
+const decryptTextSpy = vi.fn(async (stored: string) => {
+  if (stored.startsWith('bad:')) throw new Error('OperationError');
+  return stored.replace(/^enc:/, '');
+});
+const decryptObjectSpy = vi.fn(async (stored: string) =>
+  JSON.parse(stored.replace(/^encobj:/, ''))
+);
 
 vi.mock('@reborn/crypto', () => ({
   cryptoManager: {
     isInitialized: () => true,
     encryptText: async (value: string) => `enc:${value}`,
-    decryptText: async (stored: string) => stored.replace(/^enc:/, ''),
+    decryptText: (stored: string) => decryptTextSpy(stored),
     encryptObject: async (value: unknown) => `encobj:${JSON.stringify(value)}`,
-    decryptObject: async (stored: string) => JSON.parse(stored.replace(/^encobj:/, ''))
+    decryptObject: (stored: string) => decryptObjectSpy(stored)
   }
 }));
 
@@ -84,6 +95,11 @@ beforeEach(() => {
   pushSpy.mockReset();
   pushUpdateSpy.mockReset();
   pushDeleteSpy.mockReset();
+  decryptTextSpy.mockClear();
+  decryptObjectSpy.mockClear();
+  // NOTE: the service keeps a module-scoped session cache of undecryptable
+  // rows (keyed by id + updated_at) which survives between tests - seed
+  // corrupt rows under ids unique to their test.
 });
 
 describe('createSavedSearch', () => {
@@ -344,5 +360,72 @@ describe('deleteSavedSearch', () => {
     expect(rows).toHaveLength(0);
     expect(deleteSpy).toHaveBeenCalledWith('s-1');
     expect(pushDeleteSpy).toHaveBeenCalledWith('s-1');
+  });
+});
+
+describe('undecryptable rows (foreign key epoch / corruption)', () => {
+  it('flags the whole row and degrades every field when the name does not decrypt', async () => {
+    seed({ id: 'ghost-1', name_encrypted: 'bad:name' });
+
+    const [ghost] = await getAllSavedSearches();
+
+    expect(ghost!.decrypt_failed).toBe(true);
+    expect(ghost!.name).toBe('');
+    expect(ghost!.query).toBe('');
+    expect(ghost!.search_in_content).toBe(false);
+    expect(ghost!.pinned_to_root).toBe(false);
+  });
+
+  it('flags the row when only the metadata bundle is corrupt', async () => {
+    seed({ id: 'ghost-2', metadata_encrypted: 'encobj:not-json' });
+
+    const [ghost] = await getAllSavedSearches();
+
+    expect(ghost!.decrypt_failed).toBe(true);
+  });
+
+  it('leaves healthy rows unflagged next to a corrupt one', async () => {
+    seed({ id: 'ghost-3', position: 0, name_encrypted: 'bad:name' });
+    seed({ id: 'fine-3', position: 1, name_encrypted: 'enc:Fine' });
+
+    const all = await getAllSavedSearches();
+    const byId = new Map(all.map((s) => [s.id, s]));
+
+    expect(byId.get('ghost-3')!.decrypt_failed).toBe(true);
+    expect(byId.get('fine-3')!.decrypt_failed).toBeUndefined();
+    expect(byId.get('fine-3')!.name).toBe('Fine');
+  });
+
+  it('does not re-decrypt a known-bad row until its updated_at changes', async () => {
+    seed({ id: 'ghost-4', name_encrypted: 'bad:name' });
+
+    // First refresh attempts and fails; the row is remembered for the session.
+    await getAllSavedSearches();
+
+    decryptTextSpy.mockClear();
+    decryptObjectSpy.mockClear();
+    const [stillGhost] = await getAllSavedSearches();
+    expect(stillGhost!.decrypt_failed).toBe(true);
+    expect(decryptTextSpy).not.toHaveBeenCalled();
+    expect(decryptObjectSpy).not.toHaveBeenCalled();
+
+    // Row rewritten (new updated_at, e.g. repaired from a device holding the
+    // right key): retried, decodes normally, sticky entry dropped.
+    rows.length = 0;
+    seed({ id: 'ghost-4', updated_at: '2026-06-02T00:00:00.000Z' });
+    const [repaired] = await getAllSavedSearches();
+    expect(repaired!.decrypt_failed).toBeUndefined();
+    expect(repaired!.name).toBe('Seeded');
+  });
+
+  it('updateSavedSearchQuery on a corrupt-metadata row writes a fresh bundle (repair)', async () => {
+    seed({ id: 'ghost-5', metadata_encrypted: 'encobj:not-json' });
+
+    await updateSavedSearchQuery('ghost-5', 'tag:new', true);
+
+    const updated = rows.find((r) => r.id === 'ghost-5')!;
+    expect(updated.metadata_encrypted).toBe(
+      'encobj:{"search_in_content":true,"pinned_to_root":false}'
+    );
   });
 });
