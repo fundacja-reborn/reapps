@@ -130,6 +130,31 @@ export function getDescendantFolderIds(
   return ids;
 }
 
+/**
+ * Locate the sibling group containing `folderId`: its parent id (null for the
+ * root level) and the group's members in tree order. Used by drop handlers
+ * that target a row anywhere in the tree (touch drag). Returns null when the
+ * folder isn't in the tree.
+ */
+export function findParentAndSiblings(
+  tree: FolderWithChildren[],
+  folderId: string
+): { parentId: string | null; siblings: FolderWithChildren[] } | null {
+  const stack: { parentId: string | null; group: FolderWithChildren[] }[] = [
+    { parentId: null, group: tree }
+  ];
+  while (stack.length > 0) {
+    const { parentId, group } = stack.pop()!;
+    if (group.some((f) => f.id === folderId)) return { parentId, siblings: group };
+    for (const f of group) {
+      if (f.children && f.children.length > 0) {
+        stack.push({ parentId: f.id, group: f.children });
+      }
+    }
+  }
+  return null;
+}
+
 /** Return IDs of all ancestors (parent → root) so the tree can be expanded to show `folderId`. */
 export function getAncestorIds(folderId: string, tree: FolderWithChildren[]): string[] {
   const parentMap = new Map<string, string>();

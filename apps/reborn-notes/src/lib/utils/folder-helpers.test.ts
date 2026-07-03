@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   findChildrenOfParent,
+  findParentAndSiblings,
   buildBreadcrumb,
   buildPathString,
   getAncestorIds,
@@ -131,6 +132,31 @@ describe('getDescendantFolderIds', () => {
     expect(ids).toContain('devsub');
     expect(ids).toContain('guide');
     expect(ids).toHaveLength(4);
+  });
+});
+
+describe('findParentAndSiblings', () => {
+  it('returns null parent and the root group for a root-level folder', () => {
+    const result = findParentAndSiblings(tree, 'dev');
+    expect(result?.parentId).toBeNull();
+    expect(result?.siblings.map((f) => f.id)).toEqual(['r1on1', 'dev', 'people']);
+  });
+
+  it('returns the parent id and full sibling group for a nested folder', () => {
+    const result = findParentAndSiblings(tree, 'devsub');
+    expect(result?.parentId).toBe('reapps');
+    expect(result?.siblings.map((f) => f.id)).toEqual(['arch', 'devsub']);
+  });
+
+  it('works for a deeply nested only child', () => {
+    const result = findParentAndSiblings(tree, 'guide');
+    expect(result?.parentId).toBe('devsub');
+    expect(result?.siblings.map((f) => f.id)).toEqual(['guide']);
+  });
+
+  it('returns null for an unknown folder or empty tree', () => {
+    expect(findParentAndSiblings(tree, 'nope')).toBeNull();
+    expect(findParentAndSiblings([], 'dev')).toBeNull();
   });
 });
 
