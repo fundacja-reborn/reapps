@@ -549,7 +549,9 @@
     "unpark": "Odepnij",
     "delete": "Usuń",
     "delete_confirm_title": "Usunąć \"{name}\"?",
-    "delete_confirm_desc": "Usuwany jest tylko zapisany widok - notatki pozostają nietknięte."
+    "delete_confirm_desc": "Usuwany jest tylko zapisany widok - notatki pozostają nietknięte.",
+    "undecryptable": "Nie można odszyfrować",
+    "undecryptable_hint": "Tego zapisanego wyszukiwania nie udało się odszyfrować Twoim kluczem szyfrowania. Można je tylko usunąć."
   },
   "sort": {
     "title": "Sortuj według",

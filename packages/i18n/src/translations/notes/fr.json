@@ -549,7 +549,9 @@
     "unpark": "Détacher",
     "delete": "Supprimer",
     "delete_confirm_title": "Supprimer « {name} » ?",
-    "delete_confirm_desc": "Seule la vue enregistrée est supprimée - vos notes ne sont pas affectées."
+    "delete_confirm_desc": "Seule la vue enregistrée est supprimée - vos notes ne sont pas affectées.",
+    "undecryptable": "Déchiffrement impossible",
+    "undecryptable_hint": "Impossible de déchiffrer cette recherche enregistrée avec votre clé de chiffrement. Elle peut uniquement être supprimée."
   },
   "sort": {
     "title": "Trier par",

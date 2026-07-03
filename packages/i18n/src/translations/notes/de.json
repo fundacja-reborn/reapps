@@ -549,7 +549,9 @@
     "unpark": "Lösen",
     "delete": "Löschen",
     "delete_confirm_title": "„{name}“ löschen?",
-    "delete_confirm_desc": "Nur die gespeicherte Ansicht wird entfernt - Ihre Notizen bleiben unberührt."
+    "delete_confirm_desc": "Nur die gespeicherte Ansicht wird entfernt - Ihre Notizen bleiben unberührt.",
+    "undecryptable": "Entschlüsselung nicht möglich",
+    "undecryptable_hint": "Diese gespeicherte Suche konnte mit Ihrem Schlüssel nicht entschlüsselt werden. Sie kann nur gelöscht werden."
   },
   "sort": {
     "title": "Sortieren nach",

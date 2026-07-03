@@ -549,7 +549,9 @@
     "unpark": "Unpin",
     "delete": "Delete",
     "delete_confirm_title": "Delete \"{name}\"?",
-    "delete_confirm_desc": "Only the saved view is removed - your notes are not affected."
+    "delete_confirm_desc": "Only the saved view is removed - your notes are not affected.",
+    "undecryptable": "Cannot decrypt",
+    "undecryptable_hint": "This saved search could not be decrypted with your encryption key. It can only be deleted."
   },
   "sort": {
     "title": "Sort by",

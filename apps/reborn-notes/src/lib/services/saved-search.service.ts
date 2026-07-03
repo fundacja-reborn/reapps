@@ -43,7 +43,8 @@ async function encode(value: string, what: 'name' | 'query'): Promise<string> {
   return cryptoManager.encryptText(value);
 }
 
-async function decode(stored: string): Promise<string> {
+/** `null` = ciphertext present but undecryptable (wrong key epoch / corruption). */
+async function decode(stored: string): Promise<string | null> {
   if (!stored) return '';
   if (!cryptoManager.isInitialized()) {
     throw new Error('[E2E] decode saved-search called without master key loaded');
@@ -51,16 +52,16 @@ async function decode(stored: string): Promise<string> {
   try {
     return await cryptoManager.decryptText(stored);
   } catch {
-    return ''; // deszyfrowanie nie powiodło się (uszkodzone dane)
+    return null;
   }
 }
 
 async function decodeMetadata(
   stored?: string
-): Promise<Required<SavedSearchSensitiveMetadata>> {
-  // Missing or undecryptable metadata degrades to the conservative defaults
-  // (title-only search, not root-pinned) instead of erroring - same posture as
-  // the name/query codec.
+): Promise<Required<SavedSearchSensitiveMetadata> | null> {
+  // A missing bundle is a legal legacy state and degrades to the conservative
+  // defaults (title-only search, not root-pinned); a present-but-undecryptable
+  // bundle returns null so callers can tell corruption apart from absence.
   if (!stored) return { search_in_content: false, pinned_to_root: false };
   if (!cryptoManager.isInitialized()) {
     throw new Error('[E2E] decode saved-search metadata called without master key loaded');
@@ -69,16 +70,51 @@ async function decodeMetadata(
     const meta = await cryptoManager.decryptObject<SavedSearchSensitiveMetadata>(stored);
     return { search_in_content: !!meta.search_in_content, pinned_to_root: !!meta.pinned_to_root };
   } catch {
-    return { search_in_content: false, pinned_to_root: false };
+    return null;
   }
 }
 
-async function toDecrypted(enc: SavedSearchEncrypted): Promise<SavedSearchDecrypted> {
-  const meta = await decodeMetadata(enc.metadata_encrypted);
+const METADATA_DEFAULTS: Required<SavedSearchSensitiveMetadata> = {
+  search_in_content: false,
+  pinned_to_root: false
+};
+
+// Rows that already failed to decrypt this session, keyed by id with the
+// updated_at they failed at. Refreshes run after every sync pull and re-decode
+// every row - without this cache a permanently undecryptable row would repeat
+// the same crypto errors in the console on each cycle. A changed updated_at
+// (row rewritten, possibly from a device holding the right key) retries.
+const undecryptableRows = new Map<string, string>();
+
+function toUndecryptable(enc: SavedSearchEncrypted): SavedSearchDecrypted {
   return {
     id: enc.id,
-    name: await decode(enc.name_encrypted),
-    query: await decode(enc.query_encrypted),
+    name: '',
+    query: '',
+    search_in_content: false,
+    pinned_to_root: false,
+    folder_id: enc.folder_id,
+    position: enc.position,
+    created_at: enc.created_at,
+    updated_at: enc.updated_at,
+    decrypt_failed: true
+  };
+}
+
+async function toDecrypted(enc: SavedSearchEncrypted): Promise<SavedSearchDecrypted> {
+  if (undecryptableRows.get(enc.id) === enc.updated_at) return toUndecryptable(enc);
+  const meta = await decodeMetadata(enc.metadata_encrypted);
+  const name = await decode(enc.name_encrypted);
+  const query = await decode(enc.query_encrypted);
+  if (meta === null || name === null || query === null) {
+    undecryptableRows.set(enc.id, enc.updated_at);
+    return toUndecryptable(enc);
+  }
+  undecryptableRows.delete(enc.id);
+  return {
+    id: enc.id,
+    name,
+    query,
     search_in_content: meta.search_in_content,
     // Folder-pin wins over root-pin: a search with a live folder_id is shown in
     // the folder tree, never duplicated at the top level (mutual exclusivity is
@@ -183,7 +219,9 @@ export async function updateSavedSearchQuery(
   if (!trimmedQuery) throw new Error('Saved search query must not be empty');
   const query_encrypted = await encode(trimmedQuery, 'query');
 
-  const meta = await decodeMetadata(existing.metadata_encrypted);
+  // An undecryptable bundle falls back to the defaults; re-encoding then writes
+  // a fresh bundle under the current key (effectively repairs the row).
+  const meta = (await decodeMetadata(existing.metadata_encrypted)) ?? METADATA_DEFAULTS;
   const contentChanged = meta.search_in_content !== searchInContent;
   if (contentChanged && !cryptoManager.isInitialized()) {
     throw new Error('[E2E] encode saved-search metadata called without master key loaded');
@@ -228,7 +266,8 @@ async function setSavedSearchPin(
   const nextFolderId = 'folderId' in target ? target.folderId : null;
   const nextRoot = 'root' in target;
 
-  const meta = await decodeMetadata(existing.metadata_encrypted);
+  // Undecryptable bundle → defaults (see updateSavedSearchQuery).
+  const meta = (await decodeMetadata(existing.metadata_encrypted)) ?? METADATA_DEFAULTS;
   const rootChanged = meta.pinned_to_root !== nextRoot;
   if (rootChanged && !cryptoManager.isInitialized()) {
     throw new Error('[E2E] encode saved-search metadata called without master key loaded');

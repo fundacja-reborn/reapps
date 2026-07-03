@@ -549,7 +549,9 @@
     "unpark": "Desfijar",
     "delete": "Eliminar",
     "delete_confirm_title": "¿Eliminar \"{name}\"?",
-    "delete_confirm_desc": "Solo se elimina la vista guardada: sus notas no se ven afectadas."
+    "delete_confirm_desc": "Solo se elimina la vista guardada: sus notas no se ven afectadas.",
+    "undecryptable": "No se puede descifrar",
+    "undecryptable_hint": "No se pudo descifrar esta búsqueda guardada con su clave de cifrado. Solo puede eliminarla."
   },
   "sort": {
     "title": "Ordenar por",
