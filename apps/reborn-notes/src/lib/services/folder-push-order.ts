@@ -17,10 +17,11 @@ import type { FolderEncrypted } from '@reborn/types';
  * Within a layer, siblings are independent and push in parallel; awaiting
  * between layers guarantees children see their parents server-side.
  *
- * Cycles cannot exist in valid folder data (server enforces a tree), but if
- * one does sneak in via corruption, leftover folders get appended as a final
- * layer so the server can reject them rather than the client silently
- * dropping them on the floor.
+ * Cycles CAN transiently exist here: the server accepts concurrent
+ * cross-device moves that close a parent_id loop, and pullFolders() only
+ * repairs them on the next pull (see folder-cycle-repair.ts). Leftover
+ * folders from such a cycle get appended as a final layer so the server can
+ * take them rather than the client silently dropping them on the floor.
  */
 export function buildFolderLayers(folders: FolderEncrypted[]): FolderEncrypted[][] {
   if (folders.length === 0) return [];

@@ -52,6 +52,7 @@ import { validateEncryptedPayload } from '@reborn/crypto';
 import { refreshQuota } from '$lib/stores/storage-quota.store';
 import { connectivityStore } from '$lib/stores/connectivity.store';
 import { buildFolderLayers } from './folder-push-order';
+import { planCycleRepairs } from './folder-cycle-repair';
 import { settleInBatches } from './sync-batch';
 import { notifyNoteSyncError, notifyBatchSyncErrors } from './sync-error-notify';
 import { ensureOk, HttpPushError } from './push-error';
@@ -357,14 +358,41 @@ async function pullFolders(): Promise<void> {
   // the server AFTER this response was built, so they are not orphans.
   const serverFolderIds = new Set((data as Array<{ id: string }>).map((f) => f.id));
   const allLocalFolders = (await folderStore.getAll()) as FolderEncrypted[];
-  const orphanIds = allLocalFolders
-    .filter(
-      (f) => f.sync_status === 'synced' && !serverFolderIds.has(f.id) && prePullSyncedIds.has(f.id)
-    )
-    .map((f) => f.id);
-  if (orphanIds.length > 0) {
-    await folderStore.deleteMany(orphanIds);
-    logger.debug(`Removed ${orphanIds.length} locally-synced folders no longer on server`);
+  const orphanIds = new Set(
+    allLocalFolders
+      .filter(
+        (f) =>
+          f.sync_status === 'synced' && !serverFolderIds.has(f.id) && prePullSyncedIds.has(f.id)
+      )
+      .map((f) => f.id)
+  );
+  if (orphanIds.size > 0) {
+    await folderStore.deleteMany([...orphanIds]);
+    logger.debug(`Removed ${orphanIds.size} locally-synced folders no longer on server`);
+  }
+
+  // Repair parent_id cycles (audit 013 N2). Two devices moving A under B and
+  // B under A concurrently both pass their local pre-move cycle checks, and
+  // the server accepts both writes - the pulled mirror now contains a cycle
+  // whose members (plus their subtrees) are unreachable from the roots and
+  // silently vanish from every folder view. Reparent one member per cycle to
+  // the root; see folder-cycle-repair.ts for why the pick is deterministic
+  // across devices. The repair row is marked pending atomically with the
+  // write (same rationale as reorderFolders) and pushed like a user move.
+  const survivors = allLocalFolders.filter((f) => !orphanIds.has(f.id));
+  for (const folderId of planCycleRepairs(survivors)) {
+    // Re-read: the row may have changed since the getAll() above (user move
+    // racing this pull) - repair the current row, not the stale snapshot.
+    const row = (await folderStore.get(folderId)) as FolderEncrypted | null;
+    if (!row) continue;
+    logger.warn(`Folder ${folderId} is part of a parent_id cycle - reparenting to root`);
+    await folderStore.save({
+      ...row,
+      parent_id: undefined,
+      sync_status: 'pending',
+      updated_at: new Date().toISOString()
+    });
+    pushFolderUpdate(folderId, { parent_id: null });
   }
 }
 
