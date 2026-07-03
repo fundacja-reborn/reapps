@@ -20,6 +20,8 @@ overrides:
   ws: '8.21.0' # GHSA-58qx-3vcg-4xpx ws uninitialized memory disclosure
   qs: '6.15.2' # GHSA-q8mj-m7cp-5q26 qs.stringify DoS
   undici@<7.28.0: '7.28.0' # GHSA-vmh5-mc38-953g (high) + GHSA-pr7r-676h-xcf6 (moderate) undici, via vitest>jsdom (test-only)
+  '@babel/core@<7.29.7': '7.29.7' # GHSA-4x5r-pxfx-6jf8 (low) arbitrary file read via sourceMappingURL comment, via @nx/js toolchain (Dependabot #106)
+  uuid@<11.1.1: '11.1.1' # GHSA-w5hq-g745-h8pq (moderate) missing buffer bounds check in v3/v5/v6, via @storybook/addon-actions; direct deps already on uuid 14
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
