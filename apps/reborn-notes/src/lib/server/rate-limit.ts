@@ -176,3 +176,15 @@ export const sharePublicLimiter = createRateLimiter({ maxRequests: 100, windowMs
  * versa).
  */
 export const sharePasswordLimiter = createRateLimiter({ maxRequests: 10, windowMs: 15 * 60_000 });
+
+/**
+ * Authenticated data endpoints (notes/folders/tags/saved-searches/settings/…):
+ * 10 000 requests per 15 minutes per userId (IP-keyed fallback for
+ * unauthenticated hits). An abuse backstop, NOT a throttle: a cold first sync
+ * or a huge vault import legitimately fires thousands of POSTs (bounded to ~10
+ * in flight by settleInBatches) and must pass with headroom - what this bounds
+ * is a runaway script/loop. 429 is transient for the sync client (not in
+ * PERMANENT_PUSH_STATUSES), so even a capped burst keeps its rows 'pending'
+ * and self-heals on the next window.
+ */
+export const dataLimiter = createRateLimiter({ maxRequests: 10_000, windowMs: 15 * 60_000 });

@@ -179,3 +179,15 @@ export const sharePasswordLimiter = createRateLimiter({ maxRequests: 10, windowM
  * still bounds DB abuse.
  */
 export const notificationLimiter = createRateLimiter({ maxRequests: 60, windowMs: 60_000 });
+
+/**
+ * Authenticated data endpoints (tasks/tasklists/subtasks/settings/…): 10 000
+ * requests per 15 minutes per userId (IP-keyed fallback for unauthenticated
+ * hits). An abuse backstop, NOT a throttle: a cold first sync or a large import
+ * legitimately fires thousands of queued operations (bounded concurrency) and
+ * must pass with headroom - what this bounds is a runaway script/loop. 429 is
+ * transient for the operation queue (not in PERMANENT_PUSH_STATUSES), so even
+ * a capped burst keeps its ops queued and self-heals on the next window.
+ * Tighter per-route limiters (notificationLimiter above) still win where set.
+ */
+export const dataLimiter = createRateLimiter({ maxRequests: 10_000, windowMs: 15 * 60_000 });
