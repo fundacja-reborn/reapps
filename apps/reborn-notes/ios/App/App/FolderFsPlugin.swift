@@ -36,7 +36,8 @@ public class FolderFsPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelega
         CAPPluginMethod(name: "readFile", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "isSameDirectory", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "writeFile", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "deleteFile", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "deleteFile", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "releaseDirectory", returnType: CAPPluginReturnPromise)
     ]
 
     /// Upper bound on waiting for an iCloud placeholder to download before a read.
@@ -452,5 +453,17 @@ public class FolderFsPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelega
         }
         if let coordError = coordError { throw coordError }
         if let removeError = removeError { throw removeError }
+    }
+
+    // MARK: - releaseDirectory
+
+    /// No-op on iOS, kept so the JS contract is uniform across platforms. A plain
+    /// security-scoped bookmark holds no OS-level persisted grant to relinquish
+    /// (access is bracketed per call via start/stopAccessingSecurityScopedResource,
+    /// see the header comment) - deleting the bookmark string IS the release.
+    /// Android's SAF, by contrast, persists the grant in the OS until it is
+    /// explicitly released; see FolderFsPlugin.java.
+    @objc func releaseDirectory(_ call: CAPPluginCall) {
+        call.resolve()
     }
 }
