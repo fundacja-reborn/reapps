@@ -1,5 +1,18 @@
 [
   {
+    "version": "0.43.1",
+    "date": "2026-07-04",
+    "items": [
+      { "id": "0.43.1-batched-pull-writes", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.1-folder-cycle-repair", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.1-locked-wipe-guard", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.1-folder-reorder-race", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.1-folder-touch-latch", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.1-import-error-language", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.1-android-backup-permission", "category": "fixed", "apps": ["notes"], "platforms": ["android"] }
+    ]
+  },
+  {
     "version": "0.43.0",
     "date": "2026-07-03",
     "items": [
