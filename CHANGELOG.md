@@ -1,3 +1,17 @@
+## 0.43.1 (2026-07-04)
+
+### 🩹 Fixes
+
+- **auth:** per-user row caps for folders/tags and data endpoint rate limiting ([#421](https://github.com/fundacja-reborn/reapps/pull/421), [#405](https://github.com/fundacja-reborn/reapps/issues/405), [#501](https://github.com/fundacja-reborn/reapps/issues/501))
+- **crypto:** stop logging raw base64 input on decode failure ([#418](https://github.com/fundacja-reborn/reapps/pull/418), [#411](https://github.com/fundacja-reborn/reapps/issues/411))
+- **notes:** don't wipe pending edits when push probe runs locked ([#414](https://github.com/fundacja-reborn/reapps/pull/414), [#404](https://github.com/fundacja-reborn/reapps/issues/404))
+- **notes:** mark folder reorder/move rows pending atomically with the write ([#415](https://github.com/fundacja-reborn/reapps/pull/415), [#412](https://github.com/fundacja-reborn/reapps/issues/412))
+- **notes:** repair folder parent_id cycles at pull ([#416](https://github.com/fundacja-reborn/reapps/pull/416), [#407](https://github.com/fundacja-reborn/reapps/issues/407), [#409](https://github.com/fundacja-reborn/reapps/issues/409), [#415](https://github.com/fundacja-reborn/reapps/issues/415))
+- **notes:** folder tree multi-touch latch and stale move-target feedback ([#417](https://github.com/fundacja-reborn/reapps/pull/417))
+- **notes:** release persisted SAF grant when auto-backup state is wiped ([#419](https://github.com/fundacja-reborn/reapps/pull/419))
+- **notes:** batch pull writes for folders/tags/saved searches via saveMany ([#420](https://github.com/fundacja-reborn/reapps/pull/420))
+- **notes:** localize hardcoded Polish import/export error messages ([#422](https://github.com/fundacja-reborn/reapps/pull/422))
+
 ## 0.43.0 (2026-07-03)
 
 ### 🚀 Features

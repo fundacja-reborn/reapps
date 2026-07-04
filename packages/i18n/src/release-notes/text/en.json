@@ -1,4 +1,11 @@
 {
+  "0.43.1-batched-pull-writes": "Improved the first sync and large imports: folders, tags and saved searches are now written in batches, which is faster and uses less memory, especially on Android.",
+  "0.43.1-folder-cycle-repair": "Fixed folders and their subfolders silently disappearing from the folder tree when two devices moved folders into a loop at the same time - the app now detects and repairs the loop during sync.",
+  "0.43.1-locked-wipe-guard": "Fixed a rare data-loss window where unsynced offline edits could be discarded when sync ran while the app was still locked.",
+  "0.43.1-folder-reorder-race": "Fixed folder reordering and moves occasionally snapping back when a sync ran at the same moment.",
+  "0.43.1-folder-touch-latch": "Fixed folder-tree touch gestures getting stuck after an accidental multi-finger touch, and moving a folder now shows a clear message when its target changed in the meantime.",
+  "0.43.1-import-error-language": "Fixed import and export error messages appearing in Polish regardless of the app language.",
+  "0.43.1-android-backup-permission": "Fixed the automatic-backup folder permission lingering in Android system settings after signing out - it is now released together with the backup configuration.",
   "0.43.0-folder-custom-order": "Added manual folder ordering: a sort menu in the Folders panel header switches between Alphabetical and Custom order. In custom order, folders can be dragged between rows with an insertion line showing where they land, and each folder's menu gains Move up and Move down. The arrangement is stored end-to-end encrypted like the rest of your settings and follows you across devices.",
   "0.43.0-folder-touch-drag": "Added long-press drag for folders on touch screens: hold a folder row briefly, then drag it into another folder, out to the top level, or between rows when custom order is on, with the same drop indicators as on desktop. Pausing over a collapsed folder springs it open so the drop can land inside, and dragging near the list's edge scrolls it.",
   "0.43.0-folder-delete-progress": "Improved deleting a folder that contains many notes: the dialog now shows live progress, first through the notes and then through the folder tree itself, instead of sitting frozen until the deletion finishes.",
