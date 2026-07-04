@@ -1,7 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
-import { authLimiter, refreshLimiter, registerLimiter, powLimiter } from '$lib/server/rate-limit';
+import {
+  authLimiter,
+  refreshLimiter,
+  registerLimiter,
+  powLimiter,
+  dataLimiter
+} from '$lib/server/rate-limit';
 import { getClientIp } from '$lib/server/client-ip';
 import { verifyToken } from '@reborn/auth/server';
 import {
@@ -116,6 +122,38 @@ const authHandle: Handle = async ({ event, resolve }) => {
     // Don't fail the request, just continue without auth
   }
 
+  return resolve(event);
+};
+
+// ── Per-user data endpoint rate limiting ──────────────────────────
+
+/**
+ * Abuse backstop for every /api/ data route. Auth routes keep their own,
+ * stricter per-IP limiters above; health and app-config are public, cheap and
+ * polled by monitors, so they stay out. Runs AFTER authHandle so it can key by
+ * the stable userId - an IP key would punish users behind one NAT while doing
+ * nothing against an attacker rotating IPs. Unauthenticated hits (e.g. public
+ * share views) fall back to the IP key; the dedicated per-route limiters
+ * (sharePublicLimiter et al.) stay the tighter bound there.
+ */
+const DATA_RATE_EXEMPT = new Set([`${BASE}/api/health`, `${BASE}/api/app-config`]);
+
+const dataRateLimitHandle: Handle = async ({ event, resolve }) => {
+  const { pathname } = event.url;
+  if (
+    pathname.startsWith(`${BASE}/api/`) &&
+    !pathname.startsWith(`${BASE}/api/auth/`) &&
+    !DATA_RATE_EXEMPT.has(pathname)
+  ) {
+    const key = event.locals.userId ?? `ip:${getClientIp(event)}`;
+    if (!dataLimiter.check(key)) {
+      const retryAfter = dataLimiter.retryAfter(key);
+      return json(
+        { success: false, error: 'Too many requests. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      );
+    }
+  }
   return resolve(event);
 };
 
@@ -283,4 +321,4 @@ const localeHandle: Handle = async ({ event, resolve }) => {
   });
 };
 
-export const handle = sequence(requestSizeHandle, rateLimitHandle, authHandle, idempotencyHandle, shareCleanupHandle, localeHandle, securityHandle);
+export const handle = sequence(requestSizeHandle, rateLimitHandle, authHandle, dataRateLimitHandle, idempotencyHandle, shareCleanupHandle, localeHandle, securityHandle);
