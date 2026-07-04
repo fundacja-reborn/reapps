@@ -7,6 +7,11 @@ import { getUserFromToken } from '$lib/server/auth';
 
 const logger = createLogger('Notes-API-Tags');
 
+// Row cap per user (audit 012 N2 unification - saved searches got theirs in
+// PR #405; folders/tags shared the same pre-existing gap). A real tag cloud
+// is tens of rows; hundreds are fine, thousands are abuse.
+const MAX_TAGS_PER_USER = 500;
+
 /** GET /api/tags — fetch all tags for the authenticated user. */
 export const GET: RequestHandler = async ({ request, url }) => {
   try {
@@ -62,6 +67,26 @@ export const POST: RequestHandler = async ({ request }) => {
     const existingTag = await prisma.tag.findUnique({ where: { id }, select: { user_id: true } });
     if (existingTag && existingTag.user_id !== userId) {
       return json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Row cap applies to creates only - updates of existing rows stay allowed
+    // (this POST is an upsert; a re-push of row #501 must not brick its edits).
+    // 422 (not 5xx) so the client's push failure stays quiet: the row keeps
+    // sync_status='pending' and retries once per periodic sync (cheap single
+    // POST); permanent 422 classification for these entities is a known gap
+    // (TODO P3). The P2002 same-name fallback below stays reachable: it resolves to an
+    // EXISTING row, which is exactly the case the cap must not block - but the
+    // cap check runs first, so an over-cap import degrades to 422 even when
+    // the name would have deduped. Acceptable: at 500 tags the account is far
+    // outside real use, and the dedup path still works below the cap.
+    if (!existingTag) {
+      const count = await prisma.tag.count({ where: { user_id: userId } });
+      if (count >= MAX_TAGS_PER_USER) {
+        return json(
+          { success: false, error: 'TAG_LIMIT_EXCEEDED', limit: MAX_TAGS_PER_USER },
+          { status: 422 }
+        );
+      }
     }
 
     let tag;

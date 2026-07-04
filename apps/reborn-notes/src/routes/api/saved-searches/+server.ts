@@ -83,8 +83,12 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     // Row cap applies to creates only - updates of existing rows stay allowed.
-    // 422 (not 5xx) so the offline push marks the item sync_error instead of
-    // retrying forever.
+    // 422 (not 5xx) keeps the rejection out of the transient 5xx alarm path.
+    // NOTE: the client does NOT yet classify 422 as permanent for saved
+    // searches (pushSavedSearchPayload throws a plain Error, and 422 is not in
+    // PERMANENT_PUSH_STATUSES) - the row stays 'pending' and retries once per
+    // periodic sync. Cheap and bounded, but a known gap (TODO P3); an earlier
+    // version of this comment over-promised sync_error semantics.
     if (!existingSearch) {
       const count = await prisma.savedSearch.count({ where: { user_id: userId } });
       if (count >= MAX_SAVED_SEARCHES_PER_USER) {
