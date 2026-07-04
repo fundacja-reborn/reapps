@@ -82,6 +82,20 @@ import {
 
 const logger = createLogger('ExportImport');
 
+/**
+ * Translate an import/export error message from the shared
+ * `settings_page.export_import.*` namespace. The i18n store is imported
+ * dynamically on purpose: it runs browser-only setup at module scope, which
+ * would break the node-side specs that import this service.
+ */
+async function tImportError(
+  key: string,
+  values?: Record<string, string | number>
+): Promise<string> {
+  const { t } = await import('$lib/stores/i18n.store');
+  return get(t)(`settings_page.export_import.${key}`, values ? { values } : undefined);
+}
+
 /** Max import file size: 100 MB (aligned with per-user storage quota). */
 const MAX_IMPORT_FILE_SIZE = 100 * 1024 * 1024;
 
@@ -746,7 +760,7 @@ export async function buildEncryptedBackup(
   password: string
 ): Promise<{ blob: Blob; counts: { notes: number; folders: number; tags: number } }> {
   if (!cryptoManager.isInitialized()) {
-    throw new Error('Brak załadowanego klucza szyfrowania - odblokuj konto i spróbuj ponownie.');
+    throw new Error(await tImportError('import_key_not_loaded'));
   }
 
   const [notes, folders, tags] = await Promise.all([
@@ -935,12 +949,17 @@ export async function importJsonBackup(
 ): Promise<ImportBackupResult> {
   // raw is already in memory (file.text() in UI), but guard against absurd sizes
   if (raw.length > MAX_IMPORT_FILE_SIZE) {
-    throw new Error(`Plik backupu (${Math.round(raw.length / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)} MB.`);
+    throw new Error(
+      await tImportError('import_file_too_large', {
+        size: Math.round(raw.length / 1024 / 1024),
+        limit: Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)
+      })
+    );
   }
 
   const userId = get(authStore).userId;
   if (!userId) {
-    throw new Error('Użytkownik nie jest zalogowany.');
+    throw new Error(await tImportError('import_not_signed_in'));
   }
 
   const parsed = JSON.parse(raw);
@@ -952,7 +971,7 @@ export async function importJsonBackup(
     // Phrase-tolerant decrypt: an auto-backup is keyed by the recovery phrase,
     // which the restoring user re-types from paper - the helper retries with
     // the normalized phrase form when the raw input fails (audit 012 N4).
-    if (!password) throw new Error('Ten backup jest zaszyfrowany. Podaj hasło.');
+    if (!password) throw new Error(await tImportError('import_password_required'));
     const envelope = parsed as BackupV2 | BackupV3;
     let decrypted: string;
     try {
@@ -961,7 +980,7 @@ export async function importJsonBackup(
         password
       );
     } catch {
-      throw new Error('Nieprawidłowe hasło lub uszkodzony plik backupu.');
+      throw new Error(await tImportError('import_invalid_password'));
     }
     const inner = JSON.parse(decrypted);
     if (parsed.version === 3) {
@@ -969,9 +988,7 @@ export async function importJsonBackup(
       // shared loops below handle it like any other backup. Portable: lands
       // readable on any account.
       if (!cryptoManager.isInitialized()) {
-        throw new Error(
-          'Brak załadowanego klucza szyfrowania - odblokuj konto i spróbuj ponownie.'
-        );
+        throw new Error(await tImportError('import_key_not_loaded'));
       }
       backupData = await reencryptPortablePayload(cryptoManager, inner as PortablePayload, userId);
     } else {
@@ -983,7 +1000,7 @@ export async function importJsonBackup(
     // Plaintext envelope, account-key ciphertext inside.
     backupData = (parsed as BackupV1).data;
   } else {
-    throw new Error('Nieznany format backupu.');
+    throw new Error(await tImportError('import_unknown_format'));
   }
 
   // Account-key formats (v1/v2) are readable only on the account that created
@@ -1010,10 +1027,7 @@ export async function importJsonBackup(
       (ciphertext) => cryptoManager.decryptText(ciphertext)
     );
     if (!readable) {
-      // Dynamic import: the i18n store runs browser-only setup at module scope,
-      // which would break the node-side specs that import this service.
-      const { t } = await import('$lib/stores/i18n.store');
-      throw new Error(get(t)('settings_page.export_import.import_cross_account_error'));
+      throw new Error(await tImportError('import_cross_account_error'));
     }
   }
 
@@ -1053,7 +1067,7 @@ export async function importJsonBackup(
       }
       const parsed = schemas.FolderEncryptedSchema.safeParse(fixedFolder);
       if (!parsed.success) {
-        result.errors.push(`Folder ${fixedFolder.id}: walidacja nie powiodła się — ${formatZodIssues(parsed.error)}`);
+        result.errors.push(`Folder ${fixedFolder.id}: validation failed - ${formatZodIssues(parsed.error)}`);
         continue;
       }
       const validated = parsed.data;
@@ -1088,7 +1102,7 @@ export async function importJsonBackup(
       restoredOrCreatedFolderIds.add(validated.id);
       if (restoring) result.restoredFromTrash++;
     } catch (e: unknown) {
-      result.errors.push(`Folder ${folder.id}: ${e instanceof Error ? e.message : 'błąd'}`);
+      result.errors.push(`Folder ${folder.id}: ${e instanceof Error ? e.message : 'error'}`);
     }
   }
 
@@ -1111,7 +1125,7 @@ export async function importJsonBackup(
       }
       const parsed = schemas.TagEncryptedSchema.safeParse(fixedTag);
       if (!parsed.success) {
-        result.errors.push(`Tag ${fixedTag.id}: walidacja nie powiodła się — ${formatZodIssues(parsed.error)}`);
+        result.errors.push(`Tag ${fixedTag.id}: validation failed - ${formatZodIssues(parsed.error)}`);
         continue;
       }
       const validated = parsed.data;
@@ -1131,7 +1145,7 @@ export async function importJsonBackup(
       // Push deferred to pushPendingItems() — see folder loop above.
       result.tags++;
     } catch (e: unknown) {
-      result.errors.push(`Tag ${tag.id}: ${e instanceof Error ? e.message : 'błąd'}`);
+      result.errors.push(`Tag ${tag.id}: ${e instanceof Error ? e.message : 'error'}`);
     }
   }
 
@@ -1166,7 +1180,7 @@ export async function importJsonBackup(
       }
       const parsed = schemas.NoteEncryptedSchema.safeParse(fixedNote);
       if (!parsed.success) {
-        result.errors.push(`Note ${(fixedNote as { id?: string }).id ?? '?'}: walidacja nie powiodła się — ${formatZodIssues(parsed.error)}`);
+        result.errors.push(`Note ${(fixedNote as { id?: string }).id ?? '?'}: validation failed - ${formatZodIssues(parsed.error)}`);
         continue;
       }
       const validated = parsed.data;
@@ -1297,7 +1311,7 @@ export async function importJsonBackup(
       result.notes++;
       if (restoring) result.restoredFromTrash++;
     } catch (e: unknown) {
-      result.errors.push(`Note ${(note as { id?: string }).id ?? '?'}: ${e instanceof Error ? e.message : 'błąd'}`);
+      result.errors.push(`Note ${(note as { id?: string }).id ?? '?'}: ${e instanceof Error ? e.message : 'error'}`);
     }
 
     const current = i + 1;
@@ -1315,7 +1329,7 @@ export async function importJsonBackup(
     try {
       const parsed = schemas.NoteTagSchema.safeParse(rel);
       if (!parsed.success) {
-        result.errors.push(`NoteTag: walidacja nie powiodła się — ${formatZodIssues(parsed.error)}`);
+        result.errors.push(`NoteTag: validation failed - ${formatZodIssues(parsed.error)}`);
         continue;
       }
       const rawId = (rel as Record<string, unknown>).id;
@@ -1324,7 +1338,7 @@ export async function importJsonBackup(
       await noteTagStore.save(noteTag);
       result.noteTags++;
     } catch (e: unknown) {
-      result.errors.push(`NoteTag: ${e instanceof Error ? e.message : 'błąd'}`);
+      result.errors.push(`NoteTag: ${e instanceof Error ? e.message : 'error'}`);
     }
   }
 
@@ -1450,7 +1464,12 @@ export async function importMarkdownFiles(
 ): Promise<ImportMarkdownResult> {
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
   if (totalSize > MAX_IMPORT_FILE_SIZE) {
-    throw new Error(`Łączny rozmiar plików (${Math.round(totalSize / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)} MB.`);
+    throw new Error(
+      await tImportError('import_folder_too_large', {
+        size: Math.round(totalSize / 1024 / 1024),
+        limit: Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)
+      })
+    );
   }
 
   const result: ImportMarkdownResult = {
@@ -2015,7 +2034,7 @@ async function prepareImportFile(
       try {
         tagIds.push(await findOrCreateTagByName(tagName, tagLookup, tagsCounter));
       } catch (e: unknown) {
-        result.errors.push(`Tag "${tagName}": ${e instanceof Error ? e.message : 'błąd'}`);
+        result.errors.push(`Tag "${tagName}": ${e instanceof Error ? e.message : 'error'}`);
       }
     }
   }
@@ -2123,7 +2142,10 @@ export async function importFolder(
   const totalSize = sizedEntries.reduce((sum, e) => sum + e.file.size, 0);
   if (totalSize > MAX_IMPORT_FILE_SIZE) {
     throw new Error(
-      `Łączny rozmiar plików (${Math.round(totalSize / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)} MB.`
+      await tImportError('import_folder_too_large', {
+        size: Math.round(totalSize / 1024 / 1024),
+        limit: Math.round(MAX_IMPORT_FILE_SIZE / 1024 / 1024)
+      })
     );
   }
 
@@ -2161,7 +2183,7 @@ export async function importFolder(
       pathToFolderId.set(key, folderId);
     } catch (e: unknown) {
       pathToFolderId.set(key, targetFolderId);
-      result.errors.push(`Folder "${key}": ${e instanceof Error ? e.message : 'błąd'}`);
+      result.errors.push(`Folder "${key}": ${e instanceof Error ? e.message : 'error'}`);
     }
   }
   result.foldersCreated = foldersCounter.count;

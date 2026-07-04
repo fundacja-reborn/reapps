@@ -52,8 +52,10 @@ describe('reborn-notes importJsonBackup - cross-account guard (audit 012 S3)', (
   });
 
   it('on failure throws the localized cross-account message, not a silent skip', () => {
+    // tImportError resolves its key inside settings_page.export_import.* via
+    // the dynamically imported i18n store (see the helper's doc comment).
     expect(body).toMatch(
-      /if\s*\(\s*!readable\s*\)\s*\{[\s\S]*?settings_page\.export_import\.import_cross_account_error/
+      /if\s*\(\s*!readable\s*\)\s*\{[\s\S]*?tImportError\('import_cross_account_error'\)/
     );
   });
 });
