@@ -66,17 +66,37 @@ export async function runNotesAutoBackupIfDue(
 
 /**
  * Wipe the CURRENT user's auto-backup footprint on this device: config +
- * runtime state (localStorage) and the recovery phrase (OS vault). Called on
- * logout and on the local-only wipe, BEFORE the session keys are removed -
- * the entries are keyed by the session's user id, so this is the last moment
- * they are addressable. Best-effort by design: a failed wipe is logged but
- * must never block the logout flow (per-user keying already prevents another
- * account from reading what might remain).
+ * runtime state (localStorage), the OS-level folder grant (Android SAF) and
+ * the recovery phrase (OS vault). Called on logout and on the local-only
+ * wipe, BEFORE the session keys are removed - the entries are keyed by the
+ * session's user id, so this is the last moment they are addressable.
+ * Best-effort by design: a failed wipe is logged but must never block the
+ * logout flow (per-user keying already prevents another account from reading
+ * what might remain).
  */
 export async function clearAutoBackupState(): Promise<void> {
   try {
+    // Capture the bookmark BEFORE the prefs wipe: releasing the persisted SAF
+    // grant needs the tree Uri, and once the config entry is gone the Uri is
+    // unrecoverable - the orphaned grant would dangle in the OS until uninstall.
+    const folderBookmark = __REBORN_NATIVE__
+      ? loadAutoBackupConfig().folderBookmark
+      : undefined;
     clearAutoBackupPrefs();
     if (!__REBORN_NATIVE__) return;
+    if (folderBookmark) {
+      try {
+        // Lazy import keeps the FolderFs bridge out of the web bundle. The
+        // backup folder was picked with { write: true }, so release the same
+        // READ|WRITE modes. iOS resolves this as a no-op (a plain bookmark
+        // holds no OS-level grant).
+        const { getFolderFs } = await import('$lib/utils/native-folder-fs');
+        await getFolderFs().releaseDirectory({ bookmark: folderBookmark, write: true });
+      } catch (err) {
+        // Own catch: a failed release must not block the vault wipe below.
+        logger.error('Failed to release auto-backup folder grant:', err);
+      }
+    }
     // Lazy import keeps the native secure-storage bridge out of the web bundle.
     const { clearRecoveryPhrase } = await import('./recovery-phrase-vault');
     await clearRecoveryPhrase();

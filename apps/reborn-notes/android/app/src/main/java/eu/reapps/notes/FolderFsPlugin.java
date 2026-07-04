@@ -366,6 +366,39 @@ public class FolderFsPlugin extends Plugin {
         }
     }
 
+    // MARK: - releaseDirectory
+
+    /**
+     * Relinquish the persisted SAF grant for a bookmarked tree - the mirror of the
+     * take in handlePickResult, called when the app forgets the bookmark (the
+     * auto-backup wipe on logout / local reset). Without this the OS keeps the
+     * grant alive even though the Uri is gone from our storage and can never be
+     * used again. `write` must echo the mode the folder was picked with, so the
+     * released modes match the persisted ones. Releasing a grant the OS no longer
+     * holds is a silent no-op, which keeps the wipe path idempotent.
+     */
+    @PluginMethod
+    public void releaseDirectory(PluginCall call) {
+        String bookmark = call.getString("bookmark");
+        if (bookmark == null) {
+            call.reject("Missing or invalid bookmark");
+            return;
+        }
+        boolean write = Boolean.TRUE.equals(call.getBoolean("write", false));
+        int grantFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+        if (write) {
+            grantFlags |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+        }
+        try {
+            getContext()
+                .getContentResolver()
+                .releasePersistableUriPermission(Uri.parse(bookmark), grantFlags);
+            call.resolve(new JSObject());
+        } catch (Exception e) {
+            call.reject("Failed to release folder access: " + e.getMessage(), "RELEASE_FAILED");
+        }
+    }
+
     // MARK: - helpers
 
     /** Walk frame: a directory's documentId plus its accumulated <leaf>/<sub> path. */
