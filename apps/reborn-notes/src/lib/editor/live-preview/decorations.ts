@@ -77,6 +77,51 @@ const DEFAULT_OPTIONS: BuildDecorationsOptions = {
  */
 export const rebuildLivePreview = StateEffect.define<null>();
 
+/**
+ * Editor focus, mirrored into editor state so the (state-only) decoration
+ * builder can gate the raw-markdown reveal on it. `buildDecorations` runs inside
+ * a `StateField` with no `EditorView` access, so it can't read `view.hasFocus`
+ * directly — `editorFocusWatcher` pushes focus/blur into this field instead.
+ *
+ * Why gate on focus at all: Live Preview reveals a node's raw markers only when
+ * the caret sits on it. But a freshly-opened note is UNFOCUSED with the caret at
+ * its default position 0 — so a note that begins with `**bold**` would flash its
+ * raw `**` before the user ever clicks in (reapps #425). Tying the reveal to
+ * focus means an unfocused editor renders fully clean (Obsidian parity); the raw
+ * markers appear only once the user actually focuses the editor.
+ */
+export const setEditorFocus = StateEffect.define<boolean>();
+export const editorFocusField = StateField.define<boolean>({
+  create: () => false,
+  update(value, tr) {
+    for (const effect of tr.effects) {
+      if (effect.is(setEditorFocus)) value = effect.value;
+    }
+    return value;
+  }
+});
+
+/**
+ * Mirrors DOM focus/blur into {@link editorFocusField}. Dispatched from real DOM
+ * events (not the update cycle), so a synchronous dispatch is safe here — unlike
+ * `livePreviewSyncListener`, which must defer. Guarded so it only fires on an
+ * actual change, avoiding redundant transactions.
+ */
+export const editorFocusWatcher = EditorView.domEventHandlers({
+  focus(_event, view) {
+    if (!view.state.field(editorFocusField, false)) {
+      view.dispatch({ effects: setEditorFocus.of(true) });
+    }
+    return false;
+  },
+  blur(_event, view) {
+    if (view.state.field(editorFocusField, false)) {
+      view.dispatch({ effects: setEditorFocus.of(false) });
+    }
+    return false;
+  }
+});
+
 const HIDDEN = Decoration.replace({});
 // Visible markdown markers on the actively-edited line (cursor in range). The
 // CSS rule in `theme.ts` dims them to `--muted-foreground` so the eye lands
@@ -297,6 +342,17 @@ export function buildDecorations(
   const doc = state.doc;
   const loaded = getLoadedImages(state);
 
+  // Reveal a node's raw markdown only when the editor is focused AND the
+  // selection actually sits on it. With the editor unfocused there is no
+  // "active" node, so the whole note renders clean — no markers flash on the
+  // default caret line of a just-opened note (#425). The `?? true` fallback
+  // keeps direct callers (unit tests) that build decorations without the editor
+  // extension on the legacy cursor-only behaviour; the real editor always
+  // installs `editorFocusField`, so the fallback never fires in the app.
+  const focused = state.field(editorFocusField, false) ?? true;
+  const revealInRange = (from: number, to: number): boolean =>
+    focused && isAnySelectionInRange(state, from, to);
+
   // ─── In-note table of contents ───────────────────────────────
   // The managed `<!-- toc -->` block is NOT a single syntax node (comment +
   // paragraph + list + comment), so it is found by text range, not tree node.
@@ -333,7 +389,7 @@ export function buildDecorations(
     // nothing double-decorates the TOC.
     tocSkipFrom = startLine.from;
     tocSkipTo = endLine.to;
-    if (!isAnySelectionInRange(state, startLine.from, endLine.to)) {
+    if (!revealInRange(startLine.from, endLine.to)) {
       // Cursor outside → one boxed widget.
       const innerMd = tocInnerMarkdown(docText) ?? '';
       // Drift is independent of the (preserved) title, so a bare fallback is
@@ -400,7 +456,7 @@ export function buildDecorations(
       if (name === 'FencedCode') {
         const startLine = doc.lineAt(from);
         const endLine = doc.lineAt(to);
-        const cursorInside = isAnySelectionInRange(state, from, to);
+        const cursorInside = revealInRange(from, to);
 
         if (!cursorInside) {
           // Replace the whole block (fences + body) with a rendered widget.
@@ -445,7 +501,7 @@ export function buildDecorations(
       // plain inline replace suffices — no `block: true` needed.
       if (name === 'HorizontalRule') {
         const line = doc.lineAt(from);
-        if (!isAnySelectionInRange(state, line.from, line.to)) {
+        if (!revealInRange(line.from, line.to)) {
           ranges.push(HR_LINE.range(line.from));
           if (line.to > line.from) ranges.push(HIDDEN.range(line.from, line.to));
         } else if (line.to > line.from) {
@@ -459,7 +515,7 @@ export function buildDecorations(
       if (headingMatch) {
         const level = parseInt(headingMatch[1], 10);
         const line = doc.lineAt(from);
-        const cursorInside = isAnySelectionInRange(state, from, to);
+        const cursorInside = revealInRange(from, to);
 
         // Caret on the heading line switches to the `cm-lp-head-active` variant,
         // which reveals the copy-link button (the only way to surface it on
@@ -502,7 +558,7 @@ export function buildDecorations(
       // ─── Strong (**bold** / __bold__) ────────────────────────────
       if (name === 'StrongEmphasis') {
         ranges.push(STRONG_MARK.range(from, to));
-        const cursorInside = isAnySelectionInRange(state, from, to);
+        const cursorInside = revealInRange(from, to);
         forEachChild(nodeRef.node, 'EmphasisMark', (mark) => {
           if (cursorInside) ranges.push(VISIBLE_MARK.range(mark.from, mark.to));
           else ranges.push(HIDDEN.range(mark.from, mark.to));
@@ -513,7 +569,7 @@ export function buildDecorations(
       // ─── Emphasis (*italic* / _italic_) ──────────────────────────
       if (name === 'Emphasis') {
         ranges.push(EM_MARK.range(from, to));
-        const cursorInside = isAnySelectionInRange(state, from, to);
+        const cursorInside = revealInRange(from, to);
         forEachChild(nodeRef.node, 'EmphasisMark', (mark) => {
           if (cursorInside) ranges.push(VISIBLE_MARK.range(mark.from, mark.to));
           else ranges.push(HIDDEN.range(mark.from, mark.to));
@@ -524,7 +580,7 @@ export function buildDecorations(
       // ─── Strikethrough (~~text~~) — GFM ──────────────────────────
       if (name === 'Strikethrough') {
         ranges.push(STRIKE_MARK.range(from, to));
-        const cursorInside = isAnySelectionInRange(state, from, to);
+        const cursorInside = revealInRange(from, to);
         forEachChild(nodeRef.node, 'StrikethroughMark', (mark) => {
           if (cursorInside) ranges.push(VISIBLE_MARK.range(mark.from, mark.to));
           else ranges.push(HIDDEN.range(mark.from, mark.to));
@@ -535,7 +591,7 @@ export function buildDecorations(
       // ─── Inline code (`code`) ────────────────────────────────────
       if (name === 'InlineCode') {
         ranges.push(INLINE_CODE_MARK.range(from, to));
-        const cursorInside = isAnySelectionInRange(state, from, to);
+        const cursorInside = revealInRange(from, to);
         forEachChild(nodeRef.node, 'CodeMark', (mark) => {
           if (cursorInside) ranges.push(VISIBLE_MARK.range(mark.from, mark.to));
           else ranges.push(HIDDEN.range(mark.from, mark.to));
@@ -558,7 +614,7 @@ export function buildDecorations(
         if (parent && parent.type.name === 'Link') {
           return false;
         }
-        if (!isAnySelectionInRange(state, from, to)) {
+        if (!revealInRange(from, to)) {
           const parts = extractImageParts(nodeRef.node, doc);
           if (parts) {
             const effectiveMode = loaded.has(parts.url) ? 'always' : options.imageLoadMode;
@@ -581,7 +637,7 @@ export function buildDecorations(
 
       // ─── Links [text](url) ───────────────────────────────────────
       if (name === 'Link') {
-        if (!isAnySelectionInRange(state, from, to)) {
+        if (!revealInRange(from, to)) {
           const parts = extractLinkParts(nodeRef.node, doc);
           if (parts) {
             ranges.push(
@@ -606,7 +662,7 @@ export function buildDecorations(
           if (m) {
             const markFrom = line.from;
             const markTo = line.from + m[1].length;
-            if (!isAnySelectionInRange(state, line.from, line.to)) {
+            if (!revealInRange(line.from, line.to)) {
               ranges.push(HIDDEN.range(markFrom, markTo));
             } else if (markTo > markFrom) {
               ranges.push(VISIBLE_MARK.range(markFrom, markTo));
@@ -658,7 +714,7 @@ export function buildDecorations(
             ranges.push(HIDDEN.range(itemLine.from, listMark.from));
           }
 
-          const cursorOnLine = isAnySelectionInRange(state, itemLine.from, itemLine.to);
+          const cursorOnLine = revealInRange(itemLine.from, itemLine.to);
 
           if (isTask && taskMarker) {
             const next = doc.sliceString(taskMarker.to, taskMarker.to + 1);
@@ -728,7 +784,11 @@ export function createLivePreviewField(
       return buildDecorations(state, options);
     },
     update(value, tr) {
-      const forced = tr.effects.some((e) => e.is(rebuildLivePreview));
+      // `setEditorFocus` carries no doc/selection change, so it needs its own
+      // rebuild trigger — a focus/blur must re-run the reveal gate (#425).
+      const forced = tr.effects.some(
+        (e) => e.is(rebuildLivePreview) || e.is(setEditorFocus)
+      );
       if (tr.docChanged || tr.selection || forced) {
         return buildDecorations(tr.state, options);
       }

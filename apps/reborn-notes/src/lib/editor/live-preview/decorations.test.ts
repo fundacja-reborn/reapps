@@ -3,7 +3,13 @@ import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import type { DecorationSet } from '@codemirror/view';
-import { buildDecorations, isAnySelectionInRange, resolveListClickForward } from './decorations';
+import {
+  buildDecorations,
+  isAnySelectionInRange,
+  resolveListClickForward,
+  setEditorFocus,
+  editorFocusField
+} from './decorations';
 import { TableWidget } from './table-widget';
 import { ImageWidget } from './image-widget';
 import { CodeBlockWidget, TaskCheckboxWidget } from './widgets';
@@ -30,6 +36,18 @@ function makeState(doc: string, cursorPos = 0) {
     extensions: [markdown({ extensions: [Strikethrough, Table, TaskList] })],
     selection: { anchor: cursorPos, head: cursorPos }
   });
+}
+
+// Builds a state that carries `editorFocusField`, so `buildDecorations` gates the
+// raw-marker reveal on focus (the real editor path). Direct `makeState` above has
+// no focus field → the `?? true` fallback keeps its legacy cursor-only reveal.
+function makeFocusState(doc: string, cursorPos: number, focused: boolean) {
+  const base = EditorState.create({
+    doc,
+    extensions: [markdown({ extensions: [Strikethrough, Table, TaskList] }), editorFocusField],
+    selection: { anchor: cursorPos, head: cursorPos }
+  });
+  return focused ? base.update({ effects: setEditorFocus.of(true) }).state : base;
 }
 
 function asRanges(set: DecorationSet): DecoRange[] {
@@ -177,6 +195,47 @@ describe('buildDecorations — strong/emphasis/inline code', () => {
     const state = makeState('~~a~~', 3);
     const ranges = asRanges(buildDecorations(state));
     expect(classAt(ranges, 0, 5)).toBe('cm-lp-strike');
+  });
+});
+
+describe('buildDecorations — focus gating (#425)', () => {
+  // `**Bold Text**` is 13 chars: `**`(0..2) `Bold Text`(2..11) `**`(11..13).
+
+  it('does NOT reveal leading ** when the editor is unfocused, even with the caret at 0', () => {
+    // The exact reporter scenario: select a note that begins with markdown, do
+    // not click in. Default caret is at 0 (inside the bold), yet nothing reveals.
+    const state = makeFocusState('**Bold Text**\nmore', 0, false);
+    const ranges = asRanges(buildDecorations(state));
+    // Bold styling still applies — the note renders as a clean preview…
+    expect(classAt(ranges, 0, 13)).toBe('cm-lp-strong');
+    // …but the raw ** markers stay hidden despite the caret sitting on them.
+    expect(hasHiddenRange(ranges, 0, 2)).toBe(true);
+    expect(hasHiddenRange(ranges, 11, 13)).toBe(true);
+  });
+
+  it('reveals the leading ** once the editor is focused with the caret on it', () => {
+    const state = makeFocusState('**Bold Text**\nmore', 0, true);
+    const ranges = asRanges(buildDecorations(state));
+    expect(classAt(ranges, 0, 13)).toBe('cm-lp-strong');
+    // Markers shown (dimmed via cm-lp-mark), not hidden — editing view.
+    expect(hasHiddenRange(ranges, 0, 2)).toBe(false);
+    expect(classAt(ranges, 0, 2)).toBe('cm-lp-mark');
+  });
+
+  it('renders a link widget when unfocused even though the caret is inside it', () => {
+    // Reveal (raw markdown for editing) is suppressed while unfocused, so the
+    // block/inline widget wins regardless of caret position.
+    const doc = '[example](https://example.com) trailing';
+    const state = makeFocusState(doc, 5, false); // caret inside [example]
+    const ranges = asRanges(buildDecorations(state));
+    expect(ranges.filter((r) => r.hasWidget)).toHaveLength(1);
+  });
+
+  it('keeps the link raw (no widget) when focused with the caret inside it', () => {
+    const doc = '[example](https://example.com) trailing';
+    const state = makeFocusState(doc, 5, true);
+    const ranges = asRanges(buildDecorations(state));
+    expect(ranges.filter((r) => r.hasWidget)).toHaveLength(0);
   });
 });
 
