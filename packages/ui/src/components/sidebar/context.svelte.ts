@@ -42,6 +42,13 @@ class SidebarState {
 
 	// Event handler to apply to the `<svelte:window>`
 	handleShortcutKeydown = (e: KeyboardEvent) => {
+		// Cmd/Ctrl+B toggles the sidebar only as a global fallback: if a more
+		// specific handler already claimed the chord we must not also toggle.
+		// The notes editor binds Cmd/Ctrl+B to bold — CodeMirror preventDefaults
+		// the key (its table-cell editor does too) but lets it bubble to this
+		// window listener, so without this guard the sidebar would steal the
+		// bold shortcut (reapps #424).
+		if (e.defaultPrevented) return;
 		if (e.key === SIDEBAR_KEYBOARD_SHORTCUT && (e.metaKey || e.ctrlKey)) {
 			e.preventDefault();
 			this.toggle();
