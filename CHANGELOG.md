@@ -1,3 +1,9 @@
+## 0.43.2 (2026-07-07)
+
+### 🩹 Fixes
+
+- **notes:** keep Cmd/Ctrl+B for bold and gate Live Preview on focus ([#426](https://github.com/fundacja-reborn/reapps/pull/426), [#424](https://github.com/fundacja-reborn/reapps/issues/424), [#425](https://github.com/fundacja-reborn/reapps/issues/425), [#349](https://github.com/fundacja-reborn/reapps/issues/349))
+
 ## 0.43.1 (2026-07-04)
 
 ### 🩹 Fixes

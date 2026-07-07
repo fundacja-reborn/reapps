@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.43.2",
+    "date": "2026-07-07",
+    "items": [
+      { "id": "0.43.2-new-note-focus", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.2-live-preview-focus", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.43.2-editor-bold-shortcut", "category": "fixed", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.43.1",
     "date": "2026-07-04",
     "items": [

@@ -1,4 +1,7 @@
 {
+  "0.43.2-new-note-focus": "Improved creating a note: a new, empty note now opens with the editor focused, so you can start typing right away without clicking into it first. Opening an existing note still leaves the editor unfocused, so it renders cleanly and the on-screen keyboard stays down until you tap in.",
+  "0.43.2-live-preview-focus": "Fixed Live preview showing raw Markdown on a note's first line before the editor was focused, so a note starting with bold or another marker briefly revealed its symbols the moment it was opened. The formatting now stays rendered until you place the cursor in the editor, where the line you are editing reveals its Markdown as before.",
+  "0.43.2-editor-bold-shortcut": "Fixed Ctrl/Cmd+B toggling the notes sidebar instead of applying bold in the editor. The shortcut now bolds the selected text as expected, and toggles the sidebar only when the editor is not focused.",
   "0.43.1-batched-pull-writes": "Improved the first sync and large imports: folders, tags and saved searches are now written in batches, which is faster and uses less memory, especially on Android.",
   "0.43.1-folder-cycle-repair": "Fixed folders and their subfolders silently disappearing from the folder tree when two devices moved folders into a loop at the same time - the app now detects and repairs the loop during sync.",
   "0.43.1-locked-wipe-guard": "Fixed a rare data-loss window where unsynced offline edits could be discarded when sync ran while the app was still locked.",
