@@ -867,6 +867,11 @@
 
   // Load note content when active note changes
   let prevNoteId: string | null = null;
+  // One-shot request to focus the editor for a freshly created blank note (set
+  // when a note opens as `isNewNote`, consumed once its empty editor mounts).
+  // Existing-note opens clear it, so browsing never auto-focuses / pops the
+  // mobile keyboard.
+  let pendingNewNoteFocus = $state(false);
   $effect(() => {
     const id = $activeNoteId;
     historyMode = 'closed';
@@ -883,6 +888,7 @@
     prevNoteId = id;
 
     if (!id) {
+      pendingNewNoteFocus = false;
       if (prev) {
         // leaveNote discards a pristine ephemeral note (#349) or flushes+snapshots
         // a touched one. isUntouchedThisLoad() reads prev's state synchronously
@@ -895,14 +901,33 @@
 
     if (untrack(() => noteDetailService.isNewNote)) {
       viewMode = 'edit';
+      // New blank note: request a one-shot auto-focus so the user can type
+      // straight away (consumed by the effect below once the empty editor mounts).
+      pendingNewNoteFocus = true;
     } else {
       // Existing note: open in the per-device default view mode (#351). Read
       // untracked via get() so changing the preference later doesn't re-run
       // this effect for the already-open note. effectiveViewMode clamps 'split'
       // to 'edit' on mobile, so 'split' is safe to set here.
       viewMode = get(noteOpenMode);
+      pendingNewNoteFocus = false;
     }
     untrack(() => noteDetailService.loadNote(id));
+  });
+
+  // Auto-focus a freshly created blank note so the user can start typing
+  // immediately. Scoped to new notes that open EMPTY (a plain New Note, or an
+  // empty periodic note): existing notes stay unfocused so Live Preview renders
+  // clean and the mobile keyboard doesn't pop just from opening a note (#425).
+  // One-shot; waits for the empty content to land and the CM view to mount.
+  $effect(() => {
+    if (!pendingNewNoteFocus) return;
+    if (effectiveViewMode === 'preview') return;
+    const view = editorView;
+    if (!view) return;
+    if (noteDetailService.content !== '') return;
+    view.focus();
+    pendingNewNoteFocus = false;
   });
 
   // ── New note ─────────────────────────────────────────────────────

@@ -19,6 +19,8 @@ import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import type { ImageLoadMode } from '@reborn/storage';
 import {
   createLivePreviewField,
+  editorFocusField,
+  editorFocusWatcher,
   livePreviewSyncListener,
   livePreviewAtomicRanges,
   livePreviewListClickForward,
@@ -95,6 +97,10 @@ export function createLivePreviewExtension(options: LivePreviewOptions = {}): Ex
     tableLabels: options.tableLabels ?? DEFAULT_TABLE_LABELS
   });
   return [
+    // Focus field first: buildDecorations (inside `field`) reads its computed
+    // value each rebuild, so it must resolve earlier in the config order.
+    editorFocusField,
+    editorFocusWatcher,
     field,
     loadedImagesField,
     livePreviewSyncListener,
@@ -120,6 +126,8 @@ export function getMarkdownExtension(): Extension {
 export {
   buildDecorations,
   isAnySelectionInRange,
+  setEditorFocus,
+  editorFocusField,
   createLivePreviewField,
   livePreviewField,
   livePreviewSyncListener,
