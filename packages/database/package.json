@@ -1,6 +1,6 @@
 {
   "name": "@reborn/database",
-  "version": "0.43.1",
+  "version": "0.43.2",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
