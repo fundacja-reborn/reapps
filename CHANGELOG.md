@@ -1,3 +1,14 @@
+## 0.44.0 (2026-07-08)
+
+### 🚀 Features
+
+- **notes:** sync notes on tab return / app foreground (web) ([#428](https://github.com/fundacja-reborn/reapps/pull/428))
+- **notes:** pull on in-app navigation for fresher cross-device data ([#430](https://github.com/fundacja-reborn/reapps/pull/430), [#429](https://github.com/fundacja-reborn/reapps/issues/429))
+
+### 🩹 Fixes
+
+- **notes:** close multi-device reconciliation data-loss paths ([#429](https://github.com/fundacja-reborn/reapps/pull/429))
+
 ## 0.43.2 (2026-07-07)
 
 ### 🩹 Fixes
