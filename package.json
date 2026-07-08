@@ -1,6 +1,6 @@
 {
   "name": "@reborn-apps/source",
-  "version": "0.43.2",
+  "version": "0.44.0",
   "license": "AGPL-3.0-only",
   "packageManager": "pnpm@11.1.2",
   "scripts": {
