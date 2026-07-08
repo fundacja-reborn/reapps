@@ -67,6 +67,26 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(firstPushCall).toBeLessThan(firstPullCall);
   });
 
+  it('layout pulls on in-app navigation and tab-return via a shared-cooldown activitySync (freshness)', () => {
+    const src = readSource('../../routes/+layout.svelte');
+    // In-app navigation triggers a pull, skipping the initial load (from===null).
+    expect(src).toMatch(/afterNavigate\s*\(/);
+    expect(src).toMatch(/nav\.from === null/);
+    // The pull runs through activitySync, which is cooldown-gated and push-first.
+    const activity = src.slice(
+      src.indexOf('function activitySync'),
+      src.indexOf('function activitySync') + 700
+    );
+    expect(activity).toMatch(/ACTIVITY_SYNC_DEBOUNCE_MS/);
+    const pushIdx = activity.search(/pushPendingItems\s*\(/);
+    const pullIdx = activity.search(/pullFromServer\s*\(/);
+    expect(pushIdx).toBeGreaterThan(-1);
+    expect(pullIdx).toBeGreaterThan(pushIdx);
+    // The tab-return (visibilitychange) handler delegates to the SAME activitySync
+    // so both triggers share one 30s cooldown and coalesce.
+    expect(src).toMatch(/onForegroundSync\s*=\s*\(\)\s*=>\s*\{[\s\S]*?activitySync\(\)/);
+  });
+
   it('delete/restore push ops are serialized per-entity (BUG-5 part A/B/C)', () => {
     const src = readSource('./notes-sync.service.ts');
 
