@@ -85,6 +85,13 @@ describe('notes-sync - regression (offline data loss)', () => {
     // The tab-return (visibilitychange) handler delegates to the SAME activitySync
     // so both triggers share one 30s cooldown and coalesce.
     expect(src).toMatch(/onForegroundSync\s*=\s*\(\)\s*=>\s*\{[\s\S]*?activitySync\(\)/);
+    // Switching notes / IconNav sections is STATE within the '/' route, not a
+    // route navigation, so a capture-phase pointerdown drives the same
+    // activitySync (can't miss a specific view-state variable).
+    expect(src).toMatch(/onPointerActivity\s*=\s*\(\)\s*=>\s*activitySync\(\)/);
+    expect(src).toMatch(
+      /addEventListener\(\s*['"]pointerdown['"]\s*,\s*onPointerActivity\s*,\s*\{\s*capture:\s*true/
+    );
   });
 
   it('delete/restore push ops are serialized per-entity (BUG-5 part A/B/C)', () => {

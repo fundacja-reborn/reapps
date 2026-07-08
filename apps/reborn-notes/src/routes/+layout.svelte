@@ -444,6 +444,20 @@
       offForegroundSync = () => document.removeEventListener('visibilitychange', onForegroundSync);
     }
 
+    // In-app activity sync (web + native). The notes shell is a single route
+    // ('/'), so switching notes (activeNoteId store) or IconNav sections
+    // (activeSection page state, plus folder/tag/saved-search sub-selections)
+    // changes STATE, not the URL - afterNavigate and visibilitychange never fire
+    // for them, so those views showed a peer's edits only after the 5-min
+    // interval. A capture-phase pointerdown on the document is a robust "user is
+    // actively using the app" signal that can't miss a particular view-state
+    // variable, and it fires under capacitor:// too. Cooldown-gated by
+    // activitySync (shared 30s), so a burst of taps coalesces into a single delta
+    // pull; passive + capture so it never interferes with any handler. See
+    // guideline 36.
+    const onPointerActivity = () => activitySync();
+    document.addEventListener('pointerdown', onPointerActivity, { capture: true, passive: true });
+
     // Native: there is no Service Worker under capacitor://, so returning to the
     // foreground (App 'resume') drives the sync that the SW + online-transition
     // handler cover on web. Push BEFORE pull (same ordering as everywhere else)
@@ -505,6 +519,7 @@
       clearTimeout(timeoutId);
       clearInterval(syncInterval);
       offForegroundSync?.();
+      document.removeEventListener('pointerdown', onPointerActivity, { capture: true });
       if (updateGateTimer) clearTimeout(updateGateTimer);
       unsubscribeNetwork();
       cleanupFolderSync();
