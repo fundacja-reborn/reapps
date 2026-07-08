@@ -388,6 +388,42 @@
       5 * 60 * 1000
     );
 
+    // Tab-return / foreground sync (web + installed PWA). On mobile the user
+    // leaves and re-enters the app dozens of times a day; without this they see
+    // stale data (a peer device's edits) until the 5-min interval fires. Mirrors
+    // the interval body exactly: same push-before-pull ordering and auth/online
+    // guards, and stays a pure delta pull (no forced reconcile) so it's cheap on
+    // large accounts - a hard delete from another device still lands on cold
+    // start / manual / reconnect (Variant B trade-off, guideline 36 rule 18.e).
+    //
+    // Native drives the same refresh through platform.lifecycle.onResume below
+    // (visibilitychange is unreliable under capacitor://), so this listener is
+    // dead-code-eliminated from the native bundle to avoid a double sync on
+    // resume. Debounced 30s so rapid tab flips don't spam the server (mirrors
+    // reborn-task's tab-return sync).
+    let offForegroundSync: (() => void) | undefined;
+    if (!__REBORN_NATIVE__) {
+      let lastForegroundSyncAt = 0;
+      const FOREGROUND_SYNC_DEBOUNCE_MS = 30_000;
+      const onForegroundSync = () => {
+        if (document.visibilityState !== 'visible') return;
+        if (!navigator.onLine) return;
+        if (!($authStore.isAuthenticated && $authStore.hasE2E)) return;
+        const now = Date.now();
+        if (now - lastForegroundSyncAt < FOREGROUND_SYNC_DEBOUNCE_MS) return;
+        lastForegroundSyncAt = now;
+        // fire-and-forget, same as the interval above
+        pushPendingItems().catch(() => {});
+        pullFromServer()
+          .then(async (synced) => {
+            if (synced) await refreshStoresAfterPull();
+          })
+          .catch(() => {});
+      };
+      document.addEventListener('visibilitychange', onForegroundSync);
+      offForegroundSync = () => document.removeEventListener('visibilitychange', onForegroundSync);
+    }
+
     // Native: there is no Service Worker under capacitor://, so returning to the
     // foreground (App 'resume') drives the sync that the SW + online-transition
     // handler cover on web. Push BEFORE pull (same ordering as everywhere else)
@@ -448,6 +484,7 @@
     return () => {
       clearTimeout(timeoutId);
       clearInterval(syncInterval);
+      offForegroundSync?.();
       if (updateGateTimer) clearTimeout(updateGateTimer);
       unsubscribeNetwork();
       cleanupFolderSync();
