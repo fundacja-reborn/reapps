@@ -180,26 +180,35 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(restoreHandler).toMatch(/sync_version:\s*updated\.sync_version/);
   });
 
-  it('pushNoteDelete and pushNoteRestore mirror server sync_version locally (BUG-6)', () => {
+  it('pushNoteDelete/pushNoteRestore do NOT mirror the server sync_version onto local (audit 2026-07-08 finding A)', () => {
+    // Mirroring the bumped server sync_version onto a local row whose content was
+    // NOT refreshed breaks rule-10's "equal version + differing ciphertext =>
+    // local holds the newer unpushed edit" invariant: a note archived/restored on
+    // one device would then re-push its stale content over a peer's newer content
+    // edit (silent data loss). The callbacks must leave sync_version at its
+    // pre-delete value so the next pull adopts the server content via the
+    // strict-greater gate. The SERVER still bumps its own version (asserted in the
+    // BUG-6 endpoint test above) so other devices pick up the archive state.
     const src = readSource('./notes-sync.service.ts');
 
     const deleteBody = src.slice(
       src.indexOf('export function pushNoteDelete'),
       src.indexOf('export function pushNoteRestore')
     );
-    // Must parse the response body and extract sync_version.
-    expect(deleteBody).toMatch(/await res\.json\(\)/);
-    expect(deleteBody).toMatch(/data\?\.sync_version/);
-    // And apply it in noteStore.save under serverSyncVersion.
-    expect(deleteBody).toMatch(/sync_version:\s*serverSyncVersion/);
-
     const restoreBody = src.slice(
       src.indexOf('export function pushNoteRestore'),
       src.indexOf('export function pushFolder')
     );
-    expect(restoreBody).toMatch(/await res\.json\(\)/);
-    expect(restoreBody).toMatch(/data\?\.sync_version/);
-    expect(restoreBody).toMatch(/sync_version:\s*serverSyncVersion/);
+    // No server-version mirror in either callback.
+    expect(deleteBody).not.toMatch(/serverSyncVersion/);
+    expect(deleteBody).not.toMatch(/sync_version:\s*data/);
+    expect(restoreBody).not.toMatch(/serverSyncVersion/);
+    expect(restoreBody).not.toMatch(/sync_version:\s*data/);
+    // Intent-check (rule 11.b) stays: branch on current.is_archived, chain opposite op.
+    expect(deleteBody).toMatch(/current\.is_archived/);
+    expect(deleteBody).toMatch(/pushNoteRestore\s*\(\s*id\s*\)/);
+    expect(restoreBody).toMatch(/current\.is_archived/);
+    expect(restoreBody).toMatch(/pushNoteDelete\s*\(\s*id\s*\)/);
   });
 
   it('pullNotes reconciles is_archived when server differs, even at equal sync_version (BUG-6)', () => {
@@ -213,6 +222,65 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(pullNotes).toMatch(/serverArchived\s*=\s*!!n\.deleted_at\s*\|\|\s*!!n\.is_archived/);
     expect(pullNotes).toMatch(/!!localNote\.is_archived\s*!==\s*serverArchived/);
     expect(pullNotes).toMatch(/is_archived:\s*serverArchived/);
+  });
+
+  // ── Multi-device reconciliation audit (2026-07-08) ──────────────────────
+
+  it('deleteNote gates "never on server" on sync_version===0, not sync_status (finding B)', () => {
+    const src = readSource('./note.service.ts');
+    const fn = src.slice(
+      src.indexOf('export async function deleteNote'),
+      src.indexOf('export async function moveNoteToFolder')
+    );
+    // Skip-DELETE branch keys off sync_version (the on-server signal), NOT
+    // sync_status: a pending note that IS on the server must still be soft-
+    // deleted, else the next pull's archive reconcile un-archives it out of trash.
+    expect(fn).toMatch(/!existing\s*\|\|\s*\(existing\.sync_version\s*\?\?\s*0\)\s*===\s*0/);
+    // A pending-on-server note PATCHes its unpushed content BEFORE the DELETE
+    // (DELETE carries no ciphertext, so otherwise the unsynced edit is lost).
+    expect(fn).toMatch(
+      /if\s*\(existing\.sync_status\s*===\s*'pending'\)\s*\{[\s\S]*?pushNoteUpdate\s*\(\s*id\s*,/
+    );
+    expect(fn).toMatch(/pushNoteDelete\s*\(\s*id\s*\)/);
+  });
+
+  it('emptyTrash gates the permanent DELETE on sync_version>0, not sync_status (finding C)', () => {
+    const src = readSource('./note.service.ts');
+    const fn = src.slice(
+      src.indexOf('export async function emptyTrash'),
+      src.indexOf('export async function cleanTrash')
+    );
+    expect(fn).toMatch(/\(n\.sync_version\s*\?\?\s*0\)\s*>\s*0/);
+    expect(fn).toMatch(/pushNoteDelete\s*\(\s*n\.id\s*,\s*true\s*\)/);
+    // Must NOT skip on sync_status pending - that hard-deleted the row locally
+    // but left it on the server, resurrecting the note on the next pull.
+    expect(fn).not.toMatch(/n\.sync_status\s*!==\s*'pending'/);
+  });
+
+  it('pullNotes holds the delta watermark at the earliest unpersisted row (finding G)', () => {
+    const src = readSource('./notes-sync.service.ts');
+    const pullNotes = src.slice(
+      src.indexOf('async function pullNotes'),
+      src.indexOf('async function writeNotesPage')
+    );
+    // writeNotesPage reports the earliest row it failed to persist; pullNotes
+    // caps the watermark there so the next ?since delta re-fetches it instead of
+    // skipping it forever.
+    expect(pullNotes).toMatch(/earliestUnaccounted/);
+    expect(pullNotes).toMatch(
+      /const\s+nextWatermark\s*=\s*earliestUnaccounted\s*\?\?\s*maxUpdatedAt/
+    );
+    expect(pullNotes).toMatch(/writeWatermark\(userId,\s*nextWatermark\)/);
+
+    const writePage = src.slice(
+      src.indexOf('async function writeNotesPage'),
+      src.indexOf('// ── Push helpers')
+    );
+    // Shadow-index throw path records the row as unaccounted; saveMany failures
+    // (no row ids) conservatively hold at the earliest fresh upsert.
+    expect(writePage).toMatch(/unaccountedUpdatedAts\.push\(n\.updated_at\)/);
+    expect(writePage).toMatch(/freshUpsertUpdatedAts/);
+    expect(writePage).toMatch(/minUnaccounted/);
   });
 
   it('pull helpers remove ghost items (synced locally but deleted on server)', () => {
@@ -650,10 +718,13 @@ describe('notes-sync - regression (offline data loss)', () => {
     // call expression (not a comment mention) and look for try/catch/return.
     const callMatch = /await\s+extractShadowIndexes\s*\(/.exec(pullNotes);
     expect(callMatch).not.toBeNull();
-    const window = pullNotes.slice(callMatch!.index, callMatch!.index + 600);
+    const window = pullNotes.slice(callMatch!.index, callMatch!.index + 900);
     expect(window).toMatch(/catch\s*\(/);
     // Skip path returns `null` from the map callback (pullNotes collects the
     // ids it actually wrote; skipped notes contribute null and are filtered).
+    // The catch also records the row as unaccounted so the watermark is held
+    // back (fix G) - the return-null skip still follows it.
+    expect(window).toMatch(/unaccountedUpdatedAts\.push/);
     expect(window).toMatch(/return null;/);
   });
 

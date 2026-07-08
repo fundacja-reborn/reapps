@@ -722,6 +722,11 @@ async function pullNotes(): Promise<string[]> {
   // from a partial delta page (that would wipe every unchanged note).
   let allIds: Set<string> | null = null;
   let maxUpdatedAt = since ?? '';
+  // Earliest server row we failed to persist across all pages (shadow-index
+  // throw / batched-write failure). The watermark is capped here so the next
+  // pull re-fetches from it instead of skipping it forever. Null when every
+  // row was accounted for (the common path - watermark then advances normally).
+  let earliestUnaccounted: string | null = null;
 
   try {
     do {
@@ -755,9 +760,16 @@ async function pullNotes(): Promise<string[]> {
         syncProgress.set({ done: 0, total });
       }
 
-      const { changed: pageChanged, maxUpdatedAt: pageMax } = await writeNotesPage(data, userId);
+      const {
+        changed: pageChanged,
+        maxUpdatedAt: pageMax,
+        minUnaccounted: pageUnaccounted
+      } = await writeNotesPage(data, userId);
       changed.push(...pageChanged);
       if (pageMax > maxUpdatedAt) maxUpdatedAt = pageMax;
+      if (pageUnaccounted && (earliestUnaccounted === null || pageUnaccounted < earliestUnaccounted)) {
+        earliestUnaccounted = pageUnaccounted;
+      }
       done += data.length;
       syncProgress.set({ done, total: Math.max(total, done) });
 
@@ -800,8 +812,14 @@ async function pullNotes(): Promise<string[]> {
   }
 
   // Advance the delta watermark (server-authoritative, monotonic). Next pull
-  // fetches only rows updated at/after this instant.
-  if (maxUpdatedAt && maxUpdatedAt !== since) writeWatermark(userId, maxUpdatedAt);
+  // fetches only rows updated at/after this instant. Cap at the earliest row we
+  // failed to persist so it is re-fetched next time (`since` is gte-inclusive on
+  // the first page, so a watermark equal to that row's updated_at re-includes
+  // it); otherwise advance to the highest updated_at we saw. `earliestUnaccounted`
+  // is always <= maxUpdatedAt (it is one of the page rows), so this only ever
+  // holds the watermark back, never pushes it forward past unseen rows.
+  const nextWatermark = earliestUnaccounted ?? maxUpdatedAt;
+  if (nextWatermark && nextWatermark !== since) writeWatermark(userId, nextWatermark);
   reconciledThisSession = true;
 
   return changed;
@@ -816,7 +834,7 @@ async function pullNotes(): Promise<string[]> {
 async function writeNotesPage(
   data: ServerNote[],
   userId: string
-): Promise<{ changed: string[]; maxUpdatedAt: string }> {
+): Promise<{ changed: string[]; maxUpdatedAt: string; minUnaccounted: string | null }> {
   // Highest server updated_at in this page (ISO strings sort chronologically).
   // Computed over ALL rows, including ones the sync_version guard skips below -
   // we still saw them at that timestamp, so the next ?since must cover them.
@@ -834,6 +852,16 @@ async function writeNotesPage(
   const notesToWrite: NoteStoredLocal[] = [];
   const tagAdds: Array<{ noteId: string; tagId: string }> = [];
   const tagRemoves: Array<{ noteId: string; tagId: string }> = [];
+  // Server rows we did NOT persist this page (shadow-index derivation threw, or
+  // the batched write dropped them). The delta watermark MUST NOT be advanced
+  // past their updated_at, or the next `?since` pull skips them forever - which
+  // would silently break the "will retry on next successful sync" promise below.
+  // pullNotes caps the watermark at the earliest of these. See guideline 36.
+  const unaccountedUpdatedAts: string[] = [];
+  // updated_at of the fresh server upserts queued for saveMany, used to bound the
+  // watermark conservatively if the batched write reports failures (BatchResult
+  // does not say WHICH rows failed).
+  const freshUpsertUpdatedAts: string[] = [];
 
   const changedResults = await Promise.all(
     (
@@ -919,6 +947,11 @@ async function writeNotesPage(
           `Skipping save of note ${n.id} - shadow indexes could not be derived. Will retry on next successful sync.`,
           err
         );
+        // Not persisted: hold the watermark at/below this row so the next pull
+        // re-fetches it (the retry promise above only holds if we do). Without
+        // this, a crypto-not-ready race during a pull would strand the note stale
+        // forever - the `?since` gate would never re-include it. See guideline 36.
+        unaccountedUpdatedAts.push(n.updated_at);
         return null;
       }
 
@@ -938,6 +971,7 @@ async function writeNotesPage(
         updated_at: n.updated_at
       };
       notesToWrite.push(note);
+      freshUpsertUpdatedAts.push(n.updated_at);
 
       // Rebuild local note-tag associations from metadata_encrypted. Collect the
       // deltas here (read-only) and apply them in a bounded sweep below, off the
@@ -969,6 +1003,13 @@ async function writeNotesPage(
         `pullNotes: ${result.failed}/${notesToWrite.length} note writes failed in batch`,
         { errors: result.errors.slice(0, 3) }
       );
+      // BatchResult carries no row ids, so we cannot tell WHICH upsert failed.
+      // Conservatively hold the watermark at the earliest fresh upsert so the
+      // next pull re-fetches the whole batch (rare - the server ciphertext was
+      // valid when stored; a failure here means local re-encoding/guard).
+      if (freshUpsertUpdatedAts.length > 0) {
+        unaccountedUpdatedAts.push(freshUpsertUpdatedAts.reduce((m, u) => (u < m ? u : m)));
+      }
     }
   }
 
@@ -991,9 +1032,15 @@ async function writeNotesPage(
     );
   }
 
+  const minUnaccounted =
+    unaccountedUpdatedAts.length > 0
+      ? unaccountedUpdatedAts.reduce((m, u) => (u < m ? u : m))
+      : null;
+
   return {
     changed: changedResults.filter((id): id is string => id !== null),
-    maxUpdatedAt
+    maxUpdatedAt,
+    minUnaccounted
   };
 }
 
@@ -1595,37 +1642,30 @@ export function pushNoteDelete(id: string, permanent = false): void {
         await ensureOk(res, `DELETE /api/notes/${id}`);
         if (permanent) return;
 
-        // Server bumps sync_version on soft-delete (since rule 11.e) and returns
-        // the new value. We MUST mirror it locally, otherwise the next pull sees
-        // server=N+1 vs local=N and re-applies the archive state we already have
-        // - harmless but churn. More importantly, future pushes would operate on
-        // stale sync_version and look like conflicts.
-        let serverSyncVersion: number | undefined;
-        try {
-          const body = await res.json();
-          serverSyncVersion = body?.data?.sync_version;
-        } catch {
-          // Old server deploy - no body. Leave sync_version untouched.
-        }
-
+        // Do NOT mirror the server's bumped sync_version onto the local row.
+        // The soft-delete bumps the server version but carries no ciphertext, so
+        // local CONTENT is not refreshed here. If a peer edited this note just
+        // before we archived it, copying the server version onto our stale
+        // content produces "server-version + differing ciphertext", which rule-10
+        // reconcile misreads as an unpushed LOCAL edit and re-pushes over the
+        // peer's newer content - silent data loss (audit 2026-07-08 finding A).
+        // Leaving sync_version at its pre-delete value makes the next pull see
+        // server > local and adopt the server's current content + archive state
+        // via the strict-greater gate, so the peer edit survives. Cost: one
+        // benign re-adopt (the churn the mirror was added to avoid); a later
+        // content push re-syncs the version anyway. The server still bumps its
+        // own version so OTHER devices pick up the archive state (rule 11.e).
+        //
         // Intent-check: if the user restored the note while DELETE was in flight,
         // `current.is_archived` will be false. Marking 'synced' would strand the
         // local restore - chain a pushNoteRestore instead. See guideline 36 rule 11.b.
         const current = await noteStore.get(id);
         if (!current) return;
         if (current.is_archived) {
-          await noteStore.save({
-            ...current,
-            sync_status: 'synced',
-            sync_version: serverSyncVersion ?? current.sync_version
-          });
+          await noteStore.save({ ...current, sync_status: 'synced' });
         } else {
           logger.debug(`Note ${id} restored during delete push - chaining restore`);
-          await noteStore.save({
-            ...current,
-            sync_status: 'pending',
-            sync_version: serverSyncVersion ?? current.sync_version
-          });
+          await noteStore.save({ ...current, sync_status: 'pending' });
           pushNoteRestore(id);
         }
       },
@@ -1652,33 +1692,23 @@ export function pushNoteRestore(id: string): void {
         // reasoning as pushNoteDelete. See guideline 36 rule 14.
         await ensureOk(res, `POST /api/notes/${id}/restore`);
 
-        // Server bumps sync_version on restore (since rule 11.e) and returns it.
-        // Mirror locally; fall back to preserving the current value on old deploys.
-        let serverSyncVersion: number | undefined;
-        try {
-          const body = await res.json();
-          serverSyncVersion = body?.data?.sync_version;
-        } catch {
-          // Old server deploy - no body.
-        }
-
+        // Do NOT mirror the server's bumped sync_version (same reasoning as
+        // pushNoteDelete): restore bumps the server version but returns no
+        // ciphertext, so leaving local sync_version at its pre-restore value lets
+        // the next pull adopt the server's current content via strict-greater,
+        // instead of an equal-version reconcile re-pushing possibly-stale local
+        // content over a peer edit (audit 2026-07-08 finding A). The server still
+        // bumps so other devices pick up the un-archive (rule 11.e).
+        //
         // Intent-check: if the user re-archived the note while /restore was in
         // flight, chain a pushNoteDelete to catch up. See guideline 36 rule 11.b.
         const current = await noteStore.get(id);
         if (!current) return;
         if (!current.is_archived) {
-          await noteStore.save({
-            ...current,
-            sync_status: 'synced',
-            sync_version: serverSyncVersion ?? current.sync_version
-          });
+          await noteStore.save({ ...current, sync_status: 'synced' });
         } else {
           logger.debug(`Note ${id} re-archived during restore push - chaining delete`);
-          await noteStore.save({
-            ...current,
-            sync_status: 'pending',
-            sync_version: serverSyncVersion ?? current.sync_version
-          });
+          await noteStore.save({ ...current, sync_status: 'pending' });
           pushNoteDelete(id);
         }
       },
