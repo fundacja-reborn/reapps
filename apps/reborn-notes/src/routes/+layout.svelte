@@ -10,6 +10,7 @@
   import { shareDeepLinkToRoute } from '$lib/utils/deep-link';
   import { base } from '$app/paths';
   import { page } from '$app/stores';
+  import { afterNavigate } from '$app/navigation';
   import { initializeStorage, isDatabaseInitialized } from '@reborn/storage';
   import { cryptoManager } from '@reborn/crypto';
   import { getSettings } from '$lib/utils/app-settings';
@@ -221,6 +222,43 @@
     runSync().catch(() => {});
   });
 
+  // ── Cross-device freshness: "user is active" pull triggers ──────────────
+  // One shared 30s cooldown for both activity triggers below (tab-return
+  // visibility + in-app navigation), so a nav right after a tab-return - or a
+  // burst of navigations - coalesces into a single delta pull instead of
+  // hammering the server. Push-before-pull with the same auth/online guards as
+  // the periodic interval; a pure delta pull (no forced reconcile), cheap on
+  // large accounts (guideline 36 rule 18.e).
+  let lastActivitySyncAt = 0;
+  const ACTIVITY_SYNC_DEBOUNCE_MS = 30_000;
+  function activitySync(): void {
+    if (!browser) return;
+    if (!navigator.onLine) return;
+    if (!($authStore.isAuthenticated && $authStore.hasE2E)) return;
+    const now = Date.now();
+    if (now - lastActivitySyncAt < ACTIVITY_SYNC_DEBOUNCE_MS) return;
+    lastActivitySyncAt = now;
+    pushPendingItems().catch(() => {});
+    pullFromServer()
+      .then(async (synced) => {
+        if (synced) await refreshStoresAfterPull();
+      })
+      .catch(() => {});
+  }
+
+  // Pull on in-app navigation (web + native). SvelteKit client-side navigation
+  // fires no visibilitychange, so without this an actively-used tab/app shows a
+  // peer device's edits only after the 5-min interval - the user navigates
+  // around (opens a folder, switches notes) but never tab-switches. Opening a
+  // new view is a strong "I'm looking now" signal. Cooldown-gated by activitySync
+  // (shared with tab-return). Skip the initial load (`from === null`): the boot
+  // sync in onMount already covers it. Guard-gated inside activitySync, so a nav
+  // on an auth/lock screen is a no-op. See guideline 36.
+  afterNavigate((nav) => {
+    if (nav.from === null) return;
+    activitySync();
+  });
+
   onMount(() => {
     if (!browser) return;
 
@@ -390,39 +428,35 @@
 
     // Tab-return / foreground sync (web + installed PWA). On mobile the user
     // leaves and re-enters the app dozens of times a day; without this they see
-    // stale data (a peer device's edits) until the 5-min interval fires. Mirrors
-    // the interval body exactly: same push-before-pull ordering and auth/online
-    // guards, and stays a pure delta pull (no forced reconcile) so it's cheap on
-    // large accounts - a hard delete from another device still lands on cold
-    // start / manual / reconnect (Variant B trade-off, guideline 36 rule 18.e).
+    // stale data (a peer device's edits) until the 5-min interval fires. Routes
+    // through activitySync (shared 30s cooldown with the in-app navigation sync).
     //
     // Native drives the same refresh through platform.lifecycle.onResume below
     // (visibilitychange is unreliable under capacitor://), so this listener is
-    // dead-code-eliminated from the native bundle to avoid a double sync on
-    // resume. Debounced 30s so rapid tab flips don't spam the server (mirrors
-    // reborn-task's tab-return sync).
+    // dead-code-eliminated from the native bundle to avoid a double sync on resume.
     let offForegroundSync: (() => void) | undefined;
     if (!__REBORN_NATIVE__) {
-      let lastForegroundSyncAt = 0;
-      const FOREGROUND_SYNC_DEBOUNCE_MS = 30_000;
       const onForegroundSync = () => {
         if (document.visibilityState !== 'visible') return;
-        if (!navigator.onLine) return;
-        if (!($authStore.isAuthenticated && $authStore.hasE2E)) return;
-        const now = Date.now();
-        if (now - lastForegroundSyncAt < FOREGROUND_SYNC_DEBOUNCE_MS) return;
-        lastForegroundSyncAt = now;
-        // fire-and-forget, same as the interval above
-        pushPendingItems().catch(() => {});
-        pullFromServer()
-          .then(async (synced) => {
-            if (synced) await refreshStoresAfterPull();
-          })
-          .catch(() => {});
+        activitySync();
       };
       document.addEventListener('visibilitychange', onForegroundSync);
       offForegroundSync = () => document.removeEventListener('visibilitychange', onForegroundSync);
     }
+
+    // In-app activity sync (web + native). The notes shell is a single route
+    // ('/'), so switching notes (activeNoteId store) or IconNav sections
+    // (activeSection page state, plus folder/tag/saved-search sub-selections)
+    // changes STATE, not the URL - afterNavigate and visibilitychange never fire
+    // for them, so those views showed a peer's edits only after the 5-min
+    // interval. A capture-phase pointerdown on the document is a robust "user is
+    // actively using the app" signal that can't miss a particular view-state
+    // variable, and it fires under capacitor:// too. Cooldown-gated by
+    // activitySync (shared 30s), so a burst of taps coalesces into a single delta
+    // pull; passive + capture so it never interferes with any handler. See
+    // guideline 36.
+    const onPointerActivity = () => activitySync();
+    document.addEventListener('pointerdown', onPointerActivity, { capture: true, passive: true });
 
     // Native: there is no Service Worker under capacitor://, so returning to the
     // foreground (App 'resume') drives the sync that the SW + online-transition
@@ -485,6 +519,7 @@
       clearTimeout(timeoutId);
       clearInterval(syncInterval);
       offForegroundSync?.();
+      document.removeEventListener('pointerdown', onPointerActivity, { capture: true });
       if (updateGateTimer) clearTimeout(updateGateTimer);
       unsubscribeNetwork();
       cleanupFolderSync();
