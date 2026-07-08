@@ -417,16 +417,35 @@ export async function deleteNote(id: string): Promise<void> {
     updatedAt: new Date().toISOString()
   });
 
-  // Note never reached the server - skip DELETE and mark as synced locally.
-  if (!existing || existing.sync_status === 'pending') {
+  // Note never reached the server - skip the DELETE and mark synced locally.
+  // Gate on sync_version === 0 (the authoritative "on the server yet?" signal
+  // used across the sync layer), NOT sync_status: a note that IS on the server
+  // but currently 'pending' (an unpushed edit) must still be soft-DELETE'd,
+  // otherwise the server keeps it active and the next pull's archive reconcile
+  // (rule 11.e) un-archives it straight back out of trash. See guideline 36.
+  if (!existing || (existing.sync_version ?? 0) === 0) {
     const archived = await noteStore.get(id);
     if (archived) await noteStore.save({ ...archived, sync_status: 'synced' });
     return;
   }
 
-  // Mark pending so pushPendingItems can retry if pushNoteDelete fails.
+  // Mark pending so pushPendingItems can retry if the push fails.
   const archived = await noteStore.get(id);
   if (archived) await noteStore.save({ ...archived, sync_status: 'pending' });
+
+  // If the note carried an unpushed edit (it was 'pending' before this delete),
+  // PATCH the latest content BEFORE the soft-delete: DELETE sends no ciphertext,
+  // so without this the trashed server copy keeps its pre-edit content and the
+  // next pull adopts that, silently dropping the edit. serializePerEntity keeps
+  // the DELETE ordered after the PATCH (rule 11.a / 11.g pattern). See guideline 36.
+  if (existing.sync_status === 'pending') {
+    pushNoteUpdate(id, {
+      title_encrypted: existing.title_encrypted,
+      content_encrypted: existing.content_encrypted,
+      folder_id: existing.folder_id ?? null,
+      metadata_encrypted: existing.metadata_encrypted ?? undefined
+    });
+  }
   pushNoteDelete(id);
 }
 
@@ -675,9 +694,15 @@ export async function emptyTrash(): Promise<number> {
     noteNavHistory.remove(n.id);
   }
 
-  // Push permanent deletes to server (fire-and-forget, skip never-synced notes)
+  // Push permanent deletes to server (fire-and-forget). Gate on sync_version > 0
+  // (the authoritative "reached the server" signal, same as pushPendingItems'
+  // archived retry), NOT sync_status: a trashed note whose soft-delete is still
+  // 'pending' IS on the server, and skipping its permanent DELETE would leave the
+  // server row while the local row was just hard-deleted above - the next pull
+  // then re-adopts it and the note resurrects in trash. A never-synced note
+  // (sync_version === 0) has nothing to delete remotely. See guideline 36.
   for (const n of archived) {
-    if (n.sync_status !== 'pending') {
+    if ((n.sync_version ?? 0) > 0) {
       pushNoteDelete(n.id, true);
     }
   }
