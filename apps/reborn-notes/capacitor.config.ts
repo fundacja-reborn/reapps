@@ -53,7 +53,20 @@ const config: CapacitorConfig = {
     cleartext: process.env.CAP_DEV_CLEARTEXT === '1'
   },
   plugins: {
-    CapacitorHttp: { enabled: true }
+    CapacitorHttp: { enabled: true },
+    // Hold the system splash past the activity's first frame so a cold start
+    // goes splash -> populated UI, with no intermediate #app-loading spinner
+    // (guideline 61, third cold-start phase). The web layer hides it early at
+    // appReady/initTimeout (src/lib/utils/native-splash.ts) - typically well
+    // under launchShowDuration. launchAutoHide stays TRUE on purpose: the
+    // generous duration is the native dead-man's switch when the JS bundle
+    // never executes (corrupt install / webview crash); launchAutoHide: false
+    // has no native fallback and would strand the splash forever.
+    SplashScreen: {
+      launchShowDuration: 6000,
+      launchAutoHide: true,
+      launchFadeOutDuration: 200
+    }
   }
 };
 

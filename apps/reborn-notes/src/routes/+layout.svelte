@@ -39,6 +39,7 @@
   import LocalModeWelcome from '$lib/components/LocalModeWelcome.svelte';
   import UpdateRequiredGate from '$lib/components/layout/UpdateRequiredGate.svelte';
   import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
+  import { hideNativeSplash } from '$lib/utils/native-splash';
   import { initAppLock, shouldLockOnResume } from '$lib/services/app-lock.service';
   import { createLogger } from '@reborn/utils';
   import type { ReleasePlatform } from '@reborn/i18n';
@@ -69,6 +70,18 @@
   // but measuring the wrapper sums them correctly if both ever show. 0 when none.
   let bannerStackHeight = $state(0);
   let hasTriggeredInitialSync = $state(false);
+
+  // Native: drop the held system splash the moment the shell can paint -
+  // appReady (populated first paint) or the 2s initTimeout net, i.e. exactly
+  // the condition that mounts the app shell below. Effects run after the DOM
+  // update, so by the time hide() crosses the bridge the shell (or the
+  // auth-guard redirect target) is already rendering; the config fade-out
+  // masks the handoff. If this never runs (JS dead), the config's
+  // launchShowDuration auto-hide is the fallback. See native-splash.ts.
+  $effect(() => {
+    if (!__REBORN_NATIVE__) return;
+    if (appReady || initTimeout) void hideNativeSplash();
+  });
 
   // Auth guard - blocked until onMount finishes initialization (appReady).
   // Uses untrack on goto() to prevent reactive dependency on navigation result.
