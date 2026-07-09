@@ -9,6 +9,8 @@
 -->
 <script lang="ts">
   import { AlertTriangle } from '@lucide/svelte';
+  import { slide } from 'svelte/transition';
+  import { prefersReducedMotion } from 'svelte/motion';
   import { t } from '@reborn/i18n';
   import ReAuthModal from './ReAuthModal.svelte';
   import type { ReAuthResult } from './reauth-types';
@@ -35,7 +37,14 @@
 </script>
 
 {#if visible}
-  <div class="sticky top-0 z-50">
+  <!-- slide: in reborn-notes this banner sits in the measured stack feeding
+       --rn-banner-h (100dvh layouts subtract it), so an instant mount/unmount
+       snaps the whole UI by the banner height. Animating the height lets the
+       ResizeObserver-based measurement follow smoothly. -->
+  <div
+    transition:slide={{ duration: prefersReducedMotion.current ? 0 : 200 }}
+    class="sticky top-0 z-50"
+  >
     <!-- pt: max() extends the banner's red background under the iOS notch /
          Dynamic Island so the text starts below it (env() is 0 elsewhere) -->
     <button
