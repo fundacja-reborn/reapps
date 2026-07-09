@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark override for the cold-start splash window background (see
+         values/colors.xml). The app's dark background is oklch(0.145 0 0) =
+         #0a0a0a (packages/ui global.css); matching it here means a system-dark
+         launch paints the splash in the same near-black the loader and content
+         use, killing the light to dark flash for dark-mode users. Only
+         splash_background is overridden; every other color falls back to
+         values/colors.xml. -->
+    <color name="splash_background">#0a0a0a</color>
+</resources>

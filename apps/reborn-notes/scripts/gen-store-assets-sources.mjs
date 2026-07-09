@@ -15,7 +15,7 @@
  *                              ~61% adaptive safe zone)
  *   icon-background.png  1024  solid brand yellow (adaptive background)
  *   splash.png           2732  brand circle centered on white
- *   splash-dark.png      2732  brand circle centered on near-black (#1B1B1B,
+ *   splash-dark.png      2732  brand circle centered on near-black (#0A0A0A,
  *                              matches the app's dark --background)
  *
  * Also renders the Play Store feature graphic (not a @capacitor/assets
@@ -42,9 +42,11 @@ const brandSvgPath = resolve(appDir, 'static/icons/icon.svg');
 const wordmarkSvgPath = resolve(appDir, 'static/logo-black.svg');
 const outDir = resolve(appDir, 'assets');
 const SPLASH_LIGHT_BG = '#ffffff';
-// App dark theme --background is oklch(0.145 0 0) (packages/ui global.css);
-// #1B1B1B is its hex neighborhood - close enough for a sub-second splash.
-const SPLASH_DARK_BG = '#1b1b1b';
+// App dark theme --background is oklch(0.145 0 0) = #0a0a0a (packages/ui
+// global.css). Match it exactly so the native splash, the app.html loader, the
+// Android windowSplashScreenBackground @color and the loaded app all sit on the
+// same near-black - no brightness staircase on a system-dark cold start.
+const SPLASH_DARK_BG = '#0a0a0a';
 const SPLASH_SIZE = 2732;
 const SPLASH_LOGO_SIZE = 600;
 const ICON_SIZE = 1024;
