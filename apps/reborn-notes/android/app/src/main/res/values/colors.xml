@@ -5,4 +5,15 @@
          edge-to-edge yet). Keep in sync with the PWA theme-color meta in
          src/app.html and the in-app band in +layout.svelte (#FFD43B). -->
     <color name="brand_status_bar">#FFD43B</color>
+
+    <!-- Cold-start splash window background (light). On API 31+ the platform
+         splash paints ?attr/windowSplashScreenBackground (the full-screen
+         @drawable/splash PNG is inert there - the platform centers the app
+         icon instead), so this color is what a light-mode launch shows behind
+         the icon. values-night/colors.xml overrides it to the app's dark
+         surface. Matches the app's real background token (#ffffff light /
+         #0a0a0a dark) and the loader background unified in app.html, so the
+         splash / loader / content hand-off no longer steps through mismatched
+         shades. -->
+    <color name="splash_background">#ffffff</color>
 </resources>

@@ -320,18 +320,35 @@
       //    boot before the user has unlocked their master key. See guideline 59.
       sharesStore.init();
 
-      // 4. Mark app as ready - unblocks auth guard $effect
-      appReady = true;
+      // 4. Refresh base stores, and for a returning unlocked user build the
+      //    NoteIndex + hydrate notesStore, all BEFORE flipping appReady. The
+      //    appReady gate both unblocks the auth-guard $effect AND mounts the
+      //    shell, so mounting it against an empty index paints a momentary
+      //    "No notes" empty state for a user who actually has notes - the loader
+      //    hands control to an empty shell. Building first makes the shell paint
+      //    populated. The unauth / locked paths build nothing and fall straight
+      //    through to appReady, so the guard still redirects them to
+      //    login/lock/unlock without added delay. try/finally guarantees
+      //    appReady even if a refresh/build rejects, so a storage error can't
+      //    strand the boot behind the loader (the 2s initTimeout is only the
+      //    last-resort net). See guideline 61 (Fix 7).
+      try {
+        await Promise.all([foldersStore.refresh(), tagsStore.refresh(), savedSearchesStore.refresh()]);
+        if ($authStore.isAuthenticated && $authStore.hasE2E) {
+          hasTriggeredInitialSync = true; // prevent $effect from duplicating pull
+          // Build NoteIndex (data already in IndexedDB from init above), then
+          // hydrate the list synchronously so the shell mounts with notes.
+          await noteIndex.build();
+          notesStore.refresh();
+        }
+      } finally {
+        // 5. Mark app as ready - unblocks auth guard $effect + mounts the shell.
+        appReady = true;
+      }
 
-      // Refresh stores now that the database is initialized
-      await Promise.all([foldersStore.refresh(), tagsStore.refresh(), savedSearchesStore.refresh()]);
-
-      // Pull sync from server (if authenticated and E2E unlocked) - then refresh local stores
+      // 6. Background sync for an authenticated + E2E user - runs after the
+      //    shell is up (the index it needs was already built above).
       if ($authStore.isAuthenticated && $authStore.hasE2E) {
-        hasTriggeredInitialSync = true; // prevent $effect from duplicating pull
-        // Build NoteIndex in parallel with folders/tags (data already in IndexedDB from init above)
-        await noteIndex.build();
-        notesStore.refresh();
         // Push pending offline edits BEFORE pull - guarantees local unsynced
         // changes reach the server before we merge the remote state in.
         pushPendingItems()

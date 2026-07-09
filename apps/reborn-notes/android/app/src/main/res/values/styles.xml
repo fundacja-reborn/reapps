@@ -26,6 +26,14 @@
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <!-- API 31+: the platform splash ignores the @drawable/splash PNG and
+             paints windowSplashScreenBackground behind a centered app icon.
+             Point it at the DayNight @color so a system-dark cold start opens
+             on the app's dark surface instead of the default light window (the
+             @drawable night PNGs only cover the pre-31 compat path). The
+             androidx core-splashscreen attr (app namespace, no android:) drives
+             both the pre-31 compat window and the 31+ platform splash. -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
         <!-- Same branding for the cold-start splash window (BridgeActivity
              swaps to AppTheme.NoActionBar in onCreate). -->
         <item name="android:statusBarColor">@color/brand_status_bar</item>
