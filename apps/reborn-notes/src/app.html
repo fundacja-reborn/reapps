@@ -30,6 +30,12 @@
 					var t=localStorage.getItem('reborn-notes-theme');
 					var d=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);
 					if(d)document.documentElement.classList.add('dark');
+					// Marker: the inline theme script ran. On native this whole
+					// <script> is stripped (gen-native-template.mjs) so the marker
+					// is absent, which arms the prefers-color-scheme fallback in the
+					// <style> below. On web it is always present, so that fallback
+					// stays inert and the saved-theme choice wins.
+					document.documentElement.classList.add('theme-resolved');
 				}catch(e){}
 			})()
 		</script>
@@ -37,7 +43,7 @@
 	<!-- htmlhint inline-style-disabled:false -->
 	<!-- webhint-disable no-inline-styles -->
 	<body data-sveltekit-preload-data="hover">
-		<!-- Initial loading indicator — styled via inline <style> block below so
+		<!-- Initial loading indicator - styled via inline <style> block below so
 		     it displays immediately, before the app's CSS bundle loads. The
 		     inline dark-mode script in <head> runs BEFORE this renders, so the
 		     .dark class is already set on <html> when the selectors below apply.
@@ -60,7 +66,7 @@
 				display: flex;
 				align-items: center;
 				justify-content: center;
-				background: #f9fafb;
+				background: #ffffff;
 				color: #6b7280;
 				font-family: system-ui;
 			}
@@ -77,12 +83,27 @@
 				animation: spin 1s linear infinite;
 			}
 			.dark #app-loading {
-				background: #252525;
+				background: #0a0a0a;
 				color: #a3a3a3;
 			}
 			.dark #app-loading .app-loading__spinner {
 				border-color: #404040;
 				border-top-color: #fbc02d;
+			}
+			/* Native cold-start fallback: on native the inline theme script above
+			   is stripped, so .dark is not set at first paint. This @media rule
+			   (kept in the native template) still paints a dark loader on a
+			   system-dark launch. On web the script adds .theme-resolved, so
+			   html:not(.theme-resolved) never matches and the saved theme wins. */
+			@media (prefers-color-scheme: dark) {
+				html:not(.theme-resolved) #app-loading {
+					background: #0a0a0a;
+					color: #a3a3a3;
+				}
+				html:not(.theme-resolved) #app-loading .app-loading__spinner {
+					border-color: #404040;
+					border-top-color: #fbc02d;
+				}
 			}
 			/* Hide loading indicator when app is ready */
 			body:has(.svelte-app-ready) #app-loading {
