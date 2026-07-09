@@ -11,7 +11,6 @@
 	import { syncService } from '$lib/services/sync.service';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { SessionExpiredBanner, RequireSessionModal } from '@reborn/ui';
-	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 	import LocalModeWelcome from '$lib/components/LocalModeWelcome.svelte';
 	import { Toaster, WhatsNewDialog } from '@reborn/ui';
 	import type { Snippet } from 'svelte';
@@ -312,6 +311,12 @@
 	<link rel="icon" type="image/svg+xml" href="{base}/favicon.svg" />
 </svelte:head>
 
+<!-- No {:else} branch: while the session is not yet initialized we render
+     nothing, so the static #app-loading overlay from app.html stays visible
+     until the content wrapper below (with .svelte-app-ready) mounts and hides
+     it via `body:has(.svelte-app-ready) #app-loading`. A second Svelte loader
+     here used to swap #app-loading out for a differently styled spinner,
+     producing a visible mid-boot flash. -->
 {#if $session?.isInitialized || initTimeout || isPublicShareRoute}
 	<SessionExpiredBanner
 		visible={$sessionExpired && navigator.onLine}
@@ -339,6 +344,4 @@
 		platform="web"
 		fullChangelogHref={changelogHref}
 	/>
-{:else}
-	<LoadingScreen />
 {/if}

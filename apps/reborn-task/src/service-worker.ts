@@ -120,12 +120,12 @@ function buildOfflineHtml(locale: SupportedLocale): string {
 	return `<!DOCTYPE html>
 <html lang="${locale}"><head><meta charset="utf-8"><title>${s.title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<style>html,body{margin:0;height:100%;font-family:system-ui;background:#f9fafb;color:#374151;display:flex;align-items:center;justify-content:center}
+<style>html,body{margin:0;height:100%;font-family:system-ui;background:#ffffff;color:#374151;display:flex;align-items:center;justify-content:center}
 .box{max-width:320px;text-align:center;padding:24px}
 h1{font-size:18px;margin:0 0 8px;font-weight:600}
 p{font-size:14px;line-height:1.5;margin:0 0 16px;color:#6b7280}
 button{appearance:none;border:0;border-radius:8px;padding:10px 16px;background:#43a047;color:#fff;font-size:14px;font-weight:500;cursor:pointer}
-@media (prefers-color-scheme: dark){html,body{background:#252525;color:#e5e7eb}p{color:#a3a3a3}}
+@media (prefers-color-scheme: dark){html,body{background:#0a0a0a;color:#e5e7eb}p{color:#a3a3a3}}
 </style></head><body><div class="box"><h1>${s.heading}</h1>
 <p>${s.description}</p>
 <button onclick="location.reload()">${s.reload}</button></div></body></html>`;

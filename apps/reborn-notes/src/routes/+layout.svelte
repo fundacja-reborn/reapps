@@ -33,7 +33,6 @@
   import { initI18n, setLocale, locale } from '$lib/stores/i18n.store';
   import { reAuthenticate, verifyTotpForReauth } from '$lib/services/notes-auth.service';
   import { SessionExpiredBanner, RequireSessionModal } from '@reborn/ui';
-  import LoadingScreen from '$lib/components/LoadingScreen.svelte';
   import InitialSyncBanner from '$lib/components/sync/InitialSyncBanner.svelte';
   import PeriodicDuplicatesDialog from '$lib/components/notes/PeriodicDuplicatesDialog.svelte';
   import PeriodicFolderDuplicatesDialog from '$lib/components/notes/PeriodicFolderDuplicatesDialog.svelte';
@@ -614,7 +613,13 @@
 {#if appReady || initTimeout}
   <!-- `svelte-app-ready` lets the inline loading indicator in app.html hide
        itself via `body:has(.svelte-app-ready) #app-loading`. `display: contents`
-       keeps the wrapper transparent to the layout flow. -->
+       keeps the wrapper transparent to the layout flow.
+
+       There is intentionally no {:else} branch: while !appReady we render
+       nothing, so the static #app-loading overlay from app.html stays visible
+       until content mounts. A second Svelte loader here used to swap #app-loading
+       out for a differently styled spinner (different color and background),
+       producing a visible mid-boot flash. -->
   <div
     class="svelte-app-ready"
     style="display: contents; --rn-banner-h: {bannerStackHeight}px"
@@ -648,8 +653,6 @@
       <UpdateRequiredGate />
     {/if}
   </div>
-{:else}
-  <LoadingScreen />
 {/if}
 
 {#if __REBORN_NATIVE__}
