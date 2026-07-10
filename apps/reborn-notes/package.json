@@ -46,6 +46,7 @@
     "@capacitor/ios": "8.4.0",
     "@capacitor/network": "8.0.1",
     "@capacitor/share": "8.0.1",
+    "@capacitor/splash-screen": "8.0.1",
     "@codemirror/autocomplete": "6.20.3",
     "@codemirror/commands": "6.10.3",
     "@codemirror/lang-css": "6.3.1",
