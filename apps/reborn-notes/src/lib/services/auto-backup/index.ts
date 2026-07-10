@@ -41,15 +41,34 @@ export async function runNotesAutoBackupIfDue(
   // The backup decrypts account data to re-wrap it portably; needs the key.
   if (!cryptoManager.isInitialized()) return { status: 'skipped', reason: 'locked' };
 
+  // Sync the vault with the account-scoped wrapped phrase BEFORE reading any
+  // config: this hydrates a fresh/wiped device after login (the settings pull
+  // at unlock runs earlier in the same runSync), picks up a rotation made on
+  // another device, and publishes the phrase of installs that predate account
+  // scoping. Runs even when auto-backup is disabled here, so the settings
+  // page later finds the phrase ready. Never throws.
+  try {
+    const { reconcileRecoveryPhrase } = await import('./phrase-sync');
+    await reconcileRecoveryPhrase();
+  } catch (err) {
+    logger.warn('Recovery phrase reconcile before backup failed:', err);
+  }
+
   const config = loadAutoBackupConfig();
-  if (!config.enabled) return { status: 'skipped', reason: 'disabled' };
+  if (!config.enabled) {
+    // Backup was turned off outside the settings page's own reminder wiring
+    // (e.g. a config wipe) - make sure no stale "backup overdue" nudge fires.
+    const { cancelBackupReminders } = await import('./reminder');
+    void cancelBackupReminders();
+    return { status: 'skipped', reason: 'disabled' };
+  }
 
   // Import the native-only adapters lazily so the web bundle never pulls the
   // secure-storage / FolderFs bridges (they throw on web by construction).
   const { createNativeFolderDestination } = await import('./folder-destination');
   const { loadRecoveryPhrase } = await import('./recovery-phrase-vault');
 
-  return runAutoBackup({
+  const outcome = await runAutoBackup({
     app: 'reborn-notes',
     config,
     state: loadAutoBackupState(),
@@ -62,6 +81,14 @@ export async function runNotesAutoBackupIfDue(
     saveState: async (next) => saveAutoBackupState(next),
     verifyBackup
   });
+
+  // Re-plan the overdue reminders from the just-persisted state: a successful
+  // run pushes them ~a day out, so they only ever fire when the app stays
+  // closed past the cadence. Internally best-effort, never affects the outcome.
+  const { syncBackupReminders } = await import('./reminder');
+  void syncBackupReminders();
+
+  return outcome;
 }
 
 /**
@@ -100,8 +127,40 @@ export async function clearAutoBackupState(): Promise<void> {
     // Lazy import keeps the native secure-storage bridge out of the web bundle.
     const { clearRecoveryPhrase } = await import('./recovery-phrase-vault');
     await clearRecoveryPhrase();
+    // No backup will run for the next user until they set it up themselves -
+    // drop the pending "backup overdue" nudges (own try/catch inside).
+    const { cancelBackupReminders } = await import('./reminder');
+    await cancelBackupReminders();
   } catch (err) {
     logger.error('Failed to clear auto-backup state:', err);
+  }
+}
+
+/**
+ * Carry the auto-backup setup across the local→account upgrade: the upgrade
+ * swaps `autoBackupScopeId()` from the local pseudo id to the account id, so
+ * without this the config/state (localStorage) and phrase (OS vault) written
+ * under the local id would be orphaned and the upgraded account would start
+ * from a disabled, phraseless default - forcing a full re-setup on the very
+ * device that already has a valid folder grant and phrase. Same device, same
+ * human: carrying it over is safe. Call AFTER the account credentials are in
+ * localStorage (so pushes see the account) and BEFORE any backup run.
+ * Best-effort: a failure only costs the user a re-setup, like before.
+ */
+export async function migrateAutoBackupScope(
+  fromScopeId: string | null,
+  toScopeId: string
+): Promise<void> {
+  if (!fromScopeId || fromScopeId === toScopeId) return;
+  try {
+    const { migrateAutoBackupPrefsScope } = await import('./prefs');
+    migrateAutoBackupPrefsScope(fromScopeId, toScopeId);
+    if (__REBORN_NATIVE__) {
+      const { migrateRecoveryPhraseScope } = await import('./recovery-phrase-vault');
+      await migrateRecoveryPhraseScope(fromScopeId, toScopeId);
+    }
+  } catch (err) {
+    logger.error('Failed to migrate auto-backup scope on account upgrade:', err);
   }
 }
 

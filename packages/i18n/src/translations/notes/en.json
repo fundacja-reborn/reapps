@@ -930,6 +930,8 @@
       "phrase_set": "Recovery phrase is set.",
       "phrase_view_btn": "Show phrase again",
       "phrase_hide_btn": "Hide",
+      "phrase_synced_hint": "The phrase is kept in your account in encrypted form - it syncs to your other devices and survives logging out. Your written copy remains the only recovery if you lose access to your account.",
+      "phrase_updated_notice": "The recovery phrase was updated from your account (changed on another device). View the current phrase and update your written copy - backups from now on use the new phrase.",
       "folder_heading": "Backup folder",
       "folder_intro": "Choose where the encrypted backup files are saved.",
       "folder_pick_btn": "Choose folder",
@@ -947,7 +949,10 @@
       "now_done": "Backup saved.",
       "now_nothing": "Nothing to back up right now.",
       "now_failed": "Backup failed: {error}",
-      "cadence_note": "Backups run automatically when you open the app, at most once a day."
+      "cadence_note": "Backups run automatically when you open the app, at most once a day.",
+      "reminder_title": "Automatic backup is due",
+      "reminder_body": "Open the app to create a fresh encrypted copy of your notes.",
+      "reminder_hint": "If a backup becomes overdue, a notification will remind you to open the app."
     },
     "export_import": {
       "title": "Export & Import",

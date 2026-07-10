@@ -10,6 +10,7 @@
   } from '@reborn/ui';
   import { KeyRound, FolderOpen, AlertTriangle, Copy, Check, ShieldCheck } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
+  import { localOnly } from '$lib/stores/sync-status.store';
   import { IS_NATIVE } from '$lib/utils/native-client';
   import { copyText } from '$lib/utils/clipboard';
   import { generateRecoveryPhrase } from '@reborn/crypto';
@@ -22,12 +23,19 @@
     DEFAULT_NOTES_AUTO_BACKUP_CONFIG,
     type NotesAutoBackupConfig
   } from '$lib/services/auto-backup';
+  import {
+    hasPhraseChangedNotice,
+    clearPhraseChangedNotice
+  } from '$lib/services/auto-backup/prefs';
 
   const supported = IS_NATIVE;
 
   let cfg = $state<NotesAutoBackupConfig>({ ...DEFAULT_NOTES_AUTO_BACKUP_CONFIG });
   let bstate = $state<AutoBackupState>({ lastBackupAt: null, lastError: null });
   let phraseSet = $state(false);
+  // The vault phrase was replaced from the account (rotation on another
+  // device) - the user must re-view it so their written kit stays current.
+  let phraseChanged = $state(false);
 
   // The 12 words currently on screen (after generate, or while viewing). null = hidden.
   let shownPhrase = $state<string | null>(null);
@@ -48,8 +56,14 @@
     if (!supported) return;
     cfg = loadAutoBackupConfig();
     bstate = loadAutoBackupState();
+    // Hydrate the vault from the account-scoped wrapped copy first, so a
+    // phrase enabled on another device (or before a logout) shows up as set
+    // here instead of prompting for a brand-new one. Never throws.
+    const { reconcileRecoveryPhrase } = await import('$lib/services/auto-backup/phrase-sync');
+    await reconcileRecoveryPhrase();
     const { loadRecoveryPhrase } = await import('$lib/services/auto-backup/recovery-phrase-vault');
     phraseSet = Boolean(await loadRecoveryPhrase());
+    phraseChanged = hasPhraseChangedNotice();
   });
 
   function generate() {
@@ -73,8 +87,10 @@
 
   async function confirmSaved() {
     if (!shownPhrase || !confirmChecked) return;
-    const { saveRecoveryPhrase } = await import('$lib/services/auto-backup/recovery-phrase-vault');
-    await saveRecoveryPhrase(shownPhrase);
+    // Writes the OS vault AND publishes the wrapped copy to synced settings,
+    // making the phrase account-scoped (survives logout, reaches other devices).
+    const { storeRecoveryPhrase } = await import('$lib/services/auto-backup/phrase-sync');
+    await storeRecoveryPhrase(shownPhrase);
     phraseSet = true;
     shownPhrase = null;
     phraseIsNew = false;
@@ -85,6 +101,12 @@
     const { loadRecoveryPhrase } = await import('$lib/services/auto-backup/recovery-phrase-vault');
     shownPhrase = await loadRecoveryPhrase();
     phraseIsNew = false;
+    // Viewing the current phrase resolves the "changed on another device"
+    // notice - the user can now bring their written kit up to date.
+    if (phraseChanged) {
+      clearPhraseChangedNotice();
+      phraseChanged = false;
+    }
   }
 
   function hidePhrase() {
@@ -101,10 +123,18 @@
     saveAutoBackupConfig(cfg);
   }
 
-  function toggleEnabled() {
+  async function toggleEnabled() {
     if (!cfg.enabled && !canEnable) return;
     cfg.enabled = !cfg.enabled;
     saveAutoBackupConfig(cfg);
+    // Overdue reminders follow the toggle. Enabling is the one moment the OS
+    // notification prompt has obvious context; a denial only mutes reminders,
+    // the backups themselves are unaffected.
+    const { ensureReminderPermission, syncBackupReminders } = await import(
+      '$lib/services/auto-backup/reminder'
+    );
+    if (cfg.enabled) await ensureReminderPermission();
+    await syncBackupReminders();
   }
 
   async function backupNow() {
@@ -148,6 +178,15 @@
               <h3 class="text-sm font-medium">{$t('settings_page.backup.phrase_heading')}</h3>
             </div>
             <p class="text-xs text-muted-foreground">{$t('settings_page.backup.phrase_intro')}</p>
+
+            {#if phraseChanged}
+              <div class="flex items-start gap-2 rounded-md border border-amber-400/50 bg-amber-500/10 px-3 py-2.5">
+                <AlertTriangle class="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <p class="text-xs text-amber-700 dark:text-amber-400">
+                  {$t('settings_page.backup.phrase_updated_notice')}
+                </p>
+              </div>
+            {/if}
 
             {#if shownPhrase}
               <div class="space-y-3 rounded-lg border border-primary/40 bg-muted/30 p-4">
@@ -224,6 +263,11 @@
                   {$t('settings_page.backup.phrase_view_btn')}
                 </button>
               </div>
+              {#if !$localOnly}
+                <p class="text-xs text-muted-foreground/80">
+                  {$t('settings_page.backup.phrase_synced_hint')}
+                </p>
+              {/if}
             {:else}
               <button
                 type="button"
@@ -288,6 +332,11 @@
             {#if !canEnable}
               <p class="text-xs text-muted-foreground/80 pl-6">
                 {$t('settings_page.backup.enable_requires')}
+              </p>
+            {/if}
+            {#if cfg.enabled}
+              <p class="text-xs text-muted-foreground/80 pl-6">
+                {$t('settings_page.backup.reminder_hint')}
               </p>
             {/if}
           </section>

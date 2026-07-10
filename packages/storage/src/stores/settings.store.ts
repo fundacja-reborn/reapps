@@ -95,6 +95,24 @@ export interface AppSettings {
    * don't carry the field. Defaults are written by `initializeDefaults` for the notes app.
    */
   periodicNotes?: PeriodicNotesSettings;
+  /**
+   * Notes-only: the auto-backup recovery phrase, wrapped as its OWN AES-GCM
+   * ciphertext under the master key (`cryptoManager.encryptText` output,
+   * `iv:ciphertext`). NEVER plaintext: this row is stored unencrypted in
+   * IndexedDB, so the phrase gets the same at-rest protection as note content
+   * only through this inner envelope. Syncing it in the app bundle makes the
+   * phrase ACCOUNT-scoped - it survives logout and reaches the user's other
+   * devices as ciphertext the server cannot read (the wrapped-recovery-secret
+   * pattern; see reborn-notes' auto-backup phrase-sync module). Absent until
+   * the user enables auto-backup somewhere.
+   *
+   * `updatedAt` is the phrase's OWN freshness stamp: the settings bundle syncs
+   * whole-row last-write-wins, so without it a device pushing an unrelated
+   * setting from a stale row would silently revert the account's newest phrase
+   * (breaking recoverability of every backup made since). Merge for this field
+   * is newest-`updatedAt`-wins, independent of the row's `updated_at`.
+   */
+  autoBackupPhrase?: { wrapped: string; updatedAt: string };
   created_at: string;
   updated_at: string;
 }

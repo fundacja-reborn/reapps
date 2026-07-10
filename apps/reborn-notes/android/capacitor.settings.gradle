@@ -17,6 +17,9 @@ project(':capacitor-clipboard').projectDir = new File('../../../node_modules/.pn
 include ':capacitor-filesystem'
 project(':capacitor-filesystem').projectDir = new File('../../../node_modules/.pnpm/@capacitor+filesystem@8.1.2_@capacitor+core@8.4.0/node_modules/@capacitor/filesystem/android')
 
+include ':capacitor-local-notifications'
+project(':capacitor-local-notifications').projectDir = new File('../../../node_modules/.pnpm/@capacitor+local-notifications@8.2.0_@capacitor+core@8.4.0/node_modules/@capacitor/local-notifications/android')
+
 include ':capacitor-network'
 project(':capacitor-network').projectDir = new File('../../../node_modules/.pnpm/@capacitor+network@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/network/android')
 

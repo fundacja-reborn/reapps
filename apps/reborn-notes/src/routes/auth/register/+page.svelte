@@ -176,8 +176,18 @@
       master_key_salt: data.masterKeySalt ?? masterKeySalt,
       user_profile: data.user
     };
+    // Capture the local pseudo user id BEFORE the account credentials land:
+    // auto-backup artifacts (config/state/phrase) are keyed by it, and setting
+    // the credentials flips autoBackupScopeId() to the account id.
+    const localUserId = localStorage.getItem(LOCAL_USER_ID_KEY);
     localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
     localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+    // Re-key the auto-backup setup (folder grant, enabled flag, phrase) from
+    // the local scope to the account scope - same device, same owner, so the
+    // upgraded account keeps its working backup instead of a silent reset.
+    // Best-effort inside; must not block the upgrade.
+    const { migrateAutoBackupScope } = await import('$lib/services/auto-backup');
+    await migrateAutoBackupScope(localUserId, data.user.id);
     // Native: persist the body-delivered refresh token to secure storage. The
     // local->account upgrade deliberately does NOT call loginInNotes (that would
     // clear the IndexedDB notes we are adopting), so it must replicate the token

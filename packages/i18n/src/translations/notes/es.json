@@ -930,6 +930,8 @@
       "phrase_set": "La frase de recuperación está configurada.",
       "phrase_view_btn": "Mostrar la frase de nuevo",
       "phrase_hide_btn": "Ocultar",
+      "phrase_synced_hint": "La frase se guarda cifrada en su cuenta - se sincroniza con sus otros dispositivos y se conserva al cerrar sesión. Su copia escrita sigue siendo el único recurso si pierde el acceso a su cuenta.",
+      "phrase_updated_notice": "La frase de recuperación se actualizó desde su cuenta (se cambió en otro dispositivo). Vea la frase actual y actualice su copia escrita - las copias de seguridad usan a partir de ahora la nueva frase.",
       "folder_heading": "Carpeta de copias",
       "folder_intro": "Elija dónde se guardan los archivos de copia cifrados.",
       "folder_pick_btn": "Elegir carpeta",
@@ -947,7 +949,10 @@
       "now_done": "Copia guardada.",
       "now_nothing": "No hay nada que copiar en este momento.",
       "now_failed": "Error al crear la copia: {error}",
-      "cadence_note": "Las copias se crean automáticamente al abrir la aplicación, como máximo una vez al día."
+      "cadence_note": "Las copias se crean automáticamente al abrir la aplicación, como máximo una vez al día.",
+      "reminder_title": "Copia de seguridad automática pendiente",
+      "reminder_body": "Abra la aplicación para crear una copia cifrada reciente de sus notas.",
+      "reminder_hint": "Si una copia queda pendiente, una notificación le recordará abrir la aplicación."
     },
     "export_import": {
       "title": "Exportar e importar",

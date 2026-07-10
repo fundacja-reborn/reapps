@@ -930,6 +930,8 @@
       "phrase_set": "Fraza odzyskiwania jest ustawiona.",
       "phrase_view_btn": "Pokaż frazę ponownie",
       "phrase_hide_btn": "Ukryj",
+      "phrase_synced_hint": "Fraza jest przechowywana w koncie w postaci zaszyfrowanej - synchronizuje się między Twoimi urządzeniami i przetrwa wylogowanie. Zapisana kopia pozostaje jedynym ratunkiem, gdy stracisz dostęp do konta.",
+      "phrase_updated_notice": "Fraza odzyskiwania została zaktualizowana z konta (zmieniona na innym urządzeniu). Podejrzyj aktualną frazę i uaktualnij zapisaną kopię - kopie zapasowe od teraz używają nowej frazy.",
       "folder_heading": "Folder kopii",
       "folder_intro": "Wybierz, gdzie zapisywane są pliki zaszyfrowanej kopii.",
       "folder_pick_btn": "Wybierz folder",
@@ -947,7 +949,10 @@
       "now_done": "Kopia zapisana.",
       "now_nothing": "Brak danych do skopiowania w tej chwili.",
       "now_failed": "Tworzenie kopii nie powiodło się: {error}",
-      "cadence_note": "Kopie tworzą się automatycznie przy otwarciu aplikacji, najwyżej raz dziennie."
+      "cadence_note": "Kopie tworzą się automatycznie przy otwarciu aplikacji, najwyżej raz dziennie.",
+      "reminder_title": "Czas na automatyczną kopię notatek",
+      "reminder_body": "Otwórz aplikację, aby utworzyć świeżą zaszyfrowaną kopię notatek.",
+      "reminder_hint": "Gdy kopia będzie zaległa, powiadomienie przypomni o otwarciu aplikacji."
     },
     "export_import": {
       "title": "Eksport i import",

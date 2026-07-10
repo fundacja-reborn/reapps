@@ -98,12 +98,24 @@ export class SyncedSettingsService {
    *   - Server has a newer bundle than local → server wins (overwrite local
    *     with merged bundle, local `updated_at` advances to server's).
    *   - Local is newer → push up (handled implicitly by the next push).
+   *   - `autoBackupPhrase` is exempt from row-level LWW in BOTH directions:
+   *     it merges newest-`updatedAt`-wins even when the row comparison would
+   *     skip the apply, and when the local copy is the newer one a push is
+   *     scheduled to repair the server. The server stores bundles as opaque
+   *     whole-blob replacements, so without this a stale device pushing an
+   *     unrelated setting would revert the account's recovery phrase.
+   *
+   * `fetched` reports whether this call obtained a DEFINITIVE view of the
+   * server state (bundles decoded, or confirmed absent) - as opposed to a
+   * swallowed network/decrypt failure. Callers use it to gate actions that
+   * must not run on the assumption "server has nothing" (e.g. publishing a
+   * device-local recovery phrase to the account).
    */
-  async pullAndMerge(): Promise<{ applied: boolean }> {
-    if (this.syncDisabled()) return { applied: false };
+  async pullAndMerge(): Promise<{ applied: boolean; fetched: boolean }> {
+    if (this.syncDisabled()) return { applied: false, fetched: false };
     if (!cryptoManager.isInitialized()) {
       logger.debug('Master key not initialized - skipping pull');
-      return { applied: false };
+      return { applied: false, fetched: false };
     }
 
     let body: GetSettingsResponse;
@@ -111,17 +123,17 @@ export class SyncedSettingsService {
       const res = await this.adapter.authFetch(`${this.adapter.basePath}/api/settings`);
       if (!res.ok) {
         logger.warn('Settings pull returned non-OK', { status: res.status });
-        return { applied: false };
+        return { applied: false, fetched: false };
       }
       body = (await res.json()) as GetSettingsResponse;
     } catch (err) {
       logger.warn('Settings pull failed (network)', err);
-      return { applied: false };
+      return { applied: false, fetched: false };
     }
 
     if (!body.success || !body.data) {
       logger.warn('Settings pull returned error body', { error: body.error });
-      return { applied: false };
+      return { applied: false, fetched: false };
     }
 
     const { shared, app } = body.data;
@@ -134,7 +146,7 @@ export class SyncedSettingsService {
       if (app) appBundle = migrateAppBundle(JSON.parse(await cryptoManager.decryptText(app.settings_encrypted)));
     } catch (err) {
       logger.error('Failed to decrypt server bundle - local IDB stays authoritative', err);
-      return { applied: false };
+      return { applied: false, fetched: false };
     }
 
     // Bootstrap path: server empty for a scope, but local row exists → push it.
@@ -156,8 +168,9 @@ export class SyncedSettingsService {
     if (!sharedBundle && !appBundle) {
       // Nothing on the server. Either we just bootstrapped above, or this is
       // a brand-new account with no IDB row yet - caller's `init()` will run
-      // `initializeDefaults()` next and we'll push on first mutation.
-      return { applied: false };
+      // `initializeDefaults()` next and we'll push on first mutation. The
+      // server state is nonetheless definitively known - `fetched` is true.
+      return { applied: false, fetched: true };
     }
 
     // Compute the server's most recent updated_at across the two scopes.
@@ -195,7 +208,7 @@ export class SyncedSettingsService {
       merged.updated_at = new Date(serverUpdated).toISOString();
       await settingsStore.save(merged);
       logger.info('Adopted server settings (no local row)');
-      return { applied: true };
+      return { applied: true, fetched: true };
     }
 
     if (serverUpdated > localUpdated) {
@@ -206,11 +219,38 @@ export class SyncedSettingsService {
         serverUpdated: new Date(serverUpdated).toISOString(),
         localUpdated: new Date(localUpdated).toISOString()
       });
-      return { applied: true };
+      // applyBundlesToSettings kept the LOCAL phrase where it is the newer one
+      // (field-level newest-wins) - which means the server currently holds a
+      // stale phrase inside an opaque blob it cannot merge. Repair it.
+      if (phraseNewer(localSettings.autoBackupPhrase, appBundle?.autoBackupPhrase)) {
+        logger.info('Local recovery phrase is newer than the pulled bundle - scheduling repair push');
+        this.schedulePush();
+      }
+      return { applied: true, fetched: true };
     }
 
-    // localUpdated >= serverUpdated → local wins; defer to push flow.
-    return { applied: false };
+    // localUpdated >= serverUpdated → local wins; defer to push flow. The
+    // phrase is exempt from that row-level verdict: adopt a NEWER server
+    // phrase into the (otherwise winning) local row, and repair the server
+    // when the local phrase is the newer one - a stale device's unrelated
+    // settings push must never revert the account's recovery phrase.
+    if (appBundle) {
+      if (phraseNewer(appBundle.autoBackupPhrase, localSettings.autoBackupPhrase)) {
+        await settingsStore.save({
+          ...localSettings,
+          // Keep the row's updated_at: this is a field-level repair, not a
+          // row-level win - the rest of the LWW semantics must not shift.
+          autoBackupPhrase: appBundle.autoBackupPhrase
+        });
+        logger.info('Adopted newer recovery phrase from server (local row otherwise newer)');
+        return { applied: true, fetched: true };
+      }
+      if (phraseNewer(localSettings.autoBackupPhrase, appBundle.autoBackupPhrase)) {
+        logger.info('Local recovery phrase is newer than the pulled bundle - scheduling repair push');
+        this.schedulePush();
+      }
+    }
+    return { applied: false, fetched: true };
   }
 
   /**
@@ -299,6 +339,20 @@ export class SyncedSettingsService {
     // 4xx/5xx → log and drop. The next push or pull will reconcile.
     logger.warn('Settings push returned non-OK', { scope, status: res.status });
   }
+}
+
+/**
+ * Is phrase stamp `a` strictly newer than `b`? Absent/`undefined` never wins;
+ * a present phrase beats an absent one. Field-level freshness for
+ * `autoBackupPhrase` (see the AppSettings field doc).
+ */
+function phraseNewer(
+  a: AppSettings['autoBackupPhrase'],
+  b: AppSettings['autoBackupPhrase']
+): boolean {
+  if (!a) return false;
+  if (!b) return true;
+  return Date.parse(a.updatedAt) > Date.parse(b.updatedAt);
 }
 
 /**

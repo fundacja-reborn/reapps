@@ -60,6 +60,30 @@ export async function loadRecoveryPhrase(): Promise<string | null> {
 }
 
 /**
+ * Re-key the stored phrase from one scope id to another (local→account
+ * upgrade - see migrateAutoBackupPrefsScope for why). The target entry is
+ * never overwritten if it somehow exists; the source entry is removed either
+ * way. Best-effort: the phrase is also recoverable from the synced wrapped
+ * copy (phrase-sync), so a failed vault migration self-heals on reconcile.
+ */
+export async function migrateRecoveryPhraseScope(
+  fromScopeId: string,
+  toScopeId: string
+): Promise<void> {
+  if (!__REBORN_NATIVE__ || fromScopeId === toScopeId) return;
+  try {
+    const storage = await getSecureStorage();
+    const phrase = await storage.getItem(phraseKey(fromScopeId));
+    if (phrase !== null && (await storage.getItem(phraseKey(toScopeId))) === null) {
+      await storage.setItem(phraseKey(toScopeId), phrase);
+    }
+    await storage.removeItem(phraseKey(fromScopeId));
+  } catch {
+    // Best-effort - reconcile republishes/hydrates from the synced copy.
+  }
+}
+
+/**
  * Remove the current user's stored phrase (disabling backups / logout), plus
  * the legacy unscoped entry from builds before per-user scoping. Best-effort.
  */
