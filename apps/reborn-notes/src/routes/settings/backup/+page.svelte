@@ -109,10 +109,18 @@
     saveAutoBackupConfig(cfg);
   }
 
-  function toggleEnabled() {
+  async function toggleEnabled() {
     if (!cfg.enabled && !canEnable) return;
     cfg.enabled = !cfg.enabled;
     saveAutoBackupConfig(cfg);
+    // Overdue reminders follow the toggle. Enabling is the one moment the OS
+    // notification prompt has obvious context; a denial only mutes reminders,
+    // the backups themselves are unaffected.
+    const { ensureReminderPermission, syncBackupReminders } = await import(
+      '$lib/services/auto-backup/reminder'
+    );
+    if (cfg.enabled) await ensureReminderPermission();
+    await syncBackupReminders();
   }
 
   async function backupNow() {
@@ -301,6 +309,11 @@
             {#if !canEnable}
               <p class="text-xs text-muted-foreground/80 pl-6">
                 {$t('settings_page.backup.enable_requires')}
+              </p>
+            {/if}
+            {#if cfg.enabled}
+              <p class="text-xs text-muted-foreground/80 pl-6">
+                {$t('settings_page.backup.reminder_hint')}
               </p>
             {/if}
           </section>

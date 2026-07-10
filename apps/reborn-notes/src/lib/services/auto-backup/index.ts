@@ -55,14 +55,20 @@ export async function runNotesAutoBackupIfDue(
   }
 
   const config = loadAutoBackupConfig();
-  if (!config.enabled) return { status: 'skipped', reason: 'disabled' };
+  if (!config.enabled) {
+    // Backup was turned off outside the settings page's own reminder wiring
+    // (e.g. a config wipe) - make sure no stale "backup overdue" nudge fires.
+    const { cancelBackupReminders } = await import('./reminder');
+    void cancelBackupReminders();
+    return { status: 'skipped', reason: 'disabled' };
+  }
 
   // Import the native-only adapters lazily so the web bundle never pulls the
   // secure-storage / FolderFs bridges (they throw on web by construction).
   const { createNativeFolderDestination } = await import('./folder-destination');
   const { loadRecoveryPhrase } = await import('./recovery-phrase-vault');
 
-  return runAutoBackup({
+  const outcome = await runAutoBackup({
     app: 'reborn-notes',
     config,
     state: loadAutoBackupState(),
@@ -75,6 +81,14 @@ export async function runNotesAutoBackupIfDue(
     saveState: async (next) => saveAutoBackupState(next),
     verifyBackup
   });
+
+  // Re-plan the overdue reminders from the just-persisted state: a successful
+  // run pushes them ~a day out, so they only ever fire when the app stays
+  // closed past the cadence. Internally best-effort, never affects the outcome.
+  const { syncBackupReminders } = await import('./reminder');
+  void syncBackupReminders();
+
+  return outcome;
 }
 
 /**
@@ -113,6 +127,10 @@ export async function clearAutoBackupState(): Promise<void> {
     // Lazy import keeps the native secure-storage bridge out of the web bundle.
     const { clearRecoveryPhrase } = await import('./recovery-phrase-vault');
     await clearRecoveryPhrase();
+    // No backup will run for the next user until they set it up themselves -
+    // drop the pending "backup overdue" nudges (own try/catch inside).
+    const { cancelBackupReminders } = await import('./reminder');
+    await cancelBackupReminders();
   } catch (err) {
     logger.error('Failed to clear auto-backup state:', err);
   }

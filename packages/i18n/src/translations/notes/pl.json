@@ -948,7 +948,10 @@
       "now_done": "Kopia zapisana.",
       "now_nothing": "Brak danych do skopiowania w tej chwili.",
       "now_failed": "Tworzenie kopii nie powiodło się: {error}",
-      "cadence_note": "Kopie tworzą się automatycznie przy otwarciu aplikacji, najwyżej raz dziennie."
+      "cadence_note": "Kopie tworzą się automatycznie przy otwarciu aplikacji, najwyżej raz dziennie.",
+      "reminder_title": "Czas na automatyczną kopię notatek",
+      "reminder_body": "Otwórz aplikację, aby utworzyć świeżą zaszyfrowaną kopię notatek.",
+      "reminder_hint": "Gdy kopia będzie zaległa, powiadomienie przypomni o otwarciu aplikacji."
     },
     "export_import": {
       "title": "Eksport i import",

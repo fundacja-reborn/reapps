@@ -948,7 +948,10 @@
       "now_done": "Sicherung gespeichert.",
       "now_nothing": "Derzeit nichts zu sichern.",
       "now_failed": "Sicherung fehlgeschlagen: {error}",
-      "cadence_note": "Sicherungen laufen automatisch beim Öffnen der App, höchstens einmal täglich."
+      "cadence_note": "Sicherungen laufen automatisch beim Öffnen der App, höchstens einmal täglich.",
+      "reminder_title": "Automatische Sicherung fällig",
+      "reminder_body": "Öffnen Sie die App, um eine frische verschlüsselte Kopie Ihrer Notizen zu erstellen.",
+      "reminder_hint": "Wenn eine Sicherung überfällig ist, erinnert Sie eine Benachrichtigung daran, die App zu öffnen."
     },
     "export_import": {
       "title": "Export & Import",

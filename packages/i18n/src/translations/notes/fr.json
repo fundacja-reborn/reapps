@@ -948,7 +948,10 @@
       "now_done": "Sauvegarde enregistrée.",
       "now_nothing": "Rien à sauvegarder pour le moment.",
       "now_failed": "Échec de la sauvegarde : {error}",
-      "cadence_note": "Les sauvegardes se font automatiquement à l'ouverture de l'application, au maximum une fois par jour."
+      "cadence_note": "Les sauvegardes se font automatiquement à l'ouverture de l'application, au maximum une fois par jour.",
+      "reminder_title": "Sauvegarde automatique à faire",
+      "reminder_body": "Ouvrez l'application pour créer une nouvelle copie chiffrée de vos notes.",
+      "reminder_hint": "Si une sauvegarde est en retard, une notification vous rappellera d'ouvrir l'application."
     },
     "export_import": {
       "title": "Export et import",

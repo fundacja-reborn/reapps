@@ -948,7 +948,10 @@
       "now_done": "Backup saved.",
       "now_nothing": "Nothing to back up right now.",
       "now_failed": "Backup failed: {error}",
-      "cadence_note": "Backups run automatically when you open the app, at most once a day."
+      "cadence_note": "Backups run automatically when you open the app, at most once a day.",
+      "reminder_title": "Automatic backup is due",
+      "reminder_body": "Open the app to create a fresh encrypted copy of your notes.",
+      "reminder_hint": "If a backup becomes overdue, a notification will remind you to open the app."
     },
     "export_import": {
       "title": "Export & Import",

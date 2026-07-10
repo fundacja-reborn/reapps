@@ -948,7 +948,10 @@
       "now_done": "Copia guardada.",
       "now_nothing": "No hay nada que copiar en este momento.",
       "now_failed": "Error al crear la copia: {error}",
-      "cadence_note": "Las copias se crean automáticamente al abrir la aplicación, como máximo una vez al día."
+      "cadence_note": "Las copias se crean automáticamente al abrir la aplicación, como máximo una vez al día.",
+      "reminder_title": "Copia de seguridad automática pendiente",
+      "reminder_body": "Abra la aplicación para crear una copia cifrada reciente de sus notas.",
+      "reminder_hint": "Si una copia queda pendiente, una notificación le recordará abrir la aplicación."
     },
     "export_import": {
       "title": "Exportar e importar",
