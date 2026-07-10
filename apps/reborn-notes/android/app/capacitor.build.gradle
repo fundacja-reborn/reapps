@@ -16,6 +16,7 @@ dependencies {
     implementation project(':capacitor-filesystem')
     implementation project(':capacitor-network')
     implementation project(':capacitor-share')
+    implementation project(':capacitor-splash-screen')
 
 }
 
