@@ -99,7 +99,10 @@ class NoteIndex {
     noteLinkGraph.clear();
     this._building = true;
     try {
-      const allEncrypted = await noteStore.getAll();
+      // Metadata-only projection: the index needs titles + shadow fields, so
+      // reading `notes` without joining `noteContents` skips deserializing
+      // every content blob - the dominant cold-start cost (DB v14 split).
+      const allEncrypted = await noteStore.getAllMeta();
       // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local temp variable, not reactive state
       const map = new Map<string, NoteIndexEntry>();
 
@@ -142,8 +145,8 @@ class NoteIndex {
 
   /**
    * Incrementally add/update specific notes by id: point-read just those rows
-   * (noteStore.getMany) and decrypt them, instead of build()'s full
-   * getAll()+decrypt of every note. Backs the paginated pull's per-page reveal -
+   * (noteStore.getManyMeta) and decrypt them, instead of build()'s full
+   * getAllMeta()+decrypt of every note. Backs the paginated pull's per-page reveal -
    * each page lands in the index without an O(n) rebuild per page (which would
    * re-deserialize the whole notes table every page = the O(n²) trap PR #353
    * removed). Tags are read from the (already-applied) note-tag relations, so
@@ -154,7 +157,7 @@ class NoteIndex {
    */
   async upsertFromStore(ids: string[]): Promise<void> {
     if (!cryptoManager.isInitialized() || ids.length === 0) return;
-    const encrypted = await noteStore.getMany(ids);
+    const encrypted = await noteStore.getManyMeta(ids);
     let changed = false;
     for (const enc of encrypted) {
       try {

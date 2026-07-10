@@ -97,6 +97,23 @@ export interface NoteStoredLocal extends NoteEncrypted {
   is_ephemeral?: boolean;
 }
 
+/**
+ * Metadata-only view of a locally stored note: everything except the (large)
+ * `content_encrypted` blob. Physically, notes are split across two IndexedDB
+ * stores since DB v14 - `notes` holds this shape, `noteContents` holds the
+ * content ciphertext - so metadata readers (note index build, sync reconcile,
+ * pending counts) can `getAll()` without deserializing every content blob.
+ * Read-only by design: it cannot be passed to `noteStore.save()`, which
+ * requires the full `NoteStoredLocal` (content included).
+ */
+export type NoteMetaLocal = Omit<NoteStoredLocal, 'content_encrypted'>;
+
+/** Row shape of the `noteContents` IndexedDB store (DB v14+). */
+export interface NoteContentRow {
+  id: string;
+  content_encrypted: string;
+}
+
 /** Maximum number of version snapshots kept per note (client and server). */
 export const MAX_NOTE_VERSIONS = 10;
 

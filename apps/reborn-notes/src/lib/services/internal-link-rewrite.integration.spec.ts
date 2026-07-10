@@ -17,7 +17,12 @@ vi.mock('$lib/stores/auth.store', async () => {
 });
 
 vi.mock('@reborn/storage', () => ({
-  noteStore: { getAll: async () => [...notes.values()].map((n) => ({ id: n.id })) },
+  noteStore: {
+    // Import dedup probes existence via count(); liveNoteIds() reads the
+    // metadata projection (DB v14 split) - ids only.
+    count: async () => notes.size,
+    getAllMeta: async () => [...notes.values()].map((n) => ({ id: n.id }))
+  },
   folderStore: {},
   tagStore: {},
   noteTagStore: {},

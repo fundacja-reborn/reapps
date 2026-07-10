@@ -29,7 +29,8 @@ function maxUpdatedAt(items: Array<{ updated_at: string }>): number {
  */
 export async function getLastDataChangeAt(): Promise<string | null> {
   const [notes, folders, tags] = await Promise.all([
-    noteStore.getAll(),
+    // updated_at lives on the meta row - skip the content blobs (DB v14 split).
+    noteStore.getAllMeta(),
     folderStore.getAll(),
     tagStore.getAll()
   ]);

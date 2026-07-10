@@ -103,10 +103,27 @@ if (!isPublicShareRoute) {
     startPwaInstallPrompt();
   }
 
-  // Initialize storage early — before SvelteKit layout mounts.
+  // Initialize storage early - before SvelteKit layout mounts.
   // This is fire-and-forget: if it fails, +layout.svelte will retry in onMount.
   initializeStorage('notes')
     .then(async () => {
+      // One-time sweep after the DB v14 content split: move content ciphertext
+      // still inline on legacy v13 `notes` rows into `noteContents`. Chunked
+      // and resumable - a failure (e.g. storage quota) only delays the sweep,
+      // never blocks boot; joined reads tolerate unswept rows meanwhile. The
+      // localStorage flag skips the scan on every later boot (same pattern as
+      // idb-cleanup.service). Runs BEFORE the trash sweep below so the heavy
+      // move isn't interleaved with deletes on first boot after the upgrade.
+      const SPLIT_SWEEP_FLAG = 'reborn-notes:content-split-swept-v14';
+      try {
+        if (!localStorage.getItem(SPLIT_SWEEP_FLAG)) {
+          const { noteStore } = await import('@reborn/storage');
+          await noteStore.migrateLegacyContent();
+          localStorage.setItem(SPLIT_SWEEP_FLAG, new Date().toISOString());
+        }
+      } catch {
+        // Flag stays unset - the sweep retries on the next boot.
+      }
       // Auto-purge old trash items (notes trashed more than 30 days ago) and
       // any leftover pristine ephemeral notes - New Note rows the user created
       // but never touched, then reloaded/closed before the in-session discard
@@ -116,10 +133,10 @@ if (!isPublicShareRoute) {
         await cleanTrash(30);
         await cleanEphemeralNotes();
       } catch {
-        // Non-critical — trash cleanup is also attempted in layout onMount
+        // Non-critical - trash cleanup is also attempted in layout onMount
       }
     })
     .catch(() => {
-      // Storage init failed — layout onMount will handle retry
+      // Storage init failed - layout onMount will handle retry
     });
 }

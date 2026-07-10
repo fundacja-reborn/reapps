@@ -102,12 +102,20 @@ describe('#349 the sync sweep never pushes an ephemeral note (zero-knowledge)', 
       src.indexOf('export async function pushPendingItems'),
       src.indexOf('/** Retry a function with exponential backoff')
     );
-    // Non-archived pending creates/updates.
-    expect(fn).toMatch(/const\s+pendingNotes\s*=\s*allNotes\.filter/);
+    // Non-archived pending creates/updates (meta projection first, then the
+    // full-row re-filter - DB v14 split).
+    expect(fn).toMatch(/const\s+pendingNoteMetas\s*=\s*allNoteMetas\.filter\(isPendingActive\)/);
+    expect(fn).toMatch(/const\s+pendingNotes\s*=\s*fetchedPending\.filter\(isPendingActive\)/);
     // Archived pending soft-deletes.
-    expect(fn).toMatch(/const\s+pendingArchivedNotes\s*=\s*allNotes\.filter/);
-    // BOTH filters must drop ephemeral rows - the server must never learn the
-    // note existed until the user's first deliberate action promotes it.
+    expect(fn).toMatch(
+      /const\s+pendingArchivedMetas\s*=\s*allNoteMetas\.filter\(isPendingArchived\)/
+    );
+    expect(fn).toMatch(
+      /const\s+pendingArchivedNotes\s*=\s*fetchedPending\.filter\(isPendingArchived\)/
+    );
+    // BOTH shared predicates must drop ephemeral rows - the server must never
+    // learn the note existed until the user's first deliberate action promotes
+    // it. Every bucket above goes through these two predicates.
     const ephemeralGuards = fn.match(/!n\.is_ephemeral/g) ?? [];
     expect(ephemeralGuards.length).toBe(2);
   });

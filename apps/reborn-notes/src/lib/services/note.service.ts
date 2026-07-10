@@ -13,7 +13,7 @@ import {
   noteHistoryQueries,
   noteHistoryOperations
 } from '@reborn/storage';
-import { MAX_NOTE_VERSIONS, type NoteStoredLocal, type NoteDecrypted, type NoteHistoryEntry, type NoteHistoryDecrypted, type NoteSensitiveMetadata, type PeriodicNoteMetadata } from '@reborn/types';
+import { MAX_NOTE_VERSIONS, type NoteStoredLocal, type NoteMetaLocal, type NoteDecrypted, type NoteHistoryEntry, type NoteHistoryDecrypted, type NoteSensitiveMetadata, type PeriodicNoteMetadata } from '@reborn/types';
 import { cryptoManager } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import { get } from 'svelte/store';
@@ -101,8 +101,10 @@ async function toDecrypted(enc: NoteStoredLocal): Promise<NoteDecrypted> {
   };
 }
 
-/** Decrypt only the title (skip content_encrypted) - used by NoteIndex cache. */
-export async function decryptTitleOnly(enc: NoteStoredLocal): Promise<{
+/** Decrypt only the title - used by NoteIndex cache. Accepts the metadata-only
+ *  projection (`NoteMetaLocal`), so index builds never read content blobs;
+ *  full `NoteStoredLocal` records are assignable and work too. */
+export async function decryptTitleOnly(enc: NoteMetaLocal): Promise<{
   id: string;
   title: string;
   folderId: string | undefined;
@@ -666,7 +668,9 @@ export async function discardIfEphemeral(id: string): Promise<boolean> {
  * removed.
  */
 export async function cleanEphemeralNotes(): Promise<number> {
-  const all = (await noteStore.getAll()) as NoteStoredLocal[];
+  // Metadata-only sweep: the is_ephemeral flag lives on the meta row, so this
+  // startup pass never deserializes content blobs (DB v14 split).
+  const all = await noteStore.getAllMeta();
   const ephemeral = all.filter((n) => n.is_ephemeral === true);
   if (ephemeral.length === 0) return 0;
   for (const n of ephemeral) {

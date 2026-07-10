@@ -707,13 +707,13 @@ async function pullNotes(): Promise<string[]> {
   // Sweeping it hard-deletes a note the server has; it resurrects on a later
   // delta while folder sync re-imports its file in the gap - a duplicate note.
   // Taken only when the sweep can actually fire (reconcile, or a no-watermark
-  // bulk against an old server, where the empty-store snapshot is free):
-  // noteStore.getAll() deserializes every content blob, which the 5-min delta
-  // pulls deliberately avoid.
+  // bulk against an old server, where the empty-store snapshot is free). The
+  // snapshot needs only id + sync_status, so it reads the metadata projection
+  // (DB v14 split) - no content blobs are deserialized on the boot reconcile.
   let prePullSyncedIds: Set<string> | null = null;
   if (reconcile || !since) {
     prePullSyncedIds = new Set(
-      ((await noteStore.getAll()) as NoteStoredLocal[])
+      (await noteStore.getAllMeta())
         .filter((n) => n.sync_status === 'synced')
         .map((n) => n.id)
     );
@@ -813,7 +813,8 @@ async function pullNotes(): Promise<string[]> {
     // invariant ever breaks, an empty set means "delete nothing" rather than
     // re-opening the mid-pull race.
     const preSynced = prePullSyncedIds ?? new Set<string>();
-    const allLocalNotes = (await noteStore.getAll()) as NoteStoredLocal[];
+    // id + sync_status only - metadata projection, no content blobs.
+    const allLocalNotes = await noteStore.getAllMeta();
     const orphanNoteIds = allLocalNotes
       .filter((n) => n.sync_status === 'synced' && !serverIds.has(n.id) && preSynced.has(n.id))
       .map((n) => n.id);
@@ -853,14 +854,13 @@ async function writeNotesPage(
   const maxUpdatedAt = data.reduce((m, n) => (n.updated_at > m ? n.updated_at : m), '');
 
   // Collect all writes here and flush them in one batch below, instead of issuing
-  // them per-note inside the map. Each `noteStore.save()` runs refreshItems() - a
-  // full getAll() over the whole notes table (every content_encrypted blob) - so
-  // firing 503 of them concurrently made first-sync memory grow ~O(n²) and
-  // OOM-killed the in-process Android System WebView at ~40 s. (iOS WKWebView
-  // renders out of process with a far higher ceiling, so it absorbed the same
-  // spike in ~10 s.) saveMany() does one transaction + one refresh; the UI is
-  // rebuilt by refreshStoresAfterPull() afterwards regardless, so the per-note
-  // refresh was redundant work on top of being the memory bomb. See guideline 36.
+  // them per-note inside the map: saveMany() commits the page in ONE transaction.
+  // Historical context: per-note save() used to also run refreshItems() - a full
+  // getAll() over the whole notes table (every content_encrypted blob) - so 503
+  // concurrent saves made first-sync memory grow ~O(n²) and OOM-killed the
+  // in-process Android System WebView (PR #353). The DB v14 SplitNoteStore has
+  // no refreshItems at all, but the batched single-transaction write remains
+  // the correct shape (atomicity + one commit per page). See guideline 36.
   const notesToWrite: NoteStoredLocal[] = [];
   const tagAdds: Array<{ noteId: string; tagId: string }> = [];
   const tagRemoves: Array<{ noteId: string; tagId: string }> = [];
@@ -1004,10 +1004,10 @@ async function writeNotesPage(
     })
   );
 
-  // Flush every note upsert / reconciliation in a single transaction (one
-  // refreshItems for the whole pull, not one per note). saveMany runs the same
-  // pre-save encryption guard per record as save(); a record that fails it is
-  // counted and skipped rather than aborting the whole sync.
+  // Flush every note upsert / reconciliation of this page in a single
+  // transaction. saveMany runs the same pre-save encryption guard per record
+  // as save(); a record that fails it is counted and skipped rather than
+  // aborting the whole sync.
   if (notesToWrite.length > 0) {
     const result = await noteStore.saveMany(notesToWrite);
     if (result.failed > 0) {
@@ -1120,11 +1120,17 @@ export async function pushPendingItems(): Promise<void> {
   // post-unlock sync, like the import guard does (audit 013 S1).
   if (!cryptoManager.isInitialized()) return;
 
-  const [allFolders, allTags, allSavedSearches, allNotes] = await Promise.all([
+  // Notes go through the metadata projection first (DB v14 split): this sweep
+  // runs on every periodic/foreground/online sync, and the filters below need
+  // only meta fields (sync_status, is_archived, is_ephemeral), so the common
+  // nothing-pending case never deserializes a single content blob. Full rows
+  // (content joined) are point-read further down, only for rows actually
+  // being pushed.
+  const [allFolders, allTags, allSavedSearches, allNoteMetas] = await Promise.all([
     folderStore.getAll() as Promise<FolderEncrypted[]>,
     tagStore.getAll() as Promise<TagEncrypted[]>,
     savedSearchStore.getAll() as Promise<SavedSearchEncrypted[]>,
-    noteStore.getAll() as Promise<NoteStoredLocal[]>
+    noteStore.getAllMeta()
   ]);
 
   const pendingFolders = allFolders.filter((f) => f.sync_status === 'pending');
@@ -1140,19 +1146,19 @@ export async function pushPendingItems(): Promise<void> {
   // notes" whose push is deferred until the user's first action (#349). The
   // server must never see them, so the retry sweep must skip them too - the
   // first deliberate action clears the flag and POSTs the row.
-  const pendingNotes = allNotes.filter(
-    (n) => n.sync_status === 'pending' && !n.is_archived && !n.is_ephemeral
-  );
-  const pendingArchivedNotes = allNotes.filter(
-    (n) => n.sync_status === 'pending' && n.is_archived && !n.is_ephemeral
-  );
+  const isPendingActive = (n: { sync_status?: string; is_archived?: boolean; is_ephemeral?: boolean }) =>
+    n.sync_status === 'pending' && !n.is_archived && !n.is_ephemeral;
+  const isPendingArchived = (n: { sync_status?: string; is_archived?: boolean; is_ephemeral?: boolean }) =>
+    n.sync_status === 'pending' && n.is_archived && !n.is_ephemeral;
+  const pendingNoteMetas = allNoteMetas.filter(isPendingActive);
+  const pendingArchivedMetas = allNoteMetas.filter(isPendingArchived);
 
   if (
     pendingFolders.length +
       pendingTags.length +
       pendingSavedSearches.length +
-      pendingNotes.length +
-      pendingArchivedNotes.length ===
+      pendingNoteMetas.length +
+      pendingArchivedMetas.length ===
     0
   )
     return;
@@ -1171,7 +1177,7 @@ export async function pushPendingItems(): Promise<void> {
   if (!pendingRowsKeyChecked) {
     const readable = await isEncryptedDataReadable(
       [
-        (pendingNotes[0] ?? pendingArchivedNotes[0])?.title_encrypted,
+        (pendingNoteMetas[0] ?? pendingArchivedMetas[0])?.title_encrypted,
         pendingFolders[0]?.name_encrypted,
         pendingTags[0]?.name_encrypted,
         pendingSavedSearches[0]?.name_encrypted
@@ -1202,6 +1208,18 @@ export async function pushPendingItems(): Promise<void> {
     }
     pendingRowsKeyChecked = true;
   }
+
+  // Point-read the full rows (content joined) only for the notes actually
+  // being pushed - push payloads need content_encrypted. Re-apply the filters
+  // on the fetched rows: a row can flip state (or vanish) between the meta
+  // snapshot and this read, and pushing from the live row keeps the same
+  // semantics the old single full-table snapshot had.
+  const fetchedPending = await noteStore.getMany([
+    ...pendingNoteMetas.map((n) => n.id),
+    ...pendingArchivedMetas.map((n) => n.id)
+  ]);
+  const pendingNotes = fetchedPending.filter(isPendingActive);
+  const pendingArchivedNotes = fetchedPending.filter(isPendingArchived);
 
   logger.info(
     `Pushing pending items: ${pendingFolders.length} folders, ${pendingTags.length} tags, ${pendingSavedSearches.length} saved searches, ${pendingNotes.length} notes, ${pendingArchivedNotes.length} archived notes`

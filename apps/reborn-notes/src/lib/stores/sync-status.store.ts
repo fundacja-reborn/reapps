@@ -120,10 +120,12 @@ function sameErrorCodes(
 
 export async function refreshPendingCount(): Promise<number> {
   try {
-    const stores = [noteStore, folderStore, tagStore] as Array<{
-      getAll(): Promise<Array<{ id: string; sync_status?: string; sync_error_code?: SyncErrorCode }>>;
-    }>;
-    const allItems = await Promise.all(stores.map((s) => s.getAll()));
+    // Notes read the metadata projection (id + sync_status live on the meta
+    // row) - this runs after EVERY push/pull, so it must not deserialize
+    // content blobs (DB v14 split). Folders/tags have no such split.
+    const allItems: Array<
+      Array<{ id: string; sync_status?: string; sync_error_code?: SyncErrorCode }>
+    > = await Promise.all([noteStore.getAllMeta(), folderStore.getAll(), tagStore.getAll()]);
     let pending = 0;
     const errors = new Map<string, SyncErrorCode>();
     for (const items of allItems) {

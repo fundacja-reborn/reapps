@@ -1399,7 +1399,11 @@ function stripUnknownNoteShadowIndexes(raw: unknown): unknown {
  */
 async function buildTitleLookupFromIndex(): Promise<TitleLookup> {
   if (noteIndex.count === 0) {
-    const stored = await noteStore.getAll();
+    // Existence probe via the metadata projection (no content blobs). NOT
+    // noteStore.count(): count() swallows IndexedDB errors to 0, which would
+    // silently skip the dedup index build on a failed read and duplicate
+    // every imported note; getAllMeta() throws like the old getAll() did.
+    const stored = await noteStore.getAllMeta();
     if (stored.length > 0) {
       try {
         await noteIndex.build();
