@@ -931,6 +931,7 @@
       "phrase_view_btn": "Mostrar la frase de nuevo",
       "phrase_hide_btn": "Ocultar",
       "phrase_synced_hint": "La frase se guarda cifrada en su cuenta - se sincroniza con sus otros dispositivos y se conserva al cerrar sesión. Su copia escrita sigue siendo el único recurso si pierde el acceso a su cuenta.",
+      "phrase_updated_notice": "La frase de recuperación se actualizó desde su cuenta (se cambió en otro dispositivo). Vea la frase actual y actualice su copia escrita - las copias de seguridad usan a partir de ahora la nueva frase.",
       "folder_heading": "Carpeta de copias",
       "folder_intro": "Elija dónde se guardan los archivos de copia cifrados.",
       "folder_pick_btn": "Elegir carpeta",

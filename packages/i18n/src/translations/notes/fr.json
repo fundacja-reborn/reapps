@@ -931,6 +931,7 @@
       "phrase_view_btn": "Afficher à nouveau la phrase",
       "phrase_hide_btn": "Masquer",
       "phrase_synced_hint": "La phrase est conservée chiffrée dans votre compte - elle se synchronise avec vos autres appareils et survit à la déconnexion. Votre copie écrite reste le seul recours si vous perdez l'accès à votre compte.",
+      "phrase_updated_notice": "La phrase de récupération a été mise à jour depuis votre compte (modifiée sur un autre appareil). Affichez la phrase actuelle et mettez à jour votre copie écrite - les sauvegardes utilisent désormais la nouvelle phrase.",
       "folder_heading": "Dossier de sauvegarde",
       "folder_intro": "Choisissez où les fichiers de sauvegarde chiffrés sont enregistrés.",
       "folder_pick_btn": "Choisir un dossier",

@@ -64,9 +64,10 @@ export interface AppSettingsBundle {
    * Notes-only: recovery phrase wrapped as its own ciphertext under the master
    * key (never plaintext - see the AppSettings field doc). Riding the app
    * bundle makes it account-scoped without any server-side change: the server
-   * stores it doubly encrypted inside `settings_encrypted`.
+   * stores it doubly encrypted inside `settings_encrypted`. Merged
+   * newest-`updatedAt`-wins (see applyBundlesToSettings), NOT row-level LWW.
    */
-  autoBackupPhraseWrapped?: AppSettings['autoBackupPhraseWrapped'];
+  autoBackupPhrase?: AppSettings['autoBackupPhrase'];
 }
 
 /** Extract the shared subset of an AppSettings row. */
@@ -102,8 +103,8 @@ export function extractAppBundle(s: AppSettings): AppSettingsBundle {
   if (s.periodicNotes !== undefined) {
     bundle.periodicNotes = s.periodicNotes;
   }
-  if (s.autoBackupPhraseWrapped !== undefined) {
-    bundle.autoBackupPhraseWrapped = s.autoBackupPhraseWrapped;
+  if (s.autoBackupPhrase !== undefined) {
+    bundle.autoBackupPhrase = s.autoBackupPhrase;
   }
   return bundle;
 }
@@ -139,8 +140,16 @@ export function applyBundlesToSettings(
     if (app.confirmBeforeDelete !== undefined) merged.confirmBeforeDelete = app.confirmBeforeDelete;
     if (app.folderSortMode !== undefined) merged.folderSortMode = app.folderSortMode;
     if (app.periodicNotes !== undefined) merged.periodicNotes = app.periodicNotes;
-    if (app.autoBackupPhraseWrapped !== undefined) {
-      merged.autoBackupPhraseWrapped = app.autoBackupPhraseWrapped;
+    if (app.autoBackupPhrase !== undefined) {
+      // Newest-wins on the field's OWN stamp, independent of the row's
+      // updated_at: whole-row LWW must never let a stale device's unrelated
+      // settings push revert the account's newest recovery phrase - that
+      // would silently make every backup taken since undecryptable with the
+      // phrase the user actually wrote down.
+      const local = merged.autoBackupPhrase;
+      if (!local || Date.parse(app.autoBackupPhrase.updatedAt) > Date.parse(local.updatedAt)) {
+        merged.autoBackupPhrase = app.autoBackupPhrase;
+      }
     }
   }
   return merged;
@@ -191,8 +200,15 @@ export function migrateAppBundle(raw: unknown): AppSettingsBundle {
   if (typeof obj.periodicNotes === 'object' && obj.periodicNotes !== null) {
     out.periodicNotes = obj.periodicNotes as AppSettings['periodicNotes'];
   }
-  if (typeof obj.autoBackupPhraseWrapped === 'string') {
-    out.autoBackupPhraseWrapped = obj.autoBackupPhraseWrapped;
+  if (typeof obj.autoBackupPhrase === 'object' && obj.autoBackupPhrase !== null) {
+    const phrase = obj.autoBackupPhrase as Record<string, unknown>;
+    if (
+      typeof phrase.wrapped === 'string' &&
+      typeof phrase.updatedAt === 'string' &&
+      !Number.isNaN(Date.parse(phrase.updatedAt))
+    ) {
+      out.autoBackupPhrase = { wrapped: phrase.wrapped, updatedAt: phrase.updatedAt };
+    }
   }
   return out;
 }

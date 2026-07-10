@@ -931,6 +931,7 @@
       "phrase_view_btn": "Show phrase again",
       "phrase_hide_btn": "Hide",
       "phrase_synced_hint": "The phrase is kept in your account in encrypted form - it syncs to your other devices and survives logging out. Your written copy remains the only recovery if you lose access to your account.",
+      "phrase_updated_notice": "The recovery phrase was updated from your account (changed on another device). View the current phrase and update your written copy - backups from now on use the new phrase.",
       "folder_heading": "Backup folder",
       "folder_intro": "Choose where the encrypted backup files are saved.",
       "folder_pick_btn": "Choose folder",

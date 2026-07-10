@@ -33,6 +33,7 @@ import {
 
 const CONFIG_KEY_PREFIX = 'reborn-notes:autoBackup:config';
 const STATE_KEY_PREFIX = 'reborn-notes:autoBackup:state';
+const PHRASE_NOTICE_KEY_PREFIX = 'reborn-notes:autoBackup:phraseChanged';
 
 // The shared cross-app session keys (duplicated string literals from
 // auth.store on purpose: they are a frozen cross-app storage contract, and
@@ -112,6 +113,34 @@ export function autoBackupScopeId(store = safeLocalStorage()): string | null {
 
 const configKey = (scopeId: string): string => `${CONFIG_KEY_PREFIX}:${scopeId}`;
 const stateKey = (scopeId: string): string => `${STATE_KEY_PREFIX}:${scopeId}`;
+const phraseNoticeKey = (scopeId: string): string => `${PHRASE_NOTICE_KEY_PREFIX}:${scopeId}`;
+
+/**
+ * Flag: phrase-sync replaced this device's vault phrase with a different one
+ * from the account (a rotation elsewhere, or the two-installs migration
+ * collision). The backup settings page shows a notice until the user re-views
+ * the current phrase - a silently swapped phrase must never go unnoticed,
+ * because a stale written kit stops matching every backup taken from now on.
+ */
+export function setPhraseChangedNotice(store = safeLocalStorage()): void {
+  const scopeId = autoBackupScopeId(store);
+  if (!scopeId) return;
+  store?.setItem(phraseNoticeKey(scopeId), '1');
+}
+
+/** Is the "phrase changed from the account" notice pending for this user? */
+export function hasPhraseChangedNotice(store = safeLocalStorage()): boolean {
+  const scopeId = autoBackupScopeId(store);
+  if (!scopeId) return false;
+  return store?.getItem(phraseNoticeKey(scopeId)) === '1';
+}
+
+/** Clear the notice - the user has re-viewed the current phrase. */
+export function clearPhraseChangedNotice(store = safeLocalStorage()): void {
+  const scopeId = autoBackupScopeId(store);
+  if (!scopeId) return;
+  store?.removeItem(phraseNoticeKey(scopeId));
+}
 
 /** Load the persisted config, merged over defaults. `store` is injectable for tests. */
 export function loadAutoBackupConfig(store = safeLocalStorage()): NotesAutoBackupConfig {
@@ -178,7 +207,7 @@ export function migrateAutoBackupPrefsScope(
   store = safeLocalStorage()
 ): void {
   if (!store || fromScopeId === toScopeId) return;
-  for (const keyFor of [configKey, stateKey]) {
+  for (const keyFor of [configKey, stateKey, phraseNoticeKey]) {
     const value = store.getItem(keyFor(fromScopeId));
     if (value !== null && store.getItem(keyFor(toScopeId)) === null) {
       store.setItem(keyFor(toScopeId), value);
@@ -200,6 +229,7 @@ export function clearAutoBackupPrefs(store = safeLocalStorage()): void {
   if (scopeId) {
     store.removeItem(configKey(scopeId));
     store.removeItem(stateKey(scopeId));
+    store.removeItem(phraseNoticeKey(scopeId));
   }
   // Legacy unscoped keys from builds before per-user scoping.
   store.removeItem(CONFIG_KEY_PREFIX);

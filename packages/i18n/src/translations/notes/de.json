@@ -931,6 +931,7 @@
       "phrase_view_btn": "Phrase erneut anzeigen",
       "phrase_hide_btn": "Ausblenden",
       "phrase_synced_hint": "Die Phrase wird verschlüsselt in Ihrem Konto gespeichert - sie synchronisiert sich mit Ihren anderen Geräten und bleibt nach dem Abmelden erhalten. Ihre schriftliche Kopie bleibt die einzige Rettung, wenn Sie den Zugriff auf Ihr Konto verlieren.",
+      "phrase_updated_notice": "Die Wiederherstellungsphrase wurde aus Ihrem Konto aktualisiert (auf einem anderen Gerät geändert). Sehen Sie sich die aktuelle Phrase an und aktualisieren Sie Ihre schriftliche Kopie - Sicherungen verwenden ab jetzt die neue Phrase.",
       "folder_heading": "Sicherungsordner",
       "folder_intro": "Wählen Sie, wo die verschlüsselten Sicherungsdateien gespeichert werden.",
       "folder_pick_btn": "Ordner wählen",

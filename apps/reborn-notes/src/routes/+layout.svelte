@@ -194,8 +194,17 @@
       // just fail auth and log a warning). Local IDB stays the source of truth.
       if (!get(authStore).isLocalOnly) {
         try {
-          const { applied } = await syncedSettings.pullAndMerge();
+          const { applied, fetched } = await syncedSettings.pullAndMerge();
           if (applied) await appSettings.refresh();
+          if (fetched) {
+            // Definitive server view obtained - unlock the phrase-publish
+            // branch of the auto-backup reconcile (it must never publish on
+            // "field absent locally", which a failed pull also looks like).
+            const { markSettingsPullSucceeded } = await import(
+              '$lib/services/auto-backup/phrase-sync'
+            );
+            markSettingsPullSucceeded();
+          }
         } catch (err: unknown) {
           logger.warn('Synced settings pull on E2E unlock failed', err);
         }
@@ -397,7 +406,15 @@
       // device sees the user's preferences instead of IDB defaults.
       if (cryptoManager.isInitialized() && !$authStore.isLocalOnly) {
         try {
-          await syncedSettings.pullAndMerge();
+          const { fetched } = await syncedSettings.pullAndMerge();
+          if (fetched) {
+            // Same unlock-path signal as in runSync: a definitive server view
+            // permits the phrase-publish branch of the auto-backup reconcile.
+            const { markSettingsPullSucceeded } = await import(
+              '$lib/services/auto-backup/phrase-sync'
+            );
+            markSettingsPullSucceeded();
+          }
         } catch (err: unknown) {
           logger.warn('Synced settings pull failed - falling back to local IDB', err);
         }

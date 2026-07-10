@@ -105,8 +105,14 @@ export interface AppSettings {
    * devices as ciphertext the server cannot read (the wrapped-recovery-secret
    * pattern; see reborn-notes' auto-backup phrase-sync module). Absent until
    * the user enables auto-backup somewhere.
+   *
+   * `updatedAt` is the phrase's OWN freshness stamp: the settings bundle syncs
+   * whole-row last-write-wins, so without it a device pushing an unrelated
+   * setting from a stale row would silently revert the account's newest phrase
+   * (breaking recoverability of every backup made since). Merge for this field
+   * is newest-`updatedAt`-wins, independent of the row's `updated_at`.
    */
-  autoBackupPhraseWrapped?: string;
+  autoBackupPhrase?: { wrapped: string; updatedAt: string };
   created_at: string;
   updated_at: string;
 }

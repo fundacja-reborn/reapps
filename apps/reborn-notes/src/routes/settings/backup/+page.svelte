@@ -23,12 +23,19 @@
     DEFAULT_NOTES_AUTO_BACKUP_CONFIG,
     type NotesAutoBackupConfig
   } from '$lib/services/auto-backup';
+  import {
+    hasPhraseChangedNotice,
+    clearPhraseChangedNotice
+  } from '$lib/services/auto-backup/prefs';
 
   const supported = IS_NATIVE;
 
   let cfg = $state<NotesAutoBackupConfig>({ ...DEFAULT_NOTES_AUTO_BACKUP_CONFIG });
   let bstate = $state<AutoBackupState>({ lastBackupAt: null, lastError: null });
   let phraseSet = $state(false);
+  // The vault phrase was replaced from the account (rotation on another
+  // device) - the user must re-view it so their written kit stays current.
+  let phraseChanged = $state(false);
 
   // The 12 words currently on screen (after generate, or while viewing). null = hidden.
   let shownPhrase = $state<string | null>(null);
@@ -56,6 +63,7 @@
     await reconcileRecoveryPhrase();
     const { loadRecoveryPhrase } = await import('$lib/services/auto-backup/recovery-phrase-vault');
     phraseSet = Boolean(await loadRecoveryPhrase());
+    phraseChanged = hasPhraseChangedNotice();
   });
 
   function generate() {
@@ -93,6 +101,12 @@
     const { loadRecoveryPhrase } = await import('$lib/services/auto-backup/recovery-phrase-vault');
     shownPhrase = await loadRecoveryPhrase();
     phraseIsNew = false;
+    // Viewing the current phrase resolves the "changed on another device"
+    // notice - the user can now bring their written kit up to date.
+    if (phraseChanged) {
+      clearPhraseChangedNotice();
+      phraseChanged = false;
+    }
   }
 
   function hidePhrase() {
@@ -164,6 +178,15 @@
               <h3 class="text-sm font-medium">{$t('settings_page.backup.phrase_heading')}</h3>
             </div>
             <p class="text-xs text-muted-foreground">{$t('settings_page.backup.phrase_intro')}</p>
+
+            {#if phraseChanged}
+              <div class="flex items-start gap-2 rounded-md border border-amber-400/50 bg-amber-500/10 px-3 py-2.5">
+                <AlertTriangle class="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <p class="text-xs text-amber-700 dark:text-amber-400">
+                  {$t('settings_page.backup.phrase_updated_notice')}
+                </p>
+              </div>
+            {/if}
 
             {#if shownPhrase}
               <div class="space-y-3 rounded-lg border border-primary/40 bg-muted/30 p-4">

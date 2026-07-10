@@ -7,10 +7,14 @@
  * uses on iOS (a scheduled "open the app" notification, not background work).
  *
  * Mechanics: after every backup run (and every toggle change) the pending
- * reminders are re-planned from `lastBackupAt` - one nudge ~2h past the due
- * point and a second one ~a week later for long absences. Opening the app
- * reruns the backup, which reschedules both into the future, so as long as
- * the user opens the app roughly daily no notification ever fires.
+ * reminders are re-planned - one nudge ~2h past the due point and a second
+ * one ~a week later for long absences. A reminder is only planned while
+ * there is actually something unbacked (`lastDataChangeAt` newer than
+ * `lastBackupAt`): the skip-if-unchanged gate freezes `lastBackupAt` for a
+ * user who merely READS notes, and nagging them to open an app that would
+ * then do nothing is noise. Any future data change necessarily happens with
+ * the app open, which reruns the backup and re-plans - so no reminder is
+ * ever missed by cancelling here.
  *
  * Zero-Knowledge: the notification carries only static localized copy -
  * never note data, filenames or timestamps derived from content.
@@ -54,10 +58,19 @@ export function planBackupReminders(args: {
   /** A write destination exists (folder picked). */
   configured: boolean;
   lastBackupAt: number | null;
+  /** Newest data change (the backup watermark); null = no data at all. */
+  lastDataChangeAt: number | null;
   intervalHours: number;
   now: number;
 }): BackupReminderPlan[] {
   if (!args.enabled || !args.configured) return [];
+  // Remind only while something is actually unbacked. With no data there is
+  // nothing to back up; with lastBackupAt covering the newest change, the
+  // next change happens in-app and re-plans - see the module doc.
+  const unbacked =
+    args.lastDataChangeAt !== null &&
+    (args.lastBackupAt === null || args.lastDataChangeAt > args.lastBackupAt);
+  if (!unbacked) return [];
   // No backup yet: measure from now - the first run happens on this very
   // open, and if it fails the next successful run resets the clock anyway.
   const base = args.lastBackupAt ?? args.now;
@@ -79,11 +92,14 @@ export async function syncBackupReminders(): Promise<void> {
   try {
     const config = loadAutoBackupConfig();
     const state = loadAutoBackupState();
+    const { getLastDataChangeAt } = await import('./watermark');
+    const lastDataChangeAt = await getLastDataChangeAt();
     const plan = planBackupReminders({
       enabled: config.enabled,
       configured: Boolean(config.folderBookmark),
-      // AutoBackupState keeps an ISO string; the planner works in epoch ms.
+      // State/watermark keep ISO strings; the planner works in epoch ms.
       lastBackupAt: state.lastBackupAt ? Date.parse(state.lastBackupAt) : null,
+      lastDataChangeAt: lastDataChangeAt ? Date.parse(lastDataChangeAt) : null,
       intervalHours: config.intervalHours,
       now: Date.now()
     });
