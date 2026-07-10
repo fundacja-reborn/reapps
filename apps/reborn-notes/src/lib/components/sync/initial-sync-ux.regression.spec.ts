@@ -44,6 +44,31 @@ describe('initial-sync UX - banner + periodic pending (2026-06-28)', () => {
       expect(src).toMatch(/role="progressbar"/);
       expect(src).toMatch(/\$t\('sync_status\.initial\.building'\)/);
     });
+
+    it('slides in/out (reduced-motion aware) instead of snapping the layout', () => {
+      // The banner stack feeds --rn-banner-h, which the 100dvh layouts subtract;
+      // a bare {#if} mount/unmount snaps the whole UI by the banner height in one
+      // frame. transition:slide animates it, and the ResizeObserver-based
+      // bind:clientHeight makes the layout follow per frame (2026-07-09).
+      expect(src).toMatch(
+        /transition:slide=\{\{\s*duration:\s*prefersReducedMotion\.current\s*\?\s*0\s*:/
+      );
+    });
+  });
+
+  describe('runPullFromServer initial-sync gate', () => {
+    const src = readSource('../../services/notes-sync.service.ts');
+
+    it('raises isInitialSync only when the local notes table is EMPTY, not on every cold boot', () => {
+      // lastSyncedAt is in-memory (null in every fresh JS context), so alone it
+      // misread every native cold start as a first sync - the banner flashed
+      // "building local database" over an already-built DB for the 1-2s the
+      // CapacitorHttp pull needs before the first notes page, then jumped the
+      // layout back (2026-07-09). The gate must also require an empty table.
+      expect(src).toMatch(
+        /get\(lastSyncedAt\)\s*===\s*null\s*&&\s*\(await noteStore\.count\(\)\)\s*===\s*0/
+      );
+    });
   });
 
   describe('+layout.svelte banner mount', () => {

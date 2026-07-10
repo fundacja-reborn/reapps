@@ -18,6 +18,8 @@
 -->
 <script lang="ts">
   import { Loader2 } from '@lucide/svelte';
+  import { slide } from 'svelte/transition';
+  import { prefersReducedMotion } from 'svelte/motion';
   import { isInitialSync, syncProgress } from '$lib/stores/sync-status.store';
   import { t } from '$lib/stores/i18n.store';
 
@@ -44,7 +46,14 @@
 </script>
 
 {#if showAfterDelay && $isInitialSync}
+  <!-- slide (not a bare {#if} swap): the measured banner stack feeds
+       --rn-banner-h, which the 100dvh page layouts subtract - an instant
+       mount/unmount snaps the whole UI by the banner height (worst at sync
+       completion, an unpredictable moment). bind:clientHeight is
+       ResizeObserver-based, so the var tracks the animated height per frame
+       and the layout follows the slide instead of jumping. -->
   <div
+    transition:slide={{ duration: prefersReducedMotion.current ? 0 : 200 }}
     class="border-b border-primary/15 bg-primary/5"
     role="status"
     aria-live="polite"
