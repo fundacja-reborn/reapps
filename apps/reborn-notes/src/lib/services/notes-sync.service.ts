@@ -190,11 +190,23 @@ async function runPullFromServer(): Promise<boolean> {
     }
   }
 
-  // First-ever pull (nothing synced yet): show the loading placeholder. Cleared
-  // by refreshStoresAfterPull on success (once notes are in memory) or by the
-  // finally below if this pull fails - never left stuck. Placed after the
-  // storage-init early-return above so a failed re-init can't strand it true.
-  if (get(lastSyncedAt) === null) isInitialSync.set(true);
+  // First pull with an EMPTY local notes table (fresh login, or wiped IDB):
+  // the local database is genuinely about to be built, so raise the initial-
+  // sync state (top banner + placeholders). lastSyncedAt === null alone is NOT
+  // enough: that store is in-memory and starts null in every fresh JS context,
+  // so it misread every cold start as a first sync - and on native, where the
+  // two serial CapacitorHttp round-trips before the first notes page exceed
+  // the banner's 300ms anti-flicker, that flashed "building local database"
+  // over an already-built DB and jumped the layout. A populated table proves a
+  // prior sync built the DB - routine boot pulls stay silent. The lastSyncedAt
+  // check still guards the session dimension: a later periodic pull after the
+  // user deleted their last note must not re-raise it. Cleared by pullNotes
+  // after the first page / refreshStoresAfterPull / the finally below on
+  // failure - never left stuck. Placed after the storage-init early-return
+  // above so a failed re-init can't strand it true.
+  if (get(lastSyncedAt) === null && (await noteStore.count()) === 0) {
+    isInitialSync.set(true);
+  }
 
   isSyncing.set(true);
   syncError.set(false);
