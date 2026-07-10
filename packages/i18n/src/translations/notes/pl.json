@@ -930,6 +930,7 @@
       "phrase_set": "Fraza odzyskiwania jest ustawiona.",
       "phrase_view_btn": "Pokaż frazę ponownie",
       "phrase_hide_btn": "Ukryj",
+      "phrase_synced_hint": "Fraza jest przechowywana w koncie w postaci zaszyfrowanej - synchronizuje się między Twoimi urządzeniami i przetrwa wylogowanie. Zapisana kopia pozostaje jedynym ratunkiem, gdy stracisz dostęp do konta.",
       "folder_heading": "Folder kopii",
       "folder_intro": "Wybierz, gdzie zapisywane są pliki zaszyfrowanej kopii.",
       "folder_pick_btn": "Wybierz folder",

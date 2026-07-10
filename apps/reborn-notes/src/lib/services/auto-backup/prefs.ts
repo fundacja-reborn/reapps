@@ -162,6 +162,32 @@ export function saveAutoBackupState(state: AutoBackupState, store = safeLocalSto
 }
 
 /**
+ * Copy the config and state entries from one scope id to another. Used by the
+ * local→account upgrade: the upgrade flips `autoBackupScopeId()` from the
+ * local pseudo user id to the account id, which would orphan the local-only
+ * user's backup setup (folder bookmark, enabled flag, cadence state) under
+ * keys nothing reads any more. Same device, same human, same folder grant -
+ * carrying the setup over is safe and spares a full re-setup. The target
+ * scope is only written where it has no entry of its own (it never does in
+ * practice: logout wipes account-scoped entries), and the source entries are
+ * removed so nothing lingers under the dead scope.
+ */
+export function migrateAutoBackupPrefsScope(
+  fromScopeId: string,
+  toScopeId: string,
+  store = safeLocalStorage()
+): void {
+  if (!store || fromScopeId === toScopeId) return;
+  for (const keyFor of [configKey, stateKey]) {
+    const value = store.getItem(keyFor(fromScopeId));
+    if (value !== null && store.getItem(keyFor(toScopeId)) === null) {
+      store.setItem(keyFor(toScopeId), value);
+    }
+    store.removeItem(keyFor(fromScopeId));
+  }
+}
+
+/**
  * Remove the persisted config and state of the CURRENT user. Called on logout
  * and on the local-only wipe, while the session keys are still readable - the
  * next account on this device must not inherit this user's backup target.

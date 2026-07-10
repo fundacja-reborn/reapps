@@ -930,6 +930,7 @@
       "phrase_set": "Wiederherstellungsphrase ist gesetzt.",
       "phrase_view_btn": "Phrase erneut anzeigen",
       "phrase_hide_btn": "Ausblenden",
+      "phrase_synced_hint": "Die Phrase wird verschlüsselt in Ihrem Konto gespeichert - sie synchronisiert sich mit Ihren anderen Geräten und bleibt nach dem Abmelden erhalten. Ihre schriftliche Kopie bleibt die einzige Rettung, wenn Sie den Zugriff auf Ihr Konto verlieren.",
       "folder_heading": "Sicherungsordner",
       "folder_intro": "Wählen Sie, wo die verschlüsselten Sicherungsdateien gespeichert werden.",
       "folder_pick_btn": "Ordner wählen",

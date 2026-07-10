@@ -60,6 +60,13 @@ export interface AppSettingsBundle {
   confirmBeforeDelete?: AppSettings['confirmBeforeDelete'];
   folderSortMode?: AppSettings['folderSortMode'];
   periodicNotes?: AppSettings['periodicNotes'];
+  /**
+   * Notes-only: recovery phrase wrapped as its own ciphertext under the master
+   * key (never plaintext - see the AppSettings field doc). Riding the app
+   * bundle makes it account-scoped without any server-side change: the server
+   * stores it doubly encrypted inside `settings_encrypted`.
+   */
+  autoBackupPhraseWrapped?: AppSettings['autoBackupPhraseWrapped'];
 }
 
 /** Extract the shared subset of an AppSettings row. */
@@ -95,6 +102,9 @@ export function extractAppBundle(s: AppSettings): AppSettingsBundle {
   if (s.periodicNotes !== undefined) {
     bundle.periodicNotes = s.periodicNotes;
   }
+  if (s.autoBackupPhraseWrapped !== undefined) {
+    bundle.autoBackupPhraseWrapped = s.autoBackupPhraseWrapped;
+  }
   return bundle;
 }
 
@@ -129,6 +139,9 @@ export function applyBundlesToSettings(
     if (app.confirmBeforeDelete !== undefined) merged.confirmBeforeDelete = app.confirmBeforeDelete;
     if (app.folderSortMode !== undefined) merged.folderSortMode = app.folderSortMode;
     if (app.periodicNotes !== undefined) merged.periodicNotes = app.periodicNotes;
+    if (app.autoBackupPhraseWrapped !== undefined) {
+      merged.autoBackupPhraseWrapped = app.autoBackupPhraseWrapped;
+    }
   }
   return merged;
 }
@@ -177,6 +190,9 @@ export function migrateAppBundle(raw: unknown): AppSettingsBundle {
   }
   if (typeof obj.periodicNotes === 'object' && obj.periodicNotes !== null) {
     out.periodicNotes = obj.periodicNotes as AppSettings['periodicNotes'];
+  }
+  if (typeof obj.autoBackupPhraseWrapped === 'string') {
+    out.autoBackupPhraseWrapped = obj.autoBackupPhraseWrapped;
   }
   return out;
 }

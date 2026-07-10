@@ -85,6 +85,16 @@ describe('settings-bundle: extract', () => {
     const app = extractAppBundle(taskFixture);
     expect('periodicNotes' in app).toBe(false);
     expect('folderSortMode' in app).toBe(false);
+    expect('autoBackupPhraseWrapped' in app).toBe(false);
+  });
+
+  it('extractAppBundle carries the wrapped auto-backup phrase when present', () => {
+    const withPhrase: AppSettings = {
+      ...NOTES_FIXTURE,
+      autoBackupPhraseWrapped: 'aXY=:Y2lwaGVydGV4dA=='
+    };
+    const app = extractAppBundle(withPhrase);
+    expect(app.autoBackupPhraseWrapped).toBe('aXY=:Y2lwaGVydGV4dA==');
   });
 });
 
@@ -152,6 +162,21 @@ describe('settings-bundle: applyBundlesToSettings', () => {
     expect(merged.theme).toBe(baseline.theme);
     expect(merged.editorMode).toBe(baseline.editorMode);
   });
+
+  it('round-trip preserves the wrapped auto-backup phrase; absent key leaves local intact', () => {
+    const withPhrase: AppSettings = {
+      ...NOTES_FIXTURE,
+      autoBackupPhraseWrapped: 'aXY=:Y2lwaGVydGV4dA=='
+    };
+    const app = extractAppBundle(withPhrase);
+    const merged = applyBundlesToSettings(NOTES_FIXTURE, null, app);
+    expect(merged.autoBackupPhraseWrapped).toBe('aXY=:Y2lwaGVydGV4dA==');
+
+    // A bundle WITHOUT the key (older client / settings reset elsewhere) must
+    // not clear a locally-known phrase - that device re-publishes from its vault.
+    const withoutKey = applyBundlesToSettings(withPhrase, null, { schema_version: 1 });
+    expect(withoutKey.autoBackupPhraseWrapped).toBe('aXY=:Y2lwaGVydGV4dA==');
+  });
 });
 
 describe('settings-bundle: migrate (decrypt → unknown JSON → typed bundle)', () => {
@@ -207,5 +232,15 @@ describe('settings-bundle: migrate (decrypt → unknown JSON → typed bundle)',
   it('migrateAppBundle drops unknown folderSortMode values', () => {
     const out = migrateAppBundle({ folderSortMode: 'by-size' });
     expect(out.folderSortMode).toBeUndefined();
+  });
+
+  it('migrateAppBundle reads autoBackupPhraseWrapped only when it is a string', () => {
+    expect(
+      migrateAppBundle({ autoBackupPhraseWrapped: 'aXY=:Y2lwaGVydGV4dA==' }).autoBackupPhraseWrapped
+    ).toBe('aXY=:Y2lwaGVydGV4dA==');
+    expect(migrateAppBundle({ autoBackupPhraseWrapped: 42 }).autoBackupPhraseWrapped).toBeUndefined();
+    expect(
+      migrateAppBundle({ autoBackupPhraseWrapped: { iv: 'x' } }).autoBackupPhraseWrapped
+    ).toBeUndefined();
   });
 });

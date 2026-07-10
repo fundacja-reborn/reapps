@@ -41,6 +41,19 @@ export async function runNotesAutoBackupIfDue(
   // The backup decrypts account data to re-wrap it portably; needs the key.
   if (!cryptoManager.isInitialized()) return { status: 'skipped', reason: 'locked' };
 
+  // Sync the vault with the account-scoped wrapped phrase BEFORE reading any
+  // config: this hydrates a fresh/wiped device after login (the settings pull
+  // at unlock runs earlier in the same runSync), picks up a rotation made on
+  // another device, and publishes the phrase of installs that predate account
+  // scoping. Runs even when auto-backup is disabled here, so the settings
+  // page later finds the phrase ready. Never throws.
+  try {
+    const { reconcileRecoveryPhrase } = await import('./phrase-sync');
+    await reconcileRecoveryPhrase();
+  } catch (err) {
+    logger.warn('Recovery phrase reconcile before backup failed:', err);
+  }
+
   const config = loadAutoBackupConfig();
   if (!config.enabled) return { status: 'skipped', reason: 'disabled' };
 
@@ -102,6 +115,34 @@ export async function clearAutoBackupState(): Promise<void> {
     await clearRecoveryPhrase();
   } catch (err) {
     logger.error('Failed to clear auto-backup state:', err);
+  }
+}
+
+/**
+ * Carry the auto-backup setup across the local→account upgrade: the upgrade
+ * swaps `autoBackupScopeId()` from the local pseudo id to the account id, so
+ * without this the config/state (localStorage) and phrase (OS vault) written
+ * under the local id would be orphaned and the upgraded account would start
+ * from a disabled, phraseless default - forcing a full re-setup on the very
+ * device that already has a valid folder grant and phrase. Same device, same
+ * human: carrying it over is safe. Call AFTER the account credentials are in
+ * localStorage (so pushes see the account) and BEFORE any backup run.
+ * Best-effort: a failure only costs the user a re-setup, like before.
+ */
+export async function migrateAutoBackupScope(
+  fromScopeId: string | null,
+  toScopeId: string
+): Promise<void> {
+  if (!fromScopeId || fromScopeId === toScopeId) return;
+  try {
+    const { migrateAutoBackupPrefsScope } = await import('./prefs');
+    migrateAutoBackupPrefsScope(fromScopeId, toScopeId);
+    if (__REBORN_NATIVE__) {
+      const { migrateRecoveryPhraseScope } = await import('./recovery-phrase-vault');
+      await migrateRecoveryPhraseScope(fromScopeId, toScopeId);
+    }
+  } catch (err) {
+    logger.error('Failed to migrate auto-backup scope on account upgrade:', err);
   }
 }
 

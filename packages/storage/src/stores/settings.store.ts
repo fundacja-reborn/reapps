@@ -95,6 +95,18 @@ export interface AppSettings {
    * don't carry the field. Defaults are written by `initializeDefaults` for the notes app.
    */
   periodicNotes?: PeriodicNotesSettings;
+  /**
+   * Notes-only: the auto-backup recovery phrase, wrapped as its OWN AES-GCM
+   * ciphertext under the master key (`cryptoManager.encryptText` output,
+   * `iv:ciphertext`). NEVER plaintext: this row is stored unencrypted in
+   * IndexedDB, so the phrase gets the same at-rest protection as note content
+   * only through this inner envelope. Syncing it in the app bundle makes the
+   * phrase ACCOUNT-scoped - it survives logout and reaches the user's other
+   * devices as ciphertext the server cannot read (the wrapped-recovery-secret
+   * pattern; see reborn-notes' auto-backup phrase-sync module). Absent until
+   * the user enables auto-backup somewhere.
+   */
+  autoBackupPhraseWrapped?: string;
   created_at: string;
   updated_at: string;
 }

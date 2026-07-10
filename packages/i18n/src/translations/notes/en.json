@@ -930,6 +930,7 @@
       "phrase_set": "Recovery phrase is set.",
       "phrase_view_btn": "Show phrase again",
       "phrase_hide_btn": "Hide",
+      "phrase_synced_hint": "The phrase is kept in your account in encrypted form - it syncs to your other devices and survives logging out. Your written copy remains the only recovery if you lose access to your account.",
       "folder_heading": "Backup folder",
       "folder_intro": "Choose where the encrypted backup files are saved.",
       "folder_pick_btn": "Choose folder",

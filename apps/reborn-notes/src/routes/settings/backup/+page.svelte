@@ -10,6 +10,7 @@
   } from '@reborn/ui';
   import { KeyRound, FolderOpen, AlertTriangle, Copy, Check, ShieldCheck } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
+  import { localOnly } from '$lib/stores/sync-status.store';
   import { IS_NATIVE } from '$lib/utils/native-client';
   import { copyText } from '$lib/utils/clipboard';
   import { generateRecoveryPhrase } from '@reborn/crypto';
@@ -48,6 +49,11 @@
     if (!supported) return;
     cfg = loadAutoBackupConfig();
     bstate = loadAutoBackupState();
+    // Hydrate the vault from the account-scoped wrapped copy first, so a
+    // phrase enabled on another device (or before a logout) shows up as set
+    // here instead of prompting for a brand-new one. Never throws.
+    const { reconcileRecoveryPhrase } = await import('$lib/services/auto-backup/phrase-sync');
+    await reconcileRecoveryPhrase();
     const { loadRecoveryPhrase } = await import('$lib/services/auto-backup/recovery-phrase-vault');
     phraseSet = Boolean(await loadRecoveryPhrase());
   });
@@ -73,8 +79,10 @@
 
   async function confirmSaved() {
     if (!shownPhrase || !confirmChecked) return;
-    const { saveRecoveryPhrase } = await import('$lib/services/auto-backup/recovery-phrase-vault');
-    await saveRecoveryPhrase(shownPhrase);
+    // Writes the OS vault AND publishes the wrapped copy to synced settings,
+    // making the phrase account-scoped (survives logout, reaches other devices).
+    const { storeRecoveryPhrase } = await import('$lib/services/auto-backup/phrase-sync');
+    await storeRecoveryPhrase(shownPhrase);
     phraseSet = true;
     shownPhrase = null;
     phraseIsNew = false;
@@ -224,6 +232,11 @@
                   {$t('settings_page.backup.phrase_view_btn')}
                 </button>
               </div>
+              {#if !$localOnly}
+                <p class="text-xs text-muted-foreground/80">
+                  {$t('settings_page.backup.phrase_synced_hint')}
+                </p>
+              {/if}
             {:else}
               <button
                 type="button"
