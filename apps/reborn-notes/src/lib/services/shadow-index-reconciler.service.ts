@@ -20,7 +20,6 @@
  * potentially clobber a row whose ciphertext is fine but the key is wrong.
  */
 import { noteStore, noteTagOperations, noteTagQueries } from '@reborn/storage';
-import type { NoteStoredLocal } from '@reborn/types';
 import { cryptoManager } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import { extractShadowIndexes } from './shadow-index-extractor';
@@ -39,7 +38,11 @@ export async function verifyAndRebuildLocalShadowIndexes(): Promise<ReconcileRes
     return { scanned: 0, reconciledNotes: 0, decryptFailed: 0 };
   }
 
-  const allNotes = (await noteStore.getAll()) as NoteStoredLocal[];
+  // The scan needs only meta fields (metadata_encrypted, shadow booleans, id),
+  // so it reads the metadata projection - this runs after every unlockE2E()
+  // and must not deserialize content blobs (DB v14 split). The (rare) drift
+  // write below re-reads the full record.
+  const allNotes = await noteStore.getAllMeta();
   let reconciledNotes = 0;
   let decryptFailed = 0;
 
@@ -73,7 +76,30 @@ export async function verifyAndRebuildLocalShadowIndexes(): Promise<ReconcileRes
     if (!pinnedDrift && !starredDrift && !tagDrift) continue;
 
     if (pinnedDrift || starredDrift) {
-      await noteStore.save({ ...note, is_pinned, is_starred });
+      // Re-read the full record at write time: save() requires the complete
+      // row (content joined), and re-reading means a row hard-deleted mid-scan
+      // is skipped instead of resurrected from the stale snapshot. Re-derive
+      // the shadow values from the LIVE row's metadata bundle too - the scan
+      // snapshot may be minutes old on a large vault, and writing snapshot-era
+      // booleans over a pin/star the user toggled mid-scan would revert it.
+      const full = await noteStore.get(note.id);
+      if (full?.metadata_encrypted) {
+        try {
+          const fresh = await extractShadowIndexes(full.metadata_encrypted, cryptoManager);
+          const liveDrift =
+            !!full.is_pinned !== fresh.is_pinned || !!full.is_starred !== fresh.is_starred;
+          if (liveDrift) {
+            await noteStore.save({
+              ...full,
+              is_pinned: fresh.is_pinned,
+              is_starred: fresh.is_starred
+            });
+          }
+        } catch {
+          // Live row no longer decrypts - leave it untouched (same rule as
+          // the scan-time catch above).
+        }
+      }
     }
     if (tagDrift) {
       await Promise.all([

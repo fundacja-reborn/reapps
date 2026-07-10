@@ -262,6 +262,9 @@ export async function clearAllUserData(): Promise<void> {
     if (existingStores.has('subtasks')) await subtaskStore.clear();
 
     // Notes stores
+    // noteStore.clear() wipes BOTH physical stores (notes + noteContents) in
+    // one transaction - the DB v14 content split must not leak the previous
+    // account's content ciphertext on logout / account switch.
     if (existingStores.has('notes')) await noteStore.clear();
     if (existingStores.has('folders')) await folderStore.clear();
     if (existingStores.has('tags')) await tagStore.clear();

@@ -176,11 +176,14 @@ describe('notes-sync - regression (offline data loss)', () => {
       src.indexOf('export async function pushPendingItems'),
       src.indexOf('/** Retry a function with exponential backoff')
     );
-    // Non-archived pending notes still POST /api/notes.
-    expect(fn).toMatch(/const\s+pendingNotes\s*=\s*allNotes\.filter/);
+    // Non-archived pending notes still POST /api/notes (meta projection
+    // filtered first, full rows point-read for the push - DB v14 split).
+    expect(fn).toMatch(/const\s+pendingNotes\s*=\s*fetchedPending\.filter\(isPendingActive\)/);
     expect(fn).toMatch(/!n\.is_archived/);
     // Archived pending notes get their own bucket and go through pushNoteDelete.
-    expect(fn).toMatch(/const\s+pendingArchivedNotes\s*=\s*allNotes\.filter/);
+    expect(fn).toMatch(
+      /const\s+pendingArchivedNotes\s*=\s*fetchedPending\.filter\(isPendingArchived\)/
+    );
     expect(fn).toMatch(/pushNoteDelete\s*\(\s*n\.id\s*\)/);
   });
 
@@ -1033,9 +1036,10 @@ describe('notes-sync - paginated delta sync (stage 2b)', () => {
       src.indexOf('async upsertFromStore'),
       src.indexOf('/** Clear and rebuild')
     );
-    expect(method).toMatch(/noteStore\.getMany\(/);
+    expect(method).toMatch(/noteStore\.getManyMeta\(/);
     expect(method).toMatch(/this\._map\.set\(/);
-    // Must NOT fall back to the full-table getAll() that build() uses.
-    expect(method).not.toMatch(/noteStore\.getAll\(/);
+    // Must NOT fall back to a full-table scan - neither the joined getAll()
+    // nor the metadata projection getAllMeta() that build() uses (DB v14).
+    expect(method).not.toMatch(/noteStore\.getAll\w*\(/);
   });
 });

@@ -114,6 +114,18 @@ export const NOTES_STORE_DEFINITIONS: StoreDefinition[] = [
   {
     name: 'folderSyncConfigs',
     primaryKey: 'id'
+  },
+  {
+    // Content ciphertext split out of `notes` (DB v14): { id, content_encrypted }.
+    // Keeps metadata-only getAll() on `notes` from deserializing every content
+    // blob (note index build, sync reconcile, pending counts). Managed
+    // exclusively by the note store's joined reads / atomic dual-store writes.
+    // The v14 upgrade itself only CREATES this store (structure-only, cannot
+    // fail on data volume); legacy v13 rows still carrying content inline are
+    // moved lazily by `noteStore.migrateLegacyContent()` (chunked, resumable)
+    // and tolerated by the joined read path until swept.
+    name: 'noteContents',
+    primaryKey: 'id'
   }
 ];
 

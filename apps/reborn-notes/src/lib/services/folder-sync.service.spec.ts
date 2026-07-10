@@ -29,7 +29,8 @@ vi.mock('@reborn/storage', () => ({
     }
   },
   noteStore: {
-    getAll: async () => [...noteRows]
+    // liveNoteIds() reads the metadata projection (DB v14 split) - ids only.
+    getAllMeta: async () => [...noteRows]
   }
 }));
 

@@ -149,13 +149,13 @@ class DatabaseManager {
         });
       },
       blocked: () => {
-        logger.warn('Database upgrade blocked by other tabs — waiting for them to close');
+        logger.warn('Database upgrade blocked by other tabs - waiting for them to close');
       },
       blocking: () => {
         // Another tab needs to upgrade the database. Close our connection
         // so the upgrade can proceed. The next operation that needs the DB
         // will re-initialize the connection at the new version.
-        logger.warn('Another tab requested DB upgrade — closing connection to unblock');
+        logger.warn('Another tab requested DB upgrade - closing connection to unblock');
         if (this.db) {
           this.db.close();
           this.db = null;
@@ -180,7 +180,7 @@ class DatabaseManager {
   getDatabase(): IDBPDatabase {
     if (!this.db) {
       if (this.config) {
-        // Connection was closed but config is still known — schedule reconnect.
+        // Connection was closed but config is still known - schedule reconnect.
         // For now throw so callers handle the "not initialized" case gracefully;
         // the reconnect will happen on the next initializeStorage() or initialize() call.
         logger.debug('Database connection lost, will reconnect on next initialize()');
@@ -254,3 +254,29 @@ export const initDatabase = (config: DatabaseConfig) => databaseManager.initiali
 export const closeDatabase = () => databaseManager.close();
 export const getDatabase = () => databaseManager.getDatabase();
 export const isDatabaseInitialized = () => databaseManager.isInitialized();
+
+/** Current connection for a read, or null when not initialized (callers soft-return empty). */
+export function getDatabaseIfInitialized(): IDBPDatabase | null {
+  return databaseManager.isInitialized() ? databaseManager.getDatabase() : null;
+}
+
+/**
+ * Live DB connection for a write, reconnecting once if it was dropped.
+ *
+ * `databaseManager` nulls its connection out from under us in two cases: a
+ * `blocking` upgrade requested by another tab, and `terminated` - which fires
+ * when the platform tears the IndexedDB connection down (a Capacitor WKWebView
+ * does this when the app is backgrounded / under memory pressure). After that
+ * `getDatabase()` throws until the next `initialize()`, so a write issued
+ * before any re-init would fail even though the database is perfectly healthy
+ * on disk (a fresh `indexedDB.open` still works - exactly the asymmetry that
+ * surfaced as folder-sync "Failed to save item" on iOS). Reconnect on the spot
+ * using the last known config rather than dropping the write. Shared by every
+ * store implementation (IndexedDBStore, SplitNoteStore).
+ */
+export async function requireDatabase(): Promise<IDBPDatabase> {
+  if (databaseManager.isInitialized()) return databaseManager.getDatabase();
+  await databaseManager.reconnect();
+  if (databaseManager.isInitialized()) return databaseManager.getDatabase();
+  throw new Error('Database not initialized (reconnect failed).');
+}

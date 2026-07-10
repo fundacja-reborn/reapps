@@ -54,5 +54,5 @@ export * as schemas from './schemas';
  * `docs/architecture/zero-knowledge-architecture.md` for the rationale.
  */
 export const DB_CONFIG = {
-  version: 13 // Bump: folderSyncConfigs store (notes)
+  version: 14 // Bump: noteContents store (notes) - content_encrypted split out of `notes`
 };

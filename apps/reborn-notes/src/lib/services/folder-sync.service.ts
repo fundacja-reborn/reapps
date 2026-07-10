@@ -734,7 +734,8 @@ async function syncOneConfig(
  * emptied trash drops an id - exactly when a synced file's note must come back.
  */
 async function liveNoteIds(): Promise<Set<string>> {
-  const all = await noteStore.getAll();
+  // ids only - metadata projection, no content blobs (DB v14 split).
+  const all = await noteStore.getAllMeta();
   return new Set(all.map((n) => n.id));
 }
 

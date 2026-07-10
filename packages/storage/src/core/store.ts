@@ -1,7 +1,7 @@
 import { createLogger } from '@reborn/utils';
 import { validateEncryptedPayload } from '@reborn/crypto';
 import type { IDBPDatabase, IDBPTransaction } from 'idb';
-import { databaseManager } from './database';
+import { databaseManager, requireDatabase } from './database';
 import type { StoreConfig, QueryOptions, BatchResult, WithId } from './types';
 import { writable, type Writable } from 'svelte/store';
 
@@ -34,23 +34,12 @@ export class IndexedDBStore<TStored extends WithId, TPublic extends WithId = TSt
   }
 
   /**
-   * Live DB connection for a write, reconnecting once if it was dropped.
-   *
-   * `databaseManager` nulls its connection out from under us in two cases: a
-   * `blocking` upgrade requested by another tab, and `terminated` - which fires
-   * when the platform tears the IndexedDB connection down (a Capacitor WKWebView
-   * does this when the app is backgrounded / under memory pressure). After that
-   * `getDatabase()` throws until the next `initialize()`, so a write issued
-   * before any re-init would fail even though the database is perfectly healthy
-   * on disk (a fresh `indexedDB.open` still works - exactly the asymmetry that
-   * surfaced as folder-sync "Failed to save item" on iOS). Reconnect on the spot
-   * using the last known config rather than dropping the write.
+   * Live DB connection for a write, reconnecting once if it was dropped -
+   * see `requireDatabase()` in core/database.ts for the WKWebView-teardown
+   * rationale (shared with SplitNoteStore).
    */
   private async requireDb(): Promise<IDBPDatabase> {
-    if (databaseManager.isInitialized()) return databaseManager.getDatabase();
-    await databaseManager.reconnect();
-    if (databaseManager.isInitialized()) return databaseManager.getDatabase();
-    throw new Error('Database not initialized (reconnect failed).');
+    return requireDatabase();
   }
 
   /**

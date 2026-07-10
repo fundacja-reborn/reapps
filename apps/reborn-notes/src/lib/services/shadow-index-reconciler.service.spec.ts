@@ -26,7 +26,11 @@ vi.mock('@reborn/crypto', () => ({
 
 vi.mock('@reborn/storage', () => ({
   noteStore: {
-    getAll: async () => noteRows,
+    // The reconciler scans the metadata projection (DB v14 split); these rows
+    // carry no content_encrypted, matching the real getAllMeta() shape.
+    getAllMeta: async () => noteRows,
+    // Drift writes re-read the full record before save().
+    get: async (id: string) => noteRows.find((r) => r.id === id) ?? null,
     save: async (row: NoteRow) => {
       saveSpy(row);
       const idx = noteRows.findIndex((r) => r.id === row.id);
