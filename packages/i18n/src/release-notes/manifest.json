@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.45.0",
+    "date": "2026-07-28",
+    "items": [
+      { "id": "0.45.0-account-backup-phrase", "category": "new", "apps": ["notes"], "platforms": ["android", "ios"] },
+      { "id": "0.45.0-backup-reminder", "category": "new", "apps": ["notes"], "platforms": ["android", "ios"] },
+      { "id": "0.45.0-note-content-split", "category": "improved", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.45.0-initial-sync-banner", "category": "fixed", "apps": ["notes"], "platforms": "all" },
+      { "id": "0.45.0-android-cold-start-splash", "category": "fixed", "apps": ["notes"], "platforms": ["android"] }
+    ]
+  },
+  {
     "version": "0.44.0",
     "date": "2026-07-08",
     "items": [
