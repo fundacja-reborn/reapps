@@ -53,7 +53,7 @@ vitest.config.*.timestamp*
 .env
 
 
-# Git identity (local only — do not expose personal email)
+# Git identity (local only - do not expose personal email)
 .mailmap
 
 # Claude Code
@@ -82,13 +82,14 @@ patches/
 fix-build.sh
 reborn-apps.code-workspace
 
-# Production/staging config — deployed via SCP, not in repo
+# Production/staging config - deployed via SCP, not in repo
 docker-compose.prod.yml
 docker-compose.staging.yml
 docker-compose.localprod.yml
 docker-compose.claude.yml
 nginx/prod.conf
 nginx/staging.conf
+deploy.sh
 
 # Dev Container (Claude Code specific mounts)
 .devcontainer/
