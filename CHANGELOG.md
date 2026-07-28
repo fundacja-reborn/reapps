@@ -1,3 +1,21 @@
+## 0.45.0 (2026-07-28)
+
+### 🚀 Features
+
+- **notes:** account-scoped backup phrase + overdue-backup reminder ([#440](https://github.com/fundacja-reborn/reapps/pull/440), [#437](https://github.com/fundacja-reborn/reapps/issues/437), [#438](https://github.com/fundacja-reborn/reapps/issues/438))
+
+### 🩹 Fixes
+
+- **deps:** patch 2026-07 security advisory wave across dep tree ([#443](https://github.com/fundacja-reborn/reapps/pull/443))
+- **notes:** eliminate native cold-start splash/loading flash ([#433](https://github.com/fundacja-reborn/reapps/pull/433), [#0](https://github.com/fundacja-reborn/reapps/issues/0))
+- **notes:** native cold-start splash bg + populated first paint ([#434](https://github.com/fundacja-reborn/reapps/pull/434), [#433](https://github.com/fundacja-reborn/reapps/issues/433), [#0](https://github.com/fundacja-reborn/reapps/issues/0), [#1](https://github.com/fundacja-reborn/reapps/issues/1))
+- **notes:** show initial-sync banner only when local DB is empty ([#436](https://github.com/fundacja-reborn/reapps/pull/436))
+- **notes:** hold native splash until the shell is ready to paint ([#437](https://github.com/fundacja-reborn/reapps/pull/437), [#433](https://github.com/fundacja-reborn/reapps/issues/433), [#434](https://github.com/fundacja-reborn/reapps/issues/434))
+
+### 🔥 Performance
+
+- **notes:** split note content into a separate IndexedDB store (DB v14) ([#439](https://github.com/fundacja-reborn/reapps/pull/439))
+
 ## 0.44.0 (2026-07-08)
 
 ### 🚀 Features
