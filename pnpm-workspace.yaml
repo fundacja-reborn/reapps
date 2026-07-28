@@ -2,16 +2,20 @@ packages:
   - apps/*
   - packages/*
 overrides:
-  axios: 1.16.1
+  axios: 1.18.0 # 2026-07 wave: GHSA-gcfj-64vw-6mp9 (high) + 8 moderate GHSAs; nx-transitive, dev-only
   follow-redirects: 1.16.0
-  fast-uri: 3.1.2
+  fast-uri: 3.1.4 # GHSA-v2hh-gcrm-f6hx + GHSA-4c8g-83qw-93j6 host confusion; ajv-transitive (nx/vite, prisma-dev)
   '@babel/plugin-transform-modules-systemjs': 7.29.7
-  hono: 4.12.25
+  hono: 4.12.27 # GHSA-w62v-xxxg-mg59 + GHSA-hvrm-45r6-mjfj + GHSA-xgm2-5f3f-mvvc; prisma-dev transitive
   cookie: 0.7.2
   esbuild: 0.28.1
-  '@hono/node-server': 1.19.14
+  '@hono/node-server': 2.0.10 # GHSA-frvp-7c67-39w9 path traversal + GHSA-9mqv-5hh9-4cgg WS DoS; prisma-dev transitive. NOTE cross-major 1->2 - no 1.x backport; affects prisma dev tooling only (studio/dev), drop when prisma bumps
   devalue: 5.8.1
-  dompurify@<3.4.11: '3.4.11' # GHSA-cmwh-pvxp-8882 DOMPurify ALLOWED_ATTR pollution via setConfig - PROD bundle (notes direct + jspdf-transitive)
+  dompurify@<3.4.12: '3.4.12' # GHSA-c2j3-45gr-mqc4 CUSTOM_ELEMENT_HANDLING bypass (low) - PROD bundle (notes direct + jspdf-transitive); previously GHSA-cmwh-pvxp-8882
+  tar@<7.5.21: '7.5.21' # GHSA-23hp-3jrh-7fpw (critical) + GHSA-8x88-c5mf-7j5w (high) + 3 moderate DoS; @capacitor/cli-transitive, dev-only
+  brace-expansion@<5.0.8: '5.0.8' # GHSA-mh99-v99m-4gvg + GHSA-3jxr-9vmj-r5cp expansion DoS (high); minimatch@10-transitive (eslint/nx), dev-only
+  postcss@<8.5.18: '8.5.18' # GHSA-r28c-9q8g-f849 sourceMappingURL path traversal (high); vite/svelte-kit-transitive, build-time only
+  valibot@<1.4.2: '1.4.2' # GHSA-5qjj-4xww-7phc flatten() throw (moderate); prisma-dev + sveltekit-superforms transitive
   ts-deepmerge@<8.0.0: '8.0.0' # GHSA-87mf-gv2c-c62c ts-deepmerge prototype method override DoS; PROD bundle (sveltekit-superforms + formsnap transitive)
   tmp@<0.2.7: '0.2.7' # GHSA-7c78-jf6q-g5cm tmp path traversal via non-string template (nx-transitive, dev-only)
   form-data@<4.0.6: '4.0.6' # GHSA-hmw2-7cc7-3qxx form-data CRLF injection in multipart field names (nx-transitive, dev-only)
