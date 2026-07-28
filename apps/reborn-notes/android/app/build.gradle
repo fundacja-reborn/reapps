@@ -33,7 +33,7 @@ android {
         // Store versioning (Faza 5, plan D5): versionName = public semver of the
         // native shell (independent of the monorepo's nx-release version);
         // versionCode = monotonic int, bumped on every store submission.
-        versionCode 3
+        versionCode 4
         versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
