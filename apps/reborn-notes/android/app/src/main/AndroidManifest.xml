@@ -36,18 +36,25 @@
                  viewer, keeping the #k=... key client-side.
 
                  android:autoVerify requests Digital Asset Links verification
-                 against https://<host>/.well-known/assetlinks.json, which must
-                 list the app's signing-cert SHA-256. The production signing key
-                 is generated in Faza 5 (store prep), so verified no-chooser
-                 opening on real devices is finalized then. Until then the filter
-                 + routing are validated on the emulator with an explicit
-                 component target (see the deep-link guideline). -->
+                 against https://<host>/.well-known/assetlinks.json, which lists
+                 the app's Play App Signing SHA-256 (live since 2026-07-04).
+
+                 PRODUCTION SHIPS reapps.eu ONLY - do not add staging.reapps.eu
+                 here. Every host inside an autoVerify filter must serve a
+                 matching assetlinks.json, and staging serves none (nginx has no
+                 .well-known location for it). On Android 11 and lower - in scope
+                 at minSdk 24 - verification is all-or-nothing across hosts, so a
+                 single failing host silently un-verifies reapps.eu too, and share
+                 links stop opening without a chooser. Android 12+ verifies
+                 per-host, so there the staging entry would just fail quietly.
+                 The staging filter lives in src/debug/AndroidManifest.xml, where
+                 it is deliberately NOT autoVerify. This mirrors the same decision
+                 already made for iOS in App.entitlements. (Audit 014 S1.) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="reapps.eu" android:pathPrefix="/notes/s/" />
-                <data android:scheme="https" android:host="staging.reapps.eu" android:pathPrefix="/notes/s/" />
             </intent-filter>
         </activity>
 

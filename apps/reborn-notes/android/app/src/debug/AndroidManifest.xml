@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Debug-only manifest overlay. Merged on top of src/main for the debug build
+     type; release builds never see it.
+
+     Purpose: keep staging share links (https://staging.reapps.eu/notes/s/...)
+     openable in the app during smoke tests without letting the host into the
+     shipped binary. Audit 014 S1: staging serves no .well-known/assetlinks.json,
+     and on Android 11 and lower App Links verification is all-or-nothing across
+     hosts, so a staging entry inside the production autoVerify filter would
+     un-verify reapps.eu as well.
+
+     Deliberately WITHOUT android:autoVerify - there is nothing to verify against
+     on staging. A debug build therefore offers this app in the chooser for
+     staging links, which is exactly what a smoke test wants; the runbook's
+     explicit-component `adb shell am start -n` path keeps working unchanged.
+
+     <intent-filter> is never merged by identity - the manifest merger appends
+     this one as an additional filter on MainActivity. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- exported repeated verbatim from src/main: identical values merge
+             cleanly, and stating it here keeps the targetSdk 31+ "explicit
+             exported required when an intent filter is present" rule satisfied
+             at the overlay itself, not only after the merge. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="staging.reapps.eu" android:pathPrefix="/notes/s/" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
