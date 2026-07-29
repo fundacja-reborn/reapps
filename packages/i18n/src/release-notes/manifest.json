@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.45.1",
+    "date": "2026-07-29",
+    "items": [
+      { "id": "0.45.1-dialog-safe-area", "category": "fixed", "apps": ["notes", "task"], "platforms": "all" },
+      { "id": "0.45.1-android-back-modal", "category": "fixed", "apps": ["notes"], "platforms": ["android"] }
+    ]
+  },
+  {
     "version": "0.45.0",
     "date": "2026-07-28",
     "items": [
