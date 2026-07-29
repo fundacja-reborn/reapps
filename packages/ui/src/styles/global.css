@@ -73,6 +73,32 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
+/*
+ * Layout vars for viewport-sized overlays (dialogs).
+ *
+ * The native shells run edge-to-edge, so the webview - and with it
+ * `visualViewport`, `100dvh` and the `position: fixed` containing block -
+ * spans the WHOLE display, status bar and gesture bar included. An overlay
+ * sized straight off that height renders partly underneath the system bars:
+ * its top edge (and the close button sitting there) disappears behind the
+ * status bar, its bottom edge behind the gesture bar. `--rn-safe-height` is
+ * the band actually free to draw in, `--rn-safe-top` where that band starts.
+ *
+ * `--rn-vv-height` / `--rn-vv-offset-top` are written to <html> by the
+ * visual-viewport tracker in the app layout (soft-keyboard handling); the
+ * fallbacks keep this correct before the tracker's first run and in plain web
+ * builds, where every inset is 0 and the result is just the viewport.
+ */
+:root {
+  --rn-safe-top: env(safe-area-inset-top, 0px);
+  --rn-safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* Combined horizontal inset a CENTERED overlay has to reserve: twice the
+     larger side, so the box clears a landscape cutout on whichever side it
+     sits without the centering going asymmetric. */
+  --rn-safe-x: calc(2 * max(env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)));
+  --rn-safe-height: calc(var(--rn-vv-height, 100dvh) - var(--rn-safe-top) - var(--rn-safe-bottom));
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

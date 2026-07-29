@@ -25,7 +25,14 @@
 		bind:ref
 		data-slot="dialog-content"
 		class={cn(
-			"bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed left-[50%] top-[calc(var(--rn-vv-offset-top,0px)+var(--rn-vv-height,100vh)/2)] z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[calc(var(--rn-vv-height,100vh)-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
+			// Geometry note: centered and capped inside --rn-safe-* (see
+			// packages/ui/src/styles/global.css), NOT inside the raw viewport.
+			// On the edge-to-edge native shells the viewport spans the system
+			// bars, so a tall dialog measured against it puts its header (and
+			// this component's close button) behind the status bar and its
+			// footer behind the gesture bar - unclosable. On web every inset
+			// is 0, so the result is the plain centered dialog.
+			"bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed left-[50%] top-[calc(var(--rn-vv-offset-top,0px)+var(--rn-safe-top,0px)+var(--rn-safe-height,100dvh)/2)] z-50 grid w-full max-w-[calc(100%-2rem-var(--rn-safe-x,0px))] max-h-[calc(var(--rn-safe-height,100dvh)-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
 			className
 		)}
 		{...restProps}
