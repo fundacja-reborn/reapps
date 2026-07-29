@@ -1,3 +1,11 @@
+## 0.45.1 (2026-07-29)
+
+### 🩹 Fixes
+
+- **android:** harden release manifest and drop dev auth probe ([#446](https://github.com/fundacja-reborn/reapps/pull/446))
+- **notes:** narrow FileProvider paths and drop dead auth cookie code ([#447](https://github.com/fundacja-reborn/reapps/pull/447))
+- **ui:** keep dialogs inside the safe area on edge-to-edge shells ([#448](https://github.com/fundacja-reborn/reapps/pull/448))
+
 ## 0.45.0 (2026-07-28)
 
 ### 🚀 Features
