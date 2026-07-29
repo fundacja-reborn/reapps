@@ -1,5 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider path map. The provider itself is exported="false" with
+     grantUriPermissions="true" (see AndroidManifest.xml), so a URI is only ever
+     readable by the app the share sheet hands it to, for as long as that grant
+     lives.
+
+     One consumer: native-file-export.ts writes the export blob under
+     Directory.Cache and passes the file URI to Share.share(), which resolves it
+     through FileProvider.getUriForFile with authority ${applicationId}.fileprovider.
+
+     The Capacitor template also shipped <external-path name="my_images" path="."/>,
+     which declared the whole of getExternalStorageDirectory() shareable even
+     though nothing in the app ever wrote there. Removed (audit 014 N2), and the
+     cache mapping narrowed from "." (the entire cache dir - WebView HTTP cache,
+     plugin scratch files) to the single subdirectory the exporter uses. Neither
+     was reachable by an attacker, so this is least-privilege hygiene: it keeps a
+     future bug in a share call site from turning the provider into a reader for
+     unrelated cached data.
+
+     `path` must stay in sync with EXPORT_SUBDIR in native-file-export.ts. -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
-    <cache-path name="my_cache_images" path="." />
+    <cache-path name="exports" path="exports/" />
 </paths>

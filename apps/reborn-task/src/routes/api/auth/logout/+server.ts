@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	try {
 		// Get token to identify user
 		const authHeader = request.headers.get('authorization');
-		const token = authHeader?.replace('Bearer ', '') || cookies.get('access_token');
+		const token = authHeader?.replace('Bearer ', '');
 
 		let userId: string | undefined;
 
@@ -69,11 +69,9 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			}
 		}
 
-		// Clear auth cookies regardless
-		cookies.delete('access_token', {
-			path: '/'
-		});
-
+		// Clear the auth cookies regardless. The access token is not one of them:
+		// it lives in localStorage (@reborn/auth auth-fetch), so logout revokes it
+		// server-side instead of deleting it here. (Audit 014 O67.)
 		cookies.delete('refresh_token', {
 			path: '/'
 		});

@@ -9,7 +9,7 @@ const logger = createLogger('Notes-LogoutAll');
 export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
     const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '') || cookies.get('access_token');
+    const token = authHeader?.replace('Bearer ', '');
 
     let userId: string | undefined;
 
@@ -38,8 +38,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       logger.info(`Logged out all sessions for user ${userId}`);
     }
 
-    // Clear auth cookies on current device
-    cookies.delete('access_token', { path: '/' });
+    // Clear the auth cookies on the current device. The access token is not one
+    // of them: it lives in localStorage and is blacklisted above. (Audit 014 O67.)
     cookies.delete('refresh_token', { path: '/' });
     cookies.delete('session_id', { path: '/' });
 
