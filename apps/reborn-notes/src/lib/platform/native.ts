@@ -126,6 +126,48 @@ function createNativeLifecycle(): PlatformLifecycle {
   };
 }
 
+/**
+ * Overlay surfaces that BACK should close before it means anything else.
+ * bits-ui stamps `data-state` on the content node of every layer it renders,
+ * so the open ones are addressable without each component opting in.
+ */
+const OPEN_OVERLAY_SELECTOR = ['dialog', 'alertdialog', 'menu', 'listbox']
+  .map((role) => `[role="${role}"][data-state="open"]`)
+  .join(',');
+
+/**
+ * Close the front-most open overlay, Android's meaning of BACK when a modal is
+ * up. Without it the gesture falls straight through to history/exitApp: the
+ * first-run "What's new" dialog stays on screen while the app navigates
+ * underneath it - or the app simply quits.
+ *
+ * Every overlay we render comes from bits-ui, which closes on a document-level
+ * Escape keydown, so one synthetic Escape reaches all of them without each
+ * dialog registering a handler. Reports success only when a layer actually
+ * went away - a deliberately non-dismissible surface (blocking gate, dialog
+ * mid-delete) keeps its `data-state="open"` and BACK falls through to its
+ * normal meaning instead of turning into a dead key. Counting layers rather
+ * than testing for any-open keeps stacked overlays (a select inside a dialog)
+ * closing one at a time.
+ */
+async function dismissTopOverlay(): Promise<boolean> {
+  if (typeof document === 'undefined') return false;
+  const before = document.querySelectorAll(OPEN_OVERLAY_SELECTOR).length;
+  if (before === 0) return false;
+
+  const target =
+    document.activeElement instanceof HTMLElement ? document.activeElement : document.body;
+  target.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true })
+  );
+
+  // Svelte applies the close on a microtask and bits-ui flips data-state as the
+  // exit animation starts, so the re-read has to wait a frame - a synchronous
+  // one would always still see the old state.
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  return document.querySelectorAll(OPEN_OVERLAY_SELECTOR).length < before;
+}
+
 /** Android hardware back via `@capacitor/app` `backButton`. */
 function createNativeBackButton(): PlatformBackButton {
   let handler: (() => boolean) | null = null;
@@ -136,8 +178,9 @@ function createNativeBackButton(): PlatformBackButton {
     wired = true;
     try {
       const { App } = await import('@capacitor/app');
-      await App.addListener('backButton', ({ canGoBack }) => {
+      await App.addListener('backButton', async ({ canGoBack }) => {
         if (handler && handler()) return; // consumed by the app
+        if (await dismissTopOverlay()) return; // closed a modal instead
         // At the mobile-history "guard" root (see the +page.svelte trampoline)
         // or with no webview history, exit. Otherwise walk back, which drives
         // the existing popstate up-navigation.
