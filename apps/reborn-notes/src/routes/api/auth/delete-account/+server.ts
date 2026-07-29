@@ -37,13 +37,13 @@ export const DELETE: RequestHandler = async ({ request, cookies }) => {
       return json({ success: false, error: 'Invalid password' }, { status: 400 });
     }
 
-    // Delete user — all related data cascades (notes, folders, tags, sessions, tokens, etc.)
+    // Delete user - all related data cascades (notes, folders, tags, sessions, tokens, etc.)
     await prisma.user.delete({ where: { id: userId } });
 
     logger.info(`Account deleted for user ${userId}`);
 
-    // Clear auth cookies
-    cookies.delete('access_token', { path: '/' });
+    // Clear the auth cookies. The access token is not one of them: it lives in
+    // localStorage, and the account it authenticated no longer exists. (Audit 014 O67.)
     cookies.delete('refresh_token', { path: '/' });
     cookies.delete('session_id', { path: '/' });
 

@@ -11,7 +11,7 @@ const logger = createLogger('DeleteAccount');
 export const DELETE: RequestHandler = async ({ request, cookies }) => {
 	try {
 		const authHeader = request.headers.get('authorization');
-		const token = authHeader?.replace('Bearer ', '') || cookies.get('access_token');
+		const token = authHeader?.replace('Bearer ', '');
 
 		if (!token) {
 			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -55,13 +55,13 @@ export const DELETE: RequestHandler = async ({ request, cookies }) => {
 			return json({ success: false, error: 'Invalid password' }, { status: 400 });
 		}
 
-		// Delete user — all related data cascades (tasks, lists, sessions, tokens, etc.)
+		// Delete user - all related data cascades (tasks, lists, sessions, tokens, etc.)
 		await prisma.user.delete({ where: { id: userId } });
 
 		logger.info(`Account deleted for user ${userId}`);
 
-		// Clear auth cookies
-		cookies.delete('access_token', { path: '/' });
+		// Clear the auth cookies. The access token is not one of them: it lives in
+		// localStorage, and the account it authenticated no longer exists. (Audit 014 O67.)
 		cookies.delete('refresh_token', { path: '/' });
 		cookies.delete('session_id', { path: '/' });
 

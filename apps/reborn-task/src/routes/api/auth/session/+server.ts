@@ -6,11 +6,12 @@ import { prisma } from '@reborn/database';
 
 const logger = createLogger('AuthSession');
 
-export const GET: RequestHandler = async ({ request, cookies }) => {
+export const GET: RequestHandler = async ({ request }) => {
 	try {
-		// Get token from Authorization header or cookie
+		// Get the token from the Authorization header. There is no cookie fallback:
+		// the access token lives in localStorage, never in a cookie. (Audit 014 O67.)
 		const authHeader = request.headers.get('authorization');
-		const token = authHeader?.replace('Bearer ', '') || cookies.get('access_token');
+		const token = authHeader?.replace('Bearer ', '');
 
 		if (!token) {
 			return json({ success: false, error: 'No session found' }, { status: 401 });
