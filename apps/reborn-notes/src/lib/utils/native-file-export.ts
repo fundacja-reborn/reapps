@@ -13,6 +13,16 @@
  * build the whole module is dead-code-eliminated (pattern: native-share.ts).
  */
 
+/**
+ * Subdirectory of the cache dir that exports are written to.
+ *
+ * Android only shares what the FileProvider path map declares, and that map is
+ * scoped to exactly this directory - see android/app/src/main/res/xml/file_paths.xml
+ * (audit 014 N2). Renaming it here without renaming it there makes Share.share()
+ * throw "Failed to find configured root that contains ..." on Android.
+ */
+const EXPORT_SUBDIR = 'exports';
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -37,10 +47,13 @@ export async function exportFileNative(blob: Blob, filename: string): Promise<vo
   // No `encoding` option: the Filesystem plugin treats the payload as base64
   // and writes the decoded bytes. Cache directory: OS-managed and reclaimable,
   // never backed up - the file only needs to outlive the share sheet.
+  // `recursive` creates EXPORT_SUBDIR on first use; the plugin defaults it to
+  // false and then fails the write with a missing-parent-directory error.
   const { uri } = await Filesystem.writeFile({
-    path: filename,
+    path: `${EXPORT_SUBDIR}/${filename}`,
     data,
-    directory: Directory.Cache
+    directory: Directory.Cache,
+    recursive: true
   });
 
   try {
