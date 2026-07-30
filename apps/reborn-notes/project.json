@@ -17,7 +17,7 @@
       "outputs": ["{projectRoot}/build-native"],
       "options": {
         "cwd": "apps/reborn-notes",
-        "command": "node scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_API_BASE_URL=https://staging.reapps.eu/notes/api vite build"
+        "command": "node scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_BASE_PATH= PUBLIC_SITE_URL=https://reapps.eu PUBLIC_TASK_URL=https://reapps.eu/task PUBLIC_API_BASE_URL=https://staging.reapps.eu/notes/api vite build"
       }
     },
     "build-native-local": {
@@ -25,7 +25,7 @@
       "outputs": ["{projectRoot}/build-native"],
       "options": {
         "cwd": "apps/reborn-notes",
-        "command": "node scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_API_BASE_URL=http://10.0.2.2/notes/api vite build"
+        "command": "node scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_BASE_PATH= PUBLIC_SITE_URL=https://reapps.eu PUBLIC_TASK_URL=https://reapps.eu/task PUBLIC_API_BASE_URL=http://10.0.2.2/notes/api vite build"
       }
     },
     "build-native-local-ios": {
@@ -33,7 +33,7 @@
       "outputs": ["{projectRoot}/build-native"],
       "options": {
         "cwd": "apps/reborn-notes",
-        "command": "node scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_API_BASE_URL=http://localhost/notes/api vite build"
+        "command": "node scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_BASE_PATH= PUBLIC_SITE_URL=https://reapps.eu PUBLIC_TASK_URL=https://reapps.eu/task PUBLIC_API_BASE_URL=http://localhost/notes/api vite build"
       }
     },
     "build-native-prod": {
@@ -41,7 +41,7 @@
       "outputs": ["{projectRoot}/build-native"],
       "options": {
         "cwd": "apps/reborn-notes",
-        "command": "node scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_API_BASE_URL=https://reapps.eu/notes/api vite build"
+        "command": "node scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_BASE_PATH= PUBLIC_SITE_URL=https://reapps.eu PUBLIC_TASK_URL=https://reapps.eu/task PUBLIC_API_BASE_URL=https://reapps.eu/notes/api vite build"
       }
     },
     "sync": {
