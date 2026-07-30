@@ -15,7 +15,13 @@ export default defineConfig({
     __REBORN_NATIVE__: JSON.stringify(process.env.BUILD_TARGET === 'native')
   },
   plugins: [tailwindcss(), sveltekit()],
-  // Load .env from monorepo root
+  // Load .env from monorepo root. Consequence for store builds: every PUBLIC_*
+  // the dev box happens to have in that file is baked into the bundle, so the
+  // `build-native*` targets pin the user-facing ones inline (process.env wins
+  // over .env in Vite's loadEnv). Without the pin a local
+  // PUBLIC_SITE_URL=http://localhost:4300 shipped to Play, pointing the
+  // donations/changelog/legal links at the dev machine (fixed 2026-07-30);
+  // `scripts/build-native-aab.mjs` now re-reads them out of the built AAB.
   envDir: '../../',
   resolve: {
     alias: {
@@ -30,7 +36,7 @@ export default defineConfig({
       '@reborn/i18n': resolve('../../packages/i18n/src/index.ts'),
       // jsPDF's `html()` does `await import("html2canvas")` internally. The
       // upstream package (1.4.1, last released 2022) cannot parse modern CSS
-      // color functions like `oklch()` — Tailwind v4 emits oklch in :root
+      // color functions like `oklch()` - Tailwind v4 emits oklch in :root
       // variables, and html2canvas reads computed styles across the whole
       // ancestor chain, so it fails on the very first parse. `html2canvas-pro`
       // is the maintained fork that adds oklch / lab / lch support; aliasing
@@ -43,7 +49,7 @@ export default defineConfig({
     host: 'localhost',
     allowedHosts: ['reapps.eu'],
     // When behind nginx proxy (PUBLIC_BASE_PATH set), HMR connects directly to Vite
-    // instead of going through the proxy — avoids WebSocket path mismatch
+    // instead of going through the proxy - avoids WebSocket path mismatch
     ...(process.env.PUBLIC_BASE_PATH && {
       hmr: {
         protocol: 'ws',
