@@ -75,6 +75,7 @@ scripts/*
 !scripts/release.mjs
 !scripts/check-i18n-parity.mjs
 !scripts/export-release-notes.mjs
+!scripts/build-native-aab.mjs
 tmp/
 patches/
 *.bak
