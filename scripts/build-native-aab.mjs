@@ -190,8 +190,16 @@ const resolveVersionCode = (gradlePath, opts) => {
 	info(`versionCode in tree: ${worktree}${committed === null ? '' : `, in HEAD: ${committed}`}`);
 
 	if (opts.versionCode !== null) {
-		if (committed !== null && opts.versionCode < committed) {
-			die(`--version-code=${opts.versionCode} is below the committed ${committed}`);
+		// Floor is the highest code we know about, not just the committed one: a
+		// pending bump in the tree may already have been uploaded, and Play only
+		// ever accepts a higher code than it has seen.
+		const floor = Math.max(committed ?? 0, worktree);
+		if (opts.versionCode < floor) {
+			die(
+				`--version-code=${opts.versionCode} is below ${floor} (HEAD has ${committed ?? '?'}, the working tree has ${worktree}).\n` +
+					'Play needs a monotonic code, so this would produce a bundle it refuses. Use --keep-version to\n' +
+					'rebuild the current one, or edit build.gradle by hand if you really mean to go backwards.'
+			);
 		}
 		return { from: worktree, to: opts.versionCode, reason: 'explicit --version-code' };
 	}
