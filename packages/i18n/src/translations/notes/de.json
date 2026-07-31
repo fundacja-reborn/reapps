@@ -238,7 +238,7 @@
       "deleted_count": "{count} Notizen in den Papierkorb verschoben",
       "restored_count": "{count} Notizen wiederhergestellt",
       "permanently_deleted_count": "{count} Notizen endgültig gelöscht",
-      "partial_failure": "{done} von {total} erledigt — {failed} fehlgeschlagen"
+      "partial_failure": "{done} von {total} erledigt - {failed} fehlgeschlagen"
     },
     "periodic": {
       "daily": {
@@ -248,7 +248,7 @@
         "placeholder": "Heutige Notiz beginnen…",
         "onboarding": {
           "title": "Ihre heutige Notiz",
-          "body": "Dies ist Ihre Notiz für heute. Jeder Tag hat seine eigene Tagesnotiz — ein Klick auf „Heute“ öffnet den ganzen Tag dieselbe Notiz. Morgen erstellt der Klick eine neue für das neue Datum.",
+          "body": "Dies ist Ihre Notiz für heute. Jeder Tag hat seine eigene Tagesnotiz - ein Klick auf „Heute“ öffnet den ganzen Tag dieselbe Notiz. Morgen erstellt der Klick eine neue für das neue Datum.",
           "tip": "Wochen- und Monatsnotizen sind standardmäßig deaktiviert. Sie können sie in den Einstellungen unten aktivieren."
         }
       },
@@ -260,7 +260,7 @@
         "placeholder": "Notiz dieser Woche beginnen…",
         "onboarding": {
           "title": "Ihre Wochennotiz",
-          "body": "Dies ist eine gemeinsame Notiz für die ganze Woche (Montag–Sonntag). Egal an welchem Tag Sie auf „Diese Woche“ klicken — Sie kehren zur selben Notiz zurück. Nächste Woche erstellt der Klick eine neue.",
+          "body": "Dies ist eine gemeinsame Notiz für die ganze Woche (Montag–Sonntag). Egal an welchem Tag Sie auf „Diese Woche“ klicken - Sie kehren zur selben Notiz zurück. Nächste Woche erstellt der Klick eine neue.",
           "tip": "Der Titel enthält das Datum des Montags dieser Woche und die ISO-Wochennummer (z. B. 2026-05-04 W19)."
         }
       },
@@ -271,7 +271,7 @@
         "placeholder": "Notiz dieses Monats beginnen…",
         "onboarding": {
           "title": "Ihre Monatsnotiz",
-          "body": "Dies ist eine gemeinsame Notiz für den ganzen Monat. Egal an welchem Tag Sie auf „Dieser Monat“ klicken — Sie öffnen dieselbe Notiz. Im nächsten Monat erstellt der Klick eine neue.",
+          "body": "Dies ist eine gemeinsame Notiz für den ganzen Monat. Egal an welchem Tag Sie auf „Dieser Monat“ klicken - Sie öffnen dieselbe Notiz. Im nächsten Monat erstellt der Klick eine neue.",
           "tip": "Der Titel enthält Jahr und Monat (z. B. 2026-05)."
         }
       },
@@ -768,7 +768,7 @@
   "e2e": {
     "badge": "Ende-zu-Ende-verschlüsselt",
     "badge_short": "E2EE",
-    "badge_tooltip": "Ende-zu-Ende-verschlüsselt — klicken zum Anzeigen"
+    "badge_tooltip": "Ende-zu-Ende-verschlüsselt - klicken zum Anzeigen"
   },
   "sync_status": {
     "local_only": "Nur lokal",
@@ -816,7 +816,7 @@
     "title": "Wie möchtest du deine Notizen bearbeiten?",
     "description": "Wähle einen Editor-Modus. Du kannst ihn jederzeit ändern.",
     "option_live_label": "Live-Vorschau",
-    "option_live_description": "Markdown wird beim Tippen formatiert — die Notiz sieht aus wie das fertige Ergebnis. Empfohlen, wenn du Markdown nicht kennst.",
+    "option_live_description": "Markdown wird beim Tippen formatiert - die Notiz sieht aus wie das fertige Ergebnis. Empfohlen, wenn du Markdown nicht kennst.",
     "option_markdown_label": "Markdown-Quelle",
     "option_markdown_description": "Rohe Marker wie ** # [Text](Link) bleiben sichtbar. Für Nutzer, die volle Kontrolle über die Syntax wollen.",
     "recommended": "Empfohlen",
@@ -963,11 +963,11 @@
       "export_zip": "ZIP exportieren",
       "exporting": "Exportiere…",
       "export_backup": "Konto-Sicherung",
-      "export_backup_desc": "Mit Ihrem Kontoschlüssel verschlüsselt — kann nur im selben Konto importiert werden",
+      "export_backup_desc": "Mit Ihrem Kontoschlüssel verschlüsselt - kann nur im selben Konto importiert werden",
       "export_backup_warning": "Der Verlust Ihres Kontos bedeutet den Verlust des Zugriffs auf diese Sicherung. Dies ist keine portable Kopie.",
       "export_json": "JSON exportieren",
       "export_encrypted": "Portable verschlüsselte Sicherung",
-      "export_encrypted_desc": "Mit Ihrem eigenen Passwort geschützt — kann in jedem Konto importiert werden",
+      "export_encrypted_desc": "Mit Ihrem eigenen Passwort geschützt - kann in jedem Konto importiert werden",
       "export_encrypted_warning": "Das Vergessen des Passworts bedeutet den Verlust der Daten aus dieser Sicherung.",
       "export_btn": "Exportieren",
       "password_placeholder": "Passwort zum Verschlüsseln der Sicherung",
@@ -982,7 +982,7 @@
       "base64_stripped": "{count} eingebettete(s) Base64-Bild(er) aus importierten Notizen entfernt",
       "unsafe_content_stripped": "{count} potenziell unsichere(s) Element(e) aus importierten Notizen entfernt",
       "import_folder": "Ordner importieren",
-      "import_folder_desc": "Wählen Sie einen Ordner (z.B. ein Obsidian-Vault) — Unterordnerstruktur, Tags und Frontmatter-Daten werden beibehalten",
+      "import_folder_desc": "Wählen Sie einen Ordner (z.B. ein Obsidian-Vault) - Unterordnerstruktur, Tags und Frontmatter-Daten werden beibehalten",
       "import_folder_btn": "Ordner auswählen",
       "importing_folder": "Ordner wird importiert…",
       "keep_root_label": "Obersten Ordner „{name}“ beibehalten",
@@ -1288,7 +1288,7 @@
       "info": "Wiederherstellungscodes werden verwendet, um wieder Zugang zu Ihrem Konto zu erhalten, wenn Sie keinen Zugriff auf Ihre Authenticator-App (2FA) haben. Jeder Code kann nur einmal verwendet werden.",
       "codes_title": "Wiederherstellungscodes",
       "no_codes": "Es wurden keine Codes generiert",
-      "all_used": "Alle Codes wurden verwendet — generieren Sie neue",
+      "all_used": "Alle Codes wurden verwendet - generieren Sie neue",
       "codes_available": "{available} von {total} Codes verfügbar",
       "generating": "Generierung…",
       "generate": "Wiederherstellungscodes generieren",
@@ -1296,7 +1296,7 @@
       "regen_warning": "Alte Codes werden ungültig und durch neue ersetzt.",
       "confirm_regen": "Bestätigen und neu generieren",
       "cancel": "Abbrechen",
-      "save_codes": "Speichern Sie diese Codes — sie werden nicht erneut angezeigt",
+      "save_codes": "Speichern Sie diese Codes - sie werden nicht erneut angezeigt",
       "codes_generated": "{count} Codes generiert. Jeder Code ist zur einmaligen Verwendung.",
       "copy_code": "Code kopieren",
       "download": "Als Datei herunterladen",
@@ -1304,7 +1304,7 @@
       "fetch_error": "Status der Wiederherstellungscodes konnte nicht geladen werden",
       "generate_error": "Codes konnten nicht generiert werden",
       "connection_error": "Serververbindungsfehler",
-      "file_header": "re/notes — Wiederherstellungscodes",
+      "file_header": "re/notes - Wiederherstellungscodes",
       "file_generated": "Generiert:",
       "file_warning": "Bewahren Sie diese Codes an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden.",
       "setup_title": "Speichern Sie Ihre Wiederherstellungscodes",

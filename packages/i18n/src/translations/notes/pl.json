@@ -238,7 +238,7 @@
       "deleted_count": "Przeniesiono {count} notatek do kosza",
       "restored_count": "Przywrócono {count} notatek",
       "permanently_deleted_count": "Trwale usunięto {count} notatek",
-      "partial_failure": "Wykonano {done} z {total} — {failed} nieudanych"
+      "partial_failure": "Wykonano {done} z {total} - {failed} nieudanych"
     },
     "periodic": {
       "daily": {
@@ -248,7 +248,7 @@
         "placeholder": "Zacznij pisać dzisiejszą notatkę…",
         "onboarding": {
           "title": "Twoja dzienna notatka",
-          "body": "To Twoja notatka na dziś. Każdy dzień ma własną notatkę dzienną — klikając „Dziś” wracasz do tej samej notatki przez cały dzień. Jutro klik utworzy nową notatkę dla nowej daty.",
+          "body": "To Twoja notatka na dziś. Każdy dzień ma własną notatkę dzienną - klikając „Dziś” wracasz do tej samej notatki przez cały dzień. Jutro klik utworzy nową notatkę dla nowej daty.",
           "tip": "Notatki tygodniowe i miesięczne są domyślnie wyłączone. Możesz je włączyć w ustawieniach poniżej."
         }
       },
@@ -768,7 +768,7 @@
   "e2e": {
     "badge": "Szyfrowane end-to-end",
     "badge_short": "E2EE",
-    "badge_tooltip": "Szyfrowane end-to-end — kliknij, aby zobaczyć"
+    "badge_tooltip": "Szyfrowane end-to-end - kliknij, aby zobaczyć"
   },
   "sync_status": {
     "local_only": "Tylko lokalnie",
@@ -816,7 +816,7 @@
     "title": "Jak chcesz edytować notatki?",
     "description": "Wybierz tryb edytora. Zawsze możesz to zmienić.",
     "option_live_label": "Podgląd na żywo",
-    "option_live_description": "Markdown formatuje się w trakcie pisania — notatka wygląda jak gotowa. Polecane, jeśli nie znasz Markdown.",
+    "option_live_description": "Markdown formatuje się w trakcie pisania - notatka wygląda jak gotowa. Polecane, jeśli nie znasz Markdown.",
     "option_markdown_label": "Markdown (źródło)",
     "option_markdown_description": "Surowe znaczniki ** # [tekst](link) pozostają widoczne. Dla osób, które wolą pełną kontrolę nad składnią.",
     "recommended": "Polecane",
@@ -963,11 +963,11 @@
       "export_zip": "Eksportuj ZIP",
       "exporting": "Eksportowanie…",
       "export_backup": "Kopia zapasowa konta",
-      "export_backup_desc": "Zaszyfrowana kluczem Twojego konta — można zaimportować tylko na tym samym koncie",
+      "export_backup_desc": "Zaszyfrowana kluczem Twojego konta - można zaimportować tylko na tym samym koncie",
       "export_backup_warning": "Utrata konta = utrata dostępu do tej kopii. Nie jest to kopia przenośna.",
       "export_json": "Eksportuj JSON",
       "export_encrypted": "Przenośna kopia zaszyfrowana",
-      "export_encrypted_desc": "Chroniona własnym hasłem — można zaimportować na dowolnym koncie",
+      "export_encrypted_desc": "Chroniona własnym hasłem - można zaimportować na dowolnym koncie",
       "export_encrypted_warning": "Zapomnienie hasła = utrata danych z tej kopii.",
       "export_btn": "Eksportuj",
       "password_placeholder": "Hasło do zaszyfrowania kopii",
@@ -982,7 +982,7 @@
       "base64_stripped": "Usunięto {count} osadzonych obrazów base64 z importowanych notatek",
       "unsafe_content_stripped": "Usunięto {count} potencjalnie niebezpiecznych elementów z importowanych notatek",
       "import_folder": "Importuj folder",
-      "import_folder_desc": "Wybierz folder (np. vault Obsidian) — struktura podfolderów, tagi i daty z frontmatter zostaną zachowane",
+      "import_folder_desc": "Wybierz folder (np. vault Obsidian) - struktura podfolderów, tagi i daty z frontmatter zostaną zachowane",
       "import_folder_btn": "Wybierz folder",
       "importing_folder": "Importowanie folderu…",
       "keep_root_label": "Zachowaj folder główny „{name}”",
@@ -1288,7 +1288,7 @@
       "info": "Kody zapasowe służą do odzyskania dostępu do konta, gdy nie masz dostępu do aplikacji uwierzytelniającej (2FA). Każdy kod może być użyty tylko raz.",
       "codes_title": "Kody zapasowe",
       "no_codes": "Nie wygenerowano żadnych kodów",
-      "all_used": "Wszystkie kody zostały wykorzystane — wygeneruj nowe",
+      "all_used": "Wszystkie kody zostały wykorzystane - wygeneruj nowe",
       "codes_available": "{available} z {total} kodów dostępnych",
       "generating": "Generowanie…",
       "generate": "Generuj kody zapasowe",
@@ -1296,7 +1296,7 @@
       "regen_warning": "Stare kody zostaną unieważnione i zastąpione nowymi.",
       "confirm_regen": "Potwierdź i generuj nowe",
       "cancel": "Anuluj",
-      "save_codes": "Zapisz te kody — nie zostaną pokazane ponownie",
+      "save_codes": "Zapisz te kody - nie zostaną pokazane ponownie",
       "codes_generated": "Wygenerowano {count} kodów. Każdy kod jednorazowy.",
       "copy_code": "Skopiuj kod",
       "download": "Pobierz jako plik",
@@ -1304,7 +1304,7 @@
       "fetch_error": "Nie udało się pobrać statusu kodów odzyskiwania",
       "generate_error": "Nie udało się wygenerować kodów",
       "connection_error": "Błąd połączenia z serwerem",
-      "file_header": "re/notes — Kody zapasowe",
+      "file_header": "re/notes - Kody zapasowe",
       "file_generated": "Wygenerowano:",
       "file_warning": "Zachowaj te kody w bezpiecznym miejscu. Każdy kod może być użyty tylko raz.",
       "setup_title": "Zapisz swoje kody odzyskiwania",
