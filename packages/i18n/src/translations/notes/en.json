@@ -238,7 +238,7 @@
       "deleted_count": "Moved {count} notes to Trash",
       "restored_count": "Restored {count} notes",
       "permanently_deleted_count": "Permanently deleted {count} notes",
-      "partial_failure": "{done} of {total} done — {failed} failed"
+      "partial_failure": "{done} of {total} done - {failed} failed"
     },
     "periodic": {
       "daily": {
@@ -248,7 +248,7 @@
         "placeholder": "Start writing today's note…",
         "onboarding": {
           "title": "Your daily note",
-          "body": "This is your note for today. Each day has its own daily note — clicking “Today” returns you to the same note all day long. Tomorrow's click will create a new one for the new date.",
+          "body": "This is your note for today. Each day has its own daily note - clicking “Today” returns you to the same note all day long. Tomorrow's click will create a new one for the new date.",
           "tip": "Weekly and monthly notes are off by default. You can enable them in the settings below."
         }
       },
@@ -768,7 +768,7 @@
   "e2e": {
     "badge": "Encrypted end-to-end",
     "badge_short": "E2EE",
-    "badge_tooltip": "Encrypted end-to-end — click to see"
+    "badge_tooltip": "Encrypted end-to-end - click to see"
   },
   "sync_status": {
     "local_only": "Local only",
@@ -816,7 +816,7 @@
     "title": "How would you like to edit your notes?",
     "description": "Pick an editor mode. You can change it any time.",
     "option_live_label": "Live preview",
-    "option_live_description": "Markdown is rendered as you type — your note looks like the finished result. Recommended if you don't know Markdown.",
+    "option_live_description": "Markdown is rendered as you type - your note looks like the finished result. Recommended if you don't know Markdown.",
     "option_markdown_label": "Markdown source",
     "option_markdown_description": "Raw markers like ** # [text](link) stay visible. For users who prefer full control over the syntax.",
     "recommended": "Recommended",
@@ -963,11 +963,11 @@
       "export_zip": "Export ZIP",
       "exporting": "Exporting…",
       "export_backup": "Account backup",
-      "export_backup_desc": "Encrypted with your account key — can only be imported on the same account",
+      "export_backup_desc": "Encrypted with your account key - can only be imported on the same account",
       "export_backup_warning": "Losing your account means losing access to this backup. This is not a portable copy.",
       "export_json": "Export JSON",
       "export_encrypted": "Portable encrypted backup",
-      "export_encrypted_desc": "Protected with your own password — can be imported on any account",
+      "export_encrypted_desc": "Protected with your own password - can be imported on any account",
       "export_encrypted_warning": "Forgetting the password means losing data from this backup.",
       "export_btn": "Export",
       "password_placeholder": "Password to encrypt backup",
@@ -982,7 +982,7 @@
       "base64_stripped": "Removed {count} embedded base64 image(s) from imported notes",
       "unsafe_content_stripped": "Removed {count} potentially unsafe element(s) from imported notes",
       "import_folder": "Import folder",
-      "import_folder_desc": "Select a folder (e.g. an Obsidian vault) — subfolder structure, tags and frontmatter dates are preserved",
+      "import_folder_desc": "Select a folder (e.g. an Obsidian vault) - subfolder structure, tags and frontmatter dates are preserved",
       "import_folder_btn": "Select folder",
       "importing_folder": "Importing folder…",
       "keep_root_label": "Keep top-level folder \"{name}\"",
@@ -1288,7 +1288,7 @@
       "info": "Recovery codes are used to regain access to your account when you don't have access to your authenticator app (2FA). Each code can only be used once.",
       "codes_title": "Recovery codes",
       "no_codes": "No codes have been generated",
-      "all_used": "All codes have been used — generate new ones",
+      "all_used": "All codes have been used - generate new ones",
       "codes_available": "{available} of {total} codes available",
       "generating": "Generating…",
       "generate": "Generate recovery codes",
@@ -1296,7 +1296,7 @@
       "regen_warning": "Old codes will be invalidated and replaced with new ones.",
       "confirm_regen": "Confirm and generate new",
       "cancel": "Cancel",
-      "save_codes": "Save these codes — they won't be shown again",
+      "save_codes": "Save these codes - they won't be shown again",
       "codes_generated": "Generated {count} codes. Each code is one-time use.",
       "copy_code": "Copy code",
       "download": "Download as file",
@@ -1304,7 +1304,7 @@
       "fetch_error": "Failed to load recovery codes status",
       "generate_error": "Failed to generate codes",
       "connection_error": "Server connection error",
-      "file_header": "re/notes — Recovery codes",
+      "file_header": "re/notes - Recovery codes",
       "file_generated": "Generated:",
       "file_warning": "Keep these codes in a safe place. Each code can only be used once.",
       "setup_title": "Save your recovery codes",

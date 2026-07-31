@@ -238,7 +238,7 @@
       "deleted_count": "{count} notas movidas a la papelera",
       "restored_count": "{count} notas restauradas",
       "permanently_deleted_count": "{count} notas eliminadas permanentemente",
-      "partial_failure": "{done} de {total} realizadas — {failed} fallidas"
+      "partial_failure": "{done} de {total} realizadas - {failed} fallidas"
     },
     "periodic": {
       "daily": {
@@ -248,7 +248,7 @@
         "placeholder": "Empiece a escribir la nota de hoy…",
         "onboarding": {
           "title": "Su nota de hoy",
-          "body": "Esta es su nota para hoy. Cada día tiene su propia nota diaria — al pulsar «Hoy» vuelve a la misma nota durante todo el día. Mañana el clic creará una nueva para la nueva fecha.",
+          "body": "Esta es su nota para hoy. Cada día tiene su propia nota diaria - al pulsar «Hoy» vuelve a la misma nota durante todo el día. Mañana el clic creará una nueva para la nueva fecha.",
           "tip": "Las notas semanales y mensuales están desactivadas por defecto. Puede activarlas en los ajustes de abajo."
         }
       },
@@ -768,7 +768,7 @@
   "e2e": {
     "badge": "Cifrado de extremo a extremo",
     "badge_short": "E2EE",
-    "badge_tooltip": "Cifrado de extremo a extremo — pulse para ver"
+    "badge_tooltip": "Cifrado de extremo a extremo - pulse para ver"
   },
   "sync_status": {
     "local_only": "Solo local",
@@ -816,7 +816,7 @@
     "title": "¿Cómo quieres editar tus notas?",
     "description": "Elige un modo de editor. Puedes cambiarlo en cualquier momento.",
     "option_live_label": "Vista previa en vivo",
-    "option_live_description": "Markdown se formatea mientras escribes — la nota se ve como el resultado final. Recomendado si no conoces Markdown.",
+    "option_live_description": "Markdown se formatea mientras escribes - la nota se ve como el resultado final. Recomendado si no conoces Markdown.",
     "option_markdown_label": "Fuente Markdown",
     "option_markdown_description": "Los marcadores en bruto como ** # [texto](enlace) permanecen visibles. Para usuarios que prefieren control total sobre la sintaxis.",
     "recommended": "Recomendado",
@@ -963,11 +963,11 @@
       "export_zip": "Exportar ZIP",
       "exporting": "Exportando…",
       "export_backup": "Copia de seguridad de la cuenta",
-      "export_backup_desc": "Cifrada con la clave de su cuenta — solo se puede importar en la misma cuenta",
+      "export_backup_desc": "Cifrada con la clave de su cuenta - solo se puede importar en la misma cuenta",
       "export_backup_warning": "Perder su cuenta significa perder el acceso a esta copia de seguridad. No es una copia portable.",
       "export_json": "Exportar JSON",
       "export_encrypted": "Copia de seguridad cifrada portable",
-      "export_encrypted_desc": "Protegida con su propia contraseña — se puede importar en cualquier cuenta",
+      "export_encrypted_desc": "Protegida con su propia contraseña - se puede importar en cualquier cuenta",
       "export_encrypted_warning": "Olvidar la contraseña significa perder los datos de esta copia de seguridad.",
       "export_btn": "Exportar",
       "password_placeholder": "Contraseña para cifrar la copia de seguridad",
@@ -982,7 +982,7 @@
       "base64_stripped": "Se eliminaron {count} imagen(es) base64 incrustada(s) de las notas importadas",
       "unsafe_content_stripped": "Se eliminaron {count} elemento(s) potencialmente inseguro(s) de las notas importadas",
       "import_folder": "Importar carpeta",
-      "import_folder_desc": "Seleccione una carpeta (p. ej., un vault de Obsidian) — se preservan la estructura de subcarpetas, etiquetas y fechas del frontmatter",
+      "import_folder_desc": "Seleccione una carpeta (p. ej., un vault de Obsidian) - se preservan la estructura de subcarpetas, etiquetas y fechas del frontmatter",
       "import_folder_btn": "Seleccionar carpeta",
       "importing_folder": "Importando carpeta…",
       "keep_root_label": "Mantener la carpeta raíz «{name}»",
@@ -1288,7 +1288,7 @@
       "info": "Los códigos de recuperación se utilizan para recuperar el acceso a su cuenta cuando no tiene acceso a su aplicación de autenticación (2FA). Cada código solo puede usarse una vez.",
       "codes_title": "Códigos de recuperación",
       "no_codes": "No se han generado códigos",
-      "all_used": "Todos los códigos han sido usados — genere nuevos",
+      "all_used": "Todos los códigos han sido usados - genere nuevos",
       "codes_available": "{available} de {total} códigos disponibles",
       "generating": "Generando…",
       "generate": "Generar códigos de recuperación",
@@ -1296,7 +1296,7 @@
       "regen_warning": "Los códigos antiguos se invalidarán y serán reemplazados por nuevos.",
       "confirm_regen": "Confirmar y generar nuevos",
       "cancel": "Cancelar",
-      "save_codes": "Guarde estos códigos — no se mostrarán de nuevo",
+      "save_codes": "Guarde estos códigos - no se mostrarán de nuevo",
       "codes_generated": "{count} códigos generados. Cada código es de un solo uso.",
       "copy_code": "Copiar código",
       "download": "Descargar como archivo",
@@ -1304,7 +1304,7 @@
       "fetch_error": "Error al cargar el estado de los códigos de recuperación",
       "generate_error": "Error al generar los códigos",
       "connection_error": "Error de conexión con el servidor",
-      "file_header": "re/notes — Códigos de recuperación",
+      "file_header": "re/notes - Códigos de recuperación",
       "file_generated": "Generados:",
       "file_warning": "Guarde estos códigos en un lugar seguro. Cada código solo puede usarse una vez.",
       "setup_title": "Guarde sus códigos de recuperación",
