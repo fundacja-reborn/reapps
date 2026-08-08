@@ -4,7 +4,7 @@ packages:
 overrides:
   axios: 1.18.0 # 2026-07 wave: GHSA-gcfj-64vw-6mp9 (high) + 8 moderate GHSAs; nx-transitive, dev-only
   follow-redirects: 1.16.0
-  fast-uri: 3.1.4 # GHSA-v2hh-gcrm-f6hx + GHSA-4c8g-83qw-93j6 host confusion; ajv-transitive (nx/vite, prisma-dev)
+  fast-uri: 3.1.5 # GHSA-v2hh-gcrm-f6hx + GHSA-4c8g-83qw-93j6 host confusion; ajv-transitive (nx/vite, prisma-dev)
   '@babel/plugin-transform-modules-systemjs': 7.29.7
   hono: 4.12.27 # GHSA-w62v-xxxg-mg59 + GHSA-hvrm-45r6-mjfj + GHSA-xgm2-5f3f-mvvc; prisma-dev transitive
   cookie: 0.7.2
