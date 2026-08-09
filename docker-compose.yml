@@ -1,4 +1,4 @@
-# docker-compose.yml — DEVELOPMENT stack (Vite dev-host + HMR)
+# docker-compose.yml - DEVELOPMENT stack (Vite dev-host + HMR)
 #
 # This compose file runs the apps in DEVELOPMENT mode:
 #   - Bind-mounts the project root (`.:/app`) into the container
@@ -7,7 +7,7 @@
 #
 # It REQUIRES a cloned copy of the repository on the host. Pasting this file
 # into Portainer / a stack editor without the source tree will fail with
-# `ERR_PNPM_NO_PKG_MANIFEST` — the bind mount points at an empty directory.
+# `ERR_PNPM_NO_PKG_MANIFEST` - the bind mount points at an empty directory.
 #
 # For self-hosting in production (no source on host, prebuilt image), use:
 #   docker-compose.prod.yml.example
@@ -40,7 +40,7 @@ services:
       retries: 10
 
   app:
-    image: node:24.15.0-alpine
+    image: node:24.19.0-alpine
     working_dir: /app
     depends_on:
       db:
@@ -49,14 +49,14 @@ services:
       - '4200:4200'
     volumes:
       - .:/app
-      # Isolated node_modules — avoids host/container platform conflicts
+      # Isolated node_modules - avoids host/container platform conflicts
       - node_modules:/app/node_modules
-      # Isolated .nx — avoids macOS/Linux workspace-data conflicts
+      # Isolated .nx - avoids macOS/Linux workspace-data conflicts
       - nx_cache:/app/.nx
     env_file:
       - .env
     # DATABASE_URL in 'environment' overrides the value from .env
-    # — points to the 'db' container (not localhost)
+    # - points to the 'db' container (not localhost)
     environment:
       NODE_ENV: development
       DATABASE_URL: 'postgresql://postgres:postgres@db:5432/reborn?sslmode=disable'
@@ -77,10 +77,10 @@ services:
       retries: 5
       start_period: 120s
 
-  # Reborn Notes — uruchamiany opcjonalnie z profilem: docker compose --profile with-notes up
-  # Korzysta z tej samej bazy PostgreSQL i tego samego node_modules co reborn-task
+  # Reborn Notes - optional, started with a profile: docker compose --profile with-notes up
+  # Uses the same PostgreSQL database and the same node_modules as reborn-task
   notes:
-    image: node:24.15.0-alpine
+    image: node:24.19.0-alpine
     working_dir: /app
     depends_on:
       app:
