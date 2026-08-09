@@ -1,3 +1,10 @@
+## 0.45.2 (2026-08-09)
+
+### 🩹 Fixes
+
+- **deps:** clear the CI security audit (9 prod + 3 dev advisories) ([#458](https://github.com/fundacja-reborn/reapps/pull/458), [#454](https://github.com/fundacja-reborn/reapps/issues/454), [#455](https://github.com/fundacja-reborn/reapps/issues/455), [#456](https://github.com/fundacja-reborn/reapps/issues/456), [#457](https://github.com/fundacja-reborn/reapps/issues/457))
+- **notes:** pin public URLs in native builds, add verified AAB build script ([#452](https://github.com/fundacja-reborn/reapps/pull/452))
+
 ## 0.45.1 (2026-07-29)
 
 ### 🩹 Fixes
@@ -15,8 +22,8 @@
 ### 🩹 Fixes
 
 - **deps:** patch 2026-07 security advisory wave across dep tree ([#443](https://github.com/fundacja-reborn/reapps/pull/443))
-- **notes:** eliminate native cold-start splash/loading flash ([#433](https://github.com/fundacja-reborn/reapps/pull/433), [#0](https://github.com/fundacja-reborn/reapps/issues/0))
-- **notes:** native cold-start splash bg + populated first paint ([#434](https://github.com/fundacja-reborn/reapps/pull/434), [#433](https://github.com/fundacja-reborn/reapps/issues/433), [#0](https://github.com/fundacja-reborn/reapps/issues/0), [#1](https://github.com/fundacja-reborn/reapps/issues/1))
+- **notes:** eliminate native cold-start splash/loading flash ([#433](https://github.com/fundacja-reborn/reapps/pull/433))
+- **notes:** native cold-start splash bg + populated first paint ([#434](https://github.com/fundacja-reborn/reapps/pull/434), [#433](https://github.com/fundacja-reborn/reapps/issues/433))
 - **notes:** show initial-sync banner only when local DB is empty ([#436](https://github.com/fundacja-reborn/reapps/pull/436))
 - **notes:** hold native splash until the shell is ready to paint ([#437](https://github.com/fundacja-reborn/reapps/pull/437), [#433](https://github.com/fundacja-reborn/reapps/issues/433), [#434](https://github.com/fundacja-reborn/reapps/issues/434))
 
@@ -807,7 +814,7 @@ This was a version bump only, there were no code changes.
 ### 🩹 Fixes
 
 - **notes:** switch to all-notes view when creating from trash + use existing delete_permanently i18n key ([#43](https://github.com/fundacja-reborn/reapps/pull/43))
-- **notes:** order folder/tag pushes before notes during folder import ([#44](https://github.com/fundacja-reborn/reapps/pull/44), [#1](https://github.com/fundacja-reborn/reapps/issues/1))
+- **notes:** order folder/tag pushes before notes during folder import ([#44](https://github.com/fundacja-reborn/reapps/pull/44))
 
 ## 0.4.0 (2026-04-25)
 
