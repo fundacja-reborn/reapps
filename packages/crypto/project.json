@@ -14,7 +14,7 @@
     },
     "test": {
       "executor": "@nx/vite:test",
-      "outputs": ["{options.reportsDirectory}"],
+      "outputs": ["{workspaceRoot}/coverage/packages/crypto"],
       "options": {
         "passWithNoTests": true,
         "reportsDirectory": "../../coverage/packages/crypto",
