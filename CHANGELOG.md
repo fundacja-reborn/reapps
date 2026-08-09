@@ -1,3 +1,10 @@
+## 0.45.2 (2026-08-09)
+
+### 🩹 Fixes
+
+- **deps:** clear the CI security audit (9 prod + 3 dev advisories) ([#458](https://github.com/fundacja-reborn/reapps/pull/458), [#454](https://github.com/fundacja-reborn/reapps/issues/454), [#455](https://github.com/fundacja-reborn/reapps/issues/455), [#456](https://github.com/fundacja-reborn/reapps/issues/456), [#457](https://github.com/fundacja-reborn/reapps/issues/457))
+- **notes:** pin public URLs in native builds, add verified AAB build script ([#452](https://github.com/fundacja-reborn/reapps/pull/452))
+
 ## 0.45.1 (2026-07-29)
 
 ### 🩹 Fixes
