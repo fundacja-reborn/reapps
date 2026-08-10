@@ -155,7 +155,7 @@ Explicit assumptions this threat model makes. Violation of any of them = a model
 
 4. **AES-GCM with a 96-bit random IV** - secure up to the birthday bound of 2^32 encryptions per key. The per-user master key: in typical usage we do not approach the bound within a meaningful horizon (see `docs/architecture/zero-knowledge-architecture.md`, the "AES-GCM Birthday Bound" section).
 
-5. **TLS 1.3 + HSTS** for all client-server connections. Assumption: a correctly configured server (nginx prod config) plus CA infrastructure. Active MITM with a compromised CA is beyond our control - TLS is **defense-in-depth**, not the sole line of defense.
+5. **TLS 1.3 + HSTS** for all client-server connections. Assumption: a correctly configured server (nginx prod config) plus CA infrastructure. Certificate issuance for `reapps.eu` is constrained by a DNSSEC-signed CAA record (RFC 8659) to a single CA (Let's Encrypt), with wildcard and S/MIME issuance forbidden - this narrows the mis-issuance surface from every publicly trusted CA to one, but does not close it: a compromise of that CA, a CA that ignores CAA, or an attacker who takes over our DNS account (and rewrites CAA along the way) all remain beyond our control. Active MITM with a compromised CA is therefore still assumed possible - TLS is **defense-in-depth**, not the sole line of defense.
 
 6. **The out-of-band channel for the invitation token** is "private enough". We do not define "enough" precisely - that is a user decision. The minimum assumption: the channel does not log the content of the token on the operator's side (so e.g. SMS in some jurisdictions is **insufficient**). Recommended: Signal, in-person, a physical QR code, end-to-end-encrypted email (PGP).
 
