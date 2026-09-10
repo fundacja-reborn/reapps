@@ -22,7 +22,11 @@
   import { authStore } from '$lib/stores/auth.store';
   import { sharesStore } from '$lib/stores/shares.store';
   import { pullFromServer, pushPendingItems, refreshStoresAfterPull } from '$lib/services/notes-sync.service';
-  import { initFolderSync, runFolderSync } from '$lib/services/folder-sync.service';
+  import {
+    initFolderSync,
+    refreshFolderSyncStatus,
+    runFolderSync
+  } from '$lib/services/folder-sync.service';
   import { runNotesAutoBackupIfDue } from '$lib/services/auto-backup';
   import { verifyAndRebuildLocalShadowIndexes } from '$lib/services/shadow-index-reconciler.service';
   import { noteIndex } from '$lib/services/note-index.svelte';
@@ -318,6 +322,16 @@
         }
       }
 
+      //    Project the linked-directory configs into folderSyncStatus now
+      //    that IndexedDB is open (fire-and-forget; nothing below waits on
+      //    it). This used to run inside initFolderSync(), wired in onMount
+      //    before init() settles, and raced the DB open on a cold start:
+      //    getAll() soft-returns [] on a not-yet-open database and nothing
+      //    re-projected afterwards, so the folder tree occasionally lost its
+      //    sync markers for the whole session while the settings page (which
+      //    refreshes on mount) still listed every link.
+      void refreshFolderSyncStatus();
+
       // 2a. Initialize SSO auth state AFTER storage is ready and BEFORE the
       //     cleanup migration - cleanup repairs malformed user_id in legacy
       //     local records, which needs the current account's UUID.
@@ -449,7 +463,9 @@
 
     // Live folder sync triggers (visibility + interval). All conditions
     // (support, config, auth, cooldown) are re-validated inside each run,
-    // so this is safe to wire before storage/auth finish initializing.
+    // so this is safe to wire before storage/auth finish initializing. The
+    // status projection is NOT done here - init() step 2 does it once the
+    // database is open (see initFolderSync for the boot race this avoids).
     const cleanupFolderSync = initFolderSync();
 
     // Periodic sync every 5 minutes when online and authenticated

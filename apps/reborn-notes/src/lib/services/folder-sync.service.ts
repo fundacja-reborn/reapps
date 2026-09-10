@@ -42,7 +42,13 @@
  */
 
 import { get, writable, derived } from 'svelte/store';
-import { folderSyncStore, noteStore, type FolderSyncConfigRecord } from '@reborn/storage';
+import {
+  databaseManager,
+  folderSyncStore,
+  isDatabaseInitialized,
+  noteStore,
+  type FolderSyncConfigRecord
+} from '@reborn/storage';
 import type { FolderWithChildren } from '@reborn/types';
 import { createLogger } from '@reborn/utils';
 import { authStore } from '$lib/stores/auth.store';
@@ -169,9 +175,20 @@ let runnerActive = false;
 let activeConfigId: string | null = null;
 let lastAutoRunAt = 0;
 
-/** All configs, oldest link first (stable order for the settings list). */
+/**
+ * All configs, oldest link first (stable order for the settings list).
+ *
+ * `getAll()` soft-returns `[]` on a closed database connection, which here is
+ * indistinguishable from "nothing linked" and would silently stop sync in
+ * this tab (and empty the status projection). A connection dropped from under
+ * us (another tab's version upgrade, WKWebView teardown) is reconnected
+ * first, mirroring what `requireDatabase()` does for writes. A database that
+ * was never opened (public share route) has no config to reconnect with and
+ * stays untouched - `reconnect()` is a no-op there, not an open.
+ */
 async function readConfigs(): Promise<FolderSyncConfigRecord[]> {
   try {
+    if (!isDatabaseInitialized()) await databaseManager.reconnect();
     const all = await folderSyncStore.getAll();
     return all.sort(
       (a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)
@@ -628,6 +645,18 @@ export async function runFolderSync(
   if (trigger === 'auto') lastAutoRunAt = Date.now();
   try {
     let configs = await readConfigs();
+    // Self-heal a stale reactive projection before the run. A config the
+    // status store does not know means the projection was built while
+    // IndexedDB was still opening (boot race - see initFolderSync) or the
+    // link was added in another tab. patchStatus() only updates entries that
+    // exist, so without this the folder UI's sync markers would stay missing
+    // for the whole session even though the runs themselves succeed.
+    try {
+      const known = new Set(get(folderSyncStatus).map((s) => s.id));
+      if (configs.some((c) => !known.has(c.id))) await refreshFolderSyncStatus();
+    } catch (e: unknown) {
+      logger.warn('Folder sync status re-projection failed', e);
+    }
     if (onlyConfigId !== undefined) configs = configs.filter((c) => c.id === onlyConfigId);
     if (trigger === 'auto') configs = configs.filter((c) => c.auto_sync === 1);
     if (configs.length === 0) return null;
@@ -910,14 +939,23 @@ async function scanAndImport(
 
 /**
  * Wire the automatic triggers (return-to-foreground + periodic interval).
- * Call once from the root layout after storage init; returns a cleanup.
- * Every trigger re-validates everything inside `runFolderSync`, so the
- * listeners themselves stay dumb and safe to keep attached while logged out.
+ * Call once from the root layout; returns a cleanup. Every trigger
+ * re-validates everything inside `runFolderSync`, so the listeners themselves
+ * stay dumb and safe to attach before storage/auth finish initializing.
+ *
+ * Deliberately does NOT project the status store. The root layout mounts
+ * while the fire-and-forget `initializeStorage()` from `hooks.client.ts` may
+ * still be opening IndexedDB, and `folderSyncStore.getAll()` soft-returns `[]`
+ * on a not-yet-open database: a projection taken here came up empty on a slow
+ * cold start and - because `patchStatus` only updates existing entries -
+ * stayed empty for the whole session, hiding the folder tree's sync markers
+ * and "Sync now" while the settings page (which refreshes on mount) still
+ * listed every link. The layout calls `refreshFolderSyncStatus()` once
+ * storage is initialized, and `runFolderSync` re-projects on its own when it
+ * meets a config the store does not know.
  */
 export function initFolderSync(): () => void {
   if (!isFolderSyncSupported()) return () => {};
-
-  void refreshFolderSyncStatus();
 
   const onVisibility = () => {
     if (document.visibilityState === 'visible') void runFolderSync('auto');

@@ -14,10 +14,23 @@ const noteRows: Array<{ id: string }> = [];
 
 vi.mock('$app/environment', () => ({ browser: true }));
 
+// Database connection as seen by the service's read path. readConfigs()
+// reconnects a dropped connection before reading - getAll() would otherwise
+// soft-return [] and look exactly like "nothing linked".
+let dbInitialized = true;
+const reconnectSpy = vi.fn(async () => {
+  dbInitialized = true;
+  return {};
+});
+// Spy so a test can assert the config store was NOT read (initFolderSync).
+const getAllSpy = vi.fn(async () => [...rows]);
+
 vi.mock('@reborn/storage', () => ({
+  isDatabaseInitialized: () => dbInitialized,
+  databaseManager: { reconnect: reconnectSpy },
   folderSyncStore: {
     get: async (id: string) => rows.find((r) => r.id === id) ?? null,
-    getAll: async () => [...rows],
+    getAll: getAllSpy,
     save: async (row: FolderSyncConfigRecord) => {
       const idx = rows.findIndex((r) => r.id === row.id);
       if (idx >= 0) rows[idx] = row;
@@ -208,6 +221,9 @@ beforeEach(() => {
   activeImports = 0;
   maxActiveImports = 0;
   folderRows.length = 0;
+  dbInitialized = true;
+  reconnectSpy.mockClear();
+  getAllSpy.mockClear();
   renameSpy.mockClear();
   createSpy.mockClear();
   moveSpy.mockClear();
@@ -281,6 +297,28 @@ describe('runFolderSync (multi-config)', () => {
     expect(importCalls[0].targetFolderId).toBe('f1');
     // Marker keys off the id, so it follows the rename.
     expect(get(svc.syncedFolderConfigs).get('f1')).toBe('a');
+  });
+
+  it('re-projects a config the status store does not know (stale boot projection)', async () => {
+    // Boot race: the layout's status projection can run before IndexedDB is
+    // open and come up empty. The run must rebuild it - otherwise the folder
+    // tree shows no sync marker for the whole session while sync itself works
+    // (patchStatus only updates entries that already exist).
+    seedConfig({
+      id: 'a',
+      root_name: 'Docs',
+      target_folder_id: 'f1',
+      handle: fakeDir('docs', ['a.md'])
+    });
+    folderRows.push({ id: 'f1', name: 'Docs', parent_id: null });
+    const svc = await loadService();
+    expect(get(svc.folderSyncStatus)).toEqual([]);
+
+    await svc.runFolderSync('auto');
+
+    expect(importCalls[0].targetFolderId).toBe('f1');
+    expect(get(svc.syncedFolderConfigs).get('f1')).toBe('a');
+    expect(get(svc.folderSyncStatus).find((s) => s.id === 'a')?.state).toBe('idle');
   });
 
   it('isolates a broken directory - the remaining configs still sync', async () => {
@@ -911,5 +949,55 @@ describe('syncedFolderConfigs', () => {
 
     expect(rows.find((r) => r.id === 'a')?.target_folder_id).toBe('f-docs');
     expect(get(svc.syncedFolderConfigs).get('f-docs')).toBe('a');
+  });
+});
+
+describe('readConfigs (IndexedDB connection)', () => {
+  it('reconnects a dropped connection before reading', async () => {
+    // databaseManager nulls its connection out from under us (another tab's
+    // version upgrade, WKWebView teardown); getAll() then soft-returns [],
+    // which would silently stop sync in this tab and empty the status store.
+    seedConfig({ id: 'a', root_name: 'Docs', target_folder_id: 'f1', handle: fakeDir('docs', []) });
+    dbInitialized = false;
+    const svc = await loadService();
+
+    await svc.refreshFolderSyncStatus();
+
+    expect(reconnectSpy).toHaveBeenCalledTimes(1);
+    expect(get(svc.folderSyncStatus).map((s) => s.id)).toEqual(['a']);
+  });
+
+  it('leaves a live connection alone', async () => {
+    seedConfig({ id: 'a', root_name: 'Docs', target_folder_id: 'f1', handle: fakeDir('docs', []) });
+    const svc = await loadService();
+
+    await svc.refreshFolderSyncStatus();
+
+    expect(reconnectSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('initFolderSync', () => {
+  it('wires the triggers without projecting the status store', async () => {
+    // The root layout wires the triggers before IndexedDB is guaranteed open;
+    // an eager read here soft-returns [] and would freeze the projection
+    // empty for the session (patchStatus only updates existing entries). The
+    // layout projects after storage init instead; the runner self-heals.
+    seedConfig({ id: 'a', root_name: 'Docs', target_folder_id: 'f1', handle: fakeDir('docs', []) });
+    vi.stubGlobal('document', {
+      visibilityState: 'visible',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    });
+    const svc = await loadService();
+    getAllSpy.mockClear();
+
+    const cleanup = svc.initFolderSync();
+    await Promise.resolve();
+    await Promise.resolve();
+    cleanup();
+
+    expect(getAllSpy).not.toHaveBeenCalled();
+    expect(get(svc.folderSyncStatus)).toEqual([]);
   });
 });
