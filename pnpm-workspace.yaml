@@ -4,29 +4,37 @@ packages:
 overrides:
   axios: 1.18.0 # 2026-07 wave: GHSA-gcfj-64vw-6mp9 (high) + 8 moderate GHSAs; nx-transitive, dev-only
   follow-redirects: 1.16.0
-  fast-uri: 3.1.5 # GHSA-v2hh-gcrm-f6hx + GHSA-4c8g-83qw-93j6 + GHSA-7p8r-x3mc-p8w7 host confusion; ajv-transitive (nx/vite, prisma-dev)
+  fast-uri: 3.1.6 # GHSA-v2hh-gcrm-f6hx + GHSA-4c8g-83qw-93j6 + GHSA-7p8r-x3mc-p8w7 + 2026-09 wave (GHSA-f65p-4m7j-42xc, GHSA-jqff-g426-hqxp, GHSA-fph4-wmhf-6fwf, GHSA-5jgf-p345-68v8) host confusion / SSRF; ajv-transitive (nx/vite, prisma-dev)
   '@babel/plugin-transform-modules-systemjs': 7.29.7
-  hono: 4.12.34 # GHSA-w62v-xxxg-mg59 + GHSA-hvrm-45r6-mjfj + GHSA-xgm2-5f3f-mvvc + GHSA-8j4g-w8fx-2239 (CORS ReDoS) + GHSA-f23p-vx2j-j53r (memo() SSR leak) + GHSA-54fx-42gc-7vw4; prisma-dev transitive
+  hono: 4.13.5 # GHSA-w62v-xxxg-mg59 + GHSA-hvrm-45r6-mjfj + GHSA-xgm2-5f3f-mvvc + GHSA-8j4g-w8fx-2239 (CORS ReDoS) + GHSA-f23p-vx2j-j53r (memo() SSR leak) + GHSA-54fx-42gc-7vw4 + GHSA-crvj-82cr-hjcx (query parser reads past the URL fragment) + GHSA-g6gw-c38x-mqfc (parseBody nesting DoS) + GHSA-gqvv-2mrq-wpjv (toSSG path traversal, incomplete fix); prisma-dev transitive
   cookie: 0.7.2
   esbuild: 0.28.1
   '@hono/node-server': 2.0.10 # GHSA-frvp-7c67-39w9 path traversal + GHSA-9mqv-5hh9-4cgg WS DoS; prisma-dev transitive. NOTE cross-major 1->2 - no 1.x backport; affects prisma dev tooling only (studio/dev), drop when prisma bumps
+  mysql2@<3.23.1: '3.23.1' # GHSA-3f6p-5ww8-9rcr auth plugin downgrade to mysql_clear_password (high) + GHSA-rgwj-5xj2-c3m3 zlib decompression bomb (moderate); prisma CLI pins 3.15.3 exactly and loads it lazily for MySQL URLs only (we run Postgres via @prisma/adapter-pg)
+  deepmerge-ts@<8.0.2: '8.0.2' # GHSA-ggr8-5vv4-36mx stack exhaustion on recursive object graphs (high); @prisma/config-transitive - the prisma CLI (runs `migrate deploy` at container start) merges prisma.config.ts layers via c12 with deepmerge as merger, plain objects only. NOTE cross-major 7->8, no 7.x backport; v8 breaking changes (Map deep-merge, type renames, deepmergeInto leak fix) do not touch that path. 8.0.2 = corrected engines (>=16.9.0). Drop when prisma bumps
   devalue: 5.8.1
   dompurify@<3.4.13: '3.4.13' # GHSA-55q2-fjhq-7xh7 IN_PLACE hook removal leaves detached subtree executable (XSS) - PROD bundle (notes direct + jspdf-transitive); previously GHSA-c2j3-45gr-mqc4, GHSA-cmwh-pvxp-8882
+  fflate@<0.8.3: '0.8.3' # GHSA-px8p-9vwx-vf98 unzipSync infinite loop on malformed ZIP64 archives (moderate); PROD bundle (jspdf-transitive, notes PDF export) + @vitest/ui
   tar@<7.5.21: '7.5.21' # GHSA-23hp-3jrh-7fpw (critical) + GHSA-8x88-c5mf-7j5w (high) + 3 moderate DoS; @capacitor/cli-transitive, dev-only
   brace-expansion@<5.0.9: '5.0.9' # GHSA-mh99-v99m-4gvg + GHSA-3jxr-9vmj-r5cp + GHSA-rgw5-rvv9-x895 expansion DoS (high); minimatch@10-transitive (eslint/nx), dev-only
   postcss@<8.5.23: '8.5.23' # GHSA-r28c-9q8g-f849 + GHSA-fxqj-rqcc-2cmp (incomplete fix) sourceMappingURL path traversal; vite/svelte-kit-transitive, build-time only
-  nanoid@<3.3.17: '3.3.17' # GHSA-28wg-ghj8-5hjv + GHSA-2v37-7h3g-55p8 infinite loop on negative/zero size (high); postcss-transitive (vite), build-time only
+  nanoid@<3.3.18: '3.3.18' # GHSA-28wg-ghj8-5hjv + GHSA-2v37-7h3g-55p8 infinite loop on negative/zero size (high; 3.3.17 left the zero-size custom generator case open, patched range moved to >=3.3.18); postcss-transitive (vite), build-time only
+  browserslist@<4.28.7: '4.28.7' # GHSA-73wf-gq98-2v4g prototype write via untrusted custom stats + GHSA-c83g-rgw3-j3cx unbounded cache growth (high); autoprefixer/babel-transitive, build-time only
+  baseline-browser-mapping@<2.11.0: '2.11.0' # GHSA-w5vr-8v7q-w6rv process termination on invalid input (moderate); browserslist-transitive, build-time only
   valibot@<1.4.2: '1.4.2' # GHSA-5qjj-4xww-7phc flatten() throw (moderate); prisma-dev + sveltekit-superforms transitive
   ts-deepmerge@<8.0.0: '8.0.0' # GHSA-87mf-gv2c-c62c ts-deepmerge prototype method override DoS; PROD bundle (sveltekit-superforms + formsnap transitive)
   tmp@<0.2.7: '0.2.7' # GHSA-7c78-jf6q-g5cm tmp path traversal via non-string template (nx-transitive, dev-only)
   form-data@<4.0.6: '4.0.6' # GHSA-hmw2-7cc7-3qxx form-data CRLF injection in multipart field names (nx-transitive, dev-only)
-  joi: 18.2.1 # GHSA-q7cg-457f-vx79 nested-input RangeError; superforms optional peer, unused (we use the Zod adapter)
+  joi: 18.2.5 # GHSA-q7cg-457f-vx79 nested-input RangeError + GHSA-gg4h-3hg2-grpc rename() template target sets the prototype + GHSA-6w3j-5fw6-r9vr __proto__ language key in custom messages; superforms optional peer, unused (we use the Zod adapter)
   # Dev-only transitive CVE pins (Storybook, nx http-server); absent from prod bundle
   ws: '8.21.0' # GHSA-58qx-3vcg-4xpx ws uninitialized memory disclosure
-  qs: '6.15.2' # GHSA-q8mj-m7cp-5q26 qs.stringify DoS
+  qs: '6.16.0' # GHSA-q8mj-m7cp-5q26 qs.stringify DoS + GHSA-4mjr-xmp4-gh2g attacker-controlled isBuffer DoS + GHSA-x5fp-wj9c-mxmx array-limit bypass via bracket-key comma parsing
   undici@<7.29.0: '7.29.0' # GHSA-vmh5-mc38-953g + GHSA-4cwx-7wf7-3272 (high) + GHSA-pr7r-676h-xcf6 + GHSA-8xcm-r25x-g524 (moderate) undici, via vitest>jsdom (test-only)
   '@babel/core@<7.29.7': '7.29.7' # GHSA-4x5r-pxfx-6jf8 (low) arbitrary file read via sourceMappingURL comment, via @nx/js toolchain (Dependabot #106)
   uuid@<11.1.1: '11.1.1' # GHSA-w5hq-g745-h8pq (moderate) missing buffer bounds check in v3/v5/v6, via @storybook/addon-actions; direct deps already on uuid 14
+  '@xmldom/xmldom@<0.9.12': '0.9.12' # 2026-09 wave: 11 high + 2 moderate GHSAs (PI/attribute ReDoS, quadratic-time parsing, requireWellFormed injection bypasses); plist-transitive (@capacitor/cli, native-run), dev-only
+  smol-toml@<1.7.1: '1.7.1' # GHSA-7w5x-hrqm-74c2 DoS via malformed TOML documents (high); nx pins 1.6.1 exactly, knip ^1.6.1, dev-only
+  postcss-selector-parser@<7.1.3: '7.1.3' # GHSA-w9m9-85wc-3x92 uncontrolled AST recursion DoS (low); svelte-eslint-parser-transitive, lint-time only
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
