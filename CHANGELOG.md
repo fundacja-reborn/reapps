@@ -1,3 +1,10 @@
+## 0.45.3 (2026-09-10)
+
+### 🩹 Fixes
+
+- **deps:** clear 30 Dependabot alerts and the red CI security audit ([#464](https://github.com/fundacja-reborn/reapps/pull/464), [#458](https://github.com/fundacja-reborn/reapps/issues/458))
+- **notes:** keep folder sync markers after a slow IndexedDB open ([#465](https://github.com/fundacja-reborn/reapps/pull/465))
+
 ## 0.45.2 (2026-08-09)
 
 ### 🩹 Fixes

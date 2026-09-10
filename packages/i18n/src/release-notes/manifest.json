@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.45.3",
+    "date": "2026-09-10",
+    "items": [
+      { "id": "0.45.3-folder-sync-markers", "category": "fixed", "apps": ["notes"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.45.1",
     "date": "2026-07-29",
     "items": [
