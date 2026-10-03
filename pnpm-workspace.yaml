@@ -25,7 +25,7 @@ overrides:
   ts-deepmerge@<8.0.0: '8.0.0' # GHSA-87mf-gv2c-c62c ts-deepmerge prototype method override DoS; PROD bundle (sveltekit-superforms + formsnap transitive)
   tmp@<0.2.7: '0.2.7' # GHSA-7c78-jf6q-g5cm tmp path traversal via non-string template (nx-transitive, dev-only)
   form-data@<4.0.6: '4.0.6' # GHSA-hmw2-7cc7-3qxx form-data CRLF injection in multipart field names (nx-transitive, dev-only)
-  joi: 18.2.5 # GHSA-q7cg-457f-vx79 nested-input RangeError + GHSA-gg4h-3hg2-grpc rename() template target sets the prototype + GHSA-6w3j-5fw6-r9vr __proto__ language key in custom messages; superforms optional peer, unused (we use the Zod adapter)
+  joi: 18.2.6 # GHSA-q7cg-457f-vx79 nested-input RangeError + GHSA-gg4h-3hg2-grpc rename() template target sets the prototype + GHSA-6w3j-5fw6-r9vr __proto__ language key in custom messages; superforms optional peer, unused (we use the Zod adapter)
   # Dev-only transitive CVE pins (Storybook, nx http-server); absent from prod bundle
   ws: '8.21.0' # GHSA-58qx-3vcg-4xpx ws uninitialized memory disclosure
   qs: '6.16.0' # GHSA-q8mj-m7cp-5q26 qs.stringify DoS + GHSA-4mjr-xmp4-gh2g attacker-controlled isBuffer DoS + GHSA-x5fp-wj9c-mxmx array-limit bypass via bracket-key comma parsing
