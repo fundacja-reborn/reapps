@@ -4,7 +4,7 @@ packages:
 overrides:
   axios: 1.18.0 # 2026-07 wave: GHSA-gcfj-64vw-6mp9 (high) + 8 moderate GHSAs; nx-transitive, dev-only
   follow-redirects: 1.16.0
-  fast-uri: 3.1.6 # GHSA-v2hh-gcrm-f6hx + GHSA-4c8g-83qw-93j6 + GHSA-7p8r-x3mc-p8w7 + 2026-09 wave (GHSA-f65p-4m7j-42xc, GHSA-jqff-g426-hqxp, GHSA-fph4-wmhf-6fwf, GHSA-5jgf-p345-68v8) host confusion / SSRF; ajv-transitive (nx/vite, prisma-dev)
+  fast-uri: 3.1.7 # GHSA-v2hh-gcrm-f6hx + GHSA-4c8g-83qw-93j6 + GHSA-7p8r-x3mc-p8w7 + 2026-09 wave (GHSA-f65p-4m7j-42xc, GHSA-jqff-g426-hqxp, GHSA-fph4-wmhf-6fwf, GHSA-5jgf-p345-68v8) host confusion / SSRF; ajv-transitive (nx/vite, prisma-dev)
   '@babel/plugin-transform-modules-systemjs': 7.29.7
   hono: 4.13.5 # GHSA-w62v-xxxg-mg59 + GHSA-hvrm-45r6-mjfj + GHSA-xgm2-5f3f-mvvc + GHSA-8j4g-w8fx-2239 (CORS ReDoS) + GHSA-f23p-vx2j-j53r (memo() SSR leak) + GHSA-54fx-42gc-7vw4 + GHSA-crvj-82cr-hjcx (query parser reads past the URL fragment) + GHSA-g6gw-c38x-mqfc (parseBody nesting DoS) + GHSA-gqvv-2mrq-wpjv (toSSG path traversal, incomplete fix); prisma-dev transitive
   cookie: 0.7.2
