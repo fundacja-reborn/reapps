@@ -12,7 +12,7 @@
     "gen:store-assets": "node scripts/gen-store-assets-sources.mjs && npx -y @capacitor/assets@3.0.5 generate --android --ios --assetPath assets && node scripts/postfix-android-adaptive-icon.mjs"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.4.0",
+    "@capacitor/cli": "8.4.3",
     "@eslint/js": "10.0.1",
     "@sveltejs/adapter-auto": "7.0.1",
     "@sveltejs/kit": "2.70.2",
@@ -38,12 +38,12 @@
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "10.0.0",
     "@aparajita/capacitor-secure-storage": "8.0.0",
-    "@capacitor/android": "8.4.0",
+    "@capacitor/android": "8.4.3",
     "@capacitor/app": "8.1.0",
     "@capacitor/clipboard": "8.0.1",
-    "@capacitor/core": "8.4.0",
+    "@capacitor/core": "8.4.3",
     "@capacitor/filesystem": "8.1.2",
-    "@capacitor/ios": "8.4.0",
+    "@capacitor/ios": "8.4.3",
     "@capacitor/local-notifications": "8.2.0",
     "@capacitor/network": "8.0.1",
     "@capacitor/share": "8.0.1",
@@ -81,7 +81,7 @@
     "@reborn/utils": "workspace:*",
     "@replit/codemirror-lang-svelte": "6.0.0",
     "diff": "9.0.0",
-    "dompurify": "3.4.13",
+    "dompurify": "3.4.16",
     "html2canvas-pro": "2.0.4",
     "jspdf": "4.2.1",
     "jszip": "3.10.1",
