@@ -1,3 +1,10 @@
+## 0.45.4 (2026-11-01)
+
+### 🩹 Fixes
+
+- **deps:** clear 25 Dependabot alerts and the Capacitor proxy CVE ([#471](https://github.com/fundacja-reborn/reapps/pull/471), [#467](https://github.com/fundacja-reborn/reapps/issues/467), [#470](https://github.com/fundacja-reborn/reapps/issues/470), [#458](https://github.com/fundacja-reborn/reapps/issues/458), [#464](https://github.com/fundacja-reborn/reapps/issues/464))
+- **deps:** clear 45 Dependabot alerts and the red CI security audit ([#480](https://github.com/fundacja-reborn/reapps/pull/480), [#472](https://github.com/fundacja-reborn/reapps/issues/472), [#478](https://github.com/fundacja-reborn/reapps/issues/478), [#475](https://github.com/fundacja-reborn/reapps/issues/475), [#479](https://github.com/fundacja-reborn/reapps/issues/479))
+
 ## 0.45.3 (2026-09-10)
 
 ### 🩹 Fixes
