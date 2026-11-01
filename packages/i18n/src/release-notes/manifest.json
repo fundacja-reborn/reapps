@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.45.4",
+    "date": "2026-11-01",
+    "items": [
+      { "id": "0.45.4-security-updates", "category": "fixed", "apps": ["notes", "task"], "platforms": "all" }
+    ]
+  },
+  {
     "version": "0.45.3",
     "date": "2026-09-10",
     "items": [
