@@ -1,3 +1,9 @@
+## 0.45.5 (2026-11-04)
+
+### 🩹 Fixes
+
+- **i18n:** tolerate unknown synced locales instead of throwing ([#483](https://github.com/fundacja-reborn/reapps/pull/483), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+
 ## 0.45.4 (2026-11-01)
 
 ### 🩹 Fixes
