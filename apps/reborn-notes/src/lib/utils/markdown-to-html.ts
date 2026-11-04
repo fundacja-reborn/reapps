@@ -191,3 +191,22 @@ export function createMarkdownImageRenderer(translate: (key: string) => string):
     getAskPlaceholderCount: () => askPlaceholderCount
   };
 }
+
+/**
+ * Block elements whose direction follows their own content. A note mixing
+ * Arabic and English paragraphs renders each one in its own direction,
+ * whatever the UI locale; a list takes the direction of its first item so its
+ * markers stay on one side.
+ */
+const AUTO_DIR_BLOCK = /<(p|h[1-6]|ul|ol|blockquote|table|dl)\b(?![^>]*\sdir=)/g;
+
+/**
+ * Add `dir="auto"` to the rendered Markdown's block elements (paragraphs,
+ * headings, lists, quotes, tables). Runs on SANITIZED HTML: DOMPurify has
+ * already escaped every `<` in text and attribute values, so a literal `<p`
+ * is always a real tag. An explicit `dir` in the note's own HTML is kept.
+ * Code blocks are pinned to `dir="ltr"` by the code renderer instead.
+ */
+export function applyBlockDirection(html: string): string {
+  return html.replace(AUTO_DIR_BLOCK, '<$1 dir="auto"');
+}

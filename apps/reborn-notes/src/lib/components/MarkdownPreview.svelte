@@ -18,7 +18,8 @@
   } from '$lib/utils/source-line';
   import {
     createMarkdownListRenderers,
-    createMarkdownImageRenderer
+    createMarkdownImageRenderer,
+    applyBlockDirection
   } from '$lib/utils/markdown-to-html';
   import { extractHeadings, assignHeadingSlugs } from '$lib/utils/heading-outline';
   import { scrollToHeading } from '$lib/utils/heading-scroll';
@@ -250,7 +251,9 @@
     // delegation in `handleClick`. The label is escaped for the attribute.
     const copyLabel = $t('editor.code_copy').replace(/"/g, '&quot;');
     const pre = highlightCodeToHtml(text, info);
-    return `<div class="code-block"><button class="code-copy-btn" type="button" aria-label="${copyLabel}" title="${copyLabel}">${CODE_COPY_ICON}</button>${pre}</div>`;
+    // dir="ltr": code reads left-to-right in any UI or note language, and the
+    // copy button stays top-right (same as Live Preview's CodeBlockWidget).
+    return `<div class="code-block" dir="ltr"><button class="code-copy-btn" type="button" aria-label="${copyLabel}" title="${copyLabel}">${CODE_COPY_ICON}</button>${pre}</div>`;
   };
 
   md.use({ renderer });
@@ -311,7 +314,11 @@
     // NOT swap the label for the target note's current title: that clobbered
     // custom labels and heading-anchor link text (`[localhost](note:UUID#slug)`
     // showed the note title instead). The authored label is the source of truth.
-    return tableWrapped;
+    //
+    // Last: per-block direction (dir="auto") for RTL/LTR content. After the
+    // table wrap above (it matches the bare `<table>`), on sanitized output -
+    // see applyBlockDirection for why a regex is safe there.
+    return applyBlockDirection(tableWrapped);
   });
 
   // After {@html html} commits to the DOM, stamp top-level children with
@@ -685,7 +692,7 @@
   /* Tapered indent ramp - mirrors the bullet/ordered depth rules in
      editor/live-preview/theme.ts so Preview and Live Preview render nested
      lists with the same geometry. The renderer in this component stamps
-     data-d="N" on every ul/ol (1..12, clamped). margin-left here is the
+     data-d="N" on every ul/ol (1..12, clamped). margin-inline-start here is the
      delta from the parent list's content edge - d2..d12 stack on top of the
      d1 base (1.5em), giving cumulative offsets that match Live Preview's
      absolute paddings. d2 has the larger 2.5em step so a nested item sits
@@ -693,7 +700,7 @@
      taper to 0.75em so deep trees stay usable on a 360px viewport. */
   .preview :global(ul[data-d='1']),
   .preview :global(ol[data-d='1']) {
-    margin-left: 1.5em;
+    margin-inline-start: 1.5em;
   }
   /* First-level ol gets extra room: outside markers hang LEFT of the li
      content edge, and `.preview` is a scroll container (overflow-auto), so
@@ -707,14 +714,14 @@
      number there is source text, not a ::marker), so this is a deliberate
      0.5em divergence from .cm-lp-ordered-d1. */
   .preview :global(ol[data-d='1']) {
-    margin-left: 2em;
+    margin-inline-start: 2em;
   }
   .preview :global(ol[data-d='1']:has(> li:nth-child(100))) {
-    margin-left: 2.75em;
+    margin-inline-start: 2.75em;
   }
   .preview :global(ul[data-d='2']),
   .preview :global(ol[data-d='2']) {
-    margin-left: 2.5em;
+    margin-inline-start: 2.5em;
   }
   .preview :global(ul[data-d='3']),
   .preview :global(ol[data-d='3']),
@@ -724,7 +731,7 @@
   .preview :global(ol[data-d='5']),
   .preview :global(ul[data-d='6']),
   .preview :global(ol[data-d='6']) {
-    margin-left: 1.5em;
+    margin-inline-start: 1.5em;
   }
   .preview :global(ul[data-d='7']),
   .preview :global(ol[data-d='7']),
@@ -738,13 +745,13 @@
   .preview :global(ol[data-d='11']),
   .preview :global(ul[data-d='12']),
   .preview :global(ol[data-d='12']) {
-    margin-left: 0.75em;
+    margin-inline-start: 0.75em;
   }
 
   .preview :global(blockquote) {
     margin: 0 0 1em;
     padding: 0.5em 1em;
-    border-left: 3px solid var(--border);
+    border-inline-start: 3px solid var(--border);
     color: var(--muted-foreground);
     font-style: italic;
   }
@@ -790,7 +797,7 @@
   .preview :global(.code-copy-btn) {
     position: absolute;
     top: 0.4em;
-    right: 0.4em;
+    inset-inline-end: 0.4em;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -834,7 +841,7 @@
     justify-content: center;
     width: 1.5rem;
     height: 1.5rem;
-    margin-left: 0.4em;
+    margin-inline-start: 0.4em;
     padding: 0;
     border: 1px solid var(--border);
     border-radius: 0.375em;
@@ -895,7 +902,7 @@
   .preview :global(.note-toc-actions) {
     position: absolute;
     top: 0.4em;
-    right: 0.4em;
+    inset-inline-end: 0.4em;
     display: inline-flex;
     gap: 0.25em;
     opacity: 0;
@@ -1079,7 +1086,7 @@
   .preview :global(td) {
     padding: 0.5em 0.75em;
     border: 1px solid var(--border);
-    text-align: left;
+    text-align: start;
   }
   .preview :global(th) {
     background: var(--muted);
@@ -1113,7 +1120,7 @@
     color: var(--muted-foreground);
   }
   .preview :global(input[type='checkbox']) {
-    margin-right: 0.4em;
+    margin-inline-end: 0.4em;
     accent-color: var(--primary);
   }
   /* Pull the checkbox into the bullet zone (GitHub-style). Putting the
@@ -1125,7 +1132,7 @@
   .preview :global(.task-list-item-checkbox) {
     cursor: pointer;
     transform: translateY(-1px);
-    margin-left: -1.4em;
+    margin-inline-start: -1.4em;
   }
 
   /* ── Image placeholders ─────────────────────────────────────
@@ -1234,7 +1241,7 @@
     color: var(--primary);
     text-decoration: underline;
     text-underline-offset: 2px;
-    margin-left: 0.25em;
+    margin-inline-start: 0.25em;
   }
 
   .load-all-images-settings-link:hover {

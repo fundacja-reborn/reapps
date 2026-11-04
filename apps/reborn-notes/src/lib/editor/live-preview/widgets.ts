@@ -175,6 +175,9 @@ export class CodeBlockWidget extends WidgetType {
     // outside that scroll container, otherwise it would scroll away / clip.
     const outer = document.createElement('div');
     outer.classList.add('cm-lp-codeblock-outer');
+    // Code reads left-to-right in any UI or note language; pinning the
+    // block also keeps the copy button in the top-right corner.
+    outer.dir = 'ltr';
 
     const wrap = document.createElement('div');
     wrap.classList.add('cm-lp-codeblock-wrap');

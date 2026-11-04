@@ -32,6 +32,7 @@
   } from '@reborn/ui';
   import type { RowAction } from '$lib/utils/row-action';
   import { t } from '$lib/stores/i18n.store';
+  import { textDirection } from '@reborn/i18n';
   import { tagsStore } from '$lib/stores/tags.store';
   import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
   import { activeNoteId, notesStore, type NoteListItem } from '$lib/stores/notes.store';
@@ -274,7 +275,7 @@
           {#if selectionMode}
             <button
               type="button"
-              class="mt-0.5 -ml-0.5 flex shrink-0 items-center justify-center rounded p-0.5"
+              class="mt-0.5 -ms-0.5 flex shrink-0 items-center justify-center rounded p-0.5"
               aria-label={isSelected ? $t('notes.multiselect.exit') : $t('notes.multiselect.enter')}
               onclick={(e) => {
                 e.stopPropagation();
@@ -298,6 +299,7 @@
           <div class="min-w-0 flex-1">
             <div class="flex items-start gap-1">
               <p
+                dir="auto"
                 class="min-w-0 flex-1 line-clamp-2 text-base md:text-sm font-normal leading-snug
                   {note.decrypt_failed ? 'italic text-muted-foreground' : 'text-foreground'}"
                 title={note.decrypt_failed ? $t('notes.undecryptable_hint') : undefined}
@@ -324,7 +326,14 @@
                 title={breadcrumb}
               >
                 <Folder class="h-3 w-3 shrink-0" />
-                <span class="truncate" dir="rtl">{breadcrumb}</span>
+                <!-- Start-side ellipsis keeps the deepest folder visible: the
+                     wrapper runs AGAINST the UI direction so the overflow (and
+                     the ellipsis) lands where the path begins; <bdi> renders the
+                     path itself in its own direction, so trailing punctuation
+                     ("Notes (old)") is not reordered by the flipped wrapper. -->
+                <span class="truncate" dir={$textDirection === 'rtl' ? 'ltr' : 'rtl'}
+                  ><bdi>{breadcrumb}</bdi></span
+                >
               </p>
             {/if}
             {#if noteTags.length > 0}

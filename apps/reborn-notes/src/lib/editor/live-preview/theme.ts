@@ -93,7 +93,7 @@ export const livePreviewTheme = EditorView.theme({
     justifyContent: 'center',
     width: '1.5rem',
     height: '1.5rem',
-    marginLeft: '0.4em',
+    marginInlineStart: '0.4em',
     padding: '0',
     border: '1px solid var(--border)',
     borderRadius: '0.375rem',
@@ -166,8 +166,8 @@ export const livePreviewTheme = EditorView.theme({
 
   // Blockquote — line-level border + indent
   '.cm-lp-blockquote-line': {
-    borderLeft: '3px solid var(--border)',
-    paddingLeft: '0.75em',
+    borderInlineStart: '3px solid var(--border)',
+    paddingInlineStart: '0.75em',
     color: 'var(--muted-foreground)',
     fontStyle: 'italic'
   },
@@ -185,8 +185,8 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-hr-line::before': {
     content: '""',
     position: 'absolute',
-    left: '0',
-    right: '0',
+    insetInlineStart: '0',
+    insetInlineEnd: '0',
     top: '50%',
     borderTop: '1px solid var(--border)',
     // Pseudo-element must not swallow clicks — the caret needs to land on the
@@ -211,9 +211,11 @@ export const livePreviewTheme = EditorView.theme({
   //
   // Each ListItem gets `cm-lp-bullet-line cm-lp-bullet-d{N}` from
   // `decorations.ts` (N = BulletList/OrderedList ancestor count, clamped to
-  // MAX_LIST_DEPTH). The bullet `::before` sits 1em left of the content,
-  // giving every level the same marker-to-text relationship while the
-  // contents themselves shift right as nesting deepens.
+  // MAX_LIST_DEPTH). The bullet `::before` sits 1em before the content
+  // (inline-start side), giving every level the same marker-to-text
+  // relationship while the contents shift towards inline-end as nesting
+  // deepens. Logical properties: each line carries `dir="auto"` (bidi.ts), so
+  // an RTL list item mirrors the ramp and the bullet automatically.
   '.cm-lp-bullet-line': {
     position: 'relative'
   },
@@ -222,45 +224,45 @@ export const livePreviewTheme = EditorView.theme({
     position: 'absolute',
     color: 'var(--muted-foreground)'
   },
-  '.cm-lp-bullet-d1': { paddingLeft: '1.5em' },
-  '.cm-lp-bullet-d1::before': { left: '0.5em' },
-  '.cm-lp-bullet-d2': { paddingLeft: '4em' },
-  '.cm-lp-bullet-d2::before': { left: '3em' },
-  '.cm-lp-bullet-d3': { paddingLeft: '5.5em' },
-  '.cm-lp-bullet-d3::before': { left: '4.5em' },
-  '.cm-lp-bullet-d4': { paddingLeft: '7em' },
-  '.cm-lp-bullet-d4::before': { left: '6em' },
-  '.cm-lp-bullet-d5': { paddingLeft: '8.5em' },
-  '.cm-lp-bullet-d5::before': { left: '7.5em' },
-  '.cm-lp-bullet-d6': { paddingLeft: '10em' },
-  '.cm-lp-bullet-d6::before': { left: '9em' },
-  '.cm-lp-bullet-d7': { paddingLeft: '10.75em' },
-  '.cm-lp-bullet-d7::before': { left: '9.75em' },
-  '.cm-lp-bullet-d8': { paddingLeft: '11.5em' },
-  '.cm-lp-bullet-d8::before': { left: '10.5em' },
-  '.cm-lp-bullet-d9': { paddingLeft: '12.25em' },
-  '.cm-lp-bullet-d9::before': { left: '11.25em' },
-  '.cm-lp-bullet-d10': { paddingLeft: '13em' },
-  '.cm-lp-bullet-d10::before': { left: '12em' },
-  '.cm-lp-bullet-d11': { paddingLeft: '13.75em' },
-  '.cm-lp-bullet-d11::before': { left: '12.75em' },
-  '.cm-lp-bullet-d12': { paddingLeft: '14.5em' },
-  '.cm-lp-bullet-d12::before': { left: '13.5em' },
+  '.cm-lp-bullet-d1': { paddingInlineStart: '1.5em' },
+  '.cm-lp-bullet-d1::before': { insetInlineStart: '0.5em' },
+  '.cm-lp-bullet-d2': { paddingInlineStart: '4em' },
+  '.cm-lp-bullet-d2::before': { insetInlineStart: '3em' },
+  '.cm-lp-bullet-d3': { paddingInlineStart: '5.5em' },
+  '.cm-lp-bullet-d3::before': { insetInlineStart: '4.5em' },
+  '.cm-lp-bullet-d4': { paddingInlineStart: '7em' },
+  '.cm-lp-bullet-d4::before': { insetInlineStart: '6em' },
+  '.cm-lp-bullet-d5': { paddingInlineStart: '8.5em' },
+  '.cm-lp-bullet-d5::before': { insetInlineStart: '7.5em' },
+  '.cm-lp-bullet-d6': { paddingInlineStart: '10em' },
+  '.cm-lp-bullet-d6::before': { insetInlineStart: '9em' },
+  '.cm-lp-bullet-d7': { paddingInlineStart: '10.75em' },
+  '.cm-lp-bullet-d7::before': { insetInlineStart: '9.75em' },
+  '.cm-lp-bullet-d8': { paddingInlineStart: '11.5em' },
+  '.cm-lp-bullet-d8::before': { insetInlineStart: '10.5em' },
+  '.cm-lp-bullet-d9': { paddingInlineStart: '12.25em' },
+  '.cm-lp-bullet-d9::before': { insetInlineStart: '11.25em' },
+  '.cm-lp-bullet-d10': { paddingInlineStart: '13em' },
+  '.cm-lp-bullet-d10::before': { insetInlineStart: '12em' },
+  '.cm-lp-bullet-d11': { paddingInlineStart: '13.75em' },
+  '.cm-lp-bullet-d11::before': { insetInlineStart: '12.75em' },
+  '.cm-lp-bullet-d12': { paddingInlineStart: '14.5em' },
+  '.cm-lp-bullet-d12::before': { insetInlineStart: '13.5em' },
 
   // Ordered list — same indent rhythm but no ::before (number stays in source).
   '.cm-lp-ordered-line': {},
-  '.cm-lp-ordered-d1': { paddingLeft: '1.5em' },
-  '.cm-lp-ordered-d2': { paddingLeft: '4em' },
-  '.cm-lp-ordered-d3': { paddingLeft: '5.5em' },
-  '.cm-lp-ordered-d4': { paddingLeft: '7em' },
-  '.cm-lp-ordered-d5': { paddingLeft: '8.5em' },
-  '.cm-lp-ordered-d6': { paddingLeft: '10em' },
-  '.cm-lp-ordered-d7': { paddingLeft: '10.75em' },
-  '.cm-lp-ordered-d8': { paddingLeft: '11.5em' },
-  '.cm-lp-ordered-d9': { paddingLeft: '12.25em' },
-  '.cm-lp-ordered-d10': { paddingLeft: '13em' },
-  '.cm-lp-ordered-d11': { paddingLeft: '13.75em' },
-  '.cm-lp-ordered-d12': { paddingLeft: '14.5em' },
+  '.cm-lp-ordered-d1': { paddingInlineStart: '1.5em' },
+  '.cm-lp-ordered-d2': { paddingInlineStart: '4em' },
+  '.cm-lp-ordered-d3': { paddingInlineStart: '5.5em' },
+  '.cm-lp-ordered-d4': { paddingInlineStart: '7em' },
+  '.cm-lp-ordered-d5': { paddingInlineStart: '8.5em' },
+  '.cm-lp-ordered-d6': { paddingInlineStart: '10em' },
+  '.cm-lp-ordered-d7': { paddingInlineStart: '10.75em' },
+  '.cm-lp-ordered-d8': { paddingInlineStart: '11.5em' },
+  '.cm-lp-ordered-d9': { paddingInlineStart: '12.25em' },
+  '.cm-lp-ordered-d10': { paddingInlineStart: '13em' },
+  '.cm-lp-ordered-d11': { paddingInlineStart: '13.75em' },
+  '.cm-lp-ordered-d12': { paddingInlineStart: '14.5em' },
 
   // ─── GFM task list (- [ ] / - [x]) ───────────────────────────
   // Same depth ramp as bullets so mixed bullet/task siblings line up. No
@@ -270,25 +272,25 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-task-line': {
     position: 'relative'
   },
-  '.cm-lp-task-d1': { paddingLeft: '1.5em' },
-  '.cm-lp-task-d2': { paddingLeft: '4em' },
-  '.cm-lp-task-d3': { paddingLeft: '5.5em' },
-  '.cm-lp-task-d4': { paddingLeft: '7em' },
-  '.cm-lp-task-d5': { paddingLeft: '8.5em' },
-  '.cm-lp-task-d6': { paddingLeft: '10em' },
-  '.cm-lp-task-d7': { paddingLeft: '10.75em' },
-  '.cm-lp-task-d8': { paddingLeft: '11.5em' },
-  '.cm-lp-task-d9': { paddingLeft: '12.25em' },
-  '.cm-lp-task-d10': { paddingLeft: '13em' },
-  '.cm-lp-task-d11': { paddingLeft: '13.75em' },
-  '.cm-lp-task-d12': { paddingLeft: '14.5em' },
+  '.cm-lp-task-d1': { paddingInlineStart: '1.5em' },
+  '.cm-lp-task-d2': { paddingInlineStart: '4em' },
+  '.cm-lp-task-d3': { paddingInlineStart: '5.5em' },
+  '.cm-lp-task-d4': { paddingInlineStart: '7em' },
+  '.cm-lp-task-d5': { paddingInlineStart: '8.5em' },
+  '.cm-lp-task-d6': { paddingInlineStart: '10em' },
+  '.cm-lp-task-d7': { paddingInlineStart: '10.75em' },
+  '.cm-lp-task-d8': { paddingInlineStart: '11.5em' },
+  '.cm-lp-task-d9': { paddingInlineStart: '12.25em' },
+  '.cm-lp-task-d10': { paddingInlineStart: '13em' },
+  '.cm-lp-task-d11': { paddingInlineStart: '13.75em' },
+  '.cm-lp-task-d12': { paddingInlineStart: '14.5em' },
   '.cm-lp-task-checked': {
     textDecoration: 'line-through',
     color: 'var(--muted-foreground)',
     opacity: '0.7'
   },
   '.cm-lp-task-checkbox': {
-    marginRight: '0.4em',
+    marginInlineEnd: '0.4em',
     cursor: 'pointer',
     accentColor: 'var(--primary)',
     verticalAlign: 'middle',
@@ -353,7 +355,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-code-copy': {
     position: 'absolute',
     top: '0.4em',
-    right: '0.4em',
+    insetInlineEnd: '0.4em',
     zIndex: '1',
     display: 'inline-flex',
     alignItems: 'center',
@@ -416,7 +418,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-toc-actions': {
     position: 'absolute',
     top: '0.4em',
-    right: '0.4em',
+    insetInlineEnd: '0.4em',
     zIndex: '1',
     display: 'inline-flex',
     gap: '0.25em',
@@ -454,18 +456,18 @@ export const livePreviewTheme = EditorView.theme({
   // the `.cm-lp-toc` widget so click-to-edit doesn't change the block's colour.
   '.cm-lp-toc-line': {
     backgroundColor: 'color-mix(in srgb, var(--muted) 40%, transparent)',
-    paddingLeft: '1em',
-    paddingRight: '1em'
+    paddingInlineStart: '1em',
+    paddingInlineEnd: '1em'
   },
   '.cm-lp-toc-line-first': {
     paddingTop: '0.5em',
-    borderTopLeftRadius: '0.5em',
-    borderTopRightRadius: '0.5em'
+    borderStartStartRadius: '0.5em',
+    borderStartEndRadius: '0.5em'
   },
   '.cm-lp-toc-line-last': {
     paddingBottom: '0.5em',
-    borderBottomLeftRadius: '0.5em',
-    borderBottomRightRadius: '0.5em'
+    borderEndStartRadius: '0.5em',
+    borderEndEndRadius: '0.5em'
   },
 
   // Cursor inside: per-line decoration so the raw fences and body share
@@ -475,18 +477,18 @@ export const livePreviewTheme = EditorView.theme({
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     fontSize: '0.875em',
     backgroundColor: 'var(--muted)',
-    paddingLeft: '1em',
-    paddingRight: '1em'
+    paddingInlineStart: '1em',
+    paddingInlineEnd: '1em'
   },
   '.cm-lp-code-line-first': {
     paddingTop: '0.5em',
-    borderTopLeftRadius: '0.5em',
-    borderTopRightRadius: '0.5em'
+    borderStartStartRadius: '0.5em',
+    borderStartEndRadius: '0.5em'
   },
   '.cm-lp-code-line-last': {
     paddingBottom: '0.5em',
-    borderBottomLeftRadius: '0.5em',
-    borderBottomRightRadius: '0.5em'
+    borderEndStartRadius: '0.5em',
+    borderEndEndRadius: '0.5em'
   },
 
   // ─── Syntax highlight tokens (for CodeBlockWidget) ───────────
@@ -554,7 +556,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-table th, .cm-lp-table td': {
     padding: '0.5em 0.75em',
     border: '1px solid var(--border)',
-    textAlign: 'left',
+    textAlign: 'start',
     verticalAlign: 'top',
     minWidth: '4em',
     outline: 'none',

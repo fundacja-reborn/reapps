@@ -12,6 +12,7 @@
   import { noteLinkAutocomplete, type NoteLinkItem } from '$lib/editor/note-link-autocomplete';
   import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
   import { noteSearchExtension } from '$lib/editor/note-search';
+  import { bidiLines } from '$lib/editor/bidi';
   import { listIndent, listOutdent } from '$lib/editor/list-keymap';
   import {
     BULLET_ANCHOR,
@@ -509,6 +510,9 @@
         getMarkdownExtension(),
         syntaxHighlighting(defaultHighlightStyle),
         EditorView.lineWrapping,
+        // Per-line direction from the content (`dir="auto"`), independent of
+        // the UI locale: Arabic/Hebrew lines render RTL in any UI language.
+        bidiLines(),
         // Keep every scroll-into-view (heading-anchor clicks, outline jumps, the
         // caret while typing near the top) clear of the sticky formatting toolbar
         // that overlays the scroll container in the mobile + single-pane layouts.
@@ -1163,7 +1167,7 @@
   }
   :global(.dark .cm-host .cm-editor .cm-gutters) {
     background-color: var(--background);
-    border-right: none;
+    border-inline-end: none;
   }
 
   /* Light mode */

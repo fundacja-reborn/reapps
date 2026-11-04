@@ -371,6 +371,9 @@ export class TableWidget extends WidgetType {
 
     const tableEl = document.createElement('table');
     tableEl.className = 'cm-lp-table';
+    // Column order follows the table's own content (first strong character),
+    // like a paragraph line - an Arabic table starts at the right edge.
+    tableEl.dir = 'auto';
 
     const thead = document.createElement('thead');
     const headerTr = document.createElement('tr');
