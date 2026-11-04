@@ -453,13 +453,13 @@
 									class="group flex flex-1 items-center gap-2 py-2 px-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
 								>
 									<ChevronRightIcon
-										class="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90"
+										class="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90 rtl:group-data-[state=open]:-rotate-90"
 									/>
 									{$t('taskList.completed_count', { values: { count: completedTasks.length } })}
 								</AccordionPrimitive.Trigger>
 								<button
 									type="button"
-									class="ml-auto p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring hidden group-data-[state=open]:flex cursor-pointer"
+									class="ms-auto p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring hidden group-data-[state=open]:flex cursor-pointer"
 									title={$t('taskList.completed.move_to_trash')}
 									onclick={(e) => {
 										e.stopPropagation();

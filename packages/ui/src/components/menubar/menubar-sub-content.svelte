@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { Menubar as MenubarPrimitive } from "bits-ui";
+	import { textDirection } from "@reborn/i18n";
 	import { cn } from "../../utils/cn";
 
 	let {
 		ref = $bindable(null),
 		class: className,
+		dir,
 		...restProps
 	}: MenubarPrimitive.SubContentProps = $props();
 </script>
@@ -15,5 +17,6 @@
 		"bg-popover text-popover-foreground z-50 min-w-max rounded-md border p-1 focus:outline-none",
 		className
 	)}
+	dir={dir ?? $textDirection}
 	{...restProps}
 />

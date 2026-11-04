@@ -233,7 +233,11 @@
       </div>
     </div>
   {:else}
-    <div bind:this={containerEl} class="relative flex-1 select-none overflow-hidden">
+    <!-- rtl-ignore-start: the split view is physical by design - clip-path
+         insets, pointer X and ArrowLeft/Right all measure from the left edge,
+         so the widget is pinned to dir="ltr" (user text inside gets
+         dir="auto"). -->
+    <div bind:this={containerEl} dir="ltr" class="relative flex-1 select-none overflow-hidden">
       <!-- Left: Plaintext layer ("your view") -->
       <div
         class="absolute inset-0 overflow-auto bg-background"
@@ -246,11 +250,12 @@
             <Eye class="h-3.5 w-3.5" />
             {$t('encryption.your_view')}
           </div>
-          <h2 class="mb-4 text-lg font-semibold text-foreground">
+          <h2 dir="auto" class="mb-4 text-lg font-semibold text-foreground">
             {plainTitle || $t('notes.untitled')}
           </h2>
           {#if plainContent}
             <pre
+              dir="auto"
               class="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-foreground/90">{plainContent}</pre>
           {:else}
             <!-- Empty/short note: still demonstrable - the right pane shows the
@@ -341,11 +346,14 @@
         </div>
       </div>
     </div>
+    <!-- rtl-ignore-end -->
   {/if}
 </div>
 
 <style>
-  /* One-shot horizontal scan sweep, like an X-ray scanner passing over. */
+  /* One-shot horizontal scan sweep, like an X-ray scanner passing over.
+     Physical on purpose: it runs inside the dir="ltr" comparison widget.
+     rtl-ignore-start */
   @keyframes xray-sweep {
     0% {
       left: -20%;
@@ -359,6 +367,7 @@
       opacity: 0;
     }
   }
+  /* rtl-ignore-end */
 
   .xray-scan {
     width: 22%;

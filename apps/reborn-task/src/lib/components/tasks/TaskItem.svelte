@@ -137,7 +137,7 @@
 		<h3
 			class={cn('font-normal text-base md:text-sm', task.is_completed && 'line-through text-muted-foreground')}
 		>
-			{task.title}
+			<bdi>{task.title}</bdi>
 		</h3>
 
 		<!-- Sync-error reason: the server permanently rejected this task's push.

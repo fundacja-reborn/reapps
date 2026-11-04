@@ -352,7 +352,7 @@
 				<CalendarIcon class="h-4 w-4" />
 				{getDisplayText()}
 			</span>
-			<span class="ml-auto flex items-center gap-1">
+			<span class="ms-auto flex items-center gap-1">
 				{#if value && !disabled}
 					<span
 						onclick={handleMobileTimeTrigger}
@@ -399,7 +399,7 @@
 			bind:this={dateInputRef}
 			type="date"
 			required
-			class="fixed top-1/2 left-1/2 opacity-0 w-px h-px pointer-events-none"
+			class="fixed top-1/2 inset-s-1/2 opacity-0 w-px h-px pointer-events-none"
 			value={getNativeDateValue()}
 			min={minDate}
 			max={maxDate}
@@ -450,7 +450,7 @@
 							e.stopPropagation();
 							clearSelection();
 						}}
-						class="ml-auto rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer p-0.5"
+						class="ms-auto rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer p-0.5"
 						aria-label={$t('task.fields.clear_date')}
 						role="button"
 						tabindex="0"
@@ -485,7 +485,7 @@
 					{#if tempCalendarValue}
 						<div class="border-t mt-3 pt-3 space-y-3">
 							<!-- Time checkbox -->
-							<div class="flex items-center space-x-2">
+							<div class="flex items-center gap-2">
 								<Checkbox
 									id="time-checkbox"
 									checked={tempShowTimeCheckbox}

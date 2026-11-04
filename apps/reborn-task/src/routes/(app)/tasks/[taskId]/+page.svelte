@@ -368,14 +368,14 @@
 						</p>
 					</div>
 				</div>
-				<div class="flex items-center gap-2 mt-3 ml-8">
+				<div class="flex items-center gap-2 mt-3 ms-8">
 					<Button
 						variant="outline"
 						size="sm"
 						onclick={handleRestoreFromTrash}
 						disabled={isTrashActionLoading}
 					>
-						<Undo2 class="h-4 w-4 mr-1.5" />
+						<Undo2 class="h-4 w-4 me-1.5" />
 						{$t('task.trash.restore')}
 					</Button>
 					<Button
@@ -384,7 +384,7 @@
 						onclick={() => (confirmPermanentDeleteOpen = true)}
 						disabled={isTrashActionLoading}
 					>
-						<Trash2 class="h-4 w-4 mr-1.5" />
+						<Trash2 class="h-4 w-4 me-1.5" />
 						{$t('task.trash.permanently_delete')}
 					</Button>
 				</div>

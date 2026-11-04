@@ -171,7 +171,7 @@
             {#each TIMEOUT_PRESETS_MS as ms (ms)}
               <button
                 type="button"
-                class="flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors hover:bg-muted/50 {timeoutMs ===
+                class="flex w-full items-center justify-between rounded-lg border px-4 py-3 text-start text-sm transition-colors hover:bg-muted/50 {timeoutMs ===
                 ms
                   ? 'border-primary bg-primary/5'
                   : 'border-border'}"

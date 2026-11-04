@@ -155,7 +155,7 @@
   <div class="px-2 pt-2">
     <div class="relative">
       <Search
-        class="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+        class="pointer-events-none absolute inset-s-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
       />
       <input
         bind:this={searchInputEl}
@@ -163,7 +163,7 @@
         bind:value={searchQuery}
         placeholder={$t('notes.folder_search_placeholder')}
         aria-label={$t('notes.folder_search_placeholder')}
-        class="h-8 w-full rounded-md border bg-background pl-8 pr-7 text-xs outline-none focus:ring-1 focus:ring-primary"
+        class="h-8 w-full rounded-md border bg-background ps-8 pe-7 text-xs outline-none focus:ring-1 focus:ring-primary"
         onkeydown={(e) => {
           if (e.key === 'Escape' && searchQuery) {
             e.stopPropagation();
@@ -178,7 +178,7 @@
             searchQuery = '';
             searchInputEl?.focus();
           }}
-          class="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+          class="absolute inset-e-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
           aria-label={$t('notes.clear_search')}
           tabindex="-1"
         >
@@ -212,10 +212,10 @@
                 class="rounded px-0.5 hover:text-foreground hover:underline"
                 onclick={(e) => drillInto(crumb.id, e)}
               >
-                {crumb.name}
+                <bdi>{crumb.name}</bdi>
               </button>
             {:else}
-              <span class="font-medium text-foreground">{crumb.name}</span>
+              <span class="font-medium text-foreground"><bdi>{crumb.name}</bdi></span>
             {/if}
           {/each}
         </nav>
@@ -230,7 +230,7 @@
         <button
           type="button"
           role="menuitem"
-          class="flex w-full items-center gap-2 rounded-md bg-primary/10 px-2 py-2 text-left text-xs font-medium text-primary hover:bg-primary/15
+          class="flex w-full items-center gap-2 rounded-md bg-primary/10 px-2 py-2 text-start text-xs font-medium text-primary hover:bg-primary/15
             {isParentSelected ? 'opacity-50' : ''}"
           onclick={(e) => selectFolder(parentId, e)}
           disabled={isParentSelected}
@@ -250,7 +250,7 @@
         <button
           type="button"
           role="menuitem"
-          class="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-accent
+          class="flex w-full items-start gap-2 rounded-md px-2 py-2 text-start text-xs hover:bg-accent
             {value === null ? 'bg-accent/60' : ''}"
           onclick={(e) => selectFolder(null, e)}
           aria-current={value === null ? 'true' : undefined}
@@ -283,7 +283,7 @@
             <button
               type="button"
               role="menuitem"
-              class="flex min-w-0 flex-1 items-center gap-2 rounded-l-md px-2 py-2 text-left text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent
+              class="flex min-w-0 flex-1 items-center gap-2 rounded-s-md px-2 py-2 text-start text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent
                 {isCurrent ? 'text-muted-foreground' : 'text-foreground'}"
               onclick={(e) => selectFolder(folder.id, e)}
               disabled={isCurrent}
@@ -297,7 +297,7 @@
                   >{$t('folders.undecryptable')}</span
                 >
               {:else}
-                <span class="min-w-0 flex-1 truncate">{folder.name}</span>
+                <span class="min-w-0 flex-1 truncate"><bdi>{folder.name}</bdi></span>
               {/if}
               {#if isCurrent}
                 <Check class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -306,7 +306,7 @@
             {#if subcount > 0}
               <button
                 type="button"
-                class="flex shrink-0 items-center justify-center gap-0.5 rounded-r-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                class="flex shrink-0 items-center justify-center gap-0.5 rounded-e-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"
                 onclick={(e) => drillInto(folder.id, e)}
                 aria-label={$t('folders.expand')}
                 title={$t('folders.expand')}
@@ -333,7 +333,7 @@
           <button
             type="button"
             role="menuitem"
-            class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-accent
+            class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-start hover:bg-accent
               {isCurrent ? 'opacity-50' : ''}"
             onclick={(e) => selectFolder(r.id, e)}
             disabled={isCurrent}
@@ -341,7 +341,7 @@
           >
             <FolderIcon class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <span class="min-w-0 flex-1">
-              <span class="block truncate text-xs text-foreground">{r.name}</span>
+              <span class="block truncate text-xs text-foreground"><bdi>{r.name}</bdi></span>
               {#if r.path}
                 <span class="block truncate text-[10px] text-muted-foreground">{r.path}</span>
               {/if}
@@ -368,7 +368,7 @@
       e.stopPropagation();
       togglePicker();
     }}
-    class="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-left text-sm shadow-xs transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    class="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-start text-sm shadow-xs transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
   >
     <span class="flex min-w-0 flex-1 items-center gap-2">
       {#if selectedFolderName}
@@ -390,7 +390,7 @@
   <!-- Desktop: absolute popup -->
   {#if open && !isMobileQuery.value}
     <div
-      class="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-md border bg-popover shadow-md"
+      class="absolute inset-s-0 inset-e-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-md border bg-popover shadow-md"
       role="dialog"
       tabindex="-1"
       aria-label={label}
@@ -414,7 +414,7 @@
   <Sheet bind:open>
     <SheetContent side="bottom" class="flex h-auto max-h-[75dvh] flex-col p-0">
       <SheetHeader class="border-b px-4 py-3">
-        <SheetTitle class="text-left text-sm">{label}</SheetTitle>
+        <SheetTitle class="text-start text-sm">{label}</SheetTitle>
       </SheetHeader>
       <div class="flex-1 overflow-y-auto pb-4">
         {@render body()}

@@ -183,21 +183,21 @@
 					/>
 					{#if $syncStatus.status === 'pending' && $syncStatus.pendingCount > 0}
 						<span
-							class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white"
+							class="absolute -top-0.5 -inset-e-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white"
 						>
 							{$syncStatus.pendingCount > 9 ? '9+' : $syncStatus.pendingCount}
 						</span>
 					{/if}
 					{#if $syncStatus.status === 'error' && $syncStatus.failedCount > 0}
 						<span
-							class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white"
+							class="absolute -top-0.5 -inset-e-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white"
 						>
 							{$syncStatus.failedCount > 9 ? '9+' : $syncStatus.failedCount}
 						</span>
 					{/if}
 					{#if $syncStatus.status === 'sync_error' && $syncStatus.errorCount > 0}
 						<span
-							class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white"
+							class="absolute -top-0.5 -inset-e-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white"
 						>
 							{$syncStatus.errorCount > 9 ? '9+' : $syncStatus.errorCount}
 						</span>

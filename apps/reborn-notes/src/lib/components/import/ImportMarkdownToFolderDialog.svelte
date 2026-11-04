@@ -187,9 +187,9 @@
         </Button>
         <Button onclick={runImport} disabled={importing || !files || importableCount === 0}>
           {#if mode === 'folder'}
-            <FolderInput class="mr-1.5 h-3.5 w-3.5" />
+            <FolderInput class="me-1.5 h-3.5 w-3.5" />
           {:else}
-            <Upload class="mr-1.5 h-3.5 w-3.5" />
+            <Upload class="me-1.5 h-3.5 w-3.5" />
           {/if}
           {importing
             ? $t('settings_page.export_import.importing')

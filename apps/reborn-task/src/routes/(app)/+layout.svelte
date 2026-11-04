@@ -50,7 +50,8 @@
 	import { listOperationsService } from '$lib/services/list-operations.service';
 	import { activeListStore } from '$lib/stores/active-list.store';
 	import { isOnline } from '$lib/stores/network.store';
-	import { toastStore } from '@reborn/ui';
+	import { toastStore, distanceFromInlineStart, inlineDelta } from '@reborn/ui';
+	import { textDirection } from '@reborn/i18n';
 	import { untrack, tick } from 'svelte';
 	import { cryptoManager } from '@reborn/crypto';
 	import { Lock, WifiOff, RefreshCw } from '@lucide/svelte';
@@ -147,9 +148,10 @@
 	let swipeStartY = 0;
 	let swiping = false;
 
+	// Edge swipe "back" starts at the inline-start edge: left in LTR, right in RTL.
 	function handleSwipeStart(e: TouchEvent) {
 		const touch = e.touches[0];
-		if (touch.clientX < 30) {
+		if (distanceFromInlineStart(touch.clientX, window.innerWidth, $textDirection) < 30) {
 			swipeStartX = touch.clientX;
 			swipeStartY = touch.clientY;
 			swiping = true;
@@ -159,10 +161,10 @@
 	function handleSwipeEnd(e: TouchEvent) {
 		if (!swiping) return;
 		swiping = false;
-		const dx = e.changedTouches[0].clientX - swipeStartX;
+		const dx = inlineDelta(swipeStartX, e.changedTouches[0].clientX, $textDirection);
 		const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY);
 		if (dx > 80 && dy < 50) {
-			// Swipe right → go back to master panel
+			// Swipe towards inline-end → go back to master panel
 			if (showDetail) {
 				handleMobileBack();
 			}
@@ -179,10 +181,10 @@
 		if (activeSection === 'lists') {
 			if (isMobile) {
 				if (mobileView === 'tasks' && mobileTaskListRef) {
-					// Already viewing a task list — just focus quick-add
+					// Already viewing a task list - just focus quick-add
 					mobileTaskListRef.focusQuickAdd();
 				} else {
-					// Viewing list catalog (sidebar) — navigate to default list + focus
+					// Viewing list catalog (sidebar) - navigate to default list + focus
 					const defaultList = $activeLists.find((l) => l.is_default) ?? $activeLists[0];
 					if (defaultList) {
 						await handleNavigateToList(defaultList.id);
@@ -191,7 +193,7 @@
 					}
 				}
 			} else if (isTaskPage) {
-				// Desktop: task detail is open — navigate back to list, then focus quick-add
+				// Desktop: task detail is open - navigate back to list, then focus quick-add
 				const targetListId =
 					selectedListId && !['starred', 'completed', 'trash'].includes(selectedListId)
 						? selectedListId
@@ -207,7 +209,7 @@
 				window.dispatchEvent(new CustomEvent('focus-quick-add'));
 			}
 		} else if (activeSection === 'trash' || activeSection === 'overdue') {
-			// Trash/Overdue — navigate to default list, then focus
+			// Trash/Overdue - navigate to default list, then focus
 			const defaultList = $activeLists.find((l) => l.is_default) ?? $activeLists[0];
 			if (defaultList) {
 				await handleNavigateToList(defaultList.id);
@@ -219,11 +221,11 @@
 				}
 			}
 		} else {
-			// Filter view — focus quick-add
+			// Filter view - focus quick-add
 			if (isMobile) {
 				sidebarTaskListRef?.focusQuickAdd();
 			} else if (isTaskPage) {
-				// Desktop: task detail is open — navigate back to filter route, then focus quick-add
+				// Desktop: task detail is open - navigate back to filter route, then focus quick-add
 				const sectionRouteMap: Partial<Record<Section, string>> = {
 					all: '/all',
 					starred: '/starred',
@@ -362,12 +364,12 @@
 							await listOperationsService.ensureDefaultList($session.user.id);
 							await taskListStore.loadLists();
 						} else if (!navigator.onLine) {
-							// First run offline — cannot sync, show blocking UI
+							// First run offline - cannot sync, show blocking UI
 							needsOnlineSetup = true;
 							isLoading = false;
 							return;
 						}
-						// Online account but no lists yet — background sync (initialSync)
+						// Online account but no lists yet - background sync (initialSync)
 						// will pull them from server and call ensureDefaultList() in its
 						// post-sync chain. Don't create a list here to avoid duplicates.
 					}
@@ -434,7 +436,7 @@
 	});
 
 	// Sync route → activeSection (for deep links / bookmarks)
-	// Only react to route changes — untrack activeSection to avoid circular loop
+	// Only react to route changes - untrack activeSection to avoid circular loop
 	// Use $page.route.id (base-path agnostic) instead of $page.url.pathname
 	$effect(() => {
 		const routeId = $page.route.id ?? '';
@@ -544,7 +546,7 @@
 			});
 		}
 		// Clear sidebar search state when switching sections (mirrors NoteList's
-		// section-change effect — the sidebar list lives in the new
+		// section-change effect - the sidebar list lives in the new
 		// `task-list-view` store and `setSection` triggers an internal refresh,
 		// but the search inputs are owned by SidebarTaskList so they reset there
 		// too via its own $effect on `section`).
@@ -562,7 +564,7 @@
 		if (routeId.includes('/tasks/')) {
 			goBackFromTaskDetail(selectedListId, { replace: true });
 		} else {
-			// For search, settings — history.back() works fine
+			// For search, settings - history.back() works fine
 			history.back();
 		}
 	}
@@ -875,7 +877,7 @@
 		browser && ($session.isAuthenticated || $session.isLocalOnly === true) && $session.hasE2E
 	);
 
-	// Auth guard — redirect when session check is done and user is not authenticated
+	// Auth guard - redirect when session check is done and user is not authenticated
 	let isAuthRedirecting = $state(false);
 
 	$effect(() => {
@@ -1004,7 +1006,7 @@
 
 	<a
 		href="#main-content"
-		class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200] focus:bg-background focus:text-foreground focus:px-4 focus:py-2 focus:rounded-md focus:shadow-md focus:ring-2 focus:ring-ring"
+		class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:inset-s-4 focus:z-[200] focus:bg-background focus:text-foreground focus:px-4 focus:py-2 focus:rounded-md focus:shadow-md focus:ring-2 focus:ring-ring"
 	>
 		{$t('common.skip_to_content', { default: 'Przejdź do treści' })}
 	</a>
@@ -1019,6 +1021,7 @@
 				<div
 					class="absolute inset-0 flex transition-transform duration-300 ease-in-out"
 					class:-translate-x-full={showDetail}
+					class:rtl:translate-x-full={showDetail}
 				>
 					<IconNav
 						bind:activeSection
@@ -1053,7 +1056,7 @@
 								<h1
 									class="text-sm font-semibold tracking-tight text-sidebar-foreground truncate flex-1 min-w-0"
 								>
-									{mobileSelectedList.name}
+									<bdi>{mobileSelectedList.name}</bdi>
 								</h1>
 								<div class="flex items-center gap-1 flex-shrink-0">
 									<TaskFilterBar bind:filters={mobileTaskFilters} />
@@ -1158,6 +1161,7 @@
 				<div
 					class="absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-in-out"
 					class:translate-x-full={!showDetail}
+					class:rtl:-translate-x-full={!showDetail}
 					ontouchstart={handleSwipeStart}
 					ontouchend={handleSwipeEnd}
 					role="region"
@@ -1382,7 +1386,7 @@
 						<SelectContent>
 							{#each $activeLists as list (list.id)}
 								{#if list.id !== currentTask?.task_list_id}
-									<SelectItem value={list.id}>{list.name}</SelectItem>
+									<SelectItem value={list.id}><bdi>{list.name}</bdi></SelectItem>
 								{/if}
 							{/each}
 						</SelectContent>

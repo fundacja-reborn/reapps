@@ -96,8 +96,8 @@
        header (and the sheet's absolute close button) stay pinned while only the
        action list scrolls. -->
   <SheetContent side="bottom" class="flex max-h-[85dvh] flex-col">
-    <SheetHeader class="shrink-0 pr-8 text-left">
-      <SheetTitle class="line-clamp-2 text-left"
+    <SheetHeader class="shrink-0 pe-8 text-start">
+      <SheetTitle class="line-clamp-2 text-start"
         >{note?.decrypt_failed
           ? $t('notes.undecryptable')
           : note?.title || $t('notes.untitled')}</SheetTitle
@@ -115,7 +115,7 @@
           class="w-full justify-start text-destructive hover:text-destructive"
           onclick={() => note && ondelete(note.id)}
         >
-          <Trash2 class="mr-2 h-4 w-4" />
+          <Trash2 class="me-2 h-4 w-4" />
           {$t('notes.delete_note')}
         </Button>
       {:else if isTrash}
@@ -129,7 +129,7 @@
           class="w-full justify-start"
           onclick={() => note && onrestore(note.id)}
         >
-          <RotateCcw class="mr-2 h-4 w-4" />
+          <RotateCcw class="me-2 h-4 w-4" />
           {$t('notes.restore')}
         </Button>
         <Button
@@ -137,7 +137,7 @@
           class="w-full justify-start text-destructive hover:text-destructive"
           onclick={() => note && onpermanentdelete(note.id)}
         >
-          <Trash class="mr-2 h-4 w-4" />
+          <Trash class="me-2 h-4 w-4" />
           {$t('notes.delete_permanently')}
         </Button>
       {:else}
@@ -151,7 +151,7 @@
               onsearch?.();
             }}
           >
-            <Search class="mr-2 h-4 w-4" />
+            <Search class="me-2 h-4 w-4" />
             {$t('note_search.open')}
           </Button>
           <div class="my-1 h-px bg-border" role="separator"></div>
@@ -163,10 +163,10 @@
           onclick={() => note && onpin(note.id)}
         >
           {#if note?.is_pinned}
-            <PinOff class="mr-2 h-4 w-4" />
+            <PinOff class="me-2 h-4 w-4" />
             {$t('notes.unpin')}
           {:else}
-            <Pin class="mr-2 h-4 w-4" />
+            <Pin class="me-2 h-4 w-4" />
             {$t('notes.pin_to_top')}
           {/if}
         </Button>
@@ -176,10 +176,10 @@
           onclick={() => note && onstar(note.id)}
         >
           {#if note?.is_starred}
-            <StarOff class="mr-2 h-4 w-4" />
+            <StarOff class="me-2 h-4 w-4" />
             {$t('notes.unstar')}
           {:else}
-            <Star class="mr-2 h-4 w-4" />
+            <Star class="me-2 h-4 w-4" />
             {$t('notes.star')}
           {/if}
         </Button>
@@ -188,7 +188,7 @@
           class="w-full justify-start"
           onclick={() => note && onmove(note.id)}
         >
-          <FolderInput class="mr-2 h-4 w-4" />
+          <FolderInput class="me-2 h-4 w-4" />
           {$t('notes.move_to_folder')}
         </Button>
         <!-- Navigate / structure this note -->
@@ -203,7 +203,7 @@
                 onoutline?.();
               }}
             >
-              <ListTree class="mr-2 h-4 w-4" />
+              <ListTree class="me-2 h-4 w-4" />
               {$t('outline.title')}
             </Button>
           {/if}
@@ -216,7 +216,7 @@
                 onTocApply?.();
               }}
             >
-              <ListPlus class="mr-2 h-4 w-4" />
+              <ListPlus class="me-2 h-4 w-4" />
               {$t('toc.insert')}
             </Button>
           {:else if tocMenuMode === 'manage'}
@@ -228,11 +228,11 @@
                 onTocApply?.();
               }}
             >
-              <RefreshCw class="mr-2 h-4 w-4" />
+              <RefreshCw class="me-2 h-4 w-4" />
               {$t('toc.refresh')}
               {#if tocStale}
                 <span
-                  class="ml-auto inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
+                  class="ms-auto inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
                   aria-hidden="true"
                 ></span>
               {/if}
@@ -245,7 +245,7 @@
                 onTocRemove?.();
               }}
             >
-              <ListX class="mr-2 h-4 w-4" />
+              <ListX class="me-2 h-4 w-4" />
               {$t('toc.remove')}
             </Button>
           {/if}
@@ -258,7 +258,7 @@
                 onlinkednotes?.();
               }}
             >
-              <Waypoints class="mr-2 h-4 w-4" />
+              <Waypoints class="me-2 h-4 w-4" />
               {$t('linked_notes.title')}
             </Button>
           {/if}
@@ -271,7 +271,7 @@
                 onhistory?.();
               }}
             >
-              <Clock class="mr-2 h-4 w-4" />
+              <Clock class="me-2 h-4 w-4" />
               {$t('history.title')}
             </Button>
           {/if}
@@ -283,7 +283,7 @@
           class="w-full justify-start"
           onclick={() => note && oncopylink(note)}
         >
-          <Link2 class="mr-2 h-4 w-4" />
+          <Link2 class="me-2 h-4 w-4" />
           {$t('notes.copy_note_link')}
         </Button>
         {#if onshare}
@@ -297,7 +297,7 @@
               }
             }}
           >
-            <Share2 class="mr-2 h-4 w-4" />
+            <Share2 class="me-2 h-4 w-4" />
             {$t('share.note.menu_label')}
           </Button>
         {/if}
@@ -306,7 +306,7 @@
           class="w-full justify-start"
           onclick={() => note && onexport(note)}
         >
-          <Download class="mr-2 h-4 w-4" />
+          <Download class="me-2 h-4 w-4" />
           {$t('notes.export_markdown')}
         </Button>
         {#if onexportpdf}
@@ -315,7 +315,7 @@
             class="w-full justify-start"
             onclick={() => note && onexportpdf?.(note)}
           >
-            <FileText class="mr-2 h-4 w-4" />
+            <FileText class="me-2 h-4 w-4" />
             {$t('notes.export_pdf')}
           </Button>
         {/if}
@@ -330,7 +330,7 @@
               onshowxray?.();
             }}
           >
-            <ScanEye class="mr-2 h-4 w-4" />
+            <ScanEye class="me-2 h-4 w-4" />
             {$t('encryption.title')}
           </Button>
         {/if}
@@ -341,7 +341,7 @@
           class="w-full justify-start text-destructive hover:text-destructive"
           onclick={() => note && ondelete(note.id)}
         >
-          <Trash2 class="mr-2 h-4 w-4" />
+          <Trash2 class="me-2 h-4 w-4" />
           {$t('notes.delete_note')}
         </Button>
       {/if}

@@ -38,7 +38,7 @@
     {#if showLocaleSwitcher || showThemeSwitcher}
       <!-- top: max() keeps the switchers below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
       <div
-        class="absolute top-[max(1rem,env(safe-area-inset-top,0px))] right-4 flex items-center gap-2"
+        class="absolute top-[max(1rem,env(safe-area-inset-top,0px))] inset-e-4 flex items-center gap-2"
       >
         {#if showThemeSwitcher}
           <AuthThemeSwitcher {themeStorageKey} />

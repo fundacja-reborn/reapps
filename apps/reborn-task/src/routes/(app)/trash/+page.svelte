@@ -177,7 +177,7 @@
 				onclick={() => (confirmEmptyTrashOpen = true)}
 				disabled={isLoading}
 			>
-				<Trash class="h-4 w-4 mr-2" />
+				<Trash class="h-4 w-4 me-2" />
 				{$t('task.trash.empty_trash')}
 			</Button>
 		</div>
@@ -195,7 +195,7 @@
 					<!-- Clickable content area — navigates to task detail -->
 					<button
 						type="button"
-						class="flex-1 min-w-0 text-left cursor-pointer"
+						class="flex-1 min-w-0 text-start cursor-pointer"
 						onclick={() => handleTaskClick(task.id)}
 					>
 						<h3
@@ -203,7 +203,7 @@
 								? 'line-through text-muted-foreground'
 								: ''}"
 						>
-							{task.title}
+							<bdi>{task.title}</bdi>
 						</h3>
 
 						<!-- Metadata -->
@@ -258,7 +258,7 @@
 							</DropdownMenu.Trigger>
 							<DropdownMenu.Content align="end" class="w-44">
 								<DropdownMenu.Item onclick={() => handleRestoreTask(task)}>
-									<Undo2 class="h-3.5 w-3.5 mr-2" />
+									<Undo2 class="h-3.5 w-3.5 me-2" />
 									{$t('task.trash.restore')}
 								</DropdownMenu.Item>
 								<DropdownMenu.Separator />
@@ -266,7 +266,7 @@
 									class="text-destructive focus:text-destructive"
 									onclick={() => confirmPermanentDelete(task)}
 								>
-									<Trash class="h-3.5 w-3.5 mr-2" />
+									<Trash class="h-3.5 w-3.5 me-2" />
 									{$t('task.trash.permanently_delete')}
 								</DropdownMenu.Item>
 							</DropdownMenu.Content>
@@ -289,7 +289,7 @@
 <Sheet bind:open={actionSheetOpen}>
 	<SheetContent side="bottom" class="h-auto">
 		<SheetHeader>
-			<SheetTitle>{activeMenuTask?.title || ''}</SheetTitle>
+			<SheetTitle><bdi>{activeMenuTask?.title || ''}</bdi></SheetTitle>
 		</SheetHeader>
 		<div class="mt-4 space-y-1">
 			<Button
@@ -297,7 +297,7 @@
 				class="w-full justify-start h-12"
 				onclick={() => activeMenuTask && handleRestoreTask(activeMenuTask)}
 			>
-				<Undo2 class="mr-3 h-4 w-4" />
+				<Undo2 class="me-3 h-4 w-4" />
 				{$t('task.trash.restore')}
 			</Button>
 			<Button
@@ -305,7 +305,7 @@
 				class="w-full justify-start h-12 text-destructive hover:text-destructive"
 				onclick={() => activeMenuTask && confirmPermanentDelete(activeMenuTask)}
 			>
-				<Trash class="mr-3 h-4 w-4" />
+				<Trash class="me-3 h-4 w-4" />
 				{$t('task.trash.permanently_delete')}
 			</Button>
 		</div>

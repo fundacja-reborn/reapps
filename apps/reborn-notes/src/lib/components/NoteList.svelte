@@ -747,7 +747,7 @@
         </button>
       {/if}
       {#if showSidebarTrigger}
-        <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
+        <SidebarTrigger class="md:hidden -ms-1 shrink-0" />
       {/if}
       {#if editingActiveFolder && activeFolder}
         <input
@@ -936,7 +936,7 @@
       <div
         class="flex shrink-0 items-center gap-1 {rowTwoProminent
           ? 'mt-2 px-4'
-          : `h-10 pl-5 ${onback ? 'pr-3' : 'pr-5'}`}"
+          : `h-10 ps-5 ${onback ? 'pe-3' : 'pe-5'}`}"
       >
         <span class="min-w-0 flex-1 truncate text-xs text-muted-foreground">
           {$t('notes.notes_count', { values: { count: $notesStore.length } })}

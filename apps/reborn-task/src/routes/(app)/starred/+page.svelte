@@ -103,7 +103,7 @@
 						{$t('taskList.star_tasks_info')}
 					</p>
 					<Button variant="outline" onclick={() => window.history.back()}>
-						<Plus class="mr-2 h-4 w-4" />
+						<Plus class="me-2 h-4 w-4" />
 						{$t('taskList.go_to_lists')}
 					</Button>
 				</div>
@@ -138,7 +138,7 @@
 										class="group flex flex-1 items-center gap-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
 									>
 										<ChevronRightIcon
-											class="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90"
+											class="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90 rtl:group-data-[state=open]:-rotate-90"
 										/>
 										{$t('taskList.completed_count', { values: { count: completedTasks.length } })}
 									</AccordionPrimitive.Trigger>

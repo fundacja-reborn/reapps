@@ -85,7 +85,7 @@
     ? 'w-full gap-1.5 border-x-0 border-t-0 px-2 py-1.5'
     : 'rounded-lg px-1.5 py-1'}"
 >
-  <Search class="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+  <Search class="ms-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
 
   <input
     bind:this={inputEl}

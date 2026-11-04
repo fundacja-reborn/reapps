@@ -98,7 +98,7 @@
       </div>
       <!-- Reassurance: this is a one-time, post-login event. Hidden on the
            narrowest screens to keep the banner a single compact line there. -->
-      <p class="mt-1.5 hidden pl-[1.625rem] text-xs text-muted-foreground sm:block">
+      <p class="mt-1.5 hidden ps-[1.625rem] text-xs text-muted-foreground sm:block">
         {$t('sync_status.initial.building_hint')}
       </p>
     </div>

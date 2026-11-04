@@ -66,7 +66,7 @@
 
       <DialogFooter class="gap-2 sm:gap-2">
         <Button variant="outline" onclick={handleOpenSettings}>
-          <Settings class="mr-2 h-4 w-4" />
+          <Settings class="me-2 h-4 w-4" />
           {$t('notes.periodic.onboarding.open_settings')}
         </Button>
         <Button onclick={onclose}>

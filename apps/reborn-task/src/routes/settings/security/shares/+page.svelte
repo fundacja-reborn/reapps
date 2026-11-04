@@ -179,7 +179,7 @@
                   </div>
                   {#if entry}
                     <p class="truncate text-sm font-medium">
-                      {entry.payload.title || $t('share.list.untitled')}
+                      <bdi>{entry.payload.title || $t('share.list.untitled')}</bdi>
                     </p>
                   {:else if hasDecryptError}
                     <p class="inline-flex items-center gap-1 text-sm text-muted-foreground">
@@ -267,7 +267,7 @@
 
 <Dialog bind:open={previewOpen}>
   <DialogContent class="flex max-h-[85vh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
-    <DialogHeader class="flex-shrink-0 border-b px-6 py-4 pr-12">
+    <DialogHeader class="flex-shrink-0 border-b px-6 py-4 pe-12">
       <DialogTitle>{$t('share.list.preview_dialog_title')}</DialogTitle>
     </DialogHeader>
     {#if previewing}

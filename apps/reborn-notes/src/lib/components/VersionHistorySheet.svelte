@@ -98,7 +98,7 @@
     <div class="flex-1 overflow-y-auto">
       {#if loading}
         <div class="flex flex-1 items-center justify-center py-12 text-sm text-muted-foreground">
-          <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 class="me-2 h-4 w-4 animate-spin" />
           {$t('history.loading')}
         </div>
       {:else}
@@ -115,7 +115,7 @@
                 type="button"
                 onclick={() =>
                   onselect(entry, index < versions.length - 1 ? versions[index + 1] : null, index === 0)}
-                class="flex flex-col items-start gap-0.5 border-b px-4 py-3 text-left transition-colors
+                class="flex flex-col items-start gap-0.5 border-b px-4 py-3 text-start transition-colors
                   hover:bg-accent/50 active:bg-accent"
               >
                 <span class="text-sm font-medium text-foreground"

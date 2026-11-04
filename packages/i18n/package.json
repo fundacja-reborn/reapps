@@ -18,6 +18,11 @@
       "reborn-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./direction": {
+      "reborn-source": "./src/direction.ts",
+      "types": "./dist/direction.d.ts",
+      "import": "./dist/direction.js"
     }
   },
   "files": [

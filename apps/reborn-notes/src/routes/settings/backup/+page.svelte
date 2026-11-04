@@ -203,7 +203,7 @@
                 <ol class="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
                   {#each words as word, i (i)}
                     <li class="flex items-baseline gap-2 font-mono text-sm">
-                      <span class="w-5 shrink-0 text-right text-xs text-muted-foreground/60"
+                      <span class="w-5 shrink-0 text-end text-xs text-muted-foreground/60"
                         >{i + 1}</span
                       >
                       <span>{word}</span>
@@ -330,12 +330,12 @@
               </span>
             </label>
             {#if !canEnable}
-              <p class="text-xs text-muted-foreground/80 pl-6">
+              <p class="text-xs text-muted-foreground/80 ps-6">
                 {$t('settings_page.backup.enable_requires')}
               </p>
             {/if}
             {#if cfg.enabled}
-              <p class="text-xs text-muted-foreground/80 pl-6">
+              <p class="text-xs text-muted-foreground/80 ps-6">
                 {$t('settings_page.backup.reminder_hint')}
               </p>
             {/if}

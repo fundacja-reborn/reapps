@@ -82,7 +82,7 @@
         >
           {option.label}
           {#if $sortByStore === option.value}
-            <span class="ml-auto text-primary">✓</span>
+            <span class="ms-auto text-primary">✓</span>
           {/if}
         </DropdownMenuItem>
       {/each}

@@ -267,24 +267,24 @@
                  it reads in the open menu without a hover-only tooltip. -->
             {#if sourceNoteState === 'gone'}
               <DropdownMenuItem disabled>
-                <FileX2 class="mr-2 h-4 w-4" />{$t('share.list.source_note_deleted')}
+                <FileX2 class="me-2 h-4 w-4" />{$t('share.list.source_note_deleted')}
               </DropdownMenuItem>
             {:else}
               <DropdownMenuItem disabled={sourceNoteState !== 'open'} onclick={openSourceNote}>
-                <FileText class="mr-2 h-4 w-4" />{$t('share.list.open_source_note')}
+                <FileText class="me-2 h-4 w-4" />{$t('share.list.open_source_note')}
               </DropdownMenuItem>
             {/if}
             <DropdownMenuSeparator />
             {#if isNative}
               <DropdownMenuItem onclick={shareUrl}>
-                <Share2 class="mr-2 h-4 w-4" />{$t('share.create.share_cta')}
+                <Share2 class="me-2 h-4 w-4" />{$t('share.create.share_cta')}
               </DropdownMenuItem>
             {/if}
             <DropdownMenuItem onclick={exportMarkdown}>
-              <Download class="mr-2 h-4 w-4" />{$t('share.list.export_markdown')}
+              <Download class="me-2 h-4 w-4" />{$t('share.list.export_markdown')}
             </DropdownMenuItem>
             <DropdownMenuItem onclick={copyMarkdown}>
-              <ClipboardCopy class="mr-2 h-4 w-4" />{$t('share.list.copy_markdown')}
+              <ClipboardCopy class="me-2 h-4 w-4" />{$t('share.list.copy_markdown')}
             </DropdownMenuItem>
           {/if}
           {#if share && !share.revoked_at}
@@ -296,7 +296,7 @@
               disabled={revoking}
               onclick={() => (confirmRevokeOpen = true)}
             >
-              <Link2Off class="mr-2 h-4 w-4" />{$t('share.list.revoke_action')}
+              <Link2Off class="me-2 h-4 w-4" />{$t('share.list.revoke_action')}
             </DropdownMenuItem>
           {/if}
         </DropdownMenuContent>
@@ -330,14 +330,14 @@
               <button
                 type="button"
                 onclick={copyUrl}
-                class="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border
+                class="absolute inset-e-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border
                        bg-background text-muted-foreground opacity-70 transition hover:text-foreground hover:opacity-100"
                 aria-label={$t('share.create.copy_link')}
                 title={$t('share.create.copy_link')}
               >
                 <Copy class="h-3.5 w-3.5" />
               </button>
-              <p class="break-all pr-9 font-mono text-xs text-muted-foreground">{entry.url}</p>
+              <p class="break-all pe-9 font-mono text-xs text-muted-foreground">{entry.url}</p>
               <!-- Privacy nudge: the link carries the decryption key in its
                    fragment, so anyone with it can read the snapshot. -->
               <p class="mt-1 flex items-start gap-1 text-[11px] leading-snug text-muted-foreground">

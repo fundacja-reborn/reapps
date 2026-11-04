@@ -142,6 +142,7 @@
 
 {#if effectiveIsEditing}
 	<textarea
+		dir="auto"
 		bind:this={textarea}
 		bind:value={editValue}
 		onblur={handleBlur}
@@ -161,7 +162,7 @@
 		onclick={startEdit}
 		{disabled}
 		class={cn(
-			'w-full text-left p-0 rounded transition-colors whitespace-normal break-words',
+			'w-full text-start p-0 rounded transition-colors whitespace-normal break-words',
 			'hover:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary',
 			'disabled:cursor-not-allowed disabled:opacity-50',
 			isCompleted && 'line-through text-muted-foreground',

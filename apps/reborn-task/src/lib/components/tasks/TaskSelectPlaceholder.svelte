@@ -39,7 +39,7 @@
 		</div>
 		{#if onCreateTask}
 			<Button variant="outline" class="mt-6" onclick={onCreateTask}>
-				<Plus class="h-4 w-4 mr-2" />
+				<Plus class="h-4 w-4 me-2" />
 				{$t('task.add_new', { default: 'Nowe zadanie' })}
 			</Button>
 		{/if}

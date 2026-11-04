@@ -93,7 +93,7 @@
 						<li>
 							<button
 								class={cn(
-									'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm',
+									'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-start text-sm',
 									'hover:bg-accent transition-colors',
 									isCurrent && 'bg-accent/60 font-medium'
 								)}

@@ -24,7 +24,7 @@
 		<SheetHeader>
 			<SheetTitle>{$t('taskList.options')}</SheetTitle>
 			<SheetDescription>
-				{list.name}
+				<bdi>{list.name}</bdi>
 			</SheetDescription>
 		</SheetHeader>
 		<div class="grid gap-2 py-4">
@@ -34,7 +34,7 @@
 				class="justify-start h-14"
 				onclick={onEdit}
 			>
-				<Edit class="mr-3 h-5 w-5" />
+				<Edit class="me-3 h-5 w-5" />
 				{$t('taskList.edit_dialog.title')}
 			</Button>
 			
@@ -45,7 +45,7 @@
 					class="justify-start h-14"
 					onclick={onSetDefault}
 				>
-					<Star class="mr-3 h-5 w-5" />
+					<Star class="me-3 h-5 w-5" />
 					{$t('taskList.set_as_default')}
 				</Button>
 			{/if}
@@ -59,7 +59,7 @@
 					class="justify-start h-14 text-destructive hover:text-destructive"
 					onclick={onDelete}
 				>
-					<Trash class="mr-3 h-5 w-5" />
+					<Trash class="me-3 h-5 w-5" />
 					{$t('common.delete')}
 				</Button>
 			{/if}

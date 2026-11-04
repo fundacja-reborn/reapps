@@ -170,7 +170,7 @@
             onclick={() => (sortBy = option.value)}
           >
             {option.label}
-            {#if sortBy === option.value}<span class="ml-auto text-primary">✓</span>{/if}
+            {#if sortBy === option.value}<span class="ms-auto text-primary">✓</span>{/if}
           </DropdownMenuItem>
         {/each}
       </DropdownMenuContent>
@@ -194,13 +194,13 @@
   <div class="shrink-0 px-4 pb-2 md:px-3 mt-2 md:mt-0">
     <div class="relative">
       <Search
-        class="absolute left-2.5 top-1/2 h-4 w-4 md:h-3.5 md:w-3.5 -translate-y-1/2 text-muted-foreground"
+        class="absolute inset-s-2.5 top-1/2 h-4 w-4 md:h-3.5 md:w-3.5 -translate-y-1/2 text-muted-foreground"
       />
       <input
         type="text"
         placeholder={$t('share.list.search_placeholder')}
         bind:value={searchInput}
-        class="w-full rounded-md border bg-background py-2.5 md:py-2 pl-8 md:pl-7 pr-10 md:pr-8 text-sm md:text-xs
+        class="w-full rounded-md border bg-background py-2.5 md:py-2 ps-8 md:ps-7 pe-10 md:pe-8 text-sm md:text-xs
                focus:outline-none focus:ring-1 focus:ring-primary"
         aria-label={$t('share.list.search_placeholder')}
       />
@@ -208,7 +208,7 @@
         <button
           type="button"
           onclick={() => (searchInput = '')}
-          class="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-9 md:h-7 md:w-7 items-center justify-center
+          class="absolute inset-e-1 top-1/2 -translate-y-1/2 flex h-9 w-9 md:h-7 md:w-7 items-center justify-center
                  text-muted-foreground hover:text-foreground"
           aria-label={$t('notes.clear_search')}
         >
@@ -229,7 +229,7 @@
         <AlertTriangle class="h-5 w-5 text-amber-500" aria-hidden="true" />
         <p>{$t('share.list.error_load')}</p>
         <Button variant="outline" size="sm" disabled={isLoading} onclick={() => sharesStore.refresh()}>
-          <RefreshCw class="mr-1.5 h-3.5 w-3.5 {isLoading ? 'animate-spin' : ''}" />
+          <RefreshCw class="me-1.5 h-3.5 w-3.5 {isLoading ? 'animate-spin' : ''}" />
           {$t('share.list.retry_action')}
         </Button>
       </div>
@@ -248,7 +248,7 @@
             <button
               type="button"
               onclick={() => activeShareId.set(share.id)}
-              class="note-item-bg group flex w-full cursor-pointer items-start gap-2 rounded-lg p-4 md:p-3 text-left transition-colors
+              class="note-item-bg group flex w-full cursor-pointer items-start gap-2 rounded-lg p-4 md:p-3 text-start transition-colors
                 {$activeShareId === share.id ? 'list-row-active text-accent-foreground' : ''}"
               aria-current={$activeShareId === share.id ? 'true' : undefined}
             >

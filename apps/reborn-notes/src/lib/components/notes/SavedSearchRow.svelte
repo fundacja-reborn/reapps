@@ -195,7 +195,7 @@
               ? 'bg-accent/50 text-foreground'
               : 'text-foreground hover:bg-accent/50'}"
           class:saved-search-just-saved={highlight}
-          style="padding-left: {depth * 0.75 + 0.5}rem"
+          style="padding-inline-start: {depth * 0.75 + 0.5}rem"
           role="button"
           tabindex="0"
           onclick={() => !editing && !search.decrypt_failed && onselect(search)}
@@ -221,7 +221,7 @@
           {:else if search.decrypt_failed}
             <span class="min-w-0 flex-1 truncate italic text-muted-foreground">{displayName}</span>
           {:else}
-            <span class="min-w-0 flex-1 truncate">{search.name}</span>
+            <span class="min-w-0 flex-1 truncate"><bdi>{search.name}</bdi></span>
             {#if context === 'panel'}
               <span class="hidden max-w-[40%] shrink-0 truncate text-xs text-muted-foreground md:inline">
                 {search.query}
@@ -309,22 +309,22 @@
           </p>
         {:else}
           <Button variant="ghost" class="w-full justify-start" onclick={() => startRename()}>
-            <Pencil class="mr-2 h-4 w-4" />
+            <Pencil class="me-2 h-4 w-4" />
             {$t('saved_searches.rename')}
           </Button>
           <Button variant="ghost" class="w-full justify-start" onclick={() => startEditQuery()}>
-            <SearchCode class="mr-2 h-4 w-4" />
+            <SearchCode class="me-2 h-4 w-4" />
             {$t('saved_searches.edit_query')}
           </Button>
           {#if context === 'panel'}
             <Button variant="ghost" class="w-full justify-start" onclick={() => requestMove()}>
-              <FolderInput class="mr-2 h-4 w-4" />
+              <FolderInput class="me-2 h-4 w-4" />
               {$t('saved_searches.move_to_folder')}
             </Button>
           {/if}
           {#if search.folder_id || search.pinned_to_root}
             <Button variant="ghost" class="w-full justify-start" onclick={() => unpark()}>
-              <FolderX class="mr-2 h-4 w-4" />
+              <FolderX class="me-2 h-4 w-4" />
               {$t('saved_searches.unpark')}
             </Button>
           {/if}
@@ -334,7 +334,7 @@
           class="w-full justify-start text-destructive hover:text-destructive"
           onclick={() => requestDelete()}
         >
-          <Trash2 class="mr-2 h-4 w-4" />
+          <Trash2 class="me-2 h-4 w-4" />
           {$t('saved_searches.delete')}
         </Button>
       </div>

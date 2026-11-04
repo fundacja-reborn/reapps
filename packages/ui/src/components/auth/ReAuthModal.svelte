@@ -221,11 +221,11 @@
               bind:value={password}
               disabled={loading}
               placeholder={$t('auth.session.password_placeholder')}
-              class="block w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              class="block w-full rounded-md border border-input bg-background px-3 py-2 pe-10 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             />
             <button
               type="button"
-              class="absolute inset-y-0 right-0 flex items-center pr-3"
+              class="absolute inset-y-0 inset-e-0 flex items-center pe-3"
               onclick={() => {
                 showPassword = !showPassword;
               }}

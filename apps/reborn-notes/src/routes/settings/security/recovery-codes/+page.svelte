@@ -197,7 +197,7 @@
               disabled={isGenerating}
               class="w-full sm:w-auto"
             >
-              <RefreshCw class="h-4 w-4 mr-2" />
+              <RefreshCw class="h-4 w-4 me-2" />
               {$t('security.recovery_codes.regenerate')}
             </Button>
           {:else}
@@ -250,7 +250,7 @@
                   <button
                     type="button"
                     onclick={() => copyCode(code, i)}
-                    class="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+                    class="ms-2 text-muted-foreground hover:text-foreground transition-colors"
                     aria-label={$t('security.recovery_codes.copy_code')}
                   >
                     {#if copiedIndex === i}
@@ -267,11 +267,11 @@
 
             <div class="flex gap-2 flex-wrap">
               <Button onclick={downloadCodes} variant="outline">
-                <Download class="h-4 w-4 mr-2" />
+                <Download class="h-4 w-4 me-2" />
                 {$t('security.recovery_codes.download')}
               </Button>
               <Button onclick={copyAllCodes} variant="outline">
-                <Copy class="h-4 w-4 mr-2" />
+                <Copy class="h-4 w-4 me-2" />
                 {$t('security.recovery_codes.copy_all')}
               </Button>
             </div>

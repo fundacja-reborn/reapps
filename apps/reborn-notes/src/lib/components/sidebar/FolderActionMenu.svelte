@@ -255,41 +255,41 @@
 <Sheet bind:open={sheetOpen}>
   <SheetContent side="bottom" class="h-auto">
     <SheetHeader>
-      <SheetTitle>{folder?.name ?? ''}</SheetTitle>
+      <SheetTitle><bdi>{folder?.name ?? ''}</bdi></SheetTitle>
     </SheetHeader>
     <div class="mt-4 space-y-1">
       {#if syncConfigId}
         <Button variant="ghost" class="w-full justify-start" onclick={handleSyncNow}>
-          <RefreshCw class="mr-2 h-4 w-4" />
+          <RefreshCw class="me-2 h-4 w-4" />
           {$t('folders.sync_now')}
         </Button>
       {/if}
       {#if onNewNote}
         <Button variant="ghost" class="w-full justify-start" onclick={handleNewNote}>
-          <FilePlus class="mr-2 h-4 w-4" />
+          <FilePlus class="me-2 h-4 w-4" />
           {$t('folders.new_note_here')}
         </Button>
       {/if}
       {#if onNewSubfolder}
         <Button variant="ghost" class="w-full justify-start" onclick={handleNewSubfolder}>
-          <FolderPlus class="mr-2 h-4 w-4" />
+          <FolderPlus class="me-2 h-4 w-4" />
           {$t('folders.new_subfolder')}
         </Button>
       {/if}
       <Button variant="ghost" class="w-full justify-start" onclick={handleStartRename}>
-        <Pencil class="mr-2 h-4 w-4" />
+        <Pencil class="me-2 h-4 w-4" />
         {$t('folders.rename')}
       </Button>
       <Button variant="ghost" class="w-full justify-start" onclick={handleMove}>
-        <CornerUpRight class="mr-2 h-4 w-4" />
+        <CornerUpRight class="me-2 h-4 w-4" />
         {$t('folders.move_to')}
       </Button>
       <Button variant="ghost" class="w-full justify-start" onclick={handleImportHere}>
-        <Upload class="mr-2 h-4 w-4" />
+        <Upload class="me-2 h-4 w-4" />
         {$t('folders.import_markdown.action')}
       </Button>
       <Button variant="ghost" class="w-full justify-start" onclick={handleImportFolderHere}>
-        <FolderInput class="mr-2 h-4 w-4" />
+        <FolderInput class="me-2 h-4 w-4" />
         {$t('folders.import_folder.action')}
       </Button>
       <Button
@@ -297,7 +297,7 @@
         class="w-full justify-start text-destructive hover:text-destructive"
         onclick={handleDelete}
       >
-        <Trash2 class="mr-2 h-4 w-4" />
+        <Trash2 class="me-2 h-4 w-4" />
         {$t('folders.delete_folder')}
       </Button>
     </div>

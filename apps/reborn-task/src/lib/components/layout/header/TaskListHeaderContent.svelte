@@ -72,7 +72,7 @@
 				class="text-sm font-medium truncate max-w-[52vw] md:max-w-[350px] min-w-0 block"
 				style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
 			>
-				{list.name}
+				<bdi>{list.name}</bdi>
 			</h1>
 		</div>
 

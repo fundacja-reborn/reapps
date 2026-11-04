@@ -124,20 +124,20 @@
 		</DropdownMenu.Trigger>
 		<DropdownMenu.Content align="end">
 			<DropdownMenu.Item onclick={() => (recurrenceDialogOpen = true)}>
-				<Pencil class="mr-2 h-4 w-4" />
+				<Pencil class="me-2 h-4 w-4" />
 				{$t('task.recurring_instance.edit_recurrence')}
 			</DropdownMenu.Item>
 			<DropdownMenu.Item onclick={() => (historyOpen = true)}>
-				<History class="mr-2 h-4 w-4" />
+				<History class="me-2 h-4 w-4" />
 				{$t('task.recurring_instance.history')}
 			</DropdownMenu.Item>
 			<DropdownMenu.Separator />
 			<DropdownMenu.Item onclick={() => (skipConfirmOpen = true)}>
-				<SkipForward class="mr-2 h-4 w-4" />
+				<SkipForward class="me-2 h-4 w-4" />
 				{$t('task.recurring_instance.skip')}
 			</DropdownMenu.Item>
 			<DropdownMenu.Item class="text-destructive" onclick={() => (stopConfirmOpen = true)}>
-				<StopCircle class="mr-2 h-4 w-4" />
+				<StopCircle class="me-2 h-4 w-4" />
 				{$t('task.recurring_instance.stop_cycle')}
 			</DropdownMenu.Item>
 		</DropdownMenu.Content>

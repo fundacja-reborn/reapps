@@ -82,7 +82,7 @@
     {/each}
   </div>
   {#if showPreserveTags && strategy === 'overwrite'}
-    <label class="ml-5 flex items-start gap-2 text-xs cursor-pointer">
+    <label class="ms-5 flex items-start gap-2 text-xs cursor-pointer">
       <input type="checkbox" bind:checked={preserveTags} class="mt-0.5" />
       <span>
         <span class="font-medium">

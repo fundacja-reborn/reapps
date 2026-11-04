@@ -33,6 +33,9 @@ export default defineConfig({
       '@reborn/utils': resolve('../../packages/utils/src/index.ts'),
       '@reborn/storage': resolve('../../packages/storage/src/index.ts'),
       '@reborn/platform': resolve('../../packages/platform/src/index.ts'),
+      // Subpath first: the alias below would otherwise also capture
+      // `@reborn/i18n/direction` (used by hooks.server.ts) as `index.ts/direction`.
+      '@reborn/i18n/direction': resolve('../../packages/i18n/src/direction.ts'),
       '@reborn/i18n': resolve('../../packages/i18n/src/index.ts'),
       // jsPDF's `html()` does `await import("html2canvas")` internally. The
       // upstream package (1.4.1, last released 2022) cannot parse modern CSS

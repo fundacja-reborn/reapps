@@ -211,7 +211,7 @@
 					</span>
 					<div class="grid grid-cols-2 gap-2" role="group" aria-labelledby="weekdays-group-label">
 						{#each WEEKDAYS as day}
-							<div class="flex items-center space-x-2">
+							<div class="flex items-center gap-2">
 								<Checkbox
 									id={day.value}
 									checked={currentFormState.weekDays.includes(day.value)}
@@ -231,12 +231,12 @@
 					{$t('task.recurrence.end.label')}
 				</span>
 				<RadioGroup bind:value={currentFormState.endType} aria-labelledby="end-options-label">
-					<div class="flex items-center space-x-2">
+					<div class="flex items-center gap-2">
 						<RadioGroupItem value="never" id="never" />
 						<Label for="never">{$t('task.recurrence.end.never')}</Label>
 					</div>
 
-					<div class="flex items-center space-x-2">
+					<div class="flex items-center gap-2">
 						<RadioGroupItem value="after" id="after" />
 						<Label for="after">{$t('task.recurrence.end.after')}</Label>
 						<Input
@@ -252,7 +252,7 @@
 						<span>{$t('task.recurrence.end.occurrences')}</span>
 					</div>
 
-					<div class="flex items-center space-x-2">
+					<div class="flex items-center gap-2">
 						<RadioGroupItem value="on_date" id="on_date" />
 						<Label for="on_date">{$t('task.recurrence.end.on_date')}</Label>
 						<Popover>
@@ -263,11 +263,11 @@
 										variant="outline"
 										disabled={currentFormState.endType !== 'on_date'}
 										class={cn(
-											'w-[200px] justify-start text-left font-normal',
+											'w-[200px] justify-start text-start font-normal',
 											!currentFormState.endDate && 'text-muted-foreground'
 										)}
 									>
-										<CalendarIcon class="mr-2 h-4 w-4" />
+										<CalendarIcon class="me-2 h-4 w-4" />
 										{formatDate(currentFormState.endDate)}
 									</Button>
 								{/snippet}

@@ -80,11 +80,15 @@
   <!-- Editable title -->
   {#if activeTrash}
     <h1
+      dir="auto"
       class="text-2xl md:text-xl font-bold text-muted-foreground leading-snug"
     >{title || $t('notes.untitled')}</h1>
   {:else}
+    <!-- dir="auto": the title's direction follows what the user types
+         (an Arabic title right-to-left in any UI language). -->
     <textarea
       bind:this={textareaEl}
+      dir="auto"
       value={title}
       oninput={handleInput}
       placeholder={$t('notes.untitled')}
@@ -102,11 +106,11 @@
         <Folder class="h-3.5 w-3.5 shrink-0" />
         <button
           type="button"
-          class="min-w-0 truncate rounded px-1 py-0.5 text-left transition-colors
+          class="min-w-0 truncate rounded px-1 py-0.5 text-start transition-colors
              hover:bg-accent hover:text-accent-foreground"
           onclick={onfolderclick}
         >
-          {folderName}
+          <bdi>{folderName}</bdi>
         </button>
       </div>
     {/if}

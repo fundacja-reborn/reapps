@@ -43,6 +43,7 @@
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { goto } from '$lib/utils/navigation';
 	import { t, locale as i18nLocale } from '$lib/stores/i18n.store';
+	import { inlineSide, textDirection } from '@reborn/i18n';
 	import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
 	import { activeSharesCount } from '$lib/stores/shares.store';
 	import { requireActiveSession } from '$lib/utils/require-active-session';
@@ -62,6 +63,10 @@
 		horizontal?: boolean;
 		alwaysVisible?: boolean;
 	} = $props();
+
+	// Tooltips and the account menu open away from the rail, towards inline-end
+	// (right in LTR, left in RTL - bits-ui sides are physical).
+	const endSide = $derived(inlineSide('end', $textDirection));
 
 	const isMobileQuery = useIsMobile();
 	let loggingOut = $state(false);
@@ -193,7 +198,7 @@
 					<s.icon class="h-5 w-5" />
 					{#if s.id === 'overdue' && $overdueTasks.length > 0}
 						<span
-							class="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center
+							class="absolute -top-1 -inset-e-1.5 flex h-3.5 min-w-3.5 items-center justify-center
 								rounded-full text-[8px] font-bold leading-none text-white px-0.5"
 							style="background-color: #FF8C42"
 							aria-label="{$overdueTasks.length} {$t('taskList.filter.date.overdue')}"
@@ -202,7 +207,7 @@
 						</span>
 					{:else if s.id === 'today' && $todayTasks.length > 0}
 						<span
-							class="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center
+							class="absolute -top-1 -inset-e-1.5 flex h-3.5 min-w-3.5 items-center justify-center
 								rounded-full text-[8px] font-bold leading-none text-white px-0.5"
 							style="background-color: #FF8C42"
 							aria-label="{$todayTasks.length} {$t('taskList.filter.date.today')}"
@@ -211,7 +216,7 @@
 						</span>
 					{:else if s.id === 'starred' && $starredTasks.length > 0}
 						<span
-							class="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center
+							class="absolute -top-1 -inset-e-1.5 flex h-3.5 min-w-3.5 items-center justify-center
 								rounded-full bg-foreground/15 text-[8px] font-medium leading-none text-muted-foreground px-0.5"
 							aria-label="{$starredTasks.length} {$t('taskList.filter.starred_only')}"
 						>
@@ -219,7 +224,7 @@
 						</span>
 					{:else if s.id === 'upcoming' && $upcomingTasks.length > 0}
 						<span
-							class="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center
+							class="absolute -top-1 -inset-e-1.5 flex h-3.5 min-w-3.5 items-center justify-center
 								rounded-full bg-foreground/15 text-[8px] font-medium leading-none text-muted-foreground px-0.5"
 							aria-label="{$upcomingTasks.length} {$t('taskList.filter.date.upcoming')}"
 						>
@@ -227,7 +232,7 @@
 						</span>
 					{:else if s.id === 'no_date' && $noDateTasks.length > 0}
 						<span
-							class="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center
+							class="absolute -top-1 -inset-e-1.5 flex h-3.5 min-w-3.5 items-center justify-center
 								rounded-full bg-foreground/15 text-[8px] font-medium leading-none text-muted-foreground px-0.5"
 							aria-label="{$noDateTasks.length} {$t('taskList.filter.date.no_date')}"
 						>
@@ -250,7 +255,7 @@
 				<Share2 class="h-5 w-5" />
 				{#if $activeSharesCount > 0}
 					<span
-						class="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center
+						class="absolute -top-1 -inset-e-1.5 flex h-3.5 min-w-3.5 items-center justify-center
 							rounded-full bg-foreground/15 text-[8px] font-medium leading-none text-muted-foreground px-0.5"
 						aria-label="{$activeSharesCount} {$t('nav.shares')}"
 					>
@@ -283,7 +288,7 @@
 	<nav
 		class="{alwaysVisible
 			? 'flex'
-			: 'hidden md:flex'} w-14 md:w-12 shrink-0 flex-col items-center gap-1 pt-2 border-r border-sidebar-border"
+			: 'hidden md:flex'} w-14 md:w-12 shrink-0 flex-col items-center gap-1 pt-2 border-e border-sidebar-border"
 		style="background-color: var(--icon-rail); padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));"
 		aria-label={$t('common.navigation', { default: 'Nawigacja główna' })}
 	>
@@ -303,7 +308,7 @@
 					</button>
 				{/snippet}
 			</Tooltip.Trigger>
-			<Tooltip.Content side="right" sideOffset={6}>{$t('task.create.title')}</Tooltip.Content>
+			<Tooltip.Content side={endSide} sideOffset={6}>{$t('task.create.title')}</Tooltip.Content>
 		</Tooltip.Root>
 
 		<!-- Section icons -->
@@ -329,7 +334,7 @@
 								<s.icon class="h-6 w-6 md:h-5 md:w-5" />
 								{#if s.id === 'overdue' && $overdueTasks.length > 0}
 									<span
-										class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center
+										class="absolute -top-1.5 -inset-e-2 flex h-4 min-w-4 items-center justify-center
 											rounded-full text-[9px] font-bold leading-none text-white px-0.5"
 										style="background-color: #FF8C42"
 										aria-label="{$overdueTasks.length} {$t('taskList.filter.date.overdue')}"
@@ -338,7 +343,7 @@
 									</span>
 								{:else if s.id === 'today' && $todayTasks.length > 0}
 									<span
-										class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center
+										class="absolute -top-1.5 -inset-e-2 flex h-4 min-w-4 items-center justify-center
 											rounded-full text-[9px] font-bold leading-none text-white px-0.5"
 										style="background-color: #FF8C42"
 										aria-label="{$todayTasks.length} {$t('taskList.filter.date.today')}"
@@ -347,7 +352,7 @@
 									</span>
 								{:else if s.id === 'starred' && $starredTasks.length > 0}
 									<span
-										class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center
+										class="absolute -top-1.5 -inset-e-2 flex h-4 min-w-4 items-center justify-center
 											rounded-full bg-foreground/15 text-[9px] font-medium leading-none text-muted-foreground px-0.5"
 										aria-label="{$starredTasks.length} {$t('taskList.filter.starred_only')}"
 									>
@@ -355,7 +360,7 @@
 									</span>
 								{:else if s.id === 'upcoming' && $upcomingTasks.length > 0}
 									<span
-										class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center
+										class="absolute -top-1.5 -inset-e-2 flex h-4 min-w-4 items-center justify-center
 											rounded-full bg-foreground/15 text-[9px] font-medium leading-none text-muted-foreground px-0.5"
 										aria-label="{$upcomingTasks.length} {$t('taskList.filter.date.upcoming')}"
 									>
@@ -363,7 +368,7 @@
 									</span>
 								{:else if s.id === 'no_date' && $noDateTasks.length > 0}
 									<span
-										class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center
+										class="absolute -top-1.5 -inset-e-2 flex h-4 min-w-4 items-center justify-center
 											rounded-full bg-foreground/15 text-[9px] font-medium leading-none text-muted-foreground px-0.5"
 										aria-label="{$noDateTasks.length} {$t('taskList.filter.date.no_date')}"
 									>
@@ -374,7 +379,7 @@
 						</button>
 					{/snippet}
 				</Tooltip.Trigger>
-				<Tooltip.Content side="right" sideOffset={6}>{s.label}</Tooltip.Content>
+				<Tooltip.Content side={endSide} sideOffset={6}>{s.label}</Tooltip.Content>
 			</Tooltip.Root>
 		{/each}
 
@@ -394,7 +399,7 @@
 							<Share2 class="h-6 w-6 md:h-5 md:w-5" />
 							{#if $activeSharesCount > 0}
 								<span
-									class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center
+									class="absolute -top-1.5 -inset-e-2 flex h-4 min-w-4 items-center justify-center
 										rounded-full bg-foreground/15 text-[9px] font-medium leading-none text-muted-foreground px-0.5"
 									aria-label="{$activeSharesCount} {$t('nav.shares')}"
 								>
@@ -405,7 +410,7 @@
 					</button>
 				{/snippet}
 			</Tooltip.Trigger>
-			<Tooltip.Content side="right" sideOffset={6}>{$t('nav.shares')}</Tooltip.Content>
+			<Tooltip.Content side={endSide} sideOffset={6}>{$t('nav.shares')}</Tooltip.Content>
 		</Tooltip.Root>
 
 		<!-- Trash -->
@@ -430,7 +435,7 @@
 					</button>
 				{/snippet}
 			</Tooltip.Trigger>
-			<Tooltip.Content side="right" sideOffset={6}>{TRASH_SECTION.label}</Tooltip.Content>
+			<Tooltip.Content side={endSide} sideOffset={6}>{TRASH_SECTION.label}</Tooltip.Content>
 		</Tooltip.Root>
 
 		<div class="flex-1"></div>
@@ -454,7 +459,7 @@
 					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 				{/snippet}
 			</Tooltip.Trigger>
-			<Tooltip.Content side="right" sideOffset={6}>{$t('nav.support')}</Tooltip.Content>
+			<Tooltip.Content side={endSide} sideOffset={6}>{$t('nav.support')}</Tooltip.Content>
 		</Tooltip.Root>
 
 		<!-- Settings -->
@@ -473,7 +478,7 @@
 					</button>
 				{/snippet}
 			</Tooltip.Trigger>
-			<Tooltip.Content side="right" sideOffset={6}>{$t('settings.app_settings')}</Tooltip.Content>
+			<Tooltip.Content side={endSide} sideOffset={6}>{$t('settings.app_settings')}</Tooltip.Content>
 		</Tooltip.Root>
 
 		<!-- User avatar + menu -->
@@ -511,7 +516,7 @@
 							</button>
 						{/snippet}
 					</DropdownMenu.Trigger>
-					<DropdownMenu.Content class="min-w-48 rounded-lg" side="right" align="end" sideOffset={6}>
+					<DropdownMenu.Content class="min-w-48 rounded-lg" side={endSide} align="end" sideOffset={6}>
 						<DropdownMenu.Label class="p-0 font-normal">
 							<div class="flex items-center gap-2 px-2 py-1.5 text-start text-sm">
 								<span
@@ -613,7 +618,7 @@
 					goto('/settings');
 				}}
 			>
-				<Settings class="mr-2 h-4 w-4" />
+				<Settings class="me-2 h-4 w-4" />
 				{$t('settings.app_settings')}
 			</Button>
 			{#if $session.isLocalOnly && cryptoManager.isLocalPasscodeEnabled()}
@@ -625,7 +630,7 @@
 						handleLockNow();
 					}}
 				>
-					<Lock class="mr-2 h-4 w-4" />
+					<Lock class="me-2 h-4 w-4" />
 					{$t('local_mode.passcode.lock_now_cta')}
 				</Button>
 			{/if}
@@ -638,7 +643,7 @@
 						goto('/auth/register');
 					}}
 				>
-					<UserPlus class="mr-2 h-4 w-4" />
+					<UserPlus class="me-2 h-4 w-4" />
 					{$t('local_mode.create_account')}
 				</Button>
 			{/if}
@@ -651,7 +656,7 @@
 						handleLogout();
 					}}
 				>
-					<LogOut class="mr-2 h-4 w-4" />
+					<LogOut class="me-2 h-4 w-4" />
 					{$t('common.logout', { default: 'Wyloguj się' })}
 				</Button>
 			{/if}

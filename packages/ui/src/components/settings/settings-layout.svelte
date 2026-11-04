@@ -44,14 +44,14 @@
       <div class="flex items-center gap-2 h-14">
         <a
           href={resolvedHref}
-          class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-11 w-11 -ml-2"
+          class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-11 w-11 -ms-2"
         >
           <ChevronLeft class="h-5 w-5" />
           <span class="sr-only">Back</span>
         </a>
         <h1 class="text-lg font-semibold">{title}</h1>
         {#if actions}
-          <div class="ml-auto">
+          <div class="ms-auto">
             {@render actions()}
           </div>
         {/if}

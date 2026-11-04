@@ -78,13 +78,13 @@
 		{#if isRecurringInstance}
 			<div class="py-4">
 				<RadioGroup bind:value={deleteOption}>
-					<div class="flex items-center space-x-2 mb-3">
+					<div class="flex items-center gap-2 mb-3">
 						<RadioGroupItem value="this_only" id="this_only" />
 						<Label for="this_only" class="font-normal cursor-pointer">
 							{$t('task.delete.this_only')}
 						</Label>
 					</div>
-					<div class="flex items-center space-x-2">
+					<div class="flex items-center gap-2">
 						<RadioGroupItem value="future" id="future" />
 						<Label for="future" class="font-normal cursor-pointer">
 							{$t('task.delete.future')}

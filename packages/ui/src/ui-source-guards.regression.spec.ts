@@ -1,0 +1,39 @@
+import { readFileSync } from 'node:fs';
+import { describe, it, expect } from 'vitest';
+import {
+  formatViolations,
+  listSourceFiles,
+  repoRelative,
+  scanPaths
+} from '../../../scripts/check-rtl-direction.mjs';
+
+/**
+ * Source guards for RTL readiness (reapps-docs planning/arabic-rtl-plan.md,
+ * Phase 1). Kept in this project's own test target so `nx affected -t test`
+ * runs them whenever packages/ui/src changes.
+ */
+const ROOT = 'packages/ui/src';
+
+describe('UI source guards (packages/ui/src)', () => {
+  it('uses logical direction utilities, not physical ones (RTL)', () => {
+    // Fix: `node scripts/check-rtl-direction.mjs --fix packages/ui/src`, or mark a
+    // deliberately physical value with `rtl-ignore-next-line: <reason>`.
+    expect(formatViolations(scanPaths([ROOT]))).toBe('');
+  });
+
+  it('never renders a translation as raw HTML ({@html $t(...)})', () => {
+    // Translations are escaped by Svelte. Rendering one through {@html} would
+    // turn every locale file (soon including community translations) into an
+    // XSS vector - build the markup in the component instead.
+    const hits = listSourceFiles([ROOT])
+      .filter((file) => file.endsWith('.svelte'))
+      .flatMap((file) =>
+        readFileSync(file, 'utf-8')
+          .split('\n')
+          .flatMap((line, i) =>
+            /\{@html\s+\$(t|_|json)\s*\(/.test(line) ? [`${repoRelative(file)}:${i + 1}`] : []
+          )
+      );
+    expect(hits).toEqual([]);
+  });
+});

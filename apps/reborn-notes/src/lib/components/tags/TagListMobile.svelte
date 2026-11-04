@@ -39,7 +39,7 @@
             onclick={() => {
               tagManager.tagSearch = '';
             }}
-            class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            class="absolute inset-e-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             aria-label={$t('notes.clear_search')}
           >
             <X class="h-3.5 w-3.5" />
@@ -116,16 +116,16 @@
                 class:bg-muted-foreground={!tag.color}
               ></span>
               {#if tag.decrypt_failed}
-                <span class="min-w-0 flex-1 truncate text-left text-sm italic text-muted-foreground"
+                <span class="min-w-0 flex-1 truncate text-start text-sm italic text-muted-foreground"
                   >{$t('tags.undecryptable')}</span
                 >
               {:else}
-                <span class="min-w-0 flex-1 truncate text-left text-sm">{tag.name}</span>
+                <span class="min-w-0 flex-1 truncate text-start text-sm"><bdi>{tag.name}</bdi></span>
               {/if}
             </button>
             <button
               type="button"
-              class="absolute right-1 flex h-6 w-6 items-center justify-center rounded text-muted-foreground
+              class="absolute inset-e-1 flex h-6 w-6 items-center justify-center rounded text-muted-foreground
                 transition-opacity hover:bg-accent hover:text-foreground"
               onclick={(e) => tagManager.openTagMenu(tag.id, true, e)}
               aria-label={$t('tags.tag_actions')}

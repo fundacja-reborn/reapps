@@ -36,6 +36,9 @@ export default defineConfig({
 			'@reborn/storage': resolve('../../packages/storage/src/index.ts'),
 			'@reborn/api-client': resolve('../../packages/api-client/src/index.ts'),
 			// Removed @reborn/ui alias to let Vite use package.json exports
+			// Subpath first: the alias below would otherwise also capture
+			// `@reborn/i18n/direction` (used by hooks.server.ts) as `index.ts/direction`.
+			'@reborn/i18n/direction': resolve('../../packages/i18n/src/direction.ts'),
 			'@reborn/i18n': resolve('../../packages/i18n/src/index.ts')
 		}
 	},
@@ -44,7 +47,7 @@ export default defineConfig({
 		host: 'localhost',
 		allowedHosts: ['reapps.eu'],
 		// When behind nginx proxy (PUBLIC_BASE_PATH set), HMR connects directly to Vite
-		// instead of going through the proxy — avoids WebSocket path mismatch
+		// instead of going through the proxy - avoids WebSocket path mismatch
 		...(process.env.PUBLIC_BASE_PATH && {
 			hmr: {
 				protocol: 'ws',
@@ -68,7 +71,7 @@ export default defineConfig({
 	optimizeDeps: {
 		include: [
 			'svelte-i18n',
-			// NOTE: @reborn/* packages are NOT pre-bundled here — they have resolve.alias
+			// NOTE: @reborn/* packages are NOT pre-bundled here - they have resolve.alias
 			// entries pointing to source .ts files, so Vite transforms them as app code.
 			// Pre-bundling would cache stale versions and break HMR for package changes.
 			'@lucide/svelte',

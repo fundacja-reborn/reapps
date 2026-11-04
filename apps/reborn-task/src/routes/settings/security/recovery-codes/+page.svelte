@@ -206,7 +206,7 @@
 							disabled={isGenerating}
 							class="w-full sm:w-auto"
 						>
-							<RefreshCw class="h-4 w-4 mr-2" />
+							<RefreshCw class="h-4 w-4 me-2" />
 							{$t('settings.security.backup_codes.regenerate_button')}
 						</Button>
 					{:else}
@@ -259,7 +259,7 @@
 									<span class="tracking-widest">{code}</span>
 									<button
 										onclick={() => copyCode(code, i)}
-										class="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+										class="ms-2 text-muted-foreground hover:text-foreground transition-colors"
 										aria-label="Copy code"
 									>
 										{#if copiedIndex === i}
@@ -276,11 +276,11 @@
 
 						<div class="flex gap-2 flex-wrap">
 							<Button onclick={downloadCodes} variant="outline">
-								<Download class="h-4 w-4 mr-2" />
+								<Download class="h-4 w-4 me-2" />
 								{$t('settings.security.backup_codes.download_button')}
 							</Button>
 							<Button onclick={copyAllCodes} variant="outline">
-								<Copy class="h-4 w-4 mr-2" />
+								<Copy class="h-4 w-4 me-2" />
 								{$t('settings.security.backup_codes.copy_all')}
 							</Button>
 						</div>

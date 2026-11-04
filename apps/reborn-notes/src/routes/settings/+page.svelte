@@ -187,7 +187,7 @@
         <button
           type="button"
           onclick={() => goto('/')}
-          class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-accent hover:text-accent-foreground h-9 w-9 -ml-2"
+          class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-accent hover:text-accent-foreground h-9 w-9 -ms-2"
         >
           <ChevronLeft class="h-5 w-5" />
           <span class="sr-only">{$t('common.back')}</span>
@@ -227,7 +227,7 @@
             class={cn(itemClasses, 'w-full text-destructive hover:bg-destructive/5')}
           >
             <LogOut class="h-5 w-5 shrink-0" />
-            <div class="flex-1 min-w-0 text-left">
+            <div class="flex-1 min-w-0 text-start">
               <div class="font-medium">{$t('settings_page.account.log_out')}</div>
             </div>
           </button>
@@ -332,7 +332,7 @@
               <button
                 type="button"
                 onclick={() => (accountRequiredOpen = true)}
-                class={cn(itemClasses, 'w-full text-left opacity-60')}
+                class={cn(itemClasses, 'w-full text-start opacity-60')}
               >
                 <item.icon class="h-5 w-5 text-muted-foreground shrink-0" />
                 <div class="flex-1 min-w-0">
@@ -426,7 +426,7 @@
                 </div>
               </div>
               {#if !$quotaLoading && $quotaLimitBytes > 0}
-                <div class="ml-8 h-2 rounded-full bg-muted overflow-hidden">
+                <div class="ms-8 h-2 rounded-full bg-muted overflow-hidden">
                   <div
                     class="h-full rounded-full transition-all duration-300
                       {$isOverQuota
@@ -437,7 +437,7 @@
                     style="width: {Math.min($quotaPercent, 100)}%"
                   ></div>
                 </div>
-                <ul class="ml-8 mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <ul class="ms-8 mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <li>
                     <span class="font-medium text-foreground">{$t('storage.breakdown.notes')}:</span>
                     {formatBytes($quotaNotesBytes)}
@@ -456,15 +456,15 @@
                   </li>
                 </ul>
                 {#if $isOverQuota}
-                  <p class="ml-8 mt-1.5 text-xs text-destructive">{$t('storage.exceeded')}</p>
+                  <p class="ms-8 mt-1.5 text-xs text-destructive">{$t('storage.exceeded')}</p>
                 {:else if $isQuotaWarning}
-                  <p class="ml-8 mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                  <p class="ms-8 mt-1.5 text-xs text-amber-600 dark:text-amber-400">
                     {$t('storage.warning')}
                   </p>
                 {/if}
                 <button
                   type="button"
-                  class="ml-8 mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  class="ms-8 mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   onclick={() => (storageInfoExpanded = !storageInfoExpanded)}
                 >
                   <ChevronDown
@@ -473,7 +473,7 @@
                   {$t('storage.learn_more')}
                 </button>
                 {#if storageInfoExpanded}
-                  <p class="ml-8 mt-2 text-xs text-muted-foreground leading-relaxed">
+                  <p class="ms-8 mt-2 text-xs text-muted-foreground leading-relaxed">
                     {$t('storage.info')}
                   </p>
                 {/if}
@@ -550,7 +550,7 @@
           <button
             type="button"
             onclick={() => openWhatsNew()}
-            class={cn(itemClasses, 'w-full text-left')}
+            class={cn(itemClasses, 'w-full text-start')}
           >
             <Sparkles class="h-5 w-5 text-muted-foreground shrink-0" />
             <div class="flex-1 min-w-0">

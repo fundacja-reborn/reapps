@@ -2,9 +2,9 @@
  * Shared marked renderer overrides for list / task-list / image rendering.
  *
  * Used by:
- *  - `MarkdownPreview.svelte` (interactive — checkbox click toggles source via
+ *  - `MarkdownPreview.svelte` (interactive - checkbox click toggles source via
  *    `data-task-index`)
- *  - `exportNoteAsPdf` (static — same HTML; the data attribute and the
+ *  - `exportNoteAsPdf` (static - same HTML; the data attribute and the
  *    missing `disabled` flag on the checkbox are harmless in non-interactive
  *    output, and reusing the same shape keeps the export visually in step
  *    with what the user sees while editing)
@@ -31,7 +31,7 @@ export function createMarkdownListRenderers(): {
 
   // Stateful depth-aware list renderer. `this` is bound to the renderer
   // instance by marked's use({renderer}) wrapper, so we delegate item
-  // rendering to this.listitem (overridden below) — items containing nested
+  // rendering to this.listitem (overridden below) - items containing nested
   // lists will recurse back through this same override.
   renderer.list = function listOverride(this: unknown, token: Tokens.List) {
     listDepth++;
@@ -50,12 +50,12 @@ export function createMarkdownListRenderers(): {
     return `<${tag}${startAttr} data-d="${depth}">\n${body}</${tag}>\n`;
   };
 
-  // GFM task list item — marked sets `task: true` on the token and prepends
+  // GFM task list item - marked sets `task: true` on the token and prepends
   // a `checkbox` token to `tokens`. The default renderer wraps each <li>
   // without a class; we add `task-list-item` (+ `task-list-item-checked` for
   // `[x]`) so CSS can drop the bullet and apply strikethrough.
   // `data-task-index` is the zero-based ordinal of the task in render order
-  // — Preview uses it to map a checkbox click back to the matching `[ ]`/`[x]`
+  // - Preview uses it to map a checkbox click back to the matching `[ ]`/`[x]`
   // in the markdown source; in static PDF output it's just an inert attr.
   renderer.listitem = function listitemOverride(
     this: unknown,
@@ -72,7 +72,7 @@ export function createMarkdownListRenderers(): {
     }
     // Reserve this item's index *before* recursing into children. Inner
     // parsing runs nested list items through this same override, and they'd
-    // otherwise grab lower indices than the parent — making the parent's
+    // otherwise grab lower indices than the parent - making the parent's
     // `data-task-index` point past its own checkbox in the markdown source
     // (where `toggleTaskAt` walks `[ ]`/`[x]` markers top-to-bottom). Pre-
     // incrementing aligns render order with source order: parent first, then
@@ -81,7 +81,7 @@ export function createMarkdownListRenderers(): {
     // Split the parent's own inline content (checkbox + text + inline
     // formatting) from any nested list tokens. Inline gets wrapped in a span
     // so the checked-state strikethrough scopes to the parent's own line
-    // only — `text-decoration: line-through` propagates through inline
+    // only - `text-decoration: line-through` propagates through inline
     // descendants of a line box, and `text-decoration: none` on a child
     // block does NOT cancel the parent's drawn line (a documented CSS
     // quirk; colour/opacity reset would still leave the strike visible on
@@ -126,22 +126,22 @@ const BLOCKED_ICON_SVG =
 
 /**
  * Image renderer for Preview. Behaviour by `ImageLoadMode`:
- *  - `always` — emit a plain lazy `<img>`.
- *  - `ask`    — emit a click-to-load placeholder *with* a Load button.
- *  - `never`  — emit the placeholder *without* a Load button.
+ *  - `always` - emit a plain lazy `<img>`.
+ *  - `ask`    - emit a click-to-load placeholder *with* a Load button.
+ *  - `never`  - emit the placeholder *without* a Load button.
  * `data:` URIs are always blocked (base64 isn't supported) regardless of mode.
  *
  * `getAskPlaceholderCount()` returns how many ask-mode Load buttons the last
- * parse emitted — the single source of truth for whether the "Load all images"
+ * parse emitted - the single source of truth for whether the "Load all images"
  * banner should show. The count is structural (the renderer bumps it only when
  * it actually runs the ask-mode branch), so unlike scanning the output HTML for
  * the `.image-placeholder-load` class it cannot be tripped by a note whose own
  * text happens to contain that class name or `![](…)` syntax inside a code span
- * — marked never calls this renderer for image syntax inside inline code or
+ * - marked never calls this renderer for image syntax inside inline code or
  * fenced blocks. (That false positive is exactly what the prior source-regex
  * and HTML-substring gates suffered from; see markdown-to-html.spec.ts.)
  *
- * `translate(key)` resolves an i18n key at render time — the caller wraps its
+ * `translate(key)` resolves an i18n key at render time - the caller wraps its
  * reactive `$t` so placeholder labels follow locale changes. Call `setMode()`
  * and `reset()` before each parse, then read `getAskPlaceholderCount()` after.
  */
@@ -190,4 +190,66 @@ export function createMarkdownImageRenderer(translate: (key: string) => string):
     },
     getAskPlaceholderCount: () => askPlaceholderCount
   };
+}
+
+/**
+ * Block elements whose direction follows their own content. A note mixing
+ * Arabic and English paragraphs renders each one in its own direction,
+ * whatever the UI locale; a list or a quote takes the direction of its first
+ * line so its markers / border stay on one side.
+ */
+const AUTO_DIR_BLOCKS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'blockquote', 'table', 'dl']);
+
+/** Elements without a closing tag in the HTML serialization. */
+const VOID_ELEMENTS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'
+]);
+
+/**
+ * A comment, or a start/end tag whose quoted attribute values are consumed
+ * with it - so a `<p` inside `alt="..."` is never mistaken for a tag (older
+ * engines do not escape `<` / `>` in serialized attribute values).
+ */
+const TAG =
+  /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*)\s*(\/?)>/g;
+
+/**
+ * Add `dir="auto"` to the OUTERMOST block elements of the rendered Markdown
+ * (paragraphs, headings, lists, quotes, tables); blocks nested in them inherit.
+ *
+ * Outermost only, because the HTML `dir="auto"` algorithm skips descendants
+ * that carry their own `dir`: a `<blockquote dir="auto">` around a
+ * `<p dir="auto">` finds no strong character and falls back to LTR, which put
+ * an Arabic quote's border on the left (smoke 2026-11-04). The same would hit
+ * loose lists (`<li><p>`) and nested lists.
+ *
+ * Runs on SANITIZED HTML: DOMPurify serializes a parsed DOM, so tags are
+ * balanced and every `<` in text is escaped; attribute values are consumed by
+ * the quote-aware TAG pattern - a plain tag scan is safe. An explicit `dir` in the note's own HTML is kept and its
+ * subtree left alone. Code blocks are pinned to `dir="ltr"` by the code
+ * renderer, which also keeps their contents out of this pass.
+ */
+export function applyBlockDirection(html: string): string {
+  // One entry per open element: does it (or an ancestor) already set a direction?
+  const stack: boolean[] = [];
+  return html.replace(
+    TAG,
+    (tag, closing: string | undefined, rawName: string | undefined, attrs = '', selfClosing = '') => {
+      if (rawName === undefined) return tag; // comment
+      const name = rawName.toLowerCase();
+      if (closing) {
+        stack.pop();
+        return tag;
+      }
+      if (VOID_ELEMENTS.has(name) || selfClosing) return tag;
+      const directed = stack.length > 0 && stack[stack.length - 1];
+      const hasDir = /\sdir\s*=/i.test(attrs);
+      if (!directed && !hasDir && AUTO_DIR_BLOCKS.has(name)) {
+        stack.push(true);
+        return `<${rawName} dir="auto"${tag.slice(1 + rawName.length)}`;
+      }
+      stack.push(directed || hasDir);
+      return tag;
+    }
+  );
 }

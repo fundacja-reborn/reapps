@@ -173,7 +173,7 @@
 					/>
 					<button
 						type="button"
-						class="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+						class="absolute inset-y-0 inset-e-0 flex items-center pe-3 text-muted-foreground hover:text-foreground"
 						onclick={() => (showPasscode = !showPasscode)}
 						aria-label={$t('local_mode.passcode.toggle_visibility')}
 					>

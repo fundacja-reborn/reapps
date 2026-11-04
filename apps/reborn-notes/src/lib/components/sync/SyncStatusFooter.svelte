@@ -154,7 +154,7 @@
 >
   {#if isSessionExpired}
     <div
-      class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-left
+      class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-start
              text-destructive"
     >
       <AlertTriangle class="h-4 w-4 md:h-3.5 md:w-3.5 shrink-0 mt-0.5" />
@@ -173,7 +173,7 @@
       <Icon class="h-4 w-4 md:h-3.5 md:w-3.5 shrink-0 {spinning ? 'animate-spin' : ''}" />
       <span class="truncate">{label}</span>
       {#if timeStr && $syncStatus.status === 'synced'}
-        <span class="ml-auto shrink-0 text-[10px] text-muted-foreground/60">{timeStr}</span>
+        <span class="ms-auto shrink-0 text-[10px] text-muted-foreground/60">{timeStr}</span>
       {/if}
     </button>
   {/if}

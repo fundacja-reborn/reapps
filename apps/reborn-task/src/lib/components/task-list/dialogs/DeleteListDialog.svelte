@@ -104,7 +104,7 @@
 				<!-- Delete mode selection -->
 				<RadioGroup bind:value={deleteMode}>
 					<div class="space-y-3">
-						<div class="flex items-start space-x-3">
+						<div class="flex items-start gap-3">
 							<RadioGroupItem value="move-tasks" id="move-tasks" class="mt-1" />
 							<Label for="move-tasks" class="flex-1 cursor-pointer">
 								<div class="font-medium">{$t('taskList.delete_dialog.move_tasks')}</div>
@@ -115,7 +115,7 @@
 						</div>
 
 						{#if deleteMode === 'move-tasks'}
-							<div class="ml-6 mt-2">
+							<div class="ms-6 mt-2">
 								<Select type="single" bind:value={targetListId}>
 									<SelectTrigger class="w-full">
 										{availableLists.find(
@@ -126,9 +126,9 @@
 									<SelectContent>
 										{#each availableLists as targetList (targetList.id)}
 											<SelectItem value={targetList.id}>
-												{targetList.name}
+												<bdi>{targetList.name}</bdi>
 												{#if targetList.is_default}
-													<span class="text-muted-foreground ml-1">({$t('taskList.default')})</span>
+													<span class="text-muted-foreground ms-1">({$t('taskList.default')})</span>
 												{/if}
 											</SelectItem>
 										{/each}
@@ -137,7 +137,7 @@
 							</div>
 						{/if}
 
-						<div class="flex items-start space-x-3">
+						<div class="flex items-start gap-3">
 							<RadioGroupItem value="with-tasks" id="with-tasks" class="mt-1" />
 							<Label for="with-tasks" class="flex-1 cursor-pointer">
 								<div class="font-medium text-destructive">
@@ -150,8 +150,8 @@
 						</div>
 
 						{#if deleteMode === 'with-tasks'}
-							<div class="ml-6 mt-2 p-3 bg-destructive/10 rounded-md">
-								<div class="flex items-start space-x-2">
+							<div class="ms-6 mt-2 p-3 bg-destructive/10 rounded-md">
+								<div class="flex items-start gap-2">
 									<Checkbox
 										id="confirm-delete"
 										bind:checked={confirmDeleteWithTasks}
@@ -175,7 +175,7 @@
 				</Alert>
 
 				<div class="p-3 bg-destructive/10 rounded-md">
-					<div class="flex items-start space-x-2">
+					<div class="flex items-start gap-2">
 						<Checkbox
 							id="confirm-delete-only"
 							bind:checked={confirmDeleteWithTasks}

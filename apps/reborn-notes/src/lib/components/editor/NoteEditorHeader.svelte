@@ -138,7 +138,7 @@
       type="button"
       onclick={onToggleNoteList}
       class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-foreground
-         hover:bg-accent transition-colors -ml-1"
+         hover:bg-accent transition-colors -ms-1"
       title={noteListCollapsed ? $t('nav.show_note_list') : $t('nav.hide_note_list')}
       aria-label={noteListCollapsed ? $t('nav.show_note_list') : $t('nav.hide_note_list')}
       aria-pressed={!noteListCollapsed}
@@ -156,7 +156,7 @@
     onclick={onback}
     class="flex shrink-0 items-center justify-center rounded-md text-foreground
        hover:bg-accent transition-colors
-       {isMobile ? '-ml-1 h-11 w-11' : 'h-8 w-8'}"
+       {isMobile ? '-ms-1 h-11 w-11' : 'h-8 w-8'}"
     aria-label={$t('nav.back')}
   >
     <ArrowLeft class={isMobile ? 'h-5 w-5' : 'h-4 w-4'} />

@@ -41,16 +41,16 @@
       type="button"
       onclick={onback}
       class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-foreground
-         hover:bg-accent transition-colors -ml-1"
+         hover:bg-accent transition-colors -ms-1"
       aria-label={$t('nav.back')}
     >
       <ArrowLeft class="h-4 w-4" />
     </button>
   {:else}
-    <SidebarTrigger class="md:hidden -ml-1 shrink-0" />
+    <SidebarTrigger class="md:hidden -ms-1 shrink-0" />
   {/if}
   <span class="min-w-0 flex-1 truncate text-sm font-medium"
-    >{selectedVersion.title || $t('notes.untitled')}</span
+    ><bdi>{selectedVersion.title || $t('notes.untitled')}</bdi></span
   >
   {#if previousVersion}
     <div class="flex h-7 shrink-0 items-center rounded-md border text-xs">
@@ -59,7 +59,7 @@
         onclick={() => {
           historyViewMode = 'preview';
         }}
-        class="flex h-full items-center gap-1 rounded-l-md px-2 transition-colors
+        class="flex h-full items-center gap-1 rounded-s-md px-2 transition-colors
              {historyViewMode === 'preview'
           ? 'bg-accent text-accent-foreground'
           : 'text-muted-foreground hover:bg-accent/50'}"
@@ -73,7 +73,7 @@
         onclick={() => {
           historyViewMode = 'diff';
         }}
-        class="flex h-full items-center gap-1 rounded-r-md px-2 transition-colors
+        class="flex h-full items-center gap-1 rounded-e-md px-2 transition-colors
              {historyViewMode === 'diff'
           ? 'bg-accent text-accent-foreground'
           : 'text-muted-foreground hover:bg-accent/50'}"

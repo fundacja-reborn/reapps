@@ -73,7 +73,7 @@
     {/if}
   </div>
   
-  <div class="flex space-x-1">
+  <div class="flex gap-1">
     {#each Array(5) as _, i}
       <div
         class="flex-1 h-1 rounded-full transition-colors {i <= strength ? currentLevel.bgColor : 'bg-gray-200 dark:bg-gray-700'}"
@@ -85,7 +85,7 @@
     <ul class="mt-2 space-y-1">
       {#each requirements as req}
         <li class="flex items-center text-xs text-gray-600 dark:text-gray-400">
-          <svg class="h-3 w-3 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="h-3 w-3 me-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
           {req}
@@ -94,7 +94,7 @@
     </ul>
   {:else}
     <p class="text-xs text-green-600 dark:text-green-400 flex items-center">
-      <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg class="h-3 w-3 me-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
       </svg>
       Password meets all requirements

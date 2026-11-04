@@ -58,7 +58,7 @@
     title={label}
     aria-label={label}
     aria-pressed={isActive}
-    class="flex items-center gap-1.5 rounded-l pl-2 pr-1.5"
+    class="flex items-center gap-1.5 rounded-s ps-2 pe-1.5"
   >
     <FaceIcon class="h-4 w-4 md:h-3.5 md:w-3.5" />
     {#if !isMobile}
@@ -78,7 +78,7 @@
       title={$t('editor_mode.open_menu')}
       aria-label={$t('editor_mode.open_menu')}
       aria-haspopup="menu"
-      class="flex items-center justify-center rounded-r pl-1 pr-1.5"
+      class="flex items-center justify-center rounded-e ps-1 pe-1.5"
     >
       <ChevronDown class="h-3.5 w-3.5" />
     </button>
@@ -92,7 +92,7 @@
             title={$t('editor_mode.open_menu')}
             aria-label={$t('editor_mode.open_menu')}
             aria-haspopup="menu"
-            class="flex items-center justify-center rounded-r pl-1 pr-1.5"
+            class="flex items-center justify-center rounded-e ps-1 pe-1.5"
           >
             <ChevronDown class="h-3 w-3" />
           </button>

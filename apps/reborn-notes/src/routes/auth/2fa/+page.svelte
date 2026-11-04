@@ -205,7 +205,7 @@
 
 						<Button type="submit" disabled={isLoading} class="w-full h-11">
 							{#if isLoading}
-								<RefreshCw class="h-4 w-4 mr-2 animate-spin" />
+								<RefreshCw class="h-4 w-4 me-2 animate-spin" />
 								{$t('auth.two_factor.verifying')}
 							{:else}
 								{$t('auth.two_factor.verify')}
@@ -221,7 +221,7 @@
 							}}
 							class="text-sm text-muted-foreground hover:text-foreground underline transition-colors"
 						>
-							<KeyRound class="h-3.5 w-3.5 inline mr-1" />
+							<KeyRound class="h-3.5 w-3.5 inline me-1" />
 							{$t('auth.two_factor.use_recovery')}
 						</button>
 					</div>
@@ -251,7 +251,7 @@
 
 						<Button type="submit" disabled={isLoading} class="w-full h-11">
 							{#if isLoading}
-								<RefreshCw class="h-4 w-4 mr-2 animate-spin" />
+								<RefreshCw class="h-4 w-4 me-2 animate-spin" />
 								{$t('auth.two_factor.verifying')}
 							{:else}
 								{$t('auth.two_factor.verify')}
@@ -267,7 +267,7 @@
 							}}
 							class="text-sm text-muted-foreground hover:text-foreground underline transition-colors"
 						>
-							<Shield class="h-3.5 w-3.5 inline mr-1" />
+							<Shield class="h-3.5 w-3.5 inline me-1" />
 							{$t('auth.two_factor.use_app')}
 						</button>
 					</div>

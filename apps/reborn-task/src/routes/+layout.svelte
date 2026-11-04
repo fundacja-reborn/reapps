@@ -24,6 +24,7 @@
 	import { sharesStore } from '$lib/stores/shares.store';
 	import { whatsNew } from '$lib/stores/whats-new.svelte';
 	import { maybeShowWhatsNew } from '$lib/services/whats-new.service';
+	import { applyDocumentLocale, readDirectionOverride } from '@reborn/i18n';
 
 	const logger = createLogger('Layout');
 
@@ -47,14 +48,18 @@
 		($page?.url?.pathname ?? '').startsWith(`${base || ''}/s/`)
 	);
 
-	// Update HTML lang attribute when locale changes
+	// Keep <html lang> and <html dir> in sync with the UI locale. The server
+	// already rendered both (%lang% / %dir% in app.html), so the first paint is
+	// in the right direction; this follows later locale changes. `?dir=rtl`
+	// forces RTL for smoke-testing the layout before an RTL locale ships.
+	const dirOverride = browser ? readDirectionOverride(window.location.search) : null;
 	$effect(() => {
 		if (browser && $locale) {
-			document.documentElement.lang = $locale;
+			applyDocumentLocale($locale, dirOverride);
 		}
 	});
 
-	// Reset sync flag when user logs out — allows re-sync for next login.
+	// Reset sync flag when user logs out - allows re-sync for next login.
 	// Defensive: even though logout now uses hard redirect (which clears all
 	// in-memory state), this handles edge cases like internal navigation.
 	$effect(() => {
@@ -156,7 +161,7 @@
 				const now = Date.now();
 				if (now - lastPeriodicSyncTimestamp >= VISIBILITY_SYNC_DEBOUNCE_MS) {
 					lastPeriodicSyncTimestamp = now;
-					logger.debug('Tab became visible — running periodic sync');
+					logger.debug('Tab became visible - running periodic sync');
 					syncService.periodicSync().catch((error) => {
 						logger.error('Visibility sync failed:', error);
 					});
@@ -194,7 +199,7 @@
 
 					// Force refresh of all stores after initialization.
 					// offlineOperationsStore must be refreshed on cold start so its reactive
-					// writable reflects rows persisted in IndexedDB — otherwise pending-count
+					// writable reflects rows persisted in IndexedDB - otherwise pending-count
 					// indicators show 0 until the first local mutation triggers a refresh.
 					const { taskStore, listStore, subtaskStore, offlineOperationsStore } =
 						await import('@reborn/storage');
@@ -220,7 +225,7 @@
 						await Promise.all([refreshDecryptedLists(), refreshDecryptedSubtasks()]);
 					}
 
-					// Build task index cache (blocking — stores read from index)
+					// Build task index cache (blocking - stores read from index)
 					await taskTitleIndex.build();
 					// E2E already active on mount → prevent $effect from duplicating sync
 					if (cryptoManager.isInitialized()) hasTriggeredInitialSync = true;
@@ -252,20 +257,20 @@
 					await Promise.all([refreshDecryptedLists(), refreshDecryptedSubtasks()]);
 				}
 
-				// Build task index cache (blocking — stores read from index)
+				// Build task index cache (blocking - stores read from index)
 				await taskTitleIndex.build();
 				// E2E already active on mount → prevent $effect from duplicating sync
 				if (cryptoManager.isInitialized()) hasTriggeredInitialSync = true;
 			}
 
-			// Pull E2E synced settings BEFORE applying theme/locale — so the
+			// Pull E2E synced settings BEFORE applying theme/locale - so the
 			// freshly logged-in / cross-device session sees the user's preferences
 			// rather than IDB defaults. Master key must already be unlocked.
 			if (cryptoManager.isInitialized()) {
 				try {
 					await syncedSettings.pullAndMerge();
 				} catch (error: unknown) {
-					logger.warn('Synced settings pull failed — falling back to local IDB', error);
+					logger.warn('Synced settings pull failed - falling back to local IDB', error);
 				}
 			}
 

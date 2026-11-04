@@ -298,12 +298,12 @@
 									bind:value={portablePassword}
 									placeholder={$t('settings.import_export.portable_password_placeholder')}
 									disabled={isExportingPortable}
-									class="w-full rounded-md border border-input bg-background px-3 py-2 pr-9 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+									class="w-full rounded-md border border-input bg-background px-3 py-2 pe-9 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
 								/>
 								<button
 									type="button"
 									onclick={() => (portablePasswordVisible = !portablePasswordVisible)}
-									class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+									class="absolute inset-e-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
 									tabindex={-1}
 								>
 									{#if portablePasswordVisible}
@@ -461,12 +461,12 @@
 								bind:value={importPassword}
 								placeholder={$t('settings.import_export.import_password_placeholder')}
 								disabled={isImporting}
-								class="w-full rounded-md border border-input bg-background px-3 py-2 pr-9 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+								class="w-full rounded-md border border-input bg-background px-3 py-2 pe-9 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
 							/>
 							<button
 								type="button"
 								onclick={() => (importPasswordVisible = !importPasswordVisible)}
-								class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+								class="absolute inset-e-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
 								tabindex={-1}
 							>
 								{#if importPasswordVisible}
@@ -495,7 +495,7 @@
 						<Info class="h-4 w-4 text-muted-foreground" />
 						{$t('settings.import_export.import_notes_title')}
 					</div>
-					<ul class="text-sm text-muted-foreground space-y-1 ml-6 list-disc">
+					<ul class="text-sm text-muted-foreground space-y-1 ms-6 list-disc">
 						<li>{$t('settings.import_export.import_note_1')}</li>
 						<li>{$t('settings.import_export.import_note_2')}</li>
 						<li>{$t('settings.import_export.import_note_3')}</li>

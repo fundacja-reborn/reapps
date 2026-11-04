@@ -38,21 +38,21 @@
 
 <div class="shrink-0 px-3 pb-2">
 	<div class="relative">
-		<Search class="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+		<Search class="absolute inset-s-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
 		<input
 			bind:this={searchInputEl}
 			type="text"
 			placeholder={$t('common.search', { default: 'Szukaj...' })}
 			value={searchInput}
 			oninput={handleSearchInput}
-			class="w-full rounded-md border bg-background py-2 pl-7 pr-8 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+			class="w-full rounded-md border bg-background py-2 ps-7 pe-8 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
 			aria-label={$t('common.search', { default: 'Szukaj...' })}
 		/>
 		{#if searchInput}
 			<button
 				type="button"
 				onclick={clearSearch}
-				class="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center h-7 w-7 text-muted-foreground hover:text-foreground"
+				class="absolute inset-e-1 top-1/2 -translate-y-1/2 flex items-center justify-center h-7 w-7 text-muted-foreground hover:text-foreground"
 				aria-label={$t('common.clear_search', { default: 'Wyczyść wyszukiwanie' })}
 			>
 				<X class="h-3.5 w-3.5" />
@@ -68,7 +68,7 @@
 				type="button"
 				onclick={toggleSearchInDescription}
 				class={cn(
-					'flex min-h-[44px] md:min-h-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-left text-sm md:text-[11px] transition-colors',
+					'flex min-h-[44px] md:min-h-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-start text-sm md:text-[11px] transition-colors',
 					searchInDescription
 						? 'font-medium text-primary'
 						: 'text-muted-foreground hover:text-foreground'

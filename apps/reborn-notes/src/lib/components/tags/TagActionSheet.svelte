@@ -40,7 +40,7 @@
           activeMenuTag &&
           tagManager.startRenameTag(activeMenuTag.id, activeMenuTag.name)}
       >
-        <Pencil class="mr-2 h-4 w-4" />
+        <Pencil class="me-2 h-4 w-4" />
         {$t('tags.rename')}
       </Button>
       {#if !activeMenuTag?.decrypt_failed}
@@ -50,7 +50,7 @@
           onclick={() =>
             activeMenuTag && tagManager.startColorPicker(activeMenuTag.id)}
         >
-          <Palette class="mr-2 h-4 w-4" />
+          <Palette class="me-2 h-4 w-4" />
           {$t('tags.tag_color')}
         </Button>
       {/if}
@@ -59,7 +59,7 @@
         class="w-full justify-start text-destructive hover:text-destructive"
         onclick={() => tagManager.tagMenuId && ondelete(tagManager.tagMenuId)}
       >
-        <Trash2 class="mr-2 h-4 w-4" />
+        <Trash2 class="me-2 h-4 w-4" />
         {$t('tags.delete_tag')}
       </Button>
     </div>

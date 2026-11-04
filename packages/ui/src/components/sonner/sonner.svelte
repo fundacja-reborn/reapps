@@ -1,10 +1,21 @@
 <script lang="ts">
   import { Toaster as Sonner, type ToasterProps } from 'svelte-sonner';
+  import { textDirection } from '@reborn/i18n';
 
-  let { ...restProps }: ToasterProps = $props();
+  let { dir, position, ...restProps }: ToasterProps = $props();
+
+  // svelte-sonner reads <html dir> once at mount and its `position` is
+  // physical, so follow the live UI direction explicitly: toasts sit in the
+  // inline-end corner (bottom-right in LTR, bottom-left in RTL).
+  const effectiveDir = $derived(dir ?? $textDirection);
+  const effectivePosition = $derived(
+    position ?? (effectiveDir === 'rtl' ? 'bottom-left' : 'bottom-right')
+  );
 </script>
 
 <Sonner
+  dir={effectiveDir}
+  position={effectivePosition}
   theme="light"
   class="toaster group"
   toastOptions={{

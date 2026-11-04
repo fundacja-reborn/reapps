@@ -81,7 +81,7 @@
 						class="truncate max-w-[45vw] md:max-w-[300px]"
 						style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
 					>
-						{list.name}
+						<bdi>{list.name}</bdi>
 					</span>
 				</button>
 			{/if}
@@ -161,30 +161,30 @@
 						<DropdownMenu.Content align="end">
 							<DropdownMenu.Item onclick={onToggleCompleted}>
 								{#if task.is_completed}
-									<CircleCheck class="mr-2 h-4 w-4" />
+									<CircleCheck class="me-2 h-4 w-4" />
 									{$t('tasks.aria.mark_as_incomplete')}
 								{:else}
-									<Circle class="mr-2 h-4 w-4" />
+									<Circle class="me-2 h-4 w-4" />
 									{$t('tasks.aria.mark_as_complete')}
 								{/if}
 							</DropdownMenu.Item>
 							<DropdownMenu.Item onclick={onToggleStarred}>
-								<Star class="mr-2 h-4 w-4" />
+								<Star class="me-2 h-4 w-4" />
 								{task.is_starred ? $t('tasks.aria.remove_star') : $t('tasks.aria.add_star')}
 							</DropdownMenu.Item>
 							<DropdownMenu.Item onclick={onOpenMoveDialog}>
-								<ArrowRight class="mr-2 h-4 w-4" />
+								<ArrowRight class="me-2 h-4 w-4" />
 								{$t('tasks.move_to_list')}
 							</DropdownMenu.Item>
 							{#if onOpenShareDialog}
 								<DropdownMenu.Item onclick={onOpenShareDialog}>
-									<Share2 class="mr-2 h-4 w-4" />
+									<Share2 class="me-2 h-4 w-4" />
 									{$t('share.task.menu_label')}
 								</DropdownMenu.Item>
 							{/if}
 							<DropdownMenu.Separator />
 							<DropdownMenu.Item class="text-destructive" onclick={onOpenDeleteDialog}>
-								<Trash2 class="mr-2 h-4 w-4" />
+								<Trash2 class="me-2 h-4 w-4" />
 								{$t('common.delete')}
 							</DropdownMenu.Item>
 						</DropdownMenu.Content>
@@ -217,10 +217,10 @@
 					}}
 				>
 					{#if task.is_completed}
-						<CircleCheck class="mr-2 h-4 w-4" />
+						<CircleCheck class="me-2 h-4 w-4" />
 						{$t('tasks.aria.mark_as_incomplete')}
 					{:else}
-						<Circle class="mr-2 h-4 w-4" />
+						<Circle class="me-2 h-4 w-4" />
 						{$t('tasks.aria.mark_as_complete')}
 					{/if}
 				</Button>
@@ -233,7 +233,7 @@
 						onToggleStarred();
 					}}
 				>
-					<Star class="mr-2 h-4 w-4" />
+					<Star class="me-2 h-4 w-4" />
 					{task.is_starred ? $t('tasks.aria.remove_star') : $t('tasks.aria.add_star')}
 				</Button>
 
@@ -245,7 +245,7 @@
 						onOpenMoveDialog();
 					}}
 				>
-					<ArrowRight class="mr-2 h-4 w-4" />
+					<ArrowRight class="me-2 h-4 w-4" />
 					{$t('tasks.move_to_list')}
 				</Button>
 
@@ -258,7 +258,7 @@
 							onOpenShareDialog?.();
 						}}
 					>
-						<Share2 class="mr-2 h-4 w-4" />
+						<Share2 class="me-2 h-4 w-4" />
 						{$t('share.task.menu_label')}
 					</Button>
 				{/if}
@@ -273,7 +273,7 @@
 						onOpenDeleteDialog();
 					}}
 				>
-					<Trash2 class="mr-2 h-4 w-4" />
+					<Trash2 class="me-2 h-4 w-4" />
 					{$t('common.delete')}
 				</Button>
 			</div>

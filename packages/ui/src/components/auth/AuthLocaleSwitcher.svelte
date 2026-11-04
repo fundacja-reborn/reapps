@@ -22,7 +22,7 @@
   <select
     value={currentLocale}
     onchange={handleChange}
-    class="appearance-none bg-transparent text-sm text-muted-foreground hover:text-foreground cursor-pointer border-none outline-none focus:ring-0 pr-5 py-1"
+    class="appearance-none bg-transparent text-sm text-muted-foreground hover:text-foreground cursor-pointer border-none outline-none focus:ring-0 pe-5 py-1"
     aria-label="Language"
   >
     {#each SUPPORTED_LOCALES as loc}

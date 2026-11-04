@@ -35,21 +35,21 @@
      across every list view (including the dedicated search view). -->
 <div class="shrink-0 px-4 pb-2 md:px-3 mt-2 md:mt-0">
   <div class="relative">
-    <Search class="absolute left-2.5 top-1/2 h-4 w-4 md:h-3.5 md:w-3.5 -translate-y-1/2 text-muted-foreground" />
+    <Search class="absolute inset-s-2.5 top-1/2 h-4 w-4 md:h-3.5 md:w-3.5 -translate-y-1/2 text-muted-foreground" />
     <input
       bind:this={searchInputEl}
       type="text"
       placeholder={$t('notes.search_placeholder')}
       value={searchInput}
       oninput={handleSearchInput}
-      class="w-full rounded-md border bg-background py-2.5 md:py-2 pl-8 md:pl-7 pr-10 md:pr-8 text-sm md:text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+      class="w-full rounded-md border bg-background py-2.5 md:py-2 ps-8 md:ps-7 pe-10 md:pe-8 text-sm md:text-xs focus:outline-none focus:ring-1 focus:ring-primary"
       aria-label={$t('notes.search_placeholder')}
     />
     {#if searchInput}
       <button
         type="button"
         onclick={clearSearch}
-        class="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center h-9 w-9 md:h-7 md:w-7 text-muted-foreground hover:text-foreground"
+        class="absolute inset-e-1 top-1/2 -translate-y-1/2 flex items-center justify-center h-9 w-9 md:h-7 md:w-7 text-muted-foreground hover:text-foreground"
         aria-label={$t('notes.clear_search')}
       >
         <X class="h-4 w-4 md:h-3.5 md:w-3.5" />
@@ -63,7 +63,7 @@
       <button
         type="button"
         onclick={toggleSearchInContent}
-        class="flex min-h-[44px] md:min-h-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-left text-sm md:text-[11px] transition-colors
+        class="flex min-h-[44px] md:min-h-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-start text-sm md:text-[11px] transition-colors
           {searchInContent
           ? 'font-medium text-primary'
           : 'text-muted-foreground hover:text-foreground'}"

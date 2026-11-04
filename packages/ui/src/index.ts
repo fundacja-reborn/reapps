@@ -1,6 +1,7 @@
 // Utility functions
 export { cn } from './utils/cn';
 export { flyAndScale } from './utils/transition';
+export { distanceFromInlineStart, inlineDelta } from './utils/edge-swipe';
 
 // Stores
 export { toastStore } from './stores/toast';

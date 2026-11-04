@@ -165,7 +165,7 @@
               {$t('toc.refresh')}
               {#if tocStale}
                 <span
-                  class="ml-auto inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
+                  class="ms-auto inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
                   title={$t('toc.stale')}
                   aria-hidden="true"
                 ></span>

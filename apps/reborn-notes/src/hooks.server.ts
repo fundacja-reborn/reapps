@@ -18,6 +18,8 @@ import {
 } from '@reborn/database';
 import { getShareOgStrings } from '$lib/server/share-og';
 import { getAppLoadingStrings } from '$lib/server/app-loading-strings';
+// Dependency-free subpath (no svelte-i18n / translation bundles on the server).
+import { getTextDirection } from '@reborn/i18n/direction';
 
 // ── Rate-limited auth routes ──────────────────────────────────────
 
@@ -211,7 +213,7 @@ const idempotencyHandle: Handle = async ({ event, resolve }) => {
   // Process request normally
   const response = await resolve(event);
 
-  // Cache only successful responses — caching errors would make retries useless
+  // Cache only successful responses - caching errors would make retries useless
   // (pushSilently reuses the same Idempotency-Key for all retry attempts)
   if (response.status >= 200 && response.status < 300) {
     const clone = response.clone();
@@ -289,6 +291,7 @@ const localeHandle: Handle = async ({ event, resolve }) => {
     transformPageChunk: ({ html }) => {
       const out = html
         .replace('%lang%', locale)
+        .replace('%dir%', getTextDirection(locale))
         .replace('%init_loading_msg%', initLoadingMsg)
         .replace('%stall_msg%', stallMsg)
         .replace('%offline_msg%', offlineMsg);

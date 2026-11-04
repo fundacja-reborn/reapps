@@ -53,7 +53,7 @@
     <div class="grid gap-3 py-2">
       <button
         type="button"
-        class="group flex items-start gap-3 rounded-lg border-2 p-4 text-left transition-colors {chosen ===
+        class="group flex items-start gap-3 rounded-lg border-2 p-4 text-start transition-colors {chosen ===
         'live'
           ? 'border-primary bg-primary/5'
           : 'border-border hover:border-muted-foreground/40 hover:bg-accent/30'}"
@@ -88,7 +88,7 @@
 
       <button
         type="button"
-        class="group flex items-start gap-3 rounded-lg border-2 p-4 text-left transition-colors {chosen ===
+        class="group flex items-start gap-3 rounded-lg border-2 p-4 text-start transition-colors {chosen ===
         'markdown'
           ? 'border-primary bg-primary/5'
           : 'border-border hover:border-muted-foreground/40 hover:bg-accent/30'}"

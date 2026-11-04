@@ -41,15 +41,15 @@
 {#snippet diffLine(line: DiffLine, _i: number)}
   {#if line.status === 'added'}
     <div class="bg-green-100 text-green-900 dark:bg-green-950/40 dark:text-green-200 px-4">
-      <span class="inline-block w-6 select-none text-right text-green-600/60 dark:text-green-400/60 mr-2">+</span>{#if line.words}{#each line.words as word, wi (wi)}{#if word.added}<span class="bg-green-200 dark:bg-green-800/60 rounded-sm">{word.value}</span>{:else}{word.value}{/if}{/each}{:else}{line.value}{/if}
+      <span class="inline-block w-6 select-none text-end text-green-600/60 dark:text-green-400/60 me-2">+</span>{#if line.words}{#each line.words as word, wi (wi)}{#if word.added}<span class="bg-green-200 dark:bg-green-800/60 rounded-sm">{word.value}</span>{:else}{word.value}{/if}{/each}{:else}{line.value}{/if}
     </div>
   {:else if line.status === 'removed'}
     <div class="bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200 px-4">
-      <span class="inline-block w-6 select-none text-right text-red-600/60 dark:text-red-400/60 mr-2">-</span>{#if line.words}{#each line.words as word, wi (wi)}{#if word.removed}<span class="bg-red-200 dark:bg-red-800/60 rounded-sm">{word.value}</span>{:else}{word.value}{/if}{/each}{:else}{line.value}{/if}
+      <span class="inline-block w-6 select-none text-end text-red-600/60 dark:text-red-400/60 me-2">-</span>{#if line.words}{#each line.words as word, wi (wi)}{#if word.removed}<span class="bg-red-200 dark:bg-red-800/60 rounded-sm">{word.value}</span>{:else}{word.value}{/if}{/each}{:else}{line.value}{/if}
     </div>
   {:else}
     <div class="px-4 text-foreground/80">
-      <span class="inline-block w-6 select-none text-right text-muted-foreground/40 mr-2">&nbsp;</span>{line.value}
+      <span class="inline-block w-6 select-none text-end text-muted-foreground/40 me-2">&nbsp;</span>{line.value}
     </div>
   {/if}
 {/snippet}
