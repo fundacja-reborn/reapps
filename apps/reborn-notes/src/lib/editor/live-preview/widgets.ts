@@ -3,12 +3,12 @@
  *
  * `LinkWidget` replaces a `[text](url)` markdown link with a clickable anchor
  * that shows only the display text. URL safety mirrors the allowlist used by
- * MarkdownPreview's DOMPurify config — javascript:/data: schemes are blocked.
+ * MarkdownPreview's DOMPurify config - javascript:/data: schemes are blocked.
  *
  * `CodeBlockWidget` replaces a fenced code block (```lang ... ```) with a
  * statically syntax-highlighted <pre><code>. Highlighting uses the same CM6
  * language parsers we ship for the editor (zero external requests). Languages
- * are loaded lazily — until ready, the widget renders plaintext and triggers
+ * are loaded lazily - until ready, the widget renders plaintext and triggers
  * a re-render via `onLanguageReady` once the chunk resolves.
  *
  * The shared highlight pipeline lives in `highlight-html.ts` so the editor
@@ -84,7 +84,7 @@ export class LinkWidget extends WidgetType {
       return span;
     }
 
-    // In-note heading anchor (`#slug` — a copied same-note heading link, or a
+    // In-note heading anchor (`#slug` - a copied same-note heading link, or a
     // body anchor). Render a real anchor, but its click scrolls within the
     // editor (wired by `livePreviewAnchorScroll`) instead of opening a new tab.
     if (safeUrl && safeUrl.startsWith('#')) {
@@ -211,7 +211,7 @@ export class CodeBlockWidget extends WidgetType {
   /**
    * Copy-to-clipboard button pinned to the block's top-right. Labels are
    * injected via the constructor (decorations build them from i18n) so this
-   * module stays free of store imports — same decoupling as `ImageWidget`. A
+   * module stays free of store imports - same decoupling as `ImageWidget`. A
    * locale change rebuilds the widget because `eq()` compares the labels.
    * `mousedown` is prevented so clicking the button doesn't move the CM6 cursor
    * into the block (which would swap this widget for the raw editable lines).
@@ -242,7 +242,7 @@ export class CodeBlockWidget extends WidgetType {
  * interactive `<input type="checkbox">`. Click toggles the markdown source
  * marker `[ ] ↔ [x]` in one CM6 transaction (handled by
  * `livePreviewTaskCheckboxToggle` in decorations.ts). The widget itself is
- * stateless — `checked` is derived from the parsed `TaskMarker` on each
+ * stateless - `checked` is derived from the parsed `TaskMarker` on each
  * decoration build.
  */
 export class TaskCheckboxWidget extends WidgetType {

@@ -114,7 +114,7 @@
     /**
      * Called when the user clicks a checkbox in a GFM task list. The owner
      * is responsible for toggling the matching `[ ]` / `[x]` in the
-     * markdown source — this component only emits the click, since the
+     * markdown source - this component only emits the click, since the
      * source string lives upstream (note store / editor doc).
      *
      * `taskIndex` is the zero-based ordinal of the task in render order
@@ -155,7 +155,7 @@
 
   let containerEl: HTMLElement;
 
-  // Async-load tick — bumped each time a fenced-code language chunk finishes
+  // Async-load tick - bumped each time a fenced-code language chunk finishes
   // loading, so the `$derived html` recomputes and replaces the plaintext
   // fallback with a syntax-highlighted version. Mirrors the editor's
   // `rebuildLivePreview` effect, but on the Svelte side.
@@ -164,7 +164,7 @@
   onMount(() => {
     scrollEl = containerEl;
     contentEl = containerEl;
-    // Clear bindings on unmount so the parent's preview adapter detaches —
+    // Clear bindings on unmount so the parent's preview adapter detaches -
     // otherwise a toggle to edit-only would leave a stale (detached)
     // adapter live, eating editor scroll events via `syncing`.
     return () => {
@@ -211,7 +211,7 @@
 
   // Image renderer lives in markdown-to-html.ts so its mode/placeholder logic is
   // unit-tested without mounting this component (markdown-to-html.spec.ts). It
-  // owns `askPlaceholderCount` — the structural count of ask-mode Load buttons
+  // owns `askPlaceholderCount` - the structural count of ask-mode Load buttons
   // emitted, which gates the "Load all images" banner. Two reasons the mode is
   // pushed in via setImageMode() rather than the renderer closing over the
   // reactive `imageLoadMode` prop directly:
@@ -220,7 +220,7 @@
   //      is built once at init, so a direct closure would freeze to 'ask'.
   //   2. marked calls renderImage from a third-party call stack with no reactive
   //      context, so there's nothing for Svelte to attach a lazy read to anyway.
-  // `(key) => $t(key)` resolves labels at render time so they follow locale —
+  // `(key) => $t(key)` resolves labels at render time so they follow locale -
   // same call-time `$t` resolution the previous inline closure used.
   const {
     renderImage,
@@ -230,12 +230,12 @@
   } = createMarkdownImageRenderer((key) => $t(key));
   renderer.image = renderImage;
 
-  // Fenced code blocks — share the highlight pipeline with Live Preview's
+  // Fenced code blocks - share the highlight pipeline with Live Preview's
   // CodeBlockWidget (`highlightCodeToHtml`). Output is escaped text + safe
-  // `<span class="tok-...">` wrappers — DOMPurify passes these through
+  // `<span class="tok-...">` wrappers - DOMPurify passes these through
   // (`USE_PROFILES.html` allows `class` on `<span>`).
   // If the language chunk hasn't loaded yet, the helper renders plaintext
-  // and we kick off the async load — once it resolves we bump `langLoadTick`
+  // and we kick off the async load - once it resolves we bump `langLoadTick`
   // so the `$derived html` re-runs with the highlighted version.
   renderer.code = ({ text, lang }: Tokens.Code) => {
     const info = (lang ?? '').trim();
@@ -258,7 +258,7 @@
 
   md.use({ renderer });
 
-  // Tokens of the latest render — kept so we can stamp `data-source-line`
+  // Tokens of the latest render - kept so we can stamp `data-source-line`
   // on the matching DOM children after `{@html}` commits the new HTML.
   let lastTokens: import('marked').Token[] = [];
 
@@ -273,10 +273,10 @@
     //    into the renderer (which runs from marked's non-reactive call stack).
     void langLoadTick;
     setImageMode(imageLoadMode);
-    // Reset before parse — renderImage re-increments askPlaceholderCount for
+    // Reset before parse - renderImage re-increments askPlaceholderCount for
     // each ask-mode external image it emits during md.parser() below.
     resetImageRenderer();
-    // Defensive reset — renderer.list decrements after each list, so under
+    // Defensive reset - renderer.list decrements after each list, so under
     // normal flow listDepth is already 0; resetting guards against a thrown
     // sanitize/parse leaving the counters stuck, and starts taskCounter at 0
     // so `data-task-index` aligns with the markdown source's marker order.
@@ -323,7 +323,7 @@
 
   // After {@html html} commits to the DOM, stamp top-level children with
   // `data-source-line="N"` and let the parent rebuild scroll-sync anchors.
-  // We also re-fire `onrender` once any lazily-loading <img> finishes —
+  // We also re-fire `onrender` once any lazily-loading <img> finishes -
   // image heights only show up post-load, and the parent's anchor cache
   // would otherwise be stale by tens of pixels for the rest of the doc.
   $effect(() => {
@@ -519,7 +519,7 @@
   // Show the "Load all images" button only when the render actually emitted
   // per-image Load buttons. `renderImage` increments its placeholder counter
   // exactly once per ask-mode external image, and marked never calls it for
-  // image syntax inside inline code or fenced blocks — so the count mirrors
+  // image syntax inside inline code or fenced blocks - so the count mirrors
   // what is shown beneath the banner. Reading `html` registers the parse as a
   // dependency and forces it to run first, populating the counter before we
   // read it. We deliberately do NOT scan the rendered HTML for the placeholder
@@ -534,7 +534,7 @@
 
 <!-- `data-sveltekit-preload-*="off"` stops SvelteKit's hover/touch preload
      for any <a> emitted by the rendered markdown. Preview links are user
-     content (relative paths, external URLs, `note:UUID`) — none of them are
+     content (relative paths, external URLs, `note:UUID`) - none of them are
      real SvelteKit routes, so the preload chunks are always wasted. Without
      this, every {@html} re-render (e.g. checkbox toggle, autosave reflow)
      repreloads `/notes/_app/immutable/...` and the browser logs "preloaded
@@ -577,7 +577,7 @@
 </div>
 
 <style>
-  /* Markdown typography — no external plugin needed */
+  /* Markdown typography - no external plugin needed */
   .preview :global(h1),
   .preview :global(h2),
   .preview :global(h3),
@@ -656,7 +656,7 @@
     opacity: 0.8;
   }
 
-  /* Internal note links — visually distinct from external links */
+  /* Internal note links - visually distinct from external links */
   .preview :global(a[data-note-link]) {
     color: var(--primary);
     text-decoration: underline;
@@ -947,7 +947,7 @@
     border-color: #d97706;
   }
 
-  /* Syntax highlight tokens — palette mirrors editor/live-preview/theme.ts.
+  /* Syntax highlight tokens - palette mirrors editor/live-preview/theme.ts.
      Kept here (not in a global stylesheet) so Preview and Live Preview share
      the visual output without coupling MarkdownPreview to CM6 internals. */
   .preview :global(pre code .tok-keyword),
@@ -1022,7 +1022,7 @@
     color: #f00;
   }
 
-  /* Dark-mode token palette — mirrors NoteEditor.svelte's `.dark .cm-lp-codeblock .tok-*`. */
+  /* Dark-mode token palette - mirrors NoteEditor.svelte's `.dark .cm-lp-codeblock .tok-*`. */
   :global(.dark) .preview :global(pre code .tok-keyword),
   :global(.dark) .preview :global(pre code .tok-controlKeyword),
   :global(.dark) .preview :global(pre code .tok-moduleKeyword),
@@ -1114,7 +1114,7 @@
      descendant block does not cancel the parent's drawn line). The renderer
      wraps the parent's inline content in `<span class="task-list-item-content">`
      so any nested `<ul>`/`<ol>` is a *sibling* of this wrapper, not a
-     descendant — the line ends at the wrapper boundary. */
+     descendant - the line ends at the wrapper boundary. */
   .preview :global(li.task-list-item-checked) > :global(.task-list-item-content) {
     text-decoration: line-through;
     color: var(--muted-foreground);
@@ -1124,7 +1124,7 @@
     accent-color: var(--primary);
   }
   /* Pull the checkbox into the bullet zone (GitHub-style). Putting the
-     negative margin on the checkbox — not on the <li> — leaves the list-
+     negative margin on the checkbox - not on the <li> - leaves the list-
      item's box untouched, so each nested level still gets its full indent
      from the parent ul's `[data-d='N']` margin ramp. The previous approach
      (`li.task-list-item { margin-left: -1.5em }`) cancelled the d3+ ramp

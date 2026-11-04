@@ -142,7 +142,7 @@
   // would re-fire on every tick (refresh() yields freshly decrypted objects).
   const activeSmartFolderQuery = $derived(activeSavedSearch?.query ?? null);
   const activeSmartFolderInContent = $derived(activeSavedSearch?.search_in_content ?? false);
-  // Last folder the user visited — used to scroll the folder tree back to that
+  // Last folder the user visited - used to scroll the folder tree back to that
   // node after exiting all the way up to the tree root, so deep trees keep context.
   let lastVisitedFolderId = $state<string | null>(null);
   const activeStarred = $derived(activeSection === 'starred');
@@ -200,7 +200,7 @@
   // Tag the open note with its periodic kind (if any) so the editor can swap
   // its placeholder for kind-aware copy ("Zacznij pisać dzisiejszą notatkę…").
   // Match by folder ID. Read from `detailMenuNote.folder_id` (the reactive
-  // notesStore lookup), NOT from `noteDetailService.folderId` — the service
+  // notesStore lookup), NOT from `noteDetailService.folderId` - the service
   // populates folderId asynchronously inside loadNote(), so on the first render
   // after activeNoteId.set(...) it would still be the previous note's value
   // and the editor would lock in the wrong placeholder.
@@ -214,7 +214,7 @@
     return null;
   });
 
-  // First-use onboarding modal — open with the kind that triggered it.
+  // First-use onboarding modal - open with the kind that triggered it.
   let periodicOnboardingKind = $state<PeriodicKind | null>(null);
   // Periodic kind whose button is mid-resolve (waiting on the initial-sync
   // pull). Drives the spinner on the IconNav button so a click doesn't look
@@ -567,7 +567,7 @@
   }
 
   // Sync mobileView when the user switches sections via IconNav.
-  // Track previous value so this only fires on real section changes — drilling
+  // Track previous value so this only fires on real section changes - drilling
   // into a folder/tag updates mobileView from its own handler and we must not
   // overwrite that here. (isMobile flipping on resize would otherwise wipe the
   // user's drill-down state.)
@@ -1052,7 +1052,7 @@
   // Both handlers arm an inline draft input at the top of the relevant list
   // (root tree for new folder, SubfolderList for new subfolder) instead of
   // pre-creating the folder. The folder is created only when the user commits
-  // a non-empty name — see `pendingNewFolderDraft`.
+  // a non-empty name - see `pendingNewFolderDraft`.
   function handleNewFolder() {
     pendingNewFolderDraft.set({ parentId: null });
   }
@@ -1140,7 +1140,7 @@
     }
   }
 
-  /** State-only part of selecting a folder. Does NOT push history — caller decides. */
+  /** State-only part of selecting a folder. Does NOT push history - caller decides. */
   async function applyFolderSelection(id: string | null | undefined) {
     await noteDetailService.flushAndSnapshot();
     activeFolderId = id;
@@ -1154,7 +1154,7 @@
     }
   }
 
-  /** User taps a folder (in tree or as a subfolder card) — drill down. */
+  /** User taps a folder (in tree or as a subfolder card) - drill down. */
   async function handleFolderSelect(id: string | null) {
     await applyFolderSelection(id);
     if (isMobile) {
@@ -1477,7 +1477,7 @@
   //   • toggle preservation (Edit ↔ Preview ↔ Live) keeps the same source
   //     line at the top of the viewport across remounts
   //   • Live ↔ Markdown editor-mode toggle (the editor remounts internally
-  //     via Compartment, so its viewport is preserved by CM6 itself — but
+  //     via Compartment, so its viewport is preserved by CM6 itself - but
   //     the anchor is still maintained for the next view-mode toggle)
   //   • split view continuously syncs editor and preview to each other
   //
@@ -1568,13 +1568,13 @@
   // scrollTop whenever we open a different note. NoteEditor/MarkdownPreview
   // are not remounted on note change (they just receive a new content prop),
   // so the shared scroll container retains its scrollTop from the previous
-  // note — without this reset, Note B would open at Note A's scroll position.
+  // note - without this reset, Note B would open at Note A's scroll position.
   //
   // The container/view refs are read inside `untrack` so the effect depends
   // ONLY on `$activeNoteId`. Otherwise toggling Edit ↔ Preview within the
   // same note (which flips `editorView` / `previewContentEl` references as
   // panes mount/unmount) would re-fire this effect, calling setAnchor(1)
-  // and zeroing scrollTop — defeating toggle preservation.
+  // and zeroing scrollTop - defeating toggle preservation.
   $effect(() => {
     const navId = $activeNoteId;
     untrack(() => {
@@ -1608,7 +1608,7 @@
     // CM6's height cache, which is only populated on the rAF-scheduled
     // measure pass. A microtask fires *before* that pass, so on first
     // mount (Preview → Edit toggle) we'd be reading height-oracle
-    // estimates and landing several lines off — the more wrapping or
+    // estimates and landing several lines off - the more wrapping or
     // widgets in the doc, the bigger the drift. `requestMeasure({write})`
     // runs after the measure cycle so heights are real.
     view.requestMeasure({
@@ -1743,7 +1743,7 @@
   // Client-side find over the OPEN note. One bar drives two backends by view
   // mode: the CodeMirror editor (edit/split) via mark decorations, and the
   // rendered preview (preview) via the CSS Custom Highlight API. Everything runs
-  // in the browser over already-decrypted, in-memory content — nothing is sent
+  // in the browser over already-decrypted, in-memory content - nothing is sent
   // to or logged on the server (Zero Knowledge preserved).
   let searchOpen = $state(false);
   let searchQuery = $state('');
@@ -1752,7 +1752,7 @@
   let searchFocusSignal = $state(0); // bumped to (re)focus + select the bar input
   let cmMatches = $state<SearchMatch[]>([]);
   let domMatches = $state<Range[]>([]);
-  // Scroll to the active match only on explicit navigation / query change — never
+  // Scroll to the active match only on explicit navigation / query change - never
   // on a plain content edit, so typing with search open doesn't yank the viewport.
   let pendingSearchScroll = $state(false);
 
@@ -1879,7 +1879,7 @@
   });
 
   // Scroll the active match into view, but only when navigation / a query change
-  // asked for it (pendingSearchScroll) — not on every recompute.
+  // asked for it (pendingSearchScroll) - not on every recompute.
   $effect(() => {
     const mode = effectiveViewMode;
     const matches = mode === 'preview' ? domMatches : cmMatches;
@@ -1926,7 +1926,7 @@
     }
   }
 
-  // ── beforeNavigate — flush before SvelteKit navigation ─────────
+  // ── beforeNavigate - flush before SvelteKit navigation ─────────
   beforeNavigate(({ cancel }) => {
     if (noteDetailService.hasPendingChanges()) {
       cancel();
@@ -2079,7 +2079,7 @@
       activeSection = 'search';
       return;
     }
-    // Ctrl/Cmd+F — in-note find. Overrides the browser's page find while a note
+    // Ctrl/Cmd+F - in-note find. Overrides the browser's page find while a note
     // is open (mirrors Google Docs / Notion / VS Code). Live note view only,
     // never in version history or trash.
     if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F') && !e.shiftKey && !e.altKey) {
@@ -2089,10 +2089,10 @@
       }
       return;
     }
-    // Mod+E — toggle edit ↔ preview (Obsidian convention). The editing view uses
+    // Mod+E - toggle edit ↔ preview (Obsidian convention). The editing view uses
     // the mode from Settings > Behavior, or the open note's temporary override;
     // returning from preview restores the editing view you left (edit or split).
-    // Live note view only — never in version history or trash. We preventDefault
+    // Live note view only - never in version history or trash. We preventDefault
     // so it also overrides Firefox's Ctrl+E (focus search bar).
     if ((e.metaKey || e.ctrlKey) && (e.key === 'e' || e.key === 'E') && !e.shiftKey && !e.altKey) {
       if ($activeNoteId != null && historyMode === 'closed' && !activeTrash) {

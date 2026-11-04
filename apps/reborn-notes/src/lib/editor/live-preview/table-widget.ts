@@ -2,7 +2,7 @@
  * Editable table widget for Live Preview.
  *
  * Renders a GFM table as a real <table> with `contenteditable` cells. Always
- * shown — even when the cursor is "inside" the markdown source — so the user
+ * shown - even when the cursor is "inside" the markdown source - so the user
  * never sees raw `| ... |` syntax (Obsidian-style behaviour). Edits in cells
  * are serialized back to GFM markdown and dispatched as a single change to the
  * underlying CM6 doc, keeping the source as the canonical state.
@@ -19,14 +19,14 @@
  * re-focuses the appropriate cell after the rebuild.
  *
  * Cell content has two presentations (Obsidian-style):
- *  - **rendered** when the cell is not focused — inline markdown (`**bold**`,
+ *  - **rendered** when the cell is not focused - inline markdown (`**bold**`,
  *    `*em*`, `` `code` ``, `~~strike~~`, `[t](url)`) is shown formatted, built
  *    by `table-cell-render`;
- *  - **raw** when the cell is focused — the markdown source, so it can be
+ *  - **raw** when the cell is focused - the markdown source, so it can be
  *    edited character by character (identical to the old plain-text cell).
  * The swap happens on `focus`/`blur`. Because a rendered cell's visible text
  * drops the markdown markers, the canonical source for each rendered cell is
- * stashed on `dataset.lpSrc` and read back from there at serialization time —
+ * stashed on `dataset.lpSrc` and read back from there at serialization time -
  * never re-derived from the rendered DOM. Plain (unformatted) cells render
  * identically in both modes, so they skip the swap and keep native caret
  * placement on click.
@@ -87,7 +87,7 @@ function sameLabels(a: TableWidgetLabels, b: TableWidgetLabels): boolean {
   );
 }
 
-// Toolbar glyphs — static, self-contained Lucide-style SVGs (16px,
+// Toolbar glyphs - static, self-contained Lucide-style SVGs (16px,
 // `stroke="currentColor"` so they follow the button colour). Never user input;
 // inlined via `innerHTML` like the code-copy / TOC button icons.
 const svg = (inner: string): string =>
@@ -104,7 +104,7 @@ const ICON_DELETE = svg('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0
 
 /**
  * Look up the current `Table` node containing the widget's DOM root. We do
- * not store doc positions on the widget — they would go stale across
+ * not store doc positions on the widget - they would go stale across
  * incremental parses. `posAtDOM` plus a syntax-tree walk gives us the
  * current authoritative position.
  */
@@ -139,7 +139,7 @@ function alignStyle(a: CellAlign): string {
 
 /**
  * Read cell text from the live DOM, mapping `<br>` elements to literal `\n`
- * (Shift+Enter line breaks). Walks the DOM tree directly — `textContent`
+ * (Shift+Enter line breaks). Walks the DOM tree directly - `textContent`
  * silently drops `<br>` separators, and `innerText` triggers a layout reflow.
  *
  * Also normalizes U+00A0 (non-breaking space) → ASCII space; browsers insert
@@ -210,7 +210,7 @@ function setCellContent(cell: HTMLElement, text: string): void {
 
 /**
  * Render a non-focused cell with inline markdown formatting applied, and stash
- * the markdown source on `dataset.lpSrc`. The source — not the formatted DOM —
+ * the markdown source on `dataset.lpSrc`. The source - not the formatted DOM -
  * is what `readCellSource` returns at serialization time, so the markers
  * survive even though they aren't visible. For plain text this produces the
  * exact same DOM as `setCellContent`.
@@ -224,7 +224,7 @@ function renderCellContent(cell: HTMLElement, text: string): void {
 /**
  * The markdown source of a cell. The focused cell is read live from the DOM
  * (it holds raw, editable text); every other cell is rendered, so its visible
- * text omits markers — we read the stashed `dataset.lpSrc` instead.
+ * text omits markers - we read the stashed `dataset.lpSrc` instead.
  */
 function readCellSource(cell: HTMLElement): string {
   if (cell === cell.ownerDocument.activeElement) return readCellText(cell);
@@ -245,7 +245,7 @@ function caretToEnd(cell: HTMLElement): void {
  * Apply an inline markdown wrap (`**`, `_`, `~~`, `` ` ``) to the selection
  * inside a focused table cell, then push the edit through the cell's normal
  * serialization pipeline (a synthetic `input`). Operates on the cell's own DOM
- * selection — when focused the cell holds raw, editable text — mirroring the
+ * selection - when focused the cell holds raw, editable text - mirroring the
  * CM6 toolbar's `wrapSelection`. Used by the toolbar buttons and the in-cell
  * Mod-b / Mod-i shortcuts. Returns false when there is no usable selection.
  */
@@ -313,7 +313,7 @@ function insertLineBreakAtSelection(cell: HTMLElement): void {
   sel.addRange(newRange);
 }
 
-/** Locate a cell DOM node for `(row, col)` — `row === -1` is the header. */
+/** Locate a cell DOM node for `(row, col)` - `row === -1` is the header. */
 function cellAt(root: HTMLElement, row: number, col: number): HTMLElement | null {
   if (row === -1) {
     const ths = root.querySelectorAll<HTMLElement>('thead > tr > th');
@@ -417,7 +417,7 @@ export class TableWidget extends WidgetType {
     // Wrap the scroll container in a non-clipping outer so the floating
     // toolbars (column bar above the table, row bar at its left) can extend
     // beyond the scroll area. `.cm-lp-table-wrap` sets `overflow-x: auto`,
-    // which CSS promotes overflow-y to `auto` too — anything positioned outside
+    // which CSS promotes overflow-y to `auto` too - anything positioned outside
     // it would be clipped, hence the separate outer element.
     const outer = document.createElement('div');
     outer.className = 'cm-lp-table-outer';
@@ -437,7 +437,7 @@ export class TableWidget extends WidgetType {
       requestAnimationFrame(() => this.syncToolbars(outer));
     });
     // Horizontal table scroll slides the columns under the (outer-anchored)
-    // column bar — realign it. rAF-throttled to one update per scroll burst.
+    // column bar - realign it. rAF-throttled to one update per scroll burst.
     root.addEventListener('scroll', () => {
       if (this.scrollScheduled) return;
       this.scrollScheduled = true;
@@ -453,7 +453,7 @@ export class TableWidget extends WidgetType {
   /**
    * Update cell text without rebuilding the DOM tree, preserving focus and
    * caret in any cell the user is currently editing. Returns true if the
-   * existing root can host the new state — if structure changed (unlikely
+   * existing root can host the new state - if structure changed (unlikely
    * because `eq()` already filtered) we bail out and let CM6 rebuild.
    */
   updateDOM(dom: HTMLElement, view: EditorView): boolean {
@@ -470,7 +470,7 @@ export class TableWidget extends WidgetType {
 
     const active = document.activeElement;
 
-    // The focused cell holds raw, editable source — never touch it (that would
+    // The focused cell holds raw, editable source - never touch it (that would
     // wipe the caret). Every other cell is re-rendered from its target source
     // only when that source actually changed, keyed off the stashed `lpSrc`.
     headerCells.forEach((th, col) => {
@@ -491,7 +491,7 @@ export class TableWidget extends WidgetType {
       });
     });
 
-    // Cell widths can shift as text is typed — keep the floating toolbars aligned.
+    // Cell widths can shift as text is typed - keep the floating toolbars aligned.
     this.syncToolbars(dom);
     return true;
   }
@@ -506,7 +506,7 @@ export class TableWidget extends WidgetType {
   private attachCellListeners(cell: HTMLElement, addr: CellAddress): void {
     // Reveal raw markdown source when the cell is focused (so it can be edited),
     // and re-render the formatted view when focus leaves. A plain cell renders
-    // identically raw and formatted, so it skips the swap — that keeps the
+    // identically raw and formatted, so it skips the swap - that keeps the
     // browser's native click-to-position caret instead of jumping to the end.
     cell.addEventListener('focus', () => {
       const src = cell.dataset.lpSrc ?? readCellText(cell);
@@ -552,7 +552,7 @@ export class TableWidget extends WidgetType {
     });
 
     // Block paste with newlines from breaking table syntax. Strip to plain
-    // text and collapse newlines to a single space — literal pipes flow
+    // text and collapse newlines to a single space - literal pipes flow
     // through and get escaped at serialization time (`escapeCell`).
     cell.addEventListener('paste', (e) => {
       const text = e.clipboardData?.getData('text/plain');
@@ -600,7 +600,7 @@ export class TableWidget extends WidgetType {
       e.preventDefault();
       if (e.shiftKey) {
         // Insert a soft line break inside the cell. Browser default for
-        // Shift+Enter in contenteditable varies (some insert <br>, some <div>) —
+        // Shift+Enter in contenteditable varies (some insert <br>, some <div>) -
         // we own the insertion to keep DOM shape predictable.
         insertLineBreakAtSelection(cell);
         this.dispatchFromDom(cell);
@@ -663,7 +663,7 @@ export class TableWidget extends WidgetType {
 
   /** Append an empty body row and focus its first cell after the rebuild. */
   private addRowAndFocus(root: HTMLElement, newRowIdx: number): void {
-    // `root` may be the wrap (keyboard path) or the outer — both contain the
+    // `root` may be the wrap (keyboard path) or the outer - both contain the
     // table, which is all `applyStructuralOp` needs.
     this.applyStructuralOp(
       root,
@@ -678,7 +678,7 @@ export class TableWidget extends WidgetType {
    * to GFM, and dispatch one change. Because structure differs, CM6 rebuilds the
    * widget (`eq` false → `toDOM`); the rebuilt DOM replaces ours, so we look it
    * up by position and re-focus `target` on the next frame. `container` may be
-   * the wrap or the outer — both descend to the table.
+   * the wrap or the outer - both descend to the table.
    */
   private applyStructuralOp(
     container: HTMLElement,
@@ -735,7 +735,7 @@ export class TableWidget extends WidgetType {
   // Two contextual bars (Obsidian-style): a column bar floating above the active
   // column (alignment + insert left/right + delete) and a row bar at the table's
   // left edge, level with the active row (insert above/below + delete). The
-  // "active" cell is the focused cell, falling back to the last-hovered cell —
+  // "active" cell is the focused cell, falling back to the last-hovered cell -
   // both read from the DOM so the toolbars survive the widget's ephemeral
   // instances. Every button routes through `applyStructuralOp`.
 
@@ -792,8 +792,8 @@ export class TableWidget extends WidgetType {
     b.className = `cm-lp-table-btn cm-lp-table-${extraClass}${danger ? ' is-danger' : ''}`;
     b.title = label;
     b.setAttribute('aria-label', label);
-    b.innerHTML = icon; // Trusted static SVG (no user input) — same as code-copy / TOC.
-    // Keep the active cell focused (and the hover target intact) on press —
+    b.innerHTML = icon; // Trusted static SVG (no user input) - same as code-copy / TOC.
+    // Keep the active cell focused (and the hover target intact) on press -
     // otherwise mousedown blurs the cell and `focusout` would hide the toolbars
     // before the click handler runs.
     b.addEventListener('mousedown', (e) => e.preventDefault());
@@ -1036,7 +1036,7 @@ export class TableWidget extends WidgetType {
       alignments: current.alignments
     });
 
-    if (currentMd === newMd) return; // No-op (defensive — saves an empty tx).
+    if (currentMd === newMd) return; // No-op (defensive - saves an empty tx).
 
     view.dispatch({
       changes: { from: range.from, to: range.to, insert: newMd },

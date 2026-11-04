@@ -213,7 +213,7 @@ const idempotencyHandle: Handle = async ({ event, resolve }) => {
   // Process request normally
   const response = await resolve(event);
 
-  // Cache only successful responses — caching errors would make retries useless
+  // Cache only successful responses - caching errors would make retries useless
   // (pushSilently reuses the same Idempotency-Key for all retry attempts)
   if (response.status >= 200 && response.status < 300) {
     const clone = response.clone();

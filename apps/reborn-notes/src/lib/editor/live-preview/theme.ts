@@ -12,12 +12,12 @@ export const livePreviewTheme = EditorView.theme({
       "'Roboto', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'"
   },
 
-  // Headings — applied via Decoration.line on the heading line element.
-  // NOTE: use padding (not margin) — CM6 measures `.cm-line` via
+  // Headings - applied via Decoration.line on the heading line element.
+  // NOTE: use padding (not margin) - CM6 measures `.cm-line` via
   // getBoundingClientRect() which excludes margins; vertical margins on lines
   // de-sync the height map and break posAtCoords (clicks land off-target).
   // The `& span { textDecoration: none }` overrides defaultHighlightStyle
-  // which adds underline to tags.heading — Preview has no underline, so we
+  // which adds underline to tags.heading - Preview has no underline, so we
   // strip it here for visual parity.
   '.cm-lp-h1-line': {
     fontSize: '2rem',
@@ -69,7 +69,7 @@ export const livePreviewTheme = EditorView.theme({
     '& span': { textDecoration: 'none' }
   },
 
-  // Desktop heading sizes — match MarkdownPreview.svelte (md: 768px+).
+  // Desktop heading sizes - match MarkdownPreview.svelte (md: 768px+).
   '@media (min-width: 768px)': {
     '.cm-lp-h1-line': { fontSize: '1.875rem' },
     '.cm-lp-h2-line': { fontSize: '1.5rem' },
@@ -106,7 +106,7 @@ export const livePreviewTheme = EditorView.theme({
     transition: 'opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease'
   },
   // Reveal on hover (desktop) or when the caret is on the heading line (the
-  // `cm-lp-head-active` class — the only way to surface it on touch).
+  // `cm-lp-head-active` class - the only way to surface it on touch).
   '.cm-lp-h1-line:hover .cm-lp-head-anchor, .cm-lp-h2-line:hover .cm-lp-head-anchor, .cm-lp-h3-line:hover .cm-lp-head-anchor, .cm-lp-h4-line:hover .cm-lp-head-anchor, .cm-lp-h5-line:hover .cm-lp-head-anchor, .cm-lp-h6-line:hover .cm-lp-head-anchor':
     { opacity: '1' },
   '.cm-lp-head-active .cm-lp-head-anchor': { opacity: '1' },
@@ -146,7 +146,7 @@ export const livePreviewTheme = EditorView.theme({
     borderRadius: '0.25em'
   },
 
-  // Link rendered by LinkWidget — clickable anchor
+  // Link rendered by LinkWidget - clickable anchor
   '.cm-lp-link': {
     color: 'var(--primary)',
     textDecoration: 'underline',
@@ -164,7 +164,7 @@ export const livePreviewTheme = EditorView.theme({
     cursor: 'not-allowed'
   },
 
-  // Blockquote — line-level border + indent
+  // Blockquote - line-level border + indent
   '.cm-lp-blockquote-line': {
     borderInlineStart: '3px solid var(--border)',
     paddingInlineStart: '0.75em',
@@ -172,7 +172,7 @@ export const livePreviewTheme = EditorView.theme({
     fontStyle: 'italic'
   },
 
-  // Horizontal rule (thematic break) — the raw `---`/`***`/`___` is hidden by
+  // Horizontal rule (thematic break) - the raw `---`/`***`/`___` is hidden by
   // a full-line replace, leaving an empty line we paint a centered divider on
   // via `::before`. Padding (not margin) gives vertical breathing room without
   // de-syncing the CM6 height map (same rule as headings). The 1px border
@@ -189,12 +189,12 @@ export const livePreviewTheme = EditorView.theme({
     insetInlineEnd: '0',
     top: '50%',
     borderTop: '1px solid var(--border)',
-    // Pseudo-element must not swallow clicks — the caret needs to land on the
+    // Pseudo-element must not swallow clicks - the caret needs to land on the
     // line to switch back to the raw, editable `---`.
     pointerEvents: 'none'
   },
 
-  // Bullet list — depth-aware padding + ::before bullet.
+  // Bullet list - depth-aware padding + ::before bullet.
   //
   // Tapered ramp (mirrored in MarkdownPreview.svelte's `[data-d{N}]` rules,
   // with one deliberate exception: Preview renders first-level ol at 2em so
@@ -202,11 +202,11 @@ export const livePreviewTheme = EditorView.theme({
   // edge - see the ol[data-d='1'] comment there. Here the number is source
   // text, never a marker, so 1.5em stays safe):
   //   d1 → 1.5em (preserves the historical first-level indent)
-  //   d2 → 4em   (krok +2.5em — a noticeable visual step so a nested item
+  //   d2 → 4em   (krok +2.5em - a noticeable visual step so a nested item
   //               doesn't sit in the same column as the parent's content)
   //   d3..d6 → +1.5em per level (5.5, 7, 8.5, 10)
   //   d7..d12 → +0.75em per level (10.75, 11.5, 12.25, 13, 13.75, 14.5)
-  //   clamp at d12 ≈ 14.5em (~232px on a 360px viewport — usable on mobile,
+  //   clamp at d12 ≈ 14.5em (~232px on a 360px viewport - usable on mobile,
   //   deeper trees are vanishingly rare in real notes)
   //
   // Each ListItem gets `cm-lp-bullet-line cm-lp-bullet-d{N}` from
@@ -249,7 +249,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-bullet-d12': { paddingInlineStart: '14.5em' },
   '.cm-lp-bullet-d12::before': { insetInlineStart: '13.5em' },
 
-  // Ordered list — same indent rhythm but no ::before (number stays in source).
+  // Ordered list - same indent rhythm but no ::before (number stays in source).
   '.cm-lp-ordered-line': {},
   '.cm-lp-ordered-d1': { paddingInlineStart: '1.5em' },
   '.cm-lp-ordered-d2': { paddingInlineStart: '4em' },
@@ -266,7 +266,7 @@ export const livePreviewTheme = EditorView.theme({
 
   // ─── GFM task list (- [ ] / - [x]) ───────────────────────────
   // Same depth ramp as bullets so mixed bullet/task siblings line up. No
-  // `::before` content — the `TaskCheckboxWidget` <input> sits in the marker
+  // `::before` content - the `TaskCheckboxWidget` <input> sits in the marker
   // zone instead. Completed lines (`[x]`) get an extra `cm-lp-task-checked`
   // for strikethrough + muted color.
   '.cm-lp-task-line': {
@@ -303,7 +303,7 @@ export const livePreviewTheme = EditorView.theme({
   // creates a new BFC that prevents the <pre>'s `white-space: pre` intrinsic
   // width from propagating up to `.cm-content` and overflowing the viewport
   // on mobile (sibling paragraphs/headings would otherwise stretch with it).
-  // Margin must stay 0 — same height-map rule as line decorations.
+  // Margin must stay 0 - same height-map rule as line decorations.
   // Non-scrolling positioning context for the copy button. Margin must stay 0
   // (same CM6 height-map rule as line decorations); the inner wrap owns the
   // horizontal scroll so the absolutely-placed button stays pinned top-right.
@@ -349,7 +349,7 @@ export const livePreviewTheme = EditorView.theme({
     fontSize: 'inherit'
   },
 
-  // Copy button — pinned to the block's top-right, over the <pre>. Colours use
+  // Copy button - pinned to the block's top-right, over the <pre>. Colours use
   // app CSS vars so the button tracks light/dark via the cascade (the CM6
   // theme stylesheet can't target `.dark` on <html> directly).
   '.cm-lp-code-copy': {
@@ -384,7 +384,7 @@ export const livePreviewTheme = EditorView.theme({
 
   // ─── In-note table of contents ───────────────────────────────
   // Cursor outside: the managed block is replaced with a boxed <nav> + corner
-  // toolbar — mirrors `.note-toc` in MarkdownPreview.svelte (keep in sync) and
+  // toolbar - mirrors `.note-toc` in MarkdownPreview.svelte (keep in sync) and
   // the copy-button precedent above. Margin must stay 0 (CM6 height-map rule for
   // block widgets); the markdown's surrounding blank lines provide the spacing.
   '.cm-lp-toc': {
@@ -412,9 +412,9 @@ export const livePreviewTheme = EditorView.theme({
     cursor: 'pointer'
   },
   '.cm-lp-toc a:hover': { color: 'var(--primary)' },
-  // Corner toolbar — hidden until hover/focus; force-shown when out of date so
+  // Corner toolbar - hidden until hover/focus; force-shown when out of date so
   // the drift is noticed (a child can't out-opaque its parent, so the reveal
-  // lives on the actions wrapper — same `:has()` trick as the preview).
+  // lives on the actions wrapper - same `:has()` trick as the preview).
   '.cm-lp-toc-actions': {
     position: 'absolute',
     top: '0.4em',
@@ -452,7 +452,7 @@ export const livePreviewTheme = EditorView.theme({
 
   // Cursor inside: raw markdown reveal keeps the box background per-line (like the
   // fenced-code-block reveal) so the block stays distinct instead of blending into
-  // the note. Padding-only (no margin) — CM6 height-map rule. Background matches
+  // the note. Padding-only (no margin) - CM6 height-map rule. Background matches
   // the `.cm-lp-toc` widget so click-to-edit doesn't change the block's colour.
   '.cm-lp-toc-line': {
     backgroundColor: 'color-mix(in srgb, var(--muted) 40%, transparent)',
@@ -471,7 +471,7 @@ export const livePreviewTheme = EditorView.theme({
   },
 
   // Cursor inside: per-line decoration so the raw fences and body share
-  // a continuous code-block look. Padding-only (no margin) — see header
+  // a continuous code-block look. Padding-only (no margin) - see header
   // note about CM6 height map.
   '.cm-lp-code-line': {
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
@@ -535,12 +535,12 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-codeblock .tok-invalid': { color: '#f00' },
 
   // ─── GFM Tables (always editable, Obsidian-style) ─────────────
-  // Block-replace widget. Margin must stay 0 — same height-map rule
+  // Block-replace widget. Margin must stay 0 - same height-map rule
   // as fenced code blocks. Padding lives on the wrapper instead.
   '.cm-lp-table-wrap': {
     margin: '0',
     padding: '0.25em 0',
-    // `max-width: 100%` keeps the wrapper inside `.cm-content` on mobile —
+    // `max-width: 100%` keeps the wrapper inside `.cm-content` on mobile -
     // without it, a wide table's intrinsic min-content can push `.cm-content`
     // past the viewport, dragging headings/paragraphs along (same failure
     // mode as the code-block widget).
@@ -656,7 +656,7 @@ export const livePreviewTheme = EditorView.theme({
 
   // ─── Inline images & placeholders ─────────────────────────────
   // Image widgets are emitted as inline replacements (no `block: true`),
-  // so they live inside `.cm-line` flow. Margin must stay 0 — same height-map
+  // so they live inside `.cm-line` flow. Margin must stay 0 - same height-map
   // rule as line/block decorations. Visual parity with `.image-placeholder`
   // in MarkdownPreview.svelte is intentional, but the layout adapts to the
   // inline context (inline-flex instead of block + text-align).
@@ -711,6 +711,6 @@ export const livePreviewTheme = EditorView.theme({
 
   // Dark-mode token overrides live in NoteEditor.svelte's `<style>`
   // (`:global(.dark .cm-lp-codeblock .tok-*)`). They need a `.dark`
-  // ancestor selector, which CM6 themes can't express — themes scope
+  // ancestor selector, which CM6 themes can't express - themes scope
   // every key under the editor root via a generated class.
 });

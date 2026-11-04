@@ -84,10 +84,10 @@
     /** When true, indicates editor is in split view context (toolbar full-width, no max-w centering). */
     splitView?: boolean;
     onchange?: (content: string) => void;
-    /** Called once after CM6 mounts — passes the scrollable .cm-scroller element */
+    /** Called once after CM6 mounts - passes the scrollable .cm-scroller element */
     onscrollerinit?: (el: HTMLElement) => void;
     /**
-     * Called once after CM6 mounts — passes the EditorView. Used by
+     * Called once after CM6 mounts - passes the EditorView. Used by
      * scroll-sync to build a line-based adapter; safe to ignore.
      */
     onviewinit?: (view: EditorView) => void;
@@ -112,11 +112,11 @@
     availableNotes?: NoteLinkItem[];
     /** Current note id (excluded from autocomplete suggestions) */
     currentNoteId?: string | null;
-    /** User preference for external image loading — drives `ImageWidget` rendering. */
+    /** User preference for external image loading - drives `ImageWidget` rendering. */
     imageLoadMode?: ImageLoadMode;
-    /** Live Preview only — insert-or-refresh the in-note TOC (corner refresh button). */
+    /** Live Preview only - insert-or-refresh the in-note TOC (corner refresh button). */
     onTocRefresh?: () => void;
-    /** Live Preview only — remove the in-note TOC (corner trash button). */
+    /** Live Preview only - remove the in-note TOC (corner trash button). */
     onTocDelete?: () => void;
   } = $props();
 
@@ -140,7 +140,7 @@
    * Builds the Live Preview options bag from an explicit mode argument + i18n.
    *
    * Mode is passed in (rather than read from the closure) so the `$effect`
-   * below can read `imageLoadMode` directly into a `const` — that read is the
+   * below can read `imageLoadMode` directly into a `const` - that read is the
    * reactive dep, and an explicit assignment can't be silently DCE'd. The
    * helper itself stays a plain function; calling it from inside or outside
    * a reactive context is equally safe.
@@ -219,7 +219,7 @@
     if (!view) return false;
 
     // Inside a Live Preview table cell the editable text lives in the cell's
-    // contenteditable, not the CM6 doc — delegate so the wrap lands on the
+    // contenteditable, not the CM6 doc - delegate so the wrap lands on the
     // cell's selection and round-trips through the table's edit pipeline.
     const cell = focusedTableCell();
     if (cell) return wrapCellSelection(cell, marker);
@@ -244,15 +244,15 @@
     const text = line.text;
     // Default preserves leading whitespace so toolbar actions on a nested
     // list item (e.g. converting `   1. three` to bullet) yield `   * three`
-    // rather than placing the new marker in column 0. Headings opt out —
+    // rather than placing the new marker in column 0. Headings opt out -
     // a heading inside a list is a semantic anomaly, so we lift the line
     // back to top level.
     const leadingWs = (text.match(/^\s*/) ?? [''])[0];
     const afterWs = text.slice(leadingWs.length);
     const indent = preserveIndent ? leadingWs : '';
 
-    // Treat any bullet marker (`- `/`* `/`+ `) — with or without a GFM task
-    // marker `[ ]` / `[x]` after it — as the same type; any ordered marker
+    // Treat any bullet marker (`- `/`* `/`+ `) - with or without a GFM task
+    // marker `[ ]` / `[x]` after it - as the same type; any ordered marker
     // (`N. `/`N) `) as the same type. A single click toggles off regardless
     // of which char/number is in the source, and converting between
     // bullet/task/ordered replaces the existing marker rather than stacking.
@@ -262,7 +262,7 @@
     const isTaskPrefix = /^[-+*] \[[ xX]\] $/.test(prefix);
     const activeIsTask =
       activeMarker !== null && /^[-+*] \[[ xX]\] /.test(activeMarker[0]);
-    // Bullet button on an existing task line: don't treat as same-type — let
+    // Bullet button on an existing task line: don't treat as same-type - let
     // the rebuild branch run, which strips the task marker and inserts a
     // plain bullet (so `- [ ] foo` → `- foo`, not toggle off).
     const sameTypeActive =
@@ -494,7 +494,7 @@
           return true;
         }
       },
-      // List-aware Tab / Shift-Tab — must precede `indentWithTab`. Returns
+      // List-aware Tab / Shift-Tab - must precede `indentWithTab`. Returns
       // false outside list contexts so the default indent commands handle
       // plain text, continuation lines, and multi-line selections.
       { key: 'Tab', run: listIndent, shift: listOutdent },
@@ -535,7 +535,7 @@
         noteLinkDecoration,
         // Highest precedence so the search mark becomes the INNERMOST span (CM6
         // nests higher-precedence decorations deeper) and its background paints
-        // ON TOP of Live Preview's own inline marks — e.g. `cm-lp-code`, whose
+        // ON TOP of Live Preview's own inline marks - e.g. `cm-lp-code`, whose
         // grey background would otherwise occlude the highlight on a match that
         // lands inside inline code.
         Prec.highest(noteSearchExtension),
@@ -673,7 +673,7 @@
     // container to vv.height (mobile root in +page.svelte / SidebarProvider
     // on desktop), so this dispatch nudges the scroll so the line under the
     // caret lands comfortably above the keyboard. Threshold of 100px filters
-    // out incidental resizes (browser chrome show/hide, address bar) — only
+    // out incidental resizes (browser chrome show/hide, address bar) - only
     // a soft keyboard moves vv.height by more than that. Only fires when the
     // editor has focus, so split view's unfocused pane doesn't scroll.
     let prevVvHeight = window.visualViewport?.height ?? 0;
@@ -721,7 +721,7 @@
     });
   });
 
-  // Sync placeholder prop — periodic notes set placeholder kind-aware after the
+  // Sync placeholder prop - periodic notes set placeholder kind-aware after the
   // async loadNote() resolves their folderId, so the prop changes after mount.
   $effect(() => {
     const next = placeholder;
@@ -742,7 +742,7 @@
 
   // Sync editor mode (markdown ↔ live preview) AND image-loading preference.
   // Both `$effectiveEditorMode` and `imageLoadMode` are read into local consts
-  // before the dispatch — explicit reads with side-effecting bindings can't be
+  // before the dispatch - explicit reads with side-effecting bindings can't be
   // optimised out, guaranteeing Svelte tracks them as deps. Toggling either
   // setting (or the per-note mode override) reconfigures the compartment and
   // `ImageWidget` re-renders without a remount. In split view the right pane
@@ -1137,7 +1137,7 @@
     width: 100%;
     max-width: 48rem; /* max-w-3xl */
     margin: 0 auto;
-    font-size: 1rem; /* 16px — prevents iOS auto-zoom on focus */
+    font-size: 1rem; /* 16px - prevents iOS auto-zoom on focus */
     line-height: 1.7;
     box-sizing: border-box;
     /* Belt-and-braces: even if some descendant widget tries to push intrinsic
@@ -1175,7 +1175,7 @@
     caret-color: currentColor;
   }
 
-  /* Live Preview — code block token colors in dark mode.
+  /* Live Preview - code block token colors in dark mode.
      Light-mode palette ships in editor/live-preview/theme.ts; CM6 themes
      can't reach .dark on <html>, so dark overrides go here. */
   :global(.dark .cm-host .cm-lp-codeblock .tok-keyword),
@@ -1225,7 +1225,7 @@
     border-radius: 2px;
   }
 
-  /* In-note search (find) highlights — driven by editor/note-search.ts. Colors
+  /* In-note search (find) highlights - driven by editor/note-search.ts. Colors
      share the --rn-find-* vars defined globally on the note page so the editor
      and the rendered preview's ::highlight() styles stay in sync. */
   :global(.cm-host .cm-note-search-match) {

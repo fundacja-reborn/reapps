@@ -2,9 +2,9 @@
  * Shared marked renderer overrides for list / task-list / image rendering.
  *
  * Used by:
- *  - `MarkdownPreview.svelte` (interactive — checkbox click toggles source via
+ *  - `MarkdownPreview.svelte` (interactive - checkbox click toggles source via
  *    `data-task-index`)
- *  - `exportNoteAsPdf` (static — same HTML; the data attribute and the
+ *  - `exportNoteAsPdf` (static - same HTML; the data attribute and the
  *    missing `disabled` flag on the checkbox are harmless in non-interactive
  *    output, and reusing the same shape keeps the export visually in step
  *    with what the user sees while editing)
@@ -31,7 +31,7 @@ export function createMarkdownListRenderers(): {
 
   // Stateful depth-aware list renderer. `this` is bound to the renderer
   // instance by marked's use({renderer}) wrapper, so we delegate item
-  // rendering to this.listitem (overridden below) — items containing nested
+  // rendering to this.listitem (overridden below) - items containing nested
   // lists will recurse back through this same override.
   renderer.list = function listOverride(this: unknown, token: Tokens.List) {
     listDepth++;
@@ -50,12 +50,12 @@ export function createMarkdownListRenderers(): {
     return `<${tag}${startAttr} data-d="${depth}">\n${body}</${tag}>\n`;
   };
 
-  // GFM task list item — marked sets `task: true` on the token and prepends
+  // GFM task list item - marked sets `task: true` on the token and prepends
   // a `checkbox` token to `tokens`. The default renderer wraps each <li>
   // without a class; we add `task-list-item` (+ `task-list-item-checked` for
   // `[x]`) so CSS can drop the bullet and apply strikethrough.
   // `data-task-index` is the zero-based ordinal of the task in render order
-  // — Preview uses it to map a checkbox click back to the matching `[ ]`/`[x]`
+  // - Preview uses it to map a checkbox click back to the matching `[ ]`/`[x]`
   // in the markdown source; in static PDF output it's just an inert attr.
   renderer.listitem = function listitemOverride(
     this: unknown,
@@ -72,7 +72,7 @@ export function createMarkdownListRenderers(): {
     }
     // Reserve this item's index *before* recursing into children. Inner
     // parsing runs nested list items through this same override, and they'd
-    // otherwise grab lower indices than the parent — making the parent's
+    // otherwise grab lower indices than the parent - making the parent's
     // `data-task-index` point past its own checkbox in the markdown source
     // (where `toggleTaskAt` walks `[ ]`/`[x]` markers top-to-bottom). Pre-
     // incrementing aligns render order with source order: parent first, then
@@ -81,7 +81,7 @@ export function createMarkdownListRenderers(): {
     // Split the parent's own inline content (checkbox + text + inline
     // formatting) from any nested list tokens. Inline gets wrapped in a span
     // so the checked-state strikethrough scopes to the parent's own line
-    // only — `text-decoration: line-through` propagates through inline
+    // only - `text-decoration: line-through` propagates through inline
     // descendants of a line box, and `text-decoration: none` on a child
     // block does NOT cancel the parent's drawn line (a documented CSS
     // quirk; colour/opacity reset would still leave the strike visible on
@@ -126,22 +126,22 @@ const BLOCKED_ICON_SVG =
 
 /**
  * Image renderer for Preview. Behaviour by `ImageLoadMode`:
- *  - `always` — emit a plain lazy `<img>`.
- *  - `ask`    — emit a click-to-load placeholder *with* a Load button.
- *  - `never`  — emit the placeholder *without* a Load button.
+ *  - `always` - emit a plain lazy `<img>`.
+ *  - `ask`    - emit a click-to-load placeholder *with* a Load button.
+ *  - `never`  - emit the placeholder *without* a Load button.
  * `data:` URIs are always blocked (base64 isn't supported) regardless of mode.
  *
  * `getAskPlaceholderCount()` returns how many ask-mode Load buttons the last
- * parse emitted — the single source of truth for whether the "Load all images"
+ * parse emitted - the single source of truth for whether the "Load all images"
  * banner should show. The count is structural (the renderer bumps it only when
  * it actually runs the ask-mode branch), so unlike scanning the output HTML for
  * the `.image-placeholder-load` class it cannot be tripped by a note whose own
  * text happens to contain that class name or `![](…)` syntax inside a code span
- * — marked never calls this renderer for image syntax inside inline code or
+ * - marked never calls this renderer for image syntax inside inline code or
  * fenced blocks. (That false positive is exactly what the prior source-regex
  * and HTML-substring gates suffered from; see markdown-to-html.spec.ts.)
  *
- * `translate(key)` resolves an i18n key at render time — the caller wraps its
+ * `translate(key)` resolves an i18n key at render time - the caller wraps its
  * reactive `$t` so placeholder labels follow locale changes. Call `setMode()`
  * and `reset()` before each parse, then read `getAskPlaceholderCount()` after.
  */

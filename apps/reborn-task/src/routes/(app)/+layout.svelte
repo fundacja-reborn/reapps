@@ -181,10 +181,10 @@
 		if (activeSection === 'lists') {
 			if (isMobile) {
 				if (mobileView === 'tasks' && mobileTaskListRef) {
-					// Already viewing a task list — just focus quick-add
+					// Already viewing a task list - just focus quick-add
 					mobileTaskListRef.focusQuickAdd();
 				} else {
-					// Viewing list catalog (sidebar) — navigate to default list + focus
+					// Viewing list catalog (sidebar) - navigate to default list + focus
 					const defaultList = $activeLists.find((l) => l.is_default) ?? $activeLists[0];
 					if (defaultList) {
 						await handleNavigateToList(defaultList.id);
@@ -193,7 +193,7 @@
 					}
 				}
 			} else if (isTaskPage) {
-				// Desktop: task detail is open — navigate back to list, then focus quick-add
+				// Desktop: task detail is open - navigate back to list, then focus quick-add
 				const targetListId =
 					selectedListId && !['starred', 'completed', 'trash'].includes(selectedListId)
 						? selectedListId
@@ -209,7 +209,7 @@
 				window.dispatchEvent(new CustomEvent('focus-quick-add'));
 			}
 		} else if (activeSection === 'trash' || activeSection === 'overdue') {
-			// Trash/Overdue — navigate to default list, then focus
+			// Trash/Overdue - navigate to default list, then focus
 			const defaultList = $activeLists.find((l) => l.is_default) ?? $activeLists[0];
 			if (defaultList) {
 				await handleNavigateToList(defaultList.id);
@@ -221,11 +221,11 @@
 				}
 			}
 		} else {
-			// Filter view — focus quick-add
+			// Filter view - focus quick-add
 			if (isMobile) {
 				sidebarTaskListRef?.focusQuickAdd();
 			} else if (isTaskPage) {
-				// Desktop: task detail is open — navigate back to filter route, then focus quick-add
+				// Desktop: task detail is open - navigate back to filter route, then focus quick-add
 				const sectionRouteMap: Partial<Record<Section, string>> = {
 					all: '/all',
 					starred: '/starred',
@@ -364,12 +364,12 @@
 							await listOperationsService.ensureDefaultList($session.user.id);
 							await taskListStore.loadLists();
 						} else if (!navigator.onLine) {
-							// First run offline — cannot sync, show blocking UI
+							// First run offline - cannot sync, show blocking UI
 							needsOnlineSetup = true;
 							isLoading = false;
 							return;
 						}
-						// Online account but no lists yet — background sync (initialSync)
+						// Online account but no lists yet - background sync (initialSync)
 						// will pull them from server and call ensureDefaultList() in its
 						// post-sync chain. Don't create a list here to avoid duplicates.
 					}
@@ -436,7 +436,7 @@
 	});
 
 	// Sync route → activeSection (for deep links / bookmarks)
-	// Only react to route changes — untrack activeSection to avoid circular loop
+	// Only react to route changes - untrack activeSection to avoid circular loop
 	// Use $page.route.id (base-path agnostic) instead of $page.url.pathname
 	$effect(() => {
 		const routeId = $page.route.id ?? '';
@@ -546,7 +546,7 @@
 			});
 		}
 		// Clear sidebar search state when switching sections (mirrors NoteList's
-		// section-change effect — the sidebar list lives in the new
+		// section-change effect - the sidebar list lives in the new
 		// `task-list-view` store and `setSection` triggers an internal refresh,
 		// but the search inputs are owned by SidebarTaskList so they reset there
 		// too via its own $effect on `section`).
@@ -564,7 +564,7 @@
 		if (routeId.includes('/tasks/')) {
 			goBackFromTaskDetail(selectedListId, { replace: true });
 		} else {
-			// For search, settings — history.back() works fine
+			// For search, settings - history.back() works fine
 			history.back();
 		}
 	}
@@ -877,7 +877,7 @@
 		browser && ($session.isAuthenticated || $session.isLocalOnly === true) && $session.hasE2E
 	);
 
-	// Auth guard — redirect when session check is done and user is not authenticated
+	// Auth guard - redirect when session check is done and user is not authenticated
 	let isAuthRedirecting = $state(false);
 
 	$effect(() => {
