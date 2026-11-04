@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
-import { getTextDirection, inlineSide, isTextDirection } from '../direction';
+import { detectTextDirection, getTextDirection, inlineSide, isTextDirection } from '../direction';
 import {
   applyDocumentLocale,
   readDirectionOverride,
@@ -34,6 +34,16 @@ describe('getTextDirection', () => {
     expect(inlineSide('start', 'ltr')).toBe('left');
     expect(inlineSide('end', 'rtl')).toBe('left');
     expect(inlineSide('start', 'rtl')).toBe('right');
+  });
+
+  it('detectTextDirection follows the first letter, skipping neutrals', () => {
+    expect(detectTextDirection('# مرحبا world')).toBe('rtl');
+    expect(detectTextDirection('- 12) שלום')).toBe('rtl');
+    expect(detectTextDirection('re/notes هو تطبيق')).toBe('ltr');
+    expect(detectTextDirection('  Zażółć gęślą jaźń')).toBe('ltr');
+    expect(detectTextDirection('日本語')).toBe('ltr');
+    expect(detectTextDirection('2026-11-04, 15:47 - ...')).toBeNull();
+    expect(detectTextDirection('')).toBeNull();
   });
 
   it('isTextDirection accepts exactly ltr/rtl', () => {
