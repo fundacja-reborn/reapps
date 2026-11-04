@@ -46,7 +46,7 @@
   "archiving": "Archivando...",
   "archive": {
     "title": "¿Archivar lista?",
-    "description": "¿Está seguro de que desea archivar '{name}'?",
+    "description": "¿Está seguro de que desea archivar \"{name}\"?",
     "info": "La lista archivada se ocultará, pero podrá restaurarla más tarde.",
     "confirm": "Archivar"
   },
@@ -59,7 +59,7 @@
   },
   "delete_dialog": {
     "title": "Eliminar lista de tareas",
-    "description": "¿Está seguro de que desea eliminar '{name}'?",
+    "description": "¿Está seguro de que desea eliminar \"{name}\"?",
     "e2e_warning": "Advertencia: ¡En el cifrado de conocimiento cero, los datos eliminados no se pueden recuperar!",
     "move_tasks": "Mover tareas a otra lista",
     "move_tasks_description": "Todas las tareas se moverán a la lista seleccionada.",

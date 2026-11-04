@@ -13,7 +13,7 @@
   "edit": "Edit Task",
   "delete": {
     "title": "Delete task",
-    "confirm_message": "Are you sure you want to delete task '{title}'?",
+    "confirm_message": "Are you sure you want to delete task \"{title}\"?",
     "this_only": "Delete only this occurrence",
     "future": "Delete this and all future occurrences"
   },

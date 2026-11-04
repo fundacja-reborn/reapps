@@ -13,7 +13,7 @@
   "edit": "Edytuj zadanie",
   "delete": {
     "title": "Usuń zadanie",
-    "confirm_message": "Czy na pewno chcesz usunąć zadanie '{title}'?",
+    "confirm_message": "Czy na pewno chcesz usunąć zadanie \"{title}\"?",
     "this_only": "Usuń tylko to wystąpienie",
     "future": "Usuń to i wszystkie przyszłe wystąpienia"
   },

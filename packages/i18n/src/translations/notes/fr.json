@@ -512,7 +512,7 @@
   "search": {
     "title": "Rechercher des notes",
     "placeholder": "Rechercher par titre, contenu ou tags...",
-    "no_results": "Aucune note trouvée pour '{query}'",
+    "no_results": "Aucune note trouvée pour \"{query}\"",
     "results_count": "{count} résultats trouvés",
     "filters": {
       "all": "Tout",

@@ -512,7 +512,7 @@
   "search": {
     "title": "Notizen durchsuchen",
     "placeholder": "Nach Titel, Inhalt oder Tags suchen...",
-    "no_results": "Keine Notizen für '{query}' gefunden",
+    "no_results": "Keine Notizen für \"{query}\" gefunden",
     "results_count": "{count} Ergebnisse gefunden",
     "filters": {
       "all": "Alle",
