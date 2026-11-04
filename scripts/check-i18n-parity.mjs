@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Verify i18n locale parity across all 5 supported locales (en/pl/de/fr/es).
+// Verify i18n locale parity across all supported locales (SUPPORTED_LOCALES).
 //
 // `en` is the source of truth. For each non-EN locale the script reports:
 //   - missing keys (present in EN, absent in the locale)
@@ -21,11 +21,18 @@
 //   node scripts/check-i18n-parity.mjs --namespace=release-notes
 //   node scripts/check-i18n-parity.mjs --verbose      # dump every drifted key
 //
-// Exit code: 0 when all locales match EN, 1 when any drift is found.
+// After the key comparison the script validates the messages themselves
+// (scripts/i18n-messages.mjs, `catalog` level): ICU syntax, placeholders
+// quoted into text by an apostrophe, the same placeholders and select options
+// as EN, valid plural categories, no bidi-override or invisible characters.
+// The same check runs in CI (packages/i18n/src/__tests__/icu-messages.spec.ts).
+//
+// Exit code: 0 when all locales match EN, 1 when any drift or message error is found.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { formatProblems, listCatalogs, validateCatalogs } from './i18n-messages.mjs';
 import { readSupportedLocales } from './supported-locales.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -161,6 +168,18 @@ for (const ns of namespaces) {
     console.error(`Unknown namespace: ${ns} (expected notes | common | tasks | release-notes)`);
     process.exit(2);
   }
+}
+
+console.log(`\n[messages] ICU syntax, placeholders, plural categories, characters`);
+const catalogs = listCatalogs().filter((c) => namespaces.some((ns) => c.id === ns || c.id.startsWith(`${ns}/`)));
+const problems = validateCatalogs({ locales: LOCALES, catalogs }).filter((p) => p.level === 'error');
+if (problems.length === 0) {
+  console.log(`  OK (${catalogs.length} catalogs, ${LOCALES.length} locales)`);
+} else {
+  const shown = verbose ? problems : problems.slice(0, PREVIEW_LIMIT * 3);
+  console.log(formatProblems(shown).replace(/^/gm, '  '));
+  if (shown.length < problems.length) console.log(`  ...(+${problems.length - shown.length} more, --verbose for all)`);
+  hasDrift = true;
 }
 
 console.log();
