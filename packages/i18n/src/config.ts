@@ -1,5 +1,13 @@
 /**
- * Configuration for i18n package
+ * Configuration for i18n package.
+ *
+ * SUPPORTED_LOCALES is the single source of the locale list. Dependency-free
+ * on purpose: server code imports it through the `@reborn/i18n/config`
+ * subpath (no svelte-i18n / translation bundles), the service worker and the
+ * server string tables type their maps as `Record<SupportedLocale, ...>` (so
+ * a new locale without strings fails svelte-check), and the Node scripts read
+ * the array from this file (scripts/supported-locales.mjs). Guarded by
+ * src/__tests__/supported-locales.spec.ts.
  */
 
 export const SUPPORTED_LOCALES = ['en', 'pl', 'de', 'es', 'fr'] as const;

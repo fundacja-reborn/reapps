@@ -54,15 +54,10 @@ vi.mock('@reborn/utils', () => ({
 }));
 vi.mock('@reborn/i18n', async () => {
   const { writable } = await import('svelte/store');
-  const supported = ['en', 'pl', 'de', 'es', 'fr'];
-  const isSupportedLocale = (value: unknown): value is string =>
-    typeof value === 'string' && supported.includes(value);
-  return {
-    isSupportedLocale,
-    resolveLocale: (preferred: unknown, current?: unknown) =>
-      isSupportedLocale(preferred) ? preferred : isSupportedLocale(current) ? current : 'en',
-    locale: writable('pl')
-  };
+  // The real guards from the dependency-free subpath (single locale list),
+  // without loading svelte-i18n and the translation bundles.
+  const { isSupportedLocale, resolveLocale } = await import('@reborn/i18n/config');
+  return { isSupportedLocale, resolveLocale, locale: writable('pl') };
 });
 
 import { appSettings, currentLanguage } from './app-settings.store';

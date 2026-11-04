@@ -4,6 +4,7 @@ import { locale } from 'svelte-i18n';
 import {
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
+  SUPPORTED_LOCALES,
   isSupportedLocale,
   resolveLocale
 } from '../config';
@@ -16,7 +17,7 @@ import { changeLocale } from '../setup';
 
 describe('isSupportedLocale', () => {
   it('accepts every shipped locale', () => {
-    for (const code of ['en', 'pl', 'de', 'es', 'fr']) {
+    for (const code of SUPPORTED_LOCALES) {
       expect(isSupportedLocale(code)).toBe(true);
     }
   });

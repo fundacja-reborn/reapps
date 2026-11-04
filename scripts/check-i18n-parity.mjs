@@ -26,11 +26,14 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readSupportedLocales } from './supported-locales.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TRANSLATIONS_DIR = resolve(__dirname, '..', 'packages', 'i18n', 'src', 'translations');
 const RELEASE_NOTES_TEXT_DIR = resolve(__dirname, '..', 'packages', 'i18n', 'src', 'release-notes', 'text');
-const LOCALES = ['en', 'pl', 'de', 'fr', 'es'];
+// Single source: SUPPORTED_LOCALES in packages/i18n/src/config.ts (`en` first =
+// source of truth for the comparison below).
+const LOCALES = readSupportedLocales();
 const NON_EN = LOCALES.filter((l) => l !== 'en');
 const PREVIEW_LIMIT = 10;
 

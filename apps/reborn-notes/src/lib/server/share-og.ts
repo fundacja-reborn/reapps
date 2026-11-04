@@ -6,17 +6,20 @@
 //   - The strings are never rendered by the in-app UI, so they don't need
 //     to flow through the normal $t() pipeline.
 //
-// Keep parity with the SUPPORTED_LOCALES_SERVER list in hooks.server.ts.
+// Typed `Record<SupportedLocale, ...>`: adding a locale to SUPPORTED_LOCALES
+// (@reborn/i18n/config) fails svelte-check until its strings exist here.
 // Strings match the wording of share.view.password_intro in the matching
 // notes/<locale>.json (same "End-to-end encrypted snapshot of a note ..." voice)
 // so unfurl previews and the in-app gate read consistently.
+
+import type { SupportedLocale } from '@reborn/i18n/config';
 
 type ShareOgStrings = {
   title: string;
   description: string;
 };
 
-const STRINGS: Record<string, ShareOgStrings> = {
+const STRINGS: Record<SupportedLocale, ShareOgStrings> = {
   en: {
     title: 'Shared note - re/notes',
     description: 'End-to-end encrypted snapshot of a note shared with you.'
@@ -39,6 +42,6 @@ const STRINGS: Record<string, ShareOgStrings> = {
   }
 };
 
-export function getShareOgStrings(locale: string): ShareOgStrings {
-  return STRINGS[locale] ?? STRINGS.en;
+export function getShareOgStrings(locale: SupportedLocale): ShareOgStrings {
+  return STRINGS[locale];
 }

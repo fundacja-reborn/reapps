@@ -78,6 +78,8 @@ scripts/*
 !scripts/build-native-aab.mjs
 !scripts/check-rtl-direction.mjs
 !scripts/check-rtl-direction.d.mts
+!scripts/supported-locales.mjs
+!scripts/supported-locales.d.mts
 tmp/
 patches/
 *.bak

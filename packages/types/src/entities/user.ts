@@ -9,14 +9,6 @@ export interface User {
   last_login_at?: string;
 }
 
-export interface UserSettings {
-  theme: 'light' | 'dark' | 'system';
-  language: 'en' | 'pl';
-  preferred_date_format: string;
-  preferred_time_format: '12h' | '24h';
-  notifications_enabled: boolean;
-}
-
 export interface UserProfile {
   id: string;
   username: string;

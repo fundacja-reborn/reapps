@@ -6,7 +6,10 @@
 //   - These strings are visible only during cold-start stall / offline-no-SW
 //     fallback, so they don't flow through the normal $t() pipeline.
 //
-// Keep parity with the SUPPORTED_LOCALES_SERVER list in hooks.server.ts.
+// Typed `Record<SupportedLocale, ...>`: adding a locale to SUPPORTED_LOCALES
+// (@reborn/i18n/config) fails svelte-check until its strings exist here.
+
+import type { SupportedLocale } from '@reborn/i18n/config';
 
 type AppLoadingStrings = {
 	initLoading: string; // <p>Loading re/task...</p>
@@ -14,7 +17,7 @@ type AppLoadingStrings = {
 	offline: string; // shown immediately when offline + no SW, or after 15s + offline
 };
 
-const STRINGS: Record<string, AppLoadingStrings> = {
+const STRINGS: Record<SupportedLocale, AppLoadingStrings> = {
 	en: {
 		initLoading: 'Loading re/task...',
 		stall: 'Loading is taking longer than usual. Try refreshing the page.',
@@ -42,6 +45,6 @@ const STRINGS: Record<string, AppLoadingStrings> = {
 	}
 };
 
-export function getAppLoadingStrings(locale: string): AppLoadingStrings {
-	return STRINGS[locale] ?? STRINGS.en;
+export function getAppLoadingStrings(locale: SupportedLocale): AppLoadingStrings {
+	return STRINGS[locale];
 }

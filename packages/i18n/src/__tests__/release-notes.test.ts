@@ -11,10 +11,11 @@ import {
   selectReleases
 } from '../release-notes';
 import type { ReleaseNotesText } from '../release-notes';
+import { SUPPORTED_LOCALES } from '../config';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEXT_DIR = join(__dirname, '..', 'release-notes', 'text');
-const LOCALES = ['en', 'pl', 'de', 'fr', 'es'] as const;
+const LOCALES = SUPPORTED_LOCALES;
 
 const VALID_CATEGORIES = new Set(['new', 'improved', 'fixed']);
 const VALID_APPS = new Set(['notes', 'task']);

@@ -1,5 +1,5 @@
 import { IndexedDBStore } from '../core/store';
-import type { UserSettings, SyncableEncryptedEntity } from '@reborn/types';
+import type { SyncableEncryptedEntity } from '@reborn/types';
 
 // Define UserSettingsEncrypted type locally since it's not in @reborn/types
 export interface UserSettingsEncrypted extends SyncableEncryptedEntity {
