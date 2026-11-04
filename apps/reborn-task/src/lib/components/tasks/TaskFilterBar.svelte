@@ -104,7 +104,7 @@
 						{@const Icon = opt.icon}
 						<Icon
 							class={cn(
-								'mr-2 h-4 w-4',
+								'me-2 h-4 w-4',
 								opt.value === 'starred' &&
 									filters.option === 'starred' &&
 									'fill-current text-yellow-500'
@@ -146,7 +146,7 @@
 						{@const Icon = opt.icon}
 						<Icon
 							class={cn(
-								'mr-2 h-4 w-4',
+								'me-2 h-4 w-4',
 								opt.value === 'starred' &&
 									filters.option === 'starred' &&
 									'fill-current text-yellow-500'

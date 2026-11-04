@@ -25,7 +25,7 @@
     <button
       type="button"
       onclick={() => goto('/?section=shares')}
-      class="flex w-full items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent"
+      class="flex w-full items-center gap-3 rounded-lg border p-4 text-start transition-colors hover:bg-accent"
     >
       <Share2 class="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span class="min-w-0 flex-1">

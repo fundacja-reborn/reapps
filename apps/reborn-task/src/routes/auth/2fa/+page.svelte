@@ -202,7 +202,7 @@
 
 						<Button type="submit" disabled={isLoading} class="w-full h-11">
 							{#if isLoading}
-								<RefreshCw class="h-4 w-4 mr-2 animate-spin" />
+								<RefreshCw class="h-4 w-4 me-2 animate-spin" />
 								{$t('common.loading') || 'Weryfikowanie...'}
 							{:else}
 								{$t('settings.profile.verify_and_enable', { default: 'Zweryfikuj' })}
@@ -218,7 +218,7 @@
 							}}
 							class="text-sm text-muted-foreground hover:text-foreground underline transition-colors"
 						>
-							<KeyRound class="h-3.5 w-3.5 inline mr-1" />
+							<KeyRound class="h-3.5 w-3.5 inline me-1" />
 							{$t('settings.profile.recovery_codes', { default: 'Użyj kodu zapasowego' })}
 						</button>
 					</div>
@@ -255,7 +255,7 @@
 
 						<Button type="submit" disabled={isLoading} class="w-full h-11">
 							{#if isLoading}
-								<RefreshCw class="h-4 w-4 mr-2 animate-spin" />
+								<RefreshCw class="h-4 w-4 me-2 animate-spin" />
 								{$t('common.loading') || 'Weryfikowanie...'}
 							{:else}
 								{$t('settings.profile.verify_and_enable', { default: 'Zweryfikuj' })}
@@ -271,7 +271,7 @@
 							}}
 							class="text-sm text-muted-foreground hover:text-foreground underline transition-colors"
 						>
-							<Shield class="h-3.5 w-3.5 inline mr-1" />
+							<Shield class="h-3.5 w-3.5 inline me-1" />
 							{$t('settings.profile.two_factor_auth_step3', {
 								default: 'Użyj kodu z aplikacji'
 							})}

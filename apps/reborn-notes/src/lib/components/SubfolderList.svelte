@@ -101,7 +101,7 @@
               <span class="min-w-0 flex-1 truncate">{folder.name}</span>
             {/if}
             <ChevronRight
-              class="h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground"
+              class="h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 group-hover:text-muted-foreground"
             />
           </div>
         </li>

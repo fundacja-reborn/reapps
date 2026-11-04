@@ -118,10 +118,10 @@
 				<Button
 					variant="outline"
 					size="sm"
-					class="ml-auto text-muted-foreground hover:text-destructive"
+					class="ms-auto text-muted-foreground hover:text-destructive"
 					onclick={() => (moveToTrashOpen = true)}
 				>
-					<Trash2 class="mr-1.5 h-4 w-4" />
+					<Trash2 class="me-1.5 h-4 w-4" />
 					{$t('taskList.completed.move_to_trash')}
 				</Button>
 			{/if}
@@ -134,7 +134,7 @@
 				class="text-muted-foreground hover:text-destructive"
 				onclick={() => (moveToTrashOpen = true)}
 			>
-				<Trash2 class="mr-1.5 h-4 w-4" />
+				<Trash2 class="me-1.5 h-4 w-4" />
 				{$t('taskList.completed.move_to_trash')}
 			</Button>
 		</div>
@@ -150,7 +150,7 @@
 					{$t('taskList.completed.empty_info')}
 				</p>
 				<Button variant="outline" onclick={() => window.history.back()}>
-					<Plus class="mr-2 h-4 w-4" />
+					<Plus class="me-2 h-4 w-4" />
 					{$t('taskList.go_to_lists')}
 				</Button>
 			</div>

@@ -183,7 +183,7 @@
 
       <!-- Dropdown -->
       <div
-        class="absolute left-0 top-full z-50 mt-1 min-w-[200px] rounded-md border bg-popover shadow-md"
+        class="absolute inset-s-0 top-full z-50 mt-1 min-w-[200px] rounded-md border bg-popover shadow-md"
         role="listbox"
         aria-label={$t('tags.title')}
       >
@@ -206,7 +206,7 @@
                   style={tag.color ? `background-color: ${tag.color}` : ''}
                   class:bg-muted-foreground={!tag.color}
                 ></span>
-                <span class="flex-1 truncate text-left">{tag.name}</span>
+                <span class="flex-1 truncate text-start">{tag.name}</span>
                 {#if isSelected}
                   <Check class="h-3 w-3 shrink-0 text-primary" />
                 {/if}

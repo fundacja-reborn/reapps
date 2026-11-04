@@ -85,7 +85,8 @@
   import { noteIndex } from '$lib/services/note-index.svelte';
   import { noteNavHistory } from '$lib/services/note-nav-history.svelte';
   import { tagManager } from '$lib/services/tag-manager.svelte';
-  import { toastStore } from '@reborn/ui';
+  import { toastStore, distanceFromInlineStart, inlineDelta } from '@reborn/ui';
+  import { textDirection } from '@reborn/i18n';
   import {
     flattenFolderTree,
     getAncestorIds,
@@ -614,9 +615,10 @@
   let swipeStartY = 0;
   let swiping = false;
 
+  // Edge swipe "back" starts at the inline-start edge: left in LTR, right in RTL.
   function handleSwipeStart(e: TouchEvent) {
     const touch = e.touches[0];
-    if (touch.clientX < 30) {
+    if (distanceFromInlineStart(touch.clientX, window.innerWidth, $textDirection) < 30) {
       swipeStartX = touch.clientX;
       swipeStartY = touch.clientY;
       swiping = true;
@@ -626,7 +628,7 @@
   async function handleSwipeEnd(e: TouchEvent) {
     if (!swiping) return;
     swiping = false;
-    const dx = e.changedTouches[0].clientX - swipeStartX;
+    const dx = inlineDelta(swipeStartX, e.changedTouches[0].clientX, $textDirection);
     const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY);
     if (dx > 80 && dy < 50) {
       // Walk the note visit trail first (C→B→A); only once it's exhausted does
@@ -2107,6 +2109,8 @@
     // Alt+Left / Alt+Right - Back / Forward between visited notes. Ignored when
     // focus is in the editor (there Alt+Arrow is CM6 word navigation) and only
     // while a note is open. Other modifiers excluded so it can't shadow combos.
+    // In RTL the arrows swap with the mirrored back/forward chevrons: Back is
+    // the arrow pointing at inline-start (Alt+Right).
     if (
       e.altKey &&
       !e.metaKey &&
@@ -2117,7 +2121,8 @@
       !(e.target as HTMLElement | null)?.closest('.cm-editor')
     ) {
       e.preventDefault();
-      if (e.key === 'ArrowLeft') goBackNote();
+      const backKey = $textDirection === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+      if (e.key === backKey) goBackNote();
       else goForwardNote();
     }
   }}
@@ -2147,6 +2152,7 @@
       <div
         class="absolute inset-0 flex transition-transform duration-300 ease-in-out"
         class:-translate-x-full={mobileDetailOpen}
+        class:rtl:translate-x-full={mobileDetailOpen}
       >
         <!-- Icon rail (vertical, always visible) -->
         <IconNav
@@ -2350,6 +2356,7 @@
       <div
         class="absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-in-out"
         class:translate-x-full={!mobileDetailOpen}
+        class:rtl:-translate-x-full={!mobileDetailOpen}
         ontouchstart={handleSwipeStart}
         ontouchend={handleSwipeEnd}
         role="region"
@@ -2691,9 +2698,9 @@
     <!-- ── Editor column (was SidebarInset; the variant=inset card classes are
          inlined here and the left margin follows the panel's collapsed state). ── -->
     <main
-      class="bg-background relative flex flex-1 flex-col min-w-0 overflow-hidden my-2 mr-2 rounded-xl shadow-sm"
-      class:ml-0={!panelCollapsedEffective}
-      class:ml-2={panelCollapsedEffective}
+      class="bg-background relative flex flex-1 flex-col min-w-0 overflow-hidden my-2 me-2 rounded-xl shadow-sm"
+      class:ms-0={!panelCollapsedEffective}
+      class:ms-2={panelCollapsedEffective}
     >
       {#if $activeNoteId}
         {#if historyMode === 'diff' && selectedVersion}
@@ -2838,7 +2845,7 @@
             </div>
 
             {#if searchOpen}
-              <div class="absolute right-3 top-3 z-30">
+              <div class="absolute inset-e-3 top-3 z-30">
                 <NoteSearchBar
                   query={searchQuery}
                   caseSensitive={searchCaseSensitive}
@@ -2943,7 +2950,7 @@
          point of #375 vs. the overlay drawer. ──────────────────────────────── -->
     {#if tocDocked}
       <aside
-        class="my-2 mr-2 flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border bg-background shadow-sm"
+        class="my-2 me-2 flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border bg-background shadow-sm"
         aria-label={$t('outline.title')}
       >
         <div class="flex shrink-0 items-center gap-2 border-b px-4 py-3">

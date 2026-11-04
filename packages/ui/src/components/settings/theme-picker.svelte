@@ -22,7 +22,7 @@
   ];
 </script>
 
-<div class="flex rounded-lg border divide-x overflow-hidden">
+<div class="flex rounded-lg border divide-x rtl:divide-x-reverse overflow-hidden">
   {#each options as opt (opt.value)}
     {@const active = value === opt.value}
     <button

@@ -57,13 +57,13 @@
 
 		<div class="py-3">
 			<RadioGroup bind:value={selectedOption}>
-				<div class="flex items-center space-x-2 mb-3">
+				<div class="flex items-center gap-2 mb-3">
 					<RadioGroupItem value="this_and_future" id="opt_this_and_future" />
 					<Label for="opt_this_and_future" class="font-normal cursor-pointer">
 						{$t('task.recurring_instance.edit_option_this_and_future')}
 					</Label>
 				</div>
-				<div class="flex items-center space-x-2">
+				<div class="flex items-center gap-2">
 					<RadioGroupItem value="all" id="opt_all" />
 					<Label for="opt_all" class="font-normal cursor-pointer">
 						{$t('task.recurring_instance.edit_option_all')}

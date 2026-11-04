@@ -93,11 +93,11 @@
 						onkeydown={handleKeydown}
 						placeholder={$t('taskList.edit_dialog.placeholder')}
 						maxlength={MAX_LIST_NAME_LENGTH}
-						class="pr-12 h-11 text-base {!isValid && name.length > 0
+						class="pe-12 h-11 text-base {!isValid && name.length > 0
 							? 'border-destructive focus:ring-destructive'
 							: ''}"
 					/>
-					<div class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+					<div class="absolute inset-e-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
 						{charCount}/{MAX_LIST_NAME_LENGTH}
 					</div>
 				</div>

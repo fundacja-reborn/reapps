@@ -992,7 +992,7 @@
     <li role="treeitem" aria-selected="false">
       <div
         class="group relative flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm bg-accent/30"
-        style="padding-left: {depth * 0.75 + 0.5}rem"
+        style="padding-inline-start: {depth * 0.75 + 0.5}rem"
       >
         <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
         <input
@@ -1061,7 +1061,7 @@
                   : 'text-foreground hover:bg-accent/50'}
                 {dropZone === 'into' ? 'ring-1 ring-primary bg-accent/30' : ''}
                 {$touchDraggingId === folder.id ? 'opacity-50' : ''}"
-              style="padding-left: {depth * 0.75 + 0.5}rem"
+              style="padding-inline-start: {depth * 0.75 + 0.5}rem"
               role="button"
               tabindex="0"
               onclick={() => handleRowSelect(folder)}
@@ -1075,9 +1075,9 @@
                    valid levels - the indent says which one this drop takes). -->
               {#if dropZone === 'before' || dropZone === 'after'}
                 <div
-                  class="pointer-events-none absolute right-1 z-10 h-0.5 rounded-full bg-primary
+                  class="pointer-events-none absolute inset-e-1 z-10 h-0.5 rounded-full bg-primary
                     {dropZone === 'before' ? 'top-0' : 'bottom-0'}"
-                  style="left: {depth * 0.75 + 0.5}rem"
+                  style="inset-inline-start: {depth * 0.75 + 0.5}rem"
                 ></div>
               {/if}
               <!-- Folder icon (synced top-level folders get a distinct sync glyph) -->
@@ -1127,7 +1127,7 @@
                   tabindex="-1"
                 >
                   <ChevronRight
-                    class="h-3.5 w-3.5 transition-transform {isExpanded ? 'rotate-90' : ''}"
+                    class="h-3.5 w-3.5 transition-transform {isExpanded ? 'rotate-90 rtl:-rotate-90' : ''}"
                   />
                 </button>
               {/if}
@@ -1251,7 +1251,7 @@
           class="w-full justify-start"
           onclick={() => activeMenuFolder && handleStartRename(activeMenuFolder)}
         >
-          <Pencil class="mr-2 h-4 w-4" />
+          <Pencil class="me-2 h-4 w-4" />
           {$t('folders.rename')}
         </Button>
         <Button
@@ -1259,7 +1259,7 @@
           class="w-full justify-start text-destructive hover:text-destructive"
           onclick={() => activeMenuFolder && handleDelete(activeMenuFolder)}
         >
-          <Trash2 class="mr-2 h-4 w-4" />
+          <Trash2 class="me-2 h-4 w-4" />
           {$t('folders.delete_folder')}
         </Button>
       {:else}
@@ -1269,7 +1269,7 @@
           class="w-full justify-start"
           onclick={() => activeMenuSyncId && handleSyncNow(activeMenuSyncId)}
         >
-          <RefreshCw class="mr-2 h-4 w-4" />
+          <RefreshCw class="me-2 h-4 w-4" />
           {$t('folders.sync_now')}
         </Button>
       {/if}
@@ -1278,7 +1278,7 @@
         class="w-full justify-start"
         onclick={() => menuOpenId && handleCreateSub(menuOpenId)}
       >
-        <FolderPlus class="mr-2 h-4 w-4" />
+        <FolderPlus class="me-2 h-4 w-4" />
         {$t('folders.new_subfolder')}
       </Button>
       <Button
@@ -1286,7 +1286,7 @@
         class="w-full justify-start"
         onclick={() => activeMenuFolder && handleStartRename(activeMenuFolder)}
       >
-        <Pencil class="mr-2 h-4 w-4" />
+        <Pencil class="me-2 h-4 w-4" />
         {$t('folders.rename')}
       </Button>
       <Button
@@ -1294,7 +1294,7 @@
         class="w-full justify-start"
         onclick={() => activeMenuFolder && handleRequestMove(activeMenuFolder)}
       >
-        <CornerUpRight class="mr-2 h-4 w-4" />
+        <CornerUpRight class="me-2 h-4 w-4" />
         {$t('folders.move_to')}
       </Button>
       {#if $folderSortMode === 'custom' && activeMenuFolder}
@@ -1305,7 +1305,7 @@
             class="w-full justify-start"
             onclick={() => activeMenuFolder && handleNudge(activeMenuFolder, -1)}
           >
-            <ArrowUp class="mr-2 h-4 w-4" />
+            <ArrowUp class="me-2 h-4 w-4" />
             {$t('folders.move_up')}
           </Button>
         {/if}
@@ -1315,7 +1315,7 @@
             class="w-full justify-start"
             onclick={() => activeMenuFolder && handleNudge(activeMenuFolder, 1)}
           >
-            <ArrowDown class="mr-2 h-4 w-4" />
+            <ArrowDown class="me-2 h-4 w-4" />
             {$t('folders.move_down')}
           </Button>
         {/if}
@@ -1325,7 +1325,7 @@
         class="w-full justify-start"
         onclick={() => activeMenuFolder && handleImportHere(activeMenuFolder)}
       >
-        <Upload class="mr-2 h-4 w-4" />
+        <Upload class="me-2 h-4 w-4" />
         {$t('folders.import_markdown.action')}
       </Button>
       <Button
@@ -1333,7 +1333,7 @@
         class="w-full justify-start"
         onclick={() => activeMenuFolder && handleImportFolderHere(activeMenuFolder)}
       >
-        <FolderInput class="mr-2 h-4 w-4" />
+        <FolderInput class="me-2 h-4 w-4" />
         {$t('folders.import_folder.action')}
       </Button>
       <Button
@@ -1341,7 +1341,7 @@
         class="w-full justify-start text-destructive hover:text-destructive"
         onclick={() => activeMenuFolder && handleDelete(activeMenuFolder)}
       >
-        <Trash2 class="mr-2 h-4 w-4" />
+        <Trash2 class="me-2 h-4 w-4" />
         {$t('folders.delete_folder')}
       </Button>
       {/if}

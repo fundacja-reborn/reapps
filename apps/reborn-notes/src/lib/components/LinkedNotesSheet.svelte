@@ -103,7 +103,7 @@
         aria-label={mutual.has(item.id)
           ? `${item.title}, ${$t('linked_notes.mutual')}`
           : undefined}
-        class="group flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-accent"
+        class="group flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-start transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-accent"
       >
         <span
           class="min-w-0 flex-1 truncate text-sm text-muted-foreground transition-colors group-hover:text-foreground"
@@ -168,7 +168,7 @@
             <ArrowDownLeft class="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
             {$t('linked_notes.incoming')}
             <span
-              class="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground"
+              class="ms-auto rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground"
               aria-label={$t('linked_notes.incoming_count', {
                 values: { count: backlinks.length }
               })}>{backlinks.length}</span
@@ -196,7 +196,7 @@
             <ArrowUpRight class="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
             {$t('linked_notes.outgoing')}
             <span
-              class="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground"
+              class="ms-auto rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground"
               aria-label={$t('linked_notes.outgoing_count', {
                 values: { count: outgoing.length }
               })}>{outgoing.length}</span

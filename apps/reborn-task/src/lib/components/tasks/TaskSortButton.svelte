@@ -95,7 +95,7 @@
 						onclick={() => handleSortChange(option.value)}
 					>
 						{@const Icon = option.icon}
-						<Icon class="mr-2 h-4 w-4" />
+						<Icon class="me-2 h-4 w-4" />
 						{getSortLabel(option.value)}
 					</Button>
 				{/each}
@@ -123,7 +123,7 @@
 				{#each sortOptions as option}
 					<DropdownMenuRadioItem value={option.value}>
 						{@const Icon = option.icon}
-						<Icon class="mr-2 h-4 w-4" />
+						<Icon class="me-2 h-4 w-4" />
 						{getSortLabel(option.value)}
 					</DropdownMenuRadioItem>
 				{/each}

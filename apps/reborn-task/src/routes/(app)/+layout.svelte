@@ -50,7 +50,8 @@
 	import { listOperationsService } from '$lib/services/list-operations.service';
 	import { activeListStore } from '$lib/stores/active-list.store';
 	import { isOnline } from '$lib/stores/network.store';
-	import { toastStore } from '@reborn/ui';
+	import { toastStore, distanceFromInlineStart, inlineDelta } from '@reborn/ui';
+	import { textDirection } from '@reborn/i18n';
 	import { untrack, tick } from 'svelte';
 	import { cryptoManager } from '@reborn/crypto';
 	import { Lock, WifiOff, RefreshCw } from '@lucide/svelte';
@@ -147,9 +148,10 @@
 	let swipeStartY = 0;
 	let swiping = false;
 
+	// Edge swipe "back" starts at the inline-start edge: left in LTR, right in RTL.
 	function handleSwipeStart(e: TouchEvent) {
 		const touch = e.touches[0];
-		if (touch.clientX < 30) {
+		if (distanceFromInlineStart(touch.clientX, window.innerWidth, $textDirection) < 30) {
 			swipeStartX = touch.clientX;
 			swipeStartY = touch.clientY;
 			swiping = true;
@@ -159,10 +161,10 @@
 	function handleSwipeEnd(e: TouchEvent) {
 		if (!swiping) return;
 		swiping = false;
-		const dx = e.changedTouches[0].clientX - swipeStartX;
+		const dx = inlineDelta(swipeStartX, e.changedTouches[0].clientX, $textDirection);
 		const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY);
 		if (dx > 80 && dy < 50) {
-			// Swipe right → go back to master panel
+			// Swipe towards inline-end → go back to master panel
 			if (showDetail) {
 				handleMobileBack();
 			}
@@ -1004,7 +1006,7 @@
 
 	<a
 		href="#main-content"
-		class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200] focus:bg-background focus:text-foreground focus:px-4 focus:py-2 focus:rounded-md focus:shadow-md focus:ring-2 focus:ring-ring"
+		class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:inset-s-4 focus:z-[200] focus:bg-background focus:text-foreground focus:px-4 focus:py-2 focus:rounded-md focus:shadow-md focus:ring-2 focus:ring-ring"
 	>
 		{$t('common.skip_to_content', { default: 'Przejdź do treści' })}
 	</a>
@@ -1019,6 +1021,7 @@
 				<div
 					class="absolute inset-0 flex transition-transform duration-300 ease-in-out"
 					class:-translate-x-full={showDetail}
+					class:rtl:translate-x-full={showDetail}
 				>
 					<IconNav
 						bind:activeSection
@@ -1158,6 +1161,7 @@
 				<div
 					class="absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-in-out"
 					class:translate-x-full={!showDetail}
+					class:rtl:-translate-x-full={!showDetail}
 					ontouchstart={handleSwipeStart}
 					ontouchend={handleSwipeEnd}
 					role="region"

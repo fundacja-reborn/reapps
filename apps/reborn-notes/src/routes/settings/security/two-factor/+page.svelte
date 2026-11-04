@@ -288,10 +288,10 @@
         <CardContent>
           <Button onclick={startSetup} disabled={isLoading} class="w-full sm:w-auto">
             {#if isLoading}
-              <RefreshCw class="h-4 w-4 mr-2 animate-spin" />
+              <RefreshCw class="h-4 w-4 me-2 animate-spin" />
               {$t('security.two_factor.loading')}
             {:else}
-              <Shield class="h-4 w-4 mr-2" />
+              <Shield class="h-4 w-4 me-2" />
               {$t('security.two_factor.enable_2fa')}
             {/if}
           </Button>
@@ -392,7 +392,7 @@
               <div class="flex gap-2 flex-wrap">
                 <Button type="submit" disabled={isLoading}>
                   {#if isLoading}
-                    <RefreshCw class="h-4 w-4 mr-2 animate-spin" />
+                    <RefreshCw class="h-4 w-4 me-2 animate-spin" />
                     {$t('security.two_factor.verifying')}
                   {:else}
                     {$t('security.two_factor.verify_enable')}
@@ -446,7 +446,7 @@
                 <button
                   type="button"
                   onclick={() => copyCode(code, i)}
-                  class="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+                  class="ms-2 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label={$t('security.recovery_codes.copy_code')}
                 >
                   {#if copiedIndex === i}
@@ -463,11 +463,11 @@
 
           <div class="flex gap-2 flex-wrap">
             <Button onclick={downloadCodes} variant="outline">
-              <Download class="h-4 w-4 mr-2" />
+              <Download class="h-4 w-4 me-2" />
               {$t('security.recovery_codes.download')}
             </Button>
             <Button onclick={copyAllCodes} variant="outline">
-              <Copy class="h-4 w-4 mr-2" />
+              <Copy class="h-4 w-4 me-2" />
               {$t('security.recovery_codes.copy_all')}
             </Button>
           </div>
@@ -504,7 +504,7 @@
               onclick={() => (showDisableConfirm = true)}
               class="w-full sm:w-auto"
             >
-              <ShieldOff class="h-4 w-4 mr-2" />
+              <ShieldOff class="h-4 w-4 me-2" />
               {$t('security.two_factor.disable_2fa')}
             </Button>
           {:else}
@@ -536,7 +536,7 @@
               <div class="flex gap-2 flex-wrap">
                 <Button type="submit" variant="destructive" disabled={isDisabling}>
                   {#if isDisabling}
-                    <RefreshCw class="h-4 w-4 mr-2 animate-spin" />
+                    <RefreshCw class="h-4 w-4 me-2 animate-spin" />
                     {$t('security.two_factor.disabling')}
                   {:else}
                     {$t('security.two_factor.confirm_disable')}

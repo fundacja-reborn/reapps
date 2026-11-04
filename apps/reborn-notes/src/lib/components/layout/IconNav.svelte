@@ -47,6 +47,7 @@
   import { goto } from '$lib/utils/navigation';
   import { base } from '$app/paths';
   import { t, locale as i18nLocale } from '$lib/stores/i18n.store';
+  import { inlineSide, textDirection } from '@reborn/i18n';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import { periodicNotesSettings } from '$lib/stores/app-settings.store';
   import { formatRange } from '$lib/services/periodic-notes-format';
@@ -78,6 +79,10 @@
     /** Show icon rail regardless of breakpoint (for mobile master-detail layout) */
     alwaysVisible?: boolean;
   } = $props();
+
+  // Tooltips and the account menu open away from the rail, towards inline-end
+  // (right in LTR, left in RTL - bits-ui sides are physical).
+  const endSide = $derived(inlineSide('end', $textDirection));
 
   const isMobileQuery = useIsMobile();
   let loggingOut = $state(false);
@@ -277,7 +282,7 @@
         <Share2 class="h-5 w-5" />
         {#if $activeSharesCount > 0}
           <span
-            class="absolute -top-1 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center
+            class="absolute -top-1 -inset-e-1.5 flex h-3.5 min-w-3.5 items-center justify-center
               rounded-full bg-foreground/15 text-[8px] font-medium leading-none text-muted-foreground px-0.5"
             aria-label="{$activeSharesCount} {$t('nav.shares')}"
           >
@@ -317,7 +322,7 @@
   <nav
     class="{alwaysVisible
       ? 'flex'
-      : 'hidden md:flex'} w-14 md:w-12 shrink-0 flex-col items-center gap-1 overflow-y-auto border-r border-sidebar-border [&>*]:shrink-0"
+      : 'hidden md:flex'} w-14 md:w-12 shrink-0 flex-col items-center gap-1 overflow-y-auto border-e border-sidebar-border [&>*]:shrink-0"
     style="background-color: var(--icon-rail); padding-top: calc(0.5rem + env(safe-area-inset-top, 0px)); padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));"
     aria-label={$t('nav.main_navigation')}
   >
@@ -337,7 +342,7 @@
           </button>
         {/snippet}
       </Tooltip.Trigger>
-      <Tooltip.Content side="right" sideOffset={6}>{$t('nav.new_note')}</Tooltip.Content>
+      <Tooltip.Content side={endSide} sideOffset={6}>{$t('nav.new_note')}</Tooltip.Content>
     </Tooltip.Root>
 
     <!-- Search -->
@@ -362,7 +367,7 @@
           </button>
         {/snippet}
       </Tooltip.Trigger>
-      <Tooltip.Content side="right" sideOffset={6}>{$t('nav.search')}</Tooltip.Content>
+      <Tooltip.Content side={endSide} sideOffset={6}>{$t('nav.search')}</Tooltip.Content>
     </Tooltip.Root>
 
     <!-- Primary views (All, Starred) -->
@@ -388,7 +393,7 @@
             </button>
           {/snippet}
         </Tooltip.Trigger>
-        <Tooltip.Content side="right" sideOffset={6}>{s.label}</Tooltip.Content>
+        <Tooltip.Content side={endSide} sideOffset={6}>{s.label}</Tooltip.Content>
       </Tooltip.Root>
     {/each}
 
@@ -415,7 +420,7 @@
             </button>
           {/snippet}
         </Tooltip.Trigger>
-        <Tooltip.Content side="right" sideOffset={6}>{s.label}</Tooltip.Content>
+        <Tooltip.Content side={endSide} sideOffset={6}>{s.label}</Tooltip.Content>
       </Tooltip.Root>
     {/each}
 
@@ -447,7 +452,7 @@
             </button>
           {/snippet}
         </Tooltip.Trigger>
-        <Tooltip.Content side="right" sideOffset={6}>{periodicTooltip(p.kind)}</Tooltip.Content>
+        <Tooltip.Content side={endSide} sideOffset={6}>{periodicTooltip(p.kind)}</Tooltip.Content>
       </Tooltip.Root>
     {/each}
 
@@ -470,7 +475,7 @@
               <Share2 class="h-6 w-6 md:h-5 md:w-5" />
               {#if $activeSharesCount > 0}
                 <span
-                  class="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center
+                  class="absolute -top-1.5 -inset-e-2 flex h-4 min-w-4 items-center justify-center
                     rounded-full bg-foreground/15 text-[9px] font-medium leading-none text-muted-foreground px-0.5"
                   aria-label="{$activeSharesCount} {$t('nav.shares')}"
                 >
@@ -481,7 +486,7 @@
           </button>
         {/snippet}
       </Tooltip.Trigger>
-      <Tooltip.Content side="right" sideOffset={6}>{$t('nav.shares')}</Tooltip.Content>
+      <Tooltip.Content side={endSide} sideOffset={6}>{$t('nav.shares')}</Tooltip.Content>
     </Tooltip.Root>
 
     <!-- Trash -->
@@ -506,7 +511,7 @@
           </button>
         {/snippet}
       </Tooltip.Trigger>
-      <Tooltip.Content side="right" sideOffset={6}>{TRASH_SECTION.label}</Tooltip.Content>
+      <Tooltip.Content side={endSide} sideOffset={6}>{TRASH_SECTION.label}</Tooltip.Content>
     </Tooltip.Root>
 
     <div class="flex-1"></div>
@@ -530,7 +535,7 @@
           <!-- eslint-enable svelte/no-navigation-without-resolve -->
         {/snippet}
       </Tooltip.Trigger>
-      <Tooltip.Content side="right" sideOffset={6}>{$t('nav.support')}</Tooltip.Content>
+      <Tooltip.Content side={endSide} sideOffset={6}>{$t('nav.support')}</Tooltip.Content>
     </Tooltip.Root>
 
     <!-- Settings -->
@@ -549,7 +554,7 @@
           </button>
         {/snippet}
       </Tooltip.Trigger>
-      <Tooltip.Content side="right" sideOffset={6}>{$t('nav.settings')}</Tooltip.Content>
+      <Tooltip.Content side={endSide} sideOffset={6}>{$t('nav.settings')}</Tooltip.Content>
     </Tooltip.Root>
 
     <!-- User avatar + menu -->
@@ -587,7 +592,7 @@
               </button>
             {/snippet}
           </DropdownMenu.Trigger>
-          <DropdownMenu.Content class="min-w-48 rounded-lg" side="right" align="end" sideOffset={6}>
+          <DropdownMenu.Content class="min-w-48 rounded-lg" side={endSide} align="end" sideOffset={6}>
             <DropdownMenu.Label class="p-0 font-normal">
               <div class="flex items-center gap-2 px-2 py-1.5 text-start text-sm">
                 <span
@@ -681,7 +686,7 @@
             goto('/auth/login');
           }}
         >
-          <LogIn class="mr-2 h-5 w-5" />
+          <LogIn class="me-2 h-5 w-5" />
           {$t('nav.sign_in')}
         </Button>
         <Button
@@ -692,7 +697,7 @@
             goto('/auth/register');
           }}
         >
-          <UserPlus class="mr-2 h-5 w-5" />
+          <UserPlus class="me-2 h-5 w-5" />
           {$t('local_mode.register')}
         </Button>
       {/if}
@@ -704,7 +709,7 @@
           goto('/settings');
         }}
       >
-        <Settings class="mr-2 h-5 w-5" />
+        <Settings class="me-2 h-5 w-5" />
         {$t('nav.settings')}
       </Button>
       {#if $authStore.isLocalOnly && cryptoManager.isLocalPasscodeEnabled()}
@@ -716,7 +721,7 @@
             handleLockNow();
           }}
         >
-          <Lock class="mr-2 h-5 w-5" />
+          <Lock class="me-2 h-5 w-5" />
           {$t('local_mode.passcode.lock_now_cta')}
         </Button>
       {/if}
@@ -729,7 +734,7 @@
             handleLogout();
           }}
         >
-          <LogOut class="mr-2 h-5 w-5" />
+          <LogOut class="me-2 h-5 w-5" />
           {$t('nav.log_out')}
         </Button>
       {/if}

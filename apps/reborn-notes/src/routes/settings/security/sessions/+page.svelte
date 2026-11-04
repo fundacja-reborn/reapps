@@ -282,7 +282,7 @@
           disabled={isLoggingOut}
           class="w-full mt-2"
         >
-          <LogOut class="h-4 w-4 mr-2" />
+          <LogOut class="h-4 w-4 me-2" />
           {$t('security.sessions.logout_all_button')}
         </Button>
       {:else}

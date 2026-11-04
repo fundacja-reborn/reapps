@@ -104,7 +104,7 @@
         />
         <button
           type="button"
-          class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+          class="absolute inset-y-0 inset-e-0 pe-3 flex items-center text-sm leading-5"
           onclick={togglePasswordVisibility}
         >
           {#if showPassword}
@@ -154,7 +154,7 @@
       >
         {#if loading}
           <svg
-            class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+            class="animate-spin -ms-1 me-3 h-5 w-5 text-white"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"

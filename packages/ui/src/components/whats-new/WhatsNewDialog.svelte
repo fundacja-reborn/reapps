@@ -108,7 +108,7 @@
 <Dialog bind:open>
   <DialogContent class="flex flex-col gap-0 overflow-y-hidden p-0 sm:max-w-[560px]">
     <!-- Sticky header: stays pinned while the body scrolls underneath. -->
-    <header class="shrink-0 border-b px-6 py-4 pr-12">
+    <header class="shrink-0 border-b px-6 py-4 pe-12">
       <DialogTitle class="text-xl font-semibold tracking-tight">
         {$t('whats_new.title')}
       </DialogTitle>

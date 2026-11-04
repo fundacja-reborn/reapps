@@ -18,11 +18,11 @@
 	bind:ref
 	class={cn(
 		"data-[highlighted]:bg-accent data-[state=open]:bg-accent data-[highlighted]:text-accent-foreground data-[state=open]:text-accent-foreground flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-		inset && "pl-8",
+		inset && "ps-8",
 		className
 	)}
 	{...restProps}
 >
 	{@render children?.()}
-	<ChevronRight class="ml-auto size-4" />
+	<ChevronRight class="ms-auto size-4" />
 </MenubarPrimitive.SubTrigger>

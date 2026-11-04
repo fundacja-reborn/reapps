@@ -73,6 +73,7 @@
 
 <div class="relative">
 	<textarea
+		dir="auto"
 		bind:this={textarea}
 		{value}
 		oninput={handleInput}

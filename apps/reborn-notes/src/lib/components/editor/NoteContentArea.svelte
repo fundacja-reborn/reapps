@@ -191,7 +191,7 @@
       {:else if effectiveViewMode === 'split'}
         <!-- Split: each pane owns its scroll; sync handled by scroll-sync.ts.
              Avoids sticky+100dvh reflow loop that caused auto-scroll-to-top on iOS. -->
-        <div class="flex divide-x divide-border h-full min-h-0">
+        <div class="flex divide-x rtl:divide-x-reverse divide-border h-full min-h-0">
           <div class="min-w-0 flex-1 overflow-hidden">
             <NoteEditor
               bind:this={editorRef}

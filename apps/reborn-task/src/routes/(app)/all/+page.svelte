@@ -81,7 +81,7 @@
 									class="group flex flex-1 items-center gap-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
 								>
 									<ChevronRightIcon
-										class="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90"
+										class="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90 rtl:group-data-[state=open]:-rotate-90"
 									/>
 									{$t('taskList.completed_count', { values: { count: completedTasks.length } })}
 								</AccordionPrimitive.Trigger>

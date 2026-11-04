@@ -74,7 +74,7 @@
 {#snippet revealToggle()}
   <button
     type="button"
-    class="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+    class="absolute inset-y-0 inset-e-0 flex items-center pe-3 text-muted-foreground hover:text-foreground"
     onclick={() => (showPassword = !showPassword)}
     tabindex={-1}
     aria-label={$t('security.delete_account.toggle_visibility')}
@@ -120,7 +120,7 @@
                 placeholder={$t('security.delete_account.password_placeholder')}
                 autocomplete="current-password"
                 disabled={isLoading}
-                class="pr-10 {passwordError ? 'border-destructive' : ''}"
+                class="pe-10 {passwordError ? 'border-destructive' : ''}"
               />
               {@render revealToggle()}
             </div>

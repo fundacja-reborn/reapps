@@ -29,7 +29,7 @@
   } = $props();
 
   // Build a nesting tree from the flat heading list so each level can draw its
-  // own indent guide (a `border-left` on the nested <ul>). Headings may skip a
+  // own indent guide (a `border-inline-start` on the nested <ul>). Headings may skip a
   // level (H2 -> H4); a deeper heading just nests under the nearest shallower
   // ancestor still on the stack.
   const tree = $derived.by<OutlineNode[]>(() => {
@@ -76,7 +76,7 @@
 </script>
 
 {#snippet rows(nodes: OutlineNode[], level: number)}
-  <ul class="m-0 list-none p-0 {level > 0 ? 'ml-[0.6rem] border-l border-border/40 pl-1' : ''}">
+  <ul class="m-0 list-none p-0 {level > 0 ? 'ms-[0.6rem] border-s border-border/40 ps-1' : ''}">
     {#each nodes as node (node.slug)}
       {@const active = node.slug === activeSlug}
       <li>
@@ -86,7 +86,7 @@
           onclick={() => onnavigate(node)}
           title={node.text}
           aria-current={active ? 'location' : undefined}
-          class="flex w-full cursor-pointer rounded-md px-2 py-1 text-left leading-[1.35] transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-accent
+          class="flex w-full cursor-pointer rounded-md px-2 py-1 text-start leading-[1.35] transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-accent
             {levelClass(level)}
             {active ? 'font-medium text-primary shadow-[inset_2px_0_0_0_var(--primary)]' : ''}"
         >

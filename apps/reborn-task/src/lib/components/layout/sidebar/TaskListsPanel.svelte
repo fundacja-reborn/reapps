@@ -41,7 +41,7 @@
 
 <div class="flex h-full flex-col">
 	<!-- Header -->
-	<div class="flex h-12 md:h-10 shrink-0 items-center gap-1 pl-5 pr-2.5">
+	<div class="flex h-12 md:h-10 shrink-0 items-center gap-1 ps-5 pe-2.5">
 		<span class="min-w-0 flex-1 truncate text-base md:text-sm font-normal">
 			{$t('task.sidebar.task_lists')}
 		</span>
@@ -107,7 +107,7 @@
 										{/if}
 									</div>
 									{#if taskCount > 0}
-										<span class="text-sm md:text-xs text-muted-foreground shrink-0 ml-2">{taskCount}</span>
+										<span class="text-sm md:text-xs text-muted-foreground shrink-0 ms-2">{taskCount}</span>
 									{/if}
 								</button>
 							</ContextMenuTrigger>

@@ -197,3 +197,53 @@
     forced-color-adjust: none;
   }
 }
+
+/*
+ * RTL: mirror icons that point along the reading direction - back/forward
+ * arrows, disclosure chevrons, panel toggles, log in/out, undo/redo,
+ * reply/forward/send. Non-directional icons (refresh, history, share,
+ * external link, media controls, digits) stay as they are.
+ *
+ * `transform` on purpose: Tailwind v4 utilities use the separate `rotate`,
+ * `scale` and `translate` properties, so `rotate-90` or
+ * `group-hover:translate-x-0.5` still compose. The mirror applies before the
+ * rotation, so a disclosure chevron that rotates when open pairs `rotate-90`
+ * with `rtl:-rotate-90`.
+ *
+ * Attribute selectors, not `:dir(rtl)`: the production CSS build (Lightning
+ * CSS) rewrites `:dir()` into a `:lang(ar), :lang(he), ...` list for older
+ * engines, which would ignore `<html dir="rtl">` under a non-RTL `lang` (the
+ * `?dir=rtl` smoke-test mode). Same shape as Tailwind's `rtl:` variant, plus
+ * an opt-out for `dir="ltr"` islands (code blocks, the X-Ray split view).
+ */
+:is(
+    .lucide-chevron-left,
+    .lucide-chevron-right,
+    .lucide-chevrons-left,
+    .lucide-chevrons-right,
+    .lucide-arrow-left,
+    .lucide-arrow-right,
+    .lucide-corner-up-left,
+    .lucide-corner-up-right,
+    .lucide-corner-down-left,
+    .lucide-corner-down-right,
+    .lucide-undo,
+    .lucide-undo-2,
+    .lucide-redo,
+    .lucide-redo-2,
+    .lucide-reply,
+    .lucide-reply-all,
+    .lucide-forward,
+    .lucide-send,
+    .lucide-send-horizontal,
+    .lucide-log-in,
+    .lucide-log-out,
+    .lucide-panel-left,
+    .lucide-panel-left-open,
+    .lucide-panel-left-close,
+    .lucide-panel-right,
+    .lucide-panel-right-open,
+    .lucide-panel-right-close
+  ):where([dir='rtl'], [dir='rtl'] *):not([dir='ltr'], [dir='ltr'] *) {
+  transform: scaleX(-1);
+}

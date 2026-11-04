@@ -245,7 +245,7 @@
 						{$t('settings.notifications_permission_needed')}
 					</p>
 					<Button onclick={handleGrantPermission} disabled={isLoading}>
-						<Bell class="h-4 w-4 mr-2" />
+						<Bell class="h-4 w-4 me-2" />
 						{$t('settings.grant_permission')}
 					</Button>
 				</CardContent>
@@ -370,7 +370,7 @@
 							onclick={handleSendTestNotification}
 							disabled={isSendingTest}
 						>
-							<Send class="h-4 w-4 mr-2" />
+							<Send class="h-4 w-4 me-2" />
 							{$t('settings.send_test_notification')}
 						</Button>
 					{/if}

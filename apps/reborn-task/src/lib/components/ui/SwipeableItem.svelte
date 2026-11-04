@@ -180,7 +180,7 @@
 	>
 		<button
 			onclick={handleDelete}
-			class="flex h-full items-center justify-center focus:outline-none hover:bg-destructive/90 transition-colors rounded-r-lg"
+			class="flex h-full items-center justify-center focus:outline-none hover:bg-destructive/90 transition-colors rounded-e-lg"
 			style="width: {deleteButtonWidth}px;"
 			aria-label="Delete item"
 			type="button"

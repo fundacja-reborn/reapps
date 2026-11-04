@@ -143,7 +143,7 @@
 {#snippet revealToggle()}
   <button
     type="button"
-    class="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+    class="absolute inset-y-0 inset-e-0 flex items-center pe-3 text-muted-foreground hover:text-foreground"
     onclick={() => (showPasscode = !showPasscode)}
     aria-label={$t('local_mode.passcode.toggle_visibility')}
   >
@@ -196,7 +196,7 @@
                   bind:value={currentPasscode}
                   autocomplete="off"
                   disabled={isSaving}
-                  class="pr-10"
+                  class="pe-10"
                 />
                 {@render revealToggle()}
               </div>
@@ -212,7 +212,7 @@
                 bind:value={newPasscode}
                 autocomplete="new-password"
                 disabled={isSaving}
-                class="pr-10 {newError ? 'border-destructive' : ''}"
+                class="pe-10 {newError ? 'border-destructive' : ''}"
               />
               {@render revealToggle()}
             </div>
@@ -236,7 +236,7 @@
                 bind:value={confirmPasscode}
                 autocomplete="new-password"
                 disabled={isSaving}
-                class="pr-10 {confirmError ? 'border-destructive' : ''}"
+                class="pe-10 {confirmError ? 'border-destructive' : ''}"
               />
               {@render revealToggle()}
             </div>

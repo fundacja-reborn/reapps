@@ -126,7 +126,7 @@
 			{disabled}
 			class="w-full justify-start text-muted-foreground h-auto px-2 py-1"
 		>
-			<Plus class="h-4 w-4 mr-2" />
+			<Plus class="h-4 w-4 me-2" />
 			{placeholder || $t('task.subtasks.add')}
 		</Button>
 	{/if}

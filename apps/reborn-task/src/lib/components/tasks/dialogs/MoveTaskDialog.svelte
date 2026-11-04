@@ -59,10 +59,10 @@
 			<div class="grid gap-2 py-4">
 				<Button variant="ghost" size="lg" class="justify-start h-14" onclick={onToggleCompleted}>
 					{#if task.is_completed}
-						<Circle class="mr-3 h-5 w-5" />
+						<Circle class="me-3 h-5 w-5" />
 						{$t('task.mark_incomplete')}
 					{:else}
-						<CircleCheck class="mr-3 h-5 w-5" />
+						<CircleCheck class="me-3 h-5 w-5" />
 						{$t('task.mark_complete')}
 					{/if}
 				</Button>
@@ -79,7 +79,7 @@
 						}, 100);
 					}}
 				>
-					<ArrowRight class="mr-3 h-5 w-5" />
+					<ArrowRight class="me-3 h-5 w-5" />
 					{$t('task.move_to_list')}
 				</Button>
 
@@ -94,7 +94,7 @@
 						onDelete();
 					}}
 				>
-					<Trash2 class="mr-3 h-5 w-5" />
+					<Trash2 class="me-3 h-5 w-5" />
 					{$t('common.delete')}
 				</Button>
 			</div>

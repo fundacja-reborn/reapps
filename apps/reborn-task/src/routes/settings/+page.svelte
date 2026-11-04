@@ -266,7 +266,7 @@
 						class={cn(itemClasses, 'w-full text-destructive hover:bg-destructive/5')}
 					>
 						<LogOut class="h-5 w-5 shrink-0" />
-						<div class="flex-1 min-w-0 text-left">
+						<div class="flex-1 min-w-0 text-start">
 							<div class="font-medium">{$t('settings.account.log_out')}</div>
 						</div>
 					</button>
@@ -337,7 +337,7 @@
 					<button
 						type="button"
 						onclick={() => (accountRequiredOpen = true)}
-						class={cn(itemClasses, 'w-full text-left opacity-60')}
+						class={cn(itemClasses, 'w-full text-start opacity-60')}
 					>
 						<item.icon class="h-5 w-5 text-muted-foreground shrink-0" />
 						<div class="flex-1 min-w-0">
@@ -459,7 +459,7 @@
 				<button
 					type="button"
 					onclick={() => openWhatsNew()}
-					class={cn(itemClasses, 'w-full text-left')}
+					class={cn(itemClasses, 'w-full text-start')}
 				>
 					<Sparkles class="h-5 w-5 text-muted-foreground shrink-0" />
 					<div class="flex-1 min-w-0">

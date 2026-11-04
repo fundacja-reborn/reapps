@@ -108,13 +108,13 @@
         onblur={() => (touched.password = true)}
         aria-describedby={passwordError ? 'login-password-error' : undefined}
         aria-invalid={passwordError ? 'true' : undefined}
-        class="pr-10 {passwordError ? 'border-destructive focus-visible:ring-destructive' : ''}"
+        class="pe-10 {passwordError ? 'border-destructive focus-visible:ring-destructive' : ''}"
       />
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+        class="absolute inset-e-0 top-0 h-full px-3 py-2 hover:bg-transparent"
         onclick={togglePasswordVisibility}
         tabindex={-1}
       >
@@ -132,7 +132,7 @@
     {/if}
   </div>
 
-  <div class="flex items-center space-x-2">
+  <div class="flex items-center gap-2">
     <Checkbox id="remember-me" bind:checked={remember} disabled={loading} />
     <Label for="remember-me" class="text-sm font-normal cursor-pointer">
       {$t('auth.login.remember_me')}
@@ -141,7 +141,7 @@
 
   <Button type="submit" disabled={loading || !username.trim() || !password} class="w-full">
     {#if loading}
-      <span class="mr-2">
+      <span class="me-2">
         <svg
           class="animate-spin h-4 w-4"
           xmlns="http://www.w3.org/2000/svg"

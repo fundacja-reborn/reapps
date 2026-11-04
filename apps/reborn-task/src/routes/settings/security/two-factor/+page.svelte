@@ -330,10 +330,10 @@
 				<CardContent>
 					<Button onclick={startSetup} disabled={isLoading} class="w-full sm:w-auto">
 						{#if isLoading}
-							<RefreshCw class="h-4 w-4 mr-2 animate-spin" />
+							<RefreshCw class="h-4 w-4 me-2 animate-spin" />
 							{$t('common.loading') || 'Loading...'}
 						{:else}
-							<Shield class="h-4 w-4 mr-2" />
+							<Shield class="h-4 w-4 me-2" />
 							{$t('settings.profile.two_factor_auth_enable')}
 						{/if}
 					</Button>
@@ -442,7 +442,7 @@
 							<div class="flex gap-2 flex-wrap">
 								<Button type="submit" disabled={isLoading}>
 									{#if isLoading}
-										<RefreshCw class="h-4 w-4 mr-2 animate-spin" />
+										<RefreshCw class="h-4 w-4 me-2 animate-spin" />
 										{$t('common.loading') || 'Verifying...'}
 									{:else}
 										{$t('settings.profile.verify_and_enable')}
@@ -495,7 +495,7 @@
 								<span class="tracking-widest">{code}</span>
 								<button
 									onclick={() => copyCode(code, i)}
-									class="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+									class="ms-2 text-muted-foreground hover:text-foreground transition-colors"
 									aria-label="Copy code"
 								>
 									{#if copiedIndex === i}
@@ -512,11 +512,11 @@
 
 					<div class="flex gap-2 flex-wrap">
 						<Button onclick={downloadCodes} variant="outline">
-							<Download class="h-4 w-4 mr-2" />
+							<Download class="h-4 w-4 me-2" />
 							{$t('settings.security.backup_codes.download_button')}
 						</Button>
 						<Button onclick={copyAllCodes} variant="outline">
-							<Copy class="h-4 w-4 mr-2" />
+							<Copy class="h-4 w-4 me-2" />
 							{$t('settings.security.backup_codes.copy_all')}
 						</Button>
 					</div>
@@ -553,7 +553,7 @@
 							onclick={() => (showDisableConfirm = true)}
 							class="w-full sm:w-auto"
 						>
-							<ShieldOff class="h-4 w-4 mr-2" />
+							<ShieldOff class="h-4 w-4 me-2" />
 							{$t('settings.profile.two_factor_auth_disable')}
 						</Button>
 					{:else}
@@ -585,7 +585,7 @@
 							<div class="flex gap-2 flex-wrap">
 								<Button type="submit" variant="destructive" disabled={isDisabling}>
 									{#if isDisabling}
-										<RefreshCw class="h-4 w-4 mr-2 animate-spin" />
+										<RefreshCw class="h-4 w-4 me-2 animate-spin" />
 										{$t('common.loading') || 'Disabling...'}
 									{:else}
 										{$t('settings.profile.disable_2fa')}

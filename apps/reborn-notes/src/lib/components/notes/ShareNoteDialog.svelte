@@ -301,13 +301,13 @@
                 placeholder={$t('share.create.password_placeholder')}
                 autocomplete="new-password"
                 disabled={stage === 'creating'}
-                class="pr-10"
+                class="pe-10"
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                class="absolute inset-e-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                 onclick={() => (showPassword = !showPassword)}
                 disabled={stage === 'creating'}
                 tabindex={-1}
@@ -326,13 +326,13 @@
                 placeholder={$t('share.create.password_confirm_placeholder')}
                 autocomplete="new-password"
                 disabled={stage === 'creating'}
-                class="pr-10"
+                class="pe-10"
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                class="absolute inset-e-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                 onclick={() => (showPasswordConfirm = !showPasswordConfirm)}
                 disabled={stage === 'creating'}
                 tabindex={-1}

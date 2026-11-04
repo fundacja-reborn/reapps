@@ -229,7 +229,7 @@
   <div class="px-2 pt-2">
     <div class="relative">
       <Search
-        class="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+        class="pointer-events-none absolute inset-s-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
       />
       <input
         bind:this={searchInputEl}
@@ -237,7 +237,7 @@
         bind:value={searchQuery}
         placeholder={$t('notes.folder_search_placeholder')}
         aria-label={$t('notes.folder_search_placeholder')}
-        class="h-8 w-full rounded-md border bg-background pl-8 pr-7 text-xs outline-none focus:ring-1 focus:ring-primary"
+        class="h-8 w-full rounded-md border bg-background ps-8 pe-7 text-xs outline-none focus:ring-1 focus:ring-primary"
         onkeydown={(e) => {
           if (e.key === 'Escape' && searchQuery) {
             e.stopPropagation();
@@ -252,7 +252,7 @@
             searchQuery = '';
             searchInputEl?.focus();
           }}
-          class="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+          class="absolute inset-e-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
           aria-label={$t('notes.clear_search')}
           tabindex="-1"
         >
@@ -304,7 +304,7 @@
           <button
             type="button"
             role="menuitem"
-            class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent
+            class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-start text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent
               {currentRoot ? 'text-muted-foreground' : 'text-foreground'}"
             onclick={doPinRoot}
             disabled={currentRoot}
@@ -320,7 +320,7 @@
         <button
           type="button"
           role="menuitem"
-          class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent
+          class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-start text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent
             {noneIsCurrent ? 'text-muted-foreground' : 'text-foreground'}"
           onclick={(e) => doMove(null, e)}
           disabled={noneIsCurrent}
@@ -346,7 +346,7 @@
         <button
           type="button"
           role="menuitem"
-          class="flex w-full items-center gap-2 rounded-md bg-primary/10 px-2 py-2 text-left text-xs font-medium text-primary hover:bg-primary/15
+          class="flex w-full items-center gap-2 rounded-md bg-primary/10 px-2 py-2 text-start text-xs font-medium text-primary hover:bg-primary/15
             {currentFolderId === currentParentId ? 'opacity-50' : ''}"
           onclick={(e) => doMove(currentParentId, e)}
           disabled={currentFolderId === currentParentId}
@@ -375,7 +375,7 @@
             <button
               type="button"
               role="menuitem"
-              class="flex min-w-0 flex-1 items-center gap-2 rounded-l-md px-2 py-2 text-left text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent
+              class="flex min-w-0 flex-1 items-center gap-2 rounded-s-md px-2 py-2 text-start text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent
                 {isCurrent || isExcluded ? 'text-muted-foreground' : 'text-foreground'}"
               onclick={(e) => handleRowClick(folder.id, e)}
               disabled={isCurrent || isExcluded}
@@ -408,7 +408,7 @@
             {#if subcount > 0 && !isExcluded}
               <button
                 type="button"
-                class="flex shrink-0 items-center justify-center gap-0.5 rounded-r-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                class="flex shrink-0 items-center justify-center gap-0.5 rounded-e-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"
                 onclick={(e) => drillInto(folder.id, e)}
                 aria-label={$t('folders.expand')}
                 title={$t('folders.expand')}
@@ -435,7 +435,7 @@
           <button
             type="button"
             role="menuitem"
-            class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-accent
+            class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-start hover:bg-accent
               {isCurrent ? 'opacity-50' : ''}"
             onclick={(e) => doMove(r.id, e)}
             disabled={isCurrent}
@@ -463,7 +463,7 @@
 {#if !useSheet}
   <div
     bind:this={containerEl}
-    class="absolute right-0 top-7 z-50 w-[300px] overflow-hidden rounded-md border bg-popover shadow-md"
+    class="absolute inset-e-0 top-7 z-50 w-[300px] overflow-hidden rounded-md border bg-popover shadow-md"
     role="dialog"
     tabindex="-1"
     aria-label={pickerTitle}
@@ -486,7 +486,7 @@
   <Sheet bind:open>
     <SheetContent side="bottom" class="flex h-auto max-h-[75dvh] flex-col p-0">
       <SheetHeader class="border-b px-4 py-3">
-        <SheetTitle class="text-left text-sm">{pickerTitle}</SheetTitle>
+        <SheetTitle class="text-start text-sm">{pickerTitle}</SheetTitle>
       </SheetHeader>
       <div class="flex-1 overflow-y-auto pb-4">
         {@render body()}

@@ -135,6 +135,7 @@
 	<!-- Content -->
 	<div class="flex-1 min-w-0">
 		<h3
+			dir="auto"
 			class={cn('font-normal text-base md:text-sm', task.is_completed && 'line-through text-muted-foreground')}
 		>
 			{task.title}

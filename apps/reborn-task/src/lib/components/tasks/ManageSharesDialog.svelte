@@ -128,7 +128,7 @@
 
 <Dialog bind:open>
   <DialogContent class="flex max-h-[85vh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
-    <DialogHeader class="flex-shrink-0 border-b px-6 py-4 pr-12">
+    <DialogHeader class="flex-shrink-0 border-b px-6 py-4 pe-12">
       <DialogTitle>
         {title ?? (sourceId ? $t('share.manage.for_task_title') : $t('share.manage.dialog_title'))}
       </DialogTitle>
@@ -142,7 +142,7 @@
     <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
       {#if onCreateNew && sourceId}
         <Button variant="outline" class="w-fit" onclick={onCreateNew}>
-          <Plus class="mr-2 h-4 w-4" />
+          <Plus class="me-2 h-4 w-4" />
           {$t('share.manage.create_new_cta')}
         </Button>
       {/if}
@@ -163,7 +163,7 @@
             disabled={isLoading}
             onclick={() => sharesStore.refresh()}
           >
-            <RefreshCw class="mr-1 h-3 w-3 {isLoading ? 'animate-spin' : ''}" />
+            <RefreshCw class="me-1 h-3 w-3 {isLoading ? 'animate-spin' : ''}" />
             {$t('share.list.retry_action')}
           </Button>
         </div>
@@ -187,7 +187,7 @@
               disabled={isLoading}
               onclick={() => sharesStore.refresh()}
             >
-              <RefreshCw class="mr-1.5 h-3.5 w-3.5 {isLoading ? 'animate-spin' : ''}" />
+              <RefreshCw class="me-1.5 h-3.5 w-3.5 {isLoading ? 'animate-spin' : ''}" />
               {$t('share.list.retry_action')}
             </Button>
           </CardContent>
@@ -321,7 +321,7 @@
     class="flex max-h-[85vh] max-w-2xl flex-col gap-0 overflow-hidden p-0"
     onOpenAutoFocus={(e) => e.preventDefault()}
   >
-    <DialogHeader class="flex-shrink-0 border-b px-6 py-4 pr-12">
+    <DialogHeader class="flex-shrink-0 border-b px-6 py-4 pe-12">
       <DialogTitle>{$t('share.list.preview_dialog_title')}</DialogTitle>
     </DialogHeader>
     {#if previewing}
