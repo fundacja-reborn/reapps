@@ -9,7 +9,7 @@ import {
 } from '$lib/utils/app-settings';
 import type { AppSettings, PeriodicNotesSettings } from '@reborn/storage';
 import { PERIODIC_NOTES_DEFAULTS } from '@reborn/storage';
-import { SUPPORTED_LOCALES } from '@reborn/i18n';
+import { isSupportedLocale, locale, resolveLocale } from '@reborn/i18n';
 import { createLogger } from '@reborn/utils';
 import { syncedSettings } from '$lib/services/synced-settings.service';
 
@@ -37,13 +37,19 @@ function createAppSettingsStore() {
       //
       // This runs AFTER syncedSettings.pullAndMerge() in the layout, so when
       // localStorage disagrees with the synced value the user is intentionally
-      // overriding (e.g. picked a different language on the login page) — push
+      // overriding (e.g. picked a different language on the login page) - push
       // that choice up so other devices converge.
+      //
+      // Only a synced locale this build ships may be overridden. An unknown
+      // one was written by a newer client (a language added in a later
+      // release): keep it and do not push, so the choice survives until this
+      // device runs a build that supports it. The UI meanwhile stays on the
+      // locale it already renders (setLocale below is a no-op for it).
       if (currentSettings) {
-        const savedLocale = localStorage.getItem('preferred_language') as AppSettings['language'] | null;
+        const savedLocale = localStorage.getItem('preferred_language');
         if (
-          savedLocale &&
-          SUPPORTED_LOCALES.includes(savedLocale) &&
+          isSupportedLocale(savedLocale) &&
+          isSupportedLocale(currentSettings.language) &&
           savedLocale !== currentSettings.language
         ) {
           currentSettings.language = savedLocale;
@@ -59,7 +65,9 @@ function createAppSettingsStore() {
         applyTheme(currentSettings.theme);
       }
 
-      // Apply language from IndexedDB so locale matches saved preference
+      // Apply language from IndexedDB so locale matches saved preference.
+      // A locale this build does not ship (synced from a newer client) is a
+      // no-op in setLocale - the stored value is kept untouched.
       if (currentSettings?.language) {
         const { setLocale } = await import('./i18n.store');
         await setLocale(currentSettings.language);
@@ -167,7 +175,7 @@ function createAppSettingsStore() {
 
   // NOTE: Do NOT auto-init here. Layout calls initializeSettings()
   // AFTER initializeStorage('notes') ensures the database is ready.
-  // Eager init causes a race condition — see reborn-task for details.
+  // Eager init causes a race condition - see reborn-task for details.
 
   return {
     subscribe: settings.subscribe,
@@ -207,7 +215,15 @@ export const appSettings = createAppSettingsStore();
 
 export const currentTheme = derived(appSettings, ($settings) => $settings?.theme ?? 'system');
 
-export const currentLanguage = derived(appSettings, ($settings) => $settings?.language ?? 'en');
+/**
+ * The language the UI actually renders in. The stored `language` setting is
+ * synced across devices and apps, so it can hold a locale this build does not
+ * ship (added in a later release); consumers (date formatting, the language
+ * picker) then get the locale i18n is rendering instead of the raw value.
+ */
+export const currentLanguage = derived([appSettings, locale], ([$settings, $locale]) =>
+  resolveLocale($settings?.language, $locale)
+);
 
 export const dateFormat = derived(
   appSettings,

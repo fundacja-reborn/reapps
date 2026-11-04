@@ -234,6 +234,18 @@ describe('settings-bundle: migrate (decrypt → unknown JSON → typed bundle)',
     expect(out.timeFormat).toBe('24h');
   });
 
+  it('migrateSharedBundle preserves a locale this build does not ship (forward-compat)', () => {
+    // A newer client may sync a language added in a later release. Dropping
+    // or rewriting it here would let this device push a different value back
+    // and silently overwrite the user's choice on every device. The UI layer
+    // resolves the effective locale on read (`resolveLocale` in @reborn/i18n).
+    const out = migrateSharedBundle({ schema_version: 1, language: 'ar' });
+    expect(out.language).toBe('ar');
+
+    const merged = applyBundlesToSettings(NOTES_FIXTURE, out, null);
+    expect(merged.language).toBe('ar');
+  });
+
   it('migrateSharedBundle handles non-object input gracefully', () => {
     expect(migrateSharedBundle(null).schema_version).toBe(1);
     expect(migrateSharedBundle('garbage').schema_version).toBe(1);

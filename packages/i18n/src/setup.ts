@@ -9,6 +9,7 @@ import {
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
   getBrowserLocale,
+  isSupportedLocale,
   saveLocalePreference
 } from './config';
 
@@ -21,7 +22,7 @@ type LocaleDictionary = Record<string, any>;
  *
  * Rationale: a shallow (one-level) merge causes app-specific module files (e.g.
  * tasks/<loc>/auth.json) to silently drop nested keys defined only in the shared
- * common module — even when the app-specific override only wants to refine a
+ * common module - even when the app-specific override only wants to refine a
  * single leaf. Example: `auth.session.totp_*` defined in common/<loc>.json was
  * wiped out by tasks/<loc>/auth.json's minimal `session` block, leaving the
  * re-auth modal showing raw keys in Task. Deep merge lets shared keys flow
@@ -282,8 +283,8 @@ export async function setupI18n(options: I18nOptions) {
 
     // Subscribe to locale changes to save preference
     svelteLocale.subscribe(($locale: string | null | undefined) => {
-      if ($locale && SUPPORTED_LOCALES.includes($locale as SupportedLocale)) {
-        saveLocalePreference($locale as SupportedLocale);
+      if (isSupportedLocale($locale)) {
+        saveLocalePreference($locale);
       }
     });
   }
@@ -310,15 +311,28 @@ export function getAvailableLocales(): SupportedLocale[] {
 }
 
 /**
- * Change locale
+ * Change locale.
+ *
+ * An unsupported value (e.g. a language added in a newer release, synced
+ * from another device) is a no-op: the UI keeps its current locale and
+ * nothing is persisted. It must not throw (callers run it during app-settings
+ * init, where an exception used to abort initialisation and reset the theme)
+ * and must not switch to a fallback locale either, because the locale
+ * subscription in `setupI18n` would save that fallback to localStorage, and
+ * app-settings init pushes a localStorage value that differs from the synced
+ * one back to the server, overwriting the user's choice on every device.
+ *
+ * @returns `true` when the locale was applied, `false` when it was ignored.
  */
-export async function changeLocale(newLocale: SupportedLocale): Promise<void> {
-  if (!SUPPORTED_LOCALES.includes(newLocale)) {
-    throw new Error(`Unsupported locale: ${newLocale}`);
+export async function changeLocale(newLocale: string): Promise<boolean> {
+  if (!isSupportedLocale(newLocale)) {
+    console.warn(`[i18n] Ignoring unsupported locale "${newLocale}" - keeping the current one`);
+    return false;
   }
 
   svelteLocale.set(newLocale);
   saveLocalePreference(newLocale);
+  return true;
 }
 
 // Re-export from svelte-i18n for convenience
