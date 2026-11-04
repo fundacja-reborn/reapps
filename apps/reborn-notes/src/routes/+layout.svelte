@@ -45,7 +45,7 @@
   import { hideNativeSplash } from '$lib/utils/native-splash';
   import { initAppLock, shouldLockOnResume } from '$lib/services/app-lock.service';
   import { createLogger } from '@reborn/utils';
-  import type { ReleasePlatform } from '@reborn/i18n';
+  import { applyDocumentLocale, readDirectionOverride, type ReleasePlatform } from '@reborn/i18n';
   import { whatsNew } from '$lib/stores/whats-new.svelte';
   import { resolveWhatsNewPlatform } from '$lib/utils/whats-new-platform';
   import { maybeShowWhatsNew } from '$lib/services/whats-new.service';
@@ -587,10 +587,15 @@
     };
   });
 
-  // Sync document lang attribute with current locale
+  // Keep <html lang> and <html dir> in sync with the UI locale. The server
+  // already rendered both (%lang% / %dir% in app.html), so the first paint is
+  // in the right direction; this follows later locale changes (and fixes up
+  // native, whose prerendered shell always starts as en/ltr). `?dir=rtl`
+  // forces RTL for smoke-testing the layout before an RTL locale ships.
+  const dirOverride = browser ? readDirectionOverride(window.location.search) : null;
   $effect(() => {
     if (browser && $locale) {
-      document.documentElement.lang = $locale;
+      applyDocumentLocale($locale, dirOverride);
     }
   });
 

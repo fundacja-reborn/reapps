@@ -1,7 +1,9 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  // direction.ts is a second entry: the dependency-free `@reborn/i18n/direction`
+  // subpath the server imports (see package.json exports).
+  entry: ['src/index.ts', 'src/direction.ts'],
   format: ['esm'],
   dts: false,
   sourcemap: false,

@@ -36,6 +36,9 @@ export default defineConfig({
 			'@reborn/storage': resolve('../../packages/storage/src/index.ts'),
 			'@reborn/api-client': resolve('../../packages/api-client/src/index.ts'),
 			// Removed @reborn/ui alias to let Vite use package.json exports
+			// Subpath first: the alias below would otherwise also capture
+			// `@reborn/i18n/direction` (used by hooks.server.ts) as `index.ts/direction`.
+			'@reborn/i18n/direction': resolve('../../packages/i18n/src/direction.ts'),
 			'@reborn/i18n': resolve('../../packages/i18n/src/index.ts')
 		}
 	},

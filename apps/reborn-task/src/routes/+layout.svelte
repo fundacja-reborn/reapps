@@ -24,6 +24,7 @@
 	import { sharesStore } from '$lib/stores/shares.store';
 	import { whatsNew } from '$lib/stores/whats-new.svelte';
 	import { maybeShowWhatsNew } from '$lib/services/whats-new.service';
+	import { applyDocumentLocale, readDirectionOverride } from '@reborn/i18n';
 
 	const logger = createLogger('Layout');
 
@@ -47,10 +48,14 @@
 		($page?.url?.pathname ?? '').startsWith(`${base || ''}/s/`)
 	);
 
-	// Update HTML lang attribute when locale changes
+	// Keep <html lang> and <html dir> in sync with the UI locale. The server
+	// already rendered both (%lang% / %dir% in app.html), so the first paint is
+	// in the right direction; this follows later locale changes. `?dir=rtl`
+	// forces RTL for smoke-testing the layout before an RTL locale ships.
+	const dirOverride = browser ? readDirectionOverride(window.location.search) : null;
 	$effect(() => {
 		if (browser && $locale) {
-			document.documentElement.lang = $locale;
+			applyDocumentLocale($locale, dirOverride);
 		}
 	});
 

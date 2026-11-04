@@ -36,6 +36,23 @@ export {
   type TranslationModule
 } from './config';
 
+// Text direction (LTR / RTL). The pure mapping is also published as the
+// `@reborn/i18n/direction` subpath for server code (hooks.server.ts).
+export {
+  getTextDirection,
+  isTextDirection,
+  inlineSide,
+  RTL_LANGUAGES,
+  type TextDirection
+} from './direction';
+export {
+  textDirection,
+  applyDocumentLocale,
+  readDirectionOverride,
+  DIRECTION_OVERRIDE_PARAM,
+  DIRECTION_OVERRIDE_STORAGE_KEY
+} from './document-direction';
+
 // Re-export types from setup
 export type { I18nOptions } from './setup';
 
