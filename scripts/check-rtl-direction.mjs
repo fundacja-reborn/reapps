@@ -124,9 +124,9 @@ const CLASS_RULES = [
 
 /**
  * CSS rules apply to `.css` files and to `.svelte` files (style blocks,
- * `style="..."`, `style:prop`). Not to `.ts`: CSS in TS strings is the PDF
- * export stylesheet, rendered by html2canvas, which predates logical
- * properties.
+ * `style="..."`, `style:prop`). Not to `.ts`, where `left:` / `right:` are
+ * mostly JS object keys; the one CSS-in-TS stylesheet (PDF_STYLES in the
+ * notes export service) is checked by its own spec through scanText().
  */
 const CSS_RULES = [
   {

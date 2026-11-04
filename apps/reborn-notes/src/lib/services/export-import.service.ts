@@ -31,7 +31,8 @@ import {
 } from '@reborn/storage';
 import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { createMarkdownListRenderers } from '$lib/utils/markdown-to-html';
+import { applyBlockDirection, createMarkdownListRenderers } from '$lib/utils/markdown-to-html';
+import { detectTextDirection } from '@reborn/i18n';
 import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
 import {
@@ -122,7 +123,7 @@ function tryFixUuid(value: unknown): string | null {
       // Pad with leading zeros (most likely corruption: dropped leading '0')
       return part.padStart(expected, '0');
     }
-    return null; // too short or too long — unrepairable
+    return null; // too short or too long - unrepairable
   });
 
   if (fixed.includes(null)) return null;
@@ -259,7 +260,7 @@ export async function exportMarkdownString(title: string, content: string): Prom
 /**
  * Style block injected into the off-screen container that jsPDF rasterizes.
  * html2canvas reads computed styles from a real DOM element, so the rules
- * below define the visual output. No `@page` — page geometry is set on the
+ * below define the visual output. No `@page` - page geometry is set on the
  * jsPDF instance (`format: 'a4'`, `margin: [40,40,40,40]`).
  *
  * Fonts are kept to system stacks. Web fonts that haven't been used elsewhere
@@ -284,7 +285,7 @@ const PDF_STYLES = `
   overflow-wrap: break-word;
 }
 /* Sizes use em (relative to body 11pt), not rem (which resolves against
-   the host page's <html> font-size — typically 16px — and would push
+   the host page's <html> font-size - typically 16px - and would push
    headings past the off-screen container's wrapping boundary, triggering
    html2canvas-pro's multi-line text-renderer bug). */
 .reborn-pdf-root .reborn-pdf-body h1 { font-size: 1.5em;  margin: 0.5em 0 0.4em; }
@@ -299,37 +300,40 @@ const PDF_STYLES = `
    right-aligned text anchored at the <li>'s left edge (esm.js:9486–9495);
    for our 800px off-screen container the glyph sometimes lands outside the
    captured region or is suppressed entirely. Pseudo-element content with
-   counter() is rendered as ordinary positioned text and renders reliably. */
+   counter() is rendered as ordinary positioned text and renders reliably.
+   Logical properties throughout (RTL notes): html2canvas reads the computed
+   physical values, which the browser resolves per block direction, so an
+   Arabic list gets its markers on the right, next to the text. */
 .reborn-pdf-root ul, .reborn-pdf-root ol {
   list-style: none;
   margin: 0 0 0.75em 0;
-  padding-left: 1.5em;
+  padding-inline-start: 1.5em;
 }
 .reborn-pdf-root ol { counter-reset: pdf-ol; }
 .reborn-pdf-root li { position: relative; }
 .reborn-pdf-root ul > li::before {
   content: '•';
   position: absolute;
-  left: -1em;
+  inset-inline-start: -1em;
   width: 1em;
-  text-align: left;
+  text-align: start;
 }
 .reborn-pdf-root ol > li { counter-increment: pdf-ol; }
 .reborn-pdf-root ol > li::before {
   content: counter(pdf-ol) '.';
   position: absolute;
-  left: -1.5em;
+  inset-inline-start: -1.5em;
   width: 1.25em;
-  text-align: right;
-  padding-right: 0.25em;
+  text-align: end;
+  padding-inline-end: 0.25em;
 }
 .reborn-pdf-root li + li { margin-top: 0.2em; }
-/* GFM task list items — drop the synthetic ::before bullet (the checkbox
+/* GFM task list items - drop the synthetic ::before bullet (the checkbox
    takes its place). The checkbox itself is pulled into the bullet zone via
-   negative margin-left below; keeping the li's box untouched preserves the
-   parent ul's padding-left: 1.5em per nested level, so deeper task-list
-   nesting stays visibly indented. The previous approach (margin-left:
-   -1.5em on li.task-list-item) cancelled the per-level indent exactly,
+   a negative inline-start margin below; keeping the li's box untouched
+   preserves the parent ul's 1.5em inline-start padding per nested level, so
+   deeper task-list nesting stays visibly indented. The previous approach (a
+   -1.5em margin on li.task-list-item) cancelled the per-level indent exactly,
    collapsing every task item to column 0 in the PDF.
    Strikethrough scopes to the parent's own inline wrapper so a checked
    parent does not visually mark its nested children as done. */
@@ -339,11 +343,11 @@ const PDF_STYLES = `
   text-decoration: line-through;
   color: #555;
 }
-.reborn-pdf-root .task-list-item-checkbox { margin-right: 0.4em; margin-left: -1.4em; vertical-align: middle; }
+.reborn-pdf-root .task-list-item-checkbox { margin-inline-end: 0.4em; margin-inline-start: -1.4em; vertical-align: middle; }
 .reborn-pdf-root blockquote {
   margin: 0 0 0.75em;
   padding: 0.4em 0.9em;
-  border-left: 3px solid #999;
+  border-inline-start: 3px solid #999;
   color: #444;
 }
 .reborn-pdf-root code {
@@ -354,6 +358,9 @@ const PDF_STYLES = `
   border-radius: 3px;
 }
 .reborn-pdf-root pre {
+  /* Code reads left-to-right in any note language. */
+  direction: ltr;
+  text-align: start;
   margin: 0 0 0.75em;
   padding: 0.75em;
   background: #f3f3f3;
@@ -370,7 +377,7 @@ const PDF_STYLES = `
 .reborn-pdf-root th, .reborn-pdf-root td {
   border: 1px solid #ccc;
   padding: 0.4em 0.6em;
-  text-align: left;
+  text-align: start;
 }
 .reborn-pdf-root th { background: #f3f3f3; font-weight: 600; }
 .reborn-pdf-root img { max-width: 100%; height: auto; }
@@ -391,14 +398,14 @@ const PDF_STYLES = `
  * Latin-1 codepoints). Embedding a Unicode TrueType font would solve it but
  * requires shipping a ~150 KB font asset. Manual raster pagination keeps the
  * pipeline simple and renders any character correctly because everything is
- * pixels — at the cost of selectable text in the output.
+ * pixels - at the cost of selectable text in the output.
  *
  * Replaces the previous native-print approach (3 iterations) which never
- * worked on Android PWA — the platform print framework treated the iframe as
+ * worked on Android PWA - the platform print framework treated the iframe as
  * a viewport snapshot and ignored multi-page pagination.
  */
 export async function exportNoteAsPdf(note: NoteDecrypted): Promise<void> {
-  // Fresh Marked instance — don't inherit MarkdownPreview's custom image
+  // Fresh Marked instance - don't inherit MarkdownPreview's custom image
   // renderer (which emits placeholders); we want real <img> in the PDF.
   // The list / task-list renderers ARE shared with Preview so checklist items
   // render with `task-list-item` markup (no double bullet next to the
@@ -407,12 +414,16 @@ export async function exportNoteAsPdf(note: NoteDecrypted): Promise<void> {
   const { renderer } = createMarkdownListRenderers();
   printMarked.use({ renderer });
   const rawHtml = printMarked.parse(note.content ?? '', { async: false }) as string;
-  const safeBodyHtml = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+  // Per-block direction (dir="auto") exactly as in the preview, so an Arabic
+  // paragraph and an English one each render in their own direction.
+  const safeBodyHtml = applyBlockDirection(
+    DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } })
+  );
 
   const filename = sanitizeFilename(note.title);
 
   // html2canvas-pro reads layout from a real, laid-out element. Off-screen via
-  // `left: -10000px; top: 0` rather than huge negative top — the latter put
+  // `left: -10000px; top: 0` rather than huge negative top - the latter put
   // the element 100000px below the viewport's natural origin and confused
   // pagination. `top: 0` keeps the element at the document top in absolute
   // coordinates, just shifted horizontally out of view.
@@ -436,13 +447,19 @@ export async function exportNoteAsPdf(note: NoteDecrypted): Promise<void> {
   bodyEl.className = 'reborn-pdf-body';
   bodyEl.innerHTML = safeBodyHtml;
   container.appendChild(bodyEl);
+  // The PDF is a document, so its base direction comes from the note's own
+  // text (first letter), never from the UI: otherwise an English note exported
+  // from an RTL UI would inherit RTL wherever a block has no strong character
+  // of its own (images, rules, code fallbacks). Read from the rendered text so
+  // Markdown syntax, URLs and tag names do not count.
+  container.dir = detectTextDirection(bodyEl.textContent ?? '') ?? 'ltr';
 
   document.body.appendChild(container);
 
   try {
     // Collect candidate page-break boundaries in container-local CSS pixels.
     // Measured BEFORE html2canvas runs because html2canvas removes its
-    // overlay clone after rendering — the source container is unaffected.
+    // overlay clone after rendering - the source container is unaffected.
     const renderScale = 2;
     const containerTop = container.getBoundingClientRect().top;
     const breakBoundariesCss: number[] = [];
@@ -530,7 +547,7 @@ export async function exportNoteAsPdf(note: NoteDecrypted): Promise<void> {
 
       sliceCanvas.width = fullCanvas.width;
       sliceCanvas.height = sliceHeightPx;
-      // White background — JPEG has no alpha; transparent pixels would
+      // White background - JPEG has no alpha; transparent pixels would
       // otherwise encode as black.
       sliceCtx.fillStyle = '#ffffff';
       sliceCtx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
@@ -571,7 +588,7 @@ export async function exportNoteAsPdf(note: NoteDecrypted): Promise<void> {
     container.remove();
     // html2canvas-pro appends `<iframe class="html2canvas-container">` to body
     // for its DOM clone. On success it cleans up; on a thrown error mid-render
-    // the iframe can be left behind — drop it so the page isn't holding a
+    // the iframe can be left behind - drop it so the page isn't holding a
     // hidden, off-screen frame in memory.
     document
       .querySelectorAll('iframe.html2canvas-container')
@@ -588,7 +605,7 @@ export async function exportNotesAsZip(
   // Resolve tag names for all notes in bulk
   const allTags = await tagStore.getAll();
   const allNoteTagRelations = await noteTagStore.getAll();
-  // Decrypt tag names — tags are stored encrypted in IndexedDB
+  // Decrypt tag names - tags are stored encrypted in IndexedDB
   const tagNameById = new Map<string, string>();
   if (cryptoManager.isInitialized()) {
     for (const t of allTags) {
@@ -658,7 +675,7 @@ function stripNoteShadowIndexes(note: NoteStoredLocal): NoteEncrypted {
  *     because the schema expects `string | undefined`. See guideline 44.
  *  3. Stamp the current account's UUID into `user_id` when the stored value
  *     is null/missing/non-UUID. The local IDB cleanup migration repairs the
- *     same pollution, but this is a belt-and-suspenders pass — without it,
+ *     same pollution, but this is a belt-and-suspenders pass - without it,
  *     a backup taken before the next boot's cleanup would still emit
  *     `"user_id": null`.
  */
@@ -706,7 +723,7 @@ function normalizeExportUuids<T extends { id: string }>(
  *
  * Zero Knowledge: shadow indexes (is_pinned, is_starred) are stripped from
  * notes; they will be rebuilt from `metadata_encrypted` on import.
- * Note-tag relations are NOT included — they are encoded inside each note's
+ * Note-tag relations are NOT included - they are encoded inside each note's
  * `metadata_encrypted.tags` and rebuilt on import.
  */
 export async function exportJsonBackup(): Promise<void> {
@@ -830,7 +847,7 @@ type BackupV1 = {
     folders: Record<string, unknown>[];
     tags: Record<string, unknown>[];
     /**
-     * Legacy field — pre-fix backups dumped raw note-tag relations.
+     * Legacy field - pre-fix backups dumped raw note-tag relations.
      * Current backups encode tag IDs inside `metadata_encrypted.tags` and
      * omit this field. Kept optional for backwards compat with old files.
      */
@@ -869,7 +886,7 @@ export type ImportBackupResult = {
   skipped: number;
   /**
    * Number of folders/notes whose local copy was archived (in trash) but
-   * the backup version was active — the timestamp guard was overridden so
+   * the backup version was active - the timestamp guard was overridden so
    * the backup wins. Subset of `folders` + `notes`: each restored item is
    * also counted in its main bucket (the import did happen). UI surfaces
    * this separately so the user knows the backup just resurrected items
@@ -881,7 +898,7 @@ export type ImportBackupResult = {
    * backup's folder while preserving the local title/content/metadata
    * (the local note was newer by timestamp because `deleteFolder`
    * rewrites `folder_id = null` on every child, bumping `updated_at`,
-   * but the user's actual content edits — if any — outrank the backup's
+   * but the user's actual content edits - if any - outrank the backup's
    * stale snapshot). NOT a subset of `notes`: a relinked note isn't a
    * full backup import, just a structural fix on the local copy.
    */
@@ -891,7 +908,7 @@ export type ImportBackupResult = {
    * (base64 data URIs, dangerous HTML tags, javascript:/data:text/html links).
    * Mirrors the counter from {@link importMarkdownFiles} / {@link importFolder}
    * so older backups created before content sanitization existed are scrubbed
-   * on import — defense in depth, even though account-key-encrypted content
+   * on import - defense in depth, even though account-key-encrypted content
    * is only readable on the originating account.
    */
   strippedCount: number;
@@ -1053,8 +1070,8 @@ export async function importJsonBackup(
       // The current account is authoritative for `user_id`; the value carried
       // in the file is irrelevant (we overwrite it on save anyway). Set it
       // before validation so legacy backups with null/missing/invalid user_id
-      // — produced by older client builds or by a sync pull racing auth
-      // restoration — don't fail Zod's `z.string().uuid()` check. Same
+      // - produced by older client builds or by a sync pull racing auth
+      // restoration - don't fail Zod's `z.string().uuid()` check. Same
       // behavior on cross-account imports: ownership transfers to the
       // importing user. See guideline 44.
       normalized.user_id = userId;
@@ -1092,7 +1109,7 @@ export async function importJsonBackup(
       await folderStore.save(toSave);
       // Push is deferred to pushPendingItems() at the end of the import.
       // Firing per-element pushes here would race against the parallel note
-      // pushes below — the server's POST /api/notes FK-checks folder_id
+      // pushes below - the server's POST /api/notes FK-checks folder_id
       // and 404s when a note's parent folder hasn't landed yet. The end-of-
       // import pushPendingItems() runs `Promise.allSettled([folders + tags])
       // → Promise.allSettled(notes)` so the FK relationship is satisfied
@@ -1113,7 +1130,7 @@ export async function importJsonBackup(
         tag as Record<string, unknown>,
         TAG_OPTIONAL_FIELDS
       );
-      // user_id from file is ignored — set authoritative value before
+      // user_id from file is ignored - set authoritative value before
       // validation. See folder loop above for rationale.
       normalized.user_id = userId;
       const { fixed: fixedTag, repairedFields: repairedTagFields } = fixEntityUuids(
@@ -1142,14 +1159,14 @@ export async function importJsonBackup(
         updated_at: now
       };
       await tagStore.save(toSave);
-      // Push deferred to pushPendingItems() — see folder loop above.
+      // Push deferred to pushPendingItems() - see folder loop above.
       result.tags++;
     } catch (e: unknown) {
       result.errors.push(`Tag ${tag.id}: ${e instanceof Error ? e.message : 'error'}`);
     }
   }
 
-  // Import notes — strip any shadow indexes a legacy file may have, then
+  // Import notes - strip any shadow indexes a legacy file may have, then
   // rebuild them locally from `metadata_encrypted` (Zero Knowledge: shadow
   // indexes are NEVER trusted from a file).
   // Notes dominate import time (decrypt + sanitize + re-encrypt per note),
@@ -1164,11 +1181,11 @@ export async function importJsonBackup(
     const note = notes[i];
     try {
       // Strip shadow indexes from raw input before validation. Zod's safeParse
-      // strips unknowns, so this is mostly defensive — it makes the intent
+      // strips unknowns, so this is mostly defensive - it makes the intent
       // explicit and tolerates legacy files.
       const wireCandidate = stripUnknownNoteShadowIndexes(note) as Record<string, unknown>;
       const normalized = normalizeNullToUndefined(wireCandidate, NOTE_OPTIONAL_FIELDS);
-      // user_id from file is ignored — set authoritative value before
+      // user_id from file is ignored - set authoritative value before
       // validation. See folder loop above for rationale.
       normalized.user_id = userId;
       const { fixed: fixedNote, repairedFields: repairedNoteFields } = fixEntityUuids(
@@ -1186,7 +1203,7 @@ export async function importJsonBackup(
       const validated = parsed.data;
       const existing = await noteStore.get(validated.id);
       // Backup is authoritative for `is_archived`: if the note is in the
-      // local trash but the backup has it active (or omits the field —
+      // local trash but the backup has it active (or omits the field -
       // the schema treats it as optional), override the timestamp guard
       // and restore it. updated_at is set to now below so the restoration
       // propagates to other devices.
@@ -1220,7 +1237,7 @@ export async function importJsonBackup(
           updated_at: now
         };
         await noteStore.save(toSave);
-        // Push deferred to pushPendingItems() — see folder loop above.
+        // Push deferred to pushPendingItems() - see folder loop above.
         result.relinkedToFolder++;
         continue;
       }
@@ -1248,7 +1265,7 @@ export async function importJsonBackup(
       // Defense in depth: scrub unsafe markdown (base64 data URIs, <script>,
       // javascript: links) from older backups. Mirrors the .md / folder import
       // path. Decrypts with the current account key, sanitizes plaintext, and
-      // re-encrypts only when something was stripped — preserving Zero
+      // re-encrypts only when something was stripped - preserving Zero
       // Knowledge: ciphertext leaves the browser, plaintext never does. If
       // the content is encrypted with a different key (cross-account import)
       // decryption fails and we leave the ciphertext untouched.
@@ -1288,7 +1305,7 @@ export async function importJsonBackup(
       await noteStore.save(toSave);
 
       // Rebuild local note-tag associations from metadata_encrypted.tags
-      // (mirrors pullNotes() — relations are not stored in the file directly).
+      // (mirrors pullNotes() - relations are not stored in the file directly).
       if (metaTagIds.length > 0) {
         const currentTagIds = await noteTagQueries.getTagsForNote(validated.id);
         const toAdd = metaTagIds.filter((id) => !currentTagIds.includes(id));
@@ -1307,7 +1324,7 @@ export async function importJsonBackup(
         ]);
       }
 
-      // Push deferred to pushPendingItems() — see folder loop above.
+      // Push deferred to pushPendingItems() - see folder loop above.
       result.notes++;
       if (restoring) result.restoredFromTrash++;
     } catch (e: unknown) {
@@ -1357,7 +1374,7 @@ export async function importJsonBackup(
   //   Promise.allSettled([folders + tags]) → Promise.allSettled(notes)
   // so the server's POST /api/notes FK check on `folder_id` always sees the
   // parent folder by the time a note POST fires. Per-loop fire-and-forget
-  // pushes raced against this — see fix(notes): import-push-ordering and
+  // pushes raced against this - see fix(notes): import-push-ordering and
   // guideline 44.
   void pushPendingItems();
 
@@ -1376,7 +1393,7 @@ export async function importJsonBackup(
 }
 
 /**
- * Defensive strip — drops local-only shadow keys before Zod validation.
+ * Defensive strip - drops local-only shadow keys before Zod validation.
  * `safeParse` already strips unknowns, but doing it explicitly documents
  * the Zero Knowledge invariant: these fields must be rebuilt from
  * `metadata_encrypted`, never trusted from a file.
@@ -1394,7 +1411,7 @@ function stripUnknownNoteShadowIndexes(raw: unknown): unknown {
  * Build a per-folder lookup of taken note titles from the in-memory NoteIndex.
  *
  * Triggers a rebuild if the index appears empty despite notes existing on disk
- * (defensive — the importer must not silently skip dedup against existing
+ * (defensive - the importer must not silently skip dedup against existing
  * notes when the index is stale at import time).
  */
 async function buildTitleLookupFromIndex(): Promise<TitleLookup> {
@@ -1437,9 +1454,9 @@ export type ImportMarkdownResult = {
 /**
  * Progress phase reported by the importer to a UI callback.
  *
- * - `reading`  — iterating files (read text + decrypt + dedup + write).
+ * - `reading`  - iterating files (read text + decrypt + dedup + write).
  *                `current`/`total` count files in the import batch.
- * - `indexing` — rebuilding the in-memory title index after all writes.
+ * - `indexing` - rebuilding the in-memory title index after all writes.
  *                Single-step phase; `current === total === 1`.
  */
 export type ImportProgress = {
@@ -1455,10 +1472,10 @@ export type ImportProgressCallback = (p: ImportProgress) => void;
  *
  * `duplicateStrategy` controls behavior when a note with the same title
  * already exists in `folderId` (case-insensitive):
- *   - `skip`      — leave the existing note untouched
- *   - `overwrite` — replace title/content; preserve the existing note's id
+ *   - `skip`      - leave the existing note untouched
+ *   - `overwrite` - replace title/content; preserve the existing note's id
  *                   and `created_at` (so backlinks survive)
- *   - `rename`    — append " (N)" to the imported title until free
+ *   - `rename`    - append " (N)" to the imported title until free
  */
 export async function importMarkdownFiles(
   files: File[],
@@ -1849,7 +1866,7 @@ async function findOrCreateFolderByPath(
     }
     // skipSync: folder import bulk-pushes everything via pushPendingItems()
     // at the end so folders are guaranteed on the server before notes that
-    // reference them — otherwise the server's folder_id FK check returns 404.
+    // reference them - otherwise the server's folder_id FK check returns 404.
     const newId = await FolderService.createFolder(segment, parentId, { skipSync: true });
     lookup.push({ id: newId, name: segment, parent_id: parentId });
     counter.count++;
@@ -1870,7 +1887,7 @@ async function findOrCreateTagByName(
   const lower = tagName.toLowerCase();
   const existing = lookup.find((t) => t.name.toLowerCase() === lower);
   if (existing) return existing.id;
-  // skipSync: see findOrCreateFolderByPath — bulk push at end of importFolder().
+  // skipSync: see findOrCreateFolderByPath - bulk push at end of importFolder().
   const newId = await TagService.createTag(tagName, undefined, { skipSync: true });
   lookup.push({ id: newId, name: tagName });
   counter.count++;
@@ -2029,7 +2046,7 @@ async function prepareImportFile(
 
   const { createdAt, modifiedAt } = pickImportTimestamps(parsed, file.lastModified);
 
-  // Frontmatter tags are global — find-or-create is independent of the per-note
+  // Frontmatter tags are global - find-or-create is independent of the per-note
   // duplicate strategy.
   const tagIds: string[] = [];
   if (parsed.tags.length > 0) {
@@ -2112,7 +2129,7 @@ export async function importFolder(
 
   // 1. Skip files in hidden directories (.obsidian/, .trash/, etc.).
   //    Applied FIRST so we don't pollute the non-markdown counter with
-  //    .json/.css plugin internals — those get their own bucket.
+  //    .json/.css plugin internals - those get their own bucket.
   const visibleEntries: typeof allEntries = [];
   for (const e of allEntries) {
     if (containsHiddenSegment(e.relativePath)) {
@@ -2192,11 +2209,11 @@ export async function importFolder(
   }
   result.foldersCreated = foldersCounter.count;
 
-  // 7. Import each note. skipSync: true on every write — one ordered bulk push
+  // 7. Import each note. skipSync: true on every write - one ordered bulk push
   //    runs after (step 7b). Two code paths share the resolve/write split:
   //
   //    - Default (no link rewrite): a single streaming pass, resolve → write
-  //      per file (one file's content held at a time) — the original behavior.
+  //      per file (one file's content held at a time) - the original behavior.
   //    - Link rewrite ON: TWO passes. First resolve EVERY file's target id (so a
   //      complete relativePath → note id map exists, including ids minted for
   //      brand-new files), then rewrite each file's links against it and write.
@@ -2272,7 +2289,7 @@ export async function importFolder(
           strategy: duplicateStrategy,
           manifestNoteId: pathManifest?.[entry.relativePath]
         });
-        // Every resolved file is a link target — including `skip` (the existing
+        // Every resolved file is a link target - including `skip` (the existing
         // note stays, links to it must still resolve). this-run id overrides any
         // carried-over manifest id (note deleted + re-created gets the fresh id).
         linkMap.set(entry.relativePath, target.noteId);
