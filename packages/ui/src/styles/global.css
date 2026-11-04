@@ -145,6 +145,21 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /*
+   * Free-text fields: the typed text takes its direction from its own first
+   * strong character - an English query in an Arabic UI is typed
+   * left-to-right with the caret where the next letter appears, and vice
+   * versa - while the field's layout (padding, search icon, clear button)
+   * keeps the UI direction. This is what the browser's own stylesheet does for
+   * textarea[dir=auto]. Plain `dir="auto"` would also flip `direction`, so
+   * `ps-*` / `pe-*` would swap sides under the in-field icons. An empty field
+   * (placeholder) follows the UI. Passwords, emails and URLs stay as they are.
+   * Zero specificity, so a component can opt out with `[unicode-bidi:normal]`.
+   */
+  :where(input:not([type]), input[type='text'], input[type='search'], textarea) {
+    unicode-bidi: plaintext;
+  }
 }
 
 /* Browser autofill override - prevent light background on filled inputs in dark mode */
