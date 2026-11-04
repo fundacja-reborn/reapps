@@ -23,6 +23,11 @@
       "reborn-source": "./src/direction.ts",
       "types": "./dist/direction.d.ts",
       "import": "./dist/direction.js"
+    },
+    "./config": {
+      "reborn-source": "./src/config.ts",
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
     }
   },
   "files": [

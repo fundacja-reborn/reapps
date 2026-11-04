@@ -15,17 +15,6 @@ export const UserSchema = z.object({
 });
 
 /**
- * Schema for user settings
- */
-export const UserSettingsSchema = z.object({
-  theme: z.enum(['light', 'dark', 'system']),
-  language: z.enum(['en', 'pl']),
-  preferred_date_format: z.string(),
-  preferred_time_format: z.enum(['12h', '24h']),
-  notifications_enabled: z.boolean()
-});
-
-/**
  * Schema for user profile
  */
 export const UserProfileSchema = z.object({
@@ -76,7 +65,6 @@ export const LoginApiResponseSchema = z.object({
 
 // Export inferred types
 export type User = z.infer<typeof UserSchema>;
-export type UserSettings = z.infer<typeof UserSettingsSchema>;
 export type UserProfile = z.infer<typeof UserProfileSchema>;
 export type UserCredentials = z.infer<typeof UserCredentialsSchema>;
 export type LoginApiResponse = z.infer<typeof LoginApiResponseSchema>;

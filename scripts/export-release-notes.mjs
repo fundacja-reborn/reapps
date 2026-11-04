@@ -19,11 +19,13 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readSupportedLocales } from './supported-locales.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RN_DIR = resolve(__dirname, '..', 'packages', 'i18n', 'src', 'release-notes');
 const TEXT_DIR = join(RN_DIR, 'text');
-const LOCALES = ['en', 'pl', 'de', 'fr', 'es'];
+// Single source: SUPPORTED_LOCALES in packages/i18n/src/config.ts.
+const LOCALES = readSupportedLocales();
 const DEFAULT_OUT = resolve(__dirname, '..', '..', 'reapps-www', 'src', 'data', 'release-notes.json');
 
 const argv = process.argv.slice(2);

@@ -20,6 +20,7 @@ import { getShareOgStrings } from '$lib/server/share-og';
 import { getAppLoadingStrings } from '$lib/server/app-loading-strings';
 // Dependency-free subpath (no svelte-i18n / translation bundles on the server).
 import { getTextDirection } from '@reborn/i18n/direction';
+import { DEFAULT_LOCALE, isSupportedLocale, type SupportedLocale } from '@reborn/i18n/config';
 
 // ── Rate-limited auth routes ──────────────────────────────────────
 
@@ -242,8 +243,6 @@ const shareCleanupHandle: Handle = async ({ event, resolve }) => {
   return response;
 };
 
-const SUPPORTED_LOCALES_SERVER = ['en', 'pl', 'de', 'es', 'fr'] as const;
-
 const SHARE_PATH_PREFIX = `${BASE}/s/`;
 
 function escAttr(s: string): string {
@@ -263,9 +262,9 @@ function escAttr(s: string): string {
 // chance to put crawler-visible metadata into the response.
 const localeHandle: Handle = async ({ event, resolve }) => {
   const cookieLocale = event.cookies.get('locale');
-  let locale = 'en';
+  let locale: SupportedLocale = DEFAULT_LOCALE;
 
-  if (cookieLocale && (SUPPORTED_LOCALES_SERVER as readonly string[]).includes(cookieLocale)) {
+  if (isSupportedLocale(cookieLocale)) {
     locale = cookieLocale;
   } else {
     const acceptLanguage = event.request.headers.get('accept-language');
@@ -273,9 +272,7 @@ const localeHandle: Handle = async ({ event, resolve }) => {
       const languages = acceptLanguage
         .split(',')
         .map((lang) => lang.split(';')[0].trim().split('-')[0].toLowerCase());
-      const match = languages.find((lang) =>
-        (SUPPORTED_LOCALES_SERVER as readonly string[]).includes(lang)
-      );
+      const match = languages.find(isSupportedLocale);
       if (match) locale = match;
     }
   }

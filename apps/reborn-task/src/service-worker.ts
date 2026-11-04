@@ -4,6 +4,10 @@
 /// <reference lib="webworker" />
 
 import { build, files, version } from '$service-worker';
+// Type-only (erased): no @reborn/i18n code runs in the SW, but the string
+// tables below are typed against the single locale list, so a new locale
+// without SW strings fails svelte-check.
+import type { SupportedLocale } from '@reborn/i18n/config';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
@@ -503,8 +507,6 @@ sw.addEventListener('push', (event) => {
 });
 
 // ── Task reminder push handler ───────────────────────────────
-
-type SupportedLocale = 'en' | 'pl' | 'de' | 'es' | 'fr';
 
 interface TaskReminderStrings {
 	appName: string;

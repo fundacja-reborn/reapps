@@ -16,9 +16,10 @@ export default [
           enforceBuildableLibDependency: true,
           allow: [
             '^.*/eslint(\\.base)?\\.config\\.[cm]?js$',
-            // Repo-level source guard imported by the RTL specs (dev tooling,
-            // not a project dependency) - see scripts/check-rtl-direction.mjs.
-            '^.*/scripts/check-rtl-direction\\.mjs$'
+            // Repo-level dev tooling imported by guard specs (not a project
+            // dependency): scripts/check-rtl-direction.mjs,
+            // scripts/supported-locales.mjs.
+            '^.*/scripts/(check-rtl-direction|supported-locales)\\.mjs$'
           ],
           depConstraints: [
             {
