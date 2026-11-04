@@ -58,3 +58,22 @@ export function isTextDirection(value: unknown): value is TextDirection {
 export function inlineSide(side: 'start' | 'end', dir: TextDirection): 'left' | 'right' {
   return (side === 'end') === (dir === 'rtl') ? 'left' : 'right';
 }
+
+/** Letters of right-to-left scripts (by Unicode script, not bidi class). */
+const RTL_SCRIPT_LETTER =
+  /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}\p{Script=Samaritan}\p{Script=Mandaic}\p{Script=Adlam}\p{Script=Hanifi_Rohingya}\p{Script=Yezidi}]/u;
+const LETTER = /\p{L}/u;
+
+/**
+ * Direction of a text from its first letter, like the browser's `dir="auto"`
+ * (first strong character): `'rtl'` for Arabic, Hebrew, ... `'ltr'` for any
+ * other script, `null` when there is no letter at all (digits, punctuation,
+ * empty). For content that is not rendered in a live `dir="auto"` element -
+ * e.g. the base direction of an exported PDF.
+ */
+export function detectTextDirection(text: string): TextDirection | null {
+  for (const ch of text) {
+    if (LETTER.test(ch)) return RTL_SCRIPT_LETTER.test(ch) ? 'rtl' : 'ltr';
+  }
+  return null;
+}

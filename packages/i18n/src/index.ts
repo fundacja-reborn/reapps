@@ -40,6 +40,7 @@ export {
 // `@reborn/i18n/direction` subpath for server code (hooks.server.ts).
 export {
   getTextDirection,
+  detectTextDirection,
   isTextDirection,
   inlineSide,
   RTL_LANGUAGES,
