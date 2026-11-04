@@ -30,6 +30,8 @@ export {
   LOCALE_STORAGE_KEY,
   getBrowserLocale,
   saveLocalePreference,
+  isSupportedLocale,
+  resolveLocale,
   type SupportedLocale,
   type TranslationModule
 } from './config';

@@ -8,7 +8,7 @@ import {
 	resetSettings as resetAppSettings
 } from '$lib/utils/app-settings';
 import type { AppSettings } from '@reborn/storage';
-import { SUPPORTED_LOCALES } from '@reborn/i18n';
+import { isSupportedLocale, locale, resolveLocale } from '@reborn/i18n';
 import { createLogger } from '@reborn/utils';
 import { syncedSettings } from '$lib/services/synced-settings.service';
 
@@ -44,15 +44,11 @@ function createAppSettingsStore() {
 			//
 			// This runs AFTER syncedSettings.pullAndMerge() in the layout, so when
 			// localStorage disagrees with the synced value the user is intentionally
-			// overriding (e.g. picked a different language on the login page) — push
+			// overriding (e.g. picked a different language on the login page) - push
 			// that choice up so other devices converge.
 			if (currentSettings) {
 				const savedLocale = localStorage.getItem('preferred_language') as AppSettings['language'] | null;
-				if (
-					savedLocale &&
-					SUPPORTED_LOCALES.includes(savedLocale) &&
-					savedLocale !== currentSettings.language
-				) {
+				if (isSupportedLocale(savedLocale) && savedLocale !== currentSettings.language) {
 					currentSettings.language = savedLocale;
 					await setSetting('language', savedLocale);
 					syncedSettings.schedulePush();
@@ -66,7 +62,9 @@ function createAppSettingsStore() {
 				applyTheme(currentSettings.theme);
 			}
 
-			// Apply language from IndexedDB so locale matches saved preference
+			// Apply language from IndexedDB so locale matches saved preference.
+			// A locale this build does not ship (synced from a newer client) is a
+			// no-op in setLocale - the stored value is kept untouched.
 			if (currentSettings?.language) {
 				const { setLocale } = await import('./i18n.store');
 				await setLocale(currentSettings.language);
@@ -234,7 +232,16 @@ export const appSettings = createAppSettingsStore();
 // Derived stores for specific settings
 export const currentTheme = derived(appSettings, ($settings) => $settings?.theme ?? 'system');
 
-export const currentLanguage = derived(appSettings, ($settings) => $settings?.language ?? 'en');
+/**
+ * The language the UI actually renders in. The stored `language` setting is
+ * synced across devices and apps, so it can hold a locale this build does not
+ * ship (added in a later release); consumers (date formatting, the language
+ * picker, reminder scheduling) then get the locale i18n is rendering instead
+ * of the raw value.
+ */
+export const currentLanguage = derived([appSettings, locale], ([$settings, $locale]) =>
+	resolveLocale($settings?.language, $locale)
+);
 
 export const dateFormat = derived(
 	appSettings,
