@@ -14,7 +14,12 @@ export default [
         'error',
         {
           enforceBuildableLibDependency: true,
-          allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?js$'],
+          allow: [
+            '^.*/eslint(\\.base)?\\.config\\.[cm]?js$',
+            // Repo-level source guard imported by the RTL specs (dev tooling,
+            // not a project dependency) - see scripts/check-rtl-direction.mjs.
+            '^.*/scripts/check-rtl-direction\\.mjs$'
+          ],
           depConstraints: [
             {
               sourceTag: '*',
