@@ -98,7 +98,7 @@
                 title={$t('folders.undecryptable_hint')}>{$t('folders.undecryptable')}</span
               >
             {:else}
-              <span class="min-w-0 flex-1 truncate">{folder.name}</span>
+              <span class="min-w-0 flex-1 truncate"><bdi>{folder.name}</bdi></span>
             {/if}
             <ChevronRight
               class="h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 group-hover:text-muted-foreground"

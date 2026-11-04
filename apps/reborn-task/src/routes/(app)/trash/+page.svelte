@@ -203,7 +203,7 @@
 								? 'line-through text-muted-foreground'
 								: ''}"
 						>
-							{task.title}
+							<bdi>{task.title}</bdi>
 						</h3>
 
 						<!-- Metadata -->
@@ -289,7 +289,7 @@
 <Sheet bind:open={actionSheetOpen}>
 	<SheetContent side="bottom" class="h-auto">
 		<SheetHeader>
-			<SheetTitle>{activeMenuTask?.title || ''}</SheetTitle>
+			<SheetTitle><bdi>{activeMenuTask?.title || ''}</bdi></SheetTitle>
 		</SheetHeader>
 		<div class="mt-4 space-y-1">
 			<Button

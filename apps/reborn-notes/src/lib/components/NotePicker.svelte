@@ -97,7 +97,7 @@
             <FileText class="h-4 w-4 shrink-0 text-muted-foreground" />
             <div class="min-w-0 flex-1">
               <p class="truncate font-normal text-foreground">
-                {note.title || $t('notes.untitled')}
+                <bdi>{note.title || $t('notes.untitled')}</bdi>
               </p>
             </div>
           </button>

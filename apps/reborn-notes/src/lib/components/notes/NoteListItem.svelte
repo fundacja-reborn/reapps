@@ -298,13 +298,14 @@
 
           <div class="min-w-0 flex-1">
             <div class="flex items-start gap-1">
+              <!-- <bdi>: the title renders in its own direction but the row keeps the
+                   UI alignment, like the folder, tag and date lines below it. -->
               <p
-                dir="auto"
                 class="min-w-0 flex-1 line-clamp-2 text-base md:text-sm font-normal leading-snug
                   {note.decrypt_failed ? 'italic text-muted-foreground' : 'text-foreground'}"
                 title={note.decrypt_failed ? $t('notes.undecryptable_hint') : undefined}
               >
-                {displayTitle}
+                <bdi>{displayTitle}</bdi>
               </p>
               <!-- Star indicator -->
               {#if note.is_starred}

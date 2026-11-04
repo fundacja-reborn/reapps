@@ -50,7 +50,7 @@
     <SidebarTrigger class="md:hidden -ms-1 shrink-0" />
   {/if}
   <span class="min-w-0 flex-1 truncate text-sm font-medium"
-    >{selectedVersion.title || $t('notes.untitled')}</span
+    ><bdi>{selectedVersion.title || $t('notes.untitled')}</bdi></span
   >
   {#if previousVersion}
     <div class="flex h-7 shrink-0 items-center rounded-md border text-xs">

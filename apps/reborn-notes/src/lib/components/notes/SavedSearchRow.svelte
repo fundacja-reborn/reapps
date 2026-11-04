@@ -221,7 +221,7 @@
           {:else if search.decrypt_failed}
             <span class="min-w-0 flex-1 truncate italic text-muted-foreground">{displayName}</span>
           {:else}
-            <span class="min-w-0 flex-1 truncate">{search.name}</span>
+            <span class="min-w-0 flex-1 truncate"><bdi>{search.name}</bdi></span>
             {#if context === 'panel'}
               <span class="hidden max-w-[40%] shrink-0 truncate text-xs text-muted-foreground md:inline">
                 {search.query}

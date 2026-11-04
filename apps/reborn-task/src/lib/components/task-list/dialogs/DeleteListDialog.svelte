@@ -126,7 +126,7 @@
 									<SelectContent>
 										{#each availableLists as targetList (targetList.id)}
 											<SelectItem value={targetList.id}>
-												{targetList.name}
+												<bdi>{targetList.name}</bdi>
 												{#if targetList.is_default}
 													<span class="text-muted-foreground ms-1">({$t('taskList.default')})</span>
 												{/if}

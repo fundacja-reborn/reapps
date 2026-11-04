@@ -101,7 +101,7 @@
 										{:else}
 											<Folder class="h-5 w-5 md:h-4 md:w-4 shrink-0" />
 										{/if}
-										<span class="truncate">{list.name}</span>
+										<span class="truncate"><bdi>{list.name}</bdi></span>
 										{#if list.is_default}
 											<Star class="h-3.5 w-3.5 md:h-3 md:w-3 text-yellow-500 shrink-0" />
 										{/if}

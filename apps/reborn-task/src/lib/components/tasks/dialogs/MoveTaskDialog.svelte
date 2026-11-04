@@ -53,7 +53,7 @@
 			<SheetHeader>
 				<SheetTitle>{$t('task.options')}</SheetTitle>
 				<SheetDescription>
-					{task.title}
+					<bdi>{task.title}</bdi>
 				</SheetDescription>
 			</SheetHeader>
 			<div class="grid gap-2 py-4">
@@ -118,7 +118,7 @@
 							class="justify-start"
 							onclick={() => handleMoveToList(list.id)}
 						>
-							{list.name}
+							<bdi>{list.name}</bdi>
 						</Button>
 					{/if}
 				{/each}

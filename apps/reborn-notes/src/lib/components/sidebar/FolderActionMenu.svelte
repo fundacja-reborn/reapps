@@ -255,7 +255,7 @@
 <Sheet bind:open={sheetOpen}>
   <SheetContent side="bottom" class="h-auto">
     <SheetHeader>
-      <SheetTitle>{folder?.name ?? ''}</SheetTitle>
+      <SheetTitle><bdi>{folder?.name ?? ''}</bdi></SheetTitle>
     </SheetHeader>
     <div class="mt-4 space-y-1">
       {#if syncConfigId}

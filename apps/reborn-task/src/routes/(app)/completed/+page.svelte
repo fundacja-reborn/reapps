@@ -110,7 +110,7 @@
 				<SelectContent>
 					<SelectItem value="all">{$t('taskList.completed.all_lists')}</SelectItem>
 					{#each $decryptedLists as list (list.id)}
-						<SelectItem value={list.id}>{list.name}</SelectItem>
+						<SelectItem value={list.id}><bdi>{list.name}</bdi></SelectItem>
 					{/each}
 				</SelectContent>
 			</Select>

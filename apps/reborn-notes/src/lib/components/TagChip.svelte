@@ -24,7 +24,7 @@
   class:text-accent-foreground={!tag.color}
   class:border={!tag.color}
 >
-  <span class="max-w-[6rem] truncate">{tag.name}</span>
+  <span class="max-w-[6rem] truncate"><bdi>{tag.name}</bdi></span>
   {#if onremove}
     <button
       type="button"

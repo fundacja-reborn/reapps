@@ -78,7 +78,7 @@
             class:line-through={completed}
             class:text-muted-foreground={completed}
           >
-            {subtask.name}
+            <bdi>{subtask.name}</bdi>
           </span>
         </li>
       {/each}

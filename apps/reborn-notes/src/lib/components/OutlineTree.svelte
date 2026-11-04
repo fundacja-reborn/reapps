@@ -88,7 +88,7 @@
           aria-current={active ? 'location' : undefined}
           class="flex w-full cursor-pointer rounded-md px-2 py-1 text-start leading-[1.35] transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-accent
             {levelClass(level)}
-            {active ? 'font-medium text-primary shadow-[inset_2px_0_0_0_var(--primary)]' : ''}"
+            {active ? 'font-medium text-primary shadow-[inset_2px_0_0_0_var(--primary)] rtl:shadow-[inset_-2px_0_0_0_var(--primary)]' : ''}"
         >
           <span class="line-clamp-2 min-w-0 flex-1 text-sm"
             >{#each segments(node.text) as seg, i (i)}{#if seg.code}<code

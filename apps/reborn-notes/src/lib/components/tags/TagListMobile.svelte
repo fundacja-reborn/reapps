@@ -120,7 +120,7 @@
                   >{$t('tags.undecryptable')}</span
                 >
               {:else}
-                <span class="min-w-0 flex-1 truncate text-start text-sm">{tag.name}</span>
+                <span class="min-w-0 flex-1 truncate text-start text-sm"><bdi>{tag.name}</bdi></span>
               {/if}
             </button>
             <button

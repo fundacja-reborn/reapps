@@ -81,7 +81,7 @@
 						class="truncate max-w-[45vw] md:max-w-[300px]"
 						style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
 					>
-						{list.name}
+						<bdi>{list.name}</bdi>
 					</span>
 				</button>
 			{/if}

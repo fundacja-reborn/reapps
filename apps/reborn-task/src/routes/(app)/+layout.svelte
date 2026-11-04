@@ -1056,7 +1056,7 @@
 								<h1
 									class="text-sm font-semibold tracking-tight text-sidebar-foreground truncate flex-1 min-w-0"
 								>
-									{mobileSelectedList.name}
+									<bdi>{mobileSelectedList.name}</bdi>
 								</h1>
 								<div class="flex items-center gap-1 flex-shrink-0">
 									<TaskFilterBar bind:filters={mobileTaskFilters} />
@@ -1386,7 +1386,7 @@
 						<SelectContent>
 							{#each $activeLists as list (list.id)}
 								{#if list.id !== currentTask?.task_list_id}
-									<SelectItem value={list.id}>{list.name}</SelectItem>
+									<SelectItem value={list.id}><bdi>{list.name}</bdi></SelectItem>
 								{/if}
 							{/each}
 						</SelectContent>

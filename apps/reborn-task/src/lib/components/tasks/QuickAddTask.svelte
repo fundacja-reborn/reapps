@@ -238,7 +238,7 @@
 				</SelectTrigger>
 				<SelectContent>
 					{#each $activeLists as list (list.id)}
-						<SelectItem value={list.id}>{list.name}</SelectItem>
+						<SelectItem value={list.id}><bdi>{list.name}</bdi></SelectItem>
 					{/each}
 				</SelectContent>
 			</Select>

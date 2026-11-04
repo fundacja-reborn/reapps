@@ -179,7 +179,7 @@
                   </div>
                   {#if entry}
                     <p class="truncate text-sm font-medium">
-                      {entry.payload.title || $t('share.list.untitled')}
+                      <bdi>{entry.payload.title || $t('share.list.untitled')}</bdi>
                     </p>
                   {:else if hasDecryptError}
                     <p class="inline-flex items-center gap-1 text-sm text-muted-foreground">

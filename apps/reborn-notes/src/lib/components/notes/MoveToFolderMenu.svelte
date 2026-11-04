@@ -286,10 +286,10 @@
                 class="rounded px-0.5 hover:text-foreground hover:underline"
                 onclick={(e) => drillInto(crumb.id, e)}
               >
-                {crumb.name}
+                <bdi>{crumb.name}</bdi>
               </button>
             {:else}
-              <span class="font-medium text-foreground">{crumb.name}</span>
+              <span class="font-medium text-foreground"><bdi>{crumb.name}</bdi></span>
             {/if}
           {/each}
         </nav>
@@ -398,7 +398,7 @@
                 </span>
               {:else}
                 <span class="min-w-0 flex-1 truncate {isExcluded ? 'opacity-50' : ''}">
-                  {folder.name}
+                  <bdi>{folder.name}</bdi>
                 </span>
               {/if}
               {#if isCurrent}
@@ -443,7 +443,7 @@
           >
             <FolderIcon class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <span class="min-w-0 flex-1">
-              <span class="block truncate text-xs text-foreground">{r.name}</span>
+              <span class="block truncate text-xs text-foreground"><bdi>{r.name}</bdi></span>
               {#if r.path}
                 <span class="block truncate text-[10px] text-muted-foreground">{r.path}</span>
               {/if}

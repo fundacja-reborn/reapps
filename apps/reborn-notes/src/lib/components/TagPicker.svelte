@@ -206,7 +206,7 @@
                   style={tag.color ? `background-color: ${tag.color}` : ''}
                   class:bg-muted-foreground={!tag.color}
                 ></span>
-                <span class="flex-1 truncate text-start">{tag.name}</span>
+                <span class="flex-1 truncate text-start"><bdi>{tag.name}</bdi></span>
                 {#if isSelected}
                   <Check class="h-3 w-3 shrink-0 text-primary" />
                 {/if}

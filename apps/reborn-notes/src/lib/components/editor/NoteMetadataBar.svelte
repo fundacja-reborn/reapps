@@ -110,7 +110,7 @@
              hover:bg-accent hover:text-accent-foreground"
           onclick={onfolderclick}
         >
-          {folderName}
+          <bdi>{folderName}</bdi>
         </button>
       </div>
     {/if}

@@ -107,7 +107,7 @@
       >
         <span
           class="min-w-0 flex-1 truncate text-sm text-muted-foreground transition-colors group-hover:text-foreground"
-          >{item.title}</span
+          ><bdi>{item.title}</bdi></span
         >
         <span class="flex w-6 shrink-0 items-center justify-center">
           {#if mutual.has(item.id)}

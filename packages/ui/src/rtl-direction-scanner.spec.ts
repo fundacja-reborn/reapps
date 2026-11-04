@@ -64,6 +64,14 @@ describe('check-rtl-direction scanner', () => {
     expect(flagged('<input accept="image/*" class="ml-2">')).toEqual(['ml-']);
   });
 
+  it('reports inset shadows with an X offset unless mirrored', () => {
+    expect(flagged('class="shadow-[inset_2px_0_0_0_red]"')).toEqual(['shadow-[inset_2']);
+    expect(flagged('class="shadow-[inset_2px_0_0_0_red] rtl:shadow-[inset_-2px_0_0_0_red]"')).toEqual([]);
+    expect(flagged('class="shadow-[inset_0_1px_0_0_red]"')).toEqual([]);
+    expect(flagged('.a { box-shadow: inset 3px 0 0 0 red; }', '.css')).toEqual(['box-shadow: inset 3']);
+    expect(flagged('.a { box-shadow: inset 0 -1px 0 red; }', '.css')).toEqual([]);
+  });
+
   it('reports space-x / divide-x unless reversed for RTL', () => {
     expect(flagged('class="flex space-x-2"')).toEqual(['space-x']);
     expect(flagged('class="flex divide-x rtl:divide-x-reverse"')).toEqual([]);

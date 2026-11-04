@@ -210,7 +210,7 @@
       <DialogTitle>{$t('share.task.dialog_header')}</DialogTitle>
       {#if task}
         <DialogDescription>
-          {task.title}
+          <bdi>{task.title}</bdi>
           {#if subtasksCount > 0}
             · {$t('share.task.subtasks_count', { values: { count: subtasksCount } })}
           {/if}

@@ -27,6 +27,9 @@
  *     (`// ...`, `<!-- ... -->` or a CSS comment). A centring
  *     `left-1/2 -translate-x-1/2` is direction-neutral and allowed as is.
  *
+ * Inset shadows with an X offset (edge accents) are reported but not fixed:
+ * the mirror is an extra `rtl:` class or `[dir=rtl]` rule.
+ *
  * Out of scope (needs judgement, not a regex): `translate-x-*`, `fly({ x })`,
  * gradients, directional icons, swipe gestures and arrow-key handling.
  * Guideline: reapps-docs `guidelines/NN-rtl-layout.md`.
@@ -104,6 +107,14 @@ const CLASS_RULES = [
     hint: 'float/clear-left/right -> -start/-end'
   },
   {
+    // An inset shadow with an X offset is an edge accent (active-row bar),
+    // and the offset is physical. Report-only: the mirror is a second class.
+    id: 'shadow-x',
+    re: new RegExp(B + String.raw`shadow-\[inset_-?(?:[1-9]|0?\.\d*[1-9])`, 'g'),
+    allowIfLine: /rtl:shadow-\[/,
+    hint: 'inset shadow X offset is physical: pair it with rtl:shadow-[inset_-N...]'
+  },
+  {
     id: 'space-x',
     re: new RegExp(B + String.raw`-?(space|divide)-x(?![\w-]*reverse)(?=[-\s"'\x60]|$)`, 'g'),
     allowIfLine: /(space|divide)-x-reverse/,
@@ -130,6 +141,11 @@ const CSS_RULES = [
     fix: (_m, v, h) =>
       `border-${v === 'top' ? 'start' : 'end'}-${h === 'left' ? 'start' : 'end'}-radius`,
     hint: 'border-top-left-radius -> border-start-start-radius'
+  },
+  {
+    id: 'css-shadow-x',
+    re: /(?<![\w-])box-shadow\s*:\s*inset\s+-?(?:[1-9]|0?\.\d*[1-9])/g,
+    hint: 'inset box-shadow X offset is physical: add a [dir=rtl] rule with the negated offset'
   },
   {
     id: 'css-text-align',

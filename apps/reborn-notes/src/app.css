@@ -166,16 +166,24 @@
     background-color: var(--rn-list-row-active);
   }
 
-  /* Note cards add a left accent bar. It's an INSET box-shadow, not a border:
-     it's clipped to the card's border-radius (curves into the corners like a
-     bracket — no square "hooks") and doesn't touch the box model, so the title,
-     tags and date never shift. Scoped to note cards; folders/tags share only
-     the background above. The `.note-item-bg.list-row-active` pair also re-wins
-     the background over `.note-item-bg:hover` when the open note is hovered. */
+  /* Note cards add an accent bar on the inline-start edge. It's an INSET
+     box-shadow, not a border: it's clipped to the card's border-radius (curves
+     into the corners like a bracket - no square "hooks") and doesn't touch the
+     box model, so the title, tags and date never shift. Scoped to note cards;
+     folders/tags share only the background above. The
+     `.note-item-bg.list-row-active` pair also re-wins the background over
+     `.note-item-bg:hover` when the open note is hovered. A shadow's X offset is
+     physical, so RTL flips its sign (same selector shape as Tailwind's `rtl:`). */
   .note-item-bg.list-row-active,
   .note-item-bg.list-row-active:hover {
     background-color: var(--rn-list-row-active);
+    /* rtl-ignore-next-line: mirrored by the :where([dir='rtl']) rule below */
     box-shadow: inset 3px 0 0 0 var(--rn-list-row-accent);
+  }
+  .note-item-bg.list-row-active:where([dir='rtl'], [dir='rtl'] *),
+  .note-item-bg.list-row-active:hover:where([dir='rtl'], [dir='rtl'] *) {
+    /* rtl-ignore-next-line: this IS the RTL mirror */
+    box-shadow: inset -3px 0 0 0 var(--rn-list-row-accent);
   }
 
   /* Momentary flash on a saved-search row right after it is created, so a

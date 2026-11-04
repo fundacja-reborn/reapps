@@ -1110,7 +1110,7 @@
                   >{folderDisplayName(folder)}</span
                 >
               {:else}
-                <span class="min-w-0 flex-1 truncate">{folder.name}</span>
+                <span class="min-w-0 flex-1 truncate"><bdi>{folder.name}</bdi></span>
               {/if}
 
               <!-- Chevron (right side, only when has children) -->

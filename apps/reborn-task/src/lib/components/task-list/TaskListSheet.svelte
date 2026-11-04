@@ -24,7 +24,7 @@
 		<SheetHeader>
 			<SheetTitle>{$t('taskList.options')}</SheetTitle>
 			<SheetDescription>
-				{list.name}
+				<bdi>{list.name}</bdi>
 			</SheetDescription>
 		</SheetHeader>
 		<div class="grid gap-2 py-4">
