@@ -42,13 +42,42 @@ describe('applyBlockDirection', () => {
     expect(html).toMatch(/<table dir="auto">/);
   });
 
-  it('keeps the list renderer depth attribute next to dir', () => {
-    expect(render('- a\n  - b')).toMatch(/<ul dir="auto" data-d="2"/);
+  it('marks only the outermost block; nested ones inherit', () => {
+    // A dir="auto" container skips descendants with their own dir when it
+    // resolves its direction, so an inner dir would leave the quote / list
+    // without a strong character (an Arabic quote got its border on the left).
+    expect(render('> العلم نور\n>\n> سطر ثان')).toMatch(
+      /<blockquote dir="auto">\s*<p>العلم نور<\/p>\s*<p>سطر ثان<\/p>/
+    );
+    const nested = render('- a\n  - b');
+    expect(nested).toMatch(/<ul dir="auto" data-d="1"/);
+    expect(nested).toMatch(/<ul data-d="2"/);
+    // Loose list: items wrap their text in <p>.
+    expect(render('- one\n\n- two')).not.toMatch(/<p dir=/);
+    // Siblings after a closed block are outermost again.
+    expect(applyBlockDirection('<blockquote><p>a</p></blockquote><p>b</p>')).toBe(
+      '<blockquote dir="auto"><p>a</p></blockquote><p dir="auto">b</p>'
+    );
   });
 
-  it('respects an explicit dir in the note HTML', () => {
-    const out = applyBlockDirection('<p dir="rtl">x</p><p>y</p>');
-    expect(out).toBe('<p dir="rtl">x</p><p dir="auto">y</p>');
+  it('respects an explicit dir in the note HTML, including its subtree', () => {
+    const out = applyBlockDirection('<p dir="rtl">x</p><div dir="ltr"><p>y</p></div><p>z</p>');
+    expect(out).toBe('<p dir="rtl">x</p><div dir="ltr"><p>y</p></div><p dir="auto">z</p>');
+  });
+
+  it('is not fooled by tags inside attribute values, void elements or comments', () => {
+    expect(applyBlockDirection('<p><img alt="a <p> b">x</p><p>y</p>')).toBe(
+      '<p dir="auto"><img alt="a <p> b">x</p><p dir="auto">y</p>'
+    );
+    expect(applyBlockDirection('<p>a<br>b</p><hr><p>c</p>')).toBe(
+      '<p dir="auto">a<br>b</p><hr><p dir="auto">c</p>'
+    );
+    expect(applyBlockDirection('<!-- <p> --><p>x</p>')).toBe('<!-- <p> --><p dir="auto">x</p>');
+  });
+
+  it('leaves code blocks to the code renderer (dir="ltr" wrapper)', () => {
+    const html = '<div class="code-block" dir="ltr"><pre><code>x</code></pre></div>';
+    expect(applyBlockDirection(html)).toBe(html);
   });
 
   it('does not touch look-alike tags (pre, path, hr, thead)', () => {

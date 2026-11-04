@@ -195,18 +195,61 @@ export function createMarkdownImageRenderer(translate: (key: string) => string):
 /**
  * Block elements whose direction follows their own content. A note mixing
  * Arabic and English paragraphs renders each one in its own direction,
- * whatever the UI locale; a list takes the direction of its first item so its
- * markers stay on one side.
+ * whatever the UI locale; a list or a quote takes the direction of its first
+ * line so its markers / border stay on one side.
  */
-const AUTO_DIR_BLOCK = /<(p|h[1-6]|ul|ol|blockquote|table|dl)\b(?![^>]*\sdir=)/g;
+const AUTO_DIR_BLOCKS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'blockquote', 'table', 'dl']);
+
+/** Elements without a closing tag in the HTML serialization. */
+const VOID_ELEMENTS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'
+]);
 
 /**
- * Add `dir="auto"` to the rendered Markdown's block elements (paragraphs,
- * headings, lists, quotes, tables). Runs on SANITIZED HTML: DOMPurify has
- * already escaped every `<` in text and attribute values, so a literal `<p`
- * is always a real tag. An explicit `dir` in the note's own HTML is kept.
- * Code blocks are pinned to `dir="ltr"` by the code renderer instead.
+ * A comment, or a start/end tag whose quoted attribute values are consumed
+ * with it - so a `<p` inside `alt="..."` is never mistaken for a tag (older
+ * engines do not escape `<` / `>` in serialized attribute values).
+ */
+const TAG =
+  /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*)\s*(\/?)>/g;
+
+/**
+ * Add `dir="auto"` to the OUTERMOST block elements of the rendered Markdown
+ * (paragraphs, headings, lists, quotes, tables); blocks nested in them inherit.
+ *
+ * Outermost only, because the HTML `dir="auto"` algorithm skips descendants
+ * that carry their own `dir`: a `<blockquote dir="auto">` around a
+ * `<p dir="auto">` finds no strong character and falls back to LTR, which put
+ * an Arabic quote's border on the left (smoke 2026-11-04). The same would hit
+ * loose lists (`<li><p>`) and nested lists.
+ *
+ * Runs on SANITIZED HTML: DOMPurify serializes a parsed DOM, so tags are
+ * balanced and every `<` in text is escaped; attribute values are consumed by
+ * the quote-aware TAG pattern - a plain tag scan is safe. An explicit `dir` in the note's own HTML is kept and its
+ * subtree left alone. Code blocks are pinned to `dir="ltr"` by the code
+ * renderer, which also keeps their contents out of this pass.
  */
 export function applyBlockDirection(html: string): string {
-  return html.replace(AUTO_DIR_BLOCK, '<$1 dir="auto"');
+  // One entry per open element: does it (or an ancestor) already set a direction?
+  const stack: boolean[] = [];
+  return html.replace(
+    TAG,
+    (tag, closing: string | undefined, rawName: string | undefined, attrs = '', selfClosing = '') => {
+      if (rawName === undefined) return tag; // comment
+      const name = rawName.toLowerCase();
+      if (closing) {
+        stack.pop();
+        return tag;
+      }
+      if (VOID_ELEMENTS.has(name) || selfClosing) return tag;
+      const directed = stack.length > 0 && stack[stack.length - 1];
+      const hasDir = /\sdir\s*=/i.test(attrs);
+      if (!directed && !hasDir && AUTO_DIR_BLOCKS.has(name)) {
+        stack.push(true);
+        return `<${rawName} dir="auto"${tag.slice(1 + rawName.length)}`;
+      }
+      stack.push(directed || hasDir);
+      return tag;
+    }
+  );
 }
