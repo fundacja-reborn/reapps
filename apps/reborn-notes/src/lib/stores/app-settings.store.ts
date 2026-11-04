@@ -39,9 +39,19 @@ function createAppSettingsStore() {
       // localStorage disagrees with the synced value the user is intentionally
       // overriding (e.g. picked a different language on the login page) - push
       // that choice up so other devices converge.
+      //
+      // Only a synced locale this build ships may be overridden. An unknown
+      // one was written by a newer client (a language added in a later
+      // release): keep it and do not push, so the choice survives until this
+      // device runs a build that supports it. The UI meanwhile stays on the
+      // locale it already renders (setLocale below is a no-op for it).
       if (currentSettings) {
-        const savedLocale = localStorage.getItem('preferred_language') as AppSettings['language'] | null;
-        if (isSupportedLocale(savedLocale) && savedLocale !== currentSettings.language) {
+        const savedLocale = localStorage.getItem('preferred_language');
+        if (
+          isSupportedLocale(savedLocale) &&
+          isSupportedLocale(currentSettings.language) &&
+          savedLocale !== currentSettings.language
+        ) {
           currentSettings.language = savedLocale;
           await setSetting('language', savedLocale);
           syncedSettings.schedulePush();
