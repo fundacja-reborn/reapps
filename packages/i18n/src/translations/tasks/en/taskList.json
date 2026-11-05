@@ -46,7 +46,7 @@
   "archiving": "Archiving...",
   "archive": {
     "title": "Archive list?",
-    "description": "Are you sure you want to archive '{name}'?",
+    "description": "Are you sure you want to archive \"{name}\"?",
     "info": "The archived list will be hidden but you can restore it later.",
     "confirm": "Archive"
   },
@@ -59,7 +59,7 @@
   },
   "delete_dialog": {
     "title": "Delete task list",
-    "description": "Are you sure you want to delete '{name}'?",
+    "description": "Are you sure you want to delete \"{name}\"?",
     "e2e_warning": "Warning: In Zero Knowledge encryption, deleted data cannot be recovered!",
     "move_tasks": "Move tasks to another list",
     "move_tasks_description": "All tasks will be moved to the selected list.",

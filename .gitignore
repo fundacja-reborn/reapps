@@ -80,6 +80,12 @@ scripts/*
 !scripts/check-rtl-direction.d.mts
 !scripts/supported-locales.mjs
 !scripts/supported-locales.d.mts
+!scripts/i18n-messages.mjs
+!scripts/i18n-messages.d.mts
+!scripts/i18n-export.mjs
+!scripts/i18n-export.d.mts
+!scripts/i18n-import.mjs
+!scripts/i18n-import.d.mts
 tmp/
 patches/
 *.bak

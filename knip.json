@@ -61,7 +61,8 @@
     "svelte",
     "tslib",
     "typescript-eslint",
-    "server-only"
+    "server-only",
+    "@formatjs/icu-messageformat-parser"
   ],
   "ignoreExportsUsedInFile": {
     "interface": true,

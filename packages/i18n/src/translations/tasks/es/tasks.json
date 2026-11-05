@@ -13,7 +13,7 @@
   "edit": "Editar tarea",
   "delete": {
     "title": "Eliminar tarea",
-    "confirm_message": "¿Está seguro de que desea eliminar la tarea '{title}'?",
+    "confirm_message": "¿Está seguro de que desea eliminar la tarea \"{title}\"?",
     "this_only": "Eliminar solo esta ocurrencia",
     "future": "Eliminar esta y todas las ocurrencias futuras"
   },

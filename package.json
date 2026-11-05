@@ -28,6 +28,7 @@
   "private": true,
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@formatjs/icu-messageformat-parser": "2.11.4",
     "@nx/eslint": "22.7.12",
     "@nx/eslint-plugin": "22.7.12",
     "@nx/js": "22.7.12",

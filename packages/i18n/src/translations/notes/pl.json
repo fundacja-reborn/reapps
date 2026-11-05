@@ -512,7 +512,7 @@
   "search": {
     "title": "Szukaj notatek",
     "placeholder": "Szukaj po tytule, treści lub tagach...",
-    "no_results": "Nie znaleziono notatek dla '{query}'",
+    "no_results": "Nie znaleziono notatek dla \"{query}\"",
     "results_count": "Znaleziono {count} wyników",
     "filters": {
       "all": "Wszystko",
