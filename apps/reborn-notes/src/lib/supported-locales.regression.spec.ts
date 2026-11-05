@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { AppSettings } from '@reborn/storage';
-import type { SupportedLocale } from '@reborn/i18n';
+import type { SupportedLocale, WeekStartPreference } from '@reborn/i18n';
 
 /**
  * Single locale list (Arabic plan, Phase 2 prep, 2026-11-04): @reborn/storage
@@ -14,8 +14,18 @@ type Equal<A, B> =
 
 const languageMatchesSupportedLocales: Equal<AppSettings['language'], SupportedLocale> = true;
 
+/** Same deal for the first day of the week (#493): the stored option list. */
+const weekStartMatchesPreference: Equal<
+  NonNullable<AppSettings['weekStart']>,
+  WeekStartPreference
+> = true;
+
 describe('supported locales - storage type', () => {
   it("AppSettings['language'] is exactly SupportedLocale (checked by svelte-check)", () => {
     expect(languageMatchesSupportedLocales).toBe(true);
+  });
+
+  it("AppSettings['weekStart'] is exactly WeekStartPreference (checked by svelte-check)", () => {
+    expect(weekStartMatchesPreference).toBe(true);
   });
 });

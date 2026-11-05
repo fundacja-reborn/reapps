@@ -35,8 +35,16 @@ export {
   isSupportedLocale,
   resolveLocale,
   intlLocale,
+  // First day of the week (issue #493)
+  WEEK_START_PREFERENCES,
+  LOCALE_WEEK_START,
+  isWeekStartPreference,
+  resolveWeekStart,
+  weekdayName,
   type SupportedLocale,
-  type TranslationModule
+  type TranslationModule,
+  type WeekStartDay,
+  type WeekStartPreference
 } from './config';
 
 // Text direction (LTR / RTL). The pure mapping is also published as the

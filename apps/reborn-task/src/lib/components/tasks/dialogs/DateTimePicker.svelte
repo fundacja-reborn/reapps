@@ -15,7 +15,7 @@
 	import { CalendarIcon, Clock, X } from '@lucide/svelte';
 	import { createLogger } from '@reborn/utils';
 	import { t } from '$lib/stores/i18n.store';
-	import { timeFormat, currentLanguage } from '$lib/stores/app-settings.store';
+	import { timeFormat, currentLanguage, weekStartsOn } from '$lib/stores/app-settings.store';
 	import { 
 		type DateValue, 
 		DateFormatter, 
@@ -480,6 +480,7 @@
 						minValue={minDateValue}
 						maxValue={maxDateValue}
 						{locale}
+						weekStartsOn={$weekStartsOn}
 					/>
 					
 					{#if tempCalendarValue}

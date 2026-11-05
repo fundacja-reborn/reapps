@@ -290,6 +290,13 @@
     "select_date_format": "اختر تنسيق التاريخ",
     "select_time_format": "اختر تنسيق الوقت",
     "select_language": "اختر اللغة",
+    "week_start": "أول يوم في الأسبوع",
+    "week_start_auto": "تلقائي ({day})",
+    "week_start_saturday": "السبت",
+    "week_start_sunday": "الأحد",
+    "week_start_monday": "الاثنين",
+    "week_start_updated": "تم تحديث أول يوم في الأسبوع",
+    "select_week_start": "اختر أول يوم في الأسبوع",
     "reset": "إعادة التعيين إلى الإعدادات الافتراضية",
     "reset_done": "تمت استعادة الإعدادات الافتراضية"
   },

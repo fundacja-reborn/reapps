@@ -61,6 +61,14 @@ describe('settings-bundle: extract', () => {
     expect(shared.firstDayOfWeek).toBe(1);
   });
 
+  it('extractSharedBundle carries weekStart only once the user picked it (#493)', () => {
+    // Absent = 'auto' that nobody chose: leaving it out keeps a fresh device
+    // from overwriting the day picked on another one.
+    expect('weekStart' in extractSharedBundle(NOTES_FIXTURE)).toBe(false);
+    expect(extractSharedBundle({ ...NOTES_FIXTURE, weekStart: 6 }).weekStart).toBe(6);
+    expect(extractSharedBundle({ ...NOTES_FIXTURE, weekStart: 'auto' }).weekStart).toBe('auto');
+  });
+
   it('extractSharedBundle does NOT include theme (D1: theme is per-app)', () => {
     const shared = extractSharedBundle(NOTES_FIXTURE) as Record<string, unknown>;
     expect('theme' in shared).toBe(false);
@@ -120,6 +128,22 @@ describe('settings-bundle: applyBundlesToSettings', () => {
     expect(merged.firstDayOfWeek).toBe(0);
     expect(merged.theme).toBe('dark');
     expect(merged.editorMode).toBe('live');
+  });
+
+  it('applies a synced weekStart; a bundle without it keeps the local choice', () => {
+    const picked = applyBundlesToSettings(NOTES_FIXTURE, { schema_version: 1, weekStart: 0 }, null);
+    expect(picked.weekStart).toBe(0);
+
+    // An older client re-pushes the shared bundle without the key it does not
+    // know - the local choice must survive that.
+    const local: AppSettings = { ...NOTES_FIXTURE, weekStart: 6 };
+    const fromOldClient = applyBundlesToSettings(
+      local,
+      { schema_version: 1, language: 'ar', firstDayOfWeek: 1 },
+      null
+    );
+    expect(fromOldClient.weekStart).toBe(6);
+    expect(fromOldClient.language).toBe('ar');
   });
 
   it('applies app keys including theme and periodicNotes', () => {
@@ -244,6 +268,15 @@ describe('settings-bundle: migrate (decrypt → unknown JSON → typed bundle)',
 
     const merged = applyBundlesToSettings(NOTES_FIXTURE, out, null);
     expect(merged.language).toBe('uk');
+  });
+
+  it('migrateSharedBundle reads weekStart and drops values this build does not offer', () => {
+    for (const value of ['auto', 6, 0, 1] as const) {
+      expect(migrateSharedBundle({ schema_version: 1, weekStart: value }).weekStart).toBe(value);
+    }
+    for (const value of [5, '1', 'monday', null, 1.5]) {
+      expect('weekStart' in migrateSharedBundle({ schema_version: 1, weekStart: value })).toBe(false);
+    }
   });
 
   it('migrateSharedBundle handles non-object input gracefully', () => {
