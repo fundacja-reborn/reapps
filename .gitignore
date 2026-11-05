@@ -89,6 +89,7 @@ scripts/*
 !scripts/i18n-review.mjs
 !scripts/i18n-review.d.mts
 !scripts/dependabot-alerts.mjs
+!scripts/project.json
 tmp/
 patches/
 *.bak
