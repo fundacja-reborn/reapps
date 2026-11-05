@@ -315,6 +315,7 @@ We welcome community involvement! Due to the security-sensitive nature of this p
 Reborn Apps is shaped by feedback from people who try it, share ideas, and tell us what's missing. Special thanks to:
 
 - **[Travis Solin (@computrav)](https://github.com/computrav)** - for early feedback on the public release and detailed thinking on power-user search semantics that directly informed the operator-based search syntax.
+- **[Mohamed Zeroug (@mohamedzerougdz)](https://github.com/mohamedzerougdz)** - for reviewing the Arabic translation, from the glossary and writing conventions to the texts of the apps.
 
 If you've contributed something that shaped this project - an idea, a substantive bug report, a translation - and you're not listed here, please [open an Issue](https://github.com/fundacja-reborn/reapps/issues). Smaller individual reports are credited per-release in commit messages and release notes.
 
