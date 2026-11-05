@@ -13,6 +13,9 @@
  * CRITICAL_KEY_PREFIXES) with English and the new text, for the
  * back-translation check before the change is committed (Arabic plan, Phase 3).
  *
+ * --write also records every imported entry, changed or left as it was, as
+ * reviewed in packages/i18n/review/<locale>.json (i18n-review.mjs, Phase 4).
+ *
  * Usage (from the repo root):
  *   node scripts/i18n-import.mjs tmp/i18n/ar-01-auth.returned.json            # dry run, report only
  *   node scripts/i18n-import.mjs tmp/i18n/ar-01-auth.returned.json --write    # write when there are no errors
@@ -21,10 +24,12 @@
  * Exit code: 0 = no errors, 1 = validation errors (nothing written), 2 = bad usage or file.
  */
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TRANSFER_FORMAT, TRANSFER_VERSION } from './i18n-export.mjs';
+import { readReview, recordReviewed, reviewPath, writeReview } from './i18n-review.mjs';
 import {
+  REPO_PATHS,
   SOURCE_LOCALE,
   isCriticalKey,
   listCatalogs,
@@ -64,7 +69,8 @@ export function planImport(doc, { read = readCatalog } = {}) {
       fatal,
       errors: fatal.length,
       warnings: 0,
-      updates: new Map()
+      updates: new Map(),
+      reviewed: []
     };
   }
   const { locale } = doc;
@@ -78,6 +84,7 @@ export function planImport(doc, { read = readCatalog } = {}) {
 
   const results = [];
   const updates = new Map();
+  const reviewed = [];
   const seen = new Set();
   const missingFiles = new Set();
 
@@ -138,6 +145,8 @@ export function planImport(doc, { read = readCatalog } = {}) {
     );
     if (result.issues.some((i) => i.level === 'error')) return;
 
+    // Left as it was or corrected: either way the translator has reviewed it.
+    reviewed.push({ key, en, text });
     if (same(target.get(messageKey), text)) {
       result.status = 'unchanged';
       return;
@@ -156,17 +165,33 @@ export function planImport(doc, { read = readCatalog } = {}) {
     fatal: [],
     errors: count('error'),
     warnings: count('warning'),
-    updates
+    updates,
+    reviewed
   };
 }
 
-/** Write a plan's changes into the locale files. Refuses a plan with errors. */
-export function applyImport(plan, { read = readCatalog, write = writeCatalogChanges } = {}) {
+/**
+ * Write a plan's changes into the locale files and record the imported entries
+ * as reviewed. Refuses a plan with errors.
+ */
+export function applyImport(
+  plan,
+  {
+    read = readCatalog,
+    write = writeCatalogChanges,
+    readReviewFile = readReview,
+    writeReviewFile = writeReview
+  } = {}
+) {
   if (plan.errors > 0) throw new Error('refusing to write: the file has validation errors');
   const catalogs = new Map(listCatalogs().map((c) => [c.id, c]));
   for (const [id, changes] of plan.updates) {
     const catalog = catalogs.get(id);
     write(catalog, plan.locale, changes, read(catalog, SOURCE_LOCALE));
+  }
+  if (plan.reviewed.length) {
+    const current = readReviewFile(plan.locale)?.reviewed ?? new Map();
+    writeReviewFile(plan.locale, recordReviewed(current, plan.reviewed), { read });
   }
 }
 
@@ -178,7 +203,8 @@ export function formatReport(plan, { verbose = false } = {}) {
   const lines = [
     `i18n-import: ${plan.locale}, ${plan.results.length} entries`,
     `  changed ${by('changed').length}, unchanged ${by('unchanged').length}, stale ${by('stale').length}, invalid ${by('invalid').length}`,
-    `  errors ${plan.errors}, warnings ${plan.warnings}`
+    `  errors ${plan.errors}, warnings ${plan.warnings}`,
+    `  reviewed by the translator: ${plan.reviewed.length} (changed + unchanged, recorded on --write)`
   ];
   const section = (title, items) => {
     if (items.length) lines.push('', title, ...items);
@@ -234,6 +260,10 @@ if (isCli) {
     console.log(
       `\nWritten: ${[...plan.updates.keys()].join(', ') || 'nothing to change'}. Run node scripts/check-i18n-parity.mjs next.`
     );
+    if (plan.reviewed.length)
+      console.log(
+        `Recorded ${plan.reviewed.length} string(s) as reviewed in ${relative(REPO_PATHS.REPO_ROOT, reviewPath(plan.locale))}.`
+      );
   } else {
     console.log('\nDry run. Add --write to apply.');
   }

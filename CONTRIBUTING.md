@@ -19,7 +19,7 @@ Non-code contributions shape this project, and they are credited:
 - **Report a bug** - [open an Issue](https://github.com/fundacja-reborn/reapps/issues) with clear reproduction steps. If you know the fix, describe it; we will implement it and credit you (a `Reported-by:` line in the commit, and a mention in the release notes).
 - **Suggest a feature or discuss an idea** - join [GitHub Discussions](https://github.com/fundacja-reborn/reapps/discussions). Ideas that shape the product are credited in the README Acknowledgments.
 - **Report a security vulnerability** - privately, via our [Security Policy](SECURITY.md). Responsibly disclosed findings are credited in the SECURITY.md Hall of Fame.
-- **Improve translations** - suggest corrections or a new language via an Issue or Discussion. We keep all five locales (EN, PL, DE, FR, ES) in sync; send us the text and we will integrate it, with credit.
+- **Improve translations** - suggest corrections or a new language via an Issue or Discussion. We keep all six locales (EN, PL, DE, FR, ES, and AR in beta) in sync; send us the text and we will integrate it, with credit. To translate or review a whole language, you work on plain JSON files we send in batches (no pull requests, no translation platform), and we ask for a short licence statement first so the foundation can ship your text under the same terms as the code. Issue #482 shows the process for Arabic.
 
 When a good idea or fix arrives through an Issue, we reimplement it ourselves and credit the reporter. That keeps copyright consolidated without losing your contribution or your recognition.
 

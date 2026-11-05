@@ -27,12 +27,18 @@
 // as EN, valid plural categories, no bidi-override or invisible characters.
 // The same check runs in CI (packages/i18n/src/__tests__/icu-messages.spec.ts).
 //
-// Exit code: 0 when all locales match EN, 1 when any drift or message error is found.
+// Last, for information, the review queue of locales a translator checks
+// (scripts/i18n-review.mjs): how many strings are reviewed, draft, stale or
+// edited. Those counts never fail the check; a malformed review file does.
+//
+// Exit code: 0 when all locales match EN, 1 when any drift, message error or
+// malformed review file is found.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatProblems, listCatalogs, validateCatalogs } from './i18n-messages.mjs';
+import { formatCounts, readReview, reviewStatus, trackedLocales } from './i18n-review.mjs';
 import { readSupportedLocales } from './supported-locales.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -180,6 +186,25 @@ if (problems.length === 0) {
   console.log(formatProblems(shown).replace(/^/gm, '  '));
   if (shown.length < problems.length) console.log(`  ...(+${problems.length - shown.length} more, --verbose for all)`);
   hasDrift = true;
+}
+
+const tracked = trackedLocales().filter((l) => NON_EN.includes(l));
+if (tracked.length) {
+  console.log(`\n[review] strings a translator has checked (information only)`);
+  for (const locale of tracked) {
+    let review;
+    try {
+      review = readReview(locale);
+    } catch (error) {
+      console.log(`  ${locale.padEnd(3)} ERROR  ${error instanceof Error ? error.message : error}`);
+      hasDrift = true;
+      continue;
+    }
+    const status = reviewStatus({ locale, review, catalogs });
+    console.log(`  ${locale.padEnd(3)} ${formatCounts(status.counts, status.total)}`);
+    if (status.orphans.length)
+      console.log(`      ${status.orphans.length} record(s) of removed keys: node scripts/i18n-review.mjs --locale=${locale} --prune`);
+  }
 }
 
 console.log();
