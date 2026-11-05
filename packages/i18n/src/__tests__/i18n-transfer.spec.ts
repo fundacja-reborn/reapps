@@ -11,6 +11,7 @@ import {
   type KeyUsage
 } from '../../../../scripts/i18n-export.mjs';
 import { applyImport, formatReport, planImport } from '../../../../scripts/i18n-import.mjs';
+import { hashMessage, type ReviewRecord } from '../../../../scripts/i18n-review.mjs';
 import {
   locateLeaves,
   patchCatalogText,
@@ -57,8 +58,17 @@ const usage: KeyUsage = {
     { prefix: 'folders.', file: 'apps/reborn-notes/src/lib/components/folders/FolderTree.svelte' }
   ]
 };
+// `review: null`: never read the real packages/i18n/review/ar.json here.
 const exportAr = (extra: Partial<Parameters<typeof buildExport>[0]> = {}) =>
-  buildExport({ locale: 'ar', catalogs: ['notes'], usage, read, date: '2026-11-04', ...extra });
+  buildExport({
+    locale: 'ar',
+    catalogs: ['notes'],
+    usage,
+    read,
+    date: '2026-11-04',
+    review: null,
+    ...extra
+  });
 function entry(doc: ReturnType<typeof exportAr>, key: string) {
   const found = doc.strings.find((s) => s.key === `notes:${key}`);
   if (!found) throw new Error(`no exported entry for ${key}`);
@@ -93,7 +103,8 @@ describe('i18n-export', () => {
       locale: 'ar',
       catalogs: ['notes'],
       usage,
-      read: reader({ 'notes@en': EN })
+      read: reader({ 'notes@en': EN }),
+      review: null
     });
     expect(entry(doc, 'app_lock.unlock_cta').ar).toBe('');
     expect(entry(doc, 'pages.list').ar).toEqual(['', '']);
@@ -144,11 +155,22 @@ describe('i18n-import', () => {
     expect(report).toContain('Is this the usual Android wording?');
 
     const written: [string, Map<string, Message>][] = [];
+    const recorded: Map<string, ReviewRecord>[] = [];
     applyImport(plan, {
       read,
-      write: (catalog, _locale, changes) => written.push([catalog.id, changes])
+      write: (catalog, _locale, changes) => written.push([catalog.id, changes]),
+      readReviewFile: () => null,
+      writeReviewFile: (_locale, reviewed) => recorded.push(reviewed)
     });
     expect(written).toEqual([['notes', new Map([['auth.unlock.title', 'افتح ملاحظاتك الآن']])]]);
+    // Every imported entry counts as reviewed, the unchanged ones too, with
+    // hashes of what the translator saw and returned.
+    expect(recorded).toHaveLength(1);
+    expect([...recorded[0].keys()]).toEqual(EN.map(([key]) => `notes:${key}`));
+    expect(recorded[0].get('notes:auth.unlock.title')).toEqual({
+      en: hashMessage('Unlock your notes'),
+      text: hashMessage('افتح ملاحظاتك الآن')
+    });
   });
 
   it('skips entries whose English changed since the export', () => {
@@ -159,6 +181,7 @@ describe('i18n-import', () => {
     expect(plan.errors).toBe(0);
     expect(plan.results.find((r) => r.key === 'notes:app_lock.unlock_cta')?.status).toBe('stale');
     expect(plan.updates.size).toBe(0);
+    expect(plan.reviewed.map((r) => r.key)).not.toContain('notes:app_lock.unlock_cta');
   });
 
   it('is all or nothing: one invalid entry blocks the whole file', () => {

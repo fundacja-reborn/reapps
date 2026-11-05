@@ -1,0 +1,7 @@
+{
+  "format": "reborn-i18n-review",
+  "version": 1,
+  "locale": "ar",
+  "about": "Strings a translator has reviewed: hashes of the English source and of the translation at review time. Strings not listed are drafts. Written by scripts/i18n-import.mjs --write; see scripts/i18n-review.mjs.",
+  "reviewed": {}
+}

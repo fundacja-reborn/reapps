@@ -19,7 +19,7 @@ export default [
             // Repo-level dev tooling imported by guard specs (not a project
             // dependency): scripts/check-rtl-direction.mjs,
             // scripts/supported-locales.mjs, scripts/i18n-*.mjs.
-            '^.*/scripts/(check-rtl-direction|supported-locales|i18n-messages|i18n-export|i18n-import)\\.mjs$'
+            '^.*/scripts/(check-rtl-direction|supported-locales|i18n-messages|i18n-export|i18n-import|i18n-review)\\.mjs$'
           ],
           depConstraints: [
             {

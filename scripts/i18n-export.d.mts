@@ -1,5 +1,6 @@
 // Type declarations for i18n-export.mjs (imported by i18n-transfer.spec.ts).
 import type { Catalog, Message, Messages } from './i18n-messages.mjs';
+import type { Review } from './i18n-review.mjs';
 
 export const TRANSFER_FORMAT: 'reborn-i18n-transfer';
 export const TRANSFER_VERSION: 1;
@@ -17,6 +18,8 @@ export interface TransferEntry {
   plural?: string[];
   select?: string[];
   comment?: string;
+  /** Why a string the translator reviewed before is exported again. */
+  review?: string;
   [locale: string]: unknown;
 }
 
@@ -36,16 +39,18 @@ export function findUsage(
   runtimeKey: string,
   usage: KeyUsage
 ): { files: string[]; dynamic: boolean };
-export function instructions(locale: string): string[];
+export function instructions(locale: string, options?: { reviewNotes?: boolean }): string[];
 export function buildExport(options: {
   locale: string;
   catalogs?: string[];
   prefixes?: string[];
-  only?: 'all' | 'missing';
+  only?: 'all' | 'missing' | 'unreviewed';
   referenced?: boolean;
   usage?: KeyUsage;
   date?: string;
   read?: CatalogReader;
+  /** Review state of the locale; default: its review file, null when untracked. */
+  review?: Review | null;
 }): TransferDocument;
 export function summarize(options: {
   locale: string;

@@ -86,6 +86,8 @@ scripts/*
 !scripts/i18n-export.d.mts
 !scripts/i18n-import.mjs
 !scripts/i18n-import.d.mts
+!scripts/i18n-review.mjs
+!scripts/i18n-review.d.mts
 !scripts/dependabot-alerts.mjs
 tmp/
 patches/
