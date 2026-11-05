@@ -24,7 +24,7 @@
 		timeFormat
 	} from '$lib/stores/app-settings.store';
 	import { t } from '$lib/stores/i18n.store';
-	import { SUPPORTED_LOCALES } from '@reborn/i18n';
+	import { SUPPORTED_LOCALES, localeLabel } from '@reborn/i18n';
 	import type { AppSettings } from '@reborn/storage';
 	import { createLogger } from '@reborn/utils';
 	import { toast } from '@reborn/ui';
@@ -39,13 +39,7 @@
 	let dateFormatValue = $state($dateFormat);
 	let timeFormatValue = $state($timeFormat);
 
-	const languageOptions = [
-		{ value: 'en', label: 'English' },
-		{ value: 'pl', label: 'Polski' },
-		{ value: 'de', label: 'Deutsch' },
-		{ value: 'es', label: 'Español' },
-		{ value: 'fr', label: 'Français' }
-	] as const;
+	const languageOptions = SUPPORTED_LOCALES.map((value) => ({ value, label: localeLabel(value) }));
 
 	const dateFormatOptions = [
 		{ value: 'DD/MM/YYYY', label: '31/12/2024' },

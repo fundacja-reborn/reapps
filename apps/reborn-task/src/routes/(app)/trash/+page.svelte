@@ -11,7 +11,8 @@
 		SheetTitle
 	} from '@reborn/ui';
 	import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
-	import { t } from '$lib/stores/i18n.store';
+	import { t, locale } from '$lib/stores/i18n.store';
+	import { intlLocale } from '@reborn/i18n';
 	import { goto } from '$lib/utils/navigation';
 	import { decryptedTrashTasks, getDaysInTrash } from '$lib/stores/decrypted-trash.store';
 	import { trashManagementService } from '$lib/services/trash-management.service';
@@ -69,7 +70,7 @@
 	// Format date
 	function formatDate(dateString: string): string {
 		const date = new Date(dateString);
-		return date.toLocaleDateString('pl-PL', {
+		return date.toLocaleDateString(intlLocale($locale), {
 			year: 'numeric',
 			month: 'long',
 			day: 'numeric',
@@ -192,7 +193,7 @@
 						? 'ring-1 ring-warning'
 						: ''}"
 				>
-					<!-- Clickable content area — navigates to task detail -->
+					<!-- Clickable content area - navigates to task detail -->
 					<button
 						type="button"
 						class="flex-1 min-w-0 text-start cursor-pointer"

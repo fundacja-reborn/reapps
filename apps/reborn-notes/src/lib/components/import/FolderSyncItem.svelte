@@ -2,6 +2,7 @@
   import { LoadingSpinner, Progress } from '@reborn/ui';
   import { FolderSync, RefreshCw, Unlink, AlertTriangle, Pencil } from '@lucide/svelte';
   import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
   import {
     runFolderSync,
     unlinkFolder,
@@ -117,7 +118,7 @@
 
   function formatTime(iso: string): string {
     try {
-      return new Date(iso).toLocaleString($locale ?? undefined, {
+      return new Date(iso).toLocaleString(intlLocale($locale), {
         dateStyle: 'medium',
         timeStyle: 'short'
       });

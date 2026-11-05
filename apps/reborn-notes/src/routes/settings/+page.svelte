@@ -37,6 +37,7 @@
   } from '$lib/utils/native-version-info';
   import { t } from '$lib/stores/i18n.store';
   import { locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
   import { cn, GithubMark } from '@reborn/ui';
   import { authStore } from '$lib/stores/auth.store';
   import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
@@ -174,7 +175,7 @@
 </script>
 
 <svelte:head>
-  <title>{$t('settings_page.title')} — re/notes</title>
+  <title>{$t('settings_page.title')} - re/notes</title>
 </svelte:head>
 
 <!-- height: subtract the session-expired banner so it does not push the page
@@ -214,7 +215,7 @@
                 {#if $authStore.createdAt}
                   {$t('settings_page.account.member_since')}
                   {new Date($authStore.createdAt).toLocaleDateString(
-                    $locale ?? undefined,
+                    intlLocale($locale),
                     { year: 'numeric', month: 'long', day: 'numeric' }
                   )}
                 {/if}

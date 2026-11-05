@@ -9,7 +9,8 @@
 		DialogFooter
 	} from '@reborn/ui';
 	import { X, RotateCw } from '@lucide/svelte';
-	import { t } from '$lib/stores/i18n.store';
+	import { t, locale } from '$lib/stores/i18n.store';
+	import { intlLocale } from '@reborn/i18n';
 	import { DateTimePicker, RecurrenceDialog, TaskPropertyItem } from '$lib/components/tasks';
 	import { createLogger } from '@reborn/utils';
 
@@ -79,7 +80,7 @@
 				const month = rule.UNTIL.substring(4, 6);
 				const day = rule.UNTIL.substring(6, 8);
 				const date = new Date(`${year}-${month}-${day}`);
-				text += ` · ${$t('task.recurrence.until')} ${date.toLocaleDateString()}`;
+				text += ` · ${$t('task.recurrence.until')} ${date.toLocaleDateString(intlLocale($locale))}`;
 			}
 
 			return text;

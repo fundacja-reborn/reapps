@@ -10,7 +10,8 @@
 	} from '@reborn/ui';
 	import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
 	import { RotateCw, History, SkipForward, StopCircle, MoreVertical, Pencil } from '@lucide/svelte';
-	import { t } from '$lib/stores/i18n.store';
+	import { t, locale } from '$lib/stores/i18n.store';
+	import { intlLocale } from '@reborn/i18n';
 	import {
 		RecurrenceDialog,
 		RecurrenceHistoryDialog,
@@ -65,7 +66,7 @@
 				const m = rule.UNTIL.substring(4, 6);
 				const d = rule.UNTIL.substring(6, 8);
 				const date = new Date(`${y}-${m}-${d}`);
-				text += ` · ${$t('task.recurrence.until')} ${date.toLocaleDateString()}`;
+				text += ` · ${$t('task.recurrence.until')} ${date.toLocaleDateString(intlLocale($locale))}`;
 			}
 			return text;
 		} catch {

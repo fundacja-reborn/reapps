@@ -42,6 +42,11 @@ const STRINGS: Record<SupportedLocale, AppLoadingStrings> = {
 		initLoading: 'Cargando re/task...',
 		stall: 'La carga está tardando más de lo habitual. Intenta recargar la página.',
 		offline: 'Sin conexión de red. Reconéctate e inténtalo de nuevo.'
+	},
+	ar: {
+		initLoading: 'جارٍ تحميل re/task...',
+		stall: 'يستغرق التحميل وقتًا أطول من المعتاد. حاول تحديث الصفحة.',
+		offline: 'لا يوجد اتصال بالشبكة. أعد الاتصال وحاول مرة أخرى.'
 	}
 };
 

@@ -25,7 +25,8 @@
 		Check,
 		Download
 	} from '@lucide/svelte';
-	import { t } from '$lib/stores/i18n.store';
+	import { t, locale } from '$lib/stores/i18n.store';
+	import { intlLocale } from '@reborn/i18n';
 	import { toast } from '@reborn/ui';
 	import { createLogger } from '@reborn/utils';
 	import QRCode from 'qrcode';
@@ -231,8 +232,8 @@
 	function downloadCodes() {
 		if (!recoveryCodes.length) return;
 		const content = [
-			're/task — Backup Codes',
-			`Generated: ${new Date().toLocaleString()}`,
+			're/task - Backup Codes',
+			`Generated: ${new Date().toLocaleString(intlLocale($locale))}`,
 			'',
 			'Keep these codes in a safe place. Each code can only be used once.',
 			'',

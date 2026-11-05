@@ -7,15 +7,11 @@
 		Button
 	} from '@reborn/ui';
 	import { t, locale } from '$lib/stores/i18n.store';
+	import { intlLocale } from '@reborn/i18n';
 	import { goto } from '$lib/utils/navigation';
 	import { CheckCircle2, Circle, Clock } from '@lucide/svelte';
 	import { recurrenceService } from '$lib/services/recurrence.service';
 	import { cn } from '@reborn/ui';
-
-	const localeMap: Record<string, string> = {
-		en: 'en-US',
-		pl: 'pl-PL'
-	};
 
 	let {
 		open = $bindable(false),
@@ -55,9 +51,8 @@
 	}
 
 	function formatDate(dateString: string | null | undefined): string {
-		if (!dateString) return '—';
-		const browserLocale = localeMap[$locale || 'en'] || 'en-US';
-		return new Date(dateString).toLocaleDateString(browserLocale, {
+		if (!dateString) return '-';
+		return new Date(dateString).toLocaleDateString(intlLocale($locale), {
 			day: 'numeric',
 			month: 'short',
 			year: 'numeric'

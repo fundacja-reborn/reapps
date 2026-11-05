@@ -14,6 +14,7 @@
   } from '@lucide/svelte';
   import { SvelteSet } from 'svelte/reactivity';
   import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
   import { shareLink } from '$lib/utils/native-share';
   import { copyText } from '$lib/utils/clipboard';
   import { formatExpiryRelative } from '$lib/utils/expiry-format';
@@ -88,7 +89,7 @@
   function formatDate(iso: string | null) {
     if (!iso) return '-';
     try {
-      return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+      return new Date(iso).toLocaleString(intlLocale($locale), { dateStyle: 'medium', timeStyle: 'short' });
     } catch {
       return iso;
     }

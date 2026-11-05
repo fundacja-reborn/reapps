@@ -4,7 +4,11 @@ import {
   DEFAULT_LOCALE, 
   getBrowserLocale,
   saveLocalePreference,
-  LOCALE_STORAGE_KEY
+  LOCALE_STORAGE_KEY,
+  LOCALE_NAMES,
+  BETA_LOCALES,
+  localeLabel,
+  intlLocale
 } from '../config';
 
 describe('i18n config', () => {
@@ -63,6 +67,43 @@ describe('i18n config', () => {
     it('should save locale to localStorage', () => {
       saveLocalePreference('pl');
       expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('pl');
+    });
+  });
+
+  describe('intlLocale', () => {
+    it('pins Arabic to Western digits', () => {
+      expect(intlLocale('ar')).toBe('ar-u-nu-latn');
+      expect(intlLocale('ar-EG')).toBe('ar-EG-u-nu-latn');
+      expect(new Intl.NumberFormat(intlLocale('ar-EG')).format(1234)).toMatch(/^1.?234$/);
+      expect(
+        new Intl.DateTimeFormat(intlLocale('ar-SA'), { day: 'numeric', timeZone: 'UTC' }).format(
+          new Date(Date.UTC(2026, 10, 5))
+        )
+      ).toMatch(/5/);
+    });
+
+    it('keeps supported tags and an explicit extension as they are', () => {
+      expect(intlLocale('pl')).toBe('pl');
+      expect(intlLocale('pl-PL')).toBe('pl-PL');
+      expect(intlLocale('en-US')).toBe('en-US');
+      expect(intlLocale('ar-u-nu-arab')).toBe('ar-u-nu-arab');
+    });
+
+    it('falls back to the default locale for anything else', () => {
+      for (const value of ['xx', 'uk', '', null, undefined, 42]) {
+        expect(intlLocale(value), String(value)).toBe(DEFAULT_LOCALE);
+      }
+    });
+  });
+
+  describe('localeLabel', () => {
+    it('marks beta locales and leaves the others as their native name', () => {
+      for (const l of SUPPORTED_LOCALES) {
+        const expected = BETA_LOCALES.includes(l) ? `${LOCALE_NAMES[l]} (beta)` : LOCALE_NAMES[l];
+        expect(localeLabel(l)).toBe(expected);
+      }
+      expect(localeLabel('ar')).toBe(`${LOCALE_NAMES.ar} (beta)`);
+      expect(localeLabel('en')).toBe('English');
     });
   });
 });

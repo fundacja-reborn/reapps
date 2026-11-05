@@ -1,0 +1,175 @@
+{
+  "my_tasks": "مهامي",
+  "completed": "المكتملة",
+  "add_new": "مهمة جديدة",
+  "add_task": "إضافة مهمة",
+  "add_task_description": "أضف وصفًا للمهمة",
+  "search_placeholder": "البحث في المهام...",
+  "hide_completed": "إخفاء المكتملة",
+  "show_completed": "إظهار المكتملة",
+  "show_all": "إظهار الكل",
+  "show_starred": "إظهار المميّزة بنجمة",
+  "add": "إضافة مهمة",
+  "edit": "تعديل المهمة",
+  "delete": {
+    "title": "حذف المهمة",
+    "confirm_message": "هل تريد بالتأكيد حذف المهمة «{title}»؟",
+    "this_only": "حذف هذا الموعد فقط",
+    "future": "حذف هذا الموعد وجميع المواعيد اللاحقة"
+  },
+  "delete_confirmation": "هل تريد بالتأكيد حذف هذه المهمة؟ لا يمكن التراجع عن هذا الإجراء.",
+  "toggle_completion": "تبديل حالة الإكمال",
+  "toggle_star": "تبديل النجمة",
+  "due_date": "تاريخ الاستحقاق",
+  "description": "الوصف",
+  "title": "العنوان",
+  "title_placeholder": "أدخل عنوان المهمة",
+  "description_placeholder": "أدخل وصف المهمة (اختياري)",
+  "edit_description": "عدّل بيانات مهمتك",
+  "select_date": "تحديد التاريخ",
+  "select_list": "تحديد القائمة",
+  "move_to_list": "نقل إلى قائمة",
+  "move_task": "نقل المهمة",
+  "move_task_description": "اختر قائمة لنقل هذه المهمة إليها",
+  "recurring": {
+    "reset_notification": "تمت إعادة تعيين المهمة بتاريخ استحقاق جديد: {date}",
+    "completed_notification": "اكتملت المهمة ولن تتكرر بعد الآن",
+    "next_occurrence": "الموعد التالي: {date}",
+    "remaining_occurrences": "{count, plural, zero {لا توجد مرات متبقية} one {تبقّت مرة واحدة} two {تبقّت مرتان} few {تبقّت # مرات} many {تبقّت # مرة} other {تبقّت # مرة}}",
+    "last_occurrence": "كان هذا آخر موعد لهذه المهمة المتكررة",
+    "completed_count": "{count}×"
+  },
+  "subtasks": {
+    "add": "إضافة مهمة فرعية",
+    "placeholder": "أدخل اسم المهمة الفرعية",
+    "header": "المهام الفرعية",
+    "delete": {
+      "title": "حذف المهمة الفرعية",
+      "description": "هل تريد بالتأكيد حذف هذه المهمة الفرعية؟",
+      "confirm": "حذف",
+      "cancel": "إلغاء",
+      "error": "تعذّر حذف المهمة الفرعية. يُرجى المحاولة مرة أخرى.",
+      "error_with_details": "تعذّر حذف المهمة الفرعية: {errorMessage}. يُرجى المحاولة مرة أخرى.",
+      "processing": "جارٍ الحذف..."
+    }
+  },
+  "errors": {
+    "title_required": "عنوان المهمة مطلوب",
+    "fetch_failed": "تعذّر جلب المهام",
+    "create_failed": "تعذّر إنشاء المهمة",
+    "update_failed": "تعذّر تحديث المهمة",
+    "delete_failed": "تعذّر حذف المهمة",
+    "list_not_found": "لم يتم العثور على قائمة المهام",
+    "task_not_found": "لم يتم العثور على المهمة",
+    "required_fields": "بعض الحقول المطلوبة مفقودة",
+    "list_id_required": "معرّف قائمة المهام مطلوب",
+    "autosave_failed": "تعذّر الحفظ التلقائي. قد لا تكون تغييراتك محفوظة.",
+    "invalid_date": "تنسيق التاريخ غير صالح",
+    "list_required": "يُرجى اختيار قائمة مهام",
+    "move_failed": "تعذّر نقل المهمة إلى القائمة الجديدة"
+  },
+  "view": {
+    "title": "تفاصيل المهمة",
+    "back": "العودة إلى المهام",
+    "select_task": "اختر مهمة"
+  },
+  "fields": {
+    "title": "عنوان المهمة",
+    "description": "وصف المهمة",
+    "due_date": "التاريخ",
+    "recurring": "متكررة",
+    "recurrence_rule": "نمط التكرار (مثل FREQ=WEEKLY;BYDAY=MO,WE,FR)",
+    "completed_at": "تاريخ الإكمال",
+    "next_occurrence": "الموعد التالي",
+    "completed_count": "عدد مرات الإكمال"
+  },
+  "actions": {
+    "delete": "حذف المهمة",
+    "toggle_star": "تبديل النجمة",
+    "move_to_list": "نقل إلى قائمة أخرى",
+    "more_options": "مزيد من الخيارات"
+  },
+  "aria": {
+    "mark_as_complete": "تحديد كمكتملة",
+    "mark_as_incomplete": "تحديد كغير مكتملة",
+    "add_star": "تمييز بنجمة",
+    "remove_star": "إزالة النجمة",
+    "active_tasks": "المهام النشطة"
+  },
+  "date": {
+    "select": "تحديد التاريخ",
+    "confirm": "تأكيد",
+    "cancel": "إلغاء",
+    "selected": "التاريخ المحدد",
+    "change": "تغيير التاريخ",
+    "today": "اليوم",
+    "tomorrow": "غدًا",
+    "yesterday": "أمس",
+    "in_n_days": "{count, plural, =0 {اليوم} zero {اليوم} one {بعد يوم واحد} two {بعد يومين} few {بعد {count} أيام} many {بعد {count} يومًا} other {بعد {count} يوم}}"
+  },
+  "time": {
+    "select_time": "تحديد الوقت",
+    "select": "تحديد الوقت",
+    "time": "الوقت",
+    "hours": "الساعات",
+    "minutes": "الدقائق",
+    "add_time": "إضافة وقت",
+    "confirm": "تأكيد",
+    "cancel": "إلغاء"
+  },
+  "properties": {
+    "title": "الخصائص",
+    "delete": {
+      "date": {
+        "title": "حذف التاريخ",
+        "description": "هل تريد بالتأكيد حذف التاريخ؟ سيؤدي ذلك أيضًا إلى إزالة إعدادات الوقت والتكرار."
+      },
+      "time": {
+        "title": "حذف الوقت",
+        "description": "هل تريد بالتأكيد حذف الوقت؟"
+      },
+      "recurrence": {
+        "title": "حذف التكرار",
+        "description": "هل تريد بالتأكيد حذف إعدادات التكرار؟"
+      }
+    }
+  },
+  "recurrence": {
+    "title": "ضبط التكرار",
+    "description": "حدّد مدى تكرار هذه المهمة",
+    "add": "إضافة تكرار",
+    "edit": "تعديل التكرار",
+    "frequency": {
+      "label": "معدل التكرار",
+      "daily": "يوميًا",
+      "weekly": "أسبوعيًا",
+      "monthly": "شهريًا",
+      "yearly": "سنويًا"
+    },
+    "interval": {
+      "label": "التكرار كل",
+      "daily": "يوم (أيام)",
+      "weekly": "أسبوع (أسابيع)",
+      "monthly": "شهر (أشهر)",
+      "yearly": "سنة (سنوات)"
+    },
+    "days": {
+      "label": "في الأيام",
+      "monday": "الاثنين",
+      "tuesday": "الثلاثاء",
+      "wednesday": "الأربعاء",
+      "thursday": "الخميس",
+      "friday": "الجمعة",
+      "saturday": "السبت",
+      "sunday": "الأحد"
+    },
+    "end": {
+      "label": "ينتهي",
+      "never": "أبدًا",
+      "after": "بعد",
+      "on_date": "في تاريخ",
+      "occurrences": "مرات"
+    }
+  },
+  "more_options": "مزيد من الخيارات"
+}

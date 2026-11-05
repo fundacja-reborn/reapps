@@ -1,7 +1,7 @@
 /**
  * Pure-function helpers for Periodic Notes:
  * - `formatName`: produce the note title for Daily/Weekly/Monthly notes from a
- *   token-based format string. No I/O, no DOM — safe to unit-test in isolation.
+ *   token-based format string. No I/O, no DOM - safe to unit-test in isolation.
  * - `formatRange`: build a human-readable range string used in tooltips and the
  *   Settings preview ("4–10 maja 2026", "maj 2026", "2026-05-08 piątek").
  *
@@ -9,9 +9,10 @@
  * intentionally small. Anything inside `[…]` is emitted verbatim so users can
  * write `YYYY-[W]ww` and get `2026-W19` (not `2026-FW19` or similar).
  *
- * Falls back to a sane default if the formatter throws on user input — see
+ * Falls back to a sane default if the formatter throws on user input - see
  * `periodic-notes.service.ts` `getOrCreateNote` callsite.
  */
+import { intlLocale } from '@reborn/i18n/config';
 import type { PeriodicKind } from '@reborn/storage';
 import { getMondayOfWeek, getSundayOfWeek, getISOWeek } from '../utils/iso-week';
 
@@ -92,7 +93,7 @@ export function parseTitleAnchor(title: string, kind: PeriodicKind): string | nu
  * - `dddd` full weekday, `ddd` abbreviated weekday
  * - `ww` zero-padded ISO week number, `w` non-padded ISO week number
  *
- * Square brackets `[literal]` emit their contents verbatim — escape any token
+ * Square brackets `[literal]` emit their contents verbatim - escape any token
  * you want printed literally. Year tokens inside brackets are not interpreted.
  *
  * For `weekly`/`monthly` kinds, callers should pass the *anchor* date returned
@@ -100,10 +101,10 @@ export function parseTitleAnchor(title: string, kind: PeriodicKind): string | nu
  * the period (e.g. Monday-of-week) and not the click moment.
  */
 export function formatName(date: Date, format: string, locale: string): string {
-  const monthLong = new Intl.DateTimeFormat(locale, { month: 'long' }).format(date);
-  const monthShort = new Intl.DateTimeFormat(locale, { month: 'short' }).format(date);
-  const weekdayLong = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
-  const weekdayShort = new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(date);
+  const monthLong = new Intl.DateTimeFormat(intlLocale(locale), { month: 'long' }).format(date);
+  const monthShort = new Intl.DateTimeFormat(intlLocale(locale), { month: 'short' }).format(date);
+  const weekdayLong = new Intl.DateTimeFormat(intlLocale(locale), { weekday: 'long' }).format(date);
+  const weekdayShort = new Intl.DateTimeFormat(intlLocale(locale), { weekday: 'short' }).format(date);
 
   const { week } = getISOWeek(date);
 
@@ -113,7 +114,7 @@ export function formatName(date: Date, format: string, locale: string): string {
   while (i < format.length) {
     const ch = format[i];
 
-    // Literal segment — copy until matching ']'.
+    // Literal segment - copy until matching ']'.
     if (ch === '[') {
       const end = format.indexOf(']', i + 1);
       if (end === -1) {
@@ -212,20 +213,20 @@ export function formatName(date: Date, format: string, locale: string): string {
  */
 export function formatRange(kind: PeriodicKind, now: Date, locale: string): string {
   if (kind === 'daily') {
-    const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(now);
+    const weekday = new Intl.DateTimeFormat(intlLocale(locale), { weekday: 'long' }).format(now);
     const iso = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
     return `${iso} ${weekday}`;
   }
 
   if (kind === 'monthly') {
-    const monthLong = new Intl.DateTimeFormat(locale, { month: 'long' }).format(now);
+    const monthLong = new Intl.DateTimeFormat(intlLocale(locale), { month: 'long' }).format(now);
     return `${monthLong} ${now.getFullYear()}`;
   }
 
-  // weekly — Intl handles inflection + range collapsing per locale.
+  // weekly - Intl handles inflection + range collapsing per locale.
   const monday = getMondayOfWeek(now);
   const sunday = getSundayOfWeek(now);
-  const fmt = new Intl.DateTimeFormat(locale, {
+  const fmt = new Intl.DateTimeFormat(intlLocale(locale), {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
@@ -236,7 +237,7 @@ export function formatRange(kind: PeriodicKind, now: Date, locale: string): stri
 /**
  * Compute the title for a periodic note given the kind, click moment, format
  * string and locale. Falls back to default-format output if user-supplied
- * format throws (e.g. malformed token sequence) — caller doesn't need to wrap.
+ * format throws (e.g. malformed token sequence) - caller doesn't need to wrap.
  */
 export function buildPeriodicTitle(
   kind: PeriodicKind,

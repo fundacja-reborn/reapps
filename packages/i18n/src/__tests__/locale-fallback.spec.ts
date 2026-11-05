@@ -23,7 +23,7 @@ describe('isSupportedLocale', () => {
   });
 
   it('rejects unknown codes, region tags and non-strings', () => {
-    for (const value of ['ar', 'xx', 'en-US', 'PL', '', null, undefined, 42, {}]) {
+    for (const value of ['uk', 'xx', 'en-US', 'PL', '', null, undefined, 42, {}]) {
       expect(isSupportedLocale(value)).toBe(false);
     }
   });
@@ -35,11 +35,11 @@ describe('resolveLocale', () => {
   });
 
   it('falls back to the current locale for an unsupported preference', () => {
-    expect(resolveLocale('ar', 'pl')).toBe('pl');
+    expect(resolveLocale('uk', 'pl')).toBe('pl');
   });
 
   it('falls back to the default locale when neither is supported', () => {
-    expect(resolveLocale('ar', 'xx')).toBe(DEFAULT_LOCALE);
+    expect(resolveLocale('uk', 'xx')).toBe(DEFAULT_LOCALE);
     expect(resolveLocale(undefined, null)).toBe(DEFAULT_LOCALE);
   });
 });
@@ -59,12 +59,12 @@ describe('changeLocale with an unsupported locale', () => {
   });
 
   it('does not throw and reports that nothing was applied', async () => {
-    await expect(changeLocale('ar')).resolves.toBe(false);
+    await expect(changeLocale('uk')).resolves.toBe(false);
     expect(warn).toHaveBeenCalledOnce();
   });
 
   it('keeps the current locale and leaves the stored preference untouched', async () => {
-    await changeLocale('ar');
+    await changeLocale('uk');
     expect(get(locale)).toBe('pl');
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('pl');
   });

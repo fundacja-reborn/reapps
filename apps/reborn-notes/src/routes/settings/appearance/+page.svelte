@@ -26,7 +26,7 @@
   } from '$lib/stores/app-settings.store';
   import type { ImageLoadMode } from '@reborn/storage';
   import { t } from '$lib/stores/i18n.store';
-  import { SUPPORTED_LOCALES } from '@reborn/i18n';
+  import { SUPPORTED_LOCALES, localeLabel } from '@reborn/i18n';
   import type { AppSettings } from '@reborn/storage';
   import { createLogger } from '@reborn/utils';
   import { toast } from '@reborn/ui';
@@ -42,13 +42,7 @@
   let timeFormatValue = $state('24h');
   let imageLoadModeValue = $state<ImageLoadMode>('ask');
 
-  const languageOptions = [
-    { value: 'en', label: 'English' },
-    { value: 'pl', label: 'Polski' },
-    { value: 'de', label: 'Deutsch' },
-    { value: 'es', label: 'Español' },
-    { value: 'fr', label: 'Français' }
-  ] as const;
+  const languageOptions = SUPPORTED_LOCALES.map((value) => ({ value, label: localeLabel(value) }));
 
   const dateFormatOptions = [
     { value: 'DD/MM/YYYY', label: '31/12/2024' },
@@ -167,7 +161,7 @@
 </script>
 
 <svelte:head>
-  <title>{$t('settings_page.appearance.title')} — re/notes</title>
+  <title>{$t('settings_page.appearance.title')} - re/notes</title>
 </svelte:head>
 
 <SettingsLayout title={$t('settings_page.appearance.title')} backHref="/settings">

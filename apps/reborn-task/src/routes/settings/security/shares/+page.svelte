@@ -12,7 +12,8 @@
     ChevronUp,
     AlertTriangle
   } from '@lucide/svelte';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
   import {
     SettingsLayout,
     Button,
@@ -49,7 +50,7 @@
   function formatDate(iso: string | null) {
     if (!iso) return '-';
     try {
-      return new Date(iso).toLocaleString(undefined, {
+      return new Date(iso).toLocaleString(intlLocale($locale), {
         dateStyle: 'medium',
         timeStyle: 'short'
       });

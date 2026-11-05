@@ -8,6 +8,7 @@
  * - Sync with current task list
  */
 
+import { intlLocale } from '@reborn/i18n/config';
 import { browser } from '$app/environment';
 import { PUBLIC_BASE_PATH } from '$env/static/public';
 import { createLogger, parseUserAgent } from '@reborn/utils';
@@ -113,7 +114,7 @@ function formatReminderBody(task: ReminderTask, translate: TranslateFn, locale: 
 		return translate('notifications.task_due.body_unknown');
 	}
 
-	const localeTag = locale === 'pl' ? 'pl-PL' : locale;
+	const localeTag = intlLocale(locale);
 
 	if (task.has_time) {
 		const time = due.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' });

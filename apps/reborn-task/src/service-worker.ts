@@ -7,7 +7,8 @@ import { build, files, version } from '$service-worker';
 // Type-only (erased): no @reborn/i18n code runs in the SW, but the string
 // tables below are typed against the single locale list, so a new locale
 // without SW strings fails svelte-check.
-import type { SupportedLocale } from '@reborn/i18n/config';
+import { intlLocale, type SupportedLocale } from '@reborn/i18n/config';
+import { getTextDirection } from '@reborn/i18n/direction';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
@@ -116,13 +117,20 @@ const OFFLINE_STRINGS: Record<SupportedLocale, OfflineStrings> = {
 		description:
 			'Esta página aún no se ha guardado en la caché de la aplicación. Conéctese a la red e inténtelo de nuevo.',
 		reload: 'Intentar de nuevo'
+	},
+	ar: {
+		title: 'غير متصل - re/task',
+		heading: 'لا يوجد اتصال',
+		description:
+			'لم تُحفظ هذه الصفحة في ذاكرة التخزين المؤقت للتطبيق بعد. اتصل بالشبكة وحاول مرة أخرى.',
+		reload: 'إعادة المحاولة'
 	}
 };
 
 function buildOfflineHtml(locale: SupportedLocale): string {
 	const s = OFFLINE_STRINGS[locale];
 	return `<!DOCTYPE html>
-<html lang="${locale}"><head><meta charset="utf-8"><title>${s.title}</title>
+<html lang="${locale}" dir="${getTextDirection(locale)}"><head><meta charset="utf-8"><title>${s.title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>html,body{margin:0;height:100%;font-family:system-ui;background:#ffffff;color:#374151;display:flex;align-items:center;justify-content:center}
 .box{max-width:320px;text-align:center;padding:24px}
@@ -140,7 +148,8 @@ const OFFLINE_HTML_BY_LOCALE: Record<SupportedLocale, string> = {
 	pl: buildOfflineHtml('pl'),
 	de: buildOfflineHtml('de'),
 	fr: buildOfflineHtml('fr'),
-	es: buildOfflineHtml('es')
+	es: buildOfflineHtml('es'),
+	ar: buildOfflineHtml('ar')
 };
 
 const OFFLINE_RESPONSE = async (): Promise<Response> => {
@@ -566,6 +575,15 @@ const REMINDER_STRINGS: Record<SupportedLocale, TaskReminderStrings> = {
 		bodyToday: "Prévue aujourd'hui",
 		bodyDate: (d) => `Prévue le ${d}`,
 		bodyUnknown: 'Rappel de tâche'
+	},
+	ar: {
+		appName: 're/task',
+		genericTitle: 'تذكير بمهمة',
+		genericBody: 'لديك مهمة مجدولة - افتح التطبيق لعرض التفاصيل.',
+		bodyTime: (t) => `مجدولة في الساعة ${t}`,
+		bodyToday: 'مجدولة اليوم',
+		bodyDate: (d) => `مجدولة بتاريخ ${d}`,
+		bodyUnknown: 'تذكير بمهمة'
 	}
 };
 
@@ -713,7 +731,7 @@ function formatBody(
 	const due = new Date(metadata.due_date);
 	if (Number.isNaN(due.getTime())) return strings.bodyUnknown;
 
-	const localeTag = locale === 'pl' ? 'pl-PL' : locale;
+	const localeTag = intlLocale(locale);
 
 	if (metadata.has_time) {
 		const time = due.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' });

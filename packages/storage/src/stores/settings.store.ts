@@ -51,7 +51,7 @@ export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   /** Must equal SupportedLocale from @reborn/i18n (no dependency from here):
    *  enforced at compile time by apps/reborn-notes/src/lib/supported-locales.regression.spec.ts. */
-  language: 'en' | 'pl' | 'de' | 'es' | 'fr';
+  language: 'en' | 'pl' | 'de' | 'es' | 'fr' | 'ar';
   dateFormat: string;
   timeFormat: '12h' | '24h';
   firstDayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
