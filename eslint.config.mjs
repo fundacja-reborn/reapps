@@ -16,9 +16,10 @@ export default [
           enforceBuildableLibDependency: true,
           allow: [
             '^.*/eslint(\\.base)?\\.config\\.[cm]?js$',
-            // Repo-level dev tooling imported by guard specs (not a project
-            // dependency): scripts/check-rtl-direction.mjs,
-            // scripts/supported-locales.mjs, scripts/i18n-*.mjs.
+            // Repo-level dev tooling imported by guard specs: the `scripts`
+            // project (scripts/project.json) is not a package, so specs reach
+            // it by relative path. Nx still records the dependency from these
+            // imports, so a change in scripts/ runs the specs that test it.
             '^.*/scripts/(check-rtl-direction|supported-locales|i18n-messages|i18n-export|i18n-import|i18n-review)\\.mjs$'
           ],
           depConstraints: [
