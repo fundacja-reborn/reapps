@@ -26,7 +26,8 @@
   } from '@reborn/ui';
   import { toast } from '@reborn/ui';
   import { createLogger } from '@reborn/utils';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
 
   const logger = createLogger('RecoveryCodesPage');
 
@@ -95,7 +96,7 @@
     if (!newCodes.length) return;
     const content = [
       $t('security.recovery_codes.file_header'),
-      `${$t('security.recovery_codes.file_generated')} ${new Date().toLocaleString('pl-PL')}`,
+      `${$t('security.recovery_codes.file_generated')} ${new Date().toLocaleString(intlLocale($locale))}`,
       '',
       $t('security.recovery_codes.file_warning'),
       '',
@@ -130,7 +131,7 @@
 </script>
 
 <svelte:head>
-  <title>{$t('security.recovery_codes.title')} — re/notes</title>
+  <title>{$t('security.recovery_codes.title')} - re/notes</title>
 </svelte:head>
 
 <SettingsLayout title={$t('security.recovery_codes.title')} backHref="/settings">
@@ -190,7 +191,7 @@
                 : $t('security.recovery_codes.generate')}
             </Button>
           {:else if !showConfirmRegenerate}
-            <!-- Has codes — show regenerate option -->
+            <!-- Has codes - show regenerate option -->
             <Button
               variant="outline"
               onclick={() => (showConfirmRegenerate = true)}
@@ -226,7 +227,7 @@
         </CardContent>
       </Card>
 
-      <!-- New codes — shown once after generation -->
+      <!-- New codes - shown once after generation -->
       {#if newCodes.length > 0}
         <Card class="border-primary/50">
           <CardHeader>

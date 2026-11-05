@@ -10,7 +10,7 @@
  * src/__tests__/supported-locales.spec.ts.
  */
 
-export const SUPPORTED_LOCALES = ['en', 'pl', 'de', 'es', 'fr'] as const;
+export const SUPPORTED_LOCALES = ['en', 'pl', 'de', 'es', 'fr', 'ar'] as const;
 export type SupportedLocale = typeof SUPPORTED_LOCALES[number];
 
 export const DEFAULT_LOCALE: SupportedLocale = 'en';
@@ -43,13 +43,42 @@ export function resolveLocale(preferred: unknown, current?: unknown): SupportedL
   return DEFAULT_LOCALE;
 }
 
+/**
+ * BCP 47 tag for `Intl` formatters and `toLocale*String` (dates, times,
+ * numbers, relative time) in the app's language. Every such call goes
+ * through this helper, so dates follow the app language, not the device's.
+ *
+ * Arabic is pinned to Western digits 0-9, the convention agreed with the
+ * translator (Arabic plan, D4): some engines and regional variants default
+ * `ar` to Arabic-Indic digits. A regional tag of a supported language
+ * (`pl-PL`) is kept; anything else becomes DEFAULT_LOCALE.
+ */
+export function intlLocale(locale: unknown): string {
+  const tag =
+    typeof locale === 'string' && isSupportedLocale(locale.split('-')[0]) ? locale : DEFAULT_LOCALE;
+  return tag.split('-')[0] === 'ar' && !tag.includes('-u-') ? `${tag}-u-nu-latn` : tag;
+}
+
 export const LOCALE_NAMES: Record<SupportedLocale, string> = {
   en: 'English',
   pl: 'Polski',
   de: 'Deutsch',
   es: 'Español',
-  fr: 'Français'
+  fr: 'Français',
+  ar: 'العربية'
 };
+
+/**
+ * Locales shipped as a beta: the translation is a draft still under review by
+ * a native speaker (Arabic plan, decision D6). Language pickers mark them.
+ */
+export const BETA_LOCALES: readonly SupportedLocale[] = ['ar'];
+
+/** A locale's name as a language picker shows it, with the beta marker. */
+export function localeLabel(locale: SupportedLocale): string {
+  const name = LOCALE_NAMES[locale];
+  return BETA_LOCALES.includes(locale) ? `${name} (beta)` : name;
+}
 
 /**
  * Available translation modules

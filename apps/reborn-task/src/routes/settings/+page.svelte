@@ -29,6 +29,7 @@
 	} from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { locale } from '$lib/stores/i18n.store';
+	import { intlLocale } from '@reborn/i18n';
 	import { cn, SettingsLayout, GithubMark } from '@reborn/ui';
 	import { user, isAuthenticated, isLocalOnly } from '$lib/stores/auth.store';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
@@ -253,7 +254,7 @@
 								{#if $user?.created_at}
 									{$t('profile.member_since')}
 									{new Date($user.created_at).toLocaleDateString(
-										$locale ?? undefined,
+										intlLocale($locale),
 										{ year: 'numeric', month: 'long', day: 'numeric' }
 									)}
 								{/if}

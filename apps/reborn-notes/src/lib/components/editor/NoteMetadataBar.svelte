@@ -3,6 +3,7 @@
   import { Folder, Tag, Calendar } from '@lucide/svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
 
   type ViewMode = 'edit' | 'split' | 'preview';
 
@@ -58,7 +59,7 @@
     if (!iso) return null;
     try {
       const date = new Date(iso);
-      const currentLocale = $locale || 'en';
+      const currentLocale = intlLocale($locale);
       return new Intl.DateTimeFormat(currentLocale, {
         dateStyle: 'medium',
         timeStyle: 'short'

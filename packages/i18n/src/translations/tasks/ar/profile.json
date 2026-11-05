@@ -1,0 +1,15 @@
+{
+  "title": "الملف الشخصي",
+  "description": "إدارة حسابك وإعدادات الأمان",
+  "user_info": "معلومات الحساب",
+  "username": "اسم المستخدم",
+  "email": "عنوان البريد الإلكتروني",
+  "member_since": "عضو منذ",
+  "security": "الأمان",
+  "security_description": "إدارة إعدادات أمان حسابك",
+  "change_password": "تغيير كلمة المرور",
+  "enable_2fa": "تفعيل المصادقة الثنائية",
+  "danger_zone": "منطقة الخطر",
+  "danger_zone_description": "إجراءات لا يمكن التراجع عنها تخص حسابك",
+  "delete_account": "حذف الحساب"
+}

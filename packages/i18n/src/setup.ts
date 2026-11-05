@@ -84,21 +84,24 @@ const TRANSLATION_MODULES: Record<TranslationModule, Record<SupportedLocale, str
     pl: [],
     de: [],
     es: [],
-    fr: []
+    fr: [],
+    ar: []
   },
   tasks: {
     en: TASKS_MODULE_FILES,
     pl: TASKS_MODULE_FILES,
     de: TASKS_MODULE_FILES,
     es: TASKS_MODULE_FILES,
-    fr: TASKS_MODULE_FILES
+    fr: TASKS_MODULE_FILES,
+    ar: TASKS_MODULE_FILES
   },
   notes: {
     en: [],
     pl: [],
     de: [],
     es: [],
-    fr: []
+    fr: [],
+    ar: []
   }
 };
 

@@ -1,3 +1,4 @@
+import { intlLocale } from '@reborn/i18n/config';
 import { formatDateWithSetting } from '@reborn/utils';
 
 export interface DueDateFormatResult {
@@ -6,12 +7,6 @@ export interface DueDateFormatResult {
 	status: 'overdue' | 'today' | 'tomorrow' | 'upcoming' | 'normal';
 	isTimeOverdue: boolean;
 }
-
-// Map locale codes to browser-compatible ones
-const localeMap: Record<string, string> = {
-	en: 'en-US',
-	pl: 'pl-PL'
-};
 
 // --- Date helpers (pure functions) ---
 
@@ -50,8 +45,7 @@ export function getDaysFromToday(date: Date): number {
 }
 
 export function getTimeString(date: Date, locale: string): string {
-	const browserLocale = localeMap[locale || 'en'] || locale || 'en-US';
-	return date.toLocaleTimeString(browserLocale, {
+	return date.toLocaleTimeString(intlLocale(locale), {
 		hour: 'numeric',
 		minute: '2-digit'
 	});
@@ -111,7 +105,7 @@ export function formatDueDate(
 		relativeText = t('tasks.date.in_n_days', { values: { count: daysFromToday } });
 		if (hasTime) text = getTimeString(date, locale);
 	} else {
-		// For dates further away or in the past — use user's preferred format
+		// For dates further away or in the past - use user's preferred format
 		text = formatDateWithSetting(date, dateFormat);
 		if (hasTime) text += ', ' + getTimeString(date, locale);
 	}

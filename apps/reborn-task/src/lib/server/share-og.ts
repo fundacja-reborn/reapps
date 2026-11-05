@@ -36,6 +36,10 @@ const STRINGS: Record<SupportedLocale, ShareOgStrings> = {
   es: {
     title: 'Tarea compartida - re/task',
     description: 'Una instantánea cifrada de extremo a extremo de una tarea compartida contigo.'
+  },
+  ar: {
+    title: 'مهمة مُشارَكة - re/task',
+    description: 'لقطة من مهمة، مشفّرة تمامًا بين الطرفين، تمت مشاركتها معك.'
   }
 };
 

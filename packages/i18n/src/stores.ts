@@ -4,6 +4,7 @@
  */
 import { derived } from 'svelte/store';
 import { _ as baseTranslate, json as baseJson } from 'svelte-i18n';
+import { intlLocale } from './config';
 
 /**
  * Translation function store
@@ -45,21 +46,21 @@ export const json = derived(baseJson, ($baseJson) => {
  */
 export function formatDate(date: Date | string, locale: string, options?: Intl.DateTimeFormatOptions): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat(locale, options).format(dateObj);
+  return new Intl.DateTimeFormat(intlLocale(locale), options).format(dateObj);
 }
 
 /**
  * Helper to format numbers according to locale
  */
 export function formatNumber(value: number, locale: string, options?: Intl.NumberFormatOptions): string {
-  return new Intl.NumberFormat(locale, options).format(value);
+  return new Intl.NumberFormat(intlLocale(locale), options).format(value);
 }
 
 /**
  * Helper to format currency according to locale
  */
 export function formatCurrency(value: number, locale: string, currency: string): string {
-  return new Intl.NumberFormat(locale, {
+  return new Intl.NumberFormat(intlLocale(locale), {
     style: 'currency',
     currency
   }).format(value);

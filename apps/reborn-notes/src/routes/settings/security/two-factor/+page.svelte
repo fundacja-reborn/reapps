@@ -30,7 +30,8 @@
   import { toast } from '@reborn/ui';
   import { createLogger } from '@reborn/utils';
   import QRCode from 'qrcode';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
 
   const logger = createLogger('TwoFactorPage');
 
@@ -199,7 +200,7 @@
     if (!recoveryCodes.length) return;
     const content = [
       $t('security.recovery_codes.file_header'),
-      `${$t('security.recovery_codes.file_generated')} ${new Date().toLocaleString()}`,
+      `${$t('security.recovery_codes.file_generated')} ${new Date().toLocaleString(intlLocale($locale))}`,
       '',
       $t('security.recovery_codes.file_warning'),
       '',

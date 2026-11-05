@@ -75,17 +75,17 @@ describe('appSettings.init - synced language this build does not ship', () => {
   });
 
   it('keeps the synced value and does not push the local locale over it', async () => {
-    mocks.getSettings.mockResolvedValue(settingsRow({ language: 'ar' }));
+    mocks.getSettings.mockResolvedValue(settingsRow({ language: 'uk' }));
 
     await appSettings.init();
 
     expect(mocks.setSetting).not.toHaveBeenCalled();
     expect(mocks.schedulePush).not.toHaveBeenCalled();
-    expect(get(appSettings)?.language).toBe('ar');
+    expect(get(appSettings)?.language).toBe('uk');
   });
 
   it('finishes without an error and keeps the theme', async () => {
-    mocks.getSettings.mockResolvedValue(settingsRow({ language: 'ar', theme: 'dark' }));
+    mocks.getSettings.mockResolvedValue(settingsRow({ language: 'uk', theme: 'dark' }));
 
     await appSettings.init();
 
@@ -94,7 +94,7 @@ describe('appSettings.init - synced language this build does not ship', () => {
   });
 
   it('exposes the locale the UI renders, not the raw unsupported code', async () => {
-    mocks.getSettings.mockResolvedValue(settingsRow({ language: 'ar' }));
+    mocks.getSettings.mockResolvedValue(settingsRow({ language: 'uk' }));
 
     await appSettings.init();
 

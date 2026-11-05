@@ -1,7 +1,8 @@
 <script lang="ts">
   import { Eye, Clock, ArrowLeft, X, RotateCcw, FileDiff, ChevronRight } from '@lucide/svelte';
   import { SidebarTrigger } from '@reborn/ui/sidebar';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
 
   type HistoryViewMode = 'preview' | 'diff';
 
@@ -95,7 +96,7 @@
   <span class="text-xs text-muted-foreground">
     {$t('history.version_date', {
       values: {
-        date: new Date(selectedVersion.created_at).toLocaleDateString([], {
+        date: new Date(selectedVersion.created_at).toLocaleDateString(intlLocale($locale), {
           month: 'short',
           day: 'numeric',
           year: 'numeric',
@@ -105,7 +106,7 @@
       }
     })}
     {#if isLatestVersion}
-      — {$t('history.current_version')}
+      - {$t('history.current_version')}
     {/if}
   </span>
 </div>

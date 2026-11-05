@@ -1,0 +1,155 @@
+{
+  "create": {
+    "cta": "إنشاء رابط",
+    "creating": "جارٍ الإنشاء…",
+    "expires_label": "تنتهي الصلاحية بعد",
+    "expires": {
+      "1d": "يوم واحد",
+      "7d": "7 أيام",
+      "30d": "30 يومًا",
+      "never": "أبدًا"
+    },
+    "display_name_label": "الاسم المعروض (اختياري)",
+    "display_name_placeholder": "يُستخدم العنوان افتراضيًا",
+    "display_name_hint": "يظهر في رأس اللقطة بدلًا من العنوان الأصلي.",
+    "sender_label": "اسم المُرسِل (اختياري)",
+    "sender_label_placeholder": "اسمك",
+    "password_toggle": "الحماية بكلمة مرور",
+    "password_placeholder": "كلمة المرور",
+    "password_confirm_placeholder": "تأكيد كلمة المرور",
+    "password_mismatch": "كلمتا المرور غير متطابقتين",
+    "password_too_short": "8 أحرف على الأقل",
+    "max_opens_label": "الحد الأقصى لمرات الفتح",
+    "max_opens_unlimited": "بلا حدود",
+    "max_opens_placeholder": "مثال: 5",
+    "max_opens_hint": "يُحتسب كل تحميل للصفحة مرةَ فتح واحدة.",
+    "max_opens_invalid": "أدخل رقمًا بين 1 و1000.",
+    "max_opens_self_destruct_hint": "ستُدمَّر المشاركة ذاتيًا بعد فتحها لأول مرة. ستظل ترى وقت آخر وصول في الإعدادات لمدة 24 ساعة، ثم يُحذف السجل نهائيًا.",
+    "success_title": "الرابط جاهز",
+    "copy_link": "نسخ الرابط",
+    "copied": "تم النسخ",
+    "copy_failed": "تعذّر النسخ",
+    "close_cta": "إغلاق",
+    "offline_warning": "تتطلب المشاركة اتصالًا بالإنترنت"
+  },
+  "task": {
+    "menu_label": "مشاركة للقراءة فقط",
+    "dialog_header": "مشاركة المهمة للقراءة فقط",
+    "subtasks_count": "{count, plural, zero {لا توجد مهام فرعية} one {مهمة فرعية واحدة} two {مهمتان فرعيتان} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}}"
+  },
+  "view": {
+    "loading": "جارٍ التحميل…",
+    "error_title": "تعذّر عرض المشاركة",
+    "read_only_badge": "لقطة للقراءة فقط",
+    "untitled": "بلا عنوان",
+    "missing_key": "الرابط غير مكتمل؛ مفتاح فك التشفير (بعد #) مفقود. تأكد من نسخ عنوان URL بالكامل.",
+    "not_found": "هذه المشاركة غير موجودة أو تم إبطالها.",
+    "expired": "انتهت صلاحية هذه المشاركة.",
+    "exhausted": "بلغت هذه المشاركة حدّ الوصول المسموح به.",
+    "opens_progress": "مرات الفتح: {used}/{max}",
+    "decrypt_failed": "تعذّر فك تشفير المحتوى. قد يكون المفتاح غير صالح.",
+    "password_prompt": "هذه المشاركة محمية بكلمة مرور",
+    "password_intro": "لقطة من مهمة، مشفّرة تمامًا بين الطرفين. أدخل كلمة المرور لفتحها.",
+    "password_submit": "فتح",
+    "password_wrong": "كلمة المرور غير صحيحة",
+    "shared_at": "تمت المشاركة في {relative}",
+    "shared_by": "شاركها {label}",
+    "expires_in": "تنتهي الصلاحية في {relative}",
+    "powered_by": "يعمل بتقنية Reborn Apps",
+    "footer_shared_from": "تمت المشاركة من {app}",
+    "footer_e2e_encrypted": "مشفّر تمامًا بين الطرفين",
+    "gate": {
+      "title": {
+        "missing_key": "رابط غير مكتمل",
+        "not_found": "الرابط غير موجود",
+        "expired": "انتهت صلاحية الرابط",
+        "revoked": "تم إبطال الوصول",
+        "exhausted": "تم بلوغ حدّ مرات الفتح",
+        "decrypt_failed": "تعذّر فك التشفير",
+        "error": "حدث خطأ ما"
+      },
+      "hint": {
+        "missing_key": "تأكد من نسخ عنوان URL بالكامل، بما في ذلك الجزء الذي يلي `#`.",
+        "not_found": "ربما أزاله المُرسِل، أو أن الرابط مكتوب بشكل خاطئ.",
+        "expired": "اطلب من المُرسِل رابطًا جديدًا.",
+        "revoked": "أوقف المُرسِل مشاركة هذه اللقطة.",
+        "exhausted": "بلغت هذه المشاركة حدّ مرات الفتح. اطلب من المُرسِل رابطًا جديدًا.",
+        "decrypt_failed": "تحقّق من عنوان URL أو اطلب من المُرسِل مشاركتها مجددًا.",
+        "error": "يُرجى إعادة المحاولة بعد قليل."
+      },
+      "cta_learn_more": "معرفة المزيد عن {app}"
+    },
+    "actions": {
+      "copy_markdown": "نسخ Markdown",
+      "copy_done": "تم النسخ",
+      "copy_failed": "تعذّر النسخ",
+      "download_markdown": "تنزيل .md"
+    },
+    "task": {
+      "completed_badge": "مكتملة",
+      "due_date_label": "تاريخ الاستحقاق",
+      "subtasks_label": "المهام الفرعية",
+      "description_label": "الوصف",
+      "no_subtasks": "لا توجد مهام فرعية",
+      "no_description": "لا يوجد وصف"
+    }
+  },
+  "list": {
+    "title": "المشاركات النشطة",
+    "settings_title": "المشاركات النشطة",
+    "settings_desc": "إدارة الروابط العامة للقراءة فقط إلى مهامك",
+    "empty": "ليست لديك مشاركات نشطة.",
+    "error_load": "تعذّر تحميل المشاركات.",
+    "error_load_offline_hint": "يبدو أنك غير متصل. تحقّق من اتصالك ثم أعد المحاولة.",
+    "error_load_stale_banner": "تعذّر التحديث؛ نعرض آخر قائمة تمكّنّا من تحميلها.",
+    "retry_action": "إعادة المحاولة",
+    "column": {
+      "created": "تاريخ الإنشاء",
+      "expires": "انتهاء الصلاحية",
+      "access_count": "مرات الفتح",
+      "last_accessed": "آخر فتح",
+      "actions": "الإجراءات"
+    },
+    "no_local_key_hint": "أُنشئت على جهاز آخر؛ يمكن إبطالها فقط",
+    "password_protected": "محمية بكلمة مرور",
+    "revoked_label": "مُبطَلة",
+    "exhausted_label": "تم بلوغ الحد",
+    "revoke_action": "إبطال",
+    "revoke_error": "تعذّر إبطال المشاركة",
+    "revoked_toast": "تم إبطال المشاركة",
+    "confirm_revoke_title": "هل تريد إبطال المشاركة؟",
+    "confirm_revoke_desc": "سيتوقف الرابط عن العمل فورًا.",
+    "untitled": "(بلا عنوان)",
+    "decrypting": "جارٍ فك التشفير…",
+    "decrypt_failed": "تعذّر فك تشفير هذه اللقطة",
+    "preview_action": "معاينة",
+    "preview_hint": "لا تُحتسب المعاينة ضمن حدّ مرات الفتح.",
+    "preview_dialog_title": "معاينة اللقطة",
+    "show_link": "إظهار الرابط",
+    "hide_link": "إخفاء الرابط",
+    "type": {
+      "note": "ملاحظة",
+      "task": "مهمة"
+    }
+  },
+  "indicator": {
+    "label": "مُشارَكة",
+    "tooltip": "عدد المشاركات النشطة للقراءة فقط لهذه المهمة: {count}",
+    "aria_label": "المشاركات النشطة لهذه المهمة: {count}",
+    "create_tooltip": "مشاركة هذه المهمة"
+  },
+  "manage": {
+    "dialog_title": "المشاركات النشطة",
+    "for_note_title": "مشاركات هذه الملاحظة",
+    "for_task_title": "مشاركات هذه المهمة",
+    "for_note_description": "روابط للقراءة فقط تشير إلى هذه الملاحظة. يمكنك إبطالها أو نسخها حسب الحاجة.",
+    "for_task_description": "روابط للقراءة فقط تشير إلى هذه المهمة. يمكنك إبطالها أو نسخها حسب الحاجة.",
+    "empty_for_note": "لا توجد مشاركات نشطة لهذه الملاحظة.",
+    "empty_for_task": "لا توجد مشاركات نشطة لهذه المهمة.",
+    "create_new_cta": "إنشاء مشاركة جديدة"
+  },
+  "session_required": {
+    "view": "سجّل الدخول مرة أخرى لعرض مشاركاتك النشطة.",
+    "create": "سجّل الدخول مرة أخرى لإنشاء مشاركة."
+  }
+}

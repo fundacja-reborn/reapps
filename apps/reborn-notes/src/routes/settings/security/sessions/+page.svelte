@@ -4,7 +4,8 @@
   import { API_BASE } from '$lib/utils/api-base';
   import { nativeSessionHeader } from '$lib/utils/native-session';
   import { Monitor, LogOut, RefreshCw, AlertTriangle, X } from '@lucide/svelte';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
   import { authStore } from '$lib/stores/auth.store';
   import { sessionExpired } from '$lib/stores/sync-status.store';
   import { SettingsLayout, Button, Alert, AlertDescription, Card, CardContent } from '@reborn/ui';
@@ -35,7 +36,7 @@
   const otherSessions = $derived(sessions.filter((s) => s.id !== currentSessionId));
 
   function formatDate(iso: string) {
-    return new Date(iso).toLocaleString(undefined, {
+    return new Date(iso).toLocaleString(intlLocale($locale), {
       dateStyle: 'medium',
       timeStyle: 'short'
     });
@@ -138,11 +139,11 @@
       logger.warn('Server logout-all call failed:', err);
     }
 
-    // Reset session expired flag — this is an intentional logout, not expiry
+    // Reset session expired flag - this is an intentional logout, not expiry
     sessionExpired.set(false);
 
     // Clear local auth state and redirect to login
-    // authStore.logout() does hard redirect (window.location.href) — no code after it will execute
+    // authStore.logout() does hard redirect (window.location.href) - no code after it will execute
     authStore.logout();
   }
 

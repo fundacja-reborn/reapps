@@ -22,11 +22,10 @@ describe('getTextDirection', () => {
     }
   });
 
-  it('keeps every shipped locale LTR until an RTL locale is deliberately added', () => {
-    // Guards the assumption Phase 1 ships under: the RTL layout is reachable
-    // only via the ?dir=rtl override. Adding `ar` (Phase 2) flips this test on
-    // purpose - update it together with SUPPORTED_LOCALES.
-    expect(SUPPORTED_LOCALES.filter((l) => getTextDirection(l) === 'rtl')).toEqual([]);
+  it('ships exactly the RTL locales that were deliberately added', () => {
+    // A new right-to-left locale changes the layout for its users: update this
+    // list together with SUPPORTED_LOCALES, after an RTL smoke test.
+    expect(SUPPORTED_LOCALES.filter((l) => getTextDirection(l) === 'rtl')).toEqual(['ar']);
   });
 
   it('inlineSide maps logical sides to physical ones', () => {

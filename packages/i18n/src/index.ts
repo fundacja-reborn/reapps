@@ -26,12 +26,15 @@ export {
   SUPPORTED_LOCALES,
   DEFAULT_LOCALE,
   LOCALE_NAMES,
+  BETA_LOCALES,
+  localeLabel,
   TRANSLATION_MODULES,
   LOCALE_STORAGE_KEY,
   getBrowserLocale,
   saveLocalePreference,
   isSupportedLocale,
   resolveLocale,
+  intlLocale,
   type SupportedLocale,
   type TranslationModule
 } from './config';

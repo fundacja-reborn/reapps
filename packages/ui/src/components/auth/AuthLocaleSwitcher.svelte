@@ -1,11 +1,10 @@
 <script lang="ts">
   import { locale } from 'svelte-i18n';
-  import { changeLocale, SUPPORTED_LOCALES, LOCALE_NAMES } from '@reborn/i18n';
+  import { changeLocale, SUPPORTED_LOCALES, localeLabel } from '@reborn/i18n';
   import { Globe } from '@lucide/svelte';
 
   type Locale = (typeof SUPPORTED_LOCALES)[number];
 
-  const localeNames = LOCALE_NAMES as Record<string, string>;
   let currentLocale = $derived(($locale as Locale) || 'en');
 
   function handleChange(event: Event) {
@@ -27,7 +26,7 @@
   >
     {#each SUPPORTED_LOCALES as loc}
       <option value={loc} class="bg-background text-foreground">
-        {localeNames[loc]}
+        {localeLabel(loc)}
       </option>
     {/each}
   </select>

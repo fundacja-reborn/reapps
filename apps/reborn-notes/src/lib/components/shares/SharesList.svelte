@@ -8,6 +8,7 @@
     DropdownMenuTrigger
   } from '@reborn/ui';
   import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
   import { activeShares, activeShareId, sharesBySourceId, sharesStore } from '$lib/stores/shares.store';
   import { formatExpiryRelative } from '$lib/utils/expiry-format';
   import type { OwnShareListItem } from '@reborn/types';
@@ -70,7 +71,7 @@
   function formatDate(iso: string | null): string {
     if (!iso) return '-';
     try {
-      return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' });
+      return new Date(iso).toLocaleDateString(intlLocale($locale), { dateStyle: 'medium' });
     } catch {
       return iso;
     }
@@ -81,7 +82,7 @@
   function formatDateTime(iso: string | null): string {
     if (!iso) return '-';
     try {
-      return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+      return new Date(iso).toLocaleString(intlLocale($locale), { dateStyle: 'medium', timeStyle: 'short' });
     } catch {
       return iso;
     }

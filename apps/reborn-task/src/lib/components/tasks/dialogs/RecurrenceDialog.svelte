@@ -23,6 +23,7 @@
 	} from '@reborn/ui';
 	import { Calendar as CalendarIcon } from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
+	import { intlLocale } from '@reborn/i18n';
 	import { currentLanguage } from '$lib/stores/app-settings.store';
 	import { cn } from '@reborn/ui';
 	import { getLocalTimeZone, type DateValue, parseDate } from '@internationalized/date';
@@ -64,7 +65,7 @@
 		{ value: 'SU', label: 'sunday' }
 	];
 
-	let locale = $derived($currentLanguage === 'pl' ? 'pl' : 'en');
+	let locale = $derived(intlLocale($currentLanguage));
 
 	function formatDate(date: DateValue | undefined): string {
 		if (!date) return $t('task.select_date');

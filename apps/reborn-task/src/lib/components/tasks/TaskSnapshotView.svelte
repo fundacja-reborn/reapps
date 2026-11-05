@@ -1,6 +1,7 @@
 <script lang="ts">
   import { get } from 'svelte/store';
   import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
   import type { SharedSnapshotTaskPayload } from '@reborn/types';
 
   let { payload, showHeader = true }: { payload: SharedSnapshotTaskPayload; showHeader?: boolean } = $props();
@@ -14,7 +15,7 @@
   function formatDate(iso: string | null | undefined): string {
     if (!iso) return '';
     try {
-      return new Date(iso).toLocaleString(get(locale) ?? undefined);
+      return new Date(iso).toLocaleString(intlLocale(get(locale)));
     } catch {
       return iso;
     }

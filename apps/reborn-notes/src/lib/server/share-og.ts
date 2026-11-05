@@ -39,6 +39,10 @@ const STRINGS: Record<SupportedLocale, ShareOgStrings> = {
   es: {
     title: 'Nota compartida - re/notes',
     description: 'Una instantánea cifrada de extremo a extremo de una nota compartida contigo.'
+  },
+  ar: {
+    title: 'ملاحظة مُشارَكة - re/notes',
+    description: 'لقطة من ملاحظة، مشفّرة تمامًا بين الطرفين، تمت مشاركتها معك.'
   }
 };
 

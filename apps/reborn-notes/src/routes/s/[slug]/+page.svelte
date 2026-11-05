@@ -23,6 +23,7 @@
   } from '@lucide/svelte';
   import { get } from 'svelte/store';
   import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
   import {
     importKeyFromBase64url,
     decryptSnapshotPayload,
@@ -219,7 +220,7 @@
   function formatRelative(iso: string | null): string {
     if (!iso) return '';
     try {
-      return new Date(iso).toLocaleString(get(locale) ?? undefined);
+      return new Date(iso).toLocaleString(intlLocale(get(locale)));
     } catch {
       return iso;
     }

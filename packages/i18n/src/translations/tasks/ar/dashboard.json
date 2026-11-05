@@ -1,0 +1,22 @@
+{
+  "title": "لوحة المعلومات",
+  "welcome": "مرحبًا بعودتك، {username}!",
+  "logout": "تسجيل الخروج",
+  "logging_out": "جارٍ تسجيل الخروج...",
+  "user_info": "معلومات الحساب",
+  "username": "اسم المستخدم",
+  "member_since": "عضو منذ",
+  "total_tasks": "إجمالي المهام",
+  "total_lists": "قوائم المهام",
+  "due_today": "مستحقة اليوم",
+  "tasks_coming_soon": "تتبّع المهام قريبًا",
+  "lists_coming_soon": "إدارة القوائم قريبًا",
+  "calendar_coming_soon": "عرض التقويم قريبًا",
+  "coming_soon_title": "ميزات قادمة قريبًا",
+  "coming_soon_description": "نعمل بجد لنقدّم لك تجربة متكاملة لإدارة المهام. إليك ما هو قادم:",
+  "feature_lists": "قوائم مهام لتنظيم عملك",
+  "feature_tasks": "إدارة كاملة للمهام مع تواريخ الاستحقاق والأوصاف",
+  "feature_reminders": "تذكيرات وإشعارات ذكية",
+  "feature_sync": "مزامنة فورية بين الأجهزة",
+  "feature_offline": "إمكانية العمل الكامل دون اتصال"
+}

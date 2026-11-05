@@ -1,0 +1,9 @@
+{
+  "navigation_deferred": "تم تأجيل الانتقال",
+  "list_created_offline": "تم إنشاء القائمة بنجاح. سيكتمل الانتقال عند استعادة الاتصال.",
+  "offline_mode": "وضع عدم الاتصال",
+  "list_created_offline_info": "تم إنشاء القائمة. يمكنك مواصلة العمل دون اتصال.",
+  "first_run_online_required": "يلزم الاتصال بالإنترنت",
+  "first_run_online_required_desc": "يتطلب الإعداد الأولي اتصالًا بالإنترنت لتنزيل بيانات حسابك.",
+  "first_run_retry": "إعادة المحاولة"
+}

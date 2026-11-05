@@ -239,11 +239,11 @@ describe('settings-bundle: migrate (decrypt → unknown JSON → typed bundle)',
     // or rewriting it here would let this device push a different value back
     // and silently overwrite the user's choice on every device. The UI layer
     // resolves the effective locale on read (`resolveLocale` in @reborn/i18n).
-    const out = migrateSharedBundle({ schema_version: 1, language: 'ar' });
-    expect(out.language).toBe('ar');
+    const out = migrateSharedBundle({ schema_version: 1, language: 'uk' });
+    expect(out.language).toBe('uk');
 
     const merged = applyBundlesToSettings(NOTES_FIXTURE, out, null);
-    expect(merged.language).toBe('ar');
+    expect(merged.language).toBe('uk');
   });
 
   it('migrateSharedBundle handles non-object input gracefully', () => {

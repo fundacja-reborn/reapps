@@ -8,6 +8,8 @@
  *
  * `now` is injectable for deterministic tests; defaults to the current time.
  */
+import { intlLocale } from '@reborn/i18n/config';
+
 export function formatExpiryRelative(
   iso: string | null,
   locale: string,
@@ -24,7 +26,7 @@ export function formatExpiryRelative(
   const HOUR = 60 * MINUTE;
   const DAY = 24 * HOUR;
 
-  const rtf = new Intl.RelativeTimeFormat(locale || 'en', { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat(intlLocale(locale), { numeric: 'auto' });
   let text: string;
   if (diffMs >= DAY) text = rtf.format(Math.round(diffMs / DAY), 'day');
   else if (diffMs >= HOUR) text = rtf.format(Math.round(diffMs / HOUR), 'hour');

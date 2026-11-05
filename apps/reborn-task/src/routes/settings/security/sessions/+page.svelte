@@ -2,7 +2,8 @@
 	import { PUBLIC_BASE_PATH } from '$env/static/public';
 	import { onMount } from 'svelte';
 	import { Monitor, LogOut, RefreshCw, AlertTriangle, X } from '@lucide/svelte';
-	import { t } from '$lib/stores/i18n.store';
+	import { t, locale } from '$lib/stores/i18n.store';
+	import { intlLocale } from '@reborn/i18n';
 	import { SettingsLayout, Button, Alert, AlertDescription } from '@reborn/ui';
 	import { toast } from '@reborn/ui';
 	import { createLogger } from '@reborn/utils';
@@ -32,7 +33,7 @@
 	const otherSessions = $derived(sessions.filter((s) => s.id !== currentSessionId));
 
 	function formatDate(iso: string): string {
-		return new Date(iso).toLocaleString(undefined, {
+		return new Date(iso).toLocaleString(intlLocale($locale), {
 			dateStyle: 'medium',
 			timeStyle: 'short'
 		});
