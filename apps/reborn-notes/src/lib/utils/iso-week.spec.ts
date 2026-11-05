@@ -2,9 +2,16 @@ import { describe, it, expect } from 'vitest';
 import {
   getMondayOfWeek,
   getSundayOfWeek,
+  getWeekStartDate,
+  getWeekEndDate,
   getISOWeek,
   formatISOWeek
 } from './iso-week';
+
+/** Local `YYYY-MM-DD` of a date. */
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 describe('getMondayOfWeek', () => {
   it('returns the same date when called on a Monday', () => {
@@ -125,3 +132,45 @@ describe('formatISOWeek', () => {
     expect(formatISOWeek(new Date(2024, 11, 30))).toBe('2025-W01');
   });
 });
+
+describe('getWeekStartDate / getWeekEndDate - any first day (#493)', () => {
+  // Thursday 2026-11-05.
+  const thu = new Date(2026, 10, 5, 15, 30);
+
+  it('Monday weeks: Mon 2 Nov - Sun 8 Nov', () => {
+    expect(ymd(getWeekStartDate(thu, 1))).toBe('2026-11-02');
+    expect(ymd(getWeekEndDate(thu, 1))).toBe('2026-11-08');
+  });
+
+  it('Sunday weeks: Sun 1 Nov - Sat 7 Nov', () => {
+    expect(ymd(getWeekStartDate(thu, 0))).toBe('2026-11-01');
+    expect(ymd(getWeekEndDate(thu, 0))).toBe('2026-11-07');
+  });
+
+  it('Saturday weeks: Sat 31 Oct - Fri 6 Nov (crosses the month)', () => {
+    expect(ymd(getWeekStartDate(thu, 6))).toBe('2026-10-31');
+    expect(ymd(getWeekEndDate(thu, 6))).toBe('2026-11-06');
+  });
+
+  it('the first day maps to itself, the day before it to the previous week', () => {
+    const sat = new Date(2026, 10, 7);
+    expect(ymd(getWeekStartDate(sat, 6))).toBe('2026-11-07');
+    expect(ymd(getWeekStartDate(sat, 0))).toBe('2026-11-01');
+    const sun = new Date(2026, 10, 8);
+    expect(ymd(getWeekStartDate(sun, 0))).toBe('2026-11-08');
+    expect(ymd(getWeekStartDate(sun, 1))).toBe('2026-11-02');
+  });
+
+  it('crosses the year boundary', () => {
+    const newYear = new Date(2027, 0, 1); // Friday
+    expect(ymd(getWeekStartDate(newYear, 0))).toBe('2026-12-27');
+    expect(ymd(getWeekStartDate(newYear, 6))).toBe('2026-12-26');
+    expect(ymd(getWeekEndDate(newYear, 6))).toBe('2027-01-01');
+  });
+
+  it('returns local midnight', () => {
+    const start = getWeekStartDate(thu, 0);
+    expect([start.getHours(), start.getMinutes(), start.getSeconds()]).toEqual([0, 0, 0]);
+  });
+});
+

@@ -256,12 +256,16 @@
         "folder": { "default": "Weekly Notes" },
         "button": { "label": "This week", "tooltip": "Weekly note ({range})" },
         "settings": { "section": "Weekly" },
-        "preview": { "range_hint": "← Monday of {range}" },
+        "preview": {
+          "range_hint": "← first day of {range}",
+          "no_week_number": "ISO week numbers count weeks from Monday, and your week starts on a different day, so the title shows the dates of the week. You can change the first day of the week in Settings → Appearance."
+        },
         "placeholder": "Start writing this week's note…",
         "onboarding": {
           "title": "Your weekly note",
-          "body": "This is a shared note for the entire week (Monday–Sunday). No matter which day you click “This week”, you return to the same note. Next week's click will create a new one.",
-          "tip": "The title contains the date of this week's Monday and the ISO week number (e.g. 2026-05-04 W19)."
+          "body": "This is a shared note for the entire week ({first}–{last}). No matter which day you click “This week”, you return to the same note. Next week's click will create a new one.",
+          "tip": "The title contains the date of this week's Monday and the ISO week number (e.g. 2026-05-04 W19).",
+          "tip_range": "The title contains the dates of the first and last day of this week (e.g. {example})."
         }
       },
       "monthly": {

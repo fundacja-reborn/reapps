@@ -4,6 +4,11 @@
  *   token-based format string. No I/O, no DOM - safe to unit-test in isolation.
  * - `formatRange`: build a human-readable range string used in tooltips and the
  *   Settings preview ("4–10 maja 2026", "maj 2026", "2026-05-08 piątek").
+ * - `choosePeriodicMatch`: which existing note the one-click flow opens.
+ *
+ * Weeks start on the user's first day of the week (`weekStart`, #493;
+ * `Date#getDay()` numbering). It defaults to Monday - the ISO week every
+ * weekly note used before the setting existed.
  *
  * The format DSL is a tiny subset modelled after Obsidian / dayjs tokens, kept
  * intentionally small. Anything inside `[…]` is emitted verbatim so users can
@@ -12,18 +17,19 @@
  * Falls back to a sane default if the formatter throws on user input - see
  * `periodic-notes.service.ts` `getOrCreateNote` callsite.
  */
-import { intlLocale } from '@reborn/i18n/config';
+import { intlLocale, type WeekStartDay } from '@reborn/i18n/config';
 import type { PeriodicKind } from '@reborn/storage';
-import { getMondayOfWeek, getSundayOfWeek, getISOWeek } from '../utils/iso-week';
+import { getWeekStartDate, getWeekEndDate, getISOWeek } from '../utils/iso-week';
 
 /**
  * Date the note is *anchored to*, given the kind and the moment of click:
  * - daily → the day itself
- * - weekly → the Monday of that ISO week
+ * - weekly → the first day of that week (Monday unless the user's week
+ *   starts on another day)
  * - monthly → the first day of that month
  */
-export function getAnchorDate(kind: PeriodicKind, now: Date): Date {
-  if (kind === 'weekly') return getMondayOfWeek(now);
+export function getAnchorDate(kind: PeriodicKind, now: Date, weekStart: WeekStartDay = 1): Date {
+  if (kind === 'weekly') return getWeekStartDate(now, weekStart);
   if (kind === 'monthly') return new Date(now.getFullYear(), now.getMonth(), 1);
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
@@ -31,6 +37,11 @@ export function getAnchorDate(kind: PeriodicKind, now: Date): Date {
 /** Two-digit zero-padded number. */
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
+}
+
+/** Local `YYYY-MM-DD` of a date. */
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
 /**
@@ -41,9 +52,70 @@ function pad2(n: number): string {
  * (`Monday` / `poniedziałek`) cannot create duplicates because matching
  * ignores them.
  */
-export function getAnchorIso(kind: PeriodicKind, now: Date): string {
-  const anchor = getAnchorDate(kind, now);
-  return `${anchor.getFullYear()}-${pad2(anchor.getMonth() + 1)}-${pad2(anchor.getDate())}`;
+export function getAnchorIso(kind: PeriodicKind, now: Date, weekStart: WeekStartDay = 1): string {
+  return isoDate(getAnchorDate(kind, now, weekStart));
+}
+
+/**
+ * Anchors of every 7-day week that contains `now`: the day itself and the six
+ * before it, newest first. Whatever weekday a weekly note was anchored on, it
+ * covers `now` exactly when its anchor is in this list.
+ */
+export function weekAnchorsContaining(now: Date): string[] {
+  const out: string[] = [];
+  for (let back = 0; back < 7; back++) {
+    out.push(isoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - back)));
+  }
+  return out;
+}
+
+/** A note in the periodic folder whose metadata stamp has the kind looked for. */
+export interface StampedPeriodicNote {
+  id: string;
+  anchor: string;
+  /** ISO timestamp of the last edit (note index), `''` when unknown. */
+  updatedAt: string;
+}
+
+/**
+ * Which stamped note the one-click flow opens for the period at `anchorIso`.
+ *
+ * - `exact`: a note anchored on `anchorIso`; the newest edit wins when a
+ *   multi-device race left duplicates (post-sync dedup merges them later).
+ * - `covering`: only for anchors listed in `coveringAnchors` (weekly: see
+ *   `weekAnchorsContaining`) - a week that started on another weekday but
+ *   still contains today. It appears when the first day of the week changed
+ *   mid-week (setting, or 'auto' following a language change, or an older
+ *   client still writing Monday weeks): the user keeps writing in the week's
+ *   note instead of getting a new one in the middle of the week, and the new
+ *   framing takes over once that week has ended (#493). The most recent
+ *   start wins, then the newest edit.
+ *
+ * Callers prefer `exact`, then a legacy (unstamped) exact match, then
+ * `covering`.
+ */
+export function choosePeriodicMatch(
+  notes: readonly StampedPeriodicNote[],
+  anchorIso: string,
+  coveringAnchors: readonly string[] = []
+): { exact: string | null; covering: string | null } {
+  let exact: StampedPeriodicNote | null = null;
+  let covering: StampedPeriodicNote | null = null;
+  for (const n of notes) {
+    if (n.anchor === anchorIso) {
+      if (!exact || n.updatedAt.localeCompare(exact.updatedAt) > 0) exact = n;
+      continue;
+    }
+    if (!coveringAnchors.includes(n.anchor)) continue;
+    if (
+      !covering ||
+      n.anchor > covering.anchor ||
+      (n.anchor === covering.anchor && n.updatedAt.localeCompare(covering.updatedAt) > 0)
+    ) {
+      covering = n;
+    }
+  }
+  return { exact: exact?.id ?? null, covering: covering?.id ?? null };
 }
 
 /**
@@ -91,7 +163,8 @@ export function parseTitleAnchor(title: string, kind: PeriodicKind): string | nu
  *   number, `M` non-padded number
  * - `DD` zero-padded day, `D` non-padded day
  * - `dddd` full weekday, `ddd` abbreviated weekday
- * - `ww` zero-padded ISO week number, `w` non-padded ISO week number
+ * - `ww` zero-padded ISO week number, `w` non-padded ISO week number (of
+ *   `date`; for a week not starting on Monday see `buildPeriodicTitle`)
  *
  * Square brackets `[literal]` emit their contents verbatim - escape any token
  * you want printed literally. Year tokens inside brackets are not interpreted.
@@ -203,7 +276,8 @@ export function formatName(date: Date, format: string, locale: string): string {
  * and as the helper line under the Settings preview.
  *
  * - daily   → "2026-05-08 piątek"
- * - weekly  → "4–10 maja 2026" (Monday-Sunday in user's locale, inflected)
+ * - weekly  → "4–10 maja 2026" (first to last day of the week in user's
+ *   locale, inflected)
  * - monthly → "maj 2026"
  *
  * Weekly delegates to `Intl.DateTimeFormat.formatRange` so that locales which
@@ -211,7 +285,12 @@ export function formatName(date: Date, format: string, locale: string): string {
  * form. For locales without that distinction (EN/DE/FR/ES), the platform output
  * is already correct.
  */
-export function formatRange(kind: PeriodicKind, now: Date, locale: string): string {
+export function formatRange(
+  kind: PeriodicKind,
+  now: Date,
+  locale: string,
+  weekStart: WeekStartDay = 1
+): string {
   if (kind === 'daily') {
     const weekday = new Intl.DateTimeFormat(intlLocale(locale), { weekday: 'long' }).format(now);
     const iso = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
@@ -224,34 +303,61 @@ export function formatRange(kind: PeriodicKind, now: Date, locale: string): stri
   }
 
   // weekly - Intl handles inflection + range collapsing per locale.
-  const monday = getMondayOfWeek(now);
-  const sunday = getSundayOfWeek(now);
   const fmt = new Intl.DateTimeFormat(intlLocale(locale), {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
   });
-  return fmt.formatRange(monday, sunday);
+  return fmt.formatRange(getWeekStartDate(now, weekStart), getWeekEndDate(now, weekStart));
+}
+
+/** True when `format` prints a week number (`w` / `ww` outside `[literal]`). */
+export function usesWeekNumber(format: string): boolean {
+  return format.replace(/\[[^\]]*\]/g, '').includes('w');
+}
+
+/** En dash between the two dates of a range, as `Intl` ranges use. */
+const RANGE_SEPARATOR = ' \u2013 ';
+
+/**
+ * Title of a week that does not start on Monday: its first and last date,
+ * `2026-11-01 – 2026-11-07`. Starts with the anchor like the default titles,
+ * so the title-prefix lookups keep working.
+ */
+export function weekRangeTitle(weekStartDate: Date): string {
+  const end = new Date(weekStartDate);
+  end.setDate(end.getDate() + 6);
+  return `${isoDate(weekStartDate)}${RANGE_SEPARATOR}${isoDate(end)}`;
 }
 
 /**
  * Compute the title for a periodic note given the kind, click moment, format
  * string and locale. Falls back to default-format output if user-supplied
  * format throws (e.g. malformed token sequence) - caller doesn't need to wrap.
+ *
+ * An ISO week number only describes a Monday-Sunday week, and a week starting
+ * on Saturday or Sunday straddles two of them (#493). For such a week, a
+ * weekly format that prints a week number gives way to the date range
+ * (`weekRangeTitle`); formats without one apply as they are.
  */
 export function buildPeriodicTitle(
   kind: PeriodicKind,
   now: Date,
   format: string,
   defaultFormat: string,
-  locale: string
+  locale: string,
+  weekStart: WeekStartDay = 1
 ): string {
-  const anchor = getAnchorDate(kind, now);
+  const anchor = getAnchorDate(kind, now, weekStart);
+  const render = (f: string): string =>
+    kind === 'weekly' && weekStart !== 1 && usesWeekNumber(f)
+      ? weekRangeTitle(anchor)
+      : formatName(anchor, f, locale);
   try {
-    const result = formatName(anchor, format, locale);
+    const result = render(format);
     if (result.trim().length === 0) throw new Error('empty title');
     return result;
   } catch {
-    return formatName(anchor, defaultFormat, locale);
+    return render(defaultFormat);
   }
 }

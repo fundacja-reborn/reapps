@@ -49,7 +49,7 @@
   import { t, locale as i18nLocale } from '$lib/stores/i18n.store';
   import { inlineSide, textDirection } from '@reborn/i18n';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
-  import { periodicNotesSettings } from '$lib/stores/app-settings.store';
+  import { periodicNotesSettings, weekStartsOn } from '$lib/stores/app-settings.store';
   import { formatRange } from '$lib/services/periodic-notes-format';
   import type { PeriodicKind } from '@reborn/storage';
   import { activeSharesCount } from '$lib/stores/shares.store';
@@ -142,7 +142,7 @@
   );
 
   function periodicTooltip(kind: PeriodicKind): string {
-    const range = formatRange(kind, now, $i18nLocale || 'en');
+    const range = formatRange(kind, now, $i18nLocale || 'en', $weekStartsOn);
     return $t(`notes.periodic.${kind}.button.tooltip`, { values: { range } });
   }
 

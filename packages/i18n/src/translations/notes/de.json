@@ -256,12 +256,16 @@
         "folder": { "default": "Wochennotizen" },
         "button": { "label": "Diese Woche", "tooltip": "Wochennotiz ({range})" },
         "settings": { "section": "Wöchentlich" },
-        "preview": { "range_hint": "← Montag der Woche {range}" },
+        "preview": {
+          "range_hint": "← erster Tag der Woche {range}",
+          "no_week_number": "ISO-Wochennummern zählen die Wochen ab Montag. Ihre Woche beginnt an einem anderen Tag, daher enthält der Titel die Daten der Woche. Den ersten Tag der Woche können Sie in Einstellungen → Erscheinungsbild ändern."
+        },
         "placeholder": "Notiz dieser Woche beginnen…",
         "onboarding": {
           "title": "Ihre Wochennotiz",
-          "body": "Dies ist eine gemeinsame Notiz für die ganze Woche (Montag–Sonntag). Egal an welchem Tag Sie auf „Diese Woche“ klicken - Sie kehren zur selben Notiz zurück. Nächste Woche erstellt der Klick eine neue.",
-          "tip": "Der Titel enthält das Datum des Montags dieser Woche und die ISO-Wochennummer (z. B. 2026-05-04 W19)."
+          "body": "Dies ist eine gemeinsame Notiz für die ganze Woche ({first}–{last}). Egal an welchem Tag Sie auf „Diese Woche“ klicken - Sie kehren zur selben Notiz zurück. Nächste Woche erstellt der Klick eine neue.",
+          "tip": "Der Titel enthält das Datum des Montags dieser Woche und die ISO-Wochennummer (z. B. 2026-05-04 W19).",
+          "tip_range": "Der Titel enthält das Datum des ersten und des letzten Tages dieser Woche (z. B. {example})."
         }
       },
       "monthly": {
