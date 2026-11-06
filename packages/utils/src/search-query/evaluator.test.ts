@@ -137,6 +137,43 @@ describe('evaluate — Tier 1.5 freetext phrases and excludes', () => {
   });
 });
 
+describe('evaluate - Arabic diacritics', () => {
+  it('finds plain text in a vocalized title and body', () => {
+    const entity = makeEntity({ title: 'كَتَبَ', body: 'الوَلَدُ فِي المَدْرَسَةِ' });
+    expect(evaluate(parseQuery('كتب'), entity, makeCtx())).toBe(true);
+    expect(evaluate(parseQuery('المدرسة'), entity, makeCtx())).toBe(true);
+  });
+
+  it('finds a vocalized query in plain text', () => {
+    const entity = makeEntity({ title: 'كتب الولد' });
+    expect(evaluate(parseQuery('كَتَبَ'), entity, makeCtx())).toBe(true);
+    expect(evaluate(parseQuery('"كَتَبَ الوَلَدُ"'), entity, makeCtx())).toBe(true);
+  });
+
+  it('ignores the tatweel', () => {
+    expect(evaluate(parseQuery('كتاب'), makeEntity({ title: 'كـــتـــاب' }), makeCtx())).toBe(true);
+  });
+
+  it('still requires the base letters to match', () => {
+    expect(evaluate(parseQuery('كتف'), makeEntity({ title: 'كَتَبَ' }), makeCtx())).toBe(false);
+  });
+
+  it('applies to excludes', () => {
+    const entity = makeEntity({ title: 'كَتَبَ' });
+    expect(evaluate(parseQuery('-كتب'), entity, makeCtx())).toBe(false);
+  });
+
+  it('treats a term of marks alone as no filter, even when negated', () => {
+    const entity = makeEntity({ title: 'hello' });
+    expect(evaluate(parseQuery('َ'), entity, makeCtx())).toBe(true);
+    expect(evaluate(parseQuery('-َ'), entity, makeCtx())).toBe(true);
+  });
+
+  it('keeps diacritics of other scripts significant', () => {
+    expect(evaluate(parseQuery('zolc'), makeEntity({ title: 'żółć' }), makeCtx())).toBe(false);
+  });
+});
+
 describe('evaluate — tag filter', () => {
   it('matches when tag id resolves and entity has it', () => {
     const ctx = makeCtx({ tagIdByName: new Map([['work', 'tag-1']]) });

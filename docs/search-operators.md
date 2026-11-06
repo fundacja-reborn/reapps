@@ -199,6 +199,8 @@ To exclude a substring, prefix it with `-`: `cat -mouse` keeps items mentioning 
 
 Quoting also works inside operator values: `tag:"side projects"`, `list:"Q2 planning"`.
 
+Arabic text is matched on its base letters: tashkeel (short vowels, shadda, sukun, tanwin), Quranic signs and the tatweel are ignored in both the query and the text, so a word typed without diacritics finds its vocalized form and the other way around. The same applies to find in note. Diacritics in other scripts still count, because in Polish or Spanish they make a different letter.
+
 ---
 
 ## Saved searches (smart folders)

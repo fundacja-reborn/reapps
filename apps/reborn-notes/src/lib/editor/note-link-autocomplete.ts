@@ -10,6 +10,7 @@ import {
   type CompletionResult,
   type Completion
 } from '@codemirror/autocomplete';
+import { foldSearchText } from '@reborn/utils';
 
 export interface NoteLinkItem {
   id: string;
@@ -37,11 +38,11 @@ export function noteLinkAutocomplete(
     const afterTrigger = textBefore.slice(triggerIdx + 2);
     if (afterTrigger.includes(']]')) return null;
 
-    const query = afterTrigger.toLowerCase();
+    const query = foldSearchText(afterTrigger);
     const from = line.from + triggerIdx; // start of `[[`
 
     const notes = getNotes().filter((n) => n.id !== currentNoteId);
-    const filtered = query ? notes.filter((n) => n.title.toLowerCase().includes(query)) : notes;
+    const filtered = query ? notes.filter((n) => foldSearchText(n.title).includes(query)) : notes;
 
     if (filtered.length === 0) return null;
 

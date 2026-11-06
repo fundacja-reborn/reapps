@@ -1,4 +1,5 @@
 import type { DateExpression, Filter, Node, QueryAST } from './ast';
+import { foldSearchText } from '../search-text';
 import { resolveDateRef } from './date-parser';
 
 /**
@@ -73,7 +74,7 @@ function bodyContainsLink(body: string): boolean {
  * Empty AST (`root === null`) matches everything — consumers lean on this so
  * they don't need a special `isEmpty` early-return at every call site.
  *
- * The haystack (lowercased title + optional body) is computed once per
+ * The haystack (folded title + optional body) is computed once per
  * `evaluate()` call and shared across every leaf-text node, so a query like
  * `cat OR dog OR mouse` doesn't rebuild the same string three times.
  */
@@ -99,7 +100,10 @@ function evalNode(
     case 'leaf-filter':
       return checkFilter(node.filter, entity, ctx);
     case 'leaf-text': {
-      const present = haystack.includes(node.value);
+      const needle = foldSearchText(node.value);
+      // Marks alone leave no letters to look for, so the term filters nothing.
+      if (!needle) return true;
+      const present = haystack.includes(needle);
       return node.negated ? !present : present;
     }
   }
@@ -107,8 +111,8 @@ function evalNode(
 
 function buildHaystack(entity: SearchEntity): string {
   return (
-    entity.title.toLowerCase() +
-    (entity.body !== undefined ? '\n' + entity.body.toLowerCase() : '')
+    foldSearchText(entity.title) +
+    (entity.body !== undefined ? '\n' + foldSearchText(entity.body) : '')
   );
 }
 
