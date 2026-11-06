@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   type DedupCandidate,
   buildMergedContent,
+  dedupBucketKey,
   groupDuplicates
 } from './periodic-dedup.core';
 
@@ -124,5 +125,31 @@ describe('periodic-dedup core - buildMergedContent', () => {
 
   it('returns an empty string when everything is empty', () => {
     expect(buildMergedContent('', [{ content: '  ', separator: SEP }])).toBe('');
+  });
+});
+
+describe('periodic-dedup core - dedupBucketKey', () => {
+  it('buckets ISO-dated titles by the date, whatever the language', () => {
+    expect(dedupBucketKey('2026-11-06 Friday', 'daily')).toBe('iso:2026-11-06');
+    expect(dedupBucketKey('2026-11-06 piątek', 'daily')).toBe('iso:2026-11-06');
+    expect(dedupBucketKey('2026-11-02 W45', 'weekly')).toBe('iso:2026-11-02');
+    expect(dedupBucketKey('2026-11', 'monthly')).toBe('iso:2026-11');
+    expect(dedupBucketKey('2026-11-01 plan', 'monthly')).toBe('iso:2026-11');
+  });
+
+  it('buckets titles without an ISO date by the exact title', () => {
+    // Copies the duplicate bug made with a preset like `MMMM YYYY` share it.
+    expect(dedupBucketKey('November 2026', 'monthly')).toBe('title:November 2026');
+    expect(dedupBucketKey('Week 45, 2026', 'weekly')).toBe(dedupBucketKey('Week 45, 2026', 'weekly'));
+    expect(dedupBucketKey('Week 45, 2026', 'weekly')).not.toBe(
+      dedupBucketKey('Week 46, 2026', 'weekly')
+    );
+    // A month-only date in a daily folder is not a day: exact title.
+    expect(dedupBucketKey('2026-11 ideas', 'daily')).toBe('title:2026-11 ideas');
+  });
+
+  it('never buckets an empty title', () => {
+    expect(dedupBucketKey('', 'daily')).toBeNull();
+    expect(dedupBucketKey('   ', 'weekly')).toBeNull();
   });
 });

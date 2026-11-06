@@ -17,11 +17,12 @@
  * the extra copies to Trash), and an auto-dismissing toast vanished before the
  * user could act on it (smoke #2 of PR #356).
  *
- * Detection is cheap: a title-prefix pre-filter (locale-independent ISO date -
- * the prefix both locales share, which is exactly the 2026-05-12 case) buckets
- * candidates with zero decryption. Metadata is decrypted only for actual prefix
- * collisions, and only stamped periodic notes count as duplicates, so a regular
- * note that merely starts with a date inside a periodic folder is never touched.
+ * Detection is cheap: a title pre-filter (`dedupBucketKey`: the locale-independent
+ * ISO date - the prefix both locales share, which is exactly the 2026-05-12 case -
+ * or, for presets without one, the exact title) buckets candidates with zero
+ * decryption. Metadata is decrypted only for actual bucket collisions, and only
+ * stamped periodic notes count as duplicates, so a regular note that merely
+ * shares a date or a title inside a periodic folder is never touched.
  */
 import { get, writable } from 'svelte/store';
 import type { PeriodicKind } from '@reborn/storage';
@@ -44,13 +45,11 @@ import {
   type DedupCandidate,
   type DedupGroup,
   buildMergedContent,
+  dedupBucketKey,
   groupDuplicates
 } from './periodic-dedup.core';
 
 const logger = createLogger('PeriodicDedup');
-
-/** Matches the leading ISO date of a default-format periodic title. */
-const ISO_PREFIX_RE = /^(\d{4}-\d{2}(?:-\d{2})?)/;
 
 // ── i18n helpers ──────────────────────────────────────────────────
 
@@ -102,9 +101,9 @@ export async function detectPeriodicDuplicates(): Promise<DedupGroup[]> {
   if (folderKind.size === 0) return [];
 
   // 1. Cheap pre-filter (no crypto): bucket active periodic-folder notes by
-  //    (folderId, ISO title prefix). The ISO prefix is locale-independent, so
+  //    (folderId, dedupBucketKey). The ISO prefix is locale-independent, so
   //    the cross-locale duplicate pair the 2026-05-12 fix left behind lands in
-  //    the same bucket.
+  //    the same bucket; titles without one bucket by the exact title.
   const buckets = new Map<
     string,
     Array<{ id: string; folderId: string; kind: PeriodicKind }>
@@ -113,16 +112,9 @@ export async function detectPeriodicDuplicates(): Promise<DedupGroup[]> {
     if (!e.folderId) continue;
     const kind = folderKind.get(e.folderId);
     if (!kind) continue;
-    const m = ISO_PREFIX_RE.exec(e.title);
-    if (!m) continue;
-    // daily/weekly titles start with a full YYYY-MM-DD; monthly with YYYY-MM.
-    if (kind === 'monthly') {
-      if (m[1].length < 7) continue;
-    } else if (m[1].length !== 10) {
-      continue;
-    }
-    const prefix = kind === 'monthly' ? m[1].slice(0, 7) : m[1];
-    const key = `${e.folderId}|${prefix}`;
+    const bucket = dedupBucketKey(e.title, kind);
+    if (!bucket) continue;
+    const key = `${e.folderId}|${bucket}`;
     const arr = buckets.get(key);
     const entry = { id: e.id, folderId: e.folderId, kind };
     if (arr) arr.push(entry);
