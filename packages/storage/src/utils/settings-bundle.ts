@@ -36,7 +36,15 @@ export interface SharedSettingsBundle {
   language?: AppSettings['language'];
   dateFormat?: AppSettings['dateFormat'];
   timeFormat?: AppSettings['timeFormat'];
+  /** @deprecated See `AppSettings.firstDayOfWeek`; carried for older clients. */
   firstDayOfWeek?: AppSettings['firstDayOfWeek'];
+  /**
+   * First day of the week (#493). Absent until the user picks an option.
+   * An older client drops it from the bundle it pushes; the merge below then
+   * keeps the local value, so only a device that never saw the choice falls
+   * back to 'auto'.
+   */
+  weekStart?: AppSettings['weekStart'];
 }
 
 /**
@@ -72,13 +80,19 @@ export interface AppSettingsBundle {
 
 /** Extract the shared subset of an AppSettings row. */
 export function extractSharedBundle(s: AppSettings): SharedSettingsBundle {
-  return {
+  const bundle: SharedSettingsBundle = {
     schema_version: SETTINGS_BUNDLE_SCHEMA_VERSION,
     language: s.language,
     dateFormat: s.dateFormat,
     timeFormat: s.timeFormat,
     firstDayOfWeek: s.firstDayOfWeek
   };
+  // Left out while absent: a device that never saw a choice must not
+  // overwrite the day picked on another one.
+  if (s.weekStart !== undefined) {
+    bundle.weekStart = s.weekStart;
+  }
+  return bundle;
 }
 
 /** Extract the per-app subset of an AppSettings row. */
@@ -125,6 +139,7 @@ export function applyBundlesToSettings(
     if (shared.dateFormat !== undefined) merged.dateFormat = shared.dateFormat;
     if (shared.timeFormat !== undefined) merged.timeFormat = shared.timeFormat;
     if (shared.firstDayOfWeek !== undefined) merged.firstDayOfWeek = shared.firstDayOfWeek;
+    if (shared.weekStart !== undefined) merged.weekStart = shared.weekStart;
   }
   if (app) {
     if (app.theme !== undefined) merged.theme = app.theme;
@@ -172,8 +187,16 @@ export function migrateSharedBundle(raw: unknown): SharedSettingsBundle {
     ...(typeof obj.language === 'string' ? { language: obj.language as SharedSettingsBundle['language'] } : {}),
     ...(typeof obj.dateFormat === 'string' ? { dateFormat: obj.dateFormat } : {}),
     ...(typeof obj.timeFormat === 'string' ? { timeFormat: obj.timeFormat as SharedSettingsBundle['timeFormat'] } : {}),
-    ...(typeof obj.firstDayOfWeek === 'number' ? { firstDayOfWeek: obj.firstDayOfWeek } : {})
+    ...(typeof obj.firstDayOfWeek === 'number' ? { firstDayOfWeek: obj.firstDayOfWeek } : {}),
+    // Only the values this build offers; anything else (a day a newer client
+    // added) is dropped, which keeps the local value instead of breaking it.
+    ...(isWeekStart(obj.weekStart) ? { weekStart: obj.weekStart } : {})
   };
+}
+
+/** Mirrors `isWeekStartPreference` in @reborn/i18n (no dependency from here). */
+function isWeekStart(value: unknown): value is NonNullable<AppSettings['weekStart']> {
+  return value === 'auto' || value === 0 || value === 1 || value === 6;
 }
 
 /** Same forward-compat reader for the per-app bundle. */

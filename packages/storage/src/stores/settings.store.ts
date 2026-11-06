@@ -54,7 +54,23 @@ export interface AppSettings {
   language: 'en' | 'pl' | 'de' | 'es' | 'fr' | 'ar';
   dateFormat: string;
   timeFormat: '12h' | '24h';
-  firstDayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
+  /**
+   * @deprecated Never read and has no UI: every row holds the default `1`,
+   * so a real choice cannot be told apart from it. Use `weekStart`. Kept in
+   * the type and the shared bundle so older clients keep round-tripping it.
+   */
+  firstDayOfWeek: number;
+  /**
+   * First day of the week (issue #493): `'auto'` follows the UI language
+   * (`resolveWeekStart` in @reborn/i18n), or a pinned day in `Date#getDay()`
+   * numbering - 6 = Saturday, 0 = Sunday, 1 = Monday. Shared across both
+   * apps through the shared settings bundle. Absent means `'auto'` and stays
+   * absent until the user picks an option (defaults do not write it), so
+   * only a real choice travels between devices.
+   * Must equal WeekStartPreference from @reborn/i18n (no dependency from here):
+   * enforced at compile time by apps/reborn-notes/src/lib/supported-locales.regression.spec.ts.
+   */
+  weekStart?: 'auto' | 0 | 1 | 6;
   notifications_enabled: boolean;
   /** Minutes before due_date to fire a reminder (only for tasks with has_time === true). */
   notification_lead_minutes: number;
@@ -216,7 +232,10 @@ export const settingsOperations = {
           language: 'pl',
           dateFormat: 'YYYY-MM-DD',
           timeFormat: '24h',
-          firstDayOfWeek: 1, // Monday
+          firstDayOfWeek: 1, // deprecated, see the field doc
+          // No `weekStart`: absent means 'auto', and an absent key is left
+          // out of the shared bundle, so a fresh device never overwrites a
+          // day the user picked on another one with a default.
           notifications_enabled: false,
           notification_lead_minutes: 60,
           notification_all_day_time: '09:00',
@@ -293,6 +312,10 @@ export const settingsOperations = {
       await settingsStore.delete(current.id);
     }
     await settingsOperations.initializeDefaults(appName);
+    // An explicit reset is a choice of the defaults, so it has to reach the
+    // other devices: write 'auto' instead of leaving the key absent (absent
+    // stays out of the shared bundle and would keep their pinned day).
+    await settingsOperations.setSetting(appName, 'weekStart', 'auto');
   },
 
   /**

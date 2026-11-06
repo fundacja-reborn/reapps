@@ -59,6 +59,79 @@ export function intlLocale(locale: unknown): string {
   return tag.split('-')[0] === 'ar' && !tag.includes('-u-') ? `${tag}-u-nu-latn` : tag;
 }
 
+// ── First day of the week (issue #493) ─────────────────────────────────
+//
+// The user's preference rides the shared settings bundle as `weekStart`:
+// 'auto' follows the UI language, or the user pins Saturday, Sunday or
+// Monday (the conventions CLDR knows, Friday on the Maldives aside). Days use
+// the `Date#getDay()` numbering - 0 = Sunday ... 6 = Saturday - which is also
+// what the date picker's `weekStartsOn` takes. Lives here, in the
+// dependency-free module, so pure helpers and their Node tests can import it.
+
+/** A day a week can start on, in `Date#getDay()` numbering. */
+export type WeekStartDay = 0 | 1 | 6;
+
+/** The stored preference: follow the UI language, or a pinned day. */
+export type WeekStartPreference = 'auto' | WeekStartDay;
+
+/** Order of the options in the settings picker. */
+export const WEEK_START_PREFERENCES: readonly WeekStartPreference[] = ['auto', 6, 0, 1];
+
+/**
+ * What `'auto'` resolves to per UI language: CLDR's first day for the
+ * language without a region (what the date picker showed before the setting
+ * existed), with one exception. CLDR reads plain `ar` as Egypt, which starts
+ * on Saturday, but most Arabic-speaking countries start on Sunday (#493), so
+ * `ar` is pinned to Sunday. The language carries no country and we do not
+ * guess one from the device: for Egypt and Algeria CLDR disagrees with
+ * practice anyway - that is what the manual choice is for.
+ *
+ * A new locale without an entry fails svelte-check; week-start.spec.ts
+ * (packages/i18n) compares the table against the CLDR data in Node.
+ */
+export const LOCALE_WEEK_START: Record<SupportedLocale, WeekStartDay> = {
+  en: 0,
+  pl: 1,
+  de: 1,
+  es: 1,
+  fr: 1,
+  ar: 0
+};
+
+/**
+ * Runtime guard for a stored preference (IndexedDB, synced settings bundle).
+ * Anything else - missing, or a value a newer client wrote - means `'auto'`.
+ */
+export function isWeekStartPreference(value: unknown): value is WeekStartPreference {
+  return value === 'auto' || value === 0 || value === 1 || value === 6;
+}
+
+/**
+ * The day the week starts on for `preference` and the UI `locale`. A pinned
+ * day wins; `'auto'`, a missing value or an unknown one follow the language.
+ * `locale` may carry a region (`pl-PL`); an unsupported one falls back the
+ * same way the UI language does.
+ */
+export function resolveWeekStart(preference: unknown, locale: unknown): WeekStartDay {
+  if (preference === 0 || preference === 1 || preference === 6) return preference;
+  const language = typeof locale === 'string' ? locale.split('-')[0] : locale;
+  return LOCALE_WEEK_START[resolveLocale(language)];
+}
+
+/**
+ * Name of weekday `day` (`Date#getDay()` numbering) in the app language, in
+ * the form it takes inside a sentence ("Sunday", "niedziela", "dimanche").
+ */
+export function weekdayName(
+  day: number,
+  locale: unknown,
+  width: 'long' | 'short' = 'long'
+): string {
+  // 2026-11-01 is a Sunday; local noon keeps DST shifts off the date.
+  const date = new Date(2026, 10, 1 + (((day % 7) + 7) % 7), 12);
+  return new Intl.DateTimeFormat(intlLocale(locale), { weekday: width }).format(date);
+}
+
 export const LOCALE_NAMES: Record<SupportedLocale, string> = {
   en: 'English',
   pl: 'Polski',

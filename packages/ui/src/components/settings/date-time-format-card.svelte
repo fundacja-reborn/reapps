@@ -3,7 +3,7 @@
   import { Label } from '../label';
   import { Select, SelectContent, SelectItem, SelectTrigger } from '../select';
   import { Separator } from '../separator';
-  import { Calendar, Clock } from '@lucide/svelte';
+  import { Calendar, CalendarRange, Clock } from '@lucide/svelte';
 
   interface FormatOption {
     value: string;
@@ -17,6 +17,9 @@
     timeFormatOptions,
     onDateFormatChange,
     onTimeFormatChange,
+    weekStart,
+    weekStartOptions,
+    onWeekStartChange,
     disabled = false,
     labels = {
       title: 'Date & Time',
@@ -33,6 +36,13 @@
     timeFormatOptions: FormatOption[];
     onDateFormatChange: (value: string) => void;
     onTimeFormatChange: (value: string) => void;
+    /**
+     * First day of the week (#493). The row renders only when `weekStartOptions`
+     * and `onWeekStartChange` are given; values are strings ('auto', '6', '0', '1').
+     */
+    weekStart?: string;
+    weekStartOptions?: FormatOption[];
+    onWeekStartChange?: (value: string) => void;
     disabled?: boolean;
     labels?: {
       title: string;
@@ -41,6 +51,8 @@
       timeLabel: string;
       datePlaceholder: string;
       timePlaceholder: string;
+      weekStartLabel?: string;
+      weekStartPlaceholder?: string;
     };
   }>();
 </script>
@@ -102,5 +114,35 @@
         </SelectContent>
       </Select>
     </div>
+
+    {#if weekStartOptions && onWeekStartChange}
+      <Separator />
+
+      <div class="space-y-2">
+        <Label for="week-start" class="flex items-center gap-2">
+          <CalendarRange class="h-4 w-4 text-muted-foreground" />
+          {labels.weekStartLabel ?? 'First day of the week'}
+        </Label>
+        <Select
+          value={weekStart}
+          type="single"
+          onValueChange={(value) => {
+            if (value) onWeekStartChange(value);
+          }}
+          {disabled}
+        >
+          <SelectTrigger id="week-start" class="w-full">
+            {weekStartOptions.find((o: FormatOption) => o.value === weekStart)?.label ??
+              labels.weekStartPlaceholder ??
+              'Select first day of the week'}
+          </SelectTrigger>
+          <SelectContent>
+            {#each weekStartOptions as option (option.value)}
+              <SelectItem value={option.value}>{option.label}</SelectItem>
+            {/each}
+          </SelectContent>
+        </Select>
+      </div>
+    {/if}
   </CardContent>
 </Card>

@@ -8,7 +8,13 @@ import {
 	resetSettings as resetAppSettings
 } from '$lib/utils/app-settings';
 import type { AppSettings } from '@reborn/storage';
-import { isSupportedLocale, locale, resolveLocale } from '@reborn/i18n';
+import {
+	isSupportedLocale,
+	locale,
+	resolveLocale,
+	resolveWeekStart,
+	type WeekStartPreference
+} from '@reborn/i18n';
 import { createLogger } from '@reborn/utils';
 import { syncedSettings } from '$lib/services/synced-settings.service';
 
@@ -260,7 +266,20 @@ export const dateFormat = derived(
 
 export const timeFormat = derived(appSettings, ($settings) => $settings?.timeFormat ?? '24h');
 
-export const firstDayOfWeek = derived(appSettings, ($settings) => $settings?.firstDayOfWeek ?? 1);
+/** The stored first-day-of-week choice (#493); absent means 'auto'. */
+export const weekStartPreference = derived(
+	appSettings,
+	($settings): WeekStartPreference => $settings?.weekStart ?? 'auto'
+);
+
+/**
+ * The day the week starts on (0 = Sunday, 1 = Monday, 6 = Saturday): the
+ * pinned day, or for 'auto' the one of the UI language (`resolveWeekStart`).
+ * Every week-shaped view reads this, never the raw preference.
+ */
+export const weekStartsOn = derived([appSettings, currentLanguage], ([$settings, $language]) =>
+	resolveWeekStart($settings?.weekStart, $language)
+);
 
 // Listen for system theme changes when theme is set to 'system'
 if (browser) {

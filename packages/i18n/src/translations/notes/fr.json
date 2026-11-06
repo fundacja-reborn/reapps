@@ -256,12 +256,16 @@
         "folder": { "default": "Notes hebdomadaires" },
         "button": { "label": "Cette semaine", "tooltip": "Note hebdomadaire ({range})" },
         "settings": { "section": "Hebdomadaire" },
-        "preview": { "range_hint": "← lundi de la semaine {range}" },
+        "preview": {
+          "range_hint": "← premier jour de la semaine {range}",
+          "no_week_number": "Les numéros de semaine ISO comptent les semaines à partir du lundi. Votre semaine commence un autre jour, le titre contient donc les dates de la semaine. Vous pouvez changer le premier jour de la semaine dans Paramètres → Apparence."
+        },
         "placeholder": "Commencez à écrire la note de la semaine…",
         "onboarding": {
           "title": "Votre note de la semaine",
-          "body": "C'est une note partagée pour toute la semaine (lundi–dimanche). Quel que soit le jour où vous cliquez sur « Cette semaine », vous retrouvez la même note. La semaine prochaine, le clic en créera une nouvelle.",
-          "tip": "Le titre contient la date du lundi de cette semaine et le numéro de semaine ISO (par exemple 2026-05-04 W19)."
+          "body": "C'est une note partagée pour toute la semaine ({first}–{last}). Quel que soit le jour où vous cliquez sur « Cette semaine », vous retrouvez la même note. La semaine prochaine, le clic en créera une nouvelle.",
+          "tip": "Le titre contient la date du lundi de cette semaine et le numéro de semaine ISO (par exemple 2026-05-04 W19).",
+          "tip_range": "Le titre contient les dates du premier et du dernier jour de cette semaine (par exemple {example})."
         }
       },
       "monthly": {

@@ -12,6 +12,9 @@
   import { t } from '$lib/stores/i18n.store';
   import { goto } from '$lib/utils/navigation';
   import type { PeriodicKind } from '@reborn/storage';
+  import { weekdayName } from '@reborn/i18n';
+  import { currentLanguage, weekStartsOn } from '$lib/stores/app-settings.store';
+  import { getAnchorDate, weekRangeTitle } from '$lib/services/periodic-notes-format';
 
   let {
     kind,
@@ -23,6 +26,19 @@
   } = $props();
 
   const open = $derived(kind !== null);
+
+  // The weekly copy names the user's week (#493): its first and last day, and
+  // for a week not starting on Monday the date-range title it gets.
+  const weekValues = $derived({
+    first: weekdayName($weekStartsOn, $currentLanguage),
+    last: weekdayName($weekStartsOn + 6, $currentLanguage),
+    example: weekRangeTitle(getAnchorDate('weekly', new Date(), $weekStartsOn))
+  });
+  const tipKey = $derived(
+    kind === 'weekly' && $weekStartsOn !== 1
+      ? 'notes.periodic.weekly.onboarding.tip_range'
+      : `notes.periodic.${kind}.onboarding.tip`
+  );
 
   const ICONS = {
     daily: CalendarDays,
@@ -54,14 +70,14 @@
           <div class="min-w-0 flex-1">
             <DialogTitle>{$t(`notes.periodic.${kind}.onboarding.title`)}</DialogTitle>
             <DialogDescription class="mt-1.5 text-sm leading-relaxed">
-              {$t(`notes.periodic.${kind}.onboarding.body`)}
+              {$t(`notes.periodic.${kind}.onboarding.body`, { values: weekValues })}
             </DialogDescription>
           </div>
         </div>
       </DialogHeader>
 
       <div class="rounded-md border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
-        {$t(`notes.periodic.${kind}.onboarding.tip`)}
+        {$t(tipKey, { values: weekValues })}
       </div>
 
       <DialogFooter class="gap-2 sm:gap-2">

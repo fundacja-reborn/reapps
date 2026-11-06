@@ -24,7 +24,8 @@
 	import { Calendar as CalendarIcon } from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { intlLocale } from '@reborn/i18n';
-	import { currentLanguage } from '$lib/stores/app-settings.store';
+	import { currentLanguage, weekStartsOn } from '$lib/stores/app-settings.store';
+	import { weekdaysFrom, weeklyWkst } from '$lib/utils/recurrence-weekdays';
 	import { cn } from '@reborn/ui';
 	import { getLocalTimeZone, type DateValue, parseDate } from '@internationalized/date';
 	import { createLogger } from '@reborn/utils';
@@ -54,16 +55,8 @@
 		endDate: undefined as DateValue | undefined
 	});
 
-	// Weekdays mapping
-	const WEEKDAYS = [
-		{ value: 'MO', label: 'monday' },
-		{ value: 'TU', label: 'tuesday' },
-		{ value: 'WE', label: 'wednesday' },
-		{ value: 'TH', label: 'thursday' },
-		{ value: 'FR', label: 'friday' },
-		{ value: 'SA', label: 'saturday' },
-		{ value: 'SU', label: 'sunday' }
-	];
+	// Day checkboxes start on the user's first day of the week (#493).
+	let weekdays = $derived(weekdaysFrom($weekStartsOn));
 
 	let locale = $derived(intlLocale($currentLanguage));
 
@@ -80,6 +73,10 @@
 		if (freq === 'WEEKLY' && currentFormState.weekDays.length > 0) {
 			parts.push(`BYDAY=${currentFormState.weekDays.join(',')}`);
 		}
+
+		// Which week a day belongs to, for rules that skip weeks (#493).
+		const wkst = freq === 'WEEKLY' ? weeklyWkst($weekStartsOn, currentFormState.interval) : null;
+		if (wkst) parts.push(wkst);
 
 		if (currentFormState.endType === 'after') {
 			parts.push(`COUNT=${currentFormState.occurrences}`);
@@ -211,7 +208,7 @@
 						{$t('task.recurrence.days.label')}
 					</span>
 					<div class="grid grid-cols-2 gap-2" role="group" aria-labelledby="weekdays-group-label">
-						{#each WEEKDAYS as day}
+						{#each weekdays as day (day.value)}
 							<div class="flex items-center gap-2">
 								<Checkbox
 									id={day.value}
@@ -274,7 +271,13 @@
 								{/snippet}
 							</PopoverTrigger>
 							<PopoverContent class="w-auto p-0">
-								<Calendar type="single" bind:value={currentFormState.endDate} initialFocus {locale} />
+								<Calendar
+									type="single"
+									bind:value={currentFormState.endDate}
+									initialFocus
+									{locale}
+									weekStartsOn={$weekStartsOn}
+								/>
 							</PopoverContent>
 						</Popover>
 					</div>

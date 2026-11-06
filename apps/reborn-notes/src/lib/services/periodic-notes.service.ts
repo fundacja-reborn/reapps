@@ -19,6 +19,12 @@
  * (or having two devices in different locales) no longer creates duplicate
  * notes for the same period. Legacy notes without the metadata are adopted
  * via title-prefix fallback the first time the kind is opened post-upgrade.
+ *
+ * First day of the week (#493): weekly notes are anchored on the first day of
+ * the user's week (`weekStart` setting, 'auto' = the UI language's), and a
+ * week that does not start on Monday is titled with its date range instead
+ * of the ISO week number. The anchor's weekday tells which framing a note was
+ * made under, so the metadata stamp stays `{ kind, anchor }`.
  */
 import { get } from 'svelte/store';
 import type { PeriodicKind } from '@reborn/storage';
@@ -42,10 +48,14 @@ import { whenFalsy } from '$lib/utils/store-wait';
 import { getSetting } from '$lib/utils/app-settings';
 import { appSettings } from '$lib/stores/app-settings.store';
 import { t as i18nT, locale as i18nLocale } from '$lib/stores/i18n.store';
+import { resolveWeekStart, type WeekStartDay } from '@reborn/i18n';
 import {
   buildPeriodicTitle,
+  choosePeriodicMatch,
   getAnchorIso,
-  parseTitleAnchor
+  parseTitleAnchor,
+  weekAnchorsContaining,
+  type StampedPeriodicNote
 } from './periodic-notes-format';
 
 export {
@@ -54,7 +64,9 @@ export {
   buildPeriodicTitle,
   getAnchorDate,
   getAnchorIso,
-  parseTitleAnchor
+  parseTitleAnchor,
+  choosePeriodicMatch,
+  weekAnchorsContaining
 } from './periodic-notes-format';
 
 const logger = createLogger('PeriodicNotes');
@@ -66,6 +78,14 @@ function tr(key: string): string {
 
 function currentLocale(): string {
   return get(i18nLocale) || 'en';
+}
+
+/**
+ * The day weeks start on, read from IndexedDB like the other periodic
+ * settings (the in-memory store may not be loaded yet on a cold start).
+ */
+async function currentWeekStart(): Promise<WeekStartDay> {
+  return resolveWeekStart(await getSetting('weekStart'), currentLocale());
 }
 
 /**
@@ -186,37 +206,43 @@ async function readPeriodicStamp(noteId: string): Promise<PeriodicNoteMetadata |
  *  4. No stamp on a prefix-matched note → legacy note. Adopt it: stamp the
  *     metadata now and return it. This is the lazy backfill path used for
  *     notes created before the locale-duplicate fix.
+ *  5. Weekly only, when `now` is given: a stamped note whose week started on
+ *     another weekday but still contains `now` (the first day of the week
+ *     changed mid-week, #493) - see `choosePeriodicMatch`.
  *
  * Returns `null` when no candidate matches — caller should create a new note.
  */
 export async function findExistingPeriodicNote(
   folderId: string,
   kind: PeriodicKind,
-  anchorIso: string
+  anchorIso: string,
+  now?: Date
 ): Promise<string | null> {
   const prefixLen = kind === 'monthly' ? 7 : 10; // 'YYYY-MM' vs 'YYYY-MM-DD'
-  const prefix = anchorIso.slice(0, prefixLen);
+  const coveringAnchors = kind === 'weekly' && now ? weekAnchorsContaining(now) : [];
+  const prefixes = [anchorIso, ...coveringAnchors].map((a) => a.slice(0, prefixLen));
 
   const candidates = noteIndex
     .entries()
-    .filter((e) => e.folderId === folderId && e.title.startsWith(prefix));
+    .filter((e) => e.folderId === folderId && prefixes.some((p) => e.title.startsWith(p)));
 
   if (candidates.length === 0) return null;
 
-  // Walk candidates, prefer those with a matching metadata stamp; remember
-  // the newest stamped match. Fall back to the newest legacy (no-stamp)
-  // match whose parsed title anchor agrees with anchorIso, and backfill it.
-  let stampedHit: { id: string; updatedAt: string } | null = null;
+  // Walk candidates, collecting those with a metadata stamp of this kind.
+  // Fall back to the newest legacy (no-stamp) match whose parsed title
+  // anchor agrees with anchorIso, and backfill it.
+  const stamped: StampedPeriodicNote[] = [];
   const legacyHits: string[] = [];
 
   for (const c of candidates) {
     const stamp = await readPeriodicStamp(c.id);
     if (stamp) {
-      if (stamp.kind === kind && stamp.anchor === anchorIso) {
-        const updatedAt = noteIndex.get(c.id)?.updatedAt ?? '';
-        if (!stampedHit || updatedAt.localeCompare(stampedHit.updatedAt) > 0) {
-          stampedHit = { id: c.id, updatedAt };
-        }
+      if (stamp.kind === kind) {
+        stamped.push({
+          id: c.id,
+          anchor: stamp.anchor,
+          updatedAt: noteIndex.get(c.id)?.updatedAt ?? ''
+        });
       }
       continue;
     }
@@ -225,7 +251,8 @@ export async function findExistingPeriodicNote(
     if (parsed === anchorIso) legacyHits.push(c.id);
   }
 
-  if (stampedHit) return stampedHit.id;
+  const match = choosePeriodicMatch(stamped, anchorIso, coveringAnchors);
+  if (match.exact) return match.exact;
 
   if (legacyHits.length > 0) {
     // Pick the newest legacy hit and adopt it (stamp metadata).
@@ -246,7 +273,7 @@ export async function findExistingPeriodicNote(
     return best;
   }
 
-  return null;
+  return match.covering;
 }
 
 /**
@@ -359,16 +386,18 @@ export async function getOrCreateNote(
     await runFolderBackfill(folderId, kind);
   }
 
-  const anchorIso = getAnchorIso(kind, now);
+  const weekStart = await currentWeekStart();
+  const anchorIso = getAnchorIso(kind, now, weekStart);
   const title = buildPeriodicTitle(
     kind,
     now,
     format,
     PERIODIC_NOTES_DEFAULT_FORMATS[kind],
-    currentLocale()
+    currentLocale(),
+    weekStart
   );
 
-  const existing = await findExistingPeriodicNote(folderId, kind, anchorIso);
+  const existing = await findExistingPeriodicNote(folderId, kind, anchorIso, now);
   if (existing) return { noteId: existing, created: false };
 
   const noteId = await createNote(title, '', folderId, {
@@ -382,12 +411,18 @@ export async function getOrCreateNote(
 }
 
 /** Compute the title that the button would open right now — used for tooltips. */
-export function previewTitle(kind: PeriodicKind, format: string, now: Date = new Date()): string {
+export function previewTitle(
+  kind: PeriodicKind,
+  format: string,
+  now: Date = new Date(),
+  weekStart: WeekStartDay = 1
+): string {
   return buildPeriodicTitle(
     kind,
     now,
     format,
     PERIODIC_NOTES_DEFAULT_FORMATS[kind],
-    currentLocale()
+    currentLocale(),
+    weekStart
   );
 }

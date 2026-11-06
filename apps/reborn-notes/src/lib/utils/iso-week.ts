@@ -1,29 +1,45 @@
 /**
- * ISO 8601 week date helpers.
+ * Week date helpers.
  *
- * Week starts Monday; week 1 of a year is the week containing the first
- * Thursday (equivalently: the first week with 4+ days in the new year).
- * Consequence: a calendar date in late December may belong to W01 of the
- * following year, and a date in early January may belong to W52/W53 of the
- * previous year. That is the standard, not a bug.
+ * Start / end of a week that begins on any day (the user's first day of the
+ * week, #493), plus ISO 8601 week numbering. ISO weeks start on Monday;
+ * week 1 of a year is the week containing the first Thursday (equivalently:
+ * the first week with 4+ days in the new year). Consequence: a calendar date
+ * in late December may belong to W01 of the following year, and a date in
+ * early January may belong to W52/W53 of the previous year. That is the
+ * standard, not a bug. An ISO week number only describes a Monday-Sunday
+ * week, so callers show it only when the week starts on Monday.
  */
+import type { WeekStartDay } from '@reborn/i18n';
+
+/**
+ * First day (00:00:00 local time) of the week containing `date`, for weeks
+ * starting on `weekStart` (`Date#getDay()` numbering: 0 = Sunday, 1 = Monday,
+ * 6 = Saturday).
+ */
+export function getWeekStartDate(date: Date, weekStart: WeekStartDay): Date {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  // Days since the week began: 0 on the first day, 6 on the last.
+  const offset = (d.getDay() - weekStart + 7) % 7;
+  d.setDate(d.getDate() - offset);
+  return d;
+}
+
+/** Last day (00:00:00 local time) of the week containing `date`. */
+export function getWeekEndDate(date: Date, weekStart: WeekStartDay): Date {
+  const end = getWeekStartDate(date, weekStart);
+  end.setDate(end.getDate() + 6);
+  return end;
+}
 
 /** Monday (00:00:00 local time) of the ISO week containing `date`. */
 export function getMondayOfWeek(date: Date): Date {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  // JS getDay(): 0 = Sunday, 1 = Monday … 6 = Saturday.
-  // ISO: Monday is day 1, Sunday is day 7.
-  const isoDow = d.getDay() === 0 ? 7 : d.getDay();
-  d.setDate(d.getDate() - (isoDow - 1));
-  return d;
+  return getWeekStartDate(date, 1);
 }
 
 /** Sunday (00:00:00 local time) of the ISO week containing `date`. */
 export function getSundayOfWeek(date: Date): Date {
-  const monday = getMondayOfWeek(date);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return sunday;
+  return getWeekEndDate(date, 1);
 }
 
 /**

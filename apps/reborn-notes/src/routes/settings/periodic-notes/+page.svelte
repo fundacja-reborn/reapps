@@ -18,7 +18,8 @@
   import {
     appSettings,
     periodicNotesSettings,
-    currentLanguage
+    currentLanguage,
+    weekStartsOn
   } from '$lib/stores/app-settings.store';
   import {
     PERIODIC_NOTES_DEFAULTS,
@@ -29,7 +30,8 @@
   import { t } from '$lib/stores/i18n.store';
   import {
     formatRange,
-    buildPeriodicTitle
+    buildPeriodicTitle,
+    usesWeekNumber
   } from '$lib/services/periodic-notes-format';
   import { createLogger } from '@reborn/utils';
 
@@ -76,13 +78,18 @@
       now,
       local[kind].format,
       PERIODIC_NOTES_DEFAULT_FORMATS[kind],
-      $currentLanguage
+      $currentLanguage,
+      $weekStartsOn
     );
   }
 
   function previewRange(kind: PeriodicKind): string {
-    return formatRange(kind, now, $currentLanguage);
+    return formatRange(kind, now, $currentLanguage, $weekStartsOn);
   }
+
+  // An ISO week number only fits a week starting on Monday (#493): say why the
+  // preview shows dates when the chosen format asks for a number.
+  let weekNumberReplaced = $derived($weekStartsOn !== 1 && usesWeekNumber(local.weekly.format));
 
   onMount(() => {
     return periodicNotesSettings.subscribe((value) => {
@@ -185,6 +192,11 @@
                   values: { range: previewRange('weekly') }
                 })}
               </div>
+              {#if weekNumberReplaced}
+                <p class="mt-1.5 text-xs text-muted-foreground">
+                  {$t('notes.periodic.weekly.preview.no_week_number')}
+                </p>
+              {/if}
             {/if}
           </div>
         </CardContent>

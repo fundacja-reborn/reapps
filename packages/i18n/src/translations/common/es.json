@@ -290,6 +290,13 @@
     "select_date_format": "Seleccionar formato de fecha",
     "select_time_format": "Seleccionar formato de hora",
     "select_language": "Seleccionar idioma",
+    "week_start": "Primer día de la semana",
+    "week_start_auto": "Automático ({day})",
+    "week_start_saturday": "Sábado",
+    "week_start_sunday": "Domingo",
+    "week_start_monday": "Lunes",
+    "week_start_updated": "El primer día de la semana ha sido actualizado",
+    "select_week_start": "Seleccionar el primer día de la semana",
     "reset": "Restablecer valores predeterminados",
     "reset_done": "Configuración predeterminada restaurada"
   },

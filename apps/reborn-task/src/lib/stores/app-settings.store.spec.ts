@@ -52,11 +52,16 @@ vi.mock('@reborn/i18n', async () => {
 	const { writable } = await import('svelte/store');
 	// The real guards from the dependency-free subpath (single locale list),
 	// without loading svelte-i18n and the translation bundles.
-	const { isSupportedLocale, resolveLocale } = await import('@reborn/i18n/config');
-	return { isSupportedLocale, resolveLocale, locale: writable('pl') };
+	const { isSupportedLocale, resolveLocale, resolveWeekStart } = await import('@reborn/i18n/config');
+	return { isSupportedLocale, resolveLocale, resolveWeekStart, locale: writable('pl') };
 });
 
-import { appSettings, currentLanguage } from './app-settings.store';
+import {
+	appSettings,
+	currentLanguage,
+	weekStartPreference,
+	weekStartsOn
+} from './app-settings.store';
 
 function settingsRow(overrides: Record<string, unknown>) {
 	return { app_name: 'reborn-task', theme: 'dark', language: 'pl', ...overrides };
@@ -105,5 +110,38 @@ describe('appSettings.init - synced language this build does not ship', () => {
 		expect(mocks.setSetting).toHaveBeenCalledWith('language', 'pl');
 		expect(mocks.schedulePush).toHaveBeenCalledOnce();
 		expect(get(currentLanguage)).toBe('pl');
+	});
+});
+
+describe('weekStartsOn - first day of the week (#493)', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		localStorage.clear();
+	});
+
+	async function initWith(row: Record<string, unknown>) {
+		localStorage.setItem('preferred_language', String(row.language));
+		mocks.getSettings.mockResolvedValue(settingsRow(row));
+		await appSettings.init();
+	}
+
+	it('follows the UI language while nothing is picked', async () => {
+		await initWith({ language: 'en' });
+		expect(get(weekStartPreference)).toBe('auto');
+		expect(get(weekStartsOn)).toBe(0);
+
+		await initWith({ language: 'pl' });
+		expect(get(weekStartsOn)).toBe(1);
+	});
+
+	it('starts on Sunday for Arabic on auto (not the Saturday CLDR gives plain ar)', async () => {
+		await initWith({ language: 'ar', weekStart: 'auto' });
+		expect(get(weekStartsOn)).toBe(0);
+	});
+
+	it('a pinned day wins over the language', async () => {
+		await initWith({ language: 'pl', weekStart: 6 });
+		expect(get(weekStartPreference)).toBe(6);
+		expect(get(weekStartsOn)).toBe(6);
 	});
 });

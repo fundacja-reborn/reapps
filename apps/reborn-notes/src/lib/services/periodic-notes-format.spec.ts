@@ -3,7 +3,12 @@ import {
   formatName,
   formatRange,
   getAnchorDate,
-  buildPeriodicTitle
+  getAnchorIso,
+  buildPeriodicTitle,
+  usesWeekNumber,
+  weekRangeTitle,
+  weekAnchorsContaining,
+  choosePeriodicMatch
 } from './periodic-notes-format';
 
 const FRIDAY_2026_05_08 = new Date(2026, 4, 8);
@@ -150,3 +155,135 @@ describe('buildPeriodicTitle', () => {
     expect(result).toBe('2026-05-04 W19');
   });
 });
+
+describe('weekly notes - first day of the week (#493)', () => {
+  // Thursday 2026-11-05.
+  const THU = new Date(2026, 10, 5, 15, 30);
+  const WEEKLY_DEFAULT = 'YYYY-MM-DD [W]ww';
+
+  it('anchors on the first day of the user week', () => {
+    expect(getAnchorIso('weekly', THU, 1)).toBe('2026-11-02');
+    expect(getAnchorIso('weekly', THU, 0)).toBe('2026-11-01');
+    expect(getAnchorIso('weekly', THU, 6)).toBe('2026-10-31');
+    // Default stays the ISO Monday every note used before the setting.
+    expect(getAnchorIso('weekly', THU)).toBe('2026-11-02');
+  });
+
+  it('daily and monthly ignore the week start', () => {
+    expect(getAnchorIso('daily', THU, 0)).toBe('2026-11-05');
+    expect(getAnchorIso('monthly', THU, 6)).toBe('2026-11-01');
+  });
+
+  it('Monday weeks keep the ISO week number title', () => {
+    expect(buildPeriodicTitle('weekly', THU, WEEKLY_DEFAULT, WEEKLY_DEFAULT, 'en', 1)).toBe(
+      '2026-11-02 W45'
+    );
+  });
+
+  it('other weeks get the date range instead of a week number', () => {
+    expect(buildPeriodicTitle('weekly', THU, WEEKLY_DEFAULT, WEEKLY_DEFAULT, 'ar', 0)).toBe(
+      '2026-11-01 \u2013 2026-11-07'
+    );
+    expect(buildPeriodicTitle('weekly', THU, '[Week] ww, YYYY', WEEKLY_DEFAULT, 'en', 6)).toBe(
+      '2026-10-31 \u2013 2026-11-06'
+    );
+  });
+
+  it('a weekly format without a week number applies as it is', () => {
+    expect(buildPeriodicTitle('weekly', THU, 'YYYY-MM-DD', WEEKLY_DEFAULT, 'en', 0)).toBe(
+      '2026-11-01'
+    );
+  });
+
+  it('the range title starts with the anchor (title-prefix lookups)', () => {
+    const title = weekRangeTitle(getAnchorDate('weekly', THU, 6));
+    expect(title.startsWith(getAnchorIso('weekly', THU, 6))).toBe(true);
+  });
+
+  it('detects week-number tokens outside literals only', () => {
+    expect(usesWeekNumber('YYYY-MM-DD [W]ww')).toBe(true);
+    expect(usesWeekNumber('[Week] w')).toBe(true);
+    expect(usesWeekNumber('YYYY-MM-DD')).toBe(false);
+    expect(usesWeekNumber('[Week] YYYY')).toBe(false);
+    expect(usesWeekNumber('dddd')).toBe(false);
+  });
+
+  it('weekly range follows the week start', () => {
+    expect(formatRange('weekly', THU, 'en', 0)).toBe(
+      new Intl.DateTimeFormat('en', { day: 'numeric', month: 'long', year: 'numeric' }).formatRange(
+        new Date(2026, 10, 1),
+        new Date(2026, 10, 7)
+      )
+    );
+  });
+
+  it('weekAnchorsContaining lists today and the six days before, newest first', () => {
+    expect(weekAnchorsContaining(THU)).toEqual([
+      '2026-11-05',
+      '2026-11-04',
+      '2026-11-03',
+      '2026-11-02',
+      '2026-11-01',
+      '2026-10-31',
+      '2026-10-30'
+    ]);
+  });
+});
+
+describe('choosePeriodicMatch (#493)', () => {
+  const THU = new Date(2026, 10, 5);
+  const covering = weekAnchorsContaining(THU);
+
+  it('prefers the note anchored exactly on the period, newest edit on duplicates', () => {
+    const match = choosePeriodicMatch(
+      [
+        { id: 'monday-week', anchor: '2026-11-02', updatedAt: '2026-11-05T10:00:00Z' },
+        { id: 'sunday-old', anchor: '2026-11-01', updatedAt: '2026-11-01T10:00:00Z' },
+        { id: 'sunday-new', anchor: '2026-11-01', updatedAt: '2026-11-03T10:00:00Z' }
+      ],
+      '2026-11-01',
+      covering
+    );
+    expect(match.exact).toBe('sunday-new');
+  });
+
+  it('switching Monday to Sunday mid-week keeps the week note', () => {
+    // Sunday weeks now, but this week's note was made as a Monday week.
+    const match = choosePeriodicMatch(
+      [{ id: 'monday-week', anchor: '2026-11-02', updatedAt: '' }],
+      '2026-11-01',
+      covering
+    );
+    expect(match).toEqual({ exact: null, covering: 'monday-week' });
+  });
+
+  it('a week that has already ended does not cover today', () => {
+    const match = choosePeriodicMatch(
+      [{ id: 'last-week', anchor: '2026-10-26', updatedAt: '' }],
+      '2026-11-01',
+      covering
+    );
+    expect(match).toEqual({ exact: null, covering: null });
+  });
+
+  it('several covering weeks: the most recent start wins', () => {
+    const match = choosePeriodicMatch(
+      [
+        { id: 'saturday-week', anchor: '2026-10-31', updatedAt: '2026-11-05T12:00:00Z' },
+        { id: 'monday-week', anchor: '2026-11-02', updatedAt: '2026-11-02T12:00:00Z' }
+      ],
+      '2026-11-01',
+      covering
+    );
+    expect(match.covering).toBe('monday-week');
+  });
+
+  it('without covering anchors (daily, monthly) only exact matches count', () => {
+    const match = choosePeriodicMatch(
+      [{ id: 'other-day', anchor: '2026-11-04', updatedAt: '' }],
+      '2026-11-05'
+    );
+    expect(match).toEqual({ exact: null, covering: null });
+  });
+});
+

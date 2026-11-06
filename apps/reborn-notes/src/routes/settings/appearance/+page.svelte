@@ -22,11 +22,19 @@
     currentLanguage,
     dateFormat,
     timeFormat,
-    imageLoadMode as imageLoadModeStore
+    imageLoadMode as imageLoadModeStore,
+    weekStartPreference
   } from '$lib/stores/app-settings.store';
   import type { ImageLoadMode } from '@reborn/storage';
   import { t } from '$lib/stores/i18n.store';
-  import { SUPPORTED_LOCALES, localeLabel } from '@reborn/i18n';
+  import {
+    SUPPORTED_LOCALES,
+    WEEK_START_PREFERENCES,
+    isWeekStartPreference,
+    localeLabel,
+    resolveWeekStart,
+    weekdayName
+  } from '@reborn/i18n';
   import type { AppSettings } from '@reborn/storage';
   import { createLogger } from '@reborn/utils';
   import { toast } from '@reborn/ui';
@@ -41,6 +49,7 @@
   let dateFormatValue = $state('DD/MM/YYYY');
   let timeFormatValue = $state('24h');
   let imageLoadModeValue = $state<ImageLoadMode>('ask');
+  let weekStartValue = $state('auto');
 
   const languageOptions = SUPPORTED_LOCALES.map((value) => ({ value, label: localeLabel(value) }));
 
@@ -55,6 +64,25 @@
     { value: '24h', label: $t('appearance.time_24h') },
     { value: '12h', label: $t('appearance.time_12h') }
   ];
+
+  const WEEK_START_LABEL_KEYS = {
+    6: 'appearance.week_start_saturday',
+    0: 'appearance.week_start_sunday',
+    1: 'appearance.week_start_monday'
+  } as const;
+
+  // 'Automatic' names the day it resolves to for the current language (#493).
+  let weekStartOptions = $derived(
+    WEEK_START_PREFERENCES.map((value) => ({
+      value: String(value),
+      label:
+        value === 'auto'
+          ? $t('appearance.week_start_auto', {
+              values: { day: weekdayName(resolveWeekStart('auto', language), language) }
+            })
+          : $t(WEEK_START_LABEL_KEYS[value])
+    }))
+  );
 
   async function updateTheme(value: 'light' | 'dark' | 'system') {
     try {
@@ -130,6 +158,22 @@
     }
   }
 
+  async function updateWeekStart(value: string) {
+    const preference: unknown = value === 'auto' ? 'auto' : Number(value);
+    if (!isWeekStartPreference(preference)) return;
+    try {
+      isLoading = true;
+      error = null;
+      await appSettings.update('weekStart', preference);
+      weekStartValue = value;
+      toast.success($t('appearance.week_start_updated'));
+    } catch (err: unknown) {
+      logger.error('Failed to update first day of the week', err);
+    } finally {
+      isLoading = false;
+    }
+  }
+
   async function handleReset() {
     try {
       isLoading = true;
@@ -140,6 +184,7 @@
       dateFormatValue = 'DD/MM/YYYY';
       timeFormatValue = '24h';
       imageLoadModeValue = 'ask';
+      weekStartValue = 'auto';
       toast.success($t('settings_page.appearance.reset_done'));
     } catch (err: unknown) {
       logger.error('Failed to reset settings', err);
@@ -154,7 +199,8 @@
       currentLanguage.subscribe((value) => (language = value)),
       dateFormat.subscribe((value) => (dateFormatValue = value)),
       timeFormat.subscribe((value) => (timeFormatValue = value)),
-      imageLoadModeStore.subscribe((value) => (imageLoadModeValue = value))
+      imageLoadModeStore.subscribe((value) => (imageLoadModeValue = value)),
+      weekStartPreference.subscribe((value) => (weekStartValue = String(value)))
     ];
     return () => unsubscribes.forEach((fn) => fn());
   });
@@ -227,6 +273,9 @@
       {timeFormatOptions}
       onDateFormatChange={updateDateFormat}
       onTimeFormatChange={updateTimeFormat}
+      weekStart={weekStartValue}
+      {weekStartOptions}
+      onWeekStartChange={updateWeekStart}
       disabled={isLoading}
       labels={{
         title: $t('settings_page.appearance.date_time'),
@@ -234,7 +283,9 @@
         dateLabel: $t('settings_page.appearance.date_format'),
         timeLabel: $t('settings_page.appearance.time_format'),
         datePlaceholder: $t('appearance.select_date_format'),
-        timePlaceholder: $t('appearance.select_time_format')
+        timePlaceholder: $t('appearance.select_time_format'),
+        weekStartLabel: $t('appearance.week_start'),
+        weekStartPlaceholder: $t('appearance.select_week_start')
       }}
     />
 
