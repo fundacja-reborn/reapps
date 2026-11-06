@@ -36,4 +36,18 @@ describe('UI source guards (packages/ui/src)', () => {
       );
     expect(hits).toEqual([]);
   });
+
+  it('leaves text fields to the global bidi rule, without dir="auto"', () => {
+    // An empty field with dir="auto" resolves to LTR, so in an Arabic UI the caret
+    // starts on the left and jumps on the first letter. `unicode-bidi: plaintext`
+    // in global.css follows the text and leaves an empty field in the UI direction.
+    const hits = listSourceFiles([ROOT])
+      .filter((file) => file.endsWith('.svelte'))
+      .flatMap((file) =>
+        /<(textarea|input)\b[^>]*\sdir="auto"/.test(readFileSync(file, 'utf-8'))
+          ? [repoRelative(file)]
+          : []
+      );
+    expect(hits).toEqual([]);
+  });
 });
