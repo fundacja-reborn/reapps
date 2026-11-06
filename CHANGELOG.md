@@ -1,3 +1,20 @@
+## 0.46.0 (2026-11-06)
+
+### 🚀 Features
+
+- **i18n:** add right-to-left (RTL) layout and note content support ([#485](https://github.com/fundacja-reborn/reapps/pull/485), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **i18n:** add Arabic as a beta language ([#489](https://github.com/fundacja-reborn/reapps/pull/489), [#482](https://github.com/fundacja-reborn/reapps/issues/482), [#485](https://github.com/fundacja-reborn/reapps/issues/485))
+- **settings:** add a first day of the week setting ([#495](https://github.com/fundacja-reborn/reapps/pull/495), [#493](https://github.com/fundacja-reborn/reapps/issues/493))
+
+### 🩹 Fixes
+
+- **i18n:** validate ICU messages, fix placeholders shown as text ([#488](https://github.com/fundacja-reborn/reapps/pull/488))
+- **i18n:** apply the translator's review of Arabic batch 1 ([#494](https://github.com/fundacja-reborn/reapps/pull/494), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **i18n:** apply the translator's review of Arabic batch 2 ([#498](https://github.com/fundacja-reborn/reapps/pull/498), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **notes:** render right-to-left notes correctly in PDF export ([#486](https://github.com/fundacja-reborn/reapps/pull/486), [#485](https://github.com/fundacja-reborn/reapps/issues/485))
+- **notes:** stop periodic presets without a leading date from duplicating notes ([#496](https://github.com/fundacja-reborn/reapps/pull/496))
+- **notes:** use the ISO week year in week-number titles of periodic notes ([#497](https://github.com/fundacja-reborn/reapps/pull/497))
+
 ## 0.45.5 (2026-11-04)
 
 ### 🩹 Fixes
