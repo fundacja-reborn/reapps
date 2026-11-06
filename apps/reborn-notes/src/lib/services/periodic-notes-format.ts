@@ -22,6 +22,18 @@ import type { PeriodicKind } from '@reborn/storage';
 import { getWeekStartDate, getWeekEndDate, getISOWeek } from '../utils/iso-week';
 
 /**
+ * Title formats offered in Settings > Periodic notes, default first. Also the
+ * formats `periodicCandidateMatcher` knows how to recognise: a note keeps the
+ * title it was created with, so the lookup must find it after the user picks
+ * another preset.
+ */
+export const PERIODIC_FORMAT_PRESETS: Record<PeriodicKind, readonly string[]> = {
+  daily: ['YYYY-MM-DD dddd', 'YYYY-MM-DD ddd', 'YYYY-MM-DD', 'dddd, D MMMM YYYY'],
+  weekly: ['YYYY-MM-DD [W]ww', 'YYYY-[W]ww', 'YYYY-MM-DD', '[Week] ww, YYYY'],
+  monthly: ['YYYY-MM', 'MMMM YYYY', 'YYYY MMMM']
+};
+
+/**
  * Date the note is *anchored to*, given the kind and the moment of click:
  * - daily → the day itself
  * - weekly → the first day of that week (Monday unless the user's week
@@ -331,14 +343,30 @@ export function weekRangeTitle(weekStartDate: Date): string {
 }
 
 /**
- * Compute the title for a periodic note given the kind, click moment, format
- * string and locale. Falls back to default-format output if user-supplied
- * format throws (e.g. malformed token sequence) - caller doesn't need to wrap.
+ * Title of the period that starts on `anchor` (see `getAnchorDate`) in
+ * `format`. A weekly anchor is the first day of its week, so a weekday other
+ * than Monday means the week does not start on Monday.
  *
  * An ISO week number only describes a Monday-Sunday week, and a week starting
  * on Saturday or Sunday straddles two of them (#493). For such a week, a
  * weekly format that prints a week number gives way to the date range
  * (`weekRangeTitle`); formats without one apply as they are.
+ */
+export function periodicTitleAt(
+  kind: PeriodicKind,
+  anchor: Date,
+  format: string,
+  locale: string
+): string {
+  return kind === 'weekly' && anchor.getDay() !== 1 && usesWeekNumber(format)
+    ? weekRangeTitle(anchor)
+    : formatName(anchor, format, locale);
+}
+
+/**
+ * Compute the title for a periodic note given the kind, click moment, format
+ * string and locale. Falls back to default-format output if user-supplied
+ * format throws (e.g. malformed token sequence) - caller doesn't need to wrap.
  */
 export function buildPeriodicTitle(
   kind: PeriodicKind,
@@ -349,15 +377,65 @@ export function buildPeriodicTitle(
   weekStart: WeekStartDay = 1
 ): string {
   const anchor = getAnchorDate(kind, now, weekStart);
-  const render = (f: string): string =>
-    kind === 'weekly' && weekStart !== 1 && usesWeekNumber(f)
-      ? weekRangeTitle(anchor)
-      : formatName(anchor, f, locale);
   try {
-    const result = render(format);
+    const result = periodicTitleAt(kind, anchor, format, locale);
     if (result.trim().length === 0) throw new Error('empty title');
     return result;
   } catch {
-    return render(defaultFormat);
+    return periodicTitleAt(kind, anchor, defaultFormat, locale);
   }
+}
+
+/** Length of the ISO date a default title starts with: `YYYY-MM` or `YYYY-MM-DD`. */
+function isoPrefixLength(kind: PeriodicKind): number {
+  return kind === 'monthly' ? 7 : 10;
+}
+
+/** Local midnight of an ISO `YYYY-MM-DD` anchor. */
+function anchorDate(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/**
+ * Which note titles in a periodic folder may belong to one of the periods
+ * starting on `anchors` (ISO dates). The lookup decrypts the periodic stamp of
+ * these notes only, so the test must be cheap and must not miss a note:
+ *
+ * - a title starting with an anchor's ISO date - every default format and
+ *   every weekly range title (whatever the language, see the 2026-05-12
+ *   locale-duplicate fix);
+ * - a title equal to what one of `formats` gives for an anchor in one of
+ *   `locales` - formats without a leading ISO date (`MMMM YYYY`,
+ *   `[Week] ww, YYYY`, `dddd, D MMMM YYYY`...). Before this, notes titled like
+ *   that were never found and every click created another one.
+ *
+ * A match is only a candidate: the stamp decides. A note renamed by the user
+ * so that neither test holds is not found (as before).
+ */
+export function periodicCandidateMatcher(
+  kind: PeriodicKind,
+  anchors: readonly string[],
+  formats: readonly string[],
+  locales: readonly string[]
+): (title: string) => boolean {
+  const prefixLength = isoPrefixLength(kind);
+  const isoTokens = prefixLength === 7 ? 'YYYY-MM' : 'YYYY-MM-DD';
+  const prefixes = new Set(anchors.map((a) => a.slice(0, prefixLength)));
+  const titles = new Set<string>();
+  for (const iso of new Set(anchors)) {
+    const anchor = anchorDate(iso);
+    for (const format of new Set(formats)) {
+      // Titles of these start with the anchor's date: the prefix test has them.
+      if (format.startsWith(isoTokens)) continue;
+      for (const locale of locales) {
+        try {
+          titles.add(periodicTitleAt(kind, anchor, format, locale));
+        } catch {
+          // A malformed stored format cannot have produced a title either.
+        }
+      }
+    }
+  }
+  return (title) => titles.has(title) || prefixes.has(title.slice(0, prefixLength));
 }

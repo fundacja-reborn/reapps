@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
+import { SUPPORTED_LOCALES, type WeekStartDay } from '@reborn/i18n/config';
+import { PERIODIC_NOTES_DEFAULT_FORMATS, type PeriodicKind } from '@reborn/storage';
 import {
+  PERIODIC_FORMAT_PRESETS,
   formatName,
   formatRange,
   getAnchorDate,
   getAnchorIso,
   buildPeriodicTitle,
+  periodicCandidateMatcher,
   usesWeekNumber,
   weekRangeTitle,
   weekAnchorsContaining,
@@ -287,3 +291,128 @@ describe('choosePeriodicMatch (#493)', () => {
   });
 });
 
+
+describe('PERIODIC_FORMAT_PRESETS', () => {
+  it('lists the default format of each kind first', () => {
+    for (const kind of ['daily', 'weekly', 'monthly'] as const) {
+      expect(PERIODIC_FORMAT_PRESETS[kind][0]).toBe(PERIODIC_NOTES_DEFAULT_FORMATS[kind]);
+    }
+  });
+});
+
+describe('periodicCandidateMatcher - presets without a leading ISO date', () => {
+  const NOVEMBER_2026 = new Date(2026, 10, 1);
+
+  it('monthly: finds "MMMM YYYY" and "YYYY MMMM" titles of the month, in every language', () => {
+    const isCandidate = periodicCandidateMatcher(
+      'monthly',
+      ['2026-11-01'],
+      PERIODIC_FORMAT_PRESETS.monthly,
+      SUPPORTED_LOCALES
+    );
+    expect(isCandidate('November 2026')).toBe(true);
+    expect(isCandidate('2026 November')).toBe(true);
+    expect(isCandidate(formatName(NOVEMBER_2026, 'MMMM YYYY', 'pl'))).toBe(true);
+    expect(isCandidate(formatName(NOVEMBER_2026, 'YYYY MMMM', 'ar'))).toBe(true);
+    // ISO titles keep matching by prefix.
+    expect(isCandidate('2026-11')).toBe(true);
+    expect(isCandidate('2026-11 plan')).toBe(true);
+    // Other months and plain notes are not candidates.
+    expect(isCandidate('October 2026')).toBe(false);
+    expect(isCandidate('November 2025')).toBe(false);
+    expect(isCandidate('2026-10')).toBe(false);
+    expect(isCandidate('Shopping list')).toBe(false);
+  });
+
+  it('weekly: finds "YYYY-[W]ww" and "[Week] ww, YYYY" titles of the week', () => {
+    const thursday = new Date(2026, 10, 5);
+    const isCandidate = periodicCandidateMatcher(
+      'weekly',
+      [getAnchorIso('weekly', thursday), ...weekAnchorsContaining(thursday)],
+      PERIODIC_FORMAT_PRESETS.weekly,
+      SUPPORTED_LOCALES
+    );
+    expect(isCandidate('2026-W45')).toBe(true);
+    expect(isCandidate('Week 45, 2026')).toBe(true);
+    expect(isCandidate('2026-11-02 W45')).toBe(true);
+    // A Sunday week covering the same Thursday (#493).
+    expect(isCandidate('2026-11-01 – 2026-11-07')).toBe(true);
+    expect(isCandidate('2026-W44')).toBe(false);
+    expect(isCandidate('Week 46, 2026')).toBe(false);
+  });
+
+  it('daily: finds "dddd, D MMMM YYYY" titles of the day only', () => {
+    const isCandidate = periodicCandidateMatcher(
+      'daily',
+      ['2026-11-06'],
+      PERIODIC_FORMAT_PRESETS.daily,
+      SUPPORTED_LOCALES
+    );
+    expect(isCandidate('Friday, 6 November 2026')).toBe(true);
+    expect(isCandidate('Thursday, 5 November 2026')).toBe(false);
+  });
+
+  it('also finds titles of a stored format that is not a preset', () => {
+    const anchors = ['2026-11-02'];
+    const withFormat = periodicCandidateMatcher(
+      'weekly',
+      anchors,
+      [...PERIODIC_FORMAT_PRESETS.weekly, '[KW] ww YYYY'],
+      SUPPORTED_LOCALES
+    );
+    const presetsOnly = periodicCandidateMatcher(
+      'weekly',
+      anchors,
+      PERIODIC_FORMAT_PRESETS.weekly,
+      SUPPORTED_LOCALES
+    );
+    expect(withFormat('KW 45 2026')).toBe(true);
+    expect(presetsOnly('KW 45 2026')).toBe(false);
+  });
+
+  // The bug this guards: a title the one-click flow created must be found by the
+  // next click, or every click creates another note. Covers every preset, every
+  // language, every first day of the week, and the format or the language
+  // changing between the two clicks.
+  it('every title the one-click flow creates is a candidate on the next click', () => {
+    const clicks = [
+      new Date(2026, 10, 6, 9), // Friday
+      new Date(2026, 10, 1, 23), // Sunday
+      new Date(2026, 10, 7, 0, 5), // Saturday
+      new Date(2026, 11, 31, 12), // year end
+      new Date(2027, 0, 1, 12) // year start
+    ];
+    const kinds: PeriodicKind[] = ['daily', 'weekly', 'monthly'];
+    const weekStarts: WeekStartDay[] = [0, 1, 6];
+    for (const kind of kinds) {
+      for (const weekStart of weekStarts) {
+        for (const now of clicks) {
+          const anchorIso = getAnchorIso(kind, now, weekStart);
+          const covering = kind === 'weekly' ? weekAnchorsContaining(now) : [];
+          const isCandidate = periodicCandidateMatcher(
+            kind,
+            [anchorIso, ...covering],
+            PERIODIC_FORMAT_PRESETS[kind],
+            SUPPORTED_LOCALES
+          );
+          for (const format of PERIODIC_FORMAT_PRESETS[kind]) {
+            for (const locale of SUPPORTED_LOCALES) {
+              const title = buildPeriodicTitle(
+                kind,
+                now,
+                format,
+                PERIODIC_NOTES_DEFAULT_FORMATS[kind],
+                locale,
+                weekStart
+              );
+              expect(
+                isCandidate(title),
+                `${kind} ${format} ${locale} weekStart=${weekStart} ${anchorIso}: "${title}"`
+              ).toBe(true);
+            }
+          }
+        }
+      }
+    }
+  });
+});

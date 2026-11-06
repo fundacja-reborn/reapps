@@ -29,6 +29,7 @@
   import FolderTreePicker from '$lib/components/folders/FolderTreePicker.svelte';
   import { t } from '$lib/stores/i18n.store';
   import {
+    PERIODIC_FORMAT_PRESETS as PRESETS,
     formatRange,
     buildPeriodicTitle,
     usesWeekNumber
@@ -39,12 +40,6 @@
 
   // Snapshot used for inputs / dropdowns; mirrors the derived store.
   let local = $state<PeriodicNotesSettings>(structuredClone(PERIODIC_NOTES_DEFAULTS));
-
-  const PRESETS: Record<PeriodicKind, string[]> = {
-    daily: ['YYYY-MM-DD dddd', 'YYYY-MM-DD ddd', 'YYYY-MM-DD', 'dddd, D MMMM YYYY'],
-    weekly: ['YYYY-MM-DD [W]ww', 'YYYY-[W]ww', 'YYYY-MM-DD', '[Week] ww, YYYY'],
-    monthly: ['YYYY-MM', 'MMMM YYYY', 'YYYY MMMM']
-  };
 
   // Refresh the live preview every minute so it follows clock changes.
   let now = $state(new Date());

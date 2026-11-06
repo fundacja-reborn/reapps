@@ -23,8 +23,12 @@
  * the now-empty duplicate folder shells are removed for good - they hold no notes.
  *
  * Detection is cheap: note counts come from the plaintext in-memory index, and
- * only ISO-prefix-titled notes are decrypted (to read their periodic stamp), the
- * same pre-filter the note dedup uses.
+ * only ISO-prefix-titled notes are decrypted (to read their periodic stamp).
+ * Unlike the note dedup this scan spans every folder, so it does not decrypt
+ * titles without an ISO date: a folder whose notes all use a preset like
+ * `MMMM YYYY` looks unstamped. It can still join a group by its name or the
+ * settings folder ID; it only loses the "holds stamped notes" preference when
+ * the folder to keep is chosen - notes are moved, never deleted, either way.
  */
 import { get, writable } from 'svelte/store';
 import { PERIODIC_NOTES_DEFAULTS, type PeriodicKind } from '@reborn/storage';

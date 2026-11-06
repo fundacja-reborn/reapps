@@ -48,12 +48,14 @@ import { whenFalsy } from '$lib/utils/store-wait';
 import { getSetting } from '$lib/utils/app-settings';
 import { appSettings } from '$lib/stores/app-settings.store';
 import { t as i18nT, locale as i18nLocale } from '$lib/stores/i18n.store';
-import { resolveWeekStart, type WeekStartDay } from '@reborn/i18n';
+import { SUPPORTED_LOCALES, resolveWeekStart, type WeekStartDay } from '@reborn/i18n';
 import {
+  PERIODIC_FORMAT_PRESETS,
   buildPeriodicTitle,
   choosePeriodicMatch,
   getAnchorIso,
   parseTitleAnchor,
+  periodicCandidateMatcher,
   weekAnchorsContaining,
   type StampedPeriodicNote
 } from './periodic-notes-format';
@@ -197,9 +199,10 @@ async function readPeriodicStamp(noteId: string): Promise<PeriodicNoteMetadata |
  * Find an existing periodic note in `folderId` matching `(kind, anchorIso)`.
  *
  * Resolution order:
- *  1. Title-prefix prefilter narrows candidates to those whose title starts
- *     with the anchor's ISO date — fast, zero crypto. Covers the default
- *     formats (which always start with `YYYY-MM-DD` / `YYYY-MM`).
+ *  1. Title prefilter (`periodicCandidateMatcher`) narrows candidates to
+ *     notes whose title starts with the anchor's ISO date (the default
+ *     formats) or equals the title a preset, or the stored `format`, gives
+ *     for the period in any supported language - fast, zero crypto.
  *  2. For each candidate, decrypt the periodic metadata stamp.
  *  3. Stamp matches `(kind, anchorIso)` → return that note (newest wins on
  *     duplicates, which can happen after a multi-device race).
@@ -216,15 +219,20 @@ export async function findExistingPeriodicNote(
   folderId: string,
   kind: PeriodicKind,
   anchorIso: string,
-  now?: Date
+  now?: Date,
+  format?: string
 ): Promise<string | null> {
-  const prefixLen = kind === 'monthly' ? 7 : 10; // 'YYYY-MM' vs 'YYYY-MM-DD'
   const coveringAnchors = kind === 'weekly' && now ? weekAnchorsContaining(now) : [];
-  const prefixes = [anchorIso, ...coveringAnchors].map((a) => a.slice(0, prefixLen));
+  const isCandidateTitle = periodicCandidateMatcher(
+    kind,
+    [anchorIso, ...coveringAnchors],
+    format ? [...PERIODIC_FORMAT_PRESETS[kind], format] : PERIODIC_FORMAT_PRESETS[kind],
+    SUPPORTED_LOCALES
+  );
 
   const candidates = noteIndex
     .entries()
-    .filter((e) => e.folderId === folderId && prefixes.some((p) => e.title.startsWith(p)));
+    .filter((e) => e.folderId === folderId && isCandidateTitle(e.title));
 
   if (candidates.length === 0) return null;
 
@@ -288,11 +296,10 @@ export async function findExistingPeriodicNote(
  * matches D6 (a regular note named '2026-05-08' outside the daily folder
  * stays a regular note).
  *
- * Custom-format legacy notes (no ISO prefix in title) cannot be parsed and
- * are left alone — they'll get stamped on next click via `findExistingPeriodicNote`
- * if the user happens to land on the same anchor, or stay unstamped (and
- * therefore unmatched) otherwise. Acceptable trade-off: custom formats are
- * an opt-in (gated behind P2 anyway), and we don't want to guess.
+ * Legacy notes titled in a format without a leading ISO date (`MMMM YYYY`...)
+ * cannot be parsed and are left alone: they stay unstamped and unmatched (a
+ * title alone does not prove which period a note is for). Acceptable
+ * trade-off: they predate the stamp (2026-05-12) and are past periods by now.
  */
 async function runFolderBackfill(folderId: string, kind: PeriodicKind): Promise<void> {
   if (!cryptoManager.isInitialized()) return; // need master key to decrypt/encrypt
@@ -397,7 +404,7 @@ export async function getOrCreateNote(
     weekStart
   );
 
-  const existing = await findExistingPeriodicNote(folderId, kind, anchorIso, now);
+  const existing = await findExistingPeriodicNote(folderId, kind, anchorIso, now, format);
   if (existing) return { noteId: existing, created: false };
 
   const noteId = await createNote(title, '', folderId, {
