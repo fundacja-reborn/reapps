@@ -16,6 +16,9 @@ export * from './user-agent';
 // Search query parser/evaluator (Tier 1 operator search)
 export * from './search-query';
 
+// Text matching shared by every search surface
+export * from './search-text';
+
 // Re-export commonly used functions for convenience
 export { createLogger, LoggerGlobal, LOG_LEVELS } from './logger';
 export {

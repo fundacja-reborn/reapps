@@ -13,7 +13,13 @@
 import { taskStore } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
 import type { TaskEncryptedBooleans, TaskSensitiveMetadata } from '@reborn/types';
-import { evaluate, type QueryAST, type SearchContext, type SearchEntity } from '@reborn/utils';
+import {
+	evaluate,
+	foldSearchText,
+	type QueryAST,
+	type SearchContext,
+	type SearchEntity
+} from '@reborn/utils';
 
 export interface TaskIndexEntry {
 	title: string;
@@ -269,9 +275,9 @@ class TaskIndex {
 	search(query: string): TaskListItem[] {
 		void this._version;
 		if (!query.trim()) return [];
-		const q = query.toLowerCase();
+		const q = foldSearchText(query);
 		return Array.from(this._map.entries())
-			.filter(([, e]) => !e.isDeleted && !e.isTemplate && e.title.toLowerCase().includes(q))
+			.filter(([, e]) => !e.isDeleted && !e.isTemplate && foldSearchText(e.title).includes(q))
 			.sort((a, b) => b[1].updatedAt.localeCompare(a[1].updatedAt))
 			.map(([id, e]) => toListItem(id, e));
 	}
@@ -372,8 +378,8 @@ class TaskIndex {
 
 		// title search
 		if (search?.trim()) {
-			const q = search.toLowerCase();
-			entries = entries.filter(([, e]) => e.title.toLowerCase().includes(q));
+			const q = foldSearchText(search);
+			entries = entries.filter(([, e]) => foldSearchText(e.title).includes(q));
 		}
 
 		const total = entries.length;

@@ -149,6 +149,7 @@
     "delete_note": "Usuń notatkę",
     "save_note": "Zapisz notatkę",
     "untitled": "Bez tytułu",
+    "default_title": "Notatka {date}",
     "search_placeholder": "Szukaj notatek…",
     "no_notes": "Brak notatek. Utwórz swoją pierwszą notatkę!",
     "no_notes_short": "Brak notatek.",

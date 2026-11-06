@@ -149,6 +149,7 @@
     "delete_note": "Eliminar nota",
     "save_note": "Guardar nota",
     "untitled": "Sin título",
+    "default_title": "Nota {date}",
     "search_placeholder": "Buscar notas…",
     "no_notes": "Aún no hay notas. ¡Cree su primera nota!",
     "no_notes_short": "Aún no hay notas.",

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Search, FileText, X } from '@lucide/svelte';
   import * as Dialog from '@reborn/ui/components/dialog';
+  import { foldSearchText } from '@reborn/utils';
   import { t } from '$lib/stores/i18n.store';
 
   interface NoteItem {
@@ -28,8 +29,8 @@
   const filteredNotes = $derived(() => {
     const available = notes.filter((n) => n.id !== excludeNoteId);
     if (!searchQuery.trim()) return available;
-    const q = searchQuery.toLowerCase();
-    return available.filter((n) => n.title.toLowerCase().includes(q));
+    const q = foldSearchText(searchQuery);
+    return available.filter((n) => foldSearchText(n.title).includes(q));
   });
 
   function handleSelect(note: NoteItem) {

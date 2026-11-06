@@ -47,6 +47,43 @@ describe('findMatches', () => {
   });
 });
 
+describe('findMatches with Arabic diacritics', () => {
+  const slice = (text: string, match: { from: number; to: number }) =>
+    text.slice(match.from, match.to);
+
+  it('finds a plain query in vocalized text and reports offsets in the original', () => {
+    const text = 'قَدْ كَتَبَ الدرس';
+    const [match] = findMatches(text, 'كتب', false);
+    expect(slice(text, match)).toBe('كَتَبَ');
+    expect(match.from).toBe(text.indexOf('ك'));
+  });
+
+  it('finds a vocalized query in plain text', () => {
+    const text = 'قد كتب الدرس';
+    const [match] = findMatches(text, 'كَتَبَ', false);
+    expect(slice(text, match)).toBe('كتب');
+  });
+
+  it('finds every form of the same word', () => {
+    const text = 'كتب كَتَبَ كُتُب كـتـب';
+    expect(findMatches(text, 'كتب', false)).toHaveLength(4);
+  });
+
+  it('honors the case-sensitive flag for the Latin part of a mixed query', () => {
+    const text = 'Note كَتَبَ';
+    expect(findMatches(text, 'note كتب', false)).toHaveLength(1);
+    expect(findMatches(text, 'note كتب', true)).toHaveLength(0);
+  });
+
+  it('finds nothing for a query of marks alone', () => {
+    expect(findMatches('كَتَبَ', 'َ', false)).toEqual([]);
+  });
+
+  it('does not change Latin matching', () => {
+    expect(findMatches('żółć zolc', 'zolc', false)).toEqual([{ from: 5, to: 9 }]);
+  });
+});
+
 describe('excludeMatchesInSpans', () => {
   const m = (from: number, to: number) => ({ from, to });
 
