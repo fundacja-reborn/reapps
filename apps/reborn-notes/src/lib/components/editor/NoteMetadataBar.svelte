@@ -85,11 +85,11 @@
       class="text-2xl md:text-xl font-bold text-muted-foreground leading-snug"
     >{title || $t('notes.untitled')}</h1>
   {:else}
-    <!-- dir="auto": the title's direction follows what the user types
-         (an Arabic title right-to-left in any UI language). -->
+    <!-- No dir="auto" here: the global `unicode-bidi: plaintext` on text fields
+         already makes the title follow what the user types, and an empty title
+         then follows the UI instead of falling back to LTR. -->
     <textarea
       bind:this={textareaEl}
-      dir="auto"
       value={title}
       oninput={handleInput}
       placeholder={$t('notes.untitled')}

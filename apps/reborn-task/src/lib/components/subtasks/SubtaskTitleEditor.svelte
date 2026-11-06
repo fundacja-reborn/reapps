@@ -142,7 +142,6 @@
 
 {#if effectiveIsEditing}
 	<textarea
-		dir="auto"
 		bind:this={textarea}
 		bind:value={editValue}
 		onblur={handleBlur}
