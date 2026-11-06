@@ -9,6 +9,7 @@ import {
   getAnchorIso,
   buildPeriodicTitle,
   periodicCandidateMatcher,
+  usesIsoWeekYear,
   usesWeekNumber,
   weekRangeTitle,
   weekAnchorsContaining,
@@ -380,7 +381,8 @@ describe('periodicCandidateMatcher - presets without a leading ISO date', () => 
       new Date(2026, 10, 1, 23), // Sunday
       new Date(2026, 10, 7, 0, 5), // Saturday
       new Date(2026, 11, 31, 12), // year end
-      new Date(2027, 0, 1, 12) // year start
+      new Date(2027, 0, 1, 12), // year start
+      new Date(2024, 11, 31, 12) // Monday-week 2025-W01 starts in 2024
     ];
     const kinds: PeriodicKind[] = ['daily', 'weekly', 'monthly'];
     const weekStarts: WeekStartDay[] = [0, 1, 6];
@@ -414,5 +416,62 @@ describe('periodicCandidateMatcher - presets without a leading ISO date', () => 
         }
       }
     }
+  });
+});
+
+describe('the year next to a week number (ISO week-numbering year)', () => {
+  // Monday 2024-12-30 starts ISO week 2025-W01.
+  const MONDAY_2024_12_30 = new Date(2024, 11, 30);
+
+  it('a week-number title without a month or day takes the year of the week', () => {
+    expect(formatName(MONDAY_2024_12_30, 'YYYY-[W]ww', 'en')).toBe('2025-W01');
+    expect(formatName(MONDAY_2024_12_30, '[Week] ww, YYYY', 'en')).toBe('Week 01, 2025');
+    expect(formatName(MONDAY_2024_12_30, 'YY-[W]w', 'en')).toBe('25-W1');
+    // Friday 2027-01-01 is still in ISO week 2026-W53.
+    expect(formatName(new Date(2027, 0, 1), 'YYYY-[W]ww', 'en')).toBe('2026-W53');
+  });
+
+  it('a title that spells out the date keeps the calendar year', () => {
+    expect(formatName(MONDAY_2024_12_30, 'YYYY-MM-DD [W]ww', 'en')).toBe('2024-12-30 W01');
+    expect(formatName(MONDAY_2024_12_30, 'D MMMM YYYY', 'en')).toBe('30 December 2024');
+    expect(formatName(MONDAY_2024_12_30, 'YYYY', 'en')).toBe('2024');
+  });
+
+  it("yearOf 'calendar' gives the title older versions made", () => {
+    expect(formatName(MONDAY_2024_12_30, 'YYYY-[W]ww', 'en', 'calendar')).toBe('2024-W01');
+  });
+
+  it('the rest of the year both years agree', () => {
+    expect(formatName(MONDAY_2026_05_04, 'YYYY-[W]ww', 'en')).toBe('2026-W19');
+    expect(formatName(MONDAY_2026_05_04, 'YYYY-[W]ww', 'en', 'calendar')).toBe('2026-W19');
+  });
+
+  it('usesIsoWeekYear: a week number without a month or a day of the month', () => {
+    expect(usesIsoWeekYear('YYYY-[W]ww')).toBe(true);
+    expect(usesIsoWeekYear('[Week] ww, YYYY')).toBe(true);
+    expect(usesIsoWeekYear('dddd [W]w YYYY')).toBe(true);
+    expect(usesIsoWeekYear('YYYY-MM-DD [W]ww')).toBe(false);
+    expect(usesIsoWeekYear('MMMM YYYY')).toBe(false);
+    expect(usesIsoWeekYear('[Week ww] YYYY')).toBe(false); // the number is a literal
+  });
+
+  it('literals and stray brackets render as before', () => {
+    expect(formatName(MONDAY_2026_05_04, '[YYYY] YYYY', 'en')).toBe('YYYY 2026');
+    expect(formatName(MONDAY_2026_05_04, '[YYYY', 'en')).toBe('[2026');
+    expect(formatName(MONDAY_2026_05_04, 'Y dd', 'en')).toBe('Y dd');
+  });
+
+  it('the lookup finds the week under both years (notes made before this fix)', () => {
+    const isCandidate = periodicCandidateMatcher(
+      'weekly',
+      ['2024-12-30'],
+      PERIODIC_FORMAT_PRESETS.weekly,
+      SUPPORTED_LOCALES
+    );
+    expect(isCandidate('2025-W01')).toBe(true);
+    expect(isCandidate('2024-W01')).toBe(true);
+    expect(isCandidate('Week 01, 2025')).toBe(true);
+    expect(isCandidate('Week 01, 2024')).toBe(true);
+    expect(isCandidate('2025-W02')).toBe(false);
   });
 });

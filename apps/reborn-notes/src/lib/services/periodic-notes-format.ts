@@ -176,7 +176,15 @@ export function parseTitleAnchor(title: string, kind: PeriodicKind): string | nu
  * - `DD` zero-padded day, `D` non-padded day
  * - `dddd` full weekday, `ddd` abbreviated weekday
  * - `ww` zero-padded ISO week number, `w` non-padded ISO week number (of
- *   `date`; for a week not starting on Monday see `buildPeriodicTitle`)
+ *   `date`; for a week not starting on Monday see `periodicTitleAt`)
+ *
+ * The year of a week number: in a format that prints a week number but no
+ * month or day of the month (`YYYY-[W]ww`, `[Week] ww, YYYY`), `YYYY`/`YY`
+ * is the ISO week-numbering year - Monday 2024-12-30 is `2025-W01`, not
+ * `2024-W01` (the week of 2024-01-01). Next to a month or a day the date is
+ * spelled out, so the year stays the calendar year (`2024-12-30 W01`). See
+ * `usesIsoWeekYear`. Until 2026-11 the year was always the calendar one;
+ * `yearOf: 'calendar'` renders that older title.
  *
  * Square brackets `[literal]` emit their contents verbatim - escape any token
  * you want printed literally. Year tokens inside brackets are not interpreted.
@@ -185,102 +193,102 @@ export function parseTitleAnchor(title: string, kind: PeriodicKind): string | nu
  * by `getAnchorDate(kind, now)` rather than `now` itself, so the title reflects
  * the period (e.g. Monday-of-week) and not the click moment.
  */
-export function formatName(date: Date, format: string, locale: string): string {
-  const monthLong = new Intl.DateTimeFormat(intlLocale(locale), { month: 'long' }).format(date);
-  const monthShort = new Intl.DateTimeFormat(intlLocale(locale), { month: 'short' }).format(date);
-  const weekdayLong = new Intl.DateTimeFormat(intlLocale(locale), { weekday: 'long' }).format(date);
-  const weekdayShort = new Intl.DateTimeFormat(intlLocale(locale), { weekday: 'short' }).format(date);
+export function formatName(
+  date: Date,
+  format: string,
+  locale: string,
+  yearOf: 'auto' | 'calendar' = 'auto'
+): string {
+  const segments = tokenizeFormat(format);
+  const tokens = new Set(segments.flatMap((s) => (s.token ? [s.token] : [])));
+  const iso = getISOWeek(date);
+  const year = yearOf === 'auto' && isoWeekYearFor(tokens) ? iso.year : date.getFullYear();
+  const part = (options: Intl.DateTimeFormatOptions): string =>
+    new Intl.DateTimeFormat(intlLocale(locale), options).format(date);
 
-  const { week } = getISOWeek(date);
+  const render: Record<FormatToken, () => string> = {
+    YYYY: () => String(year),
+    YY: () => String(year % 100).padStart(2, '0'),
+    MMMM: () => part({ month: 'long' }),
+    MMM: () => part({ month: 'short' }),
+    MM: () => pad2(date.getMonth() + 1),
+    M: () => String(date.getMonth() + 1),
+    DD: () => pad2(date.getDate()),
+    D: () => String(date.getDate()),
+    dddd: () => part({ weekday: 'long' }),
+    ddd: () => part({ weekday: 'short' }),
+    ww: () => pad2(iso.week),
+    w: () => String(iso.week)
+  };
+  return segments.map((s) => (s.token ? render[s.token]() : s.text)).join('');
+}
 
-  // Walk the format string, copying literals through and replacing tokens.
-  let out = '';
+/** Format tokens, longest first within each letter (the order they are matched in). */
+const FORMAT_TOKENS = [
+  'YYYY',
+  'YY',
+  'MMMM',
+  'MMM',
+  'MM',
+  'M',
+  'DD',
+  'D',
+  'dddd',
+  'ddd',
+  'ww',
+  'w'
+] as const;
+
+type FormatToken = (typeof FORMAT_TOKENS)[number];
+
+/** A piece of a format string: a token to replace, or text to copy as is. */
+type FormatSegment = { token: FormatToken; text?: undefined } | { token?: undefined; text: string };
+
+/**
+ * Split a format into tokens and literal text. `[...]` is literal (brackets
+ * dropped); an unmatched `[` and any other character are copied as they are.
+ */
+function tokenizeFormat(format: string): FormatSegment[] {
+  const out: FormatSegment[] = [];
   let i = 0;
   while (i < format.length) {
-    const ch = format[i];
-
-    // Literal segment - copy until matching ']'.
-    if (ch === '[') {
+    if (format[i] === '[') {
       const end = format.indexOf(']', i + 1);
-      if (end === -1) {
-        // Unmatched '[' → emit raw character and continue.
-        out += ch;
-        i += 1;
+      if (end !== -1) {
+        out.push({ text: format.slice(i + 1, end) });
+        i = end + 1;
         continue;
       }
-      out += format.slice(i + 1, end);
-      i = end + 1;
-      continue;
     }
-
-    // Try multi-character tokens, longest first.
-    const rest = format.slice(i);
-    if (rest.startsWith('YYYY')) {
-      out += String(date.getFullYear());
-      i += 4;
-      continue;
-    }
-    if (rest.startsWith('YY')) {
-      out += String(date.getFullYear() % 100).padStart(2, '0');
-      i += 2;
-      continue;
-    }
-    if (rest.startsWith('MMMM')) {
-      out += monthLong;
-      i += 4;
-      continue;
-    }
-    if (rest.startsWith('MMM')) {
-      out += monthShort;
-      i += 3;
-      continue;
-    }
-    if (rest.startsWith('MM')) {
-      out += pad2(date.getMonth() + 1);
-      i += 2;
-      continue;
-    }
-    if (rest.startsWith('M')) {
-      out += String(date.getMonth() + 1);
+    const token = FORMAT_TOKENS.find((t) => format.startsWith(t, i));
+    if (token) {
+      out.push({ token });
+      i += token.length;
+    } else {
+      out.push({ text: format[i] });
       i += 1;
-      continue;
     }
-    if (rest.startsWith('DD')) {
-      out += pad2(date.getDate());
-      i += 2;
-      continue;
-    }
-    if (rest.startsWith('D')) {
-      out += String(date.getDate());
-      i += 1;
-      continue;
-    }
-    if (rest.startsWith('dddd')) {
-      out += weekdayLong;
-      i += 4;
-      continue;
-    }
-    if (rest.startsWith('ddd')) {
-      out += weekdayShort;
-      i += 3;
-      continue;
-    }
-    if (rest.startsWith('ww')) {
-      out += pad2(week);
-      i += 2;
-      continue;
-    }
-    if (rest.startsWith('w')) {
-      out += String(week);
-      i += 1;
-      continue;
-    }
-
-    out += ch;
-    i += 1;
   }
-
   return out;
+}
+
+/** The tokens a format uses. */
+function formatTokens(format: string): Set<FormatToken> {
+  return new Set(tokenizeFormat(format).flatMap((s) => (s.token ? [s.token] : [])));
+}
+
+/** A week number without a month or a day of the month next to it (see `formatName`). */
+function isoWeekYearFor(tokens: ReadonlySet<FormatToken>): boolean {
+  const has = (...t: FormatToken[]) => t.some((x) => tokens.has(x));
+  return has('ww', 'w') && !has('MMMM', 'MMM', 'MM', 'M', 'DD', 'D');
+}
+
+/**
+ * True when `format`'s year is the ISO week-numbering year (see `formatName`):
+ * it prints a week number and no month or day of the month.
+ */
+export function usesIsoWeekYear(format: string): boolean {
+  return isoWeekYearFor(formatTokens(format));
 }
 
 /**
@@ -325,7 +333,8 @@ export function formatRange(
 
 /** True when `format` prints a week number (`w` / `ww` outside `[literal]`). */
 export function usesWeekNumber(format: string): boolean {
-  return format.replace(/\[[^\]]*\]/g, '').includes('w');
+  const tokens = formatTokens(format);
+  return tokens.has('ww') || tokens.has('w');
 }
 
 /** En dash between the two dates of a range, as `Intl` ranges use. */
@@ -356,11 +365,12 @@ export function periodicTitleAt(
   kind: PeriodicKind,
   anchor: Date,
   format: string,
-  locale: string
+  locale: string,
+  yearOf: 'auto' | 'calendar' = 'auto'
 ): string {
   return kind === 'weekly' && anchor.getDay() !== 1 && usesWeekNumber(format)
     ? weekRangeTitle(anchor)
-    : formatName(anchor, format, locale);
+    : formatName(anchor, format, locale, yearOf);
 }
 
 /**
@@ -428,9 +438,13 @@ export function periodicCandidateMatcher(
     for (const format of new Set(formats)) {
       // Titles of these start with the anchor's date: the prefix test has them.
       if (format.startsWith(isoTokens)) continue;
+      // Around New Year a week-number title used to carry the calendar year
+      // (see `formatName`): find a note made before that, or on an older client.
+      const legacyYear = usesIsoWeekYear(format);
       for (const locale of locales) {
         try {
           titles.add(periodicTitleAt(kind, anchor, format, locale));
+          if (legacyYear) titles.add(periodicTitleAt(kind, anchor, format, locale, 'calendar'));
         } catch {
           // A malformed stored format cannot have produced a title either.
         }
