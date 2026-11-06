@@ -149,6 +149,7 @@
     "delete_note": "Delete Note",
     "save_note": "Save Note",
     "untitled": "Untitled",
+    "default_title": "Note {date}",
     "search_placeholder": "Search notes…",
     "no_notes": "No notes yet. Create your first note!",
     "no_notes_short": "No notes yet.",

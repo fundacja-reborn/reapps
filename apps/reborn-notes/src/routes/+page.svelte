@@ -61,9 +61,10 @@
   import { tagsStore } from '$lib/stores/tags.store';
   import { savedSearchesStore } from '$lib/stores/saved-searches.store';
   import type { SavedSearchDecrypted } from '@reborn/types';
-  import { getSettings } from '$lib/utils/app-settings';
+  import { defaultNoteTitle } from '$lib/utils/date-format';
   import {
     appSettings,
+    dateFormat,
     imageLoadMode,
     editorModeOverride,
     effectiveEditorMode,
@@ -941,10 +942,8 @@
    *  sees it) in `folderId` - or the store's current folder when omitted - then
    *  open it in the editor. */
   async function createEphemeralNote(folderId?: string) {
-    const date = new Date().toISOString().slice(0, 10);
-    const settings = await getSettings();
-    const prefix = settings?.language === 'pl' ? 'Notatka' : 'Note';
-    const id = await notesStore.create(`${prefix} ${date}`, '', folderId, { ephemeral: true });
+    const title = defaultNoteTitle($t, $dateFormat);
+    const id = await notesStore.create(title, '', folderId, { ephemeral: true });
     noteDetailService.setNewNote();
     activeNoteId.set(id);
   }

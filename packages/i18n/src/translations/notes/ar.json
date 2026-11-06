@@ -149,6 +149,7 @@
     "delete_note": "حذف الملاحظة",
     "save_note": "حفظ الملاحظة",
     "untitled": "بلا عنوان",
+    "default_title": "ملاحظة {date}",
     "search_placeholder": "البحث في الملاحظات…",
     "no_notes": "لا توجد ملاحظات بعد. أنشئ ملاحظتك الأولى!",
     "no_notes_short": "لا توجد ملاحظات بعد.",

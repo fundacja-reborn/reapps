@@ -36,6 +36,22 @@ export function formatNoteDate(
 }
 
 /**
+ * The title a new note starts with: the localized word for "note" plus today's
+ * date in the user's date format, e.g. "Note 2026-11-06" or "Notatka 06.11.2026".
+ *
+ * The date is the local calendar day. `toISOString()` would give the UTC day,
+ * which is yesterday for a note created just after midnight in Warsaw.
+ */
+export function defaultNoteTitle(
+  translate: (key: string, options: { values: { date: string } }) => string,
+  dateFormatSetting: string,
+  now: Date = new Date()
+): string {
+  const date = formatDateWithSetting(now, dateFormatSetting);
+  return translate('notes.default_title', { values: { date } });
+}
+
+/**
  * Format a "last synced" timestamp for the compact sidebar footer.
  * Same calendar day -> time only; an earlier day -> date + time. Honors both
  * the time-format and date-format settings (issue #376).
