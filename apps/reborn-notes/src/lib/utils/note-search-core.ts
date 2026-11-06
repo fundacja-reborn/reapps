@@ -8,6 +8,7 @@
  * client-side over already-decrypted, in-memory content; nothing is sent to or
  * logged on the server.
  */
+import { searchPattern } from '@reborn/utils';
 
 export interface SearchMatch {
   /** Start offset (inclusive) into the searched text. */
@@ -23,14 +24,10 @@ export interface SearchMatch {
  */
 export const NOTE_SEARCH_MATCH_CAP = 2000;
 
-/** Escape a user string so it is matched literally inside a RegExp. */
-function escapeRegExp(input: string): string {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 /**
  * Find non-overlapping matches of `query` in `text`, case-insensitive unless
- * `caseSensitive` is set.
+ * `caseSensitive` is set. Arabic marks are ignored on both sides, see
+ * {@link searchPattern}.
  *
  * Matches against the ORIGINAL text via a RegExp rather than lower-casing both
  * sides: `String.prototype.toLowerCase()` can change length under Unicode case
@@ -40,10 +37,11 @@ function escapeRegExp(input: string): string {
  * {@link NOTE_SEARCH_MATCH_CAP} matches.
  */
 export function findMatches(text: string, query: string, caseSensitive: boolean): SearchMatch[] {
-  if (!query) return [];
+  const pattern = searchPattern(query);
+  if (!pattern) return [];
   let re: RegExp;
   try {
-    re = new RegExp(escapeRegExp(query), caseSensitive ? 'g' : 'gi');
+    re = new RegExp(pattern, caseSensitive ? 'g' : 'gi');
   } catch {
     return [];
   }
