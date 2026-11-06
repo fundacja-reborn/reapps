@@ -936,7 +936,7 @@
       "recovery_codes": "رموز الاسترداد",
       "recovery_codes_desc": "رموز لاسترداد الحساب تُستخدم مرة واحدة",
       "active_sessions": "الجلسات النشطة",
-      "active_sessions_desc": "إدارة الأجهزة المتصلة",
+      "active_sessions_desc": "إدارة الأجهزة التي سجّلت الدخول",
       "delete_account": "حذف الحساب",
       "delete_account_desc": "حذف الحساب وجميع البيانات نهائيًا"
     },
