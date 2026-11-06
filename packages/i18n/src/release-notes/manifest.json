@@ -1,5 +1,71 @@
 [
   {
+    "version": "0.46.0",
+    "date": "2026-11-06",
+    "items": [
+      {
+        "id": "0.46.0-arabic-beta",
+        "category": "new",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.46.0-rtl-content",
+        "category": "new",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.46.0-first-day-of-week",
+        "category": "new",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.46.0-periodic-duplicates",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.46.0-week-year",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.46.0-dates-app-language",
+        "category": "fixed",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.46.0-delete-list-name",
+        "category": "fixed",
+        "apps": [
+          "task"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.45.4",
     "date": "2026-11-01",
     "items": [
