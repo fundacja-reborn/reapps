@@ -149,6 +149,7 @@
     "delete_note": "Notiz löschen",
     "save_note": "Notiz speichern",
     "untitled": "Ohne Titel",
+    "default_title": "Notiz {date}",
     "search_placeholder": "Notizen durchsuchen…",
     "no_notes": "Noch keine Notizen. Erstellen Sie Ihre erste Notiz!",
     "no_notes_short": "Noch keine Notizen.",
