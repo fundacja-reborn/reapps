@@ -69,6 +69,12 @@ describe('findMatches with Arabic diacritics', () => {
     expect(findMatches(text, 'كتب', false)).toHaveLength(4);
   });
 
+  it('finds every form of alef and reports offsets in the original', () => {
+    const text = 'أحمد إحمد آحمد احمد';
+    const matches = findMatches(text, 'احمد', false);
+    expect(matches.map((match) => slice(text, match))).toEqual(['أحمد', 'إحمد', 'آحمد', 'احمد']);
+  });
+
   it('honors the case-sensitive flag for the Latin part of a mixed query', () => {
     const text = 'Note كَتَبَ';
     expect(findMatches(text, 'note كتب', false)).toHaveLength(1);
