@@ -158,6 +158,17 @@ describe('evaluate - Arabic diacritics', () => {
     expect(evaluate(parseQuery('كتف'), makeEntity({ title: 'كَتَبَ' }), makeCtx())).toBe(false);
   });
 
+  it('treats the forms of alef as one letter, in both directions', () => {
+    expect(evaluate(parseQuery('احمد'), makeEntity({ title: 'أحمد' }), makeCtx())).toBe(true);
+    expect(evaluate(parseQuery('أحمد'), makeEntity({ title: 'احمد' }), makeCtx())).toBe(true);
+    expect(evaluate(parseQuery('إسلام'), makeEntity({ body: 'الإسلام' }), makeCtx())).toBe(true);
+  });
+
+  it('keeps letters that only look alike apart', () => {
+    expect(evaluate(parseQuery('علي'), makeEntity({ title: 'على' }), makeCtx())).toBe(false);
+    expect(evaluate(parseQuery('مدرسه'), makeEntity({ title: 'مدرسة' }), makeCtx())).toBe(false);
+  });
+
   it('applies to excludes', () => {
     const entity = makeEntity({ title: 'كَتَبَ' });
     expect(evaluate(parseQuery('-كتب'), entity, makeCtx())).toBe(false);

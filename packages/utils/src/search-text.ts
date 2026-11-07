@@ -6,6 +6,10 @@
  * Search therefore ignores the Arabic marks that sit on top of a letter, and
  * the tatweel that only stretches a word. Base letters still have to match.
  *
+ * The forms of alef count as one letter, because Arabic readers expect a search
+ * for any of them to find the others. Other letters that look alike stay apart:
+ * ي and ى, or ه and ة, are different letters with different sounds and meanings.
+ *
  * Only these marks are ignored. Latin diacritics stay significant, because in
  * Polish or Spanish a letter with a diacritic is a different letter.
  */
@@ -33,6 +37,13 @@ const ARABIC_MARK_CLASS = ARABIC_MARK_RANGES.map(
 const ARABIC_MARKS = new RegExp(`[${ARABIC_MARK_CLASS}]`, 'g');
 const ARABIC_LETTER = /\p{Script=Arabic}/u;
 
+/** Alef, alef with madda, hamza above, hamza below, and wasla. */
+const ALEF_FORMS = [0x0627, 0x0622, 0x0623, 0x0625, 0x0671]
+  .map((codePoint) => String.fromCodePoint(codePoint))
+  .join('');
+const ALEF_FORM = new RegExp(`[${ALEF_FORMS}]`, 'g');
+const PLAIN_ALEF = ALEF_FORMS[0];
+
 function stripArabicMarks(text: string): string {
   return text.replace(ARABIC_MARKS, '');
 }
@@ -42,18 +53,20 @@ function escapeRegExp(input: string): string {
 }
 
 /**
- * Normalize text for a substring search: lower case, no Arabic marks. Apply it
- * to both sides of the comparison. For matching that has to report positions in
- * the original text, use {@link searchPattern}: this function changes the length.
+ * Normalize text for a substring search: lower case, no Arabic marks, one form
+ * of alef. Apply it to both sides of the comparison. For matching that has to
+ * report positions in the original text, use {@link searchPattern}: this
+ * function changes the length.
  */
 export function foldSearchText(text: string): string {
-  return stripArabicMarks(text.toLowerCase());
+  return stripArabicMarks(text.toLowerCase()).replace(ALEF_FORM, PLAIN_ALEF);
 }
 
 /**
  * RegExp source that finds `query` literally in unmodified text, ignoring
- * Arabic marks on both sides. Matching the original text keeps the reported
- * offsets exact, and a match covers the marks of its last letter too.
+ * Arabic marks on both sides and the differences between forms of alef.
+ * Matching the original text keeps the reported offsets exact, and a match
+ * covers the marks of its last letter too.
  *
  * A query without Arabic letters gives a plain escaped literal. A query made of
  * marks alone has nothing left to look for and gives an empty string, which
@@ -62,7 +75,7 @@ export function foldSearchText(text: string): string {
 export function searchPattern(query: string): string {
   let pattern = '';
   for (const char of stripArabicMarks(query)) {
-    pattern += escapeRegExp(char);
+    pattern += ALEF_FORMS.includes(char) ? `[${ALEF_FORMS}]` : escapeRegExp(char);
     if (ARABIC_LETTER.test(char)) pattern += `[${ARABIC_MARK_CLASS}]*`;
   }
   return pattern;
