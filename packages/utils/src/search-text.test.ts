@@ -16,9 +16,19 @@ describe('foldSearchText', () => {
     expect(foldSearchText(`كتاب${String.fromCodePoint(0x06d6)}`)).toBe('كتاب');
   });
 
-  it('keeps the base letters, including hamza forms', () => {
-    expect(foldSearchText('أحمد')).toBe('أحمد');
-    expect(foldSearchText('ة ى')).toBe('ة ى');
+  it('folds the forms of alef into plain alef', () => {
+    expect(foldSearchText('أحمد')).toBe('احمد');
+    expect(foldSearchText('إسلام')).toBe('اسلام');
+    expect(foldSearchText('آمن')).toBe('امن');
+    expect(foldSearchText('ٱلله')).toBe('الله');
+  });
+
+  it('folds alef with a combining hamza like the precomposed letter', () => {
+    expect(foldSearchText(`ا${String.fromCodePoint(0x0654)}حمد`)).toBe('احمد');
+  });
+
+  it('keeps letters that only look alike', () => {
+    expect(foldSearchText('ي ى ه ة ئ ؤ ء')).toBe('ي ى ه ة ئ ؤ ء');
   });
 
   it('keeps Arabic digits and punctuation', () => {
@@ -48,6 +58,25 @@ describe('searchPattern', () => {
 
   it('does not match different base letters', () => {
     expect(new RegExp(searchPattern('كتب')).test('كتف')).toBe(false);
+  });
+
+  it('lets every form of alef find every other form', () => {
+    const forms = ['ا', 'أ', 'إ', 'آ', 'ٱ'];
+    for (const query of forms) {
+      for (const text of forms) {
+        expect(new RegExp(searchPattern(`${query}حمد`)).test(`${text}حمد`)).toBe(true);
+      }
+    }
+  });
+
+  it('matches a form of alef with its marks and keeps the original text', () => {
+    expect(new RegExp(searchPattern('اسلام')).exec('دين إِسلام')?.[0]).toBe('إِسلام');
+  });
+
+  it('keeps letters that only look alike apart', () => {
+    expect(new RegExp(searchPattern('علي')).test('على')).toBe(false);
+    expect(new RegExp(searchPattern('مدرسه')).test('مدرسة')).toBe(false);
+    expect(new RegExp(searchPattern('سائل')).test('سايل')).toBe(false);
   });
 
   it('keeps literal characters between Arabic words', () => {
