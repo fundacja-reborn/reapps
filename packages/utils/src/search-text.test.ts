@@ -12,6 +12,11 @@ describe('foldSearchText', () => {
     expect(foldSearchText('كـــتـــاب')).toBe('كتاب');
   });
 
+  it('removes direction marks', () => {
+    expect(foldSearchText(`${String.fromCodePoint(0x200f)}re/notes`)).toBe('re/notes');
+    expect(foldSearchText(`${String.fromCodePoint(0x200e)}كتاب`)).toBe('كتاب');
+  });
+
   it('removes Quranic annotation signs', () => {
     expect(foldSearchText(`كتاب${String.fromCodePoint(0x06d6)}`)).toBe('كتاب');
   });

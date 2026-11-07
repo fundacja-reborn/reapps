@@ -13,6 +13,7 @@
   import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
   import { noteSearchExtension } from '$lib/editor/note-search';
   import { bidiLines } from '$lib/editor/bidi';
+  import { directionMarkAtomicRanges, toggleLineDirection } from '$lib/editor/direction-mark';
   import { listIndent, listOutdent } from '$lib/editor/list-keymap';
   import {
     BULLET_ANCHOR,
@@ -34,6 +35,7 @@
   import { simplifySelfNoteLinks, buildHeadingLink } from '$lib/services/note-link-utils';
   import { toastStore } from '@reborn/ui';
   import {
+    ArrowLeftRight,
     Bold,
     Italic,
     Strikethrough,
@@ -53,6 +55,7 @@
   import * as Dialog from '@reborn/ui/components/dialog';
   import { undo, redo } from '@codemirror/commands';
   import { t } from '$lib/stores/i18n.store';
+  import { containsRtlText, textDirection } from '@reborn/i18n';
 
   let {
     content = '',
@@ -124,6 +127,10 @@
   let editorContainer: HTMLDivElement;
   /** Split-view formatting toolbar element - measured to align the preview header. */
   let toolbarEl = $state<HTMLDivElement | null>(null);
+
+  // Only people who write right to left need the direction button, so it stays
+  // out of the toolbar for everyone else.
+  const showDirectionToggle = $derived($textDirection === 'rtl' || containsRtlText(content));
   let view: EditorView | undefined;
   let isExternalUpdate = false;
   const themeCompartment = new Compartment();
@@ -233,6 +240,17 @@
       changes: { from: sel.from, to: sel.to, insert },
       selection: { anchor: sel.from + anchor, head: sel.from + head }
     });
+    view.focus();
+    return true;
+  }
+
+  function toggleTextDirection(): boolean {
+    if (!view) return false;
+    // Inside a table cell the caret is not in the CM6 doc, and a mark would land
+    // on the table's source. Cells keep their automatic direction.
+    if (focusedTableCell()) return false;
+    const spec = toggleLineDirection(view.state, $textDirection);
+    if (spec) view.dispatch(spec);
     view.focus();
     return true;
   }
@@ -513,6 +531,7 @@
         // Per-line direction from the content (`dir="auto"`), independent of
         // the UI locale: Arabic/Hebrew lines render RTL in any UI language.
         bidiLines(),
+        directionMarkAtomicRanges,
         // Keep every scroll-into-view (heading-anchor clicks, outline jumps, the
         // caret while typing near the top) clear of the sticky formatting toolbar
         // that overlays the scroll container in the mobile + single-pane layouts.
@@ -969,6 +988,22 @@
       >
         <ImageIcon class="h-4 w-4" />
       </button>
+
+      {#if showDirectionToggle}
+        <div class="mx-1 h-5 w-px bg-border" role="separator"></div>
+
+        <!-- Text direction of the selected lines -->
+        <button
+          type="button"
+          use:keepEditorFocus
+          onclick={toggleTextDirection}
+          title={$t('editor.formatting.text_direction')}
+          class="toolbar-btn"
+          aria-label={$t('editor.formatting.text_direction')}
+        >
+          <ArrowLeftRight class="h-4 w-4" />
+        </button>
+      {/if}
     {/snippet}
 
     {#if isMobile}

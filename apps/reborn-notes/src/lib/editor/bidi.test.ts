@@ -5,6 +5,14 @@ import { lineDirection } from './bidi';
 const doc = (...lines: string[]) => Text.of(lines);
 
 describe('lineDirection', () => {
+  it('leaves a line with only a direction mark to the browser', () => {
+    expect(lineDirection(doc(String.fromCodePoint(0x200f)), 1, 'ltr')).toBe('auto');
+  });
+
+  it('takes the direction of an empty line from a direction mark above', () => {
+    expect(lineDirection(doc(`${String.fromCodePoint(0x200f)}hello`, ''), 2, 'ltr')).toBe('rtl');
+  });
+
   it('leaves a line with text to dir="auto"', () => {
     expect(lineDirection(doc('hello'), 1, 'rtl')).toBe('auto');
     expect(lineDirection(doc('مرحبا'), 1, 'ltr')).toBe('auto');

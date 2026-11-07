@@ -64,16 +64,28 @@ const RTL_SCRIPT_LETTER =
   /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}\p{Script=Samaritan}\p{Script=Mandaic}\p{Script=Adlam}\p{Script=Hanifi_Rohingya}\p{Script=Yezidi}]/u;
 const LETTER = /\p{L}/u;
 
+/** Invisible direction marks, which count as strong characters like letters do. */
+const RIGHT_TO_LEFT_MARK = String.fromCodePoint(0x200f);
+const ARABIC_LETTER_MARK = String.fromCodePoint(0x061c);
+const LEFT_TO_RIGHT_MARK = String.fromCodePoint(0x200e);
+
 /**
- * Direction of a text from its first letter, like the browser's `dir="auto"`
- * (first strong character): `'rtl'` for Arabic, Hebrew, ... `'ltr'` for any
- * other script, `null` when there is no letter at all (digits, punctuation,
+ * Direction of a text from its first strong character, like the browser's
+ * `dir="auto"`: `'rtl'` for Arabic, Hebrew, ... `'ltr'` for any other script,
+ * `null` when there is no letter or direction mark at all (digits, punctuation,
  * empty). For content that is not rendered in a live `dir="auto"` element -
  * e.g. the base direction of an exported PDF.
  */
 export function detectTextDirection(text: string): TextDirection | null {
   for (const ch of text) {
+    if (ch === RIGHT_TO_LEFT_MARK || ch === ARABIC_LETTER_MARK) return 'rtl';
+    if (ch === LEFT_TO_RIGHT_MARK) return 'ltr';
     if (LETTER.test(ch)) return RTL_SCRIPT_LETTER.test(ch) ? 'rtl' : 'ltr';
   }
   return null;
+}
+
+/** Whether a text has a letter of a right-to-left script anywhere in it. */
+export function containsRtlText(text: string): boolean {
+  return RTL_SCRIPT_LETTER.test(text);
 }
