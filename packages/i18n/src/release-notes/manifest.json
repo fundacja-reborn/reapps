@@ -1,5 +1,28 @@
 [
   {
+    "version": "0.47.0",
+    "date": "2026-11-07",
+    "items": [
+      {
+        "id": "0.47.0-text-direction",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.47.0-arabic-alef",
+        "category": "improved",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.46.1",
     "date": "2026-11-07",
     "items": [
