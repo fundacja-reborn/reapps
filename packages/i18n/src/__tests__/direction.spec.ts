@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
-import { detectTextDirection, getTextDirection, inlineSide, isTextDirection } from '../direction';
+import { containsRtlText, detectTextDirection, getTextDirection, inlineSide, isTextDirection } from '../direction';
 import {
   applyDocumentLocale,
   readDirectionOverride,
@@ -43,6 +43,24 @@ describe('getTextDirection', () => {
     expect(detectTextDirection('日本語')).toBe('ltr');
     expect(detectTextDirection('2026-11-04, 15:47 - ...')).toBeNull();
     expect(detectTextDirection('')).toBeNull();
+  });
+
+  it('detectTextDirection counts direction marks as strong characters', () => {
+    const rlm = String.fromCodePoint(0x200f);
+    const lrm = String.fromCodePoint(0x200e);
+    const alm = String.fromCodePoint(0x061c);
+    expect(detectTextDirection(`${rlm}re/notes`)).toBe('rtl');
+    expect(detectTextDirection(`# ${rlm}re/notes`)).toBe('rtl');
+    expect(detectTextDirection(`${alm}re/notes`)).toBe('rtl');
+    expect(detectTextDirection(`${lrm}مرحبا`)).toBe('ltr');
+    expect(detectTextDirection(`- ${rlm}`)).toBe('rtl');
+  });
+
+  it('containsRtlText finds a right-to-left letter anywhere', () => {
+    expect(containsRtlText('re/notes هو تطبيق')).toBe(true);
+    expect(containsRtlText('שלום')).toBe(true);
+    expect(containsRtlText('Zażółć 123')).toBe(false);
+    expect(containsRtlText('')).toBe(false);
   });
 
   it('isTextDirection accepts exactly ltr/rtl', () => {

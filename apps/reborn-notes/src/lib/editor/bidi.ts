@@ -16,6 +16,8 @@
  * such a line carries an explicit direction instead: the one of the nearest
  * line above that has text, or the UI direction at the top of a note.
  *
+ * The user can override a line's direction: see `direction-mark.ts`.
+ *
  * Live Preview's list / quote geometry uses logical properties
  * (`padding-inline-start`, ...) so it mirrors on RTL lines (theme.ts).
  */
@@ -37,6 +39,20 @@ import { detectTextDirection, textDirection, type TextDirection } from '@reborn/
  */
 const MAX_LOOKBACK_LINES = 100;
 
+/** The direction of the nearest line above with text, or the UI direction. */
+export function directionAbove(
+  doc: Text,
+  lineNumber: number,
+  uiDirection: TextDirection
+): TextDirection {
+  const lastLine = Math.max(1, lineNumber - MAX_LOOKBACK_LINES);
+  for (let n = lineNumber - 1; n >= lastLine; n--) {
+    const direction = detectTextDirection(doc.line(n).text);
+    if (direction) return direction;
+  }
+  return uiDirection;
+}
+
 /** The `dir` of a line: `auto` when it has text, else the direction around it. */
 export function lineDirection(
   doc: Text,
@@ -44,12 +60,7 @@ export function lineDirection(
   uiDirection: TextDirection
 ): TextDirection | 'auto' {
   if (detectTextDirection(doc.line(lineNumber).text)) return 'auto';
-  const lastLine = Math.max(1, lineNumber - MAX_LOOKBACK_LINES);
-  for (let n = lineNumber - 1; n >= lastLine; n--) {
-    const direction = detectTextDirection(doc.line(n).text);
-    if (direction) return direction;
-  }
-  return uiDirection;
+  return directionAbove(doc, lineNumber, uiDirection);
 }
 
 const lineDecorations = {

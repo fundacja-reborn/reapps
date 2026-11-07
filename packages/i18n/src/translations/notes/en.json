@@ -472,6 +472,7 @@
       "bullet_list": "Bullet List",
       "numbered_list": "Numbered List",
       "task_list": "Task List",
+      "text_direction": "Switch text direction",
       "quote": "Quote",
       "code_block": "Code Block",
       "horizontal_rule": "Horizontal Rule",

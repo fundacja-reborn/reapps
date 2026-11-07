@@ -52,6 +52,7 @@ export {
 export {
   getTextDirection,
   detectTextDirection,
+  containsRtlText,
   isTextDirection,
   inlineSide,
   RTL_LANGUAGES,

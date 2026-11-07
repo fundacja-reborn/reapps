@@ -472,6 +472,7 @@
       "bullet_list": "Lista punktowana",
       "numbered_list": "Lista numerowana",
       "task_list": "Lista zadań",
+      "text_direction": "Zmień kierunek tekstu",
       "quote": "Cytat",
       "code_block": "Blok kodu",
       "horizontal_rule": "Linia pozioma",

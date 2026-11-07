@@ -21,7 +21,8 @@ const ARABIC_MARK_RANGES: ReadonlyArray<readonly [number, number]> = [
   [0x06e7, 0x06e8],
   [0x06ea, 0x06ed],
   [0x08d3, 0x08e1], // Arabic Extended-A marks
-  [0x08e3, 0x08ff]
+  [0x08e3, 0x08ff],
+  [0x200e, 0x200f] // direction marks, which the note editor keeps at the start of a line
 ];
 
 /** The inside of a RegExp character class covering {@link ARABIC_MARK_RANGES}. */
