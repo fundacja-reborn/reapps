@@ -127,6 +127,7 @@
     "notes:notes.undecryptable_hint": { "en": "e2ef9051eea7", "ar": "08a2351b6528" },
     "notes:notes.delete_note": { "en": "d47d387bab76", "ar": "a69165472468" },
     "notes:notes.untitled": { "en": "6547a4c0c368", "ar": "c2b5b73d2fc7" },
+    "notes:notes.default_title": { "en": "5e4af51913ef", "ar": "deedc65bc155" },
     "notes:notes.search_placeholder": { "en": "1f9cac240f7b", "ar": "6a1d339fe53a" },
     "notes:notes.no_notes_short": { "en": "e3552cc15ddf", "ar": "b92f0a533c05" },
     "notes:notes.create_one": { "en": "a24b12b4ba58", "ar": "34458f547428" },
