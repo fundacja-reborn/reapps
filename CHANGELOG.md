@@ -1,3 +1,14 @@
+## 0.46.1 (2026-11-07)
+
+### 🩹 Fixes
+
+- **i18n:** apply the translator's follow-up on Arabic security strings ([#500](https://github.com/fundacja-reborn/reapps/pull/500), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **i18n:** apply the translator's review of Arabic batch 3 ([#501](https://github.com/fundacja-reborn/reapps/pull/501), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **notes:** localize the default note title and its date format ([#502](https://github.com/fundacja-reborn/reapps/pull/502), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **notes:** keep the caret in place on empty lines in RTL notes ([#503](https://github.com/fundacja-reborn/reapps/pull/503), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **search:** ignore Arabic diacritics when searching ([#504](https://github.com/fundacja-reborn/reapps/pull/504), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **ui:** start empty title fields in the UI direction ([#505](https://github.com/fundacja-reborn/reapps/pull/505), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+
 ## 0.46.0 (2026-11-06)
 
 ### 🚀 Features
