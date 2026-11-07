@@ -1,3 +1,13 @@
+## 0.47.0 (2026-11-07)
+
+### 🚀 Features
+
+- **notes:** add a text direction button to the editor toolbar ([#509](https://github.com/fundacja-reborn/reapps/pull/509), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+
+### 🩹 Fixes
+
+- **search:** treat the forms of alef as one letter ([#508](https://github.com/fundacja-reborn/reapps/pull/508), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+
 ## 0.46.1 (2026-11-07)
 
 ### 🩹 Fixes
