@@ -1,5 +1,46 @@
 [
   {
+    "version": "0.46.1",
+    "date": "2026-11-07",
+    "items": [
+      {
+        "id": "0.46.1-arabic-search",
+        "category": "improved",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.46.1-arabic-review",
+        "category": "improved",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.46.1-rtl-caret",
+        "category": "fixed",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.46.1-default-title",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.46.0",
     "date": "2026-11-06",
     "items": [
