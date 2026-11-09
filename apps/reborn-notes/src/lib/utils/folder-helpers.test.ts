@@ -165,6 +165,13 @@ describe('existing helpers still work', () => {
     expect(flattenFolderTree(tree)).toHaveLength(9);
   });
 
+  it('flattenFolderTree carries appearance keys only when set', () => {
+    const colored = { ...makeFolder('c', 'Colored'), color: 'blue', icon: 'leaf' };
+    const flat = flattenFolderTree([colored, makeFolder('p', 'Plain')]);
+    expect(flat[0]).toEqual({ id: 'c', name: 'Colored', color: 'blue', icon: 'leaf' });
+    expect(flat[1]).toEqual({ id: 'p', name: 'Plain' });
+  });
+
   it('flattenFoldersWithDepth preserves depth', () => {
     const flat = flattenFoldersWithDepth(tree);
     const guide = flat.find((f) => f.id === 'guide');

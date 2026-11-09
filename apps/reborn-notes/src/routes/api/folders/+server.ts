@@ -35,6 +35,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
       id: f.id,
       parent_id: f.parent_id,
       name_encrypted: f.name_encrypted,
+      metadata_encrypted: f.metadata_encrypted,
       order_index: f.order_index,
       created_at: f.created_at.toISOString(),
       updated_at: f.updated_at.toISOString(),
@@ -50,7 +51,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 
 /**
  * POST /api/folders — create a new folder.
- * Body: { id, name_encrypted, parent_id? }
+ * Body: { id, name_encrypted, metadata_encrypted?, parent_id?, order_index? }
  */
 export const POST: RequestHandler = async ({ request }) => {
   try {
@@ -65,7 +66,7 @@ export const POST: RequestHandler = async ({ request }) => {
         { status: 400 }
       );
     }
-    const { id, name_encrypted, parent_id, order_index } = validation.data;
+    const { id, name_encrypted, metadata_encrypted, parent_id, order_index } = validation.data;
 
     if (parent_id) {
       const parent = await prisma.folder.findFirst({ where: { id: parent_id, user_id: userId } });
@@ -101,12 +102,17 @@ export const POST: RequestHandler = async ({ request }) => {
         id,
         user_id: userId,
         name_encrypted,
+        metadata_encrypted: metadata_encrypted ?? null,
         parent_id: parent_id ?? null,
         order_index: order_index ?? 0,
         sync_version: 1
       },
       update: {
         name_encrypted,
+        // Absent = keep the stored bundle: a client build that predates folder
+        // appearance re-pushes folders without the field and must not wipe the
+        // color/icon another device set.
+        ...(metadata_encrypted !== undefined ? { metadata_encrypted } : {}),
         parent_id: parent_id ?? null,
         order_index: order_index ?? 0,
         sync_version: { increment: 1 }

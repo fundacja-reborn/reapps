@@ -406,6 +406,43 @@
       "created": "Carpeta creada con éxito",
       "updated": "Carpeta actualizada con éxito",
       "deleted": "Carpeta eliminada con éxito"
+    },
+    "appearance": {
+      "action": "Color e icono…",
+      "title": "Color e icono",
+      "description": "Su elección se guarda al instante y, como el nombre de la carpeta, se cifra en su dispositivo.",
+      "color": "Color",
+      "icon": "Icono",
+      "no_color": "Sin color",
+      "default_icon": "Carpeta (predeterminado)",
+      "done": "Listo",
+      "save_failed": "No se pudieron guardar el color y el icono de la carpeta. Inténtelo de nuevo.",
+      "icons": {
+        "briefcase": "Maletín",
+        "house": "Casa",
+        "user": "Persona",
+        "users": "Personas",
+        "heart": "Corazón",
+        "star": "Estrella",
+        "book-open": "Libro",
+        "graduation-cap": "Birrete",
+        "lightbulb": "Bombilla",
+        "code": "Código",
+        "wrench": "Llave inglesa",
+        "calendar": "Calendario",
+        "square-check": "Casilla marcada",
+        "archive": "Caja de archivo",
+        "bookmark": "Marcador",
+        "music": "Música",
+        "camera": "Cámara",
+        "plane": "Avión",
+        "shopping-cart": "Carrito de compra",
+        "utensils": "Cubiertos",
+        "dumbbell": "Mancuerna",
+        "wallet": "Cartera",
+        "lock": "Candado",
+        "leaf": "Hoja"
+      }
     }
   },
   "tags": {
@@ -1523,5 +1560,15 @@
       "view": "Vuelve a iniciar sesión para ver tus compartidos activos.",
       "create": "Vuelve a iniciar sesión para crear un compartido."
     }
+  },
+  "colors": {
+    "red": "Rojo",
+    "orange": "Naranja",
+    "yellow": "Amarillo",
+    "green": "Verde",
+    "blue": "Azul",
+    "violet": "Violeta",
+    "pink": "Rosa",
+    "gray": "Gris"
   }
 }

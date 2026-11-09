@@ -406,6 +406,43 @@
       "created": "Dossier créé avec succès",
       "updated": "Dossier mis à jour avec succès",
       "deleted": "Dossier supprimé avec succès"
+    },
+    "appearance": {
+      "action": "Couleur et icône…",
+      "title": "Couleur et icône",
+      "description": "Votre choix est enregistré immédiatement et, comme le nom du dossier, chiffré sur votre appareil.",
+      "color": "Couleur",
+      "icon": "Icône",
+      "no_color": "Aucune couleur",
+      "default_icon": "Dossier (par défaut)",
+      "done": "Terminé",
+      "save_failed": "Impossible d'enregistrer la couleur et l'icône du dossier. Réessayez.",
+      "icons": {
+        "briefcase": "Porte-documents",
+        "house": "Maison",
+        "user": "Personne",
+        "users": "Personnes",
+        "heart": "Cœur",
+        "star": "Étoile",
+        "book-open": "Livre",
+        "graduation-cap": "Toque de diplômé",
+        "lightbulb": "Ampoule",
+        "code": "Code",
+        "wrench": "Clé",
+        "calendar": "Calendrier",
+        "square-check": "Case cochée",
+        "archive": "Boîte d'archives",
+        "bookmark": "Marque-page",
+        "music": "Musique",
+        "camera": "Appareil photo",
+        "plane": "Avion",
+        "shopping-cart": "Chariot",
+        "utensils": "Couverts",
+        "dumbbell": "Haltère",
+        "wallet": "Portefeuille",
+        "lock": "Cadenas",
+        "leaf": "Feuille"
+      }
     }
   },
   "tags": {
@@ -1523,5 +1560,15 @@
       "view": "Reconnectez-vous pour voir vos partages actifs.",
       "create": "Reconnectez-vous pour créer un partage."
     }
+  },
+  "colors": {
+    "red": "Rouge",
+    "orange": "Orange",
+    "yellow": "Jaune",
+    "green": "Vert",
+    "blue": "Bleu",
+    "violet": "Violet",
+    "pink": "Rose",
+    "gray": "Gris"
   }
 }

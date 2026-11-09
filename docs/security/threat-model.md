@@ -66,6 +66,7 @@ A list of everything that can be a target of attack - ordered from the most to t
 | Plaintext titles / contents of notes/tasks | Only on the client side after decryption | Exposure of specific content |
 | Sensitive metadata (is_completed, due_date, is_starred, tag_ids, position_in_list) | `metadata_encrypted` per resource | Exposure of usage behaviors and patterns |
 | Folder/list/tag names | `name_encrypted` per entity | Exposure of the user's mental taxonomy |
+| Folder appearance (color, icon) | `metadata_encrypted` per folder, padded to a fixed length | Hints at what a folder is for (e.g. a wallet or house icon); the fixed-length ciphertext reveals only whether a folder has an appearance set |
 
 ### 2.3 Tier 3: Sensitive (loss = exposure of sharing intent or a correlation surface)
 

@@ -21,6 +21,11 @@ import type {
   TagEncrypted
 } from '@reborn/types';
 import { remapNoteLinks } from './note-link-utils';
+import {
+  decodeFolderMetadata,
+  encodeFolderMetadata,
+  readFolderAppearance
+} from './folder-metadata';
 
 /** Minimal crypto surface needed by the transforms (a subset of cryptoManager). */
 export interface PortableCrypto {
@@ -52,6 +57,9 @@ export interface PortableFolder {
   id: string;
   parent_id?: string | null;
   name: string;
+  /** Appearance keys (palette color / icon), from the folder's metadata bundle. */
+  color?: string;
+  icon?: string;
   order_index: number;
   is_archived: boolean;
   created_at: string;
@@ -142,10 +150,16 @@ export async function folderToPortable(
   crypto: PortableCrypto,
   folder: FolderEncrypted
 ): Promise<PortableFolder> {
+  // An undecryptable bundle exports as "no appearance" (null -> {}), like the
+  // note metadata above - one broken row must not abort the export.
+  const appearance = readFolderAppearance(
+    await decodeFolderMetadata(crypto, folder.metadata_encrypted)
+  );
   return {
     id: folder.id,
     parent_id: folder.parent_id ?? undefined,
     name: (await decryptFieldOr(crypto, folder.name_encrypted, '')) || 'Untitled',
+    ...appearance,
     order_index: folder.order_index,
     is_archived: folder.is_archived,
     created_at: folder.created_at,
@@ -251,18 +265,27 @@ export async function reencryptPortablePayload(
   for (const n of data.notes ?? []) noteIdMap.set(n.id, newId());
 
   const folders = await Promise.all(
-    (data.folders ?? []).map(async (f) => ({
-      id: folderIdMap.get(f.id)!,
-      user_id: userId,
-      parent_id: f.parent_id ? (folderIdMap.get(f.parent_id) ?? undefined) : undefined,
-      name_encrypted: await crypto.encryptText(f.name || 'Untitled'),
-      order_index: f.order_index ?? 0,
-      is_archived: f.is_archived ?? false,
-      created_at: f.created_at,
-      updated_at: f.updated_at,
-      sync_status: 'pending',
-      sync_version: 0
-    }))
+    (data.folders ?? []).map(async (f) => {
+      // Same shape checks as on decrypt (strings, length caps); keys this
+      // build does not know are kept and render as the default.
+      const appearance = readFolderAppearance({ color: f.color, icon: f.icon });
+      const hasAppearance = appearance.color !== undefined || appearance.icon !== undefined;
+      return {
+        id: folderIdMap.get(f.id)!,
+        user_id: userId,
+        parent_id: f.parent_id ? (folderIdMap.get(f.parent_id) ?? undefined) : undefined,
+        name_encrypted: await crypto.encryptText(f.name || 'Untitled'),
+        ...(hasAppearance
+          ? { metadata_encrypted: await encodeFolderMetadata(crypto, { ...appearance }) }
+          : {}),
+        order_index: f.order_index ?? 0,
+        is_archived: f.is_archived ?? false,
+        created_at: f.created_at,
+        updated_at: f.updated_at,
+        sync_status: 'pending',
+        sync_version: 0
+      };
+    })
   );
 
   const tags = await Promise.all(

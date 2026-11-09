@@ -406,6 +406,43 @@
       "created": "Folder utworzony pomyślnie",
       "updated": "Folder zaktualizowany pomyślnie",
       "deleted": "Folder usunięty pomyślnie"
+    },
+    "appearance": {
+      "action": "Kolor i ikona…",
+      "title": "Kolor i ikona",
+      "description": "Wybór zapisuje się od razu. Tak jak nazwa folderu, jest szyfrowany na Twoim urządzeniu.",
+      "color": "Kolor",
+      "icon": "Ikona",
+      "no_color": "Bez koloru",
+      "default_icon": "Folder (domyślna)",
+      "done": "Gotowe",
+      "save_failed": "Nie udało się zapisać koloru i ikony folderu. Spróbuj ponownie.",
+      "icons": {
+        "briefcase": "Teczka",
+        "house": "Dom",
+        "user": "Osoba",
+        "users": "Ludzie",
+        "heart": "Serce",
+        "star": "Gwiazdka",
+        "book-open": "Książka",
+        "graduation-cap": "Czapka absolwenta",
+        "lightbulb": "Żarówka",
+        "code": "Kod",
+        "wrench": "Klucz",
+        "calendar": "Kalendarz",
+        "square-check": "Pole wyboru",
+        "archive": "Pudło archiwum",
+        "bookmark": "Zakładka",
+        "music": "Muzyka",
+        "camera": "Aparat",
+        "plane": "Samolot",
+        "shopping-cart": "Wózek na zakupy",
+        "utensils": "Sztućce",
+        "dumbbell": "Hantel",
+        "wallet": "Portfel",
+        "lock": "Kłódka",
+        "leaf": "Liść"
+      }
     }
   },
   "tags": {
@@ -1523,5 +1560,15 @@
       "view": "Zaloguj się ponownie, aby zobaczyć aktywne udostępnienia.",
       "create": "Zaloguj się ponownie, aby utworzyć udostępnienie."
     }
+  },
+  "colors": {
+    "red": "Czerwony",
+    "orange": "Pomarańczowy",
+    "yellow": "Żółty",
+    "green": "Zielony",
+    "blue": "Niebieski",
+    "violet": "Fioletowy",
+    "pink": "Różowy",
+    "gray": "Szary"
   }
 }

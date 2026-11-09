@@ -406,6 +406,43 @@
       "created": "Folder created successfully",
       "updated": "Folder updated successfully",
       "deleted": "Folder deleted successfully"
+    },
+    "appearance": {
+      "action": "Color and icon…",
+      "title": "Color and icon",
+      "description": "Saved right away. Like the folder's name, it is encrypted on your device.",
+      "color": "Color",
+      "icon": "Icon",
+      "no_color": "No color",
+      "default_icon": "Folder (default)",
+      "done": "Done",
+      "save_failed": "Couldn't save the folder's color and icon. Try again.",
+      "icons": {
+        "briefcase": "Briefcase",
+        "house": "House",
+        "user": "Person",
+        "users": "People",
+        "heart": "Heart",
+        "star": "Star",
+        "book-open": "Book",
+        "graduation-cap": "Graduation cap",
+        "lightbulb": "Light bulb",
+        "code": "Code",
+        "wrench": "Wrench",
+        "calendar": "Calendar",
+        "square-check": "Checkbox",
+        "archive": "Archive box",
+        "bookmark": "Bookmark",
+        "music": "Music",
+        "camera": "Camera",
+        "plane": "Airplane",
+        "shopping-cart": "Shopping cart",
+        "utensils": "Cutlery",
+        "dumbbell": "Dumbbell",
+        "wallet": "Wallet",
+        "lock": "Padlock",
+        "leaf": "Leaf"
+      }
     }
   },
   "tags": {
@@ -1523,5 +1560,15 @@
       "view": "Sign in again to view your active shares.",
       "create": "Sign in again to create a share."
     }
+  },
+  "colors": {
+    "red": "Red",
+    "orange": "Orange",
+    "yellow": "Yellow",
+    "green": "Green",
+    "blue": "Blue",
+    "violet": "Violet",
+    "pink": "Pink",
+    "gray": "Gray"
   }
 }

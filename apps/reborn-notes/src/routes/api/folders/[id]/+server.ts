@@ -8,8 +8,8 @@ import { getUserFromToken } from '$lib/server/auth';
 const logger = createLogger('Notes-API-Folder');
 
 /**
- * PATCH /api/folders/[id] - update folder name and/or parent.
- * Body: { name_encrypted?, parent_id?, order_index? }
+ * PATCH /api/folders/[id] - update folder name, appearance and/or parent.
+ * Body: { name_encrypted?, metadata_encrypted?, parent_id?, order_index? }
  */
 export const PATCH: RequestHandler = async ({ request, params }) => {
   try {
@@ -30,6 +30,7 @@ export const PATCH: RequestHandler = async ({ request, params }) => {
     const data = validation.data;
     const updates: Prisma.FolderUncheckedUpdateInput = {};
     if (data.name_encrypted !== undefined) updates.name_encrypted = data.name_encrypted;
+    if (data.metadata_encrypted !== undefined) updates.metadata_encrypted = data.metadata_encrypted;
     if ('parent_id' in data) {
       if (data.parent_id) {
         // Prevent self-reference

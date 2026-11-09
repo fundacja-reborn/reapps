@@ -406,6 +406,43 @@
       "created": "Ordner erfolgreich erstellt",
       "updated": "Ordner erfolgreich aktualisiert",
       "deleted": "Ordner erfolgreich gelöscht"
+    },
+    "appearance": {
+      "action": "Farbe und Symbol…",
+      "title": "Farbe und Symbol",
+      "description": "Ihre Auswahl wird sofort gespeichert und wie der Ordnername auf Ihrem Gerät verschlüsselt.",
+      "color": "Farbe",
+      "icon": "Symbol",
+      "no_color": "Keine Farbe",
+      "default_icon": "Ordner (Standard)",
+      "done": "Fertig",
+      "save_failed": "Farbe und Symbol des Ordners konnten nicht gespeichert werden. Versuchen Sie es erneut.",
+      "icons": {
+        "briefcase": "Aktentasche",
+        "house": "Haus",
+        "user": "Person",
+        "users": "Personen",
+        "heart": "Herz",
+        "star": "Stern",
+        "book-open": "Buch",
+        "graduation-cap": "Doktorhut",
+        "lightbulb": "Glühbirne",
+        "code": "Code",
+        "wrench": "Schraubenschlüssel",
+        "calendar": "Kalender",
+        "square-check": "Kontrollkästchen",
+        "archive": "Archivbox",
+        "bookmark": "Lesezeichen",
+        "music": "Musik",
+        "camera": "Kamera",
+        "plane": "Flugzeug",
+        "shopping-cart": "Einkaufswagen",
+        "utensils": "Besteck",
+        "dumbbell": "Hantel",
+        "wallet": "Geldbörse",
+        "lock": "Vorhängeschloss",
+        "leaf": "Blatt"
+      }
     }
   },
   "tags": {
@@ -1523,5 +1560,15 @@
       "view": "Bitte melde dich erneut an, um deine aktiven Freigaben zu sehen.",
       "create": "Bitte melde dich erneut an, um eine Freigabe zu erstellen."
     }
+  },
+  "colors": {
+    "red": "Rot",
+    "orange": "Orange",
+    "yellow": "Gelb",
+    "green": "Grün",
+    "blue": "Blau",
+    "violet": "Violett",
+    "pink": "Rosa",
+    "gray": "Grau"
   }
 }

@@ -25,14 +25,31 @@ export function sortFoldersByCustomOrder<
   );
 }
 
+/** A folder row in a flat list: name plus what a picker needs to draw it. */
+export interface FlatFolder {
+  id: string;
+  name: string;
+  decrypt_failed?: boolean;
+  /** Appearance keys (see FolderSensitiveMetadata), present only when set. */
+  color?: string;
+  icon?: string;
+}
+
 /** Flatten a nested folder tree into a flat array of {id, name}. Carries the
- *  decrypt_failed flag so name consumers can render the placeholder. */
+ *  decrypt_failed flag so name consumers can render the placeholder, and the
+ *  appearance keys so pickers can draw the folder's icon. */
 export function flattenFolderTree(
   nodes: FolderWithChildren[],
-  result: { id: string; name: string; decrypt_failed?: boolean }[] = []
-): { id: string; name: string; decrypt_failed?: boolean }[] {
+  result: FlatFolder[] = []
+): FlatFolder[] {
   for (const f of nodes) {
-    result.push({ id: f.id, name: f.name, ...(f.decrypt_failed ? { decrypt_failed: true } : {}) });
+    result.push({
+      id: f.id,
+      name: f.name,
+      ...(f.decrypt_failed ? { decrypt_failed: true } : {}),
+      ...(f.color ? { color: f.color } : {}),
+      ...(f.icon ? { icon: f.icon } : {})
+    });
     flattenFolderTree(f.children ?? [], result);
   }
   return result;

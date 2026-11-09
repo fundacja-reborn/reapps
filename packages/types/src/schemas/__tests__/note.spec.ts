@@ -64,13 +64,15 @@ describe('Note Schemas', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should validate nested folder with color', () => {
+    it('should validate nested folder with color and icon keys', () => {
+      // Appearance is stored as palette / icon KEYS (FolderSensitiveMetadata),
+      // not a hex value - the shade is chosen per theme at render time.
       const nestedFolder = {
         id: '123e4567-e89b-12d3-a456-426614174000',
         parent_id: '123e4567-e89b-12d3-a456-426614174001',
         name: 'Projects',
-        color: '#FF5733',
-        icon: '📁',
+        color: 'blue',
+        icon: 'briefcase',
         order_index: 1,
         is_archived: false,
         created_at: '2024-01-01T00:00:00.000Z',
@@ -81,11 +83,11 @@ describe('Note Schemas', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should reject folder with invalid color format', () => {
+    it('should reject folder with an oversized color key', () => {
       const invalidFolder = {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Work Notes',
-        color: 'red',
+        color: 'x'.repeat(33),
         order_index: 0,
         is_archived: false,
         created_at: '2024-01-01T00:00:00.000Z',
