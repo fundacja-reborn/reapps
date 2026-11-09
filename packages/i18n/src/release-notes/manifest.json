@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.47.1",
+    "date": "2026-11-09",
+    "items": [
+      {
+        "id": "0.47.1-folder-keyboard",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.47.1-arabic-title-date",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.47.0",
     "date": "2026-11-07",
     "items": [

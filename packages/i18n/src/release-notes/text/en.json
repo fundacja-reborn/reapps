@@ -1,4 +1,6 @@
 {
+  "0.47.1-folder-keyboard": "Fixed the keyboard not opening on phones when you create a folder or a subfolder. The name field now opens it right away, with the default name selected so you can type over it.",
+  "0.47.1-arabic-title-date": "Fixed the date in the default title of a new note appearing in reverse order, for example 07-11-2026 instead of 2026-11-07, when the app language is Arabic.",
   "0.47.0-text-direction": "Added a text direction button to the note editor toolbar. It flips the current line or all selected lines, and a second press restores them, which helps with right-to-left lines that start with a Latin word. The button appears when the app language is right to left or the note contains right-to-left text. The direction is kept in the note text, so it applies in the preview and in PDF exports and stays in Markdown exports.",
   "0.47.0-arabic-alef": "Improved Arabic search: all forms of alef now match each other, so a word typed without a hamza still finds the same word written with one. This works in both apps, including search inside a note.",
   "0.46.1-arabic-search": "Improved Arabic search, which now matches base letters and ignores tashkeel, Quranic signs and the tatweel, both in the search term and in the text. This works in both apps, including search inside a note.",
