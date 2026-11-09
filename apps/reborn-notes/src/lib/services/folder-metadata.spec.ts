@@ -8,6 +8,7 @@ import {
   mergeFolderAppearance,
   padFolderMetadataJson,
   readFolderAppearance,
+  type FolderMetadataBundle,
   type FolderMetadataCrypto
 } from './folder-metadata';
 import { APPEARANCE_COLORS } from '$lib/utils/appearance-colors';
@@ -106,7 +107,9 @@ describe('readFolderAppearance', () => {
   });
 
   it('drops non-strings and oversized values', () => {
-    expect(readFolderAppearance({ color: 5, icon: 'x'.repeat(65) })).toEqual({});
+    // A bundle is decrypted JSON - nothing guarantees the value types.
+    const tampered = { color: 5, icon: 'x'.repeat(65) } as unknown as FolderMetadataBundle;
+    expect(readFolderAppearance(tampered)).toEqual({});
     expect(readFolderAppearance(null)).toEqual({});
   });
 });
