@@ -2,7 +2,11 @@
  * Date formatting utilities for the notes list view.
  */
 
+import { containsRtlText } from '@reborn/i18n/direction';
 import { formatDateWithSetting } from '@reborn/utils';
+
+/** U+200E, an invisible character with left-to-right direction. */
+const LEFT_TO_RIGHT_MARK = String.fromCodePoint(0x200e);
 
 /**
  * Format the time-of-day of a Date, honoring the user's 12h/24h preference.
@@ -41,6 +45,17 @@ export function formatNoteDate(
  *
  * The date is the local calendar day. `toISOString()` would give the UTC day,
  * which is yesterday for a note created just after midnight in Warsaw.
+ *
+ * After a right-to-left word the date gets a left-to-right mark in front of it
+ * (issue #482). In "ملاحظة 2026-11-07" the Unicode bidi algorithm treats digits
+ * that follow an Arabic letter as Arabic numbers (rule W2), and a hyphen does
+ * not join Arabic numbers into one (rule W4 joins them only across `/`, `.`,
+ * `,` and `:`). Each part of the date is then laid out on its own and the
+ * title shows "07-11-2026". With the mark as the nearest strong character the
+ * date stays one left-to-right number wherever the title appears: note list,
+ * editor, tabs, exported file names. Search ignores the mark (`foldSearchText`).
+ * Formats with `/` or `.` display correctly without it; the mark does not
+ * change them, and one rule for every format is easier to reason about.
  */
 export function defaultNoteTitle(
   translate: (key: string, options: { values: { date: string } }) => string,
@@ -48,7 +63,10 @@ export function defaultNoteTitle(
   now: Date = new Date()
 ): string {
   const date = formatDateWithSetting(now, dateFormatSetting);
-  return translate('notes.default_title', { values: { date } });
+  const title = translate('notes.default_title', { values: { date } });
+  const at = title.indexOf(date);
+  if (at <= 0 || !containsRtlText(title.slice(0, at))) return title;
+  return title.slice(0, at) + LEFT_TO_RIGHT_MARK + title.slice(at);
 }
 
 /**
