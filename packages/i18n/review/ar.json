@@ -357,6 +357,7 @@
     "notes:editor.formatting.bullet_list": { "en": "764764e38e99", "ar": "c66172cb659d" },
     "notes:editor.formatting.numbered_list": { "en": "7869af36d383", "ar": "43d7853cf804" },
     "notes:editor.formatting.task_list": { "en": "b6428e7ca275", "ar": "81c7d81c93d3" },
+    "notes:editor.formatting.text_direction": { "en": "436eba8a0904", "ar": "25288545742e" },
     "notes:editor.formatting.quote": { "en": "4fdcfb042bde", "ar": "e8ec916a2f2b" },
     "notes:editor.formatting.code_block": { "en": "5a47d2f85815", "ar": "594a88558072" },
     "notes:editor.formatting.insert_image": { "en": "b68ed7aa7205", "ar": "81d7b1879edb" },
