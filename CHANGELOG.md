@@ -1,3 +1,10 @@
+## 0.47.1 (2026-11-09)
+
+### 🩹 Fixes
+
+- **notes:** keep the date in a new Arabic note title in order ([#513](https://github.com/fundacja-reborn/reapps/pull/513), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **notes:** open the keyboard when naming a new folder on mobile ([#514](https://github.com/fundacja-reborn/reapps/pull/514), [#511](https://github.com/fundacja-reborn/reapps/issues/511))
+
 ## 0.47.0 (2026-11-07)
 
 ### 🚀 Features
