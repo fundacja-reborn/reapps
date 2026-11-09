@@ -100,9 +100,21 @@
     onNewNote?.();
   }
 
+  // Mobile sheet: open the draft within the tap, so its input gets the
+  // keyboard. The draft's flushSync closes the sheet's focus trap first.
   function handleNewSubfolder() {
     sheetOpen = false;
     onNewSubfolder?.();
+  }
+
+  // Dropdown (wider screens): the item's click runs while the menu is still
+  // open, its focus trap would pull the focus back from the draft input, and
+  // the blur would commit the default name. Open the draft once the menu has
+  // closed and returned the focus to its trigger. A tablet on this path may
+  // still need a tap on the field for its keyboard; the header's "New
+  // subfolder" button opens it straight away.
+  function handleNewSubfolderFromMenu() {
+    setTimeout(() => onNewSubfolder?.(), 0);
   }
 
   function handleStartRename() {
@@ -217,7 +229,7 @@
           </DropdownMenuItem>
         {/if}
         {#if onNewSubfolder}
-          <DropdownMenuItem onclick={handleNewSubfolder}>
+          <DropdownMenuItem onclick={handleNewSubfolderFromMenu}>
             <FolderPlus class="h-3.5 w-3.5" />
             {$t('folders.new_subfolder')}
           </DropdownMenuItem>

@@ -81,7 +81,10 @@
   import { foldersStore } from '$lib/stores/folders.store';
   import { notesStore } from '$lib/stores/notes.store';
   import { folderSortMode } from '$lib/stores/app-settings.store';
-  import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
+  import {
+    pendingNewFolderDraft,
+    registerNewFolderDraftInput
+  } from '$lib/stores/new-folder-draft.store';
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import {
@@ -153,19 +156,13 @@
   // ── Inline new-folder draft (root list only) ───────────────────
   // When `pendingNewFolderDraft.parentId === null`, the root FolderTree
   // (depth 0) renders an input row at the very top. Folder is created on
-  // commit, not when the draft is requested.
+  // commit, not when the draft is requested. `openNewFolderDraft` focuses
+  // the input (registered by the attachment) within the opening tap.
   let draftName = $state('');
-  let draftInputEl = $state<HTMLInputElement | undefined>(undefined);
   const showDraft = $derived(depth === 0 && $pendingNewFolderDraft?.parentId === null);
 
   $effect(() => {
-    if (showDraft) {
-      draftName = $t('folders.new_folder');
-      setTimeout(() => {
-        draftInputEl?.scrollIntoView({ block: 'nearest' });
-        draftInputEl?.select();
-      }, 0);
-    }
+    if (showDraft) draftName = $t('folders.new_folder');
   });
 
   async function commitDraft() {
@@ -996,7 +993,7 @@
       >
         <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
         <input
-          bind:this={draftInputEl}
+          {@attach registerNewFolderDraftInput}
           bind:value={draftName}
           class="min-w-0 flex-1 rounded-md border bg-background px-2 py-0.5 text-sm caret-primary focus:outline-none focus:ring-1 focus:ring-primary"
           onkeydown={(e) => {

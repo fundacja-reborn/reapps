@@ -3,7 +3,10 @@
   import type { FolderWithChildren } from '@reborn/types';
   import { t } from '$lib/stores/i18n.store';
   import { foldersStore } from '$lib/stores/folders.store';
-  import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
+  import {
+    pendingNewFolderDraft,
+    registerNewFolderDraftInput
+  } from '$lib/stores/new-folder-draft.store';
 
   let {
     subfolders,
@@ -20,20 +23,15 @@
   // Renders an editable input row at the very top when a draft was requested
   // for this folder (via the "+ subfolder" header button). Folder is created
   // on commit (Enter / blur with non-empty value); Escape drops the draft.
+  // `openNewFolderDraft` focuses the input (registered by the attachment)
+  // within the opening tap.
   let draftName = $state('');
-  let draftInputEl = $state<HTMLInputElement | undefined>(undefined);
   const showDraft = $derived(
     parentId !== null && $pendingNewFolderDraft?.parentId === parentId
   );
 
   $effect(() => {
-    if (showDraft) {
-      draftName = $t('folders.new_folder');
-      setTimeout(() => {
-        draftInputEl?.scrollIntoView({ block: 'nearest' });
-        draftInputEl?.select();
-      }, 0);
-    }
+    if (showDraft) draftName = $t('folders.new_folder');
   });
 
   async function commitDraft() {
@@ -68,7 +66,7 @@
           >
             <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
-              bind:this={draftInputEl}
+              {@attach registerNewFolderDraftInput}
               bind:value={draftName}
               class="min-w-0 flex-1 rounded-md border bg-background px-2 py-1 text-sm caret-primary focus:outline-none focus:ring-1 focus:ring-primary"
               onkeydown={(e) => {
