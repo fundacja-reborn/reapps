@@ -27,7 +27,7 @@
   import OutlineTree from '$lib/components/OutlineTree.svelte';
   import FolderTree from '$lib/components/sidebar/FolderTree.svelte';
   import FolderSortMenu from '$lib/components/sidebar/FolderSortMenu.svelte';
-  import { pendingNewFolderDraft } from '$lib/stores/new-folder-draft.store';
+  import { pendingNewFolderDraft, openNewFolderDraft } from '$lib/stores/new-folder-draft.store';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
   import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
   import { authStore } from '$lib/stores/auth.store';
@@ -1051,15 +1051,17 @@
   // Both handlers arm an inline draft input at the top of the relevant list
   // (root tree for new folder, SubfolderList for new subfolder) instead of
   // pre-creating the folder. The folder is created only when the user commits
-  // a non-empty name - see `pendingNewFolderDraft`.
+  // a non-empty name - see `pendingNewFolderDraft`. Both run straight from a
+  // tap, so `openNewFolderDraft` can focus the input in time for the mobile
+  // keyboard to open (#511).
   function handleNewFolder() {
-    pendingNewFolderDraft.set({ parentId: null });
+    openNewFolderDraft(null);
   }
 
   function handleNewSubfolder() {
     if (!activeFolderId) return;
     expandedIds.add(activeFolderId);
-    pendingNewFolderDraft.set({ parentId: activeFolderId });
+    openNewFolderDraft(activeFolderId);
   }
 
   // ── Folder drag: drop-to-root zone (#401) ────────────────────────
