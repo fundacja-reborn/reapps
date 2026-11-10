@@ -7,8 +7,10 @@ export const FolderDecryptedSchema = z.object({
   // Both are valid wire representations of "no parent".
   parent_id: z.string().uuid().nullable().optional(),
   name: z.string().min(1).max(255),
-  color: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
-  icon: z.string().optional(),
+  // Palette / icon KEYS from the client's closed sets (FolderSensitiveMetadata),
+  // not a hex value - the shade is chosen per theme at render time.
+  color: z.string().max(32).optional(),
+  icon: z.string().max(64).optional(),
   order_index: z.number().int().min(0),
   is_archived: z.boolean(),
   created_at: z.string().datetime(),
@@ -21,7 +23,7 @@ export const FolderEncryptedSchema = SyncableEncryptedEntitySchema.extend({
   // Both are valid wire representations of "no parent".
   parent_id: z.string().uuid().nullable().optional(),
   name_encrypted: z.string(),
-  metadata_encrypted: z.string().optional(), // color, icon etc.
+  metadata_encrypted: z.string().optional(), // FolderSensitiveMetadata (color, icon)
   order_index: z.number().int().min(0),
   is_archived: z.boolean()
 });

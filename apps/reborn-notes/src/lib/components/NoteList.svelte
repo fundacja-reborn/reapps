@@ -51,6 +51,7 @@
   import type { SavedSearchDecrypted } from '@reborn/types';
   import SubfolderList from './SubfolderList.svelte';
   import FolderActionMenu from './sidebar/FolderActionMenu.svelte';
+  import FolderGlyph from './folders/FolderGlyph.svelte';
   import type { FolderWithChildren } from '@reborn/types';
   import { foldersStore } from '$lib/stores/folders.store';
   import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
@@ -748,6 +749,15 @@
       {/if}
       {#if showSidebarTrigger}
         <SidebarTrigger class="md:hidden -ms-1 shrink-0" />
+      {/if}
+      <!-- Only for a folder with a chosen color/icon: an uncustomized folder
+           keeps the plain title it always had. -->
+      {#if activeFolder && !editingActiveFolder && !activeFolder.decrypt_failed && (activeFolder.color || activeFolder.icon)}
+        <FolderGlyph
+          color={activeFolder.color}
+          icon={activeFolder.icon}
+          class="me-1 {prominentHeader ? 'h-5 w-5' : 'h-4 w-4'}"
+        />
       {/if}
       {#if editingActiveFolder && activeFolder}
         <input

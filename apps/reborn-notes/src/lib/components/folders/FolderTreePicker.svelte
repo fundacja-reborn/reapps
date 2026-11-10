@@ -3,7 +3,6 @@
   import {
     ArrowLeft,
     ChevronRight,
-    Folder as FolderIcon,
     Search,
     Check,
     Sparkles,
@@ -21,6 +20,7 @@
     getAncestorIds
   } from '$lib/utils/folder-helpers';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
+  import FolderGlyph from './FolderGlyph.svelte';
 
   let {
     value,
@@ -55,7 +55,13 @@
     searchActive
       ? flattenFolderTree(tree)
           .filter((f) => f.name.toLowerCase().includes(searchTerm))
-          .map((f) => ({ id: f.id, name: f.name, path: buildPathString(tree, f.id) }))
+          .map((f) => ({
+            id: f.id,
+            name: f.name,
+            color: f.color,
+            icon: f.icon,
+            path: buildPathString(tree, f.id)
+          }))
           .slice(0, 50)
       : []
   );
@@ -67,11 +73,11 @@
     isRoot && !searchActive && defaultFolderInTree === null
   );
 
-  const selectedFolderName = $derived.by(() => {
+  const selectedFolder = $derived.by(() => {
     if (value === null) return null;
-    const flat = flattenFolderTree(tree);
-    return flat.find((f) => f.id === value)?.name ?? null;
+    return flattenFolderTree(tree).find((f) => f.id === value) ?? null;
   });
+  const selectedFolderName = $derived(selectedFolder?.name ?? null);
 
   function resetState() {
     searchQuery = '';
@@ -290,7 +296,7 @@
               aria-current={isCurrent ? 'true' : undefined}
               title={folder.decrypt_failed ? $t('folders.undecryptable_hint') : folder.name}
             >
-              <FolderIcon class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <FolderGlyph color={folder.color} icon={folder.icon} class="h-3.5 w-3.5" />
               {#if folder.decrypt_failed}
                 <!-- Still a valid move target - only its NAME is undecryptable. -->
                 <span class="min-w-0 flex-1 truncate italic text-muted-foreground"
@@ -339,7 +345,7 @@
             disabled={isCurrent}
             aria-current={isCurrent ? 'true' : undefined}
           >
-            <FolderIcon class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <FolderGlyph color={r.color} icon={r.icon} class="mt-0.5 h-3.5 w-3.5" />
             <span class="min-w-0 flex-1">
               <span class="block truncate text-xs text-foreground"><bdi>{r.name}</bdi></span>
               {#if r.path}
@@ -372,7 +378,7 @@
   >
     <span class="flex min-w-0 flex-1 items-center gap-2">
       {#if selectedFolderName}
-        <FolderIcon class="h-4 w-4 shrink-0 text-muted-foreground" />
+        <FolderGlyph color={selectedFolder?.color} icon={selectedFolder?.icon} />
         <span class="min-w-0 flex-1 truncate">{selectedFolderName}</span>
       {:else}
         <Sparkles class="h-4 w-4 shrink-0 text-muted-foreground" />

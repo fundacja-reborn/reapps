@@ -6,6 +6,7 @@ const mockPrisma = {
   folder: {
     findUnique: vi.fn(),
     findFirst: vi.fn(),
+    findMany: vi.fn(),
     count: vi.fn(),
     upsert: vi.fn()
   }
@@ -111,5 +112,70 @@ describe('POST /api/folders (per-user row cap)', () => {
     expect(data.success).toBe(false);
     expect(mockPrisma.folder.count).not.toHaveBeenCalled();
     expect(mockPrisma.folder.upsert).not.toHaveBeenCalled();
+  });
+});
+
+// ── Folder appearance (metadata_encrypted) ───────────────────────
+
+const METADATA = 'iv2:metadata-ciphertext';
+
+describe('POST /api/folders (metadata_encrypted)', () => {
+  beforeEach(() => {
+    mockPrisma.folder.findUnique.mockResolvedValue(null);
+    mockPrisma.folder.count.mockResolvedValue(0);
+  });
+
+  it('stores the encrypted appearance bundle on create and update', async () => {
+    mockValidateBody.mockReturnValue({
+      success: true,
+      data: { ...FOLDER_BODY, metadata_encrypted: METADATA }
+    });
+
+    await callPost();
+
+    const args = mockPrisma.folder.upsert.mock.calls[0][0];
+    expect(args.create.metadata_encrypted).toBe(METADATA);
+    expect(args.update.metadata_encrypted).toBe(METADATA);
+  });
+
+  // A client build that predates folder appearance re-pushes folders without
+  // the field - the upsert must keep the bundle another device stored.
+  it('leaves the stored bundle untouched when the field is absent', async () => {
+    await callPost();
+
+    const args = mockPrisma.folder.upsert.mock.calls[0][0];
+    expect(args.create.metadata_encrypted).toBeNull();
+    expect('metadata_encrypted' in args.update).toBe(false);
+  });
+});
+
+describe('GET /api/folders (metadata_encrypted)', () => {
+  it('returns the bundle ciphertext as stored', async () => {
+    const now = new Date();
+    mockPrisma.folder.findMany.mockResolvedValue([
+      {
+        id: FOLDER_ID,
+        parent_id: null,
+        name_encrypted: 'iv:name',
+        metadata_encrypted: METADATA,
+        order_index: 0,
+        created_at: now,
+        updated_at: now,
+        sync_version: 3
+      }
+    ]);
+    const { GET } = await import('./+server');
+    const event = {
+      request: new Request('http://localhost/api/folders', {
+        headers: { authorization: 'Bearer mock-token' }
+      }),
+      url: new URL('http://localhost/api/folders')
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = await (GET as any)(event);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data[0].metadata_encrypted).toBe(METADATA);
   });
 });

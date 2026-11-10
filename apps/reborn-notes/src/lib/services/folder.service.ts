@@ -30,6 +30,13 @@ import { noteIndex } from '$lib/services/note-index.svelte';
 import { getSetting } from '$lib/utils/app-settings';
 import { sortFoldersByCustomOrder, sortFoldersByName } from '$lib/utils/folder-helpers';
 import { createUndecryptableRowCache, decodeTextField } from './undecryptable-rows';
+import {
+  decodeFolderMetadata,
+  encodeFolderMetadata,
+  isValidAppearancePatch,
+  mergeFolderAppearance,
+  readFolderAppearance
+} from './folder-metadata';
 
 // ── User identity ─────────────────────────────────────────────────
 
@@ -50,6 +57,27 @@ async function encodeName(name: string): Promise<string> {
 // Session cache of rows that already failed to decrypt - see
 // undecryptable-rows.ts for the shared pattern (guideline 63, #15).
 const undecryptableRows = createUndecryptableRowCache();
+
+// Separate cache for an undecryptable appearance bundle on a row whose NAME
+// decrypts. Deliberately NOT the row-level `decrypt_failed` flag: appearance is
+// cosmetic, the folder stays fully usable with the default look, and the
+// repair path for a flagged folder (rename) would not rewrite the bundle - the
+// flag would stick. Choosing a color/icon again rewrites the bundle (= repair).
+// The cache only keeps a broken bundle from re-logging crypto errors on every
+// store refresh.
+const undecryptableMetadata = createUndecryptableRowCache();
+
+async function decodeAppearance(enc: FolderEncrypted): Promise<{ color?: string; icon?: string }> {
+  if (!enc.metadata_encrypted) return {};
+  if (undecryptableMetadata.has(enc.id, enc.updated_at)) return {};
+  const bundle = await decodeFolderMetadata(cryptoManager, enc.metadata_encrypted);
+  if (bundle === null) {
+    undecryptableMetadata.mark(enc.id, enc.updated_at);
+    return {};
+  }
+  undecryptableMetadata.clear(enc.id);
+  return readFolderAppearance(bundle);
+}
 
 // The name is the folder's ONLY ciphertext: structure (parent_id), ordering and
 // contents stay fully usable on an undecryptable row, and a rename re-encrypts
@@ -80,6 +108,7 @@ async function toDecrypted(enc: FolderEncrypted): Promise<Omit<FolderWithChildre
     id: enc.id,
     parent_id: enc.parent_id,
     name,
+    ...(await decodeAppearance(enc)),
     order_index: enc.order_index,
     is_archived: enc.is_archived,
     created_at: enc.created_at,
@@ -162,6 +191,41 @@ export async function renameFolder(
     sync_status: 'pending'
   });
   if (!options?.skipSync) pushFolderUpdate(id, { name_encrypted });
+}
+
+/**
+ * Set or clear a folder's color and/or icon (keys from the closed sets in
+ * `$lib/utils/appearance-colors` / `$lib/utils/folder-icons`). A field named
+ * with `undefined` goes back to the default; a field not named is kept, as is
+ * anything else in the bundle (fields from a newer app version).
+ *
+ * Zero Knowledge: the merged bundle is padded and encrypted client-side; the
+ * server stores and syncs only the ciphertext.
+ */
+export async function setFolderAppearance(
+  id: string,
+  patch: { color?: string | undefined; icon?: string | undefined }
+): Promise<void> {
+  if (!isValidAppearancePatch(patch)) throw new Error('Unknown folder color or icon');
+  if (!cryptoManager.isInitialized()) {
+    throw new Error('[E2E] setFolderAppearance called without master key loaded');
+  }
+  const existing = await folderStore.get(id);
+  if (!existing) throw new Error('Folder not found');
+  // An undecryptable bundle is replaced (null -> {}): nothing in it can be
+  // preserved, and the new choice repairs the row.
+  const current = (await decodeFolderMetadata(cryptoManager, existing.metadata_encrypted)) ?? {};
+  const metadata_encrypted = await encodeFolderMetadata(
+    cryptoManager,
+    mergeFolderAppearance(current, patch)
+  );
+  await folderStore.save({
+    ...existing,
+    metadata_encrypted,
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending'
+  });
+  pushFolderUpdate(id, { metadata_encrypted });
 }
 
 export type DeleteFolderMode = 'detach' | 'cascade';

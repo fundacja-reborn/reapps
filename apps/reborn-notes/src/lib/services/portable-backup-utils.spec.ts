@@ -9,9 +9,11 @@ import {
   buildPortablePayload,
   reencryptPortablePayload,
   noteToPortable,
+  folderToPortable,
   decryptFieldOr,
   type PortableCrypto
 } from './portable-backup-utils';
+import { decodeFolderMetadata, encodeFolderMetadata } from './folder-metadata';
 
 /**
  * Fake account-scoped crypto. Ciphertext is tagged with the account id, so a
@@ -72,13 +74,23 @@ async function makeStoredNote(
 
 async function makeStoredFolder(
   crypto: PortableCrypto,
-  plain: { id: string; name: string; parent_id?: string; order_index?: number; is_archived?: boolean }
+  plain: {
+    id: string;
+    name: string;
+    parent_id?: string;
+    order_index?: number;
+    is_archived?: boolean;
+    appearance?: { color?: string; icon?: string };
+  }
 ): Promise<FolderEncrypted> {
   return {
     id: plain.id,
     user_id: 'user-A',
     parent_id: plain.parent_id,
     name_encrypted: await crypto.encryptText(plain.name),
+    metadata_encrypted: plain.appearance
+      ? await encodeFolderMetadata(crypto, { ...plain.appearance })
+      : undefined,
     order_index: plain.order_index ?? 0,
     is_archived: plain.is_archived ?? false,
     created_at: '2026-01-01T00:00:00.000Z',
@@ -372,5 +384,43 @@ describe('decryptFieldOr', () => {
     expect(await decryptFieldOr(A, '', 'fb')).toBe('fb');
     expect(await decryptFieldOr(A, 'accountB::txt::x', 'fb')).toBe('fb'); // wrong account
     expect(await decryptFieldOr(A, await A.encryptText('real'), 'fb')).toBe('real');
+  });
+});
+
+describe('folder appearance in portable backups', () => {
+  it('exports color/icon as plaintext keys and re-encrypts them under the target account', async () => {
+    const folders = [
+      await makeStoredFolder(A, {
+        id: 'f1',
+        name: 'Work',
+        appearance: { color: 'blue', icon: 'briefcase' }
+      }),
+      await makeStoredFolder(A, { id: 'f2', name: 'Plain' })
+    ];
+    const payload = await buildPortablePayload(A, [], folders, [], '2026-11-09T00:00:00.000Z');
+
+    expect(payload.data.folders[0]).toMatchObject({ color: 'blue', icon: 'briefcase' });
+    expect(payload.data.folders[1].color).toBeUndefined();
+    expect(payload.data.folders[1].icon).toBeUndefined();
+
+    const wire = await reencryptPortablePayload(B, payload, 'user-B', seqIds());
+    const work = wire.folders[0];
+    expect(await decodeFolderMetadata(B, field(work, 'metadata_encrypted'))).toEqual({
+      color: 'blue',
+      icon: 'briefcase'
+    });
+    // Unreadable with the source account's key - re-encrypted, not copied.
+    expect(await decodeFolderMetadata(A, field(work, 'metadata_encrypted'))).toBeNull();
+    // A folder without appearance gets no bundle at all.
+    expect(wire.folders[1].metadata_encrypted).toBeUndefined();
+  });
+
+  it('exports an undecryptable bundle as "no appearance" instead of failing', async () => {
+    const folder = await makeStoredFolder(A, { id: 'f1', name: 'Broken' });
+    folder.metadata_encrypted = 'accountX::txt::garbage';
+    const portable = await folderToPortable(A, folder);
+    expect(portable.name).toBe('Broken');
+    expect(portable.color).toBeUndefined();
+    expect(portable.icon).toBeUndefined();
   });
 });

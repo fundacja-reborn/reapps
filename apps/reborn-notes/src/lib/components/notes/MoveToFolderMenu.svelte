@@ -3,7 +3,6 @@
   import {
     ArrowLeft,
     ChevronRight,
-    Folder as FolderIcon,
     FolderUp,
     Search,
     SearchCheck,
@@ -23,6 +22,7 @@
     getDescendantFolderIds
   } from '$lib/utils/folder-helpers';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
+  import FolderGlyph from '$lib/components/folders/FolderGlyph.svelte';
 
   /**
    * Move target — single note keeps the "already here" disabled state and auto-navigates
@@ -104,7 +104,13 @@
           .filter(
             (f) => f.name.toLowerCase().includes(searchTerm) && !excludedIds?.has(f.id)
           )
-          .map((f) => ({ id: f.id, name: f.name, path: buildPathString(tree, f.id) }))
+          .map((f) => ({
+            id: f.id,
+            name: f.name,
+            color: f.color,
+            icon: f.icon,
+            path: buildPathString(tree, f.id)
+          }))
           .slice(0, 50)
       : []
   );
@@ -386,7 +392,7 @@
                   ? $t('folders.undecryptable_hint')
                   : folder.name}
             >
-              <FolderIcon class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <FolderGlyph color={folder.color} icon={folder.icon} class="h-3.5 w-3.5" />
               {#if folder.decrypt_failed}
                 <!-- Still a valid move target - only its NAME is undecryptable. -->
                 <span
@@ -441,7 +447,7 @@
             disabled={isCurrent}
             aria-current={isCurrent ? 'true' : undefined}
           >
-            <FolderIcon class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <FolderGlyph color={r.color} icon={r.icon} class="mt-0.5 h-3.5 w-3.5" />
             <span class="min-w-0 flex-1">
               <span class="block truncate text-xs text-foreground"><bdi>{r.name}</bdi></span>
               {#if r.path}

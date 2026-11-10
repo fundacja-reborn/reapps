@@ -73,6 +73,14 @@ function createFoldersStore() {
     await refresh();
   }
 
+  async function setAppearance(
+    id: string,
+    patch: { color?: string | undefined; icon?: string | undefined }
+  ): Promise<void> {
+    await FolderService.setFolderAppearance(id, patch);
+    await refresh();
+  }
+
   return {
     subscribe: tree.subscribe,
     loading: { subscribe: loading.subscribe },
@@ -83,7 +91,8 @@ function createFoldersStore() {
     remove,
     getDeleteSummary,
     move,
-    reorder
+    reorder,
+    setAppearance
   };
 }
 

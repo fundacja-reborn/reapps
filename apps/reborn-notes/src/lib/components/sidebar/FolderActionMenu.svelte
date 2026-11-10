@@ -5,6 +5,7 @@
     FilePlus,
     FolderPlus,
     FolderInput,
+    Palette,
     Pencil,
     RefreshCw,
     Trash2,
@@ -36,6 +37,7 @@
   import DeleteFolderDialog from './DeleteFolderDialog.svelte';
   import ImportMarkdownToFolderDialog from '$lib/components/import/ImportMarkdownToFolderDialog.svelte';
   import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
+  import FolderAppearanceDialog from '$lib/components/folders/FolderAppearanceDialog.svelte';
 
   let {
     folder,
@@ -120,6 +122,16 @@
   function handleStartRename() {
     sheetOpen = false;
     onStartRename();
+  }
+
+  // ── Color and icon ─────────────────────────────────────────────
+  // Hidden on an undecryptable row, like in the tree: repair (rename) first.
+  let appearanceOpen = $state(false);
+  const canEditAppearance = $derived(!!folder && !folder.decrypt_failed);
+
+  function handleAppearance() {
+    sheetOpen = false;
+    appearanceOpen = true;
   }
 
   // ── Move folder ("Move to…" picker) ────────────────────────────
@@ -238,6 +250,12 @@
           <Pencil class="h-3.5 w-3.5" />
           {$t('folders.rename')}
         </DropdownMenuItem>
+        {#if canEditAppearance}
+          <DropdownMenuItem onclick={handleAppearance}>
+            <Palette class="h-3.5 w-3.5" />
+            {$t('folders.appearance.action')}
+          </DropdownMenuItem>
+        {/if}
         <DropdownMenuItem onclick={handleMove}>
           <CornerUpRight class="h-3.5 w-3.5" />
           {$t('folders.move_to')}
@@ -292,6 +310,12 @@
         <Pencil class="me-2 h-4 w-4" />
         {$t('folders.rename')}
       </Button>
+      {#if canEditAppearance}
+        <Button variant="ghost" class="w-full justify-start" onclick={handleAppearance}>
+          <Palette class="me-2 h-4 w-4" />
+          {$t('folders.appearance.action')}
+        </Button>
+      {/if}
       <Button variant="ghost" class="w-full justify-start" onclick={handleMove}>
         <CornerUpRight class="me-2 h-4 w-4" />
         {$t('folders.move_to')}
@@ -315,6 +339,8 @@
     </div>
   </SheetContent>
 </Sheet>
+
+<FolderAppearanceDialog bind:open={appearanceOpen} {folder} />
 
 <DeleteFolderDialog
   bind:open={deleteDialogOpen}

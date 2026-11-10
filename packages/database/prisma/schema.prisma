@@ -244,26 +244,27 @@ model SubTask {
 // ==================== NOTES ====================
 
 model Folder {
-  id               String   @id @default(uuid())
-  user_id          String
-  parent_id        String?
-  name_encrypted   String   // E2E encrypted
-  color_encrypted  String?  // E2E encrypted (hex color)
-  icon_encrypted   String?  // E2E encrypted (icon name)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  order_index      Int      @default(0)
-  is_archived      Boolean  @default(false)
-  sync_version     Int      @default(0)
-  
+  id                 String   @id @default(uuid())
+  user_id            String
+  parent_id          String?
+  name_encrypted     String // E2E encrypted
+  // E2E encrypted JSON bundle (appearance: color + icon key), padded to a
+  // fixed length so the ciphertext does not reveal which color/icon is set.
+  metadata_encrypted String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  order_index        Int      @default(0)
+  is_archived        Boolean  @default(false)
+  sync_version       Int      @default(0)
+
   // Self-relation for folder hierarchy
-  parent           Folder?  @relation("FolderHierarchy", fields: [parent_id], references: [id], onDelete: Cascade)
-  children         Folder[] @relation("FolderHierarchy")
-  
+  parent   Folder?  @relation("FolderHierarchy", fields: [parent_id], references: [id], onDelete: Cascade)
+  children Folder[] @relation("FolderHierarchy")
+
   // Relations
-  notes            Note[]
-  savedSearches    SavedSearch[]
-  user             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  notes         Note[]
+  savedSearches SavedSearch[]
+  user          User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id, is_archived])
   @@index([parent_id])

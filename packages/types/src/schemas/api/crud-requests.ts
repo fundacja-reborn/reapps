@@ -11,7 +11,10 @@ import {
   MAX_ENCRYPTED_SUBTASK_NAME_BYTES,
   MAX_ENCRYPTED_LIST_NAME_BYTES
 } from '../../entities/task';
-import { MAX_ENCRYPTED_FOLDER_NAME_BYTES } from '../../entities/folder';
+import {
+  MAX_ENCRYPTED_FOLDER_METADATA_BYTES,
+  MAX_ENCRYPTED_FOLDER_NAME_BYTES
+} from '../../entities/folder';
 import { MAX_ENCRYPTED_TAG_NAME_BYTES, MAX_ENCRYPTED_TAG_COLOR_BYTES } from '../../entities/tag';
 import {
   MAX_ENCRYPTED_SAVED_SEARCH_NAME_BYTES,
@@ -115,12 +118,17 @@ export const UpdateNoteRequestSchema = z.object({
 export const CreateFolderRequestSchema = z.object({
   id: z.string().uuid(),
   name_encrypted: z.string().min(1).max(MAX_ENCRYPTED_FOLDER_NAME_BYTES),
+  // Encrypted FolderSensitiveMetadata (color, icon). Optional so older clients
+  // that never send it keep working; the upsert leaves the stored value alone
+  // when it is absent.
+  metadata_encrypted: z.string().max(MAX_ENCRYPTED_FOLDER_METADATA_BYTES).optional(),
   parent_id: z.string().uuid().optional().nullable(),
   order_index: z.number().int().min(0).optional()
 });
 
 export const UpdateFolderRequestSchema = z.object({
   name_encrypted: z.string().max(MAX_ENCRYPTED_FOLDER_NAME_BYTES).optional(),
+  metadata_encrypted: z.string().max(MAX_ENCRYPTED_FOLDER_METADATA_BYTES).optional(),
   parent_id: z.string().uuid().optional().nullable(),
   order_index: z.number().int().min(0).optional()
 });

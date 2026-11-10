@@ -43,12 +43,12 @@
     ChevronRight,
     CornerUpRight,
     Folder,
-    FolderOpen,
     FolderSync,
     FolderInput,
     MoreHorizontal,
     FolderPlus,
     FilePlus,
+    Palette,
     Pencil,
     RefreshCw,
     Trash2,
@@ -73,6 +73,10 @@
     toastStore
   } from '@reborn/ui';
   import { flip } from 'svelte/animate';
+  import FolderGlyph from '$lib/components/folders/FolderGlyph.svelte';
+  import FolderAppearanceDialog from '$lib/components/folders/FolderAppearanceDialog.svelte';
+  import { appearanceTextClass } from '$lib/utils/appearance-colors';
+  import { isFolderIcon } from '$lib/utils/folder-icons';
   import type { RowAction } from '$lib/utils/row-action';
   import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
   // FolderWithChildren comes from the module script import above (module and
@@ -222,6 +226,8 @@
   let folderActionSheetOpen = $state(false);
   let deleteFolderDialogOpen = $state(false);
   let folderToDelete = $state<FolderWithChildren | null>(null);
+  let appearanceDialogOpen = $state(false);
+  let appearanceFolder = $state<FolderWithChildren | null>(null);
 
   const activeMenuFolder = $derived(
     menuOpenId ? (nodes.find((n) => n.id === menuOpenId) ?? null) : null
@@ -289,6 +295,14 @@
     menuOpenId = null;
     folderActionSheetOpen = false;
     startRename(folder);
+  }
+
+  function handleAppearance(folder: FolderWithChildren, e?: Event) {
+    e?.stopPropagation();
+    menuOpenId = null;
+    folderActionSheetOpen = false;
+    appearanceFolder = folder;
+    appearanceDialogOpen = true;
   }
 
   function handleDelete(folder: FolderWithChildren, e?: Event) {
@@ -452,6 +466,12 @@
         icon: Pencil,
         label: $t('folders.rename'),
         run: (e) => startRename(folder, e)
+      },
+      {
+        key: 'appearance',
+        icon: Palette,
+        label: $t('folders.appearance.action'),
+        run: (e) => handleAppearance(folder, e)
       },
       {
         key: 'move',
@@ -1026,6 +1046,7 @@
     {@const hasChildren = (folder.children?.length ?? 0) > 0 || parkedSearches.length > 0}
     {@const dropZone = $dropTarget?.id === folder.id ? $dropTarget.zone : null}
     {@const syncConfigId = $syncedFolderConfigs.get(folder.id) ?? null}
+    {@const hasCustomIcon = isFolderIcon(folder.icon)}
     {@const rowActions = folderActions(folder, syncConfigId)}
 
     <li
@@ -1077,16 +1098,20 @@
                   style="inset-inline-start: {depth * 0.75 + 0.5}rem"
                 ></div>
               {/if}
-              <!-- Folder icon (synced top-level folders get a distinct sync glyph) -->
-              {#if syncConfigId}
+              <!-- Folder icon in its chosen color. A synced folder keeps the
+                   sync glyph unless the user picked an icon - then the icon
+                   wins and a small sync marker follows the name instead. -->
+              {#if syncConfigId && !hasCustomIcon}
                 <FolderSync
-                  class="h-4 w-4 shrink-0 text-primary"
+                  class="h-4 w-4 shrink-0 {appearanceTextClass(folder.color) ?? 'text-primary'}"
                   aria-label={$t('folders.synced_folder')}
                 />
-              {:else if isExpanded && hasChildren}
-                <FolderOpen class="h-4 w-4 shrink-0 text-muted-foreground" />
               {:else}
-                <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
+                <FolderGlyph
+                  color={folder.color}
+                  icon={folder.icon}
+                  open={isExpanded && hasChildren}
+                />
               {/if}
 
               <!-- Name / inline rename -->
@@ -1108,6 +1133,16 @@
                 >
               {:else}
                 <span class="min-w-0 flex-1 truncate"><bdi>{folder.name}</bdi></span>
+              {/if}
+
+              {#if syncConfigId && hasCustomIcon && editingId !== folder.id}
+                <span class="flex shrink-0" title={$t('folders.synced_folder')}>
+                  <RefreshCw
+                    class="h-3 w-3 text-muted-foreground"
+                    role="img"
+                    aria-label={$t('folders.synced_folder')}
+                  />
+                </span>
               {/if}
 
               <!-- Chevron (right side, only when has children) -->
@@ -1289,6 +1324,14 @@
       <Button
         variant="ghost"
         class="w-full justify-start"
+        onclick={() => activeMenuFolder && handleAppearance(activeMenuFolder)}
+      >
+        <Palette class="me-2 h-4 w-4" />
+        {$t('folders.appearance.action')}
+      </Button>
+      <Button
+        variant="ghost"
+        class="w-full justify-start"
         onclick={() => activeMenuFolder && handleRequestMove(activeMenuFolder)}
       >
         <CornerUpRight class="me-2 h-4 w-4" />
@@ -1345,6 +1388,8 @@
     </div>
   </SheetContent>
 </Sheet>
+
+<FolderAppearanceDialog bind:open={appearanceDialogOpen} folder={appearanceFolder} />
 
 <DeleteFolderDialog
   bind:open={deleteFolderDialogOpen}

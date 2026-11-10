@@ -55,6 +55,7 @@ import { validateEncryptedPayload } from '@reborn/crypto';
 import { refreshQuota } from '$lib/stores/storage-quota.store';
 import { connectivityStore } from '$lib/stores/connectivity.store';
 import { buildFolderLayers } from './folder-push-order';
+import { compareFolderMetadataOnPull } from './folder-metadata';
 import { planCycleRepairs } from './folder-cycle-repair';
 import { settleInBatches } from './sync-batch';
 import { notifyNoteSyncError, notifyBatchSyncErrors } from './sync-error-notify';
@@ -326,6 +327,8 @@ async function pullFolders(): Promise<void> {
         id: string;
         parent_id: string | null;
         name_encrypted: string;
+        /** Absent from servers that predate folder appearance. */
+        metadata_encrypted?: string | null;
         order_index: number;
         created_at: string;
         updated_at: string;
@@ -345,14 +348,26 @@ async function pullFolders(): Promise<void> {
         // Reconciliation: if local ciphertext differs from server at equal sync_version,
         // a previous push silently failed and left sync_status='synced'. Re-mark pending
         // so the next pushPendingItems() sends the local edit. See guideline 36, rule 9.
+        if (localFolder.sync_status !== 'synced') return;
+        // 'adopt' = the server has a bundle this row lacks: not a local edit
+        // (see compareFolderMetadataOnPull) - take it instead of pushing
+        // "no bundle" back.
+        const metadata = compareFolderMetadataOnPull(
+          localFolder.metadata_encrypted,
+          f.metadata_encrypted
+        );
+        const adopted =
+          metadata === 'adopt' ? { metadata_encrypted: f.metadata_encrypted ?? undefined } : {};
         if (
-          localFolder.sync_status === 'synced' &&
-          (localFolder.name_encrypted !== f.name_encrypted ||
-            (localFolder.parent_id ?? null) !== (f.parent_id ?? null) ||
-            localFolder.order_index !== f.order_index)
+          localFolder.name_encrypted !== f.name_encrypted ||
+          (localFolder.parent_id ?? null) !== (f.parent_id ?? null) ||
+          localFolder.order_index !== f.order_index ||
+          metadata === 'local-edit'
         ) {
           logger.warn(`Reconciling orphaned folder edit ${f.id} - marking pending`);
-          foldersToWrite.push({ ...localFolder, sync_status: 'pending' });
+          foldersToWrite.push({ ...localFolder, ...adopted, sync_status: 'pending' });
+        } else if (metadata === 'adopt') {
+          foldersToWrite.push({ ...localFolder, ...adopted });
         }
         return;
       }
@@ -362,6 +377,12 @@ async function pullFolders(): Promise<void> {
         user_id: userId,
         parent_id: f.parent_id ?? undefined,
         name_encrypted: f.name_encrypted,
+        // A server that predates folder appearance omits the field - keep
+        // the local bundle then rather than erasing it.
+        metadata_encrypted:
+          f.metadata_encrypted === undefined
+            ? localFolder?.metadata_encrypted
+            : (f.metadata_encrypted ?? undefined),
         order_index: f.order_index,
         is_archived: false,
         sync_version: serverVersion,
@@ -1236,6 +1257,10 @@ export async function pushPendingItems(): Promise<void> {
         pushSilently(async (idempotencyKey) => {
           const pushedFields = {
             name_encrypted: f.name_encrypted,
+            // Only when set: the server upsert keeps a stored bundle when the
+            // field is absent, so a row without one cannot erase another
+            // device's color/icon.
+            ...(f.metadata_encrypted ? { metadata_encrypted: f.metadata_encrypted } : {}),
             parent_id: f.parent_id ?? null,
             order_index: f.order_index
           };
@@ -1754,13 +1779,14 @@ export function pushNoteRestore(id: string): void {
 export function pushFolder(
   folder: Pick<
     FolderEncrypted,
-    'id' | 'name_encrypted' | 'parent_id' | 'order_index' | 'created_at'
+    'id' | 'name_encrypted' | 'metadata_encrypted' | 'parent_id' | 'order_index' | 'created_at'
   >
 ): void {
   void serializePerEntity('folder', folder.id, () =>
     pushSilently(async (idempotencyKey) => {
       const pushedFields = {
         name_encrypted: folder.name_encrypted,
+        ...(folder.metadata_encrypted ? { metadata_encrypted: folder.metadata_encrypted } : {}),
         parent_id: folder.parent_id ?? null,
         order_index: folder.order_index
       };
@@ -1795,7 +1821,12 @@ export function pushFolder(
 
 export function pushFolderUpdate(
   id: string,
-  fields: { name_encrypted?: string; parent_id?: string | null; order_index?: number }
+  fields: {
+    name_encrypted?: string;
+    metadata_encrypted?: string;
+    parent_id?: string | null;
+    order_index?: number;
+  }
 ): void {
   void serializePerEntity('folder', id, () =>
     pushSilently(async (idempotencyKey) => {

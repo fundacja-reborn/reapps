@@ -2,6 +2,7 @@
   import { Folder, ChevronRight } from '@lucide/svelte';
   import type { FolderWithChildren } from '@reborn/types';
   import { t } from '$lib/stores/i18n.store';
+  import FolderGlyph from '$lib/components/folders/FolderGlyph.svelte';
   import { foldersStore } from '$lib/stores/folders.store';
   import {
     pendingNewFolderDraft,
@@ -88,7 +89,7 @@
             onclick={() => onselect(folder.id)}
             onkeydown={(e) => e.key === 'Enter' && onselect(folder.id)}
           >
-            <Folder class="h-4 w-4 shrink-0 text-muted-foreground" />
+            <FolderGlyph color={folder.color} icon={folder.icon} />
             {#if folder.decrypt_failed}
               <!-- Name is the only ciphertext - the folder itself stays browsable. -->
               <span

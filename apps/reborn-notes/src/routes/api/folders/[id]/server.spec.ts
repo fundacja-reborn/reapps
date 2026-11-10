@@ -22,8 +22,9 @@ vi.mock('@reborn/utils', () => ({
   createLogger: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() })
 }));
 
+const mockValidateBody = vi.fn();
 vi.mock('@reborn/types', () => ({
-  validateBody: vi.fn(),
+  validateBody: (...args: unknown[]) => mockValidateBody(...args),
   schemas: { UpdateFolderRequestSchema: {} }
 }));
 
@@ -137,5 +138,50 @@ describe('DELETE /api/folders/[id] (idempotency)', () => {
     expect(data.success).toBe(false);
     expect(mockPrisma.folder.findFirst).not.toHaveBeenCalled();
     expect(mockPrisma.folder.deleteMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('PATCH /api/folders/[id] (metadata_encrypted)', () => {
+  async function callPatch(body: Record<string, unknown>) {
+    mockValidateBody.mockReturnValue({ success: true, data: body });
+    const { PATCH } = await import('./+server');
+    const event = {
+      request: new Request(`http://localhost/api/folders/${FOLDER_ID}`, {
+        method: 'PATCH',
+        headers: { authorization: 'Bearer mock-token', 'content-type': 'application/json' },
+        body: JSON.stringify(body)
+      }),
+      params: { id: FOLDER_ID }
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = await (PATCH as any)(event);
+    return { status: response.status, data: await response.json() };
+  }
+
+  beforeEach(() => {
+    mockPrisma.folder.findFirst.mockResolvedValue({
+      id: FOLDER_ID,
+      user_id: USER_ID,
+      sync_version: 4
+    });
+    mockPrisma.folder.update.mockResolvedValue({ updated_at: new Date(), sync_version: 5 });
+  });
+
+  it('writes the appearance bundle and bumps sync_version', async () => {
+    const { status } = await callPatch({ metadata_encrypted: 'iv:bundle' });
+
+    expect(status).toBe(200);
+    expect(mockPrisma.folder.update).toHaveBeenCalledWith({
+      where: { id: FOLDER_ID },
+      data: { metadata_encrypted: 'iv:bundle', sync_version: 5 }
+    });
+  });
+
+  it('does not touch the bundle on a rename', async () => {
+    await callPatch({ name_encrypted: 'iv:name' });
+
+    const { data } = mockPrisma.folder.update.mock.calls[0][0];
+    expect(data.name_encrypted).toBe('iv:name');
+    expect('metadata_encrypted' in data).toBe(false);
   });
 });
