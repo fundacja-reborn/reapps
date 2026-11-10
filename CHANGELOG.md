@@ -1,3 +1,12 @@
+## 0.48.0 (2026-11-10)
+
+### 🚀 Features
+
+- **notes:** folder color and icon ([#516](https://github.com/fundacja-reborn/reapps/pull/516), [#511](https://github.com/fundacja-reborn/reapps/issues/511))
+- **notes:** pick a color for a note ([#517](https://github.com/fundacja-reborn/reapps/pull/517), [#511](https://github.com/fundacja-reborn/reapps/issues/511), [#516](https://github.com/fundacja-reborn/reapps/issues/516))
+- **notes:** text size for the interface and for note text ([#518](https://github.com/fundacja-reborn/reapps/pull/518), [#511](https://github.com/fundacja-reborn/reapps/issues/511))
+- **notes:** choose the start page, keep the place after unlock ([#519](https://github.com/fundacja-reborn/reapps/pull/519), [#482](https://github.com/fundacja-reborn/reapps/issues/482), [#511](https://github.com/fundacja-reborn/reapps/issues/511))
+
 ## 0.47.1 (2026-11-09)
 
 ### 🩹 Fixes

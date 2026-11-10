@@ -1,6 +1,6 @@
 {
   "name": "@reborn/platform",
-  "version": "0.47.1",
+  "version": "0.48.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
