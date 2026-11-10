@@ -1,5 +1,51 @@
 [
   {
+    "version": "0.48.0",
+    "date": "2026-11-10",
+    "items": [
+      {
+        "id": "0.48.0-text-size",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.48.0-folder-appearance",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.48.0-note-color",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.48.0-start-page",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.48.0-keep-place",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.47.1",
     "date": "2026-11-09",
     "items": [
