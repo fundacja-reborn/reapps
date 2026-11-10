@@ -46,7 +46,7 @@
 
 {#if stale}
   <span
-    class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-400"
+    class="inline-flex items-center gap-1 text-[0.625rem] uppercase tracking-wider text-amber-700 dark:text-amber-400"
   >
     <FileClock class="h-3 w-3" aria-hidden="true" />
     {$t('share.list.snapshot_stale')}

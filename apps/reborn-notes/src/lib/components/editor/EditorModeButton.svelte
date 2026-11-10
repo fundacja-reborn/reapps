@@ -63,9 +63,11 @@
     <FaceIcon class="h-4 w-4 md:h-3.5 md:w-3.5" />
     {#if !isMobile}
       <!-- Labels collapse to icons when the note pane is narrow (container query
-           on the header, ~@lg). Keeps the toolbar from clipping the trailing
-           icons/kebab in the 768-960px desktop range where the pane is tight. -->
-      <span class="hidden @lg:inline">{label}</span>
+           on the header). Keeps the toolbar from clipping the trailing
+           icons/kebab where the pane is tight. 44rem, not @lg (32rem): with
+           labels the row needs ~37-40rem (EN/DE), more with a larger text
+           size. Keep in step with the labels in NoteEditorHeader.svelte. -->
+      <span class="hidden @min-[44rem]:inline">{label}</span>
     {/if}
   </button>
 
@@ -100,7 +102,7 @@
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" class="min-w-52">
         <DropdownMenuLabel
-          class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+          class="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground"
         >
           {$t('editor_mode.label')}
         </DropdownMenuLabel>

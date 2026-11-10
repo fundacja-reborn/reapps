@@ -92,7 +92,7 @@
   {#if activeTrash}
     <h1
       dir="auto"
-      class="text-2xl md:text-xl font-bold text-muted-foreground leading-snug"
+      class="note-title font-bold text-muted-foreground leading-snug"
     >{title || $t('notes.untitled')}</h1>
   {:else}
     <!-- No dir="auto" here: the global `unicode-bidi: plaintext` on text fields
@@ -104,7 +104,7 @@
       oninput={handleInput}
       placeholder={$t('notes.untitled')}
       rows={1}
-      class="w-full resize-none overflow-hidden bg-transparent text-2xl md:text-xl font-bold
+      class="w-full resize-none overflow-hidden bg-transparent note-title font-bold
            leading-snug placeholder:text-muted-foreground/50 focus:outline-none"
       aria-label={$t('notes.note_title_label')}
     ></textarea>
@@ -168,3 +168,18 @@
   </div>
   </div>
 </div>
+
+<style>
+  /* Note title: 1.5rem (text-2xl) on mobile, 1.25rem (text-xl) from md, times
+     the note text size of this device (--rn-note-scale on <html>, 1 by
+     default), so the title grows with the note body (editor and preview scale
+     the same way). */
+  .note-title {
+    font-size: calc(1.5rem * var(--rn-note-scale, 1));
+  }
+  @media (min-width: 768px) {
+    .note-title {
+      font-size: calc(1.25rem * var(--rn-note-scale, 1));
+    }
+  }
+</style>

@@ -23,6 +23,7 @@
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import EditorModeButton from './EditorModeButton.svelte';
   import NoteShareIndicator from '../notes/NoteShareIndicator.svelte';
+  import { uiScale } from '$lib/stores/device-prefs.store';
   import type { Snippet } from 'svelte';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -92,8 +93,12 @@
     onrestore: () => void;
     onpermanentdelete: () => void;
     onhistoryreset: () => void;
-    /** Slot for NoteDetailActions (kebab menu) */
-    actions?: Snippet;
+    /**
+     * Slot for NoteDetailActions (kebab menu). The argument is `compact`: true
+     * on desktop when the header hides its Outline / Linked notes / History
+     * toggles for lack of room, so the menu offers them instead.
+     */
+    actions?: Snippet<[boolean]>;
     /** Note title (shown small when large title scrolls out of view) */
     title?: string;
     /** Whether to show small title in header (when large title scrolled away) */
@@ -121,11 +126,42 @@
   function formatKB(bytes: number): string {
     return `${Math.round(bytes / 1024)} KB`;
   }
+
+  // ── Narrow header (text size, issue #511) ──────────────────────────────
+  // The header is an `@container`. With a larger interface scale (font-size %
+  // on <html>) every button grows, while a phone stays 360px wide and a desktop
+  // editor column stays as wide as the window allows. Container queries in rem
+  // follow the root font size, so the thresholds below are "room for N rem of
+  // buttons" (content box, without the header padding) at any scale; at 100%
+  // they only kick in where the row (nearly) overflowed. Hidden buttons stay
+  // reachable: the mobile action sheet already has Outline / Linked notes /
+  // History / Encryption; on desktop the dropdown gains Outline / Linked notes
+  // / History while `compact`, and already has Encryption and Share, and
+  // back/forward keep Alt+Left/Right.
+  //   mobile  < 21rem: Encryption + Outline;  < 17rem: also shares, small title
+  //   desktop < 31rem: back/forward, Linked notes, History;  < 25rem: also
+  //                    Encryption, Outline, shares, small title
+  // Keep DESKTOP_COMPACT_REM equal to the `@max-[31rem]` classes in the markup.
+  const DESKTOP_COMPACT_REM = 31;
+  let headerEl = $state<HTMLElement | null>(null);
+  let headerWidth = $state(0);
+  const compact = $derived.by(() => {
+    void $uiScale; // re-evaluate when the root font size changes
+    if (isMobile || !headerEl || headerWidth === 0) return false;
+    // Container queries measure the content box; clientWidth includes padding.
+    const style = getComputedStyle(headerEl);
+    const contentWidth =
+      headerWidth - parseFloat(style.paddingInlineStart) - parseFloat(style.paddingInlineEnd);
+    const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    return contentWidth < DESKTOP_COMPACT_REM * rootPx;
+  });
 </script>
 
 <!-- pt + min-h grow together by the iOS notch inset so the content keeps its
      full row box and stays vertically centered (env() is 0 elsewhere). -->
 <header
+  bind:this={headerEl}
+  bind:clientWidth={headerWidth}
   class="@container flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center border-b border-border/60
     pt-[env(safe-area-inset-top,0px)]
     {isMobile ? 'gap-2 px-3' : 'gap-1 px-3 @lg:gap-2 @lg:px-6'}"
@@ -156,7 +192,7 @@
     onclick={onback}
     class="flex shrink-0 items-center justify-center rounded-md text-foreground
        hover:bg-accent transition-colors
-       {isMobile ? '-ms-1 h-11 w-11' : 'h-8 w-8'}"
+       {isMobile ? '-ms-1 h-11 w-11 @max-[17rem]:w-9' : 'h-8 w-8'}"
     aria-label={$t('nav.back')}
   >
     <ArrowLeft class={isMobile ? 'h-5 w-5' : 'h-4 w-4'} />
@@ -166,7 +202,7 @@
        edge-swipe and the back-arrow chaining); shown once a trail exists. The
        `<`/`>` chevrons read as history, distinct from the `←` close arrow. -->
   {#if !isMobile && (canGoBackNote || canGoForwardNote)}
-    <div class="flex shrink-0 items-center">
+    <div class="flex shrink-0 items-center @max-[31rem]:hidden">
       <button
         type="button"
         onclick={onnotehistoryback}
@@ -200,6 +236,7 @@
   {#if title}
     <span
       class="min-w-0 truncate text-sm font-medium text-foreground transition-opacity duration-200
+        {isMobile ? '@max-[17rem]:hidden' : '@max-[25rem]:hidden'}
         {showTitle ? 'opacity-100' : 'opacity-0 pointer-events-none'}"
     >{title}</span>
   {/if}
@@ -253,7 +290,7 @@
     <!-- Size indicator (visible when ≥ 80% of limit) -->
     {#if showSizeIndicator}
       <span
-        class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums
+        class="shrink-0 rounded px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums
           {noteDetailService.isOverLimit
           ? 'bg-destructive/10 text-destructive'
           : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}"
@@ -266,7 +303,9 @@
 
   <!-- Active share indicator (only when this note has live shares) -->
   {#if !activeTrash}
-    <NoteShareIndicator {noteId} onCreateNew={onShareCreate} />
+    <div class="contents {isMobile ? '@max-[17rem]:hidden' : '@max-[25rem]:hidden'}">
+      <NoteShareIndicator {noteId} onCreateNew={onShareCreate} />
+    </div>
   {/if}
 
   <!-- E2EE indicator (flat) -->
@@ -274,7 +313,8 @@
     type="button"
     onclick={onshowxray}
     class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground
-         transition-colors hover:bg-accent hover:text-accent-foreground"
+         transition-colors hover:bg-accent hover:text-accent-foreground
+         {isMobile ? '@max-[21rem]:hidden' : '@max-[25rem]:hidden'}"
     title={$t('e2e.badge_tooltip')}
     aria-label={$t('e2e.badge_tooltip')}
   >
@@ -317,7 +357,10 @@
             >
               <Icon class="h-4 w-4 md:h-3.5 md:w-3.5" />
               {#if !isMobile}
-                <span class="hidden @lg:inline">{label}</span>
+                <!-- 44rem, not @lg (32rem): with labels the row needs ~37-40rem
+                     (EN/DE), so @lg clipped the kebab menu on mid-size windows,
+                     more so with a larger text size. -->
+                <span class="hidden @min-[44rem]:inline">{label}</span>
               {/if}
             </button>
           {/if}
@@ -336,6 +379,7 @@
         aria-pressed={outlineActive}
         class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground
            transition-colors hover:bg-accent hover:text-accent-foreground
+           {isMobile ? '@max-[21rem]:hidden' : '@max-[25rem]:hidden'}
            {outlineActive ? 'bg-accent text-accent-foreground' : ''}"
       >
         <ListTree class="h-4 w-4" />
@@ -351,7 +395,7 @@
         aria-label={$t('linked_notes.title')}
         aria-pressed={linkedNotesActive}
         class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground
-           transition-colors hover:bg-accent hover:text-accent-foreground
+           transition-colors hover:bg-accent hover:text-accent-foreground @max-[31rem]:hidden
            {linkedNotesActive ? 'bg-accent text-accent-foreground' : ''}"
       >
         <Waypoints class="h-4 w-4" />
@@ -372,7 +416,7 @@
         aria-label={$t('history.title')}
         aria-pressed={historyMode !== 'closed'}
           class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground
-             transition-colors hover:bg-accent hover:text-accent-foreground
+             transition-colors hover:bg-accent hover:text-accent-foreground @max-[31rem]:hidden
              {historyMode !== 'closed' ? 'bg-accent text-accent-foreground' : ''}"
       >
         <Clock class="h-4 w-4" />
@@ -404,6 +448,6 @@
 
   <!-- Kebab menu (NoteDetailActions) -->
   {#if actions}
-    {@render actions()}
+    {@render actions(compact)}
   {/if}
 </header>

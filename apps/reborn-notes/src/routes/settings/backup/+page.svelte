@@ -388,7 +388,7 @@
                   </span>
                 {/if}
               </div>
-              <p class="text-[11px] text-muted-foreground/70 pt-1">
+              <p class="text-[0.6875rem] text-muted-foreground/70 pt-1">
                 {$t('settings_page.backup.cadence_note')}
               </p>
             </section>

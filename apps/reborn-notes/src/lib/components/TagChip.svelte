@@ -16,7 +16,7 @@
 
 <span
   class="inline-flex items-center gap-1 rounded-full font-medium
-    {size === 'xs' ? 'px-2 py-0.5 text-[13px] md:px-1.5 md:text-xs' : 'px-2 py-0.5 text-xs'}"
+    {size === 'xs' ? 'px-2 py-0.5 text-[0.8125rem] md:px-1.5 md:text-xs' : 'px-2 py-0.5 text-xs'}"
   style={tag.color
     ? `background-color: color-mix(in oklch, ${tag.color} var(--tag-mix, 13%), transparent); color: color-mix(in oklch, ${tag.color} var(--tag-fg-mix, 100%), white); border: 1px solid color-mix(in oklch, ${tag.color} var(--tag-border-mix, 33%), transparent);`
     : ''}

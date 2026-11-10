@@ -202,7 +202,7 @@
                   {getDeviceName(currentSession.id)}
                 </p>
                 <span
-                  class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary"
+                  class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[0.625rem] font-semibold text-primary"
                 >
                   {$t('security.sessions.current_session')}
                 </span>

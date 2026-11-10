@@ -363,7 +363,7 @@
             </div>
             {#if breadcrumb}
               <p
-                class="mt-0.5 flex min-w-0 items-center gap-1 text-[12px] md:text-[11px] text-muted-foreground"
+                class="mt-0.5 flex min-w-0 items-center gap-1 text-[0.75rem] md:text-[0.6875rem] text-muted-foreground"
                 title={breadcrumb}
               >
                 <Folder class="h-3 w-3 shrink-0" />
@@ -384,13 +384,13 @@
                 {/each}
               </div>
             {/if}
-            <p class="mt-0.5 text-[13px] md:text-xs text-muted-foreground line-clamp-2">
+            <p class="mt-0.5 text-[0.8125rem] md:text-xs text-muted-foreground line-clamp-2">
               {formatNoteDate(displayDate, $dateFormat, $timeFormat)}
             </p>
             <!-- Visible per-note rejection reason - not just the badge/hover tooltip,
                  so the user knows WHY a note won't sync (and it works on touch). -->
             {#if syncErrorCode}
-              <p class="mt-0.5 text-[13px] md:text-xs font-medium text-destructive line-clamp-2">
+              <p class="mt-0.5 text-[0.8125rem] md:text-xs font-medium text-destructive line-clamp-2">
                 {syncErrorTitle}
               </p>
             {/if}

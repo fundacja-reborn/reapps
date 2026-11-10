@@ -4,6 +4,16 @@
  */
 import { EditorView } from '@codemirror/view';
 
+/**
+ * A note-content font size: `rem` scaled by the note text size of this device
+ * (`--rn-note-scale` on <html>, set from device prefs; 1 by default). Keep in
+ * step with MarkdownPreview.svelte, which scales the same way. UI chrome inside
+ * the editor (copy buttons, etc.) stays in plain `rem` = interface scale only.
+ */
+function noteRem(rem: number): string {
+  return `calc(${rem}rem * var(--rn-note-scale, 1))`;
+}
+
 export const livePreviewTheme = EditorView.theme({
   // Use proportional Roboto in Live Preview so the view mirrors MarkdownPreview.
   // Markdown (raw) mode keeps the global monospace stack from app.css.
@@ -20,7 +30,7 @@ export const livePreviewTheme = EditorView.theme({
   // which adds underline to tags.heading - Preview has no underline, so we
   // strip it here for visual parity.
   '.cm-lp-h1-line': {
-    fontSize: '2rem',
+    fontSize: noteRem(2),
     fontWeight: '600',
     lineHeight: '1.3',
     paddingTop: '1.5em',
@@ -28,7 +38,7 @@ export const livePreviewTheme = EditorView.theme({
     '& span': { textDecoration: 'none' }
   },
   '.cm-lp-h2-line': {
-    fontSize: '1.625rem',
+    fontSize: noteRem(1.625),
     fontWeight: '600',
     lineHeight: '1.3',
     paddingTop: '1.5em',
@@ -36,7 +46,7 @@ export const livePreviewTheme = EditorView.theme({
     '& span': { textDecoration: 'none' }
   },
   '.cm-lp-h3-line': {
-    fontSize: '1.375rem',
+    fontSize: noteRem(1.375),
     fontWeight: '600',
     lineHeight: '1.3',
     paddingTop: '1.5em',
@@ -44,7 +54,7 @@ export const livePreviewTheme = EditorView.theme({
     '& span': { textDecoration: 'none' }
   },
   '.cm-lp-h4-line': {
-    fontSize: '1.125rem',
+    fontSize: noteRem(1.125),
     fontWeight: '600',
     lineHeight: '1.3',
     paddingTop: '1.5em',
@@ -52,7 +62,7 @@ export const livePreviewTheme = EditorView.theme({
     '& span': { textDecoration: 'none' }
   },
   '.cm-lp-h5-line': {
-    fontSize: '1rem',
+    fontSize: noteRem(1),
     fontWeight: '600',
     lineHeight: '1.3',
     paddingTop: '1.5em',
@@ -60,7 +70,7 @@ export const livePreviewTheme = EditorView.theme({
     '& span': { textDecoration: 'none' }
   },
   '.cm-lp-h6-line': {
-    fontSize: '0.9375rem',
+    fontSize: noteRem(0.9375),
     fontWeight: '600',
     lineHeight: '1.3',
     paddingTop: '1.5em',
@@ -71,12 +81,12 @@ export const livePreviewTheme = EditorView.theme({
 
   // Desktop heading sizes - match MarkdownPreview.svelte (md: 768px+).
   '@media (min-width: 768px)': {
-    '.cm-lp-h1-line': { fontSize: '1.875rem' },
-    '.cm-lp-h2-line': { fontSize: '1.5rem' },
-    '.cm-lp-h3-line': { fontSize: '1.25rem' },
-    '.cm-lp-h4-line': { fontSize: '1.0625rem' },
-    '.cm-lp-h5-line': { fontSize: '0.9375rem' },
-    '.cm-lp-h6-line': { fontSize: '0.875rem' }
+    '.cm-lp-h1-line': { fontSize: noteRem(1.875) },
+    '.cm-lp-h2-line': { fontSize: noteRem(1.5) },
+    '.cm-lp-h3-line': { fontSize: noteRem(1.25) },
+    '.cm-lp-h4-line': { fontSize: noteRem(1.0625) },
+    '.cm-lp-h5-line': { fontSize: noteRem(0.9375) },
+    '.cm-lp-h6-line': { fontSize: noteRem(0.875) }
   },
 
   // ─── Copy-link-to-heading button ─────────────────────────────
@@ -550,7 +560,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-table': {
     width: '100%',
     borderCollapse: 'collapse',
-    fontSize: '0.9375rem',
+    fontSize: noteRem(0.9375),
     tableLayout: 'auto'
   },
   '.cm-lp-table th, .cm-lp-table td': {
@@ -675,7 +685,7 @@ export const livePreviewTheme = EditorView.theme({
     border: '2px dashed var(--border)',
     borderRadius: '0.5em',
     background: 'var(--muted)',
-    fontSize: '0.875rem',
+    fontSize: noteRem(0.875),
     maxWidth: '100%',
     verticalAlign: 'middle'
   },
@@ -702,7 +712,7 @@ export const livePreviewTheme = EditorView.theme({
     color: 'var(--primary-foreground)',
     border: 'none',
     cursor: 'pointer',
-    fontSize: '0.8125rem',
+    fontSize: noteRem(0.8125),
     flex: '0 0 auto'
   },
   '.cm-lp-img-placeholder-load:hover': {

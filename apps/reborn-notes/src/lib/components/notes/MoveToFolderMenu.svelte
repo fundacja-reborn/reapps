@@ -282,7 +282,7 @@
         </button>
         <nav
           aria-label={$t('notes.folder_current_location')}
-          class="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
+          class="min-w-0 flex-1 truncate text-[0.6875rem] text-muted-foreground"
         >
           {#each breadcrumb as crumb, i (crumb.id)}
             {#if i > 0}<span class="mx-1 opacity-60">›</span>{/if}
@@ -369,7 +369,7 @@
     <!-- Folder list (current level) -->
     <div class="mt-1 px-2 pb-2" role="menu">
       {#if currentLevel.length === 0}
-        <p class="px-2 py-3 text-center text-[11px] text-muted-foreground">
+        <p class="px-2 py-3 text-center text-[0.6875rem] text-muted-foreground">
           {$t('notes.folder_no_subfolders')}
         </p>
       {:else}
@@ -420,7 +420,7 @@
                 title={$t('folders.expand')}
                 tabindex="-1"
               >
-                <span class="text-[10px]">{subcount}</span>
+                <span class="text-[0.625rem]">{subcount}</span>
                 <ChevronRight class="h-3.5 w-3.5" />
               </button>
             {/if}
@@ -432,7 +432,7 @@
     <!-- Search results (flat, with path) -->
     <div class="mt-2 px-2 pb-2" role="menu">
       {#if searchResults.length === 0}
-        <p class="px-2 py-4 text-center text-[11px] text-muted-foreground">
+        <p class="px-2 py-4 text-center text-[0.6875rem] text-muted-foreground">
           {$t('notes.folder_no_results')}
         </p>
       {:else}
@@ -451,7 +451,7 @@
             <span class="min-w-0 flex-1">
               <span class="block truncate text-xs text-foreground"><bdi>{r.name}</bdi></span>
               {#if r.path}
-                <span class="block truncate text-[10px] text-muted-foreground">{r.path}</span>
+                <span class="block truncate text-[0.625rem] text-muted-foreground">{r.path}</span>
               {/if}
             </span>
             {#if isCurrent}
@@ -477,7 +477,7 @@
     onclick={(e) => e.stopPropagation()}
   >
     <p
-      class="border-b px-3 pb-1.5 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+      class="border-b px-3 pb-1.5 pt-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground"
     >
       {pickerTitle}
     </p>

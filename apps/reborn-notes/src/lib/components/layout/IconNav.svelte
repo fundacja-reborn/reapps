@@ -185,7 +185,7 @@
       aria-label={$t('nav.new_note')}
     >
       <FilePlus class="h-5 w-5" />
-      <span class="text-[11px] leading-none">{$t('nav.new_short')}</span>
+      <span class="text-[0.6875rem] leading-none">{$t('nav.new_short')}</span>
     </button>
     <!-- Search -->
     <button
@@ -202,7 +202,7 @@
       aria-current={activeSection === 'search' ? 'page' : undefined}
     >
       <Search class="h-5 w-5" />
-      <span class="text-[11px] leading-none">{$t('nav.search')}</span>
+      <span class="text-[0.6875rem] leading-none">{$t('nav.search')}</span>
     </button>
     <!-- Primary views (All, Starred) -->
     {#each PRIMARY_SECTIONS as s}
@@ -220,7 +220,7 @@
         aria-current={activeSection === s.id ? 'page' : undefined}
       >
         <s.icon class="h-5 w-5" />
-        <span class="text-[11px] leading-none">{s.short}</span>
+        <span class="text-[0.6875rem] leading-none">{s.short}</span>
       </button>
     {/each}
     <!-- Organization (Folders, Tags) -->
@@ -239,7 +239,7 @@
         aria-current={activeSection === s.id ? 'page' : undefined}
       >
         <s.icon class="h-5 w-5" />
-        <span class="text-[11px] leading-none">{s.short}</span>
+        <span class="text-[0.6875rem] leading-none">{s.short}</span>
       </button>
     {/each}
     <!-- Periodic notes (Daily / Weekly / Monthly) -->
@@ -264,7 +264,7 @@
         {:else}
           <p.icon class="h-5 w-5" />
         {/if}
-        <span class="text-[11px] leading-none">{periodicLabel(p.kind)}</span>
+        <span class="text-[0.6875rem] leading-none">{periodicLabel(p.kind)}</span>
       </button>
     {/each}
     <!-- Shares (always visible, count badge when > 0) -->
@@ -283,14 +283,14 @@
         {#if $activeSharesCount > 0}
           <span
             class="absolute -top-1 -inset-e-1.5 flex h-3.5 min-w-3.5 items-center justify-center
-              rounded-full bg-foreground/15 text-[8px] font-medium leading-none text-muted-foreground px-0.5"
+              rounded-full bg-foreground/15 text-[0.5rem] font-medium leading-none text-muted-foreground px-0.5"
             aria-label="{$activeSharesCount} {$t('nav.shares')}"
           >
             {$activeSharesCount > 99 ? '99+' : $activeSharesCount}
           </span>
         {/if}
       </span>
-      <span class="text-[11px] leading-none">{$t('nav.shares')}</span>
+      <span class="text-[0.6875rem] leading-none">{$t('nav.shares')}</span>
     </button>
     <!-- Trash -->
     <button
@@ -307,7 +307,7 @@
       aria-current={activeSection === TRASH_SECTION.id ? 'page' : undefined}
     >
       <TRASH_SECTION.icon class="h-5 w-5" />
-      <span class="text-[11px] leading-none">{TRASH_SECTION.short}</span>
+      <span class="text-[0.6875rem] leading-none">{TRASH_SECTION.short}</span>
     </button>
   </div>
 {:else}
@@ -476,7 +476,7 @@
               {#if $activeSharesCount > 0}
                 <span
                   class="absolute -top-1.5 -inset-e-2 flex h-4 min-w-4 items-center justify-center
-                    rounded-full bg-foreground/15 text-[9px] font-medium leading-none text-muted-foreground px-0.5"
+                    rounded-full bg-foreground/15 text-[0.5625rem] font-medium leading-none text-muted-foreground px-0.5"
                   aria-label="{$activeSharesCount} {$t('nav.shares')}"
                 >
                   {$activeSharesCount > 99 ? '99+' : $activeSharesCount}

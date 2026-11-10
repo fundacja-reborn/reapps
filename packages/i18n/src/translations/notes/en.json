@@ -631,19 +631,6 @@
     "compact": "Compact View"
   },
   "settings": {
-    "editor": {
-      "title": "Editor Settings",
-      "description": "Customize the note editor",
-      "font_size": "Font Size",
-      "font_family": "Font Family",
-      "line_height": "Line Height",
-      "auto_save": "Auto-save",
-      "auto_save_interval": "Auto-save interval (seconds)",
-      "spell_check": "Spell Check",
-      "markdown_shortcuts": "Markdown Shortcuts",
-      "vim_mode": "Vim Mode",
-      "typewriter_mode": "Typewriter Mode"
-    },
     "export": {
       "title": "Export Notes",
       "description": "Export your notes for backup",
@@ -931,7 +918,7 @@
     },
     "appearance": {
       "title": "Appearance",
-      "hub_desc": "App theme, interface language, date and time format",
+      "hub_desc": "App theme, text size, interface language, date and time format",
       "theme": "Theme",
       "theme_desc": "Choose the app colour scheme",
       "language": "Language",
@@ -951,7 +938,21 @@
       "image_loading_always": "Always load automatically",
       "image_loading_never": "Never load external images",
       "image_loading_updated": "Image loading setting updated",
-      "image_loading_warning": "Loading images automatically may reveal your IP address to external servers"
+      "image_loading_warning": "Loading images automatically may reveal your IP address to external servers",
+      "text_size": "Text size",
+      "text_size_desc": "Applies to this device only",
+      "ui_scale": "Interface",
+      "ui_scale_hint": "Menus, lists, buttons and icons",
+      "ui_scale_decrease": "Smaller interface",
+      "ui_scale_increase": "Larger interface",
+      "note_scale": "Note text",
+      "note_scale_hint": "Editor, preview and note title, on top of the interface size",
+      "note_scale_decrease": "Smaller note text",
+      "note_scale_increase": "Larger note text",
+      "text_size_default": "Default",
+      "text_size_preview": "Preview",
+      "text_size_sample_heading": "Heading",
+      "text_size_sample_body": "This is how the text of your notes will look on this device."
     },
     "security": {
       "title": "Security",

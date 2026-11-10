@@ -162,7 +162,7 @@
         {/snippet}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" class="min-w-44">
-        <p class="px-3 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <p class="px-3 pb-1 pt-1.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
           {$t('share.list.sort_label')}
         </p>
         {#each SORT_OPTIONS as option (option.value)}
@@ -266,7 +266,7 @@
                   {/if}
                 </div>
                 <div
-                  class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] md:text-xs text-muted-foreground"
+                  class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.8125rem] md:text-xs text-muted-foreground"
                 >
                   {#if expiringSoon}
                     <span class="inline-flex items-center gap-0.5 font-medium text-amber-600 dark:text-amber-400">
@@ -289,7 +289,7 @@
                       values: { k: rank.k, n: rank.n }
                     })}
                     <span
-                      class="rounded-full border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                      class="rounded-full border bg-background px-1.5 py-0.5 text-[0.625rem] font-medium text-muted-foreground"
                       title={rankLabel}
                       aria-label={rankLabel}
                     >

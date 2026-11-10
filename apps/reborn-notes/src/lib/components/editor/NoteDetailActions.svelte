@@ -16,7 +16,10 @@
     Trash2,
     ListPlus,
     RefreshCw,
-    ListX
+    ListX,
+    ListTree,
+    Waypoints,
+    Clock
   } from '@lucide/svelte';
   import {
     DropdownMenu,
@@ -47,7 +50,11 @@
     tocMenuMode = 'hidden',
     tocStale = false,
     onTocApply,
-    onTocRemove
+    onTocRemove,
+    compact = false,
+    onoutline,
+    onlinkednotes,
+    onhistory
   }: {
     note: NoteListItem | null;
     /** Mobile: opens parent-provided NoteActionSheet */
@@ -74,7 +81,20 @@
     onTocApply?: () => void;
     /** Remove the managed TOC block. */
     onTocRemove?: () => void;
+    /**
+     * Desktop: the header is too narrow for its panel toggles (larger text
+     * size or a narrow window) and hid them, so the menu offers them instead.
+     */
+    compact?: boolean;
+    /** Desktop, `compact`: toggle the Outline panel. */
+    onoutline?: () => void;
+    /** Desktop, `compact`: toggle the Linked notes panel. */
+    onlinkednotes?: () => void;
+    /** Desktop, `compact`: toggle the version History panel. */
+    onhistory?: () => void;
   } = $props();
+
+  const showPanelItems = $derived(compact && (!!onoutline || !!onlinkednotes || !!onhistory));
 
   const isMobileQuery = useIsMobile();
   let isMoveMenuOpen = $state(false);
@@ -132,6 +152,28 @@
             {$t('note_search.open')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          {#if showPanelItems}
+            <!-- Panels whose header toggles are hidden in a narrow header -->
+            {#if onoutline}
+              <DropdownMenuItem onclick={onoutline}>
+                <ListTree class="h-3.5 w-3.5" />
+                {$t('outline.title')}
+              </DropdownMenuItem>
+            {/if}
+            {#if onlinkednotes}
+              <DropdownMenuItem onclick={onlinkednotes}>
+                <Waypoints class="h-3.5 w-3.5" />
+                {$t('linked_notes.title')}
+              </DropdownMenuItem>
+            {/if}
+            {#if onhistory}
+              <DropdownMenuItem onclick={onhistory}>
+                <Clock class="h-3.5 w-3.5" />
+                {$t('history.title')}
+              </DropdownMenuItem>
+            {/if}
+            <DropdownMenuSeparator />
+          {/if}
           <!-- Organize -->
           <DropdownMenuItem onclick={onpin}>
             {#if note.is_pinned}

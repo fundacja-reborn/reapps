@@ -72,7 +72,7 @@
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" class="min-w-44">
       <p
-        class="px-3 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+        class="px-3 pb-1 pt-1.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground"
       >
         {$t('folders.sort')}
       </p>

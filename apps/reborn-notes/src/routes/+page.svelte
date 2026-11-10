@@ -2584,7 +2584,7 @@
     class="bg-sidebar overflow-hidden"
     open={!panelCollapsedEffective}
     onOpenChange={(o) => devicePrefs.setNoteListCollapsed(!o)}
-    style="height: calc(100dvh - var(--rn-banner-h, 0px) - var(--rn-keyboard-inset, 0px)); min-height: 0; --sidebar-width: 24rem;"
+    style="height: calc(100dvh - var(--rn-banner-h, 0px) - var(--rn-keyboard-inset, 0px)); min-height: 0; --sidebar-width: var(--rn-list-panel-w);"
   >
     <SidebarAutoClose {closeSidebarSignal} />
 
@@ -2599,12 +2599,13 @@
     />
 
     <!-- ── Note-list panel (collapsible). Outer div animates width; the inner
-         keeps a fixed 24rem width so its content never reflows mid-slide. ── -->
+         keeps a fixed width (--rn-list-panel-w, 24rem by default, see app.css)
+         so its content never reflows mid-slide. ── -->
     <div
       class="shrink-0 overflow-hidden transition-[width] duration-200 ease-linear"
-      style="width: {panelCollapsedEffective ? '0px' : '24rem'}"
+      style="width: {panelCollapsedEffective ? '0px' : 'var(--rn-list-panel-w)'}"
     >
-      <div class="flex h-full w-96 flex-col min-w-0 overflow-hidden bg-sidebar">
+      <div class="flex h-full w-(--rn-list-panel-w) flex-col min-w-0 overflow-hidden bg-sidebar">
         <SidebarHeader class="p-0 gap-0">
           <!-- The editor card to the right floats with a my-2 (0.5rem) top
                margin, so its header separator sits 0.5rem below the column top.
@@ -2787,9 +2788,13 @@
             noteId={$activeNoteId}
             onShareCreate={() => handleDetailShare()}
           >
-            {#snippet actions()}
+            {#snippet actions(compact: boolean)}
               <NoteDetailActions
                 note={detailMenuNote}
+                {compact}
+                onoutline={toggleOutline}
+                onlinkednotes={toggleLinkedNotes}
+                onhistory={handleDetailHistory}
                 onmenuopen={() => (detailActionSheetOpen = true)}
                 onsearch={openNoteSearch}
                 onpin={handleDetailPin}
@@ -2965,7 +2970,7 @@
          point of #375 vs. the overlay drawer. ──────────────────────────────── -->
     {#if tocDocked}
       <aside
-        class="my-2 me-2 flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border bg-background shadow-sm"
+        class="my-2 me-2 flex w-(--rn-outline-panel-w) shrink-0 flex-col overflow-hidden rounded-xl border bg-background shadow-sm"
         aria-label={$t('outline.title')}
       >
         <div class="flex shrink-0 items-center gap-2 border-b px-4 py-3">

@@ -38,7 +38,7 @@
 </script>
 
 <div class="py-2">
-  <p class="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+  <p class="px-2 pb-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
     {$t('saved_searches.title')}
   </p>
   <ul class="select-none">

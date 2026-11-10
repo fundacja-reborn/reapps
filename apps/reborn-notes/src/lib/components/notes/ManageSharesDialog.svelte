@@ -251,19 +251,19 @@
                   <FileText class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
-                      <span class="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <span class="text-[0.625rem] uppercase tracking-wider text-muted-foreground">
                         {$t('share.list.snapshot_eyebrow')}
                       </span>
                       {#if share.has_password}
-                        <span class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <span class="inline-flex items-center gap-1 text-[0.625rem] uppercase tracking-wider text-muted-foreground">
                           <Lock class="h-3 w-3" />
                           {$t('share.list.password_protected')}
                         </span>
                       {/if}
                       {#if exhausted}
-                        <span class="text-[10px] uppercase tracking-wider text-destructive">{$t('share.list.exhausted_label')}</span>
+                        <span class="text-[0.625rem] uppercase tracking-wider text-destructive">{$t('share.list.exhausted_label')}</span>
                       {:else if inactive}
-                        <span class="text-[10px] uppercase tracking-wider text-destructive">{$t('share.list.revoked_label')}</span>
+                        <span class="text-[0.625rem] uppercase tracking-wider text-destructive">{$t('share.list.revoked_label')}</span>
                       {/if}
                       {#if entry && !inactive}
                         <SnapshotStaleBadge
@@ -333,7 +333,7 @@
                 <div class="flex flex-col gap-1">
                   <button
                     type="button"
-                    class="inline-flex w-fit cursor-pointer items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                    class="inline-flex w-fit cursor-pointer items-center gap-1 text-[0.6875rem] uppercase tracking-wider text-muted-foreground hover:text-foreground"
                     onclick={() => toggleUrl(share.id)}
                   >
                     {#if urlShown}
@@ -346,7 +346,7 @@
                   </button>
                   {#if urlShown}
                     <p class="break-all font-mono text-xs text-muted-foreground">{entry.url}</p>
-                    <p class="mt-1 flex items-start gap-1 text-[11px] leading-snug text-muted-foreground">
+                    <p class="mt-1 flex items-start gap-1 text-[0.6875rem] leading-snug text-muted-foreground">
                       <Lock class="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                       <span>{$t('share.list.link_key_warning')}</span>
                     </p>
