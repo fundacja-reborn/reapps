@@ -168,7 +168,7 @@
             <ArrowDownLeft class="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
             {$t('linked_notes.incoming')}
             <span
-              class="ms-auto rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground"
+              class="ms-auto rounded-full bg-muted px-1.5 py-0.5 text-[0.6875rem] font-medium tabular-nums text-muted-foreground"
               aria-label={$t('linked_notes.incoming_count', {
                 values: { count: backlinks.length }
               })}>{backlinks.length}</span
@@ -196,7 +196,7 @@
             <ArrowUpRight class="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
             {$t('linked_notes.outgoing')}
             <span
-              class="ms-auto rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground"
+              class="ms-auto rounded-full bg-muted px-1.5 py-0.5 text-[0.6875rem] font-medium tabular-nums text-muted-foreground"
               aria-label={$t('linked_notes.outgoing_count', {
                 values: { count: outgoing.length }
               })}>{outgoing.length}</span

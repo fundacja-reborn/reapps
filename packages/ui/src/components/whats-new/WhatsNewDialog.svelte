@@ -139,7 +139,7 @@
                         <div class="flex flex-wrap gap-1">
                           {#each platformBadges(item) as p (p)}
                             <span
-                              class="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+                              class="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[0.6875rem] font-medium text-muted-foreground"
                             >
                               {$t(`whats_new.platform_${p}`)}
                             </span>
@@ -181,7 +181,7 @@
                             <div class="flex flex-wrap gap-1">
                               {#each platformBadges(item) as p (p)}
                                 <span
-                                  class="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+                                  class="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[0.6875rem] font-medium text-muted-foreground"
                                 >
                                   {$t(`whats_new.platform_${p}`)}
                                 </span>

@@ -1172,7 +1172,9 @@
     width: 100%;
     max-width: 48rem; /* max-w-3xl */
     margin: 0 auto;
-    font-size: 1rem; /* 16px - prevents iOS auto-zoom on focus */
+    /* 16px - prevents iOS auto-zoom on focus. --rn-note-scale (note text size,
+       this device) only ever enlarges it, so the 16px floor holds. */
+    font-size: calc(1rem * var(--rn-note-scale, 1));
     line-height: 1.7;
     box-sizing: border-box;
     /* Belt-and-braces: even if some descendant widget tries to push intrinsic
@@ -1188,7 +1190,7 @@
       padding: 1.5rem 1.25rem;
     }
     :global(.cm-host .cm-content) {
-      font-size: 0.875rem; /* 14px on desktop */
+      font-size: calc(0.875rem * var(--rn-note-scale, 1)); /* 14px on desktop */
     }
   }
 

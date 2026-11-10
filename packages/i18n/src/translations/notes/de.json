@@ -631,19 +631,6 @@
     "compact": "Kompakte Ansicht"
   },
   "settings": {
-    "editor": {
-      "title": "Editor-Einstellungen",
-      "description": "Notiz-Editor anpassen",
-      "font_size": "Schriftgröße",
-      "font_family": "Schriftart",
-      "line_height": "Zeilenhöhe",
-      "auto_save": "Automatisch speichern",
-      "auto_save_interval": "Intervall automatisch speichern (Sekunden)",
-      "spell_check": "Rechtschreibprüfung",
-      "markdown_shortcuts": "Markdown-Tastenkürzel",
-      "vim_mode": "Vim-Modus",
-      "typewriter_mode": "Schreibmaschinen-Modus"
-    },
     "export": {
       "title": "Notizen exportieren",
       "description": "Notizen zur Sicherung exportieren",
@@ -931,7 +918,7 @@
     },
     "appearance": {
       "title": "Erscheinungsbild",
-      "hub_desc": "App-Thema, Sprache der Benutzeroberfläche, Datums- und Zeitformat",
+      "hub_desc": "App-Thema, Textgröße, Sprache der Benutzeroberfläche, Datums- und Zeitformat",
       "theme": "Thema",
       "theme_desc": "Wählen Sie das Farbschema der App",
       "language": "Sprache",
@@ -951,7 +938,21 @@
       "image_loading_always": "Immer automatisch laden",
       "image_loading_never": "Externe Bilder niemals laden",
       "image_loading_updated": "Einstellung zum Laden von Bildern aktualisiert",
-      "image_loading_warning": "Das automatische Laden von Bildern kann Ihre IP-Adresse gegenüber externen Servern offenlegen"
+      "image_loading_warning": "Das automatische Laden von Bildern kann Ihre IP-Adresse gegenüber externen Servern offenlegen",
+      "text_size": "Textgröße",
+      "text_size_desc": "Gilt nur für dieses Gerät",
+      "ui_scale": "Benutzeroberfläche",
+      "ui_scale_hint": "Menüs, Listen, Schaltflächen und Symbole",
+      "ui_scale_decrease": "Benutzeroberfläche verkleinern",
+      "ui_scale_increase": "Benutzeroberfläche vergrößern",
+      "note_scale": "Notiztext",
+      "note_scale_hint": "Editor, Vorschau und Notiztitel, zusätzlich zur Größe der Benutzeroberfläche",
+      "note_scale_decrease": "Notiztext verkleinern",
+      "note_scale_increase": "Notiztext vergrößern",
+      "text_size_default": "Standard",
+      "text_size_preview": "Vorschau",
+      "text_size_sample_heading": "Überschrift",
+      "text_size_sample_body": "So sieht der Text Ihrer Notizen auf diesem Gerät aus."
     },
     "security": {
       "title": "Sicherheit",

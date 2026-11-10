@@ -654,19 +654,6 @@
     "compact": "عرض مضغوط"
   },
   "settings": {
-    "editor": {
-      "title": "إعدادات المحرر",
-      "description": "تخصيص محرر الملاحظات",
-      "font_size": "حجم الخط",
-      "font_family": "نوع الخط",
-      "line_height": "تباعد الأسطر",
-      "auto_save": "الحفظ التلقائي",
-      "auto_save_interval": "الفاصل الزمني للحفظ التلقائي (بالثواني)",
-      "spell_check": "التدقيق الإملائي",
-      "markdown_shortcuts": "اختصارات Markdown",
-      "vim_mode": "وضع Vim",
-      "typewriter_mode": "وضع الآلة الكاتبة"
-    },
     "export": {
       "title": "تصدير الملاحظات",
       "description": "تصدير ملاحظاتك لحفظ نسخة احتياطية",
@@ -954,7 +941,7 @@
     },
     "appearance": {
       "title": "العرض",
-      "hub_desc": "مظهر التطبيق، ولغة الواجهة، وتنسيق التاريخ والوقت",
+      "hub_desc": "مظهر التطبيق، وحجم النص، ولغة الواجهة، وتنسيق التاريخ والوقت",
       "theme": "المظهر",
       "theme_desc": "اختر نظام ألوان التطبيق",
       "language": "اللغة",
@@ -974,7 +961,21 @@
       "image_loading_always": "التحميل التلقائي دائمًا",
       "image_loading_never": "عدم تحميل الصور الخارجية أبدًا",
       "image_loading_updated": "تم تحديث إعداد تحميل الصور",
-      "image_loading_warning": "قد يكشف تحميل الصور تلقائيًا عنوان IP الخاص بك لخوادم خارجية"
+      "image_loading_warning": "قد يكشف تحميل الصور تلقائيًا عنوان IP الخاص بك لخوادم خارجية",
+      "text_size": "حجم النص",
+      "text_size_desc": "ينطبق على هذا الجهاز فقط",
+      "ui_scale": "الواجهة",
+      "ui_scale_hint": "القوائم والأزرار والأيقونات",
+      "ui_scale_decrease": "تصغير الواجهة",
+      "ui_scale_increase": "تكبير الواجهة",
+      "note_scale": "نص الملاحظات",
+      "note_scale_hint": "المحرر والمعاينة وعنوان الملاحظة، إضافةً إلى حجم الواجهة",
+      "note_scale_decrease": "تصغير نص الملاحظات",
+      "note_scale_increase": "تكبير نص الملاحظات",
+      "text_size_default": "الافتراضي",
+      "text_size_preview": "معاينة",
+      "text_size_sample_heading": "عنوان فرعي",
+      "text_size_sample_body": "هكذا سيبدو نص ملاحظاتك على هذا الجهاز."
     },
     "security": {
       "title": "الأمان",

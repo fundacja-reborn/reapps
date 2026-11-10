@@ -631,19 +631,6 @@
     "compact": "Vista compacta"
   },
   "settings": {
-    "editor": {
-      "title": "Configuración del editor",
-      "description": "Personalizar el editor de notas",
-      "font_size": "Tamaño de fuente",
-      "font_family": "Familia tipográfica",
-      "line_height": "Altura de línea",
-      "auto_save": "Guardado automático",
-      "auto_save_interval": "Intervalo de guardado automático (segundos)",
-      "spell_check": "Corrector ortográfico",
-      "markdown_shortcuts": "Atajos de Markdown",
-      "vim_mode": "Modo Vim",
-      "typewriter_mode": "Modo máquina de escribir"
-    },
     "export": {
       "title": "Exportar notas",
       "description": "Exporte sus notas como respaldo",
@@ -931,7 +918,7 @@
     },
     "appearance": {
       "title": "Apariencia",
-      "hub_desc": "Tema de la aplicación, idioma de la interfaz, formato de fecha y hora",
+      "hub_desc": "Tema de la aplicación, tamaño del texto, idioma de la interfaz, formato de fecha y hora",
       "theme": "Tema",
       "theme_desc": "Elija el esquema de colores de la aplicación",
       "language": "Idioma",
@@ -951,7 +938,21 @@
       "image_loading_always": "Cargar siempre automáticamente",
       "image_loading_never": "Nunca cargar imágenes externas",
       "image_loading_updated": "Configuración de carga de imágenes actualizada",
-      "image_loading_warning": "Cargar imágenes automáticamente puede revelar su dirección IP a servidores externos"
+      "image_loading_warning": "Cargar imágenes automáticamente puede revelar su dirección IP a servidores externos",
+      "text_size": "Tamaño del texto",
+      "text_size_desc": "Se aplica solo a este dispositivo",
+      "ui_scale": "Interfaz",
+      "ui_scale_hint": "Menús, listas, botones e iconos",
+      "ui_scale_decrease": "Reducir la interfaz",
+      "ui_scale_increase": "Ampliar la interfaz",
+      "note_scale": "Texto de las notas",
+      "note_scale_hint": "Editor, vista previa y título de la nota, además del tamaño de la interfaz",
+      "note_scale_decrease": "Reducir el texto de las notas",
+      "note_scale_increase": "Ampliar el texto de las notas",
+      "text_size_default": "Predeterminado",
+      "text_size_preview": "Vista previa",
+      "text_size_sample_heading": "Encabezado",
+      "text_size_sample_body": "Así se verá el texto de sus notas en este dispositivo."
     },
     "security": {
       "title": "Seguridad",

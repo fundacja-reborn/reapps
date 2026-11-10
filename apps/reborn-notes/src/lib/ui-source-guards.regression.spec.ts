@@ -37,6 +37,25 @@ describe('UI source guards (apps/reborn-notes/src)', () => {
     expect(hits).toEqual([]);
   });
 
+  it('sizes text in rem, not fixed px (text size setting, #511)', () => {
+    // The interface scale is `font-size: N%` on <html>: text sized in px would
+    // not grow with it. Write the rem equivalent (11px = 0.6875rem); in note
+    // content use calc(Xrem * var(--rn-note-scale, 1)). Exempt: the service
+    // worker's offline page (outside the app) and the PDF export (pt/em in a
+    // fixed-width off-screen box, deliberately independent of the screen).
+    const EXEMPT = ['/service-worker.ts', '/lib/services/export-import.service.ts'];
+    const PX_TEXT = /text-\[\d+(\.\d+)?px\]|font-size:\s*\d+(\.\d+)?px|fontSize:\s*'\d+(\.\d+)?px'/;
+    const hits = listSourceFiles([ROOT])
+      .filter((file) => /\.(svelte|ts|css)$/.test(file) && !/\.(spec|test)\.ts$/.test(file))
+      .filter((file) => !EXEMPT.some((suffix) => file.endsWith(suffix)))
+      .flatMap((file) =>
+        readFileSync(file, 'utf-8')
+          .split('\n')
+          .flatMap((line, i) => (PX_TEXT.test(line) ? [`${repoRelative(file)}:${i + 1}`] : []))
+      );
+    expect(hits).toEqual([]);
+  });
+
   it('leaves text fields to the global bidi rule, without dir="auto"', () => {
     // An empty field with dir="auto" resolves to LTR, so in an Arabic UI the caret
     // starts on the left and jumps on the first letter. `unicode-bidi: plaintext`

@@ -44,6 +44,18 @@
   --rn-find-active-fg: #1c1917;
 }
 
+/* Desktop side panels (note list, docked outline). Text size (issue #511) sets
+   `font-size: N%` on <html>, so rem widths grow with it, but the md breakpoint
+   (a media query in rem = the browser's default font size) does not move the
+   way browser zoom would. On a narrow window at 150% a plain 24rem list would
+   leave the editor a sliver. So: the panel never drops below its 100% width
+   (the max() floor = 24rem / 20rem at the standard 16px, so at 100% nothing
+   changes), and it grows with the scale only while the window has room. */
+:root {
+  --rn-list-panel-w: min(24rem, max(384px, 35vw));
+  --rn-outline-panel-w: min(20rem, max(320px, 22vw));
+}
+
 /* Rendered-preview find highlights, painted via the CSS Custom Highlight API in
    lib/utils/note-search-dom.ts. Custom props inherit to the highlighted text, so
    ::highlight() resolves the same palette the editor uses. */

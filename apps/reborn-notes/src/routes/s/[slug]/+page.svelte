@@ -286,7 +286,7 @@
            that matches the meta/title leading - was the source of the uneven
            mobile rhythm (4px wrap-gap vs 8px block-gap vs 2px title-meta gap;
            now uniformly 4px). -->
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] uppercase leading-snug tracking-wider text-muted-foreground">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.6875rem] uppercase leading-snug tracking-wider text-muted-foreground">
         <span class="inline-flex items-center gap-1">
           <ShieldCheck class="h-3.5 w-3.5" />
           {$t('share.view.read_only_badge')}

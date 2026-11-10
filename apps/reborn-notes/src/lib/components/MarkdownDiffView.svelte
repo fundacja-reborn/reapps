@@ -33,7 +33,7 @@
 
     <!-- Diff content -->
     <div class="flex-1 overflow-auto">
-      <pre class="min-w-0 text-xs leading-5 font-mono">{#each diffLines as line, i (i)}{@render diffLine(line, i)}{/each}</pre>
+      <pre class="diff-text min-w-0 font-mono">{#each diffLines as line, i (i)}{@render diffLine(line, i)}{/each}</pre>
     </div>
   </div>
 {/if}
@@ -53,3 +53,13 @@
     </div>
   {/if}
 {/snippet}
+
+<style>
+  /* Was text-xs + leading-5 (12px / 20px). Note content, so it follows the
+     note text size of this device (--rn-note-scale on <html>); the line height
+     is a ratio so lines never overlap at a larger size. */
+  .diff-text {
+    font-size: calc(0.75rem * var(--rn-note-scale, 1));
+    line-height: 1.6667;
+  }
+</style>

@@ -369,7 +369,7 @@
                it can read the snapshot. Same warning shown on the share detail
                surfaces - here it lands at the most critical moment: just before
                the user copies / sends the link. -->
-          <p class="flex items-start gap-1 text-[11px] leading-snug text-muted-foreground">
+          <p class="flex items-start gap-1 text-[0.6875rem] leading-snug text-muted-foreground">
             <Lock class="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
             <span>{$t('share.list.link_key_warning')}</span>
           </p>

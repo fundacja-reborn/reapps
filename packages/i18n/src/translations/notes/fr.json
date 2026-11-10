@@ -631,19 +631,6 @@
     "compact": "Vue compacte"
   },
   "settings": {
-    "editor": {
-      "title": "Paramètres de l'éditeur",
-      "description": "Personnaliser l'éditeur de notes",
-      "font_size": "Taille de police",
-      "font_family": "Famille de polices",
-      "line_height": "Hauteur de ligne",
-      "auto_save": "Enregistrement automatique",
-      "auto_save_interval": "Intervalle d'enregistrement automatique (secondes)",
-      "spell_check": "Vérification orthographique",
-      "markdown_shortcuts": "Raccourcis Markdown",
-      "vim_mode": "Mode Vim",
-      "typewriter_mode": "Mode machine à écrire"
-    },
     "export": {
       "title": "Exporter les notes",
       "description": "Exportez vos notes pour les sauvegarder",
@@ -931,7 +918,7 @@
     },
     "appearance": {
       "title": "Apparence",
-      "hub_desc": "Thème de l'application, langue de l'interface, format de date et d'heure",
+      "hub_desc": "Thème de l'application, taille du texte, langue de l'interface, format de date et d'heure",
       "theme": "Thème",
       "theme_desc": "Choisissez le schéma de couleurs de l'application",
       "language": "Langue",
@@ -951,7 +938,21 @@
       "image_loading_always": "Toujours charger automatiquement",
       "image_loading_never": "Ne jamais charger les images externes",
       "image_loading_updated": "Paramètre de chargement des images mis à jour",
-      "image_loading_warning": "Le chargement automatique des images peut révéler votre adresse IP à des serveurs externes"
+      "image_loading_warning": "Le chargement automatique des images peut révéler votre adresse IP à des serveurs externes",
+      "text_size": "Taille du texte",
+      "text_size_desc": "S'applique uniquement à cet appareil",
+      "ui_scale": "Interface",
+      "ui_scale_hint": "Menus, listes, boutons et icônes",
+      "ui_scale_decrease": "Réduire l'interface",
+      "ui_scale_increase": "Agrandir l'interface",
+      "note_scale": "Texte des notes",
+      "note_scale_hint": "Éditeur, aperçu et titre de la note, en plus de la taille de l'interface",
+      "note_scale_decrease": "Réduire le texte des notes",
+      "note_scale_increase": "Agrandir le texte des notes",
+      "text_size_default": "Par défaut",
+      "text_size_preview": "Aperçu",
+      "text_size_sample_heading": "Titre de section",
+      "text_size_sample_body": "Voici à quoi ressemblera le texte de vos notes sur cet appareil."
     },
     "security": {
       "title": "Sécurité",

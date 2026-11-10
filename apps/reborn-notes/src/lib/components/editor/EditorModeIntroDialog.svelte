@@ -72,7 +72,7 @@
           <div class="flex items-center gap-2">
             <span class="font-medium">{$t('editor_mode_intro.option_live_label')}</span>
             <span
-              class="inline-flex items-center rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400"
+              class="inline-flex items-center rounded bg-emerald-500/10 px-1.5 py-0.5 text-[0.625rem] font-medium text-emerald-700 dark:text-emerald-400"
             >
               {$t('editor_mode_intro.recommended')}
             </span>

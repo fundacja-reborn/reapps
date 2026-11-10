@@ -63,7 +63,7 @@
       <button
         type="button"
         onclick={toggleSearchInContent}
-        class="flex min-h-[44px] md:min-h-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-start text-sm md:text-[11px] transition-colors
+        class="flex min-h-[44px] md:min-h-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-start text-sm md:text-[0.6875rem] transition-colors
           {searchInContent
           ? 'font-medium text-primary'
           : 'text-muted-foreground hover:text-foreground'}"
@@ -82,7 +82,7 @@
         <button
           type="button"
           onclick={onsavesearch}
-          class="flex min-h-[44px] md:min-h-0 shrink-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-sm md:text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+          class="flex min-h-[44px] md:min-h-0 shrink-0 items-center gap-2 md:gap-1 px-1 -mx-1 md:px-0 md:mx-0 text-sm md:text-[0.6875rem] text-muted-foreground transition-colors hover:text-foreground"
         >
           <Bookmark class="h-5 w-5 md:h-3 md:w-3" />
           {$t('saved_searches.save_button')}

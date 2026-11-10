@@ -49,6 +49,7 @@
   import { whatsNew } from '$lib/stores/whats-new.svelte';
   import { resolveWhatsNewPlatform } from '$lib/utils/whats-new-platform';
   import { maybeShowWhatsNew } from '$lib/services/whats-new.service';
+  import { applyTextSize, devicePrefs } from '$lib/stores/device-prefs.store';
 
   const logger = createLogger('notes:layout');
 
@@ -597,6 +598,15 @@
     if (browser && $locale) {
       applyDocumentLocale($locale, dirOverride);
     }
+  });
+
+  // Text size (this device only, issue #511): interface scale as `font-size: N%`
+  // on <html> and the note text multiplier as `--rn-note-scale`. Runs on the
+  // first mount, while the static #app-loading overlay still covers the page,
+  // so the app never paints at the default size first.
+  $effect(() => {
+    if (!browser) return;
+    applyTextSize(document.documentElement, $devicePrefs);
   });
 
   // iOS Safari safety net + visual-viewport tracker.

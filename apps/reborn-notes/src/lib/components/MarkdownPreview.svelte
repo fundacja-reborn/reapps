@@ -541,7 +541,7 @@
      but not used" warnings. -->
 <div
   bind:this={containerEl}
-  class="preview overflow-auto bg-background pt-4 pb-5 text-base md:text-sm leading-relaxed text-foreground {className}"
+  class="preview overflow-auto bg-background pt-4 pb-5 leading-relaxed text-foreground {className}"
   aria-label={$t('editor.markdown_preview')}
   onclick={handleClick}
   role="presentation"
@@ -577,6 +577,20 @@
 </div>
 
 <style>
+  /* Base note text: 16px on mobile, 14px from md, times the note text size of
+     this device (--rn-note-scale on <html>, 1 by default). Note-content sizes
+     below use the same multiplier and must stay in step with the editor
+     (NoteEditor.svelte `.cm-content`, editor/live-preview/theme.ts). UI bits
+     inside the preview (the load-images row) stay in plain rem. */
+  .preview {
+    font-size: calc(1rem * var(--rn-note-scale, 1));
+  }
+  @media (min-width: 768px) {
+    .preview {
+      font-size: calc(0.875rem * var(--rn-note-scale, 1));
+    }
+  }
+
   /* Markdown typography - no external plugin needed */
   .preview :global(h1),
   .preview :global(h2),
@@ -601,43 +615,43 @@
     margin-top: 0.75em;
   }
   .preview :global(h1) {
-    font-size: 2rem;
+    font-size: calc(2rem * var(--rn-note-scale, 1));
   }
   .preview :global(h2) {
-    font-size: 1.625rem;
+    font-size: calc(1.625rem * var(--rn-note-scale, 1));
   }
   .preview :global(h3) {
-    font-size: 1.375rem;
+    font-size: calc(1.375rem * var(--rn-note-scale, 1));
   }
   .preview :global(h4) {
-    font-size: 1.125rem;
+    font-size: calc(1.125rem * var(--rn-note-scale, 1));
   }
   .preview :global(h5) {
-    font-size: 1rem;
+    font-size: calc(1rem * var(--rn-note-scale, 1));
   }
   .preview :global(h6) {
-    font-size: 0.9375rem;
+    font-size: calc(0.9375rem * var(--rn-note-scale, 1));
     color: var(--muted-foreground);
   }
 
   @media (min-width: 768px) {
     .preview :global(h1) {
-      font-size: 1.875rem;
+      font-size: calc(1.875rem * var(--rn-note-scale, 1));
     }
     .preview :global(h2) {
-      font-size: 1.5rem;
+      font-size: calc(1.5rem * var(--rn-note-scale, 1));
     }
     .preview :global(h3) {
-      font-size: 1.25rem;
+      font-size: calc(1.25rem * var(--rn-note-scale, 1));
     }
     .preview :global(h4) {
-      font-size: 1.0625rem;
+      font-size: calc(1.0625rem * var(--rn-note-scale, 1));
     }
     .preview :global(h5) {
-      font-size: 0.9375rem;
+      font-size: calc(0.9375rem * var(--rn-note-scale, 1));
     }
     .preview :global(h6) {
-      font-size: 0.875rem;
+      font-size: calc(0.875rem * var(--rn-note-scale, 1));
     }
   }
 
@@ -777,7 +791,7 @@
        glyphs. A larger strut (inherited 1rem on mobile vs 0.875rem code) puts
        extra space inside each line box and skews where a click maps to a line.
        Explicit `white-space`/`user-select` keep code reliably selectable. */
-    font-size: 0.875rem;
+    font-size: calc(0.875rem * var(--rn-note-scale, 1));
     white-space: pre;
     -webkit-user-select: text;
     user-select: text;
@@ -884,7 +898,7 @@
   }
   .preview :global(.note-toc p) {
     margin: 0 0 0.5em;
-    font-size: 0.9375rem;
+    font-size: calc(0.9375rem * var(--rn-note-scale, 1));
   }
   .preview :global(.note-toc ul) {
     margin: 0 0 0 1.1em;
@@ -1080,7 +1094,7 @@
   .preview :global(table) {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9375rem;
+    font-size: calc(0.9375rem * var(--rn-note-scale, 1));
   }
   .preview :global(th),
   .preview :global(td) {
@@ -1148,7 +1162,7 @@
     border: 2px dashed var(--border);
     border-radius: 0.5em;
     background: var(--muted);
-    font-size: 0.875rem;
+    font-size: calc(0.875rem * var(--rn-note-scale, 1));
     max-width: 100%;
     vertical-align: middle;
   }
@@ -1179,7 +1193,7 @@
     color: var(--primary-foreground);
     border: none;
     cursor: pointer;
-    font-size: 0.8125rem;
+    font-size: calc(0.8125rem * var(--rn-note-scale, 1));
     flex: 0 0 auto;
     white-space: nowrap;
   }

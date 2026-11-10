@@ -267,7 +267,7 @@
             <p class="text-xs text-muted-foreground">
               {$t('settings_page.export_import.folder_sync_safety_note')}
             </p>
-            <p class="text-[11px] text-muted-foreground/70">
+            <p class="text-[0.6875rem] text-muted-foreground/70">
               {IS_NATIVE
                 ? $t('settings_page.export_import.folder_sync_no_full_path_native')
                 : $t('settings_page.export_import.folder_sync_no_full_path')}

@@ -161,7 +161,7 @@
       <button
         type="button"
         onclick={(e) => openPicker(e)}
-        class="flex items-center gap-1 rounded-full border border-dashed px-1.5 py-0.5 text-[10px]
+        class="flex items-center gap-1 rounded-full border border-dashed px-1.5 py-0.5 text-[0.625rem]
           text-muted-foreground transition-colors hover:border-primary hover:text-primary"
         aria-label={$t('tags.add_tag')}
       >
@@ -236,7 +236,7 @@
             {:else}
               <!-- Color picker for new tag -->
               <div class="px-3 py-2">
-                <p class="mb-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+                <p class="mb-1.5 flex items-center gap-1 text-[0.625rem] text-muted-foreground">
                   <Palette class="h-3 w-3" />
                   {$t('tags.pick_color')}
                 </p>

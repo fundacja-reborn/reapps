@@ -218,7 +218,7 @@
     </button>
     <div class="min-w-0 flex-1">
       <p class="truncate text-sm font-medium">{headline}</p>
-      <p class="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+      <p class="flex items-center gap-1.5 text-[0.6875rem] uppercase tracking-wider text-muted-foreground">
         <span>{$t('share.list.snapshot_eyebrow')}</span>
         {#if share?.has_password}
           <span class="inline-flex items-center gap-0.5">
@@ -322,7 +322,7 @@
             <div class="relative flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-3">
               <button
                 type="button"
-                class="inline-flex w-fit cursor-pointer items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                class="inline-flex w-fit cursor-pointer items-center gap-1 text-[0.6875rem] uppercase tracking-wider text-muted-foreground hover:text-foreground"
                 onclick={() => (urlShown = false)}
               >
                 <ChevronUp class="h-3 w-3" />{$t('share.list.hide_link')}
@@ -341,7 +341,7 @@
               <p class="break-all pe-9 font-mono text-xs text-muted-foreground">{entry.url}</p>
               <!-- Privacy nudge: the link carries the decryption key in its
                    fragment, so anyone with it can read the snapshot. -->
-              <p class="mt-1 flex items-start gap-1 text-[11px] leading-snug text-muted-foreground">
+              <p class="mt-1 flex items-start gap-1 text-[0.6875rem] leading-snug text-muted-foreground">
                 <Lock class="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                 <span>{$t('share.list.link_key_warning')}</span>
               </p>
@@ -354,7 +354,7 @@
               type="button"
               onclick={() => (urlShown = true)}
               class="flex w-full cursor-pointer items-center gap-1 rounded-lg border bg-muted/30 p-3
-                     text-[11px] uppercase tracking-wider text-muted-foreground transition-colors
+                     text-[0.6875rem] uppercase tracking-wider text-muted-foreground transition-colors
                      hover:bg-muted/50 hover:text-foreground"
             >
               <ChevronDown class="h-3 w-3" />{$t('share.list.show_link')}
@@ -409,7 +409,7 @@
 
         <!-- Snapshot preview (what the recipient sees) -->
         <div class="rounded-lg border p-4">
-          <p class="mb-3 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+          <p class="mb-3 flex items-center gap-1.5 text-[0.6875rem] uppercase tracking-wider text-muted-foreground">
             <Eye class="h-3.5 w-3.5" />{$t('share.list.preview_dialog_title')}
           </p>
           {#if entry}

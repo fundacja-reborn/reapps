@@ -680,6 +680,23 @@
   const rowTwoBtnClass = $derived(rowTwoProminent ? 'h-11 w-11' : 'h-9 w-9');
   const rowTwoIconClass = $derived(rowTwoProminent ? 'h-5 w-5' : 'h-4 w-4');
 
+  // Narrow rows (text size, issue #511). Both header rows are `@container`s:
+  // with a larger interface scale every button grows while the column keeps
+  // its px width (on a 360px phone the list beside the icon rail is 19rem at
+  // 100% but only 11.5rem at 150%). Container queries in rem follow the root
+  // font size, so these thresholds mean "room for N rem of buttons" (measured
+  // on the content box, without the row's padding) and stay inactive at 100%
+  // wherever the row already fitted. Row 1 rules sit below
+  // `activeFolderSyncId` (rowOneSpareClass).
+  // Selection toolbar: six buttons, so they get narrower instead of hiding
+  // (the height, and so the touch target height, stays), and the row scrolls
+  // sideways as the last resort. Needs 18rem at w-11, 15rem at w-9.
+  const selectionBtnClass = $derived(
+    rowTwoProminent
+      ? 'h-11 w-11 @max-[18rem]:w-9 @max-[15rem]:w-7'
+      : 'h-9 w-9 @max-[15rem]:w-7'
+  );
+
   // ── Active folder action menu + inline rename ─────────────────
   const activeFolder = $derived<FolderWithChildren | null>(
     activeFolderId ? findFolderNode($foldersStore, activeFolderId) : null
@@ -691,6 +708,18 @@
     activeFolder ? ($syncedFolderConfigs.get(activeFolder.id) ?? null) : null
   );
   let syncingActiveFolder = $state(false);
+
+  // Row 1 on a narrow row (see "Narrow rows" above): New note here / New
+  // subfolder go first (both are in the folder menu), then the decorative
+  // folder glyph (below 11rem). The row needs ~13.75rem of content, ~16.75rem
+  // with the sync button (mobile, h-11 buttons); desktop needs ~14rem.
+  const rowOneSpareClass = $derived(
+    prominentHeader
+      ? activeFolderSyncId
+        ? '@max-[17rem]:hidden'
+        : '@max-[14rem]:hidden'
+      : '@max-[14.25rem]:hidden'
+  );
 
   async function handleActiveFolderSync() {
     if (!activeFolderSyncId || syncingActiveFolder) return;
@@ -748,7 +777,7 @@
          also takes the iOS notch inset; min-h grows by the same amount so the
          content keeps its full 3.5rem box (env() is 0 elsewhere). -->
     <div
-      class="shrink-0 items-center gap-1 {prominentHeader
+      class="@container shrink-0 items-center gap-1 {prominentHeader
         ? 'flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] px-4 pt-[env(safe-area-inset-top,0px)]'
         : `hidden h-10 md:flex ${onback ? 'px-3' : 'px-5'}`}"
     >
@@ -772,7 +801,7 @@
         <FolderGlyph
           color={activeFolder.color}
           icon={activeFolder.icon}
-          class="me-1 {prominentHeader ? 'h-5 w-5' : 'h-4 w-4'}"
+          class="me-1 {prominentHeader ? 'h-5 w-5 @max-[11rem]:hidden' : 'h-4 w-4'}"
         />
       {/if}
       {#if editingActiveFolder && activeFolder}
@@ -819,7 +848,7 @@
           onclick={handleCreate}
           title={$t('folders.new_note_here')}
           aria-label={$t('folders.new_note_here')}
-          class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          class="flex {headerBtnClass} {rowOneSpareClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         >
           <FilePlus class={headerIconClass} />
         </button>
@@ -831,7 +860,7 @@
           onclick={onNewSubfolder}
           title={$t('folders.new_subfolder')}
           aria-label={$t('folders.new_subfolder')}
-          class="flex {headerBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          class="flex {headerBtnClass} {activeFolder ? rowOneSpareClass : ''} shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         >
           <FolderPlus class={headerIconClass} />
         </button>
@@ -859,7 +888,7 @@
   {#snippet listToolbar()}
     {#if selectionMode}
       <div
-        class="flex shrink-0 items-center gap-1 {rowTwoProminent
+        class="@container flex shrink-0 items-center gap-1 overflow-x-auto {rowTwoProminent
           ? 'mt-2 px-4'
           : `h-10 ${onback ? 'px-3' : 'px-5'}`}"
         role="toolbar"
@@ -868,7 +897,7 @@
         <button
           type="button"
           onclick={exitSelectionMode}
-          class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors"
+          class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors"
           aria-label={$t('notes.multiselect.exit')}
           title={$t('notes.multiselect.exit')}
         >
@@ -883,7 +912,7 @@
             type="button"
             onclick={bulkRestore}
             disabled={selectedIds.size === 0}
-            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.restore_all')}
             title={$t('notes.multiselect.restore_all')}
           >
@@ -893,7 +922,7 @@
             type="button"
             onclick={() => (bulkPermanentDeleteDialogOpen = true)}
             disabled={selectedIds.size === 0}
-            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.permanent_delete_all')}
             title={$t('notes.multiselect.permanent_delete_all')}
           >
@@ -904,7 +933,7 @@
             type="button"
             onclick={bulkPin}
             disabled={selectedIds.size === 0}
-            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={allPinned
               ? $t('notes.multiselect.unpin_all')
               : $t('notes.multiselect.pin_all')}
@@ -922,7 +951,7 @@
             type="button"
             onclick={bulkStar}
             disabled={selectedIds.size === 0}
-            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={allStarred
               ? $t('notes.multiselect.unstar_all')
               : $t('notes.multiselect.star_all')}
@@ -940,7 +969,7 @@
             type="button"
             onclick={openBulkColor}
             disabled={selectedIds.size === 0}
-            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.color_all')}
             title={$t('notes.multiselect.color_all')}
           >
@@ -950,7 +979,7 @@
             type="button"
             onclick={openBulkMove}
             disabled={selectedIds.size === 0}
-            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.move_all')}
             title={$t('notes.multiselect.move_all')}
           >
@@ -960,7 +989,7 @@
             type="button"
             onclick={() => (bulkDeleteDialogOpen = true)}
             disabled={selectedIds.size === 0}
-            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.delete_all')}
             title={$t('notes.multiselect.delete_all')}
           >
@@ -1039,7 +1068,7 @@
          existing divider via md:border-b. py-2 + the list's py-1 gives the same
          info-bar -> first card rhythm as search -> first card elsewhere. -->
     <div
-      class="flex items-start gap-1.5 px-4 py-2 text-[11px] leading-snug text-muted-foreground md:border-b"
+      class="flex items-start gap-1.5 px-4 py-2 text-[0.6875rem] leading-snug text-muted-foreground md:border-b"
     >
       <Info class="mt-px h-3.5 w-3.5 shrink-0" />
       <span>{$t('trash.auto_delete_notice', { values: { days: 30 } })}</span>

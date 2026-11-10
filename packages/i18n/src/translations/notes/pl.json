@@ -631,19 +631,6 @@
     "compact": "Widok kompaktowy"
   },
   "settings": {
-    "editor": {
-      "title": "Ustawienia edytora",
-      "description": "Dostosuj edytor notatek",
-      "font_size": "Rozmiar czcionki",
-      "font_family": "Rodzina czcionek",
-      "line_height": "Wysokość linii",
-      "auto_save": "Automatyczny zapis",
-      "auto_save_interval": "Interwał automatycznego zapisu (sekundy)",
-      "spell_check": "Sprawdzanie pisowni",
-      "markdown_shortcuts": "Skróty Markdown",
-      "vim_mode": "Tryb Vim",
-      "typewriter_mode": "Tryb maszyny do pisania"
-    },
     "export": {
       "title": "Eksportuj notatki",
       "description": "Eksportuj swoje notatki do kopii zapasowej",
@@ -931,7 +918,7 @@
     },
     "appearance": {
       "title": "Wygląd",
-      "hub_desc": "Motyw aplikacji, język interfejsu, format daty i czasu",
+      "hub_desc": "Motyw aplikacji, rozmiar tekstu, język interfejsu, format daty i czasu",
       "theme": "Motyw",
       "theme_desc": "Wybierz schemat kolorów aplikacji",
       "language": "Język",
@@ -951,7 +938,21 @@
       "image_loading_always": "Zawsze ładuj automatycznie",
       "image_loading_never": "Nigdy nie ładuj zewnętrznych obrazów",
       "image_loading_updated": "Ustawienie ładowania obrazów zaktualizowane",
-      "image_loading_warning": "Automatyczne ładowanie obrazów może ujawnić Twój adres IP zewnętrznym serwerom"
+      "image_loading_warning": "Automatyczne ładowanie obrazów może ujawnić Twój adres IP zewnętrznym serwerom",
+      "text_size": "Rozmiar tekstu",
+      "text_size_desc": "Dotyczy tylko tego urządzenia",
+      "ui_scale": "Interfejs",
+      "ui_scale_hint": "Menu, listy, przyciski i ikony",
+      "ui_scale_decrease": "Mniejszy interfejs",
+      "ui_scale_increase": "Większy interfejs",
+      "note_scale": "Tekst notatek",
+      "note_scale_hint": "Edytor, podgląd i tytuł notatki, dodatkowo do rozmiaru interfejsu",
+      "note_scale_decrease": "Mniejszy tekst notatek",
+      "note_scale_increase": "Większy tekst notatek",
+      "text_size_default": "Domyślny",
+      "text_size_preview": "Podgląd",
+      "text_size_sample_heading": "Nagłówek",
+      "text_size_sample_body": "Tak będzie wyglądał tekst Twoich notatek na tym urządzeniu."
     },
     "security": {
       "title": "Bezpieczeństwo",
