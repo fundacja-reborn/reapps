@@ -3,9 +3,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 
 /**
- * Text size on this device (issue #511): interface scale + note text size in
- * the per-device prefs (localStorage, never synced), validated on load and
- * written onto <html> by `applyTextSize`.
+ * Per-device prefs from issue #511 (localStorage, never synced, validated on
+ * load): text size (interface scale + note text size, written onto <html> by
+ * `applyTextSize`) and the start page.
  */
 
 vi.mock('$app/environment', () => ({ browser: true }));
@@ -38,7 +38,8 @@ describe('device prefs: text size', () => {
       noteListCollapsed: true,
       tocPinned: true,
       uiScale: 100,
-      noteTextScale: 100
+      noteTextScale: 100,
+      startPage: 'all'
     });
   });
 
@@ -87,6 +88,77 @@ describe('device prefs: text size', () => {
     devicePrefs.setNoteTextScale(90 as never);
     expect(get(devicePrefs).uiScale).toBe(125);
     expect(get(devicePrefs).noteTextScale).toBe(100);
+  });
+});
+
+describe('device prefs: start page (#511)', () => {
+  const PLACE_KEY = 'reborn-notes-last-place';
+
+  it('opens All notes by default', async () => {
+    const { startPage } = await loadStore();
+    expect(get(startPage)).toBe('all');
+  });
+
+  it('offers the rail sections plus "where you left off", nothing else', async () => {
+    const { START_PAGES } = await loadStore();
+    expect(START_PAGES).toEqual(['all', 'starred', 'folders', 'tags', 'last']);
+  });
+
+  it.each(['all', 'starred', 'folders', 'tags', 'last'])('reads a saved %s back', async (page) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ startPage: page }));
+    const { startPage } = await loadStore();
+    expect(get(startPage)).toBe(page);
+  });
+
+  it.each([
+    ['Trash', 'trash'],
+    ['Search', 'search'],
+    ['a periodic section', 'periodic-daily'],
+    ['a folder id', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'],
+    ['a number', 1],
+    ['null', null]
+  ])('falls back to All notes for a stored %s', async (_label, value) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ startPage: value, tocPinned: true }));
+    const { devicePrefs } = await loadStore();
+    expect(get(devicePrefs).startPage).toBe('all');
+    // A bad start page does not cost the other prefs.
+    expect(get(devicePrefs).tocPinned).toBe(true);
+  });
+
+  it('persists the choice and ignores an unknown one', async () => {
+    const { devicePrefs, startPage } = await loadStore();
+    devicePrefs.setStartPage('folders');
+    expect(stored()).toMatchObject({ startPage: 'folders' });
+    devicePrefs.setStartPage('trash' as never);
+    expect(get(startPage)).toBe('folders');
+  });
+
+  it('drops the remembered place when "where you left off" is turned off', async () => {
+    const { devicePrefs } = await loadStore();
+    devicePrefs.setStartPage('last');
+    localStorage.setItem(PLACE_KEY, JSON.stringify({ v: 1, account: 'x', section: 'all' }));
+    // Choosing it again keeps the place.
+    devicePrefs.setStartPage('last');
+    expect(localStorage.getItem(PLACE_KEY)).not.toBeNull();
+    devicePrefs.setStartPage('starred');
+    expect(localStorage.getItem(PLACE_KEY)).toBeNull();
+  });
+
+  it('a different start page opens on the next mount, "where you left off" keeps the place', async () => {
+    const { devicePrefs } = await loadStore();
+    // Same module instance as the store's (one registry after resetModules).
+    const place = await import('./start-place');
+    const account = 'acc';
+
+    place.setSessionPlace({ section: 'tags' }, account);
+    devicePrefs.setStartPage('all'); // already the start page: nothing changes
+    expect(place.getSessionPlace(account)).toEqual({ section: 'tags' });
+
+    devicePrefs.setStartPage('last');
+    expect(place.getSessionPlace(account)).toEqual({ section: 'tags' });
+
+    devicePrefs.setStartPage('folders');
+    expect(place.getSessionPlace(account)).toBeNull();
   });
 });
 

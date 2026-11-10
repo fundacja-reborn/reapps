@@ -27,6 +27,7 @@ import { clearNativeRefreshToken } from '$lib/utils/native-auth-storage';
 import { clearNativeSessionId } from '$lib/utils/native-session';
 import { cryptoManager } from '@reborn/crypto';
 import { sessionExpired, localOnly } from '$lib/stores/sync-status.store';
+import { forgetRememberedPlace } from '$lib/stores/start-place';
 import { createLogger } from '@reborn/utils';
 
 const logger = createLogger('Notes-AuthStore');
@@ -427,6 +428,10 @@ function createAuthStore() {
 
     localStorage.removeItem(CREDENTIALS_KEY);
     localStorage.removeItem(ACCESS_TOKEN_KEY);
+    // "Where you left off" (Settings > Behavior > Start page): the last open
+    // note / folder ids of this account. Content-free, but no reason to keep
+    // them once the account's data is gone from this device.
+    forgetRememberedPlace();
 
     // Await the data-clearing steps BEFORE the hard redirect. window.location.href
     // reloads the page/WebView, which aborts any in-flight IndexedDB transaction —

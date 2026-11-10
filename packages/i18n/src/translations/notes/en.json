@@ -897,7 +897,12 @@
     },
     "behavior": {
       "title": "Behavior",
-      "hub_desc": "How notes open, editor mode, delete confirmation",
+      "hub_desc": "Start page, how notes open, editor mode, delete confirmation",
+      "start_page": "Start page",
+      "start_page_desc": "What re/notes shows when you open it.",
+      "start_page_last": "Where you left off",
+      "start_page_last_hint": "Reopens the folder or tag and the note that were open last time.",
+      "start_page_updated": "Start page updated",
       "open_mode": "Open notes in",
       "open_mode_desc": "Which view an existing note opens in when you select it. New notes always open ready to edit.",
       "open_mode_preview": "Preview (read-only)",

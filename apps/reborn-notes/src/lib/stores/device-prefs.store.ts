@@ -1,6 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { createLogger } from '@reborn/utils';
+import { clearSessionPlace, forgetRememberedPlace } from './start-place';
 
 const logger = createLogger('device-prefs');
 
@@ -10,11 +11,21 @@ const logger = createLogger('device-prefs');
  * Unlike `appSettings` (E2E-synced across all of a user's devices), these live
  * ONLY in this device's localStorage and never sync. They capture how *this*
  * device should behave - e.g. a desktop where you mostly edit vs a phone where
- * you mostly read. There is no user content here (view-mode enums, flags and
- * text-size steps), so
- * plain localStorage is fine and outside the Zero-Knowledge sync surface.
+ * you mostly read. There is no user content here (view-mode enums, flags,
+ * text-size steps and the start page), so plain localStorage is fine and
+ * outside the Zero-Knowledge sync surface.
  */
 export type NoteOpenMode = 'preview' | 'edit' | 'split';
+
+/**
+ * What the app shows when it opens on this device (issue #511): one of the
+ * rail's browsing sections, or `last` = reopen where you left off (section,
+ * folder / tag / smart folder and the open note, see `start-place.ts`). Not
+ * offered: Trash, Search, Shares (not a place to start from) and the periodic
+ * notes (opening one creates the note for the period).
+ */
+export const START_PAGES = ['all', 'starred', 'folders', 'tags', 'last'] as const;
+export type StartPage = (typeof START_PAGES)[number];
 
 /**
  * Interface scale steps, in percent of the browser's default font size.
@@ -70,6 +81,12 @@ export interface DevicePrefs {
   uiScale: UiScale;
   /** Note text size on this device, relative to {@link DevicePrefs.uiScale}. */
   noteTextScale: NoteTextScale;
+  /**
+   * What the app opens on, on this device (issue #511). A habit tied to the
+   * screen (a phone you browse folders on vs a desktop you write on), so it
+   * stays per device rather than in the synced settings bundle.
+   */
+  startPage: StartPage;
 }
 
 const STORAGE_KEY = 'reborn-notes-device-prefs';
@@ -79,10 +96,15 @@ const DEFAULTS: DevicePrefs = {
   noteListCollapsed: false,
   tocPinned: false,
   uiScale: DEFAULT_TEXT_SCALE,
-  noteTextScale: DEFAULT_TEXT_SCALE
+  noteTextScale: DEFAULT_TEXT_SCALE,
+  startPage: 'all'
 };
 
 const NOTE_OPEN_MODES: readonly NoteOpenMode[] = ['preview', 'edit', 'split'];
+
+export function isStartPage(value: unknown): value is StartPage {
+  return (START_PAGES as readonly unknown[]).includes(value);
+}
 
 function isUiScale(value: unknown): value is UiScale {
   return (UI_SCALE_STEPS as readonly unknown[]).includes(value);
@@ -149,7 +171,8 @@ function load(): DevicePrefs {
       uiScale: isUiScale(parsed.uiScale) ? parsed.uiScale : DEFAULTS.uiScale,
       noteTextScale: isNoteTextScale(parsed.noteTextScale)
         ? parsed.noteTextScale
-        : DEFAULTS.noteTextScale
+        : DEFAULTS.noteTextScale,
+      startPage: isStartPage(parsed.startPage) ? parsed.startPage : DEFAULTS.startPage
     };
   } catch (err) {
     logger.warn('Failed to read device prefs, using defaults', err);
@@ -220,6 +243,25 @@ function createDevicePrefsStore() {
     });
   }
 
+  /**
+   * Choosing any start page other than `last` also drops the remembered place,
+   * so the device keeps no trace of the last open note it no longer needs, and
+   * the session place, so coming back from Settings opens the new start page
+   * right away (see `clearSessionPlace`).
+   */
+  function setStartPage(page: StartPage): void {
+    if (!isStartPage(page)) return;
+    store.update((prev) => {
+      if (page !== 'last') {
+        forgetRememberedPlace();
+        if (prev.startPage !== page) clearSessionPlace();
+      }
+      const next = { ...prev, startPage: page };
+      persist(next);
+      return next;
+    });
+  }
+
   /** Both text sizes back to the default (Appearance > Reset to defaults). */
   function resetTextSize(): void {
     store.update((prev) => {
@@ -241,7 +283,8 @@ function createDevicePrefsStore() {
     setTocPinned,
     setUiScale,
     setNoteTextScale,
-    resetTextSize
+    resetTextSize,
+    setStartPage
   };
 }
 
@@ -261,3 +304,6 @@ export const uiScale = derived(devicePrefs, ($p) => $p.uiScale);
 
 /** Note text size on this device, in percent of the interface scale. */
 export const noteTextScale = derived(devicePrefs, ($p) => $p.noteTextScale);
+
+/** What the app opens on, on this device (see {@link START_PAGES}). */
+export const startPage = derived(devicePrefs, ($p) => $p.startPage);
