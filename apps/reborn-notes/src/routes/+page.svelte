@@ -78,8 +78,20 @@
     devicePrefs,
     noteOpenMode,
     noteListCollapsed,
-    tocPinned
+    tocPinned,
+    startPage
   } from '$lib/stores/device-prefs.store';
+  import {
+    dropMissing,
+    getSessionPlace,
+    initialPlace,
+    mobileHomeSection,
+    placeFromView,
+    readRememberedPlace,
+    rememberPlace,
+    setSessionPlace,
+    type ViewPlace
+  } from '$lib/stores/start-place';
   import EditorModeIntroDialog from '$lib/components/editor/EditorModeIntroDialog.svelte';
   import PeriodicNoteOnboardingDialog from '$lib/components/editor/PeriodicNoteOnboardingDialog.svelte';
   import type { EditorMode } from '@reborn/storage';
@@ -526,6 +538,17 @@
   type MobileView = 'list' | 'folder-tree' | 'tag-list';
   let mobileView = $state<MobileView>('list');
 
+  // Mobile: the root of back navigation (#511). All notes, unless this device's
+  // start page is Folders or Tags - then their tree / list is the home screen:
+  // entering it pushes no history entry, its header has no back arrow, and back
+  // from it leaves the app (Android) the way it does from All notes. Up from the
+  // other drill-down list (Tags when home is Folders, ...) leads home.
+  const mobileHome = $derived(mobileHomeSection($startPage));
+  const mobileListIsHome = $derived(
+    (mobileView === 'folder-tree' && mobileHome === 'folders') ||
+      (mobileView === 'tag-list' && mobileHome === 'tags')
+  );
+
   // ── Mobile: virtual history for native back gesture ────────────
   let mobileHistoryDepth = 0;
   let skipPopstateCount = 0;
@@ -569,9 +592,10 @@
       activeTagId = null;
       activeNoteId.set(null);
       mobileView = 'tag-list';
-    } else if (mobileView === 'folder-tree' || mobileView === 'tag-list') {
-      mobileView = 'list';
-      activeSection = 'all';
+    } else if ((mobileView === 'folder-tree' || mobileView === 'tag-list') && !mobileListIsHome) {
+      mobileView =
+        mobileHome === 'folders' ? 'folder-tree' : mobileHome === 'tags' ? 'tag-list' : 'list';
+      activeSection = mobileHome;
     }
   }
 
@@ -824,8 +848,10 @@
           noteDetailService.flushAndSnapshot().then(() => activeNoteId.set(adoptNoteId));
         }
 
-        // Push history entry for drill-down sections (folders/tags)
-        if (isMobile && (section === 'folders' || section === 'tags')) {
+        // Push history entry for drill-down sections (folders/tags), unless the
+        // section is this device's mobile home (start page, #511) - the root
+        // has nothing to go back to.
+        if (isMobile && (section === 'folders' || section === 'tags') && section !== mobileHome) {
           pushMobileHistory();
         }
 
@@ -1126,7 +1152,7 @@
         activeSavedSearchId = null;
         activeNoteId.set(null);
         mobileView = 'folder-tree';
-        pushMobileHistory();
+        if (mobileHome !== 'folders') pushMobileHistory();
       } else if (activeSavedSearchId !== null) {
         // Desktop keeps the folder tree permanently in the sidebar, so a plain
         // folder has no "tree root" to collapse to - clearing it would just
@@ -1144,7 +1170,7 @@
       activeNoteId.set(null);
       if (isMobile) {
         mobileView = 'tag-list';
-        pushMobileHistory();
+        if (mobileHome !== 'tags') pushMobileHistory();
       }
     }
   }
@@ -1952,6 +1978,112 @@
     }
   });
 
+  // ── Start page / place restore (#511) ──────────────────────────
+  // A cold start opens this device's start page (Settings > Behavior); a
+  // re-mount within the same session (App Lock or passcode unlock, back from
+  // Settings or a share viewer) reopens the place the user was at. See
+  // $lib/stores/start-place.ts.
+  //
+  // Applied once per mount, after onMount has read `isMobile` and set up the
+  // history trampoline (Folders opens differently on a phone and pushes an entry
+  // on top of the trampoline), and only while unlocked: a locked boot mounts
+  // this page for a moment before the auth guard redirects, and must neither
+  // open anything nor overwrite the remembered place with the empty default.
+  let viewMounted = $state(false);
+  let placeApplied = false;
+  // Set once the start place is open - from then on the current place is
+  // remembered (session RAM; localStorage too while the start page is `last`).
+  let placeTracking = $state(false);
+  const viewUnlocked = $derived(
+    $authStore.hasE2E && ($authStore.isAuthenticated || $authStore.isLocalOnly)
+  );
+
+  $effect(() => {
+    if (!viewMounted || !viewUnlocked || placeApplied) return;
+    placeApplied = true;
+    untrack(() => void applyStartPlace());
+  });
+
+  async function applyStartPlace() {
+    try {
+      const start = get(startPage);
+      const account = get(authStore).userId;
+      const session = getSessionPlace(account);
+      const remembered = !session && start === 'last' ? readRememberedPlace(account) : null;
+      const place = dropMissing(initialPlace(start, session, remembered), {
+        folderIds: new Set(flattenFolderTree($foldersStore).map((f) => f.id)),
+        savedSearchIds: new Set($savedSearchesStore.map((s) => s.id)),
+        tagIds: new Set($tagsStore.map((t) => t.id))
+      });
+      await openPlace(place);
+    } catch (err) {
+      // Never strand the user: whatever opened so far stays, All notes otherwise.
+      console.error('[start-page] failed to open the start place', err);
+    } finally {
+      placeTracking = true;
+    }
+  }
+
+  /** Opens a place: section, then its folder / smart folder / tag, then the note. */
+  async function openPlace(place: ViewPlace) {
+    // Started right away so the IndexedDB read overlaps the list switch below.
+    const noteOpenable = place.noteId
+      ? NoteService.isNoteOpenable(place.noteId).catch(() => false)
+      : Promise.resolve(false);
+
+    if (place.section !== activeSection) {
+      activeSection = place.section;
+      // Let the section effect reset the scope (and, on a phone, push the
+      // Folders / Tags entry) before the sub-selection below lands.
+      await tick();
+    }
+    if (!viewMounted) return;
+
+    if (place.folderId) {
+      // Same as tapping the folder; a phone also gets one back step per parent
+      // level (exitCurrentFolder walks subfolder -> parent -> ... -> tree), as
+      // if the user had drilled down from the top.
+      await handleFolderSelect(place.folderId);
+      if (isMobile) {
+        const parents = getAncestorIds(place.folderId, $foldersStore).length;
+        for (let i = 0; i < parents; i++) pushMobileHistory();
+      }
+    } else if (place.savedSearchId) {
+      const search = $savedSearchesStore.find((s) => s.id === place.savedSearchId);
+      if (search) await handleSavedSearchSelect(search);
+    } else if (place.tagId) {
+      await handleTagSelect(place.tagId);
+    }
+
+    // The note last: every list switch above clears it. Skipped if it is gone
+    // (deleted, in Trash, another account's) or the user already opened one.
+    if (place.noteId && (await noteOpenable) && viewMounted && get(activeNoteId) === null) {
+      await noteDetailService.flushAndSnapshot();
+      if (viewMounted && get(activeNoteId) === null) activeNoteId.set(place.noteId);
+    }
+  }
+
+  // Remember the current place while browsing. Stops while locked: locking can
+  // reset the view before the auth guard navigates away, and that must not
+  // replace the place the unlock should return to.
+  $effect(() => {
+    if (!placeTracking || !viewUnlocked) return;
+    const place = placeFromView({
+      section: activeSection,
+      folderId: activeFolderId,
+      savedSearchId: activeSavedSearchId,
+      tagId: activeTagId,
+      noteId: $activeNoteId
+    });
+    const persist = $startPage === 'last';
+    const account = $authStore.userId;
+    if (!account) return;
+    untrack(() => {
+      setSessionPlace(place, account);
+      if (persist) rememberPlace(place, account);
+    });
+  });
+
   // ── Mobile + beforeunload + visibilitychange ──────────────────
   onMount(() => {
     const mq = window.matchMedia('(max-width: 767px)');
@@ -1967,6 +2099,9 @@
       const params = new URLSearchParams(window.location.search);
       if (params.get('section') === 'shares') {
         activeSection = 'shares';
+        // An explicit destination wins over the start page / restored place.
+        placeApplied = true;
+        placeTracking = true;
       }
       if (params.has('section')) {
         history.replaceState(history.state, '', window.location.pathname + window.location.hash);
@@ -1982,6 +2117,10 @@
       history.replaceState({ _rn: 'guard' }, '');
       history.pushState({ _rn: 'app' }, '');
     }
+
+    // isMobile and the trampoline are in place: the start page / restored
+    // place can open now (see applyStartPlace).
+    viewMounted = true;
 
     // window carries a custom popstate handler ref that must survive re-mounts
     type RnWindow = Window & { __rnPopstateHandler?: (e: PopStateEvent) => void };
@@ -2056,6 +2195,7 @@
 
     return () => {
       mounted = false;
+      viewMounted = false;
       // DON'T remove popstate handler - it must persist for settings→root navigation
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -2187,16 +2327,24 @@
                 : 'border-b border-sidebar-border'}"
             >
               {#if mobileView === 'folder-tree' || mobileView === 'tag-list'}
-                <button
-                  type="button"
-                  onclick={handleMobileBack}
-                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sidebar-foreground
-                   hover:bg-sidebar-accent transition-colors"
-                  aria-label={$t('nav.back')}
+                <!-- No back arrow on the home screen (start page Folders/Tags,
+                     #511): nothing above it; the title then sits at the same
+                     16px inset as the All notes logo. -->
+                {#if !mobileListIsHome}
+                  <button
+                    type="button"
+                    onclick={handleMobileBack}
+                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sidebar-foreground
+                     hover:bg-sidebar-accent transition-colors"
+                    aria-label={$t('nav.back')}
+                  >
+                    <ArrowLeft class="h-5 w-5" />
+                  </button>
+                {/if}
+                <span
+                  class="min-w-0 flex-1 truncate text-sm font-medium text-sidebar-foreground"
+                  class:ps-1={mobileListIsHome}
                 >
-                  <ArrowLeft class="h-5 w-5" />
-                </button>
-                <span class="min-w-0 flex-1 truncate text-sm font-medium text-sidebar-foreground">
                   {mobileView === 'folder-tree' ? $t('nav.folders') : $t('nav.tags')}
                 </span>
                 {#if mobileView === 'folder-tree'}

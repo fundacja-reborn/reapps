@@ -897,7 +897,12 @@
     },
     "behavior": {
       "title": "Zachowanie",
-      "hub_desc": "Sposób otwierania notatek, tryb edycji, potwierdzanie usuwania",
+      "hub_desc": "Strona startowa, sposób otwierania notatek, tryb edycji, potwierdzanie usuwania",
+      "start_page": "Strona startowa",
+      "start_page_desc": "Widok, który re/notes pokazuje po otwarciu.",
+      "start_page_last": "Ostatni widok",
+      "start_page_last_hint": "Otwiera folder lub tag i notatkę, które były otwarte ostatnim razem.",
+      "start_page_updated": "Zaktualizowano stronę startową",
       "open_mode": "Otwieraj notatki w trybie",
       "open_mode_desc": "Widok, w którym otwiera się istniejąca notatka po jej wybraniu. Nowe notatki zawsze otwierają się gotowe do edycji.",
       "open_mode_preview": "Podgląd (tylko do odczytu)",

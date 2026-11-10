@@ -897,7 +897,12 @@
     },
     "behavior": {
       "title": "Comportamiento",
-      "hub_desc": "Cómo se abren las notas, modo de edición, confirmación de eliminación",
+      "hub_desc": "Página de inicio, cómo se abren las notas, modo de edición, confirmación de eliminación",
+      "start_page": "Página de inicio",
+      "start_page_desc": "Vista que se muestra al abrir re/notes.",
+      "start_page_last": "Donde lo dejó",
+      "start_page_last_hint": "Vuelve a abrir la carpeta o etiqueta y la nota que estaban abiertas la última vez.",
+      "start_page_updated": "Página de inicio actualizada",
       "open_mode": "Abrir las notas en",
       "open_mode_desc": "Vista en la que se abre una nota existente al seleccionarla. Las notas nuevas siempre se abren listas para editar.",
       "open_mode_preview": "Vista previa (solo lectura)",

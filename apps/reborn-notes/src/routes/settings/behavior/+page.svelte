@@ -14,7 +14,7 @@
     Switch,
     toast
   } from '@reborn/ui';
-  import { Eye, Pencil, Trash2 } from '@lucide/svelte';
+  import { Eye, House, Pencil, Trash2 } from '@lucide/svelte';
   import {
     appSettings,
     confirmBeforeDelete as confirmBeforeDeleteStore,
@@ -24,7 +24,11 @@
   import {
     devicePrefs,
     noteOpenMode as noteOpenModeStore,
-    type NoteOpenMode
+    startPage as startPageStore,
+    isStartPage,
+    START_PAGES,
+    type NoteOpenMode,
+    type StartPage
   } from '$lib/stores/device-prefs.store';
   import { t } from '$lib/stores/i18n.store';
   import { createLogger } from '@reborn/utils';
@@ -33,7 +37,32 @@
   const logger = createLogger('behavior-settings');
   const isMobile = useIsMobile();
 
+  let startPageValue = $state<StartPage>('all');
   let openModeValue = $state<NoteOpenMode>('preview');
+
+  // The rail sections reuse their navigation names, so the choice reads exactly
+  // like the button it opens.
+  function startPageLabel(page: StartPage): string {
+    switch (page) {
+      case 'starred':
+        return $t('nav.starred');
+      case 'folders':
+        return $t('nav.folders');
+      case 'tags':
+        return $t('nav.tags');
+      case 'last':
+        return $t('settings_page.behavior.start_page_last');
+      default:
+        return $t('nav.all_notes');
+    }
+  }
+
+  function updateStartPage(value: string | undefined) {
+    if (!isStartPage(value)) return;
+    devicePrefs.setStartPage(value);
+    startPageValue = value;
+    toast.success($t('settings_page.behavior.start_page_updated'));
+  }
   let editorModeValue = $state<EditorMode>('markdown');
   let confirmDeleteValue = $state(true);
 
@@ -81,6 +110,7 @@
 
   onMount(() => {
     const unsubscribes = [
+      startPageStore.subscribe((v) => (startPageValue = v)),
       noteOpenModeStore.subscribe((v) => (openModeValue = v)),
       editorModeStore.subscribe((v) => (editorModeValue = v)),
       confirmBeforeDeleteStore.subscribe((v) => (confirmDeleteValue = v))
@@ -95,6 +125,42 @@
 
 <SettingsLayout title={$t('settings_page.behavior.title')} backHref="/settings">
   <div class="space-y-6 px-4 sm:px-0">
+    <!-- Start page (per-device, localStorage - not synced; issue #511) -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-base flex items-center gap-2">
+          <House class="h-4 w-4 text-muted-foreground" />
+          {$t('settings_page.behavior.start_page')}
+        </CardTitle>
+        <CardDescription>{$t('settings_page.behavior.start_page_desc')}</CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-3">
+        <Select
+          type="single"
+          value={startPageValue}
+          onValueChange={(value) => updateStartPage(value)}
+        >
+          <SelectTrigger class="w-full">
+            {startPageLabel(startPageValue)}
+          </SelectTrigger>
+          <SelectContent>
+            {#each START_PAGES as page (page)}
+              <SelectItem value={page}>{startPageLabel(page)}</SelectItem>
+            {/each}
+          </SelectContent>
+        </Select>
+        {#if startPageValue === 'last'}
+          <p class="text-xs text-muted-foreground">
+            {$t('settings_page.behavior.start_page_last_hint')}
+          </p>
+        {/if}
+        <!-- Same wording as the open-mode card below, so the shared key. -->
+        <p class="text-xs text-muted-foreground">
+          {$t('settings_page.behavior.open_mode_device_hint')}
+        </p>
+      </CardContent>
+    </Card>
+
     <!-- Default open mode (per-device, localStorage - not synced) -->
     <Card>
       <CardHeader>

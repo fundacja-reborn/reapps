@@ -262,6 +262,18 @@ export async function getNote(id: string): Promise<NoteDecrypted | null> {
   return toDecrypted(enc);
 }
 
+/**
+ * Whether a note can be reopened: it is stored on this device, not in the Trash
+ * and not a pristine ephemeral New Note (#349 - the boot sweep in hooks.client
+ * deletes those, possibly right after this check). Reads the stored row only (no
+ * decryption), straight from IndexedDB rather than the note index, which is
+ * still rebuilding right after an unlock. Used to reopen the last open note.
+ */
+export async function isNoteOpenable(id: string): Promise<boolean> {
+  const enc = await noteStore.get(id);
+  return enc != null && !enc.is_archived && !enc.is_ephemeral;
+}
+
 /** Get a single note by ID, including archived (trash) notes. */
 export async function getNoteIncludingArchived(id: string): Promise<NoteDecrypted | null> {
   const enc = await noteStore.get(id);
