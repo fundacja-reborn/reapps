@@ -5,6 +5,7 @@
     PinOff,
     Star,
     StarOff,
+    Palette,
     FolderInput,
     Download,
     FileText,
@@ -32,6 +33,7 @@
     onsearch,
     onpin,
     onstar,
+    oncolor,
     onmove,
     onexport,
     onexportpdf,
@@ -56,6 +58,8 @@
     onsearch?: () => void;
     onpin: (id: string) => void;
     onstar: (id: string) => void;
+    /** Opens the note color dialog. Hidden when not wired. */
+    oncolor?: (id: string) => void;
     onmove: (id: string) => void;
     onexport: (note: NoteListItem) => void;
     /** Optional - only shown in the open-note context (NoteList omits it). */
@@ -183,6 +187,16 @@
             {$t('notes.star')}
           {/if}
         </Button>
+        {#if oncolor}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => note && oncolor?.(note.id)}
+          >
+            <Palette class="me-2 h-4 w-4" />
+            {$t('notes.color.action')}
+          </Button>
+        {/if}
         <Button
           variant="ghost"
           class="w-full justify-start"

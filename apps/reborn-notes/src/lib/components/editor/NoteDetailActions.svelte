@@ -6,6 +6,7 @@
     PinOff,
     Star,
     StarOff,
+    Palette,
     FolderInput,
     Download,
     FileText,
@@ -35,6 +36,7 @@
     onsearch,
     onpin,
     onstar,
+    oncolor,
     onmove,
     onexport,
     onexportpdf,
@@ -54,6 +56,8 @@
     onsearch: () => void;
     onpin: () => void;
     onstar: () => void;
+    /** Opens the note color dialog. */
+    oncolor: () => void;
     onmove: (folderId: string | null, e?: Event) => void;
     onexport: () => void;
     onexportpdf: () => void;
@@ -146,6 +150,10 @@
               <Star class="h-3.5 w-3.5" />
               {$t('notes.star')}
             {/if}
+          </DropdownMenuItem>
+          <DropdownMenuItem onclick={oncolor}>
+            <Palette class="h-3.5 w-3.5" />
+            {$t('notes.color.action')}
           </DropdownMenuItem>
           <DropdownMenuItem onclick={handleMoveMenuItem}>
             <FolderInput class="h-3.5 w-3.5" />

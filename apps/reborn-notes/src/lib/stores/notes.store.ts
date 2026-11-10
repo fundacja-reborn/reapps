@@ -11,6 +11,7 @@ import {
   type QueryAST
 } from '@reborn/utils';
 import * as NoteService from '$lib/services/note.service';
+import { bulkRun } from '$lib/utils/bulk';
 import {
   noteIndex,
   toSearchEntity,
@@ -388,6 +389,22 @@ function createNotesStore() {
     refresh();
   }
 
+  /**
+   * Set (`undefined`: clear) the color mark of one or more notes. Each note is
+   * written on its own, so one failure (e.g. a note deleted in another tab)
+   * does not stop the rest; the counts drive the partial-failure toast.
+   */
+  async function setColor(
+    ids: string[],
+    color: string | undefined
+  ): Promise<{ done: number; failed: number }> {
+    const result = await bulkRun(ids, async (id) => {
+      await NoteService.setNoteColor(id, color);
+    });
+    refresh();
+    return result;
+  }
+
   /** Restore a note from trash. */
   async function restore(id: string): Promise<void> {
     await NoteService.restoreNote(id);
@@ -438,6 +455,7 @@ function createNotesStore() {
     move,
     togglePin,
     toggleStar,
+    setColor,
     restore,
     permanentDelete,
     emptyTrash,

@@ -212,6 +212,17 @@
     },
     "size_indicator": "{used} / {max}",
     "size_warning": "La taille de la note approche de la limite",
+    "color": {
+      "action": "Couleur…",
+      "title": "Couleur de la note",
+      "description": "Affichée sous forme de point devant le titre dans la liste des notes. Votre choix est enregistré immédiatement et chiffré sur votre appareil.",
+      "description_many": "S’applique à {count, plural, one {# note sélectionnée} other {# notes sélectionnées}}. Votre choix est enregistré immédiatement et chiffré sur votre appareil.",
+      "no_color": "Aucune couleur",
+      "done": "Terminé",
+      "save_failed": "Impossible d’enregistrer la couleur de la note. Réessayez.",
+      "row_label": "Couleur de la note : {color}",
+      "dot_label": "Couleur : {color}"
+    },
     "multiselect": {
       "enter": "Sélectionner",
       "exit": "Annuler la sélection",
@@ -221,6 +232,7 @@
       "unpin_all": "Détacher",
       "star_all": "Marquer d’une étoile",
       "unstar_all": "Retirer l’étoile",
+      "color_all": "Couleur",
       "move_all": "Déplacer",
       "delete_all": "Supprimer",
       "restore_all": "Restaurer",

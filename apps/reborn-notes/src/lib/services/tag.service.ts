@@ -20,6 +20,7 @@ import { noteStore } from '@reborn/storage';
 import type { NoteSensitiveMetadata, NoteStoredLocal } from '@reborn/types';
 import { noteIndex } from '$lib/services/note-index.svelte';
 import { createUndecryptableRowCache, decodeTextField } from './undecryptable-rows';
+import { encodeNoteMetadata } from './note-metadata';
 
 // ── User identity ─────────────────────────────────────────────────
 
@@ -199,7 +200,7 @@ export async function deleteTag(id: string): Promise<void> {
       } catch {
         /* use default */
       }
-      const metadataEncrypted = await cryptoManager.encryptObject(meta);
+      const metadataEncrypted = await encodeNoteMetadata(cryptoManager, meta);
       await noteStore.save({
         ...existing,
         metadata_encrypted: metadataEncrypted,
@@ -269,7 +270,7 @@ export async function setTagsForNote(noteId: string, tagIds: string[], options?:
       /* use default */
     }
     const wasEphemeral = existing.is_ephemeral === true;
-    const metadataEncrypted = await cryptoManager.encryptObject(meta);
+    const metadataEncrypted = await encodeNoteMetadata(cryptoManager, meta);
     const updated: NoteStoredLocal = {
       ...existing,
       metadata_encrypted: metadataEncrypted,
@@ -331,7 +332,7 @@ export async function mergeTags(sourceTagId: string, targetTagId: string): Promi
       } catch {
         /* use default */
       }
-      const metadataEncrypted = await cryptoManager.encryptObject(meta);
+      const metadataEncrypted = await encodeNoteMetadata(cryptoManager, meta);
       await noteStore.save({
         ...existing,
         metadata_encrypted: metadataEncrypted,

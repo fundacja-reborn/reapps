@@ -5,6 +5,7 @@
     PinOff,
     Star,
     StarOff,
+    Palette,
     FolderInput,
     Folder,
     Download,
@@ -39,6 +40,7 @@
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import { formatNoteDate } from '$lib/utils/date-format';
   import { longPress } from '$lib/utils/longPress.svelte';
+  import { APPEARANCE_SWATCH_CLASS, isAppearanceColor } from '$lib/utils/appearance-colors';
   import TagChip from '../TagChip.svelte';
   import MoveToFolderMenu from './MoveToFolderMenu.svelte';
 
@@ -54,6 +56,7 @@
     onmenuopen,
     onpin,
     onstar,
+    oncolor,
     onmove,
     onexport,
     oncopylink,
@@ -78,6 +81,8 @@
     onmenuopen: (noteId: string) => void;
     onpin: (noteId: string, e?: Event) => void;
     onstar: (noteId: string, e?: Event) => void;
+    /** Opens the note color dialog for this note. */
+    oncolor?: (noteId: string) => void;
     onmove: (noteId: string, folderId: string | null, e?: Event) => void;
     onexport: (note: NoteListItem, e?: Event) => void;
     oncopylink: (note: NoteListItem, e?: Event) => void;
@@ -94,6 +99,13 @@
   // Display the date matching the active sort key so the visible value matches the sort.
   // For 'title' sort fall back to updated_at (most recent activity).
   const displayDate = $derived($sortByStore === 'created_at' ? note.created_at : note.updated_at);
+
+  // Color mark: a dot before the title. A key this build does not know (set by
+  // a newer version) shows no dot; the name is spoken after the title.
+  const colorKey = $derived(
+    !note.decrypt_failed && isAppearanceColor(note.color) ? note.color : undefined
+  );
+  const colorName = $derived(colorKey ? $t(`colors.${colorKey}`) : '');
 
   // Per-note hard-rejection state (sync_status: 'sync_error'). Read from the
   // reactive map so the badge appears/clears as soon as a push is rejected or a
@@ -170,6 +182,19 @@
             label: note.is_starred ? $t('notes.unstar') : $t('notes.star'),
             run: (e) => onstar(note.id, e)
           },
+          ...(oncolor
+            ? [
+                {
+                  key: 'color',
+                  icon: Palette,
+                  label: $t('notes.color.action'),
+                  run: (e?: Event) => {
+                    e?.stopPropagation();
+                    oncolor?.(note.id);
+                  }
+                }
+              ]
+            : []),
           {
             key: 'move',
             icon: FolderInput,
@@ -298,6 +323,16 @@
 
           <div class="min-w-0 flex-1">
             <div class="flex items-start gap-1">
+              <!-- Color mark, centered on the first title line. Decorative for
+                   screen readers: the color name follows the title below. -->
+              {#if colorKey}
+                <span
+                  class="mt-1.5 me-0.5 h-2.5 w-2.5 shrink-0 rounded-full md:h-2 md:w-2
+                    {APPEARANCE_SWATCH_CLASS[colorKey]}"
+                  title={colorName}
+                  aria-hidden="true"
+                ></span>
+              {/if}
               <!-- <bdi>: the title renders in its own direction but the row keeps the
                    UI alignment, like the folder, tag and date lines below it. -->
               <p
@@ -306,6 +341,11 @@
                 title={note.decrypt_failed ? $t('notes.undecryptable_hint') : undefined}
               >
                 <bdi>{displayTitle}</bdi>
+                {#if colorKey}
+                  <span class="sr-only"
+                    >{$t('notes.color.dot_label', { values: { color: colorName } })}</span
+                  >
+                {/if}
               </p>
               <!-- Star indicator -->
               {#if note.is_starred}

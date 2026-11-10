@@ -14,6 +14,7 @@ import {
   type PortableCrypto
 } from './portable-backup-utils';
 import { decodeFolderMetadata, encodeFolderMetadata } from './folder-metadata';
+import { decodeNoteMetadata } from './note-metadata';
 
 /**
  * Fake account-scoped crypto. Ciphertext is tagged with the account id, so a
@@ -31,11 +32,15 @@ function makeFakeCrypto(accountId: string): PortableCrypto {
     }
     return decodeURIComponent(ct.slice(prefix.length));
   };
+  // Objects are JSON text under the same cipher, as in cryptoManager
+  // (encryptObject = encrypt(JSON.stringify(...))): a bundle written with
+  // encryptText (the padded note/folder metadata codecs) reads back with
+  // decryptObject and vice versa.
   return {
     encryptText: async (t) => wrap('txt', t),
     decryptText: async (ct) => unwrap('txt', ct),
-    encryptObject: async (o) => wrap('obj', JSON.stringify(o)),
-    decryptObject: async (ct) => JSON.parse(unwrap('obj', ct))
+    encryptObject: async (o) => wrap('txt', JSON.stringify(o)),
+    decryptObject: async (ct) => JSON.parse(unwrap('txt', ct))
   };
 }
 
@@ -213,7 +218,7 @@ describe('reencryptPortablePayload (import, re-encrypt with target account key)'
     expect(await B.decryptText(field(n, 'title_encrypted'))).toBe('Secret title');
     expect(await B.decryptText(field(n, 'content_encrypted'))).toBe('Secret body');
     const newTagId = String(wire.tags[0].id);
-    const meta = await B.decryptObject<NoteSensitiveMetadata>(field(n, 'metadata_encrypted'));
+    const meta = await decodeNoteMetadata(B, field(n, 'metadata_encrypted'));
     // Tag reference is remapped to the tag's NEW id, not the source 't1'.
     expect(meta).toEqual({ is_pinned: true, is_starred: true, tags: [newTagId] });
 
@@ -362,9 +367,7 @@ describe('reencryptPortablePayload (import, re-encrypt with target account key)'
     const payload = await buildPortablePayload(A, notes, [], tags, '2026-06-25T00:00:00.000Z');
     const wire = await reencryptPortablePayload(B, payload, 'user-B', seqIds());
 
-    const meta = await B.decryptObject<NoteSensitiveMetadata>(
-      field(wire.notes[0], 'metadata_encrypted')
-    );
+    const meta = await decodeNoteMetadata(B, field(wire.notes[0], 'metadata_encrypted'));
     expect(meta).toEqual({ is_pinned: false, is_starred: false, tags: [] });
     expect(wire.tags[0].color_encrypted).toBeUndefined();
   });
@@ -422,5 +425,48 @@ describe('folder appearance in portable backups', () => {
     expect(portable.name).toBe('Broken');
     expect(portable.color).toBeUndefined();
     expect(portable.icon).toBeUndefined();
+  });
+});
+
+describe('note color in portable backups', () => {
+  it('exports the color as a plaintext key and re-encrypts it, padded, under the target account', async () => {
+    const notes = [
+      await makeStoredNote(A, {
+        id: 'n1',
+        title: 'Colored',
+        content: '',
+        meta: { is_pinned: false, is_starred: true, tags: [], color: 'violet' }
+      }),
+      await makeStoredNote(A, {
+        id: 'n2',
+        title: 'Plain',
+        content: '',
+        meta: { is_pinned: false, is_starred: true, tags: [] }
+      })
+    ];
+    const payload = await buildPortablePayload(A, notes, [], [], '2026-11-10T00:00:00.000Z');
+
+    expect(payload.data.notes[0].color).toBe('violet');
+    expect(payload.data.notes[1].color).toBeUndefined();
+
+    const wire = await reencryptPortablePayload(B, payload, 'user-B', seqIds());
+    const colored = field(wire.notes[0], 'metadata_encrypted');
+    const plain = field(wire.notes[1], 'metadata_encrypted');
+    expect(await decodeNoteMetadata(B, colored)).toEqual({
+      is_pinned: false,
+      is_starred: true,
+      tags: [],
+      color: 'violet'
+    });
+    expect(await decodeNoteMetadata(A, colored)).toBeNull();
+    // Padded: the colored and the plain note are indistinguishable by length
+    // (compared as plaintext - this fake cipher is not length-preserving).
+    expect((await B.decryptText(colored)).length).toBe((await B.decryptText(plain)).length);
+  });
+
+  it('reads the color from metadata, not from any local field', async () => {
+    const note = await makeStoredNote(A, { id: 'n1', title: 't', content: '', meta: { tags: [] } });
+    (note as unknown as Record<string, unknown>).color = 'red';
+    expect((await noteToPortable(A, note)).color).toBeUndefined();
   });
 });

@@ -17,7 +17,9 @@ export const NoteSensitiveMetadataSchema = z.object({
   is_starred: z.boolean().optional(),
   is_pinned: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
-  periodic: PeriodicNoteMetadataSchema.optional()
+  periodic: PeriodicNoteMetadataSchema.optional(),
+  // Palette key (re/notes APPEARANCE_COLORS), not a hex value.
+  color: z.string().max(32).optional()
 });
 
 /**
@@ -34,6 +36,7 @@ export const NoteDecryptedSchema = z.object({
   is_pinned: z.boolean().optional(),
   is_starred: z.boolean().optional(),
   is_archived: z.boolean().optional(),
+  color: z.string().max(32).optional(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
   deleted_at: z.string().datetime().optional()
