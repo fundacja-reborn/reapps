@@ -212,6 +212,17 @@
     },
     "size_indicator": "{used} / {max}",
     "size_warning": "Die Notizgröße nähert sich dem Limit",
+    "color": {
+      "action": "Farbe…",
+      "title": "Notizfarbe",
+      "description": "Wird als Punkt vor dem Titel in der Notizliste angezeigt. Ihre Auswahl wird sofort gespeichert und auf Ihrem Gerät verschlüsselt.",
+      "description_many": "Gilt für {count, plural, one {# ausgewählte Notiz} other {# ausgewählte Notizen}}. Ihre Auswahl wird sofort gespeichert und auf Ihrem Gerät verschlüsselt.",
+      "no_color": "Keine Farbe",
+      "done": "Fertig",
+      "save_failed": "Die Notizfarbe konnte nicht gespeichert werden. Versuchen Sie es erneut.",
+      "row_label": "Notizfarbe: {color}",
+      "dot_label": "Farbe: {color}"
+    },
     "multiselect": {
       "enter": "Auswählen",
       "exit": "Auswahl aufheben",
@@ -221,6 +232,7 @@
       "unpin_all": "Lösen",
       "star_all": "Markieren",
       "unstar_all": "Markierung entfernen",
+      "color_all": "Farbe",
       "move_all": "Verschieben",
       "delete_all": "Löschen",
       "restore_all": "Wiederherstellen",

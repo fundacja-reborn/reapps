@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { NoteDecryptedSchema, NoteEncryptedSchema } from '../entities/note';
+import {
+  NoteDecryptedSchema,
+  NoteEncryptedSchema,
+  NoteSensitiveMetadataSchema
+} from '../entities/note';
 import { FolderDecryptedSchema, FolderEncryptedSchema } from '../entities/folder';
 import { TagDecryptedSchema } from '../entities/tag';
 
@@ -46,6 +50,31 @@ describe('Note Schemas', () => {
 
       const result = NoteDecryptedSchema.safeParse(invalidNote);
       expect(result.success).toBe(false);
+    });
+
+    it('should validate a note color key and reject an oversized one', () => {
+      const base = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        title: 'Test Note',
+        content: '',
+        created_at: '2024-01-01T00:00:00.000Z',
+        updated_at: '2024-01-01T00:00:00.000Z'
+      };
+
+      expect(NoteDecryptedSchema.safeParse({ ...base, color: 'blue' }).success).toBe(true);
+      expect(NoteDecryptedSchema.safeParse({ ...base, color: 'x'.repeat(33) }).success).toBe(false);
+    });
+  });
+
+  describe('NoteSensitiveMetadataSchema', () => {
+    it('should accept the color key next to the existing fields', () => {
+      const result = NoteSensitiveMetadataSchema.safeParse({
+        is_starred: true,
+        is_pinned: false,
+        tags: [],
+        color: 'green'
+      });
+      expect(result.success).toBe(true);
     });
   });
 

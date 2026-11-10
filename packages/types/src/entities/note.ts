@@ -32,6 +32,12 @@ export interface NoteSensitiveMetadata {
   tags?: string[]; // tag IDs - filtering moved client-side
   /** Set when this note was created by the Periodic Notes feature. */
   periodic?: PeriodicNoteMetadata;
+  /**
+   * Note color mark: a key from the closed appearance palette (re/notes
+   * `APPEARANCE_COLORS`, e.g. 'blue'), never a hex value - the shade is picked
+   * per theme at render time. Absent = no color.
+   */
+  color?: string;
 }
 
 // ─── Decrypted type (UI representation) ──────────────────────────────
@@ -45,6 +51,11 @@ export interface NoteDecrypted {
   is_pinned?: boolean;
   is_starred?: boolean;
   is_archived?: boolean;
+  /**
+   * Color mark key from `metadata_encrypted` (see NoteSensitiveMetadata.color).
+   * UI-only: held in the RAM note index, never stored in plaintext locally.
+   */
+  color?: string;
   created_at: string;
   updated_at: string;
   deleted_at?: string;
@@ -126,7 +137,7 @@ export const MAX_ENCRYPTED_CONTENT_BYTES = 750_000; // ~500 KB plaintext + encry
 /** Maximum encrypted note title size - server Zod. */
 export const MAX_ENCRYPTED_NOTE_TITLE_BYTES = 1_500; // ~1 KB plaintext + encryption overhead
 
-/** Maximum encrypted metadata bundle size - server Zod. Contains is_starred, is_pinned, tag IDs. */
+/** Maximum encrypted metadata bundle size - server Zod. Contains is_starred, is_pinned, tag IDs, color. */
 export const MAX_ENCRYPTED_NOTE_METADATA_BYTES = 10_000; // ~7 KB plaintext - enough for ~200 tag UUIDs
 
 /** Default per-user storage quota in bytes (configurable via USER_STORAGE_LIMIT_BYTES env). */

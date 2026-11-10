@@ -4,6 +4,7 @@
   import TagPicker from '$lib/components/TagPicker.svelte';
   import { t, locale } from '$lib/stores/i18n.store';
   import { intlLocale } from '@reborn/i18n';
+  import { APPEARANCE_SWATCH_CLASS, isAppearanceColor } from '$lib/utils/appearance-colors';
 
   type ViewMode = 'edit' | 'split' | 'preview';
 
@@ -16,8 +17,10 @@
     updatedAt = null,
     createdAt = null,
     effectiveViewMode = 'edit' as ViewMode,
+    color = undefined,
     ontitleinput,
-    onfolderclick
+    onfolderclick,
+    oncolorclick
   }: {
     isMobile: boolean;
     activeTrash: boolean;
@@ -27,9 +30,16 @@
     updatedAt: string | null;
     createdAt: string | null;
     effectiveViewMode?: ViewMode;
+    /** Color mark key of the note; the row shows only when one is set. */
+    color?: string;
     ontitleinput: (e: Event) => void;
     onfolderclick: () => void;
+    /** Opens the note color dialog. */
+    oncolorclick?: () => void;
   } = $props();
+
+  const colorKey = $derived(isAppearanceColor(color) ? color : undefined);
+  const colorName = $derived(colorKey ? $t(`colors.${colorKey}`) : '');
 
   let textareaEl = $state<HTMLTextAreaElement | null>(null);
 
@@ -122,6 +132,23 @@
         <div class="min-w-0 flex-1">
           <TagPicker {noteId} />
         </div>
+      </div>
+    {/if}
+
+    {#if !activeTrash && colorKey}
+      <div class="flex items-center gap-2">
+        <span class="flex h-3.5 w-3.5 shrink-0 items-center justify-center" aria-hidden="true">
+          <span class="h-2.5 w-2.5 rounded-full {APPEARANCE_SWATCH_CLASS[colorKey]}"></span>
+        </span>
+        <button
+          type="button"
+          class="min-w-0 truncate rounded px-1 py-0.5 text-start transition-colors
+             hover:bg-accent hover:text-accent-foreground"
+          aria-label={$t('notes.color.row_label', { values: { color: colorName } })}
+          onclick={oncolorclick}
+        >
+          {colorName}
+        </button>
       </div>
     {/if}
 

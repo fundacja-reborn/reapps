@@ -212,6 +212,17 @@
     },
     "size_indicator": "{used} / {max}",
     "size_warning": "Note size is approaching the limit",
+    "color": {
+      "action": "Color…",
+      "title": "Note color",
+      "description": "Shown as a dot before the title in the note list. Your choice is saved right away and encrypted on your device.",
+      "description_many": "Applies to {count, plural, one {# selected note} other {# selected notes}}. Your choice is saved right away and encrypted on your device.",
+      "no_color": "No color",
+      "done": "Done",
+      "save_failed": "Couldn't save the note color. Try again.",
+      "row_label": "Note color: {color}",
+      "dot_label": "Color: {color}"
+    },
     "multiselect": {
       "enter": "Select",
       "exit": "Cancel selection",
@@ -221,6 +232,7 @@
       "unpin_all": "Unpin",
       "star_all": "Star",
       "unstar_all": "Unstar",
+      "color_all": "Color",
       "move_all": "Move",
       "delete_all": "Delete",
       "restore_all": "Restore",

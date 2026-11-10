@@ -6,9 +6,9 @@
  * the plaintext length, and with closed sets of short keys the length alone
  * would narrow down which color/icon a folder has ("red" vs "violet",
  * "house" vs "graduation-cap"). The JSON is therefore padded to a fixed
- * block (`_pad` filler) before encryption, so every bundle the app writes
- * today has the same ciphertext length and the server learns only that a
- * folder has a bundle at all.
+ * block (`_pad` filler, see metadata-padding.ts) before encryption, so every
+ * bundle the app writes today has the same ciphertext length and the server
+ * learns only that a folder has a bundle at all.
  *
  * Forward compatibility: decoding keeps every field it finds (minus the
  * filler), and updates merge into the existing bundle, so a field written by
@@ -21,6 +21,7 @@
 import type { FolderSensitiveMetadata } from '@reborn/types';
 import { isAppearanceColor } from '$lib/utils/appearance-colors';
 import { isFolderIcon } from '$lib/utils/folder-icons';
+import { padBundleJson, stripPadField } from './metadata-padding';
 
 export interface FolderMetadataCrypto {
   encryptText(text: string): Promise<string>;
@@ -38,17 +39,9 @@ export type FolderMetadataBundle = FolderSensitiveMetadata & { [field: string]: 
  */
 export const FOLDER_METADATA_BLOCK_BYTES = 128;
 
-const PAD_KEY = '_pad';
-
 /** JSON of `bundle` padded to a whole number of blocks (exported for tests). */
 export function padFolderMetadataJson(bundle: FolderMetadataBundle): string {
-  const { [PAD_KEY]: _ignored, ...fields } = bundle;
-  const encoder = new TextEncoder();
-  const unpadded = encoder.encode(JSON.stringify({ ...fields, [PAD_KEY]: '' })).length;
-  const target = Math.ceil(unpadded / FOLDER_METADATA_BLOCK_BYTES) * FOLDER_METADATA_BLOCK_BYTES;
-  // Spaces are 1 byte each in UTF-8 and need no JSON escaping, so the padded
-  // JSON lands exactly on the block boundary.
-  return JSON.stringify({ ...fields, [PAD_KEY]: ' '.repeat(target - unpadded) });
+  return padBundleJson(bundle, FOLDER_METADATA_BLOCK_BYTES);
 }
 
 export async function encodeFolderMetadata(
@@ -71,8 +64,7 @@ export async function decodeFolderMetadata(
   try {
     const parsed: unknown = JSON.parse(await crypto.decryptText(stored));
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-    const { [PAD_KEY]: _ignored, ...fields } = parsed as Record<string, unknown>;
-    return fields;
+    return stripPadField(parsed as Record<string, unknown>);
   } catch {
     return null;
   }

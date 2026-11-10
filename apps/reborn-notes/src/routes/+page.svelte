@@ -42,6 +42,8 @@
   import NoteSearchBar from '$lib/components/editor/NoteSearchBar.svelte';
   import NoteMetadataBar from '$lib/components/editor/NoteMetadataBar.svelte';
   import NoteActionSheet from '$lib/components/notes/NoteActionSheet.svelte';
+  import NoteColorDialog from '$lib/components/notes/NoteColorDialog.svelte';
+  import { openNoteColorDialog } from '$lib/stores/note-color-dialog.svelte';
   import ShareNoteDialog from '$lib/components/notes/ShareNoteDialog.svelte';
   import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
   import TagSidebarSection from '$lib/components/tags/TagSidebarSection.svelte';
@@ -232,6 +234,12 @@
     detailActionSheetOpen = false;
     if (!$activeNoteId) return;
     await notesStore.toggleStar($activeNoteId);
+  }
+
+  function handleDetailColor() {
+    detailActionSheetOpen = false;
+    if (!$activeNoteId) return;
+    openNoteColorDialog([$activeNoteId]);
   }
 
   function handleDetailOpenMoveMobile() {
@@ -2456,6 +2464,7 @@
                   onsearch={openNoteSearch}
                   onpin={handleDetailPin}
                   onstar={handleDetailStar}
+                  oncolor={handleDetailColor}
                   onmove={handleDetailMoveDesktop}
                   onexport={() => handleDetailExport()}
                   onexportpdf={() => handleDetailExportPdf()}
@@ -2485,6 +2494,8 @@
                   createdAt={detailMenuNote?.created_at ?? null}
                   ontitleinput={handleTitleInput}
                   onfolderclick={navigateToNoteFolder}
+                  color={detailMenuNote?.color}
+                  oncolorclick={handleDetailColor}
                 />
 
                 <NoteContentArea
@@ -2783,6 +2794,7 @@
                 onsearch={openNoteSearch}
                 onpin={handleDetailPin}
                 onstar={handleDetailStar}
+                oncolor={handleDetailColor}
                 onmove={handleDetailMoveDesktop}
                 onexport={() => handleDetailExport()}
                 onexportpdf={() => handleDetailExportPdf()}
@@ -2820,6 +2832,8 @@
                 {effectiveViewMode}
                 ontitleinput={handleTitleInput}
                 onfolderclick={navigateToNoteFolder}
+                color={detailMenuNote?.color}
+                oncolorclick={handleDetailColor}
               />
 
               <NoteContentArea
@@ -3094,6 +3108,10 @@
 
 <TagActionSheet ondelete={(tagId) => tagManager.handleDeleteTag(tagId)} />
 
+<!-- Note color picker (one note or a multi-selection), opened from the note
+     menus, the metadata row and the selection bar. -->
+<NoteColorDialog />
+
 <!-- Detail-view action menu (mobile bottom sheet) -->
 <NoteActionSheet
   bind:open={detailActionSheetOpen}
@@ -3101,6 +3119,7 @@
   onsearch={openNoteSearch}
   onpin={() => handleDetailPin()}
   onstar={() => handleDetailStar()}
+  oncolor={() => handleDetailColor()}
   onmove={() => handleDetailOpenMoveMobile()}
   onexport={(note) => handleDetailExport(note)}
   onexportpdf={(note) => handleDetailExportPdf(note)}

@@ -26,6 +26,7 @@ import {
   encodeFolderMetadata,
   readFolderAppearance
 } from './folder-metadata';
+import { encodeNoteMetadata, readNoteColor } from './note-metadata';
 
 /** Minimal crypto surface needed by the transforms (a subset of cryptoManager). */
 export interface PortableCrypto {
@@ -49,6 +50,8 @@ export interface PortableNote {
   is_starred?: boolean;
   tags?: string[];
   periodic?: PeriodicNoteMetadata;
+  /** Color mark key (palette key, not hex), from the note's metadata bundle. */
+  color?: string;
   created_at: string;
   updated_at: string;
 }
@@ -113,12 +116,13 @@ export async function noteToPortable(
 ): Promise<PortableNote> {
   const title = await decryptFieldOr(crypto, note.title_encrypted, '');
   const content = await decryptFieldOr(crypto, note.content_encrypted, '');
-  // is_pinned/is_starred/tags/periodic come from metadata_encrypted, the single
-  // source of truth - the local shadow indexes are never trusted (Zero Knowledge).
+  // is_pinned/is_starred/tags/periodic/color come from metadata_encrypted, the
+  // single source of truth - the local shadow indexes are never trusted (Zero Knowledge).
   let is_pinned = false;
   let is_starred = false;
   let tags: string[] = [];
   let periodic: PeriodicNoteMetadata | undefined;
+  let color: string | undefined;
   if (note.metadata_encrypted) {
     try {
       const meta = await crypto.decryptObject<NoteSensitiveMetadata>(note.metadata_encrypted);
@@ -126,6 +130,7 @@ export async function noteToPortable(
       is_starred = meta.is_starred ?? false;
       tags = meta.tags ?? [];
       periodic = meta.periodic;
+      color = readNoteColor(meta);
     } catch {
       // Leave defaults - a row whose metadata can't be decrypted on its own
       // account is already broken locally; don't abort the export for it.
@@ -141,6 +146,7 @@ export async function noteToPortable(
     is_starred,
     tags,
     ...(periodic ? { periodic } : {}),
+    ...(color ? { color } : {}),
     created_at: note.created_at,
     updated_at: note.updated_at
   };
@@ -314,13 +320,15 @@ export async function reencryptPortablePayload(
         tags: remappedTags
       };
       if (n.periodic) metadata.periodic = n.periodic;
+      const color = readNoteColor(n);
+      if (color) metadata.color = color;
       return {
         id: noteIdMap.get(n.id)!,
         user_id: userId,
         folder_id: n.folder_id ? (folderIdMap.get(n.folder_id) ?? undefined) : undefined,
         title_encrypted: await crypto.encryptText(n.title || 'Untitled'),
         content_encrypted: await crypto.encryptText(remapNoteLinks(n.content ?? '', noteIdMap)),
-        metadata_encrypted: await crypto.encryptObject<NoteSensitiveMetadata>(metadata),
+        metadata_encrypted: await encodeNoteMetadata(crypto, metadata),
         is_archived: n.is_archived ?? false,
         created_at: n.created_at,
         updated_at: n.updated_at,

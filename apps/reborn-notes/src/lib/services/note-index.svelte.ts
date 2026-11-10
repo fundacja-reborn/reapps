@@ -8,7 +8,7 @@
  * Consumers: NoteList, NotePicker, autocomplete [[, search sidebar.
  *
  * Replaces the old NoteTitleIndex - now stores all metadata needed for list rendering:
- * title, folderId, isPinned, isStarred, isArchived, createdAt, updatedAt, tagIds.
+ * title, folderId, isPinned, isStarred, isArchived, createdAt, updatedAt, tagIds, color.
  * Full content is NEVER stored here - loaded on demand by note-detail.service.
  */
 import { noteStore, noteTagStore, noteTagQueries } from '@reborn/storage';
@@ -34,6 +34,9 @@ export interface NoteIndexEntry {
   createdAt: string;
   updatedAt: string;
   tagIds: string[];
+  /** Color mark key from the encrypted metadata bundle (RAM only, like the
+   *  title - never persisted in plaintext). Absent = no color. */
+  color?: string;
   /** Row's ciphertext failed to decrypt (see undecryptable-rows.ts) - the list
    *  renders an explicit placeholder and the row cannot be opened. */
   decryptFailed?: boolean;
@@ -135,6 +138,7 @@ class NoteIndex {
             createdAt: e.createdAt,
             updatedAt: e.updatedAt,
             tagIds: tagMap.get(e.id) ?? [],
+            ...(e.color ? { color: e.color } : {}),
             ...(e.decryptFailed ? { decryptFailed: true } : {})
           });
         }
@@ -178,6 +182,7 @@ class NoteIndex {
           createdAt: e.createdAt,
           updatedAt: e.updatedAt,
           tagIds,
+          ...(e.color ? { color: e.color } : {}),
           ...(e.decryptFailed ? { decryptFailed: true } : {})
         });
         changed = true;
@@ -283,6 +288,7 @@ class NoteIndex {
       created_at: e.createdAt,
       updated_at: e.updatedAt,
       tags: e.tagIds,
+      ...(e.color ? { color: e.color } : {}),
       ...(e.decryptFailed ? { decrypt_failed: true } : {})
     };
   }
@@ -416,6 +422,7 @@ class NoteIndex {
       created_at: e.createdAt,
       updated_at: e.updatedAt,
       tags: e.tagIds,
+      ...(e.color ? { color: e.color } : {}),
       ...(e.decryptFailed ? { decrypt_failed: true } : {})
     }));
 
@@ -514,6 +521,7 @@ class NoteIndex {
       created_at: e.createdAt,
       updated_at: e.updatedAt,
       tags: e.tagIds,
+      ...(e.color ? { color: e.color } : {}),
       ...(e.decryptFailed ? { decrypt_failed: true } : {})
     }));
 

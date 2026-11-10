@@ -212,6 +212,17 @@
     },
     "size_indicator": "{used} / {max}",
     "size_warning": "Rozmiar notatki zbliża się do limitu",
+    "color": {
+      "action": "Kolor…",
+      "title": "Kolor notatki",
+      "description": "Widoczny jako kropka przed tytułem na liście notatek. Wybór zapisuje się od razu i jest szyfrowany na Twoim urządzeniu.",
+      "description_many": "Dotyczy {count, plural, one {# zaznaczonej notatki} few {# zaznaczonych notatek} many {# zaznaczonych notatek} other {# zaznaczonej notatki}}. Wybór zapisuje się od razu i jest szyfrowany na Twoim urządzeniu.",
+      "no_color": "Bez koloru",
+      "done": "Gotowe",
+      "save_failed": "Nie udało się zapisać koloru notatki. Spróbuj ponownie.",
+      "row_label": "Kolor notatki: {color}",
+      "dot_label": "Kolor: {color}"
+    },
     "multiselect": {
       "enter": "Zaznacz",
       "exit": "Anuluj zaznaczanie",
@@ -221,6 +232,7 @@
       "unpin_all": "Odepnij",
       "star_all": "Oznacz gwiazdką",
       "unstar_all": "Usuń gwiazdki",
+      "color_all": "Kolor",
       "move_all": "Przenieś",
       "delete_all": "Usuń",
       "restore_all": "Przywróć",

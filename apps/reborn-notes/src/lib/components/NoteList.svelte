@@ -16,6 +16,7 @@
     PinOff,
     Star,
     StarOff,
+    Palette,
     FolderInput,
     RotateCcw,
     Trash,
@@ -57,6 +58,7 @@
   import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
   import { buildBreadcrumb } from '$lib/utils/folder-helpers';
   import { bulkRun } from '$lib/utils/bulk';
+  import { openNoteColorDialog } from '$lib/stores/note-color-dialog.svelte';
 
   function findFolderNode(
     nodes: FolderWithChildren[],
@@ -351,6 +353,12 @@
     await notesStore.toggleStar(noteId);
   }
 
+  function handleOpenColor(noteId: string) {
+    menuOpenId = null;
+    noteActionSheetOpen = false;
+    openNoteColorDialog([noteId]);
+  }
+
   async function handleRestore(noteId: string, e?: Event) {
     e?.stopPropagation();
     menuOpenId = null;
@@ -571,6 +579,14 @@
     );
     reportPartial(ids.length, done, failed);
     exitSelectionMode();
+  }
+
+  function openBulkColor() {
+    if (selectedIds.size === 0) return;
+    // Visible selection only (stale ids that left the view are skipped), like
+    // the other bulk actions. The dialog applies the color on pick; the
+    // selection stays so the user can see the result.
+    openNoteColorDialog(selectedItems.map((n) => n.id));
   }
 
   function openBulkMove() {
@@ -922,6 +938,16 @@
           </button>
           <button
             type="button"
+            onclick={openBulkColor}
+            disabled={selectedIds.size === 0}
+            class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            aria-label={$t('notes.multiselect.color_all')}
+            title={$t('notes.multiselect.color_all')}
+          >
+            <Palette class={rowTwoIconClass} />
+          </button>
+          <button
+            type="button"
             onclick={openBulkMove}
             disabled={selectedIds.size === 0}
             class="flex {rowTwoBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
@@ -1117,6 +1143,7 @@
             onmenuopen={handleMenuOpen}
             onpin={handleTogglePin}
             onstar={handleToggleStar}
+            oncolor={handleOpenColor}
             onmove={handleMove}
             onexport={handleExportNote}
             oncopylink={handleCopyNoteLink}
@@ -1141,6 +1168,7 @@
   {isTrash}
   onpin={handleTogglePin}
   onstar={handleToggleStar}
+  oncolor={handleOpenColor}
   onmove={openMoveMenu}
   onexport={handleExportNote}
   oncopylink={handleCopyNoteLink}

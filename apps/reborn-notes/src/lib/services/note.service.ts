@@ -32,6 +32,13 @@ import {
   pullNoteVersionsForNote
 } from './notes-sync.service';
 import { createUndecryptableRowCache, decodeTextField } from './undecryptable-rows';
+import {
+  decodeNoteMetadata,
+  encodeNoteMetadata,
+  isValidNoteColor,
+  readNoteColor,
+  withNoteColor
+} from './note-metadata';
 
 const logger = createLogger('Note-Service');
 
@@ -114,6 +121,7 @@ export async function decryptTitleOnly(enc: NoteMetaLocal): Promise<{
   createdAt: string;
   updatedAt: string;
   decryptFailed: boolean;
+  color: string | undefined;
 }> {
   // Cache-hit also covers content-only corruption found by toDecrypted: the
   // index entry then flags the row even though its title alone would decode.
@@ -122,10 +130,24 @@ export async function decryptTitleOnly(enc: NoteMetaLocal): Promise<{
   // a title-only decode cannot prove the content is healthy.
   let title: string | null = '';
   let decryptFailed = true;
+  let color: string | undefined;
   if (!undecryptableRows.has(enc.id, enc.updated_at)) {
-    title = await decodeTextField(enc.title_encrypted, 'note title');
+    // The color mark lives only in the encrypted metadata bundle; it is
+    // decoded here, next to the title, and held in the RAM index - never
+    // stored in plaintext locally (the Encryption Guard treats `color` as a
+    // sensitive field). An undecryptable bundle just means no mark.
+    const [decodedTitle, meta] = await Promise.all([
+      decodeTextField(enc.title_encrypted, 'note title'),
+      enc.metadata_encrypted
+        ? decodeNoteMetadata(cryptoManager, enc.metadata_encrypted)
+        : Promise.resolve(null)
+    ]);
+    title = decodedTitle;
     if (title === null) undecryptableRows.mark(enc.id, enc.updated_at);
-    else decryptFailed = false;
+    else {
+      decryptFailed = false;
+      color = readNoteColor(meta);
+    }
   }
   return {
     id: enc.id,
@@ -137,7 +159,8 @@ export async function decryptTitleOnly(enc: NoteMetaLocal): Promise<{
     isArchived: enc.is_archived ?? false,
     createdAt: enc.created_at,
     updatedAt: enc.updated_at,
-    decryptFailed
+    decryptFailed,
+    color
   };
 }
 
@@ -298,7 +321,7 @@ export async function createNote(
     tags: []
   };
   if (options?.periodic) metadata.periodic = options.periodic;
-  const metadataEncrypted = await cryptoManager.encryptObject<NoteSensitiveMetadata>(metadata);
+  const metadataEncrypted = await encodeNoteMetadata(cryptoManager, metadata);
   const note: NoteStoredLocal = {
     id,
     user_id: getUserId(),
@@ -487,12 +510,7 @@ export async function moveNoteToFolder(id: string, folderId: string | null): Pro
 export async function readNoteMetadata(id: string): Promise<NoteSensitiveMetadata | null> {
   const existing = await noteStore.get(id);
   if (!existing) return null;
-  if (!existing.metadata_encrypted) return {};
-  try {
-    return await cryptoManager.decryptObject<NoteSensitiveMetadata>(existing.metadata_encrypted);
-  } catch {
-    return {};
-  }
+  return (await decodeNoteMetadata(cryptoManager, existing.metadata_encrypted)) ?? {};
 }
 
 /**
@@ -523,7 +541,7 @@ export async function setNotePeriodicMetadata(
   }
   meta.periodic = periodic;
   const wasEphemeral = existing.is_ephemeral === true;
-  const metadataEncrypted = await cryptoManager.encryptObject(meta);
+  const metadataEncrypted = await encodeNoteMetadata(cryptoManager, meta);
   const updated: NoteStoredLocal = {
     ...existing,
     metadata_encrypted: metadataEncrypted,
@@ -549,7 +567,7 @@ export async function togglePin(id: string): Promise<void> {
       meta.is_pinned = newPinned;
     }
   } catch { /* use default */ }
-  const metadataEncrypted = await cryptoManager.encryptObject(meta);
+  const metadataEncrypted = await encodeNoteMetadata(cryptoManager, meta);
 
   const updated: NoteStoredLocal = {
     ...existing,
@@ -580,7 +598,7 @@ export async function toggleStar(id: string): Promise<void> {
       meta.is_starred = newStarred;
     }
   } catch { /* use default */ }
-  const metadataEncrypted = await cryptoManager.encryptObject(meta);
+  const metadataEncrypted = await encodeNoteMetadata(cryptoManager, meta);
 
   const updated: NoteStoredLocal = {
     ...existing,
@@ -594,6 +612,51 @@ export async function toggleStar(id: string): Promise<void> {
   // Starring is a deliberate "keep it" action - promotes a pristine note (#349).
   pushNoteMutation(updated, wasEphemeral, { metadata_encrypted: metadataEncrypted });
   noteIndex.patch(id, { isStarred: newStarred });
+}
+
+/**
+ * Set the color mark of a note (`undefined` clears it). The color is a key
+ * from the closed palette and lives only inside the encrypted metadata
+ * bundle, which is re-encoded padded, so the server sees one more metadata
+ * update of the usual length - not which color. Every other bundle field
+ * (pin, star, tags, periodic stamp, unknown fields from newer versions) is
+ * kept. Like pin/star it bumps `updated_at` and promotes a pristine new note
+ * (#349).
+ *
+ * Returns false when nothing changed (no such note, or it already has that
+ * color) - no write, no push.
+ */
+export async function setNoteColor(id: string, color: string | undefined): Promise<boolean> {
+  if (!isValidNoteColor(color)) throw new Error('Invalid note color');
+  const existing = await noteStore.get(id);
+  if (!existing) return false;
+
+  const decoded = await decodeNoteMetadata(cryptoManager, existing.metadata_encrypted);
+  if (decoded && decoded.color === color) return false;
+  // Undecryptable bundle (key epoch / corruption): rebuild it from what this
+  // device knows - the pin/star shadow flags and the local tag relations - as
+  // the tag and pin/star writers do.
+  const meta: NoteSensitiveMetadata = decoded ?? {
+    is_pinned: existing.is_pinned ?? false,
+    is_starred: existing.is_starred ?? false,
+    tags: await noteTagQueries.getTagsForNote(id)
+  };
+  const metadataEncrypted = await encodeNoteMetadata(cryptoManager, withNoteColor(meta, color));
+
+  const wasEphemeral = existing.is_ephemeral === true;
+  const updated: NoteStoredLocal = {
+    ...existing,
+    metadata_encrypted: metadataEncrypted,
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending',
+    ...(wasEphemeral ? { is_ephemeral: false } : {})
+  };
+  await noteStore.save(updated);
+  pushNoteMutation(updated, wasEphemeral, { metadata_encrypted: metadataEncrypted });
+  // Like pin/star: the index keeps its updatedAt until the next rebuild, so the
+  // row does not jump while the color dialog is still open over the list.
+  noteIndex.patch(id, { color });
+  return true;
 }
 
 // ── Trash (Kosz) ─────────────────────────────────────────────────

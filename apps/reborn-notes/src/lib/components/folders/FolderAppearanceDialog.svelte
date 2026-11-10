@@ -1,6 +1,5 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { Check, X } from '@lucide/svelte';
   import { textDirection } from '@reborn/i18n';
   import {
     Button,
@@ -21,13 +20,10 @@
   import { foldersStore } from '$lib/stores/folders.store';
   import { t } from '$lib/stores/i18n.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
-  import {
-    APPEARANCE_COLORS,
-    APPEARANCE_SWATCH_CLASS,
-    appearanceTextClass
-  } from '$lib/utils/appearance-colors';
+  import { appearanceTextClass } from '$lib/utils/appearance-colors';
   import { FOLDER_ICONS } from '$lib/utils/folder-icons';
   import { radioGridTarget } from '$lib/utils/radio-grid-nav';
+  import AppearanceColorGroup from '../AppearanceColorGroup.svelte';
   import FolderGlyph from './FolderGlyph.svelte';
   import { FOLDER_ICON_COMPONENTS } from './folder-icon-components';
 
@@ -55,8 +51,7 @@
   const SAVE_DEBOUNCE_MS = 300;
   const ICON_COLUMNS = 5;
 
-  // Choice options: `undefined` = default (no color / plain folder icon).
-  const colorOptions: (string | undefined)[] = [undefined, ...APPEARANCE_COLORS];
+  // Icon options: `undefined` = the plain folder icon.
   const iconOptions: (string | undefined)[] = [undefined, ...FOLDER_ICONS];
 
   let color = $state<string | undefined>(undefined);
@@ -137,37 +132,26 @@
 
   // A stored key this build does not know matches no option; the default
   // option then keeps the tab stop so the group stays reachable.
-  const colorIndex = $derived(Math.max(0, colorOptions.indexOf(color)));
   const iconIndex = $derived(Math.max(0, iconOptions.indexOf(icon)));
 
-  function handleGroupKeydown(e: KeyboardEvent, kind: 'color' | 'icon', group: HTMLElement | null) {
-    const options = kind === 'color' ? colorOptions : iconOptions;
-    const current = kind === 'color' ? colorIndex : iconIndex;
-    const next = radioGridTarget(e.key, current, options.length, {
-      // Swatches wrap freely across rows, so Up/Down step like Left/Right.
-      columns: kind === 'color' ? 1 : ICON_COLUMNS,
+  function handleIconKeydown(e: KeyboardEvent) {
+    const next = radioGridTarget(e.key, iconIndex, iconOptions.length, {
+      columns: ICON_COLUMNS,
       rtl: $textDirection === 'rtl'
     });
     if (next === null) return;
     e.preventDefault();
-    if (kind === 'color') chooseColor(options[next]);
-    else chooseIcon(options[next]);
-    group?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
-  }
-
-  function colorLabel(value: string | undefined): string {
-    return value ? $t(`colors.${value}`) : $t('folders.appearance.no_color');
+    chooseIcon(iconOptions[next]);
+    iconGroupEl?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
   }
 
   function iconLabel(value: string | undefined): string {
     return value ? $t(`folders.appearance.icons.${value}`) : $t('folders.appearance.default_icon');
   }
 
-  let colorGroupEl = $state<HTMLElement | null>(null);
   let iconGroupEl = $state<HTMLElement | null>(null);
 
   // Larger targets on touch screens (44 px), compact on desktop.
-  const swatchSize = $derived(isMobileQuery.value ? 'h-11 w-11' : 'h-8 w-8');
   const tileSize = $derived(isMobileQuery.value ? 'h-11 w-11' : 'h-9 w-9');
   const iconColorClass = $derived(appearanceTextClass(color) ?? 'text-muted-foreground');
 </script>
@@ -184,39 +168,13 @@
       <h3 id="folder-appearance-color" class="mb-2 text-sm font-medium">
         {$t('folders.appearance.color')}
       </h3>
-      <div
-        bind:this={colorGroupEl}
-        role="radiogroup"
-        aria-labelledby="folder-appearance-color"
-        tabindex="-1"
-        class="flex flex-wrap gap-2"
-        onkeydown={(e) => handleGroupKeydown(e, 'color', colorGroupEl)}
-      >
-        {#each colorOptions as option, i (option ?? 'none')}
-          {@const checked = i === colorIndex}
-          <button
-            type="button"
-            role="radio"
-            aria-checked={checked}
-            aria-label={colorLabel(option)}
-            title={colorLabel(option)}
-            tabindex={checked ? 0 : -1}
-            class="flex {swatchSize} shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background
-              {option
-              ? APPEARANCE_SWATCH_CLASS[option as keyof typeof APPEARANCE_SWATCH_CLASS]
-              : 'border border-dashed border-muted-foreground/60'}
-              {checked ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}"
-            onclick={() => chooseColor(option)}
-          >
-            <!-- Selection is marked by shape (check / ring), not by color alone. -->
-            {#if option && checked}
-              <Check class="h-4 w-4 text-white dark:text-gray-900" />
-            {:else if !option}
-              <X class="h-3.5 w-3.5 text-muted-foreground" />
-            {/if}
-          </button>
-        {/each}
-      </div>
+      <AppearanceColorGroup
+        value={color}
+        labelledby="folder-appearance-color"
+        noneLabel={$t('folders.appearance.no_color')}
+        touch={isMobileQuery.value}
+        onchoose={chooseColor}
+      />
     </section>
 
     <section class="mt-4">
@@ -229,7 +187,7 @@
         aria-labelledby="folder-appearance-icon"
         tabindex="-1"
         class="grid w-fit grid-cols-5 gap-1.5"
-        onkeydown={(e) => handleGroupKeydown(e, 'icon', iconGroupEl)}
+        onkeydown={handleIconKeydown}
       >
         {#each iconOptions as option, i (option ?? 'default')}
           {@const checked = i === iconIndex}
