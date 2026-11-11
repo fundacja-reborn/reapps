@@ -51,7 +51,6 @@
     tocStale = false,
     onTocApply,
     onTocRemove,
-    compact = false,
     onoutline,
     onlinkednotes,
     onhistory
@@ -81,20 +80,20 @@
     onTocApply?: () => void;
     /** Remove the managed TOC block. */
     onTocRemove?: () => void;
-    /**
-     * Desktop: the header is too narrow for its panel toggles (larger text
-     * size or a narrow window) and hid them, so the menu offers them instead.
-     */
-    compact?: boolean;
-    /** Desktop, `compact`: toggle the Outline panel. */
+    /** Desktop: toggle the Outline panel. */
     onoutline?: () => void;
-    /** Desktop, `compact`: toggle the Linked notes panel. */
+    /** Desktop: toggle the Linked notes panel. */
     onlinkednotes?: () => void;
-    /** Desktop, `compact`: toggle the version History panel. */
+    /** Desktop: toggle the version History panel. */
     onhistory?: () => void;
   } = $props();
 
-  const showPanelItems = $derived(compact && (!!onoutline || !!onlinkednotes || !!onhistory));
+  // The panels are always listed, also when the header shows their icons: the
+  // menu is where people look for an action by name, an unlabelled clock icon is
+  // easy to miss, and Share / Encryption already work this way (icon + labelled
+  // item). Matches the mobile action sheet. In a narrow header the icons hide
+  // and these items are the way in.
+  const showPanelItems = $derived(!!onoutline || !!onlinkednotes || !!onhistory);
 
   const isMobileQuery = useIsMobile();
   let isMoveMenuOpen = $state(false);
@@ -153,7 +152,7 @@
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {#if showPanelItems}
-            <!-- Panels whose header toggles are hidden in a narrow header -->
+            <!-- Panels (also header icons on a wide desktop; see showPanelItems) -->
             {#if onoutline}
               <DropdownMenuItem onclick={onoutline}>
                 <ListTree class="h-3.5 w-3.5" />
