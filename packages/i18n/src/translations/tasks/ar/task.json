@@ -129,7 +129,7 @@
       "monthly": "كل {n} {n, plural, zero {أشهر} one {شهر} two {أشهر} few {أشهر} many {شهرًا} other {شهر}}",
       "yearly": "كل {n} {n, plural, zero {سنوات} one {سنة} two {سنوات} few {سنوات} many {سنة} other {سنة}}"
     },
-    "n_times": "{n, plural, zero {لا مرات} one {مرة واحدة} two {مرتان} few {# مرات} many {# مرة} other {# مرة}}",
+    "n_times": "{n, plural, zero {ولا مرة} one {مرة واحدة} two {مرتان} few {# مرات} many {# مرة} other {# مرة}}",
     "until": "حتى",
     "days": {
       "label": "أيام الأسبوع",
