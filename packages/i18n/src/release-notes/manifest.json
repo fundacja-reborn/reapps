@@ -1,5 +1,35 @@
 [
   {
+    "version": "0.50.0",
+    "date": "2026-11-11",
+    "items": [
+      {
+        "id": "0.50.0-delete-history",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.50.0-grid-view",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.50.0-note-menu-panels",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.49.0",
     "date": "2026-11-11",
     "items": [
