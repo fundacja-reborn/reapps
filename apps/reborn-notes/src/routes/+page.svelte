@@ -64,6 +64,7 @@
   import { savedSearchesStore } from '$lib/stores/saved-searches.store';
   import type { SavedSearchDecrypted } from '@reborn/types';
   import { defaultNoteTitle } from '$lib/utils/date-format';
+  import { resolveNewNoteFolder } from '$lib/utils/new-note-folder';
   import {
     appSettings,
     dateFormat,
@@ -72,6 +73,7 @@
     effectiveEditorMode,
     editorModeIntroSeen,
     periodicNotesSettings,
+    newNoteFolderId,
     confirmBeforeDelete
   } from '$lib/stores/app-settings.store';
   import {
@@ -1003,7 +1005,15 @@
       activeTagId = null;
       await tick();
     }
-    await createEphemeralNote();
+    // An open folder keeps the note; elsewhere the folder chosen in
+    // Settings > Behavior takes it, and the view stays where it is (#522).
+    const openFolderId =
+      activeSection === 'folders' && activeSavedSearchId === null ? activeFolderId : undefined;
+    await createEphemeralNote(
+      resolveNewNoteFolder(openFolderId, $newNoteFolderId, (id) =>
+        flattenFolderTree($foldersStore).some((f) => f.id === id)
+      )
+    );
   }
 
   /** "New note in this folder" from the folder tree (right-click menu / kebab):

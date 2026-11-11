@@ -108,6 +108,16 @@ export interface AppSettings {
    */
   folderSortMode?: FolderSortMode;
   /**
+   * Notes-only: the folder a note made with "New note" goes to when no folder
+   * is open (All notes, Starred, Tags, a smart folder, search) - issue #522.
+   * Inside a folder the note goes there, as before. `null` = no folder (the
+   * user cleared the choice; synced so the other devices clear it too),
+   * absent = never chosen. A UUID of a folder, which the server only ever sees
+   * inside the encrypted app bundle; a folder deleted since is treated as no
+   * folder. Synced across devices via the Notes app bundle.
+   */
+  newNoteFolderId?: string | null;
+  /**
    * Notes-only: per-kind settings for Daily / Weekly / Monthly Notes (Obsidian-style).
    * Local & device-specific - not synced. Optional in the type so reborn-task settings
    * don't carry the field. Defaults are written by `initializeDefaults` for the notes app.

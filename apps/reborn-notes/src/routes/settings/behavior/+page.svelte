@@ -14,12 +14,17 @@
     Switch,
     toast
   } from '@reborn/ui';
-  import { Eye, House, Pencil, Trash2 } from '@lucide/svelte';
+  import { ChevronDown, Eye, FolderInput, House, Pencil, Trash2 } from '@lucide/svelte';
   import {
     appSettings,
     confirmBeforeDelete as confirmBeforeDeleteStore,
-    editorMode as editorModeStore
+    editorMode as editorModeStore,
+    newNoteFolderId as newNoteFolderIdStore
   } from '$lib/stores/app-settings.store';
+  import { foldersStore } from '$lib/stores/folders.store';
+  import { flattenFolderTree } from '$lib/utils/folder-helpers';
+  import FolderGlyph from '$lib/components/folders/FolderGlyph.svelte';
+  import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
   import type { EditorMode } from '@reborn/storage';
   import {
     devicePrefs,
@@ -65,6 +70,24 @@
   }
   let editorModeValue = $state<EditorMode>('markdown');
   let confirmDeleteValue = $state(true);
+
+  // Folder for new notes (#522). A folder deleted since reads as "No folder",
+  // which is also what "New note" does with it.
+  let folderPickerOpen = $state(false);
+  const newNoteFolder = $derived(
+    $newNoteFolderIdStore === null
+      ? null
+      : (flattenFolderTree($foldersStore).find((f) => f.id === $newNoteFolderIdStore) ?? null)
+  );
+
+  async function updateNewNoteFolder(folderId: string | null) {
+    try {
+      await appSettings.update('newNoteFolderId', folderId);
+      toast.success($t('settings_page.behavior.new_note_folder_updated'));
+    } catch (err: unknown) {
+      logger.error('Failed to update the folder for new notes', err);
+    }
+  }
 
   // Split is a desktop layout (editor + preview side by side). On phones the app
   // collapses it to plain edit, so don't offer it as a choice on this device.
@@ -161,6 +184,39 @@
       </CardContent>
     </Card>
 
+    <!-- Folder for new notes (synced in the notes app bundle; issue #522) -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-base flex items-center gap-2">
+          <FolderInput class="h-4 w-4 text-muted-foreground" />
+          {$t('settings_page.behavior.new_note_folder')}
+        </CardTitle>
+        <CardDescription>{$t('settings_page.behavior.new_note_folder_desc')}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <button
+          type="button"
+          onclick={() => (folderPickerOpen = true)}
+          aria-haspopup="dialog"
+          class="border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 shadow-xs flex h-9 w-full items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm outline-none transition-[color,box-shadow] focus-visible:ring-[3px]"
+        >
+          <span class="flex min-w-0 items-center gap-2">
+            {#if newNoteFolder}
+              <FolderGlyph
+                color={newNoteFolder.color}
+                icon={newNoteFolder.icon}
+                class="h-4 w-4 shrink-0 text-muted-foreground"
+              />
+              <span class="truncate"><bdi>{newNoteFolder.name}</bdi></span>
+            {:else}
+              <span class="truncate text-muted-foreground">{$t('notes.no_folder')}</span>
+            {/if}
+          </span>
+          <ChevronDown class="size-4 shrink-0 opacity-50" />
+        </button>
+      </CardContent>
+    </Card>
+
     <!-- Default open mode (per-device, localStorage - not synced) -->
     <Card>
       <CardHeader>
@@ -242,3 +298,16 @@
     </Card>
   </div>
 </SettingsLayout>
+
+<MoveToFolderMenu
+  selection={{
+    kind: 'single',
+    id: 'new-note-folder',
+    currentFolderId: newNoteFolder?.id ?? null
+  }}
+  bind:open={folderPickerOpen}
+  forceSheet
+  mode="choose"
+  title={$t('settings_page.behavior.new_note_folder')}
+  onmove={(folderId) => updateNewNoteFolder(folderId)}
+/>
