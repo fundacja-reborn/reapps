@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { Slider as SliderPrimitive } from "bits-ui";
 	import { cn, type WithoutChildrenOrChild } from "../../utils/cn.js";
+	import { textDirection } from "@reborn/i18n";
 
+	// bits-ui defaults `dir` to "ltr"; in a right-to-left page the value grows to the left.
 	let {
 		ref = $bindable(null),
 		value = $bindable(),
 		orientation = "horizontal",
 		class: className,
+		dir,
 		...restProps
 	}: WithoutChildrenOrChild<SliderPrimitive.RootProps> = $props();
 </script>
@@ -20,6 +23,7 @@ get along, so we shut typescript up by casting `value` to `never`.
 	bind:value={value as never}
 	data-slot="slider"
 	{orientation}
+	dir={dir ?? $textDirection}
 	class={cn(
 		"relative flex w-full touch-none select-none items-center data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col data-[disabled]:opacity-50",
 		className

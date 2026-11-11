@@ -20,7 +20,9 @@
     FolderInput,
     RotateCcw,
     Trash,
-    ListChecks
+    ListChecks,
+    CheckCheck,
+    ListX
   } from '@lucide/svelte';
   import { exportNoteAsMarkdown } from '$lib/services/export-import.service';
   import * as NoteService from '$lib/services/note.service';
@@ -490,12 +492,27 @@
     }
   }
 
-  function selectAllVisible() {
-    for (const n of visibleNotes) selectedIds.add(n.id);
-    if (visibleNotes.length > 0) {
+  // Every note of the current list (folder, tag, search...), also the ones not
+  // rendered yet: the list renders PAGE_SIZE at a time, and bulk actions work on
+  // $notesStore anyway (#525).
+  const allSelected = $derived(
+    $notesStore.length > 0 &&
+      selectedIds.size >= $notesStore.length &&
+      $notesStore.every((n) => selectedIds.has(n.id))
+  );
+
+  function selectAll() {
+    for (const n of $notesStore) selectedIds.add(n.id);
+    if ($notesStore.length > 0) {
       if (!selectionMode) selectionMode = true;
-      lastAnchorId = visibleNotes[visibleNotes.length - 1]!.id;
+      lastAnchorId = $notesStore[$notesStore.length - 1]!.id;
     }
+  }
+
+  /** Clears the selection but stays in selection mode, to pick a few after "all". */
+  function deselectAll() {
+    selectedIds.clear();
+    lastAnchorId = null;
   }
 
   // ── Bulk action helpers ────────────────────────────────────────
@@ -639,7 +656,7 @@
     }
     if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
       e.preventDefault();
-      selectAllVisible();
+      selectAll();
     }
   }
 
@@ -906,6 +923,25 @@
         <span class="min-w-0 flex-1 truncate text-sm font-medium">
           {$t('notes.multiselect.count', { values: { count: selectedIds.size } })}
         </span>
+
+        <button
+          type="button"
+          onclick={allSelected ? deselectAll : selectAll}
+          disabled={$notesStore.length === 0}
+          class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+          aria-label={allSelected
+            ? $t('notes.multiselect.deselect_all')
+            : $t('notes.multiselect.select_all')}
+          title={allSelected
+            ? $t('notes.multiselect.deselect_all')
+            : $t('notes.multiselect.select_all')}
+        >
+          {#if allSelected}
+            <ListX class={rowTwoIconClass} />
+          {:else}
+            <CheckCheck class={rowTwoIconClass} />
+          {/if}
+        </button>
 
         {#if isTrash}
           <button
