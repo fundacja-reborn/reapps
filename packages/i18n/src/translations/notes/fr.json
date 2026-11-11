@@ -801,8 +801,10 @@
     "delete_version_label": "Supprimer la version du {date}",
     "delete_version_desc": "Cette version sera définitivement supprimée de l'historique. Cette action est irréversible.",
     "clear": "Effacer l'historique",
-    "clear_title": "Effacer l'historique de cette note ?",
-    "clear_desc": "Toutes les versions précédentes de cette note seront définitivement supprimées. La version actuelle est conservée. Cette action est irréversible.",
+    "delete_older": "Supprimer les anciennes versions ({count})",
+    "delete_older_label": "Supprimer les anciennes versions : {count}",
+    "delete_older_title": "Supprimer les anciennes versions ?",
+    "delete_older_desc": "{count, plural, one {# ancienne version sera supprimée.} other {# anciennes versions seront supprimées.}} La version actuelle reste inchangée. Cette action est irréversible.",
     "delete_failed": "La suppression a échoué. Veuillez réessayer.",
     "delete_offline": "La suppression de l'historique des versions nécessite une connexion Internet."
   },

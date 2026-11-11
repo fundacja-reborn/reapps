@@ -801,8 +801,10 @@
     "delete_version_label": "Eliminar la versión del {date}",
     "delete_version_desc": "Esta versión se eliminará permanentemente del historial. Esta acción no se puede deshacer.",
     "clear": "Borrar historial",
-    "clear_title": "¿Borrar el historial de esta nota?",
-    "clear_desc": "Todas las versiones anteriores de esta nota se eliminarán permanentemente. La versión actual se conserva. Esta acción no se puede deshacer.",
+    "delete_older": "Eliminar versiones anteriores ({count})",
+    "delete_older_label": "Eliminar versiones anteriores: {count}",
+    "delete_older_title": "¿Eliminar las versiones anteriores?",
+    "delete_older_desc": "{count, plural, one {Se eliminará # versión anterior.} other {Se eliminarán # versiones anteriores.}} La versión actual se mantiene sin cambios. Esta acción no se puede deshacer.",
     "delete_failed": "No se pudo eliminar. Inténtelo de nuevo.",
     "delete_offline": "Para eliminar el historial de versiones se necesita conexión a internet."
   },
