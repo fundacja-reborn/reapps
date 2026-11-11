@@ -801,8 +801,10 @@
     "delete_version_label": "Delete the version from {date}",
     "delete_version_desc": "This version will be permanently deleted from the history. This cannot be undone.",
     "clear": "Clear history",
-    "clear_title": "Clear this note's history?",
-    "clear_desc": "All earlier versions of this note will be permanently deleted. The current version stays. This cannot be undone.",
+    "delete_older": "Delete older versions ({count})",
+    "delete_older_label": "Delete older versions: {count}",
+    "delete_older_title": "Delete older versions?",
+    "delete_older_desc": "{count, plural, one {# older version will be deleted.} other {# older versions will be deleted.}} The current version stays unchanged. This cannot be undone.",
     "delete_failed": "Couldn't delete. Please try again.",
     "delete_offline": "Deleting version history needs an internet connection."
   },

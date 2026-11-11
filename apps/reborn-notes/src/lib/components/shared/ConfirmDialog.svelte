@@ -17,7 +17,8 @@
     cancelText = 'Cancel',
     destructive = false,
     onConfirm,
-    onCancel
+    onCancel,
+    onCloseAutoFocus
   }: {
     open: boolean;
     title: string;
@@ -27,6 +28,12 @@
     destructive?: boolean;
     onConfirm?: () => void | Promise<void>;
     onCancel?: () => void;
+    /**
+     * Runs when the dialog closes, before focus returns to the element that
+     * opened it. `preventDefault()` + focusing something else is for when the
+     * confirmed action removed that element (e.g. a button that disappears).
+     */
+    onCloseAutoFocus?: (e: Event) => void;
   } = $props();
 
   let isProcessing = $state(false);
@@ -49,7 +56,7 @@
 </script>
 
 <Dialog bind:open>
-  <DialogContent>
+  <DialogContent {onCloseAutoFocus}>
     <DialogHeader>
       <DialogTitle>{title}</DialogTitle>
       {#if description}
