@@ -23,7 +23,6 @@
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import EditorModeButton from './EditorModeButton.svelte';
   import NoteShareIndicator from '../notes/NoteShareIndicator.svelte';
-  import { uiScale } from '$lib/stores/device-prefs.store';
   import type { Snippet } from 'svelte';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -93,12 +92,8 @@
     onrestore: () => void;
     onpermanentdelete: () => void;
     onhistoryreset: () => void;
-    /**
-     * Slot for NoteDetailActions (kebab menu). The argument is `compact`: true
-     * on desktop when the header hides its Outline / Linked notes / History
-     * toggles for lack of room, so the menu offers them instead.
-     */
-    actions?: Snippet<[boolean]>;
+    /** Slot for NoteDetailActions (kebab menu). */
+    actions?: Snippet;
     /** Note title (shown small when large title scrolls out of view) */
     title?: string;
     /** Whether to show small title in header (when large title scrolled away) */
@@ -134,34 +129,18 @@
   // follow the root font size, so the thresholds below are "room for N rem of
   // buttons" (content box, without the header padding) at any scale; at 100%
   // they only kick in where the row (nearly) overflowed. Hidden buttons stay
-  // reachable: the mobile action sheet already has Outline / Linked notes /
-  // History / Encryption; on desktop the dropdown gains Outline / Linked notes
-  // / History while `compact`, and already has Encryption and Share, and
-  // back/forward keep Alt+Left/Right.
+  // reachable, because every one of them also has a labelled entry in the note
+  // menu: the mobile action sheet and the desktop dropdown always list Outline /
+  // Linked notes / History, Encryption and Share (the header icons are only
+  // shortcuts), and back/forward keep Alt+Left/Right.
   //   mobile  < 21rem: Encryption + Outline;  < 17rem: also shares, small title
   //   desktop < 31rem: back/forward, Linked notes, History;  < 25rem: also
   //                    Encryption, Outline, shares, small title
-  // Keep DESKTOP_COMPACT_REM equal to the `@max-[31rem]` classes in the markup.
-  const DESKTOP_COMPACT_REM = 31;
-  let headerEl = $state<HTMLElement | null>(null);
-  let headerWidth = $state(0);
-  const compact = $derived.by(() => {
-    void $uiScale; // re-evaluate when the root font size changes
-    if (isMobile || !headerEl || headerWidth === 0) return false;
-    // Container queries measure the content box; clientWidth includes padding.
-    const style = getComputedStyle(headerEl);
-    const contentWidth =
-      headerWidth - parseFloat(style.paddingInlineStart) - parseFloat(style.paddingInlineEnd);
-    const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    return contentWidth < DESKTOP_COMPACT_REM * rootPx;
-  });
 </script>
 
 <!-- pt + min-h grow together by the iOS notch inset so the content keeps its
      full row box and stays vertically centered (env() is 0 elsewhere). -->
 <header
-  bind:this={headerEl}
-  bind:clientWidth={headerWidth}
   class="@container flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center border-b border-border/60
     pt-[env(safe-area-inset-top,0px)]
     {isMobile ? 'gap-2 px-3' : 'gap-1 px-3 @lg:gap-2 @lg:px-6'}"
@@ -448,6 +427,6 @@
 
   <!-- Kebab menu (NoteDetailActions) -->
   {#if actions}
-    {@render actions(compact)}
+    {@render actions()}
   {/if}
 </header>

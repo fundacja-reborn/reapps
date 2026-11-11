@@ -2946,10 +2946,9 @@
             noteId={$activeNoteId}
             onShareCreate={() => handleDetailShare()}
           >
-            {#snippet actions(compact: boolean)}
+            {#snippet actions()}
               <NoteDetailActions
                 note={detailMenuNote}
-                {compact}
                 onoutline={toggleOutline}
                 onlinkednotes={toggleLinkedNotes}
                 onhistory={handleDetailHistory}
