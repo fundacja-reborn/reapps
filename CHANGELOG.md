@@ -1,3 +1,15 @@
+## 0.50.0 (2026-11-11)
+
+### 🚀 Features
+
+- **notes:** delete versions from note history ([#534](https://github.com/fundacja-reborn/reapps/pull/534), [#521](https://github.com/fundacja-reborn/reapps/issues/521))
+- **notes:** grid view for the note list ([#537](https://github.com/fundacja-reborn/reapps/pull/537), [#523](https://github.com/fundacja-reborn/reapps/issues/523))
+
+### 🩹 Fixes
+
+- **notes:** quieter "delete older versions" action in version history ([#535](https://github.com/fundacja-reborn/reapps/pull/535), [#534](https://github.com/fundacja-reborn/reapps/issues/534))
+- **notes:** always list outline, linked notes and history in the note menu ([#536](https://github.com/fundacja-reborn/reapps/pull/536))
+
 ## 0.49.0 (2026-11-11)
 
 ### 🚀 Features
