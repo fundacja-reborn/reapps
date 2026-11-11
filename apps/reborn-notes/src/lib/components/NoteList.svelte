@@ -22,7 +22,9 @@
     Trash,
     ListChecks,
     CheckCheck,
-    ListX
+    ListX,
+    Rows3,
+    LayoutGrid
   } from '@lucide/svelte';
   import { exportNoteAsMarkdown } from '$lib/services/export-import.service';
   import * as NoteService from '$lib/services/note.service';
@@ -61,6 +63,11 @@
   import { buildBreadcrumb } from '$lib/utils/folder-helpers';
   import { bulkRun } from '$lib/utils/bulk';
   import { openNoteColorDialog } from '$lib/stores/note-color-dialog.svelte';
+  import {
+    devicePrefs,
+    noteListLayout,
+    type NoteListLayout
+  } from '$lib/stores/device-prefs.store';
 
   function findFolderNode(
     nodes: FolderWithChildren[],
@@ -143,6 +150,7 @@
     isTrash = false,
     isPeriodic = false,
     showSidebarTrigger = false,
+    layoutToggle = false,
     prominentHeader = false,
     autoFocusSearch = false,
     searchOnly = false,
@@ -161,6 +169,12 @@
     isTrash?: boolean;
     isPeriodic?: boolean;
     showSidebarTrigger?: boolean;
+    /**
+     * Desktop main area only (#523): show the List / Grid switch and lay the
+     * cards out as this device chose. The side panel and the phone never pass
+     * it, so they always show the list.
+     */
+    layoutToggle?: boolean;
     prominentHeader?: boolean;
     autoFocusSearch?: boolean;
     searchOnly?: boolean;
@@ -177,6 +191,23 @@
   } = $props();
 
   const isMobileQuery = useIsMobile();
+
+  // Grid layout (#523): the same cards in 2-3 columns, by the width of the list
+  // (container queries on the scroll box, so a narrow window or a larger text
+  // size falls back to fewer columns). Notes keep the list order, row by row.
+  const isGrid = $derived(layoutToggle && !isMobileQuery.value && $noteListLayout === 'grid');
+
+  // Pinned notes come first; in the grid the rest starts on a new row, so the
+  // pinned group stays a block of its own instead of sharing its last row.
+  const firstUnpinnedIndex = $derived(
+    isGrid ? visibleNotes.findIndex((n) => !n.is_pinned) : -1
+  );
+
+  const LAYOUT_OPTIONS: { value: NoteListLayout; label: string; icon: typeof Rows3 }[] =
+    $derived([
+      { value: 'list', label: $t('view.list'), icon: Rows3 },
+      { value: 'grid', label: $t('view.grid'), icon: LayoutGrid }
+    ]);
 
   let searchInputEl = $state<HTMLInputElement | null>(null);
 
@@ -279,7 +310,10 @@
 
   function onWindowClick() {
     menuOpenId = null;
-    movingNoteId = null;
+    // The picker sheet / dialog is portaled outside this list, so a click inside
+    // it (the search box, empty space) still reaches the window; the note it
+    // moves must survive that until the picker closes.
+    if (!moveSheetOpen) movingNoteId = null;
   }
 
   function clearSearch() {
@@ -325,13 +359,29 @@
   function openMoveMenu(id: string) {
     menuOpenId = null;
     noteActionSheetOpen = false;
-    if (isMobileQuery.value) {
+    // Phone: bottom sheet. Grid: centered dialog, a card is too narrow for the
+    // popup anchored to the row (see NoteListItem `onopenmove`).
+    if (isMobileQuery.value || isGrid) {
       movingNoteId = id;
       moveSheetOpen = true;
     } else {
       movingNoteId = movingNoteId === id ? null : id;
     }
   }
+
+  // Closing the picker sheet / dialog without a click (Escape) leaves no window
+  // click to clear the note; a stale id would pop the row's popup up as soon as
+  // the grid switches back to the list.
+  let prevMoveSheetOpen = false;
+  $effect(() => {
+    const open = moveSheetOpen;
+    if (prevMoveSheetOpen && !open) {
+      untrack(() => {
+        movingNoteId = null;
+      });
+    }
+    prevMoveSheetOpen = open;
+  });
 
   async function handleMove(noteId: string, folderId: string | null, e?: Event) {
     e?.stopPropagation();
@@ -1059,6 +1109,30 @@
           <NoteListSortMenu bind:sortSheetOpen prominent={rowTwoProminent} />
         {/if}
 
+        {#if layoutToggle && !isMobileQuery.value}
+          <div
+            class="ms-1 flex shrink-0 items-center gap-0.5 rounded-md border p-0.5"
+            role="group"
+            aria-label={$t('view.title')}
+          >
+            {#each LAYOUT_OPTIONS as { value, label, icon: Icon } (value)}
+              {@const active = $noteListLayout === value}
+              <button
+                type="button"
+                onclick={() => devicePrefs.setNoteListLayout(value)}
+                title={label}
+                aria-label={label}
+                aria-pressed={active}
+                class="flex h-7 w-7 items-center justify-center rounded transition-colors {active
+                  ? 'bg-accent text-accent-foreground'
+                  : 'text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground'}"
+              >
+                <Icon class="h-4 w-4" />
+              </button>
+            {/each}
+          </div>
+        {/if}
+
         {#if isTrash}
           <button
             type="button"
@@ -1112,7 +1186,7 @@
   {/if}
 
   <!-- Notes list -->
-  <div class="flex-1 overflow-y-auto px-3">
+  <div class="flex-1 overflow-y-auto px-3 {isGrid ? '@container' : ''}">
     {#if !searchInput && !searchOnly}
       <!-- Pinned searches ABOVE the subfolders: they aggregate the whole
            subtree (lenses over everything below), and the short curated list
@@ -1194,11 +1268,18 @@
         </div>
       {/if}
     {:else}
-      <ul class="flex flex-col gap-2 py-1">
-        {#each visibleNotes as note (note.id)}
+      <ul
+        class={isGrid
+          ? 'grid grid-cols-1 gap-2 py-1 @min-[32rem]:grid-cols-2 @min-[48rem]:grid-cols-3'
+          : 'flex flex-col gap-2 py-1'}
+      >
+        {#each visibleNotes as note, i (note.id)}
           <NoteListItemComponent
             {note}
             {isTrash}
+            inGrid={isGrid}
+            class={i > 0 && i === firstUnpinnedIndex ? 'col-start-1' : ''}
+            onopenmove={isGrid ? openMoveMenu : undefined}
             breadcrumb={getRelativeBreadcrumb(note.folder_id)}
             bind:movingNoteId
             {selectionMode}
@@ -1243,13 +1324,15 @@
   onpermanentdelete={handlePermanentDelete}
 />
 
-<!-- Mobile: Move to folder Sheet -->
-{#if isMobileQuery.value}
+<!-- Move to folder: bottom sheet on the phone, centered dialog for a grid card
+     (forceSheet only matters on desktop; the phone always gets the sheet). -->
+{#if isMobileQuery.value || isGrid}
   <MoveToFolderMenu
     selection={movingNoteId
       ? { kind: 'single', id: movingNoteId, currentFolderId: movingNote?.folder_id ?? null }
       : null}
     bind:open={moveSheetOpen}
+    forceSheet
     onmove={(folderId, e) => movingNoteId && handleMove(movingNoteId, folderId, e)}
   />
 {/if}

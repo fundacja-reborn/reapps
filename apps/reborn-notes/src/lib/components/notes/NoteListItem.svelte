@@ -63,7 +63,10 @@
     onshare,
     ondelete,
     onrestore,
-    onpermanentdelete
+    onpermanentdelete,
+    inGrid = false,
+    onopenmove,
+    class: className = ''
   }: {
     note: NoteListItem;
     isTrash?: boolean;
@@ -90,6 +93,16 @@
     ondelete: (noteId: string, e?: Event) => void;
     onrestore: (noteId: string, e?: Event) => void;
     onpermanentdelete: (noteId: string, e?: Event) => void;
+    /** A cell of the grid layout (#523): the card fills the row height. */
+    inGrid?: boolean;
+    /**
+     * When set, "Move to folder" asks the parent to open its picker instead of
+     * the popup anchored to this row. The grid passes it: the 300px popup is
+     * wider than a card and would be clipped by the list's scroll box.
+     */
+    onopenmove?: (noteId: string) => void;
+    /** Extra classes for the `<li>` (the grid starts the unpinned notes on a new row). */
+    class?: string;
   } = $props();
 
   const isMobileQuery = useIsMobile();
@@ -201,6 +214,10 @@
             label: $t('notes.move_to_folder'),
             run: (e) => {
               e?.stopPropagation();
+              if (onopenmove) {
+                onopenmove(note.id);
+                return;
+              }
               movingNoteId = movingNoteId === note.id ? null : note.id;
             }
           },
@@ -264,7 +281,7 @@
   }
 </script>
 
-<li class="relative">
+<li class="relative {className}">
   <!-- Desktop right-click opens the same actions as the kebab (#348). Disabled on
        mobile (long-press is reserved for multi-select) and in selection mode. -->
   <ContextMenu>
@@ -288,6 +305,7 @@
           class="note-item-bg group flex {note.decrypt_failed && !selectionMode
             ? 'cursor-default'
             : 'cursor-pointer'} items-start gap-2 rounded-lg p-4 md:p-3 transition-colors
+            {inGrid ? 'h-full' : ''}
             {isActive && !selectionMode ? 'list-row-active text-accent-foreground' : ''}
             {selectionMode && isSelected ? 'bg-primary/10' : ''}
             {selectionMode ? 'select-none' : ''}"
@@ -446,7 +464,7 @@
               </DropdownMenu>
 
               <!-- Move to folder submenu (desktop only) -->
-              {#if !isMobileQuery.value && movingNoteId === note.id}
+              {#if !isMobileQuery.value && !onopenmove && movingNoteId === note.id}
                 <MoveToFolderMenu
                   selection={{ kind: 'single', id: note.id, currentFolderId: note.folder_id ?? null }}
                   onmove={(folderId, e) => onmove(note.id, folderId, e)}

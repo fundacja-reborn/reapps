@@ -39,7 +39,8 @@ describe('device prefs: text size', () => {
       tocPinned: true,
       uiScale: 100,
       noteTextScale: 100,
-      startPage: 'all'
+      startPage: 'all',
+      noteListLayout: 'list'
     });
   });
 
@@ -159,6 +160,41 @@ describe('device prefs: start page (#511)', () => {
 
     devicePrefs.setStartPage('folders');
     expect(place.getSessionPlace(account)).toBeNull();
+  });
+});
+
+describe('device prefs: note list layout (#523)', () => {
+  it('shows the list by default', async () => {
+    const { noteListLayout, NOTE_LIST_LAYOUTS } = await loadStore();
+    expect(get(noteListLayout)).toBe('list');
+    expect(NOTE_LIST_LAYOUTS).toEqual(['list', 'grid']);
+  });
+
+  it('persists the grid and reads it back on the next load', async () => {
+    const first = await loadStore();
+    first.devicePrefs.setNoteListLayout('grid');
+    expect(stored()).toMatchObject({ noteListLayout: 'grid' });
+    const second = await loadStore();
+    expect(get(second.noteListLayout)).toBe('grid');
+  });
+
+  it('ignores an unknown layout', async () => {
+    const { devicePrefs, noteListLayout } = await loadStore();
+    devicePrefs.setNoteListLayout('grid');
+    devicePrefs.setNoteListLayout('compact' as never);
+    expect(get(noteListLayout)).toBe('grid');
+  });
+
+  it.each([
+    ['an unknown layout', 'compact'],
+    ['a number', 2],
+    ['null', null]
+  ])('falls back to the list for a stored %s', async (_label, value) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ noteListLayout: value, tocPinned: true }));
+    const { devicePrefs } = await loadStore();
+    expect(get(devicePrefs).noteListLayout).toBe('list');
+    // A bad layout does not cost the other prefs.
+    expect(get(devicePrefs).tocPinned).toBe(true);
   });
 });
 
