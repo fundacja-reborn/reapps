@@ -141,13 +141,33 @@ export function formatTimeForInput(hours: number, minutes: number): string {
 }
 
 /**
+ * Date formats offered in Settings > Appearance, in the order of the list
+ * (UPPERCASE convention used in AppSettings / IndexedDB). Grouped by what
+ * comes first: day, year, month.
+ *
+ * The setting syncs as a free string inside the encrypted settings bundle, so
+ * adding a format needs no schema change. A client that does not know a newer
+ * format shows dates as ISO (`formatDateWithSetting` fallback) instead of
+ * failing. `YYYY/MM/DD` and `YYYY.MM.DD` were added for Arabic users (#482).
+ */
+export const SETTINGS_DATE_FORMATS = [
+  'DD/MM/YYYY',
+  'DD.MM.YYYY',
+  'YYYY-MM-DD',
+  'YYYY/MM/DD',
+  'YYYY.MM.DD',
+  'MM/DD/YYYY'
+] as const;
+
+/**
  * Settings date format type (UPPERCASE convention used in AppSettings / IndexedDB).
  */
-export type SettingsDateFormat = 'DD/MM/YYYY' | 'DD.MM.YYYY' | 'YYYY-MM-DD' | 'MM/DD/YYYY';
+export type SettingsDateFormat = (typeof SETTINGS_DATE_FORMATS)[number];
 
 /**
  * Formats a Date object according to the user's settings date format.
  * This is the shared helper used by both reborn-task and reborn-notes.
+ * An unknown format (for example from a newer client) falls back to ISO.
  */
 export function formatDateWithSetting(d: Date, fmt: SettingsDateFormat | string): string {
   const year = d.getFullYear();
@@ -160,12 +180,31 @@ export function formatDateWithSetting(d: Date, fmt: SettingsDateFormat | string)
       return `${day}.${month}.${year}`;
     case 'YYYY-MM-DD':
       return `${year}-${month}-${day}`;
+    case 'YYYY/MM/DD':
+      return `${year}/${month}/${day}`;
+    case 'YYYY.MM.DD':
+      return `${year}.${month}.${day}`;
     case 'MM/DD/YYYY':
       return `${month}/${day}/${year}`;
     default:
       return `${year}-${month}-${day}`;
   }
 }
+
+/** The day every option label shows: the order of its parts is unambiguous. */
+const DATE_FORMAT_SAMPLE_DAY = new Date(2024, 11, 31);
+
+/**
+ * Options for the date format picker in Settings > Appearance of both apps.
+ * Each label is the sample day written in that format, e.g. "31/12/2024".
+ */
+export const SETTINGS_DATE_FORMAT_OPTIONS: ReadonlyArray<{
+  value: SettingsDateFormat;
+  label: string;
+}> = SETTINGS_DATE_FORMATS.map((value) => ({
+  value,
+  label: formatDateWithSetting(DATE_FORMAT_SAMPLE_DAY, value)
+}));
 
 /**
  * Validates if a string is a valid DateFormat

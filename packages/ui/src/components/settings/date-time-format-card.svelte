@@ -32,7 +32,7 @@
   } = $props<{
     dateFormat: string;
     timeFormat: string;
-    dateFormatOptions: FormatOption[];
+    dateFormatOptions: readonly FormatOption[];
     timeFormatOptions: FormatOption[];
     onDateFormatChange: (value: string) => void;
     onTimeFormatChange: (value: string) => void;
