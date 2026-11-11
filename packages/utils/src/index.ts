@@ -25,6 +25,8 @@ export {
   formatDate,
   formatDateForDisplay,
   formatDateWithSetting,
+  SETTINGS_DATE_FORMATS,
+  SETTINGS_DATE_FORMAT_OPTIONS,
   toUTC,
   toLocal,
   DATE_FORMATS,

@@ -34,7 +34,7 @@
 		weekdayName
 	} from '@reborn/i18n';
 	import type { AppSettings } from '@reborn/storage';
-	import { createLogger } from '@reborn/utils';
+	import { SETTINGS_DATE_FORMAT_OPTIONS, createLogger } from '@reborn/utils';
 	import { toast } from '@reborn/ui';
 
 	const logger = createLogger('appearance-settings');
@@ -50,12 +50,7 @@
 
 	const languageOptions = SUPPORTED_LOCALES.map((value) => ({ value, label: localeLabel(value) }));
 
-	const dateFormatOptions = [
-		{ value: 'DD/MM/YYYY', label: '31/12/2024' },
-		{ value: 'DD.MM.YYYY', label: '31.12.2024' },
-		{ value: 'YYYY-MM-DD', label: '2024-12-31' },
-		{ value: 'MM/DD/YYYY', label: '12/31/2024' }
-	];
+	const dateFormatOptions = SETTINGS_DATE_FORMAT_OPTIONS;
 
 	const timeFormatOptions = [
 		{ value: '24h', label: $t('appearance.time_24h') },

@@ -6,6 +6,7 @@
   import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@reborn/ui';
   import { t } from '$lib/stores/i18n.store';
   import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
+  import { formatNoteDate } from '$lib/utils/date-format';
 
   let {
     noteId,
@@ -43,40 +44,7 @@
   }
 
   function formatDate(iso: string): string {
-    const d = new Date(iso);
-    const fmt = $dateFormat;
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-
-    let datePart: string;
-    switch (fmt) {
-      case 'DD/MM/YYYY':
-        datePart = `${day}/${month}/${year}`;
-        break;
-      case 'DD.MM.YYYY':
-        datePart = `${day}.${month}.${year}`;
-        break;
-      case 'YYYY-MM-DD':
-        datePart = `${year}-${month}-${day}`;
-        break;
-      case 'MM/DD/YYYY':
-        datePart = `${month}/${day}/${year}`;
-        break;
-      default:
-        datePart = `${day}/${month}/${year}`;
-    }
-
-    let timePart: string;
-    if ($timeFormat === '12h') {
-      const hours12 = d.getHours() % 12 || 12;
-      const ampm = d.getHours() >= 12 ? 'PM' : 'AM';
-      timePart = `${hours12}:${String(d.getMinutes()).padStart(2, '0')} ${ampm}`;
-    } else {
-      timePart = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    }
-
-    return `${datePart}, ${timePart}`;
+    return formatNoteDate(iso, $dateFormat, $timeFormat);
   }
 
   function handleOpenChange(isOpen: boolean) {

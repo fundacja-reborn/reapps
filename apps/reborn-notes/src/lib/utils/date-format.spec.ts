@@ -23,7 +23,9 @@ describe('defaultNoteTitle', () => {
     ['DD/MM/YYYY', '06/11/2026'],
     ['DD.MM.YYYY', '06.11.2026'],
     ['MM/DD/YYYY', '11/06/2026'],
-    ['YYYY-MM-DD', '2026-11-06']
+    ['YYYY-MM-DD', '2026-11-06'],
+    ['YYYY/MM/DD', '2026/11/06'],
+    ['YYYY.MM.DD', '2026.11.06']
   ])('honors the %s date format setting', (format, expected) => {
     expect(defaultNoteTitle(translate, format, day)).toBe(`notes.default_title=${expected}`);
   });
@@ -47,7 +49,9 @@ describe('defaultNoteTitle', () => {
       ['YYYY-MM-DD', '2026-11-06'],
       ['DD/MM/YYYY', '06/11/2026'],
       ['DD.MM.YYYY', '06.11.2026'],
-      ['MM/DD/YYYY', '11/06/2026']
+      ['MM/DD/YYYY', '11/06/2026'],
+      ['YYYY/MM/DD', '2026/11/06'],
+      ['YYYY.MM.DD', '2026.11.06']
     ])('puts a left-to-right mark before the %s date', (format, expected) => {
       expect(defaultNoteTitle(arabic, format, day)).toBe(`ملاحظة ${LEFT_TO_RIGHT_MARK}${expected}`);
     });
