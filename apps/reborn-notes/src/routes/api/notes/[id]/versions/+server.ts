@@ -14,7 +14,7 @@ import { z } from 'zod';
 
 const logger = createLogger('Notes-API-Versions');
 
-/** GET /api/notes/[id]/versions — list all versions for a note (newest first). */
+/** GET /api/notes/[id]/versions - list all versions for a note (newest first). */
 export const GET: RequestHandler = async ({ request, params }) => {
   try {
     const userId = await getUserFromToken(request.headers.get('authorization'));
@@ -61,7 +61,7 @@ const NoteVersionBodySchema = z.object({
   created_at: z.string().datetime().optional()
 });
 
-/** POST /api/notes/[id]/versions — create or upsert a version. Prunes to MAX_NOTE_VERSIONS per note. */
+/** POST /api/notes/[id]/versions - create or upsert a version. Prunes to MAX_NOTE_VERSIONS per note. */
 export const POST: RequestHandler = async ({ request, params }) => {
   try {
     const userId = await getUserFromToken(request.headers.get('authorization'));
@@ -123,7 +123,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
     });
 
     // Prune: keep only the most recent MAX_NOTE_VERSIONS
-    // user_id filter is defense-in-depth — current ownership model guarantees one
+    // user_id filter is defense-in-depth - current ownership model guarantees one
     // user per note, but a future share/transfer feature must not delete other users' versions.
     const allVersions = await prisma.noteVersion.findMany({
       where: { note_id: params.id, user_id: userId },
@@ -142,17 +142,41 @@ export const POST: RequestHandler = async ({ request, params }) => {
   }
 };
 
-/** DELETE /api/notes/[id]/versions — delete all versions for a note. */
-export const DELETE: RequestHandler = async ({ request, params }) => {
+const KeepVersionSchema = z.string().uuid();
+
+/**
+ * DELETE /api/notes/[id]/versions - delete the note's version history (#521).
+ *
+ * Optional `?keep=<versionId>` spares one version: "Clear history" in the panel
+ * keeps the current snapshot so the list still shows the note's present state.
+ * Idempotent: deleting an already-empty history (or an unknown note) succeeds
+ * with `deleted: 0`, so a retried request never turns into an error. Other
+ * devices drop their local copies on their next history pull (guideline 39).
+ */
+export const DELETE: RequestHandler = async ({ request, params, url }) => {
   try {
     const userId = await getUserFromToken(request.headers.get('authorization'));
     if (!userId) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
-    await prisma.noteVersion.deleteMany({
-      where: { note_id: params.id, user_id: userId }
+    const keepParam = url.searchParams.get('keep');
+    let keep: string | undefined;
+    if (keepParam !== null) {
+      const parsed = KeepVersionSchema.safeParse(keepParam);
+      if (!parsed.success) {
+        return json({ success: false, error: 'Invalid keep parameter' }, { status: 400 });
+      }
+      keep = parsed.data;
+    }
+
+    const { count } = await prisma.noteVersion.deleteMany({
+      where: {
+        note_id: params.id,
+        user_id: userId,
+        ...(keep ? { id: { not: keep } } : {})
+      }
     });
 
-    return json({ success: true });
+    return json({ success: true, deleted: count });
   } catch (err: unknown) {
     return apiErrorResponse(err, logger, 'DELETE /api/notes/[id]/versions');
   }

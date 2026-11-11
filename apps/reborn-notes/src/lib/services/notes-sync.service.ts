@@ -58,6 +58,7 @@ import { buildFolderLayers } from './folder-push-order';
 import { compareFolderMetadataOnPull } from './folder-metadata';
 import { planCycleRepairs } from './folder-cycle-repair';
 import { settleInBatches } from './sync-batch';
+import { versionsDeletedOnServer } from './version-reconcile';
 import { notifyNoteSyncError, notifyBatchSyncErrors } from './sync-error-notify';
 import { ensureOk, HttpPushError } from './push-error';
 
@@ -2160,13 +2161,71 @@ export function pushNoteVersion(entry: NoteHistoryEntry): void {
         })
       });
       if (!res.ok) throw new Error(`POST /api/notes/${entry.note_id}/versions: ${res.status}`);
-      // Mark as synced locally
-      const current = await noteHistoryStore.get(entry.id);
-      if (current) {
-        await noteHistoryStore.save({ ...current, sync_status: 'synced' });
-      }
+      await markVersionSyncedOrReap(entry);
     })
   );
+}
+
+/**
+ * After a successful version POST: mark the local row synced, or - when the row
+ * is gone - delete the version on the server too (#521).
+ *
+ * The row disappears while its POST is in flight when the user deletes it (one
+ * version, "Clear history", or clearing all history in Settings), or when it is
+ * pruned. The user's delete may have reached the server BEFORE this POST, so the
+ * POST would quietly re-create a version the user removed, and the next history
+ * pull would bring it back. Mirroring the delete closes that. Idempotent: for a
+ * pruned version the server pruned too, so the DELETE is a no-op. A failed
+ * DELETE throws, so retryWithBackoff re-runs the push (re-POST, then reap).
+ */
+async function markVersionSyncedOrReap(entry: NoteHistoryEntry): Promise<void> {
+  const current = await noteHistoryStore.get(entry.id);
+  if (current) {
+    await noteHistoryStore.save({ ...current, sync_status: 'synced' });
+    return;
+  }
+  const res = await authFetch(`${API_BASE}/notes/${entry.note_id}/versions/${entry.id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    throw new Error(`DELETE /api/notes/${entry.note_id}/versions/${entry.id}: ${res.status}`);
+  }
+}
+
+// ── Version history deletes (#521) ─────────────────────────────────
+//
+// Unlike the fire-and-forget pushes above, these are AWAITED and throw on
+// failure: there is no pending-delete queue for versions, so a delete that never
+// reaches the server would silently come back on the next history pull. The
+// caller (note.service) deletes locally first, then calls these, and puts the
+// local rows back if the server call throws. Local-only mode: no-op.
+
+/** Whether version deletes must also reach the server (signed-in account). */
+export function historyDeletesNeedServer(): boolean {
+  return isAuthenticated();
+}
+
+async function deleteVersionsRequest(path: string): Promise<void> {
+  if (!isAuthenticated()) return;
+  const res = await authFetch(`${API_BASE}${path}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`DELETE /api${path}: ${res.status}`);
+  void refreshQuota();
+}
+
+/** Delete one version of a note on the server. */
+export function deleteNoteVersionOnServer(noteId: string, versionId: string): Promise<void> {
+  return deleteVersionsRequest(`/notes/${noteId}/versions/${versionId}`);
+}
+
+/** Delete a note's version history on the server, optionally sparing `keepId`. */
+export function clearNoteVersionsOnServer(noteId: string, keepId?: string): Promise<void> {
+  const query = keepId ? `?keep=${encodeURIComponent(keepId)}` : '';
+  return deleteVersionsRequest(`/notes/${noteId}/versions${query}`);
+}
+
+/** Delete the version history of every note of the account on the server. */
+export function clearAllVersionsOnServer(): Promise<void> {
+  return deleteVersionsRequest('/user/versions');
 }
 
 /**
@@ -2177,6 +2236,12 @@ export function pushNoteVersion(entry: NoteHistoryEntry): void {
  * replaced (1 GET/note, ~31s native for 503 notes) is gone. See guideline 36.
  */
 export async function pullNoteVersionsForNote(noteId: string): Promise<void> {
+  // The server is the authority for versions it has confirmed (#521), so a
+  // delete on one device reaches the others here. Read the local rows BEFORE the
+  // request: see versionsDeletedOnServer for why only rows already synced then
+  // may be removed.
+  const localBefore = (await noteHistoryStore.query('note_id', noteId)) as NoteHistoryEntry[];
+
   const res = await authFetch(`${API_BASE}/notes/${noteId}/versions`);
   if (!res.ok) return;
   const { data } = await res.json();
@@ -2201,6 +2266,15 @@ export async function pullNoteVersionsForNote(noteId: string): Promise<void> {
     sync_status: 'synced',
     created_at: v.created_at
   }));
+
+  const goneFromServer = versionsDeletedOnServer(
+    localBefore,
+    entries.map((e) => e.id)
+  );
+  if (goneFromServer.length > 0) {
+    await noteHistoryStore.deleteMany(goneFromServer);
+    logger.debug(`Removed ${goneFromServer.length} local versions deleted on the server`);
+  }
   if (entries.length > 0) await noteHistoryStore.saveMany(entries);
 }
 
@@ -2258,10 +2332,7 @@ async function pushPendingVersions(): Promise<void> {
         })
       });
       if (!res.ok) throw new Error(`POST versions: ${res.status}`);
-      const current = await noteHistoryStore.get(entry.id);
-      if (current) {
-        await noteHistoryStore.save({ ...current, sync_status: 'synced' });
-      }
+      await markVersionSyncedOrReap(entry);
     })
   );
 }

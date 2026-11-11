@@ -796,7 +796,15 @@
     "oldest_version": "Oldest version",
     "current_version": "Current version",
     "version_date": "Version: {date}",
-    "close_history": "Close preview"
+    "close_history": "Close preview",
+    "delete_version": "Delete version",
+    "delete_version_label": "Delete the version from {date}",
+    "delete_version_desc": "This version will be permanently deleted from the history. This cannot be undone.",
+    "clear": "Clear history",
+    "clear_title": "Clear this note's history?",
+    "clear_desc": "All earlier versions of this note will be permanently deleted. The current version stays. This cannot be undone.",
+    "delete_failed": "Couldn't delete. Please try again.",
+    "delete_offline": "Deleting version history needs an internet connection."
   },
   "encryption": {
     "title": "Encryption X-Ray",
@@ -885,6 +893,14 @@
     "back_to_notes": "Back to notes",
     "preferences": "Preferences",
     "data": "Data",
+    "clear_history": {
+      "title": "Clear version history",
+      "desc": "Delete earlier versions of all notes. The notes themselves stay.",
+      "desc_size": "Delete earlier versions of all notes and free {size}. The notes themselves stay.",
+      "confirm_title": "Clear the history of all notes?",
+      "confirm_desc": "Earlier versions of all your notes will be permanently deleted. The notes themselves stay. This cannot be undone.",
+      "done": "Version history cleared"
+    },
     "information": "Information",
     "manage_account": "Manage account",
     "account": {

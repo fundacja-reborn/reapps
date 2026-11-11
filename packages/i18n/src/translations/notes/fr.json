@@ -796,7 +796,15 @@
     "oldest_version": "Version la plus ancienne",
     "current_version": "Version actuelle",
     "version_date": "Version : {date}",
-    "close_history": "Fermer l'aperçu"
+    "close_history": "Fermer l'aperçu",
+    "delete_version": "Supprimer la version",
+    "delete_version_label": "Supprimer la version du {date}",
+    "delete_version_desc": "Cette version sera définitivement supprimée de l'historique. Cette action est irréversible.",
+    "clear": "Effacer l'historique",
+    "clear_title": "Effacer l'historique de cette note ?",
+    "clear_desc": "Toutes les versions précédentes de cette note seront définitivement supprimées. La version actuelle est conservée. Cette action est irréversible.",
+    "delete_failed": "La suppression a échoué. Veuillez réessayer.",
+    "delete_offline": "La suppression de l'historique des versions nécessite une connexion Internet."
   },
   "encryption": {
     "title": "Radiographie du chiffrement",
@@ -885,6 +893,14 @@
     "back_to_notes": "Retour aux notes",
     "preferences": "Préférences",
     "data": "Données",
+    "clear_history": {
+      "title": "Effacer l'historique des versions",
+      "desc": "Supprimer les versions précédentes de toutes les notes. Les notes elles-mêmes sont conservées.",
+      "desc_size": "Supprimer les versions précédentes de toutes les notes et libérer {size}. Les notes elles-mêmes sont conservées.",
+      "confirm_title": "Effacer l'historique de toutes les notes ?",
+      "confirm_desc": "Les versions précédentes de toutes vos notes seront définitivement supprimées. Les notes elles-mêmes sont conservées. Cette action est irréversible.",
+      "done": "Historique des versions effacé"
+    },
     "information": "Informations",
     "manage_account": "Gérer le compte",
     "account": {

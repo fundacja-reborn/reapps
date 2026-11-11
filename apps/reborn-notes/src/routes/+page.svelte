@@ -3225,6 +3225,11 @@
         historyViewMode = 'preview';
       }
     }}
+    ondeleted={() => {
+      // The version picked earlier (or its diff neighbour) may be gone - drop the
+      // pick, so closing the list returns to the note, not to a stale preview.
+      resetHistoryState();
+    }}
   />
 {/if}
 

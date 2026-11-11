@@ -44,7 +44,7 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 - **Internal links & backlinks** - link between notes with `[[` autocomplete to build a knowledge base; a linked-notes panel gathers backlinks and outgoing links, flags mutual links, and marks broken ones
 - **Periodic notes** - one-click Daily, Weekly, and Monthly notes (Obsidian-style); date-based titles with configurable formats, lazy-created folders, Daily on by default ([blog post](https://reapps.eu/blog/periodic-notes-daily-weekly-monthly))
 - **Multi-select & bulk actions** - pin, star, move to folder, or delete many notes at once (long-press on touch, header toggle on desktop)
-- **Version history** - up to 10 saved versions per note
+- **Version history** - up to 10 saved versions per note; delete a single version, clear one note's history, or clear all history at once to free storage
 - **Full-text search** with operators - `tag:work`, `folder:projects/active`, `created:<7d`, `has:link`, `-tag:archived`, … ([reference](docs/search-operators.md))
 - **Saved searches & smart folders** - save any query as a live, named view and pin it into the folder tree as a smart folder
 - **Encryption X-Ray** - see exactly what the server sees (encrypted blobs)
