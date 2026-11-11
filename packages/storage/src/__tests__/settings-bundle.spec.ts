@@ -310,6 +310,31 @@ describe('settings-bundle: migrate (decrypt → unknown JSON → typed bundle)',
     expect(out.folderSortMode).toBeUndefined();
   });
 
+  it('migrateAppBundle reads newNoteFolderId as a folder id or null, drops anything else (#522)', () => {
+    expect(migrateAppBundle({ newNoteFolderId: 'fld-inbox' }).newNoteFolderId).toBe('fld-inbox');
+    expect(migrateAppBundle({ newNoteFolderId: null }).newNoteFolderId).toBeNull();
+    expect('newNoteFolderId' in migrateAppBundle({})).toBe(false);
+    expect(migrateAppBundle({ newNoteFolderId: '' }).newNoteFolderId).toBeUndefined();
+    expect(migrateAppBundle({ newNoteFolderId: 42 }).newNoteFolderId).toBeUndefined();
+  });
+
+  it('newNoteFolderId round-trips, and a synced null clears the local choice (#522)', () => {
+    const chosen = { ...NOTES_FIXTURE, newNoteFolderId: 'fld-inbox' };
+    const app = extractAppBundle(chosen);
+    expect(app.newNoteFolderId).toBe('fld-inbox');
+    expect(applyBundlesToSettings(NOTES_FIXTURE, null, app).newNoteFolderId).toBe('fld-inbox');
+
+    const cleared = extractAppBundle({ ...NOTES_FIXTURE, newNoteFolderId: null });
+    expect(cleared.newNoteFolderId).toBeNull();
+    expect(applyBundlesToSettings(chosen, null, cleared).newNoteFolderId).toBeNull();
+
+    // Never chosen: not in the bundle, so it cannot wipe a choice made elsewhere.
+    expect('newNoteFolderId' in extractAppBundle(NOTES_FIXTURE)).toBe(false);
+    expect(applyBundlesToSettings(chosen, null, extractAppBundle(NOTES_FIXTURE)).newNoteFolderId).toBe(
+      'fld-inbox'
+    );
+  });
+
   it('migrateAppBundle reads autoBackupPhrase only with a valid {wrapped, updatedAt} shape', () => {
     const valid = { wrapped: 'aXY=:Y2lwaGVydGV4dA==', updatedAt: '2026-07-10T10:00:00.000Z' };
     expect(migrateAppBundle({ autoBackupPhrase: valid }).autoBackupPhrase).toEqual(valid);

@@ -49,6 +49,7 @@
     open = $bindable(false),
     forceSheet = false,
     mode = 'move',
+    title,
     onmove,
     onpinroot,
     onclose
@@ -63,8 +64,12 @@
      *  "No folder" row becomes "Don't pin". `'move-folder'` moves a FOLDER instead of a
      *  note: the "No folder" row becomes "Top level" (reparent to root) and the moved
      *  folder plus its whole subtree are excluded as targets (a folder cannot be moved
-     *  into itself). Default `'move'` keeps note-move wording. */
-    mode?: 'move' | 'pin' | 'move-folder';
+     *  into itself). Default `'move'` keeps note-move wording. `'choose'` picks a
+     *  folder for a setting (folder for new notes, #522): `title` names it, and the
+     *  button inside a folder reads "Use this folder" instead of "Move here". */
+    mode?: 'move' | 'pin' | 'move-folder' | 'choose';
+    /** Picker title; required wording for `'choose'`, the other modes have their own. */
+    title?: string;
     onmove: (folderId: string | null, e?: Event) => void;
     /** Pin mode only: pin the saved search to the top level (root smart folder). */
     onpinroot?: () => void;
@@ -75,8 +80,9 @@
   const useSheet = $derived(forceSheet || isMobileQuery.value);
   const isPin = $derived(mode === 'pin');
   const isFolderMove = $derived(mode === 'move-folder');
+  const isChoose = $derived(mode === 'choose');
   const pickerTitle = $derived(
-    isPin ? $t('saved_searches.pin_picker_title') : $t('notes.move_to')
+    title ?? (isPin ? $t('saved_searches.pin_picker_title') : $t('notes.move_to'))
   );
 
   let currentParentId = $state<string | null>(null);
@@ -360,7 +366,11 @@
         >
           <Check class="h-3.5 w-3.5 shrink-0" />
           <span class="min-w-0 flex-1 truncate">
-            {isPin ? $t('saved_searches.pin_here') : $t('notes.move_here')}
+            {isPin
+              ? $t('saved_searches.pin_here')
+              : isChoose
+                ? $t('notes.use_this_folder')
+                : $t('notes.move_here')}
           </span>
         </button>
       {/if}

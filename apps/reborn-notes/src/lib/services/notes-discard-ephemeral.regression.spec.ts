@@ -87,11 +87,18 @@ describe('#349 create defers the push', () => {
     // which both new-note entry points (handleNewNote, handleNewNoteInFolder) call.
     const helper = page.slice(page.indexOf('async function createEphemeralNote'));
     expect(helper).toMatch(/notesStore\.create\([^)]*\{\s*ephemeral:\s*true\s*\}\s*\)/s);
+    // Each entry point on its own, so one of them dropping the helper fails.
+    // handleNewNote passes the folder for new notes (#522), hence the argument.
     const newNote = page.slice(
-      page.indexOf('async function handleNewNote'),
+      page.indexOf('async function handleNewNote()'),
+      page.indexOf('async function handleNewNoteInFolder')
+    );
+    expect(newNote).toMatch(/await createEphemeralNote\(/);
+    const newNoteInFolder = page.slice(
+      page.indexOf('async function handleNewNoteInFolder'),
       page.indexOf('async function handlePeriodic')
     );
-    expect(newNote).toMatch(/createEphemeralNote\(\)/);
+    expect(newNoteInFolder).toMatch(/await createEphemeralNote\(folderId\)/);
   });
 });
 

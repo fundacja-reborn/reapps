@@ -262,6 +262,12 @@ export const folderSortMode = derived(
   ($settings) => $settings?.folderSortMode ?? 'alphabetical'
 );
 
+/** Folder for "New note" outside a folder (#522); null = no folder. See `resolveNewNoteFolder`. */
+export const newNoteFolderId = derived(
+  appSettings,
+  ($settings) => $settings?.newNoteFolderId ?? null
+);
+
 /**
  * Per-note, ephemeral override of the editor mode (live preview vs. markdown
  * source). `null` means "use the synced default from `editorMode`".
