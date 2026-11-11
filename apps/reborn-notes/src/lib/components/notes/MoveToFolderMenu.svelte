@@ -10,7 +10,16 @@
     FileText,
     X
   } from '@lucide/svelte';
-  import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@reborn/ui';
+  import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogTitle,
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle
+  } from '@reborn/ui';
   import { t } from '$lib/stores/i18n.store';
   import { foldersStore } from '$lib/stores/folders.store';
   import {
@@ -55,8 +64,9 @@
   }: {
     selection: MoveSelection | null;
     open?: boolean;
-    /** Force the bottom-sheet variant on desktop too — used by bulk move which has no
-     *  anchoring button for the absolute desktop popup. */
+    /** No anchoring button for the absolute desktop popup (bulk move, folder move,
+     *  saved-search pin). Desktop then shows a centered dialog of the popup's width,
+     *  not a full-width bottom sheet (#526); mobile shows the sheet either way. */
     forceSheet?: boolean;
     /** `'pin'` repurposes the picker for parking a saved search (smart folder): the
      *  title becomes "Pin to folder", a "Pin to top level" action appears, and the
@@ -72,7 +82,10 @@
   } = $props();
 
   const isMobileQuery = useIsMobile();
-  const useSheet = $derived(forceSheet || isMobileQuery.value);
+  /** popup: desktop, next to its button; dialog: desktop without one; sheet: mobile. */
+  const presentation = $derived<'popup' | 'dialog' | 'sheet'>(
+    isMobileQuery.value ? 'sheet' : forceSheet ? 'dialog' : 'popup'
+  );
   const isPin = $derived(mode === 'pin');
   const isFolderMove = $derived(mode === 'move-folder');
   const pickerTitle = $derived(
@@ -142,8 +155,8 @@
     }
   }
 
-  // Desktop: the component is conditionally mounted by the parent when showing.
-  // Mobile: the component stays mounted; we react to `open` becoming true.
+  // Popup: the component is conditionally mounted by the parent when showing.
+  // Sheet and dialog: the component stays mounted; we react to `open` becoming true.
   let lastOpen = $state(false);
   $effect(() => {
     if (open && !lastOpen) resetForOpen();
@@ -151,7 +164,7 @@
   });
 
   onMount(() => {
-    if (!useSheet) {
+    if (presentation === 'popup') {
       resetForOpen();
       // Autofocus search on desktop after paint
       tick().then(() => searchInputEl?.focus());
@@ -466,7 +479,7 @@
 
 <!-- Desktop popup: absolute, anchored inside the parent's relative container.
      Skipped when forceSheet (bulk move has no per-item anchor). -->
-{#if !useSheet}
+{#if presentation === 'popup'}
   <div
     bind:this={containerEl}
     class="absolute inset-e-0 top-7 z-50 w-[300px] overflow-hidden rounded-md border bg-popover shadow-md"
@@ -487,8 +500,36 @@
   </div>
 {/if}
 
-<!-- Sheet: mobile by default, also desktop when forceSheet is set. -->
-{#if useSheet}
+<!-- Desktop without an anchor (forceSheet): centered dialog, same width and header as
+     the popup. A bottom sheet here spanned the whole screen width (#526). -->
+{#if presentation === 'dialog'}
+  <Dialog bind:open>
+    <DialogContent
+      showCloseButton={false}
+      class="flex max-h-[min(70dvh,32rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-80"
+    >
+      <div class="flex items-center justify-between gap-2 border-b py-1 pe-1 ps-3">
+        <DialogTitle
+          class="text-[0.6875rem] font-medium uppercase leading-normal tracking-wide text-muted-foreground"
+        >
+          {pickerTitle}
+        </DialogTitle>
+        <DialogClose
+          class="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          aria-label={$t('common.close')}
+        >
+          <X class="h-3.5 w-3.5" />
+        </DialogClose>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        {@render body()}
+      </div>
+    </DialogContent>
+  </Dialog>
+{/if}
+
+<!-- Sheet: mobile. -->
+{#if presentation === 'sheet'}
   <Sheet bind:open>
     <SheetContent side="bottom" class="flex h-auto max-h-[75dvh] flex-col p-0">
       <SheetHeader class="border-b px-4 py-3">
