@@ -1,5 +1,61 @@
 [
   {
+    "version": "0.49.0",
+    "date": "2026-11-11",
+    "items": [
+      {
+        "id": "0.49.0-new-note-folder",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.49.0-select-all",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.49.0-date-formats",
+        "category": "new",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.49.0-folder-picker-dialog",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.49.0-arabic-task-review",
+        "category": "improved",
+        "apps": [
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.49.0-rtl-menus",
+        "category": "fixed",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.48.0",
     "date": "2026-11-10",
     "items": [
