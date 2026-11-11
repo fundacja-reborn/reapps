@@ -801,8 +801,10 @@
     "delete_version_label": "Usuń wersję z {date}",
     "delete_version_desc": "Ta wersja zostanie trwale usunięta z historii. Tej operacji nie można cofnąć.",
     "clear": "Wyczyść historię",
-    "clear_title": "Wyczyścić historię tej notatki?",
-    "clear_desc": "Wszystkie wcześniejsze wersje tej notatki zostaną trwale usunięte. Aktualna wersja zostanie. Tej operacji nie można cofnąć.",
+    "delete_older": "Usuń starsze wersje ({count})",
+    "delete_older_label": "Usuń starsze wersje: {count}",
+    "delete_older_title": "Usunąć starsze wersje?",
+    "delete_older_desc": "{count, plural, one {Zostanie usunięta # starsza wersja.} few {Zostaną usunięte # starsze wersje.} many {Zostanie usuniętych # starszych wersji.} other {Zostanie usuniętych # starszych wersji.}} Aktualna wersja pozostanie bez zmian. Tej operacji nie można cofnąć.",
     "delete_failed": "Nie udało się usunąć. Spróbuj ponownie.",
     "delete_offline": "Usuwanie historii wersji wymaga połączenia z internetem."
   },

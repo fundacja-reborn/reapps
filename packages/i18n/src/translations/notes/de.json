@@ -801,8 +801,10 @@
     "delete_version_label": "Version vom {date} löschen",
     "delete_version_desc": "Diese Version wird endgültig aus dem Verlauf gelöscht. Dies kann nicht rückgängig gemacht werden.",
     "clear": "Verlauf löschen",
-    "clear_title": "Verlauf dieser Notiz löschen?",
-    "clear_desc": "Alle früheren Versionen dieser Notiz werden endgültig gelöscht. Die aktuelle Version bleibt erhalten. Dies kann nicht rückgängig gemacht werden.",
+    "delete_older": "Ältere Versionen löschen ({count})",
+    "delete_older_label": "Ältere Versionen löschen: {count}",
+    "delete_older_title": "Ältere Versionen löschen?",
+    "delete_older_desc": "{count, plural, one {# ältere Version wird gelöscht.} other {# ältere Versionen werden gelöscht.}} Die aktuelle Version bleibt unverändert. Dies kann nicht rückgängig gemacht werden.",
     "delete_failed": "Löschen fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "delete_offline": "Zum Löschen des Versionsverlaufs ist eine Internetverbindung nötig."
   },
