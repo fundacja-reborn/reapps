@@ -28,8 +28,11 @@
     ShieldAlert,
     CalendarDays,
     Sparkles,
-    SlidersHorizontal
+    SlidersHorizontal,
+    History
   } from '@lucide/svelte';
+  import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
+  import { clearAllNoteHistory, HistoryDeleteOfflineError } from '$lib/services/note.service';
   import { goto } from '$lib/utils/navigation';
   import {
     getNativeVersionInfo,
@@ -38,7 +41,7 @@
   import { t } from '$lib/stores/i18n.store';
   import { locale } from '$lib/stores/i18n.store';
   import { intlLocale } from '@reborn/i18n';
-  import { cn, GithubMark } from '@reborn/ui';
+  import { cn, GithubMark, toastStore } from '@reborn/ui';
   import { authStore } from '$lib/stores/auth.store';
   import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
   import { openWhatsNew } from '$lib/stores/whats-new.svelte';
@@ -172,6 +175,24 @@
   ];
 
   let accountRequiredOpen = $state(false);
+
+  // "Clear version history" (#521): deletes earlier versions of every note, here
+  // and on the server; the notes themselves stay. The quota store refreshes after
+  // the server delete, so the "History" figure above drops on its own.
+  let clearHistoryOpen = $state(false);
+
+  async function handleClearAllHistory() {
+    try {
+      await clearAllNoteHistory();
+      toastStore.success($t('settings_page.clear_history.done'));
+    } catch (err) {
+      toastStore.error(
+        err instanceof HistoryDeleteOfflineError
+          ? $t('history.delete_offline')
+          : $t('history.delete_failed')
+      );
+    }
+  }
 </script>
 
 <svelte:head>
@@ -481,6 +502,25 @@
               {/if}
             </div>
           {/if}
+          <button
+            type="button"
+            class="{itemClasses} w-full text-start cursor-pointer"
+            onclick={() => (clearHistoryOpen = true)}
+          >
+            <History class="h-5 w-5 text-muted-foreground shrink-0" />
+            <div class="flex-1 min-w-0">
+              <div class="font-medium">{$t('settings_page.clear_history.title')}</div>
+              <div class="text-sm text-muted-foreground">
+                {#if $authStore.isAuthenticated && !$quotaLoading && $quotaVersionsBytes > 0}
+                  {$t('settings_page.clear_history.desc_size', {
+                    values: { size: formatBytes($quotaVersionsBytes) }
+                  })}
+                {:else}
+                  {$t('settings_page.clear_history.desc')}
+                {/if}
+              </div>
+            </div>
+          </button>
           <a href={resolve('/settings/import-export')} class={itemClasses}>
             <FileDown class="h-5 w-5 text-muted-foreground shrink-0" />
             <div class="flex-1 min-w-0">
@@ -686,3 +726,13 @@
 
 <!-- Account-required prompt (locked security feature tapped in local-only mode) -->
 <AccountRequiredDialog bind:open={accountRequiredOpen} />
+
+<ConfirmDialog
+  bind:open={clearHistoryOpen}
+  title={$t('settings_page.clear_history.confirm_title')}
+  description={$t('settings_page.clear_history.confirm_desc')}
+  confirmText={$t('history.clear')}
+  cancelText={$t('common.cancel')}
+  destructive
+  onConfirm={handleClearAllHistory}
+/>

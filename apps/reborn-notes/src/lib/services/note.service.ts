@@ -10,6 +10,7 @@ import {
   noteOperations,
   noteTagStore,
   noteTagQueries,
+  noteHistoryStore,
   noteHistoryQueries,
   noteHistoryOperations
 } from '@reborn/storage';
@@ -29,7 +30,11 @@ import {
   pushNoteDelete,
   pushNoteRestore,
   pushNoteVersion,
-  pullNoteVersionsForNote
+  pullNoteVersionsForNote,
+  historyDeletesNeedServer,
+  deleteNoteVersionOnServer,
+  clearNoteVersionsOnServer,
+  clearAllVersionsOnServer
 } from './notes-sync.service';
 import { createUndecryptableRowCache, decodeTextField } from './undecryptable-rows';
 import {
@@ -976,6 +981,75 @@ export async function getNoteHistoryDecrypted(noteId: string): Promise<NoteHisto
       created_at: e.created_at
     }))
   );
+}
+
+// ── Deleting version history (#521) ───────────────────────────────
+//
+// Order: local first, then the server, and put the local rows back if the
+// server call fails. Local first, because a version POST still in flight then
+// finds its row gone and deletes the version on the server itself
+// (markVersionSyncedOrReap) - with the server first, a POST landing right after
+// our DELETE could re-create the version. Rollback keeps the panel honest: a
+// failed delete leaves the list as it was, matching the server.
+//
+// A signed-in user must be online: versions have no pending-delete queue, so a
+// delete that only happened locally would come back on the next history pull.
+// Other devices drop their copies on their own next pull (pullNoteVersionsForNote
+// removes synced rows the server no longer has). Guideline 39.
+
+/** Thrown when a signed-in user tries to delete history while offline. */
+export class HistoryDeleteOfflineError extends Error {
+  constructor() {
+    super('Deleting version history needs a connection');
+    this.name = 'HistoryDeleteOfflineError';
+  }
+}
+
+function assertCanDeleteHistory(): void {
+  if (historyDeletesNeedServer() && !checkOnline()) throw new HistoryDeleteOfflineError();
+}
+
+/** Delete one version of a note, on this device and on the server. */
+export async function deleteNoteVersion(noteId: string, versionId: string): Promise<void> {
+  assertCanDeleteHistory();
+  return serializeVersionWrite(noteId, async () => {
+    const removed = await noteHistoryOperations.deleteVersion(versionId);
+    try {
+      await deleteNoteVersionOnServer(noteId, versionId);
+    } catch (err) {
+      if (removed) await noteHistoryStore.save(removed);
+      throw err;
+    }
+  });
+}
+
+/**
+ * Clear a note's version history, keeping `keepVersionId` (the panel passes its
+ * current version, so the list still shows the note's present state).
+ */
+export async function clearNoteHistory(noteId: string, keepVersionId?: string): Promise<void> {
+  assertCanDeleteHistory();
+  return serializeVersionWrite(noteId, async () => {
+    const removed = await noteHistoryOperations.clearForNote(noteId, keepVersionId);
+    try {
+      await clearNoteVersionsOnServer(noteId, keepVersionId);
+    } catch (err) {
+      if (removed.length > 0) await noteHistoryStore.saveMany(removed);
+      throw err;
+    }
+  });
+}
+
+/**
+ * Clear the version history of every note (Settings > Data). No local rollback:
+ * on a server failure the history comes back from the server note by note, the
+ * next time its panel opens. Unsent (pending) versions are gone either way, as
+ * the user asked.
+ */
+export async function clearAllNoteHistory(): Promise<void> {
+  assertCanDeleteHistory();
+  await noteHistoryOperations.clearAll();
+  await clearAllVersionsOnServer();
 }
 
 /** Restore a specific version - overwrites current note content. */

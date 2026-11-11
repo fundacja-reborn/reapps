@@ -796,7 +796,15 @@
     "oldest_version": "Najstarsza wersja",
     "current_version": "Aktualna wersja",
     "version_date": "Wersja: {date}",
-    "close_history": "Zamknij podgląd"
+    "close_history": "Zamknij podgląd",
+    "delete_version": "Usuń wersję",
+    "delete_version_label": "Usuń wersję z {date}",
+    "delete_version_desc": "Ta wersja zostanie trwale usunięta z historii. Tej operacji nie można cofnąć.",
+    "clear": "Wyczyść historię",
+    "clear_title": "Wyczyścić historię tej notatki?",
+    "clear_desc": "Wszystkie wcześniejsze wersje tej notatki zostaną trwale usunięte. Aktualna wersja zostanie. Tej operacji nie można cofnąć.",
+    "delete_failed": "Nie udało się usunąć. Spróbuj ponownie.",
+    "delete_offline": "Usuwanie historii wersji wymaga połączenia z internetem."
   },
   "encryption": {
     "title": "Szyfrowanie - podgląd",
@@ -885,6 +893,14 @@
     "back_to_notes": "Powrót do notatek",
     "preferences": "Preferencje",
     "data": "Dane",
+    "clear_history": {
+      "title": "Wyczyść historię wersji",
+      "desc": "Usuń wcześniejsze wersje wszystkich notatek. Same notatki zostają.",
+      "desc_size": "Usuń wcześniejsze wersje wszystkich notatek i zwolnij {size}. Same notatki zostają.",
+      "confirm_title": "Wyczyścić historię wszystkich notatek?",
+      "confirm_desc": "Wcześniejsze wersje wszystkich notatek zostaną trwale usunięte. Same notatki zostają. Tej operacji nie można cofnąć.",
+      "done": "Historia wersji wyczyszczona"
+    },
     "information": "Informacje",
     "manage_account": "Zarządzaj kontem",
     "account": {

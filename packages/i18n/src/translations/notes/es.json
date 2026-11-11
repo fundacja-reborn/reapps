@@ -796,7 +796,15 @@
     "oldest_version": "Versión más antigua",
     "current_version": "Versión actual",
     "version_date": "Versión: {date}",
-    "close_history": "Cerrar vista previa"
+    "close_history": "Cerrar vista previa",
+    "delete_version": "Eliminar versión",
+    "delete_version_label": "Eliminar la versión del {date}",
+    "delete_version_desc": "Esta versión se eliminará permanentemente del historial. Esta acción no se puede deshacer.",
+    "clear": "Borrar historial",
+    "clear_title": "¿Borrar el historial de esta nota?",
+    "clear_desc": "Todas las versiones anteriores de esta nota se eliminarán permanentemente. La versión actual se conserva. Esta acción no se puede deshacer.",
+    "delete_failed": "No se pudo eliminar. Inténtelo de nuevo.",
+    "delete_offline": "Para eliminar el historial de versiones se necesita conexión a internet."
   },
   "encryption": {
     "title": "Radiografía del cifrado",
@@ -885,6 +893,14 @@
     "back_to_notes": "Volver a las notas",
     "preferences": "Preferencias",
     "data": "Datos",
+    "clear_history": {
+      "title": "Borrar historial de versiones",
+      "desc": "Eliminar las versiones anteriores de todas las notas. Las notas se conservan.",
+      "desc_size": "Eliminar las versiones anteriores de todas las notas y liberar {size}. Las notas se conservan.",
+      "confirm_title": "¿Borrar el historial de todas las notas?",
+      "confirm_desc": "Las versiones anteriores de todas sus notas se eliminarán permanentemente. Las notas se conservan. Esta acción no se puede deshacer.",
+      "done": "Historial de versiones borrado"
+    },
     "information": "Información",
     "manage_account": "Administrar cuenta",
     "account": {

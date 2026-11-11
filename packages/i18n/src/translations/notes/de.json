@@ -796,7 +796,15 @@
     "oldest_version": "Älteste Version",
     "current_version": "Aktuelle Version",
     "version_date": "Version: {date}",
-    "close_history": "Vorschau schließen"
+    "close_history": "Vorschau schließen",
+    "delete_version": "Version löschen",
+    "delete_version_label": "Version vom {date} löschen",
+    "delete_version_desc": "Diese Version wird endgültig aus dem Verlauf gelöscht. Dies kann nicht rückgängig gemacht werden.",
+    "clear": "Verlauf löschen",
+    "clear_title": "Verlauf dieser Notiz löschen?",
+    "clear_desc": "Alle früheren Versionen dieser Notiz werden endgültig gelöscht. Die aktuelle Version bleibt erhalten. Dies kann nicht rückgängig gemacht werden.",
+    "delete_failed": "Löschen fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "delete_offline": "Zum Löschen des Versionsverlaufs ist eine Internetverbindung nötig."
   },
   "encryption": {
     "title": "Verschlüsselungs-Röntgen",
@@ -885,6 +893,14 @@
     "back_to_notes": "Zurück zu den Notizen",
     "preferences": "Einstellungen",
     "data": "Daten",
+    "clear_history": {
+      "title": "Versionsverlauf löschen",
+      "desc": "Frühere Versionen aller Notizen löschen. Die Notizen selbst bleiben erhalten.",
+      "desc_size": "Frühere Versionen aller Notizen löschen und {size} freigeben. Die Notizen selbst bleiben erhalten.",
+      "confirm_title": "Verlauf aller Notizen löschen?",
+      "confirm_desc": "Frühere Versionen aller Ihrer Notizen werden endgültig gelöscht. Die Notizen selbst bleiben erhalten. Dies kann nicht rückgängig gemacht werden.",
+      "done": "Versionsverlauf gelöscht"
+    },
     "information": "Information",
     "manage_account": "Konto verwalten",
     "account": {
