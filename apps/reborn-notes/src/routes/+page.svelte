@@ -3080,6 +3080,7 @@
             isTrash={false}
             isPeriodic={isPeriodicSection(activeSection)}
             showSidebarTrigger
+            layoutToggle
             subfolders={activeFolderSubfolders}
             onSubfolderSelect={handleFolderSelect}
             {saveScope}

@@ -18,6 +18,14 @@ const logger = createLogger('device-prefs');
 export type NoteOpenMode = 'preview' | 'edit' | 'split';
 
 /**
+ * How the note list in the main area lays out its cards (issue #523): one
+ * column (`list`) or 2-3 columns by width (`grid`). Only the desktop main area
+ * offers the switch; the 24rem side panel and the phone always show the list.
+ */
+export const NOTE_LIST_LAYOUTS = ['list', 'grid'] as const;
+export type NoteListLayout = (typeof NOTE_LIST_LAYOUTS)[number];
+
+/**
  * What the app shows when it opens on this device (issue #511): one of the
  * rail's browsing sections, or `last` = reopen where you left off (section,
  * folder / tag / smart folder and the open note, see `start-place.ts`). Not
@@ -87,6 +95,11 @@ export interface DevicePrefs {
    * stays per device rather than in the synced settings bundle.
    */
   startPage: StartPage;
+  /**
+   * Card layout of the note list in the desktop main area (issue #523). A
+   * matter of screen width, so it stays per device; defaults to the list.
+   */
+  noteListLayout: NoteListLayout;
 }
 
 const STORAGE_KEY = 'reborn-notes-device-prefs';
@@ -97,13 +110,18 @@ const DEFAULTS: DevicePrefs = {
   tocPinned: false,
   uiScale: DEFAULT_TEXT_SCALE,
   noteTextScale: DEFAULT_TEXT_SCALE,
-  startPage: 'all'
+  startPage: 'all',
+  noteListLayout: 'list'
 };
 
 const NOTE_OPEN_MODES: readonly NoteOpenMode[] = ['preview', 'edit', 'split'];
 
 export function isStartPage(value: unknown): value is StartPage {
   return (START_PAGES as readonly unknown[]).includes(value);
+}
+
+function isNoteListLayout(value: unknown): value is NoteListLayout {
+  return (NOTE_LIST_LAYOUTS as readonly unknown[]).includes(value);
 }
 
 function isUiScale(value: unknown): value is UiScale {
@@ -172,7 +190,10 @@ function load(): DevicePrefs {
       noteTextScale: isNoteTextScale(parsed.noteTextScale)
         ? parsed.noteTextScale
         : DEFAULTS.noteTextScale,
-      startPage: isStartPage(parsed.startPage) ? parsed.startPage : DEFAULTS.startPage
+      startPage: isStartPage(parsed.startPage) ? parsed.startPage : DEFAULTS.startPage,
+      noteListLayout: isNoteListLayout(parsed.noteListLayout)
+        ? parsed.noteListLayout
+        : DEFAULTS.noteListLayout
     };
   } catch (err) {
     logger.warn('Failed to read device prefs, using defaults', err);
@@ -262,6 +283,15 @@ function createDevicePrefsStore() {
     });
   }
 
+  function setNoteListLayout(layout: NoteListLayout): void {
+    if (!isNoteListLayout(layout)) return;
+    store.update((prev) => {
+      const next = { ...prev, noteListLayout: layout };
+      persist(next);
+      return next;
+    });
+  }
+
   /** Both text sizes back to the default (Appearance > Reset to defaults). */
   function resetTextSize(): void {
     store.update((prev) => {
@@ -284,7 +314,8 @@ function createDevicePrefsStore() {
     setUiScale,
     setNoteTextScale,
     resetTextSize,
-    setStartPage
+    setStartPage,
+    setNoteListLayout
   };
 }
 
@@ -307,3 +338,6 @@ export const noteTextScale = derived(devicePrefs, ($p) => $p.noteTextScale);
 
 /** What the app opens on, on this device (see {@link START_PAGES}). */
 export const startPage = derived(devicePrefs, ($p) => $p.startPage);
+
+/** Card layout of the desktop main-area note list (see {@link NOTE_LIST_LAYOUTS}). */
+export const noteListLayout = derived(devicePrefs, ($p) => $p.noteListLayout);

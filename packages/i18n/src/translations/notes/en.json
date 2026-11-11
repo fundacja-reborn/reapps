@@ -628,9 +628,9 @@
   },
   "view": {
     "title": "View",
-    "list": "List View",
-    "grid": "Grid View",
-    "compact": "Compact View"
+    "list": "List view",
+    "grid": "Grid view",
+    "compact": "Compact view"
   },
   "settings": {
     "export": {
