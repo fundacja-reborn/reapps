@@ -1,3 +1,17 @@
+## 0.49.0 (2026-11-11)
+
+### 🚀 Features
+
+- **notes:** add a select all button to multi-select ([#531](https://github.com/fundacja-reborn/reapps/pull/531), [#525](https://github.com/fundacja-reborn/reapps/issues/525))
+- **notes:** choose a folder for new notes ([#532](https://github.com/fundacja-reborn/reapps/pull/532), [#349](https://github.com/fundacja-reborn/reapps/issues/349), [#522](https://github.com/fundacja-reborn/reapps/issues/522))
+- **settings:** add the 2024/12/31 and 2024.12.31 date formats ([#528](https://github.com/fundacja-reborn/reapps/pull/528), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+
+### 🩹 Fixes
+
+- **i18n:** apply the translator's review of Arabic re/task batch 1 ([#527](https://github.com/fundacja-reborn/reapps/pull/527), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **notes:** show the folder picker as a centered dialog on desktop ([#530](https://github.com/fundacja-reborn/reapps/pull/530), [#526](https://github.com/fundacja-reborn/reapps/issues/526))
+- **ui:** lay out menus right to left in Arabic ([#529](https://github.com/fundacja-reborn/reapps/pull/529), [#524](https://github.com/fundacja-reborn/reapps/issues/524))
+
 ## 0.48.0 (2026-11-10)
 
 ### 🚀 Features
