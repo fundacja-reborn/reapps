@@ -5,6 +5,7 @@
   "timezone": "Europe/Warsaw",
   "labels": ["dependencies"],
   "rangeStrategy": "pin",
+  "postUpdateOptions": ["pnpmDedupe"],
   "packageRules": [
     {
       "description": "Group patch updates",
