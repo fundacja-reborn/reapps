@@ -10,16 +10,24 @@ import { isTextEntryTarget, showNewNoteFab } from './new-note-fab';
 const base = { enabled: true, section: 'all', selectionActive: false, typing: false };
 
 describe('showNewNoteFab', () => {
-  it.each(['all', 'starred', 'folders', 'tags'])('shows in the %s section', (section) => {
+  it.each(['all', 'folders'])('shows in the %s section', (section) => {
     expect(showNewNoteFab({ ...base, section })).toBe(true);
   });
 
-  it.each(['trash', 'search', 'shares', 'periodic-daily', 'periodic-weekly', 'periodic-monthly'])(
-    'stays out of the %s section',
-    (section) => {
-      expect(showNewNoteFab({ ...base, section })).toBe(false);
-    }
-  );
+  // Starred and Tags: a new note has no star / tag, so it would not show up in
+  // the list the button floats over.
+  it.each([
+    'starred',
+    'tags',
+    'trash',
+    'search',
+    'shares',
+    'periodic-daily',
+    'periodic-weekly',
+    'periodic-monthly'
+  ])('stays out of the %s section', (section) => {
+    expect(showNewNoteFab({ ...base, section })).toBe(false);
+  });
 
   it('is hidden when the device turned it off', () => {
     expect(showNewNoteFab({ ...base, enabled: false })).toBe(false);

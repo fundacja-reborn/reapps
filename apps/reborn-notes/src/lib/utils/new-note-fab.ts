@@ -1,14 +1,19 @@
-import { PLACE_SECTIONS } from '$lib/stores/start-place';
+/**
+ * Sections whose list a new note lands in: All notes, and Folders (the tree
+ * and an open folder). Starred and Tags are left out on purpose: a new note
+ * has no star and no tag, so "New note" has to leave those views for All
+ * notes, and on the tag list a second "+" reads as "add a tag". The rail's
+ * button still creates a note from anywhere.
+ */
+export const NEW_NOTE_FAB_SECTIONS = ['all', 'folders'] as const;
 
 /**
  * When the phone layout shows the floating "New note" button (issue #541).
  *
- * Only in the browsing sections (All notes, Starred, Folders, Tags - the same
- * set a start page can be): Trash, Search and Shares are detours where a new
- * note makes no sense, and a periodic section creates its own notes. It also
- * steps aside while notes are being selected (the bulk actions own the screen)
- * and while a field in the list panel has focus, so it never floats over the
- * text being typed when the keyboard resizes the view.
+ * Only in {@link NEW_NOTE_FAB_SECTIONS}. It also steps aside while notes are
+ * being selected (the bulk actions own the screen) and while a field in the
+ * list panel has focus, so it never floats over the text being typed when the
+ * keyboard resizes the view.
  */
 export function showNewNoteFab(state: {
   /** The per-device preference (Settings > Behavior). */
@@ -21,7 +26,7 @@ export function showNewNoteFab(state: {
   typing: boolean;
 }): boolean {
   if (!state.enabled || state.selectionActive || state.typing) return false;
-  return (PLACE_SECTIONS as readonly string[]).includes(state.section);
+  return (NEW_NOTE_FAB_SECTIONS as readonly string[]).includes(state.section);
 }
 
 /** True for an element the on-screen keyboard opens for. */
