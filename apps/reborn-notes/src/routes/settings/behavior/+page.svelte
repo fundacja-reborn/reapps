@@ -14,7 +14,15 @@
     Switch,
     toast
   } from '@reborn/ui';
-  import { ChevronDown, Eye, FolderInput, House, Pencil, Trash2 } from '@lucide/svelte';
+  import {
+    ChevronDown,
+    CirclePlus,
+    Eye,
+    FolderInput,
+    House,
+    Pencil,
+    Trash2
+  } from '@lucide/svelte';
   import {
     appSettings,
     confirmBeforeDelete as confirmBeforeDeleteStore,
@@ -30,6 +38,7 @@
     devicePrefs,
     noteOpenMode as noteOpenModeStore,
     startPage as startPageStore,
+    newNoteFab as newNoteFabStore,
     isStartPage,
     START_PAGES,
     type NoteOpenMode,
@@ -37,10 +46,13 @@
   } from '$lib/stores/device-prefs.store';
   import { t } from '$lib/stores/i18n.store';
   import { createLogger } from '@reborn/utils';
-  import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
+  import { useIsMobile, useMediaQuery } from '$lib/utils/mediaQuery.svelte';
 
   const logger = createLogger('behavior-settings');
   const isMobile = useIsMobile();
+  // The exact breakpoint of the phone layout in routes/+page.svelte: the
+  // floating "New note" button exists only there, so its switch does too.
+  const isPhoneLayout = useMediaQuery('(max-width: 767px)');
 
   let startPageValue = $state<StartPage>('all');
   let openModeValue = $state<NoteOpenMode>('preview');
@@ -87,6 +99,12 @@
     } catch (err: unknown) {
       logger.error('Failed to update the folder for new notes', err);
     }
+  }
+
+  // Floating "New note" button of the phone layout (per-device; issue #541).
+  function updateNewNoteFab(value: boolean) {
+    devicePrefs.setNewNoteFab(value);
+    toast.success($t('settings_page.behavior.new_note_fab_updated'));
   }
 
   // Split is a desktop layout (editor + preview side by side). On phones the app
@@ -216,6 +234,36 @@
         </button>
       </CardContent>
     </Card>
+
+    <!-- Floating "New note" button (per-device, localStorage - not synced;
+         phone layout only; issue #541) -->
+    {#if isPhoneLayout.value}
+      <Card>
+        <CardHeader>
+          <CardTitle class="text-base flex items-center gap-2">
+            <CirclePlus class="h-4 w-4 text-muted-foreground" />
+            {$t('settings_page.behavior.new_note_fab')}
+          </CardTitle>
+          <CardDescription>{$t('settings_page.behavior.new_note_fab_desc')}</CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-3">
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-sm text-muted-foreground">
+              {$newNoteFabStore
+                ? $t('settings_page.behavior.new_note_fab_on')
+                : $t('settings_page.behavior.new_note_fab_off')}
+            </span>
+            <Switch
+              checked={$newNoteFabStore}
+              onCheckedChange={(v: boolean) => updateNewNoteFab(v)}
+            />
+          </div>
+          <p class="text-xs text-muted-foreground">
+            {$t('settings_page.behavior.open_mode_device_hint')}
+          </p>
+        </CardContent>
+      </Card>
+    {/if}
 
     <!-- Default open mode (per-device, localStorage - not synced) -->
     <Card>

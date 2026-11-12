@@ -77,7 +77,8 @@
       </button>
     </div>
   {/if}
-  <div class="flex-1 overflow-y-auto px-2 py-2">
+  <!-- pb grows by the room for the floating "New note" button (0 when not shown) -->
+  <div class="flex-1 overflow-y-auto px-2 pt-2 pb-[calc(0.5rem+var(--rn-fab-clearance,0px))]">
     {#if $tagsStore.length === 0}
       <p class="px-2 py-1 text-xs text-muted-foreground">{$t('tags.no_tags_yet')}</p>
     {:else if filteredTags.length === 0}
