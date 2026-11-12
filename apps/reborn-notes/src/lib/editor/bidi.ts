@@ -18,6 +18,9 @@
  *
  * The user can override a line's direction: see `direction-mark.ts`.
  *
+ * A click or Home/End on the visual edge of a mixed-direction line lands on
+ * the logical edge of the line: see `bidi-line-edge.ts` (#539).
+ *
  * Live Preview's list / quote geometry uses logical properties
  * (`padding-inline-start`, ...) so it mirrors on RTL lines (theme.ts).
  */
@@ -31,6 +34,7 @@ import {
 } from '@codemirror/view';
 import { get } from 'svelte/store';
 import { detectTextDirection, textDirection, type TextDirection } from '@reborn/i18n';
+import { lineEdgeCursor } from './bidi-line-edge';
 
 /**
  * How far up a line without text looks for a direction. A longer gap means the
@@ -108,7 +112,11 @@ const lineDirections = ViewPlugin.fromClass(
   { decorations: (plugin) => plugin.decorations }
 );
 
-/** Per-line bidi: a `dir` on every line + per-line direction reads. */
+/**
+ * Per-line bidi: a `dir` on every line, per-line direction reads, and the
+ * cursor kept on the logical edge of a line. Call once per editor: the cursor
+ * part is tied to the view it runs in.
+ */
 export function bidiLines(): Extension {
-  return [EditorView.perLineTextDirection.of(true), lineDirections];
+  return [EditorView.perLineTextDirection.of(true), lineDirections, lineEdgeCursor()];
 }
