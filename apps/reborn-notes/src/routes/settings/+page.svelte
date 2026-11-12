@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { afterNavigate, beforeNavigate } from '$app/navigation';
   import { resolve } from '$app/paths';
   import {
     Palette,
@@ -41,7 +42,7 @@
   import { t } from '$lib/stores/i18n.store';
   import { locale } from '$lib/stores/i18n.store';
   import { intlLocale } from '@reborn/i18n';
-  import { cn, GithubMark, toastStore } from '@reborn/ui';
+  import { cn, GithubMark, scrollMemory, toastStore } from '@reborn/ui';
   import { authStore } from '$lib/stores/auth.store';
   import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
   import { openWhatsNew } from '$lib/stores/whats-new.svelte';
@@ -63,6 +64,27 @@
   const resolveHref = resolve as unknown as (path: string) => string;
 
   let storageInfoExpanded = $state(false);
+
+  // The hub scrolls inside its own container, which SvelteKit does not restore.
+  // Keep the position while the user visits a sub-page (#540); the sub-pages'
+  // SettingsLayout uses the same scrollMemory.
+  let scroller = $state<HTMLDivElement>();
+
+  beforeNavigate(({ from, to }) => {
+    if (from) scrollMemory.leave(from.url.pathname, to?.url.pathname, scroller?.scrollTop);
+  });
+
+  afterNavigate(({ from, to }) => {
+    if (!to) return;
+    const top = scrollMemory.arrive(to.url.pathname, from?.url.pathname);
+    if (top !== undefined && scroller) scroller.scrollTop = top;
+  });
+
+  // The quota is fetched again on every visit. While that runs, keep showing
+  // the figures from the previous fetch: hiding them would change the height of
+  // the storage block and move everything below it, right after the scroll
+  // position was restored.
+  let quotaPending = $derived($quotaLoading && $quotaLimitBytes === 0);
 
   // Native-only: store-installed version + live backend version (drift detail).
   // Null on web - the single __APP_VERSION__ line stays unchanged there.
@@ -201,7 +223,10 @@
 
 <!-- height: subtract the session-expired banner so it does not push the page
      bottom off screen (var is 0 when the banner is hidden) -->
-<div class="h-[calc(100dvh-var(--rn-banner-h,0px))] overflow-y-auto bg-background">
+<div
+  bind:this={scroller}
+  class="h-[calc(100dvh-var(--rn-banner-h,0px))] overflow-y-auto bg-background"
+>
   <!-- pt: keep the header below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
   <div class="sticky top-0 z-10 bg-background border-b pt-[env(safe-area-inset-top,0px)]">
     <div class="container mx-auto max-w-4xl px-4 sm:px-6">
@@ -432,7 +457,7 @@
                 <HardDrive class="h-5 w-5 text-muted-foreground shrink-0" />
                 <div class="flex-1 min-w-0">
                   <div class="font-medium">{$t('storage.title')}</div>
-                  {#if $quotaLoading}
+                  {#if quotaPending}
                     <div class="text-sm text-muted-foreground">…</div>
                   {:else}
                     <div class="text-sm text-muted-foreground">
@@ -447,7 +472,7 @@
                   {/if}
                 </div>
               </div>
-              {#if !$quotaLoading && $quotaLimitBytes > 0}
+              {#if $quotaLimitBytes > 0}
                 <div class="ms-8 h-2 rounded-full bg-muted overflow-hidden">
                   <div
                     class="h-full rounded-full transition-all duration-300
@@ -511,7 +536,7 @@
             <div class="flex-1 min-w-0">
               <div class="font-medium">{$t('settings_page.clear_history.title')}</div>
               <div class="text-sm text-muted-foreground">
-                {#if $authStore.isAuthenticated && !$quotaLoading && $quotaVersionsBytes > 0}
+                {#if $authStore.isAuthenticated && $quotaVersionsBytes > 0}
                   {$t('settings_page.clear_history.desc_size', {
                     values: { size: formatBytes($quotaVersionsBytes) }
                   })}

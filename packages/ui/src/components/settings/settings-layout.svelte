@@ -2,8 +2,10 @@
   import type { Snippet } from 'svelte';
   import { Button } from '@reborn/ui';
   import { ChevronLeft } from '@lucide/svelte';
+  import { afterNavigate, beforeNavigate } from '$app/navigation';
   import { base } from '$app/paths';
   import { cn } from '../../utils/cn';
+  import { scrollMemory } from '../../utils/scroll-memory';
 
   let {
     title,
@@ -24,6 +26,20 @@
       ? `${base}${backHref}`
       : backHref
   );
+
+  // The page scrolls inside this container, which SvelteKit does not restore.
+  // Keep the position while the user visits a sub-page (#540); see scroll-memory.
+  let scroller = $state<HTMLDivElement>();
+
+  beforeNavigate(({ from, to }) => {
+    if (from) scrollMemory.leave(from.url.pathname, to?.url.pathname, scroller?.scrollTop);
+  });
+
+  afterNavigate(({ from, to }) => {
+    if (!to) return;
+    const top = scrollMemory.arrive(to.url.pathname, from?.url.pathname);
+    if (top !== undefined && scroller) scroller.scrollTop = top;
+  });
 </script>
 
 <!-- height: subtract the session-expired banner (--rn-banner-h) and the soft
@@ -33,6 +49,7 @@
      above the iOS keyboard so a focused field (e.g. change-password / delete
      account) scrolls into view instead of being covered. -->
 <div
+  bind:this={scroller}
   class={cn(
     'h-[calc(100dvh-var(--rn-banner-h,0px)-var(--rn-keyboard-inset,0px))] overflow-y-auto bg-background',
     className
