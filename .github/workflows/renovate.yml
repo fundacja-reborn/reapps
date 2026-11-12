@@ -1,0 +1,84 @@
+name: Renovate
+
+# Self-hosted Renovate.
+#
+# The Mend-hosted app stopped opening scheduled update PRs in June 2026: its
+# job runner has 3 GB of memory, and regenerating pnpm-lock.yaml for this
+# workspace needs about 2 GB for pnpm alone, so the job was killed
+# (kernel-out-of-memory) every time the weekly window opened. A standard
+# GitHub-hosted runner has 16 GB and is free for public repositories.
+#
+# What to update, when and how it is grouped stays in .github/renovate.json.
+# This file only adds what a self-hosted run needs on top of it.
+#
+# Identity: a GitHub App owned by the organization, so that update PRs have an
+# author other than the maintainers (the main ruleset needs an approval from
+# someone who did not push) and so that CI runs on them (PRs opened with
+# GITHUB_TOKEN wait for a manual approval of their workflow runs).
+#   - variable RENOVATE_APP_CLIENT_ID: the app's client ID
+#   - secret RENOVATE_APP_PRIVATE_KEY: the app's private key (.pem contents)
+
+on:
+  schedule:
+    # Every 4 hours: security PRs (they ignore the schedule), Dependency
+    # Dashboard checkboxes and rebases of open update PRs.
+    - cron: '17 */4 * * *'
+    # Extra runs inside the weekly window ("before 9am on Monday",
+    # Europe/Warsaw). prHourlyLimit is 2, so one run opens at most two PRs.
+    - cron: '47 1-7/2 * * 1'
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Dry run: log what would be done, change nothing'
+        type: boolean
+        default: false
+      logLevel:
+        description: 'Log level'
+        type: choice
+        options:
+          - debug
+          - info
+        default: debug
+
+# One run at a time; a run that is already going is left to finish.
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+# The job uses the app token only.
+permissions: {}
+
+jobs:
+  renovate:
+    # Scheduled workflows also fire in forks, where the app is not installed.
+    if: github.repository == 'fundacja-reborn/reapps'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # Scoped to this repository; expires after an hour and is revoked when
+      # the job ends.
+      - name: Create a token for the Renovate app
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RENOVATE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
+
+      - name: Dry run requested
+        if: inputs.dryRun
+        run: echo "RENOVATE_DRY_RUN=full" >> "$GITHUB_ENV"
+
+      - name: Renovate
+        uses: renovatebot/github-action@266fef21329c44765ad42f9dea1f01f5d2d91084 # v46.3.13
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+        env:
+          LOG_LEVEL: ${{ inputs.logLevel || 'debug' }}
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # Commit through the GitHub API, so commits are signed as the app.
+          RENOVATE_PLATFORM_COMMIT: 'enabled'
+          # Look at all PRs and issues, not only the app's own: update PRs
+          # closed while the Mend app was the bot stay ignored (closing one is
+          # how an update gets declined), and the existing Dependency
+          # Dashboard issue is reused.
+          RENOVATE_IGNORE_PR_AUTHOR: 'true'
