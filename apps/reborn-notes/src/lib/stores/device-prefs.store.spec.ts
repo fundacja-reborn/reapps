@@ -40,7 +40,8 @@ describe('device prefs: text size', () => {
       uiScale: 100,
       noteTextScale: 100,
       startPage: 'all',
-      noteListLayout: 'list'
+      noteListLayout: 'list',
+      newNoteFab: true
     });
   });
 
@@ -239,5 +240,32 @@ describe('applyTextSize', () => {
     applyTextSize(root, { uiScale: 100, noteTextScale: 100 });
     expect(root.style.fontSize).toBe('');
     expect(root.style.getPropertyValue('--rn-note-scale')).toBe('');
+  });
+});
+
+describe('device prefs: floating new-note button (#541)', () => {
+  it('is on by default, also for prefs saved before it existed', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ tocPinned: true }));
+    const { newNoteFab, devicePrefs } = await loadStore();
+    expect(get(newNoteFab)).toBe(true);
+    expect(get(devicePrefs).tocPinned).toBe(true);
+  });
+
+  it('persists turning it off and reads it back', async () => {
+    const first = await loadStore();
+    first.devicePrefs.setNewNoteFab(false);
+    expect(stored()).toMatchObject({ newNoteFab: false });
+    const second = await loadStore();
+    expect(get(second.newNoteFab)).toBe(false);
+  });
+
+  it.each([
+    ['a string', 'false'],
+    ['a number', 0],
+    ['null', null]
+  ])('falls back to on for a stored %s', async (_label, value) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ newNoteFab: value }));
+    const { newNoteFab } = await loadStore();
+    expect(get(newNoteFab)).toBe(true);
   });
 });

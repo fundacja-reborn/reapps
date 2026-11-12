@@ -156,6 +156,7 @@
     searchOnly = false,
     saveScope = null,
     subfolders = [],
+    onselectionchange,
     onback,
     oncreate,
     onSubfolderSelect,
@@ -181,6 +182,11 @@
     /** Scope of the current view, composed into the query by the save dialog. */
     saveScope?: SaveScope | null;
     subfolders?: FolderWithChildren[];
+    /**
+     * Multi-select turned on / off (off also when the list goes away). The
+     * phone layout hides its floating "New note" button meanwhile (#541).
+     */
+    onselectionchange?: (active: boolean) => void;
     onback?: () => void;
     oncreate?: () => void | Promise<void>;
     onSubfolderSelect?: (id: string) => void;
@@ -472,6 +478,13 @@
     selectedIds.clear();
     lastAnchorId = null;
   }
+
+  // Tell the parent; a list that goes away is no longer selecting.
+  $effect(() => {
+    if (!selectionMode) return;
+    untrack(() => onselectionchange?.(true));
+    return () => untrack(() => onselectionchange?.(false));
+  });
 
   // Exit selection mode when the view changes (different folder, tag, starred, trash).
   // Tracking these reactive deps via void-references invalidates the effect when the
@@ -1186,7 +1199,12 @@
   {/if}
 
   <!-- Notes list -->
-  <div class="flex-1 overflow-y-auto px-3 {isGrid ? '@container' : ''}">
+  <!-- pb: room for the phone's floating "New note" button (0 when it is not shown) -->
+  <div
+    class="flex-1 overflow-y-auto px-3 pb-[var(--rn-fab-clearance,0px)] {isGrid
+      ? '@container'
+      : ''}"
+  >
     {#if !searchInput && !searchOnly}
       <!-- Pinned searches ABOVE the subfolders: they aggregate the whole
            subtree (lenses over everything below), and the short curated list

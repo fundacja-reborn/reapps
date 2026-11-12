@@ -100,6 +100,13 @@ export interface DevicePrefs {
    * matter of screen width, so it stays per device; defaults to the list.
    */
   noteListLayout: NoteListLayout;
+  /**
+   * Phone layout only: show the floating "New note" button in the bottom corner
+   * of the list (issue #541). On by default - creating a note is the app's main
+   * action and the rail's button sits in the corner the thumb reaches last. A
+   * matter of how this device is held, so it stays per device.
+   */
+  newNoteFab: boolean;
 }
 
 const STORAGE_KEY = 'reborn-notes-device-prefs';
@@ -111,7 +118,8 @@ const DEFAULTS: DevicePrefs = {
   uiScale: DEFAULT_TEXT_SCALE,
   noteTextScale: DEFAULT_TEXT_SCALE,
   startPage: 'all',
-  noteListLayout: 'list'
+  noteListLayout: 'list',
+  newNoteFab: true
 };
 
 const NOTE_OPEN_MODES: readonly NoteOpenMode[] = ['preview', 'edit', 'split'];
@@ -193,7 +201,9 @@ function load(): DevicePrefs {
       startPage: isStartPage(parsed.startPage) ? parsed.startPage : DEFAULTS.startPage,
       noteListLayout: isNoteListLayout(parsed.noteListLayout)
         ? parsed.noteListLayout
-        : DEFAULTS.noteListLayout
+        : DEFAULTS.noteListLayout,
+      newNoteFab:
+        typeof parsed.newNoteFab === 'boolean' ? parsed.newNoteFab : DEFAULTS.newNoteFab
     };
   } catch (err) {
     logger.warn('Failed to read device prefs, using defaults', err);
@@ -292,6 +302,14 @@ function createDevicePrefsStore() {
     });
   }
 
+  function setNewNoteFab(enabled: boolean): void {
+    store.update((prev) => {
+      const next = { ...prev, newNoteFab: enabled };
+      persist(next);
+      return next;
+    });
+  }
+
   /** Both text sizes back to the default (Appearance > Reset to defaults). */
   function resetTextSize(): void {
     store.update((prev) => {
@@ -315,7 +333,8 @@ function createDevicePrefsStore() {
     setNoteTextScale,
     resetTextSize,
     setStartPage,
-    setNoteListLayout
+    setNoteListLayout,
+    setNewNoteFab
   };
 }
 
@@ -341,3 +360,6 @@ export const startPage = derived(devicePrefs, ($p) => $p.startPage);
 
 /** Card layout of the desktop main-area note list (see {@link NOTE_LIST_LAYOUTS}). */
 export const noteListLayout = derived(devicePrefs, ($p) => $p.noteListLayout);
+
+/** Phone layout: whether the floating "New note" button is shown on this device. */
+export const newNoteFab = derived(devicePrefs, ($p) => $p.newNoteFab);

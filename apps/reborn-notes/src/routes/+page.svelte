@@ -11,6 +11,8 @@
   import IconNav, { type Section, isPeriodicSection } from '$lib/components/layout/IconNav.svelte';
   import SidebarAutoClose from '$lib/components/layout/SidebarAutoClose.svelte';
   import SyncStatusFooter from '$lib/components/sync/SyncStatusFooter.svelte';
+  import NewNoteFab from '$lib/components/layout/NewNoteFab.svelte';
+  import { isTextEntryTarget, showNewNoteFab } from '$lib/utils/new-note-fab';
   import InitialSyncState from '$lib/components/sync/InitialSyncState.svelte';
   import { isInitialSync } from '$lib/stores/sync-status.store';
   import { platform } from '$lib/platform';
@@ -81,7 +83,8 @@
     noteOpenMode,
     noteListCollapsed,
     tocPinned,
-    startPage
+    startPage,
+    newNoteFab
   } from '$lib/stores/device-prefs.store';
   import {
     dropMissing,
@@ -539,6 +542,18 @@
   // Mobile drill-down navigation state
   type MobileView = 'list' | 'folder-tree' | 'tag-list';
   let mobileView = $state<MobileView>('list');
+
+  // Floating "New note" button of the phone list panel (#541).
+  let mobileListSelecting = $state(false);
+  let mobileListTyping = $state(false);
+  const newNoteFabVisible = $derived(
+    showNewNoteFab({
+      enabled: $newNoteFab,
+      section: activeSection,
+      selectionActive: mobileListSelecting,
+      typing: mobileListTyping
+    })
+  );
 
   // Mobile: the root of back navigation (#511). All notes, unless this device's
   // start page is Folders or Tags - then their tree / list is the home screen:
@@ -2443,11 +2458,20 @@
             </div>
           {/if}
 
-          <!-- Content -->
-          <div class="flex-1 overflow-hidden">
+          <!-- Content. `relative` anchors the floating "New note" button above
+               the sync footer; --rn-fab-clearance is the room the scroll areas
+               below reserve so their last row is not stuck behind it (#541). -->
+          <div
+            class="relative flex-1 overflow-hidden"
+            style:--rn-fab-clearance={newNoteFabVisible ? '5rem' : null}
+            onfocusin={(e) => (mobileListTyping = isTextEntryTarget(e.target))}
+            onfocusout={() => (mobileListTyping = false)}
+          >
             {#if mobileView === 'folder-tree'}
               <div class="flex flex-col overflow-hidden h-full">
-                <div class="flex-1 overflow-y-auto px-2 py-2">
+                <div
+                  class="flex-1 overflow-y-auto px-2 pt-2 pb-[calc(0.5rem+var(--rn-fab-clearance,0px))]"
+                >
                   {#if $foldersStore.length === 0 && !$pendingNewFolderDraft}
                     <p class="px-2 py-1 text-xs text-muted-foreground">
                       {$t('folders.no_folders_short')}
@@ -2511,7 +2535,11 @@
                   ? handleNewSubfolder
                   : undefined}
                 oncreate={handleNewNote}
+                onselectionchange={(active) => (mobileListSelecting = active)}
               />
+            {/if}
+            {#if newNoteFabVisible}
+              <NewNoteFab onclick={handleNewNote} />
             {/if}
           </div>
 
