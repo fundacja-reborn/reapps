@@ -2,6 +2,8 @@
 export { cn } from './utils/cn';
 export { flyAndScale } from './utils/transition';
 export { distanceFromInlineStart, inlineDelta } from './utils/edge-swipe';
+export { scrollMemory, createScrollMemory, isSubPath } from './utils/scroll-memory';
+export type { ScrollMemory } from './utils/scroll-memory';
 
 // Stores
 export { toastStore } from './stores/toast';
