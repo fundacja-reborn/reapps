@@ -168,7 +168,7 @@
     "log_out": "تسجيل الخروج"
   },
   "data": "البيانات",
-  "information": "المعلومات",
+  "information": "معلومات",
   "notifications": {
     "title": "الإشعارات",
     "description": "إدارة إعدادات الإشعارات لهذا التطبيق",
@@ -250,8 +250,8 @@
       "other_sessions": "الجلسات الأخرى ({count})",
       "revoke_session": "إنهاء الجلسة",
       "revoke_success": "تم إنهاء الجلسة",
-      "revoke_error": "خطأ في إنهاء الجلسة",
-      "revoke_all": "إنهاء الجلسات الأخرى",
+      "revoke_error": "حدث خطأ أثناء إنهاء الجلسة",
+      "revoke_all": "إنهاء جميع الجلسات الأخرى",
       "revoking_all": "جارٍ الإنهاء…",
       "logout_all_button": "تسجيل الخروج من جميع الأجهزة",
       "logout_all_confirm": "سيتم تسجيل خروجك من جميع الأجهزة، بما فيها هذا الجهاز. هل أنت متأكد؟",
@@ -290,7 +290,7 @@
     "portable_encrypt_button": "تشفير وتنزيل",
     "portable_encrypting": "جارٍ التشفير...",
     "import_encrypted_prompt": "هذه النسخة الاحتياطية محمية بكلمة مرور. أدخل كلمة المرور المستخدمة أثناء التصدير:",
-    "import_portable_additive_note": "يضيف هذا نسخة جديدة إلى حسابك. استيراد النسخة الاحتياطية نفسها مرة أخرى ينشئ عناصر مكررة بدلًا من تحديث الاستيراد السابق.",
+    "import_portable_additive_note": "يضيف هذا نسخة جديدة إلى حسابك. وإعادة استيراد النسخة الاحتياطية نفسها تُنشئ نسخًا مكررة بدلًا من تحديث الاستيراد السابق.",
     "import_password_placeholder": "كلمة مرور النسخة الاحتياطية",
     "import_decrypt_button": "فك التشفير والاستيراد",
     "import_decrypting": "جارٍ فك التشفير...",
@@ -335,14 +335,14 @@
     "open_notes": "فتح re/notes"
   },
   "links": {
-    "title": "الروابط",
+    "title": "روابط",
     "website": {
       "title": "الموقع الإلكتروني",
-      "description": "زُر موقع Reborn Apps"
+      "description": "زيارة موقع Reborn Apps"
     },
     "faq": {
       "title": "الأسئلة الشائعة",
-      "description": "الأسئلة المتكررة وإجاباتها"
+      "description": "الأسئلة الأكثر تكرارًا"
     },
     "privacy_policy": {
       "title": "سياسة الخصوصية",
@@ -350,7 +350,7 @@
     },
     "terms": {
       "title": "شروط الخدمة",
-      "description": "شروط الاستخدام وأحكامه"
+      "description": "شروط وأحكام الاستخدام"
     },
     "github": {
       "title": "GitHub",
