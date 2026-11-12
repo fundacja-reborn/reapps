@@ -1,3 +1,16 @@
+## 0.51.0 (2026-11-12)
+
+### 🚀 Features
+
+- **notes:** floating new note button on phones ([#548](https://github.com/fundacja-reborn/reapps/pull/548), [#541](https://github.com/fundacja-reborn/reapps/issues/541))
+
+### 🩹 Fixes
+
+- **i18n:** apply the translator's review of Arabic re/task batch 2 and re/notes batch 4 ([#543](https://github.com/fundacja-reborn/reapps/pull/543), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **i18n:** apply the translator's review of Arabic re/notes batch 5 and the release notes ([#553](https://github.com/fundacja-reborn/reapps/pull/553), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **notes:** keep the caret at the line end in mixed-direction text ([#545](https://github.com/fundacja-reborn/reapps/pull/545), [#539](https://github.com/fundacja-reborn/reapps/issues/539))
+- **ui:** keep the settings scroll position when returning from a sub-page ([#544](https://github.com/fundacja-reborn/reapps/pull/544), [#540](https://github.com/fundacja-reborn/reapps/issues/540))
+
 ## 0.50.0 (2026-11-11)
 
 ### 🚀 Features
