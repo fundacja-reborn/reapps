@@ -114,8 +114,8 @@ const lineDirections = ViewPlugin.fromClass(
 
 /**
  * Per-line bidi: a `dir` on every line, per-line direction reads, and the
- * cursor kept on the logical edge of a line. Call once per editor: the cursor
- * part is tied to the view it runs in.
+ * cursor and the ends of a mouse selection kept on the logical edge of a line.
+ * Call once per editor: that last part is tied to the view it runs in.
  */
 export function bidiLines(): Extension {
   return [EditorView.perLineTextDirection.of(true), lineDirections, lineEdgeCursor()];

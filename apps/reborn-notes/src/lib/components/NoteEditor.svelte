@@ -13,6 +13,7 @@
   import { noteLinkDecoration } from '$lib/editor/note-link-decoration';
   import { noteSearchExtension } from '$lib/editor/note-search';
   import { bidiLines } from '$lib/editor/bidi';
+  import { ownSelection } from '$lib/editor/own-selection';
   import { directionMarkAtomicRanges, toggleLineDirection } from '$lib/editor/direction-mark';
   import { listIndent, listOutdent } from '$lib/editor/list-keymap';
   import {
@@ -532,6 +533,10 @@
         // the UI locale: Arabic/Hebrew lines render RTL in any UI language.
         bidiLines(),
         directionMarkAtomicRanges,
+        // Cursor and selection drawn by the editor where the pointer is fine,
+        // so the cursor shows on the right side of a number or Latin word in
+        // an Arabic line (#539). Touch screens keep the native ones.
+        ownSelection(),
         // Keep every scroll-into-view (heading-anchor clicks, outline jumps, the
         // caret while typing near the top) clear of the sticky formatting toolbar
         // that overlays the scroll container in the mobile + single-pane layouts.
