@@ -21,6 +21,8 @@ interface Face {
   weight: string;
   url: string;
   hasRange: boolean;
+  /** `size-adjust` in percent; 100 when the rule has none. */
+  sizeAdjust: number;
 }
 
 const faces: Face[] = [...css.matchAll(/@font-face\s*\{([^}]*)\}/g)].map(([, body]) => ({
@@ -28,7 +30,8 @@ const faces: Face[] = [...css.matchAll(/@font-face\s*\{([^}]*)\}/g)].map(([, bod
   style: /font-style:\s*([a-z]+)/.exec(body)?.[1] ?? '',
   weight: /font-weight:\s*([0-9 ]+);/.exec(body)?.[1] ?? '',
   url: /url\('([^']+)'\)/.exec(body)?.[1] ?? '',
-  hasRange: /unicode-range:/.test(body)
+  hasRange: /unicode-range:/.test(body),
+  sizeAdjust: Number(/size-adjust:\s*([0-9.]+)%/.exec(body)?.[1] ?? 100)
 }));
 
 describe('note fonts: registry, stylesheet and files agree', () => {
@@ -74,6 +77,24 @@ describe('note fonts: registry, stylesheet and files agree', () => {
 
   it('limits every face to a unicode-range, so an unused script downloads nothing', () => {
     expect(faces.filter((face) => !face.hasRange).map((face) => face.url)).toEqual([]);
+  });
+
+  // The size adjustment is in the stylesheet, the line height that goes with
+  // it in the registry (#546). One without the other gives larger letters on
+  // the old line height, or wide lines around letters of the old size.
+  it.each(Object.values(NOTE_FONT_FAMILIES))(
+    'gives every face of $family the size-adjust the registry names',
+    ({ family, sizeAdjust = 100 }) => {
+      const adjusts = faces.filter((face) => face.family === family).map((face) => face.sizeAdjust);
+      expect(adjusts.length).toBeGreaterThan(0);
+      expect([...new Set(adjusts)]).toEqual([sizeAdjust]);
+    }
+  );
+
+  it('pairs a larger size with a larger line height', () => {
+    for (const { family, sizeAdjust = 100, leading = 1 } of Object.values(NOTE_FONT_FAMILIES)) {
+      expect(leading >= sizeAdjust / 100, family).toBe(true);
+    }
   });
 
   it('carries the license text next to each font (OFL-1.1 condition)', () => {

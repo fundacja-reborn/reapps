@@ -6,6 +6,7 @@ import {
   DEFAULT_NOTE_FONT,
   isNoteArabicFont,
   isNoteFont,
+  noteFontLeading,
   type NoteArabicFont,
   type NoteFont
 } from '$lib/utils/note-font';
@@ -19,8 +20,8 @@ const logger = createLogger('device-prefs');
  * ONLY in this device's localStorage and never sync. They capture how *this*
  * device should behave - e.g. a desktop where you mostly edit vs a phone where
  * you mostly read. There is no user content here (view-mode enums, flags,
- * text-size steps, font names and the start page), so plain localStorage is fine and
- * outside the Zero-Knowledge sync surface.
+ * text-size and line-spacing steps, font names and the start page), so plain
+ * localStorage is fine and outside the Zero-Knowledge sync surface.
  */
 export type NoteOpenMode = 'preview' | 'edit' | 'split';
 
@@ -66,7 +67,17 @@ export type UiScale = (typeof UI_SCALE_STEPS)[number];
 export const NOTE_TEXT_SCALE_STEPS = [100, 110, 125, 150, 175, 200] as const;
 export type NoteTextScale = (typeof NOTE_TEXT_SCALE_STEPS)[number];
 
-/** Default for both scales (no inline style is written at this value). */
+/**
+ * Line spacing steps for note content (issue #546), in percent of the app's
+ * own line heights (100 = as designed: 1.7 in the editor, 1.75 in preview
+ * paragraphs). Exposed to CSS as `--rn-note-leading`, together with the extra
+ * line height some note fonts ask for (see {@link noteLeading}). One step
+ * below the default, for long and dense notes.
+ */
+export const NOTE_LINE_SPACING_STEPS = [85, 100, 115, 130, 150] as const;
+export type NoteLineSpacing = (typeof NOTE_LINE_SPACING_STEPS)[number];
+
+/** Default of both scales and of the line spacing (nothing is written to CSS at this value). */
 export const DEFAULT_TEXT_SCALE = 100;
 
 export interface DevicePrefs {
@@ -96,6 +107,11 @@ export interface DevicePrefs {
   uiScale: UiScale;
   /** Note text size on this device, relative to {@link DevicePrefs.uiScale}. */
   noteTextScale: NoteTextScale;
+  /**
+   * Line spacing of note content on this device (issue #546). Kept next to the
+   * text size: how much air a line needs depends on the screen and the reader.
+   */
+  noteLineSpacing: NoteLineSpacing;
   /**
    * Font of note content in Latin script on this device (issue #546). Kept per
    * device next to the text size: both are about how this screen reads.
@@ -131,6 +147,7 @@ const DEFAULTS: DevicePrefs = {
   tocPinned: false,
   uiScale: DEFAULT_TEXT_SCALE,
   noteTextScale: DEFAULT_TEXT_SCALE,
+  noteLineSpacing: DEFAULT_TEXT_SCALE,
   noteFont: DEFAULT_NOTE_FONT,
   noteArabicFont: DEFAULT_NOTE_FONT,
   startPage: 'all',
@@ -156,10 +173,15 @@ function isNoteTextScale(value: unknown): value is NoteTextScale {
   return (NOTE_TEXT_SCALE_STEPS as readonly unknown[]).includes(value);
 }
 
+function isNoteLineSpacing(value: unknown): value is NoteLineSpacing {
+  return (NOTE_LINE_SPACING_STEPS as readonly unknown[]).includes(value);
+}
+
 /**
  * The next step up (`direction` 1) or down (-1) from `current`, clamped to the
  * ends of `steps`. A value that is not a step (should not happen - `load()`
- * validates) snaps to the default.
+ * validates) snaps to the default, which is not always the first step (the
+ * line spacing has one below it).
  */
 export function stepTextScale<T extends number>(
   steps: readonly T[],
@@ -167,7 +189,9 @@ export function stepTextScale<T extends number>(
   direction: 1 | -1
 ): T {
   const index = steps.indexOf(current);
-  if (index === -1) return steps[0];
+  if (index === -1) {
+    return steps.find((step) => step === DEFAULT_TEXT_SCALE) ?? steps[0];
+  }
   const next = Math.min(steps.length - 1, Math.max(0, index + direction));
   return steps[next];
 }
@@ -194,6 +218,34 @@ export function applyTextSize(
   }
 }
 
+/**
+ * The multiplier for the line heights of note content: the line spacing chosen
+ * on this device times what the chosen note fonts ask for (Amiri and Noto
+ * Naskh Arabic need more room than Latin text, see `leading` in note-font.ts).
+ */
+export function noteLeading(
+  prefs: Pick<DevicePrefs, 'noteLineSpacing' | 'noteFont' | 'noteArabicFont'>
+): number {
+  return Math.round((prefs.noteLineSpacing / 100) * noteFontLeading(prefs) * 1000) / 1000;
+}
+
+/**
+ * Writes {@link noteLeading} onto `<html>` as `--rn-note-leading`, read by the
+ * editor, the rendered preview, the note title and the version diff. At 1 the
+ * variable is removed and every consumer keeps its own line height.
+ */
+export function applyNoteLeading(
+  root: HTMLElement,
+  prefs: Pick<DevicePrefs, 'noteLineSpacing' | 'noteFont' | 'noteArabicFont'>
+): void {
+  const leading = noteLeading(prefs);
+  if (leading === 1) {
+    root.style.removeProperty('--rn-note-leading');
+  } else {
+    root.style.setProperty('--rn-note-leading', String(leading));
+  }
+}
+
 function load(): DevicePrefs {
   if (!browser) return { ...DEFAULTS };
   try {
@@ -214,6 +266,9 @@ function load(): DevicePrefs {
       noteTextScale: isNoteTextScale(parsed.noteTextScale)
         ? parsed.noteTextScale
         : DEFAULTS.noteTextScale,
+      noteLineSpacing: isNoteLineSpacing(parsed.noteLineSpacing)
+        ? parsed.noteLineSpacing
+        : DEFAULTS.noteLineSpacing,
       noteFont: isNoteFont(parsed.noteFont) ? parsed.noteFont : DEFAULTS.noteFont,
       noteArabicFont: isNoteArabicFont(parsed.noteArabicFont)
         ? parsed.noteArabicFont
@@ -294,6 +349,15 @@ function createDevicePrefsStore() {
     });
   }
 
+  function setNoteLineSpacing(spacing: NoteLineSpacing): void {
+    if (!isNoteLineSpacing(spacing)) return;
+    store.update((prev) => {
+      const next = { ...prev, noteLineSpacing: spacing };
+      persist(next);
+      return next;
+    });
+  }
+
   function setNoteFont(font: NoteFont): void {
     if (!isNoteFont(font)) return;
     store.update((prev) => {
@@ -361,13 +425,17 @@ function createDevicePrefsStore() {
     });
   }
 
-  /** Both text sizes back to the default (Appearance > Reset to defaults). */
+  /**
+   * Both text sizes and the line spacing back to the default (Appearance >
+   * Reset to defaults).
+   */
   function resetTextSize(): void {
     store.update((prev) => {
       const next = {
         ...prev,
         uiScale: DEFAULTS.uiScale,
-        noteTextScale: DEFAULTS.noteTextScale
+        noteTextScale: DEFAULTS.noteTextScale,
+        noteLineSpacing: DEFAULTS.noteLineSpacing
       };
       persist(next);
       return next;
@@ -382,6 +450,7 @@ function createDevicePrefsStore() {
     setTocPinned,
     setUiScale,
     setNoteTextScale,
+    setNoteLineSpacing,
     resetTextSize,
     setNoteFont,
     setNoteArabicFont,
@@ -408,6 +477,9 @@ export const uiScale = derived(devicePrefs, ($p) => $p.uiScale);
 
 /** Note text size on this device, in percent of the interface scale. */
 export const noteTextScale = derived(devicePrefs, ($p) => $p.noteTextScale);
+
+/** Line spacing of note content on this device, in percent (see {@link NOTE_LINE_SPACING_STEPS}). */
+export const noteLineSpacing = derived(devicePrefs, ($p) => $p.noteLineSpacing);
 
 /** What the app opens on, on this device (see {@link START_PAGES}). */
 export const startPage = derived(devicePrefs, ($p) => $p.startPage);

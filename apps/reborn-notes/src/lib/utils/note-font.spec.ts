@@ -5,6 +5,7 @@ import {
   applyNoteFont,
   chosenNoteFontFamilies,
   loadNoteFonts,
+  noteFontLeading,
   noteFontStack,
   type NoteFontPrefs
 } from './note-font';
@@ -58,6 +59,20 @@ describe('noteFontStack', () => {
     expect(noteFontStack({ ...DEFAULTS, noteArabicFont: 'tajawal' }, 'system-ui, sans-serif')).toBe(
       "'Tajawal', system-ui, sans-serif"
     );
+  });
+});
+
+describe('noteFontLeading (#546)', () => {
+  it('is 1 at the default and for fonts that fit the usual line height', () => {
+    expect(noteFontLeading(DEFAULTS)).toBe(1);
+    expect(noteFontLeading({ noteFont: 'source-serif-4', noteArabicFont: 'tajawal' })).toBe(1);
+  });
+
+  it('gives the Naskh fonts more room, whatever the Latin font is', () => {
+    expect(noteFontLeading({ ...DEFAULTS, noteArabicFont: 'amiri' })).toBe(1.2);
+    expect(
+      noteFontLeading({ noteFont: 'source-serif-4', noteArabicFont: 'noto-naskh-arabic' })
+    ).toBe(1.1);
   });
 });
 

@@ -57,9 +57,10 @@
 <style>
   /* Was text-xs + leading-5 (12px / 20px). Note content, so it follows the
      note text size of this device (--rn-note-scale on <html>); the line height
-     is a ratio so lines never overlap at a larger size. */
+     is a ratio so lines never overlap at a larger size, times the line spacing
+     of this device (--rn-note-leading, issue #546). */
   .diff-text {
     font-size: calc(0.75rem * var(--rn-note-scale, 1));
-    line-height: 1.6667;
+    line-height: calc(1.6667 * var(--rn-note-leading, 1));
   }
 </style>

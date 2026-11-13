@@ -33,7 +33,12 @@ import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { applyBlockDirection, createMarkdownListRenderers } from '$lib/utils/markdown-to-html';
 import { markExtraBlankLines } from '$lib/utils/blank-lines';
-import { loadNoteFonts, noteFontStack, type NoteFontPrefs } from '$lib/utils/note-font';
+import {
+  loadNoteFonts,
+  noteFontLeading,
+  noteFontStack,
+  type NoteFontPrefs
+} from '$lib/utils/note-font';
 import { detectTextDirection } from '@reborn/i18n';
 import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
@@ -281,13 +286,13 @@ const PDF_STYLES = `
   background: #fff;
   font-family: ${PDF_FONT_STACK};
   font-size: 11pt;
-  line-height: 1.55;
+  line-height: calc(1.55 * var(--reborn-pdf-leading, 1));
   word-spacing: normal;
   letter-spacing: normal;
 }
 .reborn-pdf-root h1, .reborn-pdf-root h2, .reborn-pdf-root h3,
 .reborn-pdf-root h4, .reborn-pdf-root h5, .reborn-pdf-root h6 {
-  line-height: 1.25;
+  line-height: calc(1.25 * var(--reborn-pdf-leading, 1));
   font-weight: 600;
   overflow-wrap: break-word;
 }
@@ -415,7 +420,7 @@ const PDF_STYLES = `
  * browser lays the text out and shapes it (Arabic joining included) before
  * the raster is taken, so the chosen font ends up in the PDF as drawn - there
  * is nothing to embed. Left out or at the default, the PDF keeps its system
- * font stack.
+ * font stack. A font that needs more room between lines gets it here too.
  */
 export async function exportNoteAsPdf(
   note: NoteDecrypted,
@@ -461,6 +466,12 @@ export async function exportNoteAsPdf(
   ].join(';');
   const fontStack = options.noteFont ? noteFontStack(options.noteFont, PDF_FONT_STACK) : null;
   if (fontStack) container.style.fontFamily = fontStack;
+  // The extra line height the chosen font asks for (vocalized Arabic in Amiri
+  // or Noto Naskh Arabic would otherwise run into the next line). Only that:
+  // the line spacing the user set for the screen stays out of the PDF, like
+  // the text size, so an export looks the same from every device.
+  const fontLeading = options.noteFont ? noteFontLeading(options.noteFont) : 1;
+  if (fontLeading !== 1) container.style.setProperty('--reborn-pdf-leading', String(fontLeading));
 
   const styleEl = document.createElement('style');
   styleEl.textContent = PDF_STYLES;
