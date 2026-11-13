@@ -26,11 +26,23 @@
  * depends on the other end: seen from inside the run it is the run's edge,
  * seen from anywhere else it is the edge of the line.
  *
+ * The drawn selection (`drawSelection`, see `own-selection.ts`) trips over the
+ * same spot. With line wrapping on, CodeMirror finds the part of the text that
+ * is on one row of the screen by asking `view.posAtCoords` at the left and the
+ * right edge of the editor. For `عربي hello` the left edge answers "start of
+ * the word", so the row seemed to end in front of the word, and a selected
+ * word at the end of an Arabic line was not painted at all: it looked as if it
+ * could not be selected, unless the selection ran on into the next line. The
+ * same happens to a Latin word that starts a row of a wrapped paragraph, and
+ * to a Latin phrase that wraps. So this view's `posAtCoords` gives the edge of
+ * the row for such a spot (see `lineEdgePosAtCoords`).
+ *
  * Everything here goes through the public API (`posAndSideAtCoords`,
  * `bidiSpans`, `textDirectionAt`, a transaction filter). Nothing of the
- * editor's own mouse handling is replaced. Should CodeMirror start returning
- * the line edge for that spot itself, the filter no longer finds anything to
- * move and can be deleted.
+ * editor's own mouse handling is replaced; the one thing that is, is the
+ * result of `posAtCoords` on a visual line edge. Should CodeMirror start
+ * returning the line edge for that spot itself, neither the filter nor the
+ * replaced method find anything to move, and both can be deleted.
  */
 import { EditorSelection, EditorState, type Extension, type Line } from '@codemirror/state';
 import { Direction, EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
@@ -146,6 +158,130 @@ function edgeSpot(
   return 0;
 }
 
+/**
+ * The part of a line that is on one row of the screen (a wrapped line has
+ * several), as offsets into the line.
+ */
+export interface Row {
+  readonly from: number;
+  readonly to: number;
+}
+
+/**
+ * Like `visualLineEdge`, for one row of a wrapped line: `1` when the spot is
+ * the visual end of the row while the row goes on past it in the text, `-1`
+ * for the visual start, `0` otherwise.
+ *
+ * Reordering happens inside a row, so the runs of a row are the runs of the
+ * line cut down to it, in the same order. A row can start with a run against
+ * the line (`three عربي` at the start of a row: the right edge is the END of
+ * "three") and can end in the first part of one that wraps.
+ */
+export function visualRowEdge(
+  runs: readonly BidiRun[],
+  rtl: boolean,
+  row: Row,
+  index: number,
+  assoc: number
+): -1 | 0 | 1 {
+  const inRow = runs
+    .map((run) => ({
+      from: Math.max(run.from, row.from),
+      to: Math.min(run.to, row.to),
+      level: run.level
+    }))
+    .filter((run) => run.to > run.from);
+  return visualLineEdge(inRow, rtl, index, assoc);
+}
+
+/**
+ * The part of an editor view `lineEdgePosAtCoords` works on (the view itself;
+ * narrowed so a test can stand in for the layout).
+ */
+export type LineEdgeView = Pick<
+  EditorView,
+  'state' | 'lineWrapping' | 'posAndSideAtCoords' | 'coordsAtPos' | 'bidiSpans' | 'textDirectionAt'
+>;
+
+/**
+ * The row of `line` the spot is on, or `null` when the layout cannot tell.
+ *
+ * Rows follow the text: every position of an earlier row comes before every
+ * position of a later one, whatever the order on screen. So the two ends of a
+ * row are found by bisection on where a character sits vertically.
+ */
+function rowAround(view: LineEdgeView, line: Line, spot: PointerSpot): Row | null {
+  if (!view.lineWrapping) return { from: 0, to: line.length };
+  const here = view.coordsAtPos(spot.pos, spot.assoc < 0 ? -1 : 1);
+  if (!here) return null;
+  const middle = (here.top + here.bottom) / 2;
+  // Whether the character on `side` of `pos` is above (-1), on (0) or below
+  // (1) the row of the spot.
+  const rowOf = (pos: number, side: -1 | 1): -1 | 0 | 1 | null => {
+    const rect = view.coordsAtPos(pos, side);
+    if (!rect) return null;
+    return rect.bottom <= middle ? -1 : rect.top >= middle ? 1 : 0;
+  };
+
+  // The first position whose next character is not above the row.
+  let low = line.from;
+  let high = spot.pos;
+  while (low < high) {
+    const mid = (low + high) >> 1;
+    const where = rowOf(mid, 1);
+    if (where === null) return null;
+    if (where < 0) low = mid + 1;
+    else high = mid;
+  }
+  const from = low;
+
+  // The last position whose previous character is not below the row.
+  low = spot.pos;
+  high = line.to;
+  while (low < high) {
+    const mid = (low + high + 1) >> 1;
+    const where = rowOf(mid, -1);
+    if (where === null) return null;
+    if (where > 0) high = mid - 1;
+    else low = mid;
+  }
+  return { from: from - line.from, to: low - line.from };
+}
+
+/**
+ * A stand-in for `view.posAtCoords` that gives the edge of the row (in the
+ * text: where the row starts or ends) for a point on or past its visual edge,
+ * where the stock method gives the outer end of the run that lies there. Any
+ * other point is passed through.
+ *
+ * `drawSelection` measures a row with `posAtCoords` at both edges of the
+ * editor. With the stock answer, a run against the line at the edge of a row
+ * falls outside that row and is not painted when selected.
+ */
+export function lineEdgePosAtCoords(view: LineEdgeView): EditorView['posAtCoords'] {
+  function posAtCoords(coords: { x: number; y: number }, precise = true): number | null {
+    const found = precise
+      ? view.posAndSideAtCoords(coords)
+      : view.posAndSideAtCoords(coords, false);
+    if (!found) return null;
+    const line = view.state.doc.lineAt(found.pos);
+    const runs: readonly BidiRun[] = view.bidiSpans(line);
+    const rtl = view.textDirectionAt(line.from) === Direction.RTL;
+    const index = found.pos - line.from;
+    // Only the outer end of a run against the line, seen from inside the run,
+    // can stand for a row edge. Everything else needs no measuring.
+    const onRunEnd = runs.some(
+      (run) => facesOut(run, rtl) && index === (found.assoc > 0 ? run.from : run.to)
+    );
+    if (!onRunEnd) return found.pos;
+
+    const row = rowAround(view, line, found) ?? { from: 0, to: line.length };
+    const edge = visualRowEdge(runs, rtl, row, index, found.assoc);
+    return line.from + (edge > 0 ? row.to : edge < 0 ? row.from : index);
+  }
+  return posAtCoords as EditorView['posAtCoords'];
+}
+
 function snapToLineEdges(view: EditorView, selection: EditorSelection): EditorSelection {
   let snapped = false;
   const ranges = selection.ranges.map((range) => {
@@ -232,7 +368,8 @@ function pointerRange(
  * Moves a cursor set by the user (click, Home/End, vertical motion) from the
  * visual edge of a mixed-direction line to the logical edge of that line, and
  * does the same for the ends of a selection made with the mouse (drag from a
- * single click, shift-click).
+ * single click, shift-click). Also makes the view's `posAtCoords` answer with
+ * the line edge there, which the drawn selection depends on.
  *
  * The filter needs the view for the line's direction and bidi runs, so the
  * returned extension belongs to one editor: call this once per `EditorState`.
@@ -278,6 +415,10 @@ export function lineEdgeCursor(): Extension {
     }
     editorView.dom.addEventListener('mousedown', onDown, true);
 
+    // An own property, so it is found before the method of the class; the
+    // editor's internals call `view.posAtCoords(...)` like anyone else.
+    editorView.posAtCoords = lineEdgePosAtCoords(editorView);
+
     return {
       update(update: ViewUpdate) {
         if (drag && update.docChanged) {
@@ -287,6 +428,7 @@ export function lineEdgeCursor(): Extension {
       destroy() {
         onUp();
         editorView.dom.removeEventListener('mousedown', onDown, true);
+        Reflect.deleteProperty(editorView, 'posAtCoords');
         view = null;
       }
     };

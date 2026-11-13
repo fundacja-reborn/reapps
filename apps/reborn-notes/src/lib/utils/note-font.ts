@@ -157,6 +157,29 @@ export function noteFontLeading(prefs: NoteFontPrefs): number {
 }
 
 /**
+ * The line height the `leading` values are set against: the editor's
+ * (`.cm-content` in NoteEditor.svelte). Times a font's leading it is that
+ * font's own line height at its adjusted size.
+ */
+export const NOTE_FONT_LEADING_BASE = 1.7;
+
+/**
+ * The line height body text needs in the chosen fonts, as a multiple of the
+ * font size; `null` when no chosen font asks for extra room.
+ *
+ * For a surface that sets body text tighter than the editor does (the PDF
+ * export): its own line height times the leading stays below the font's own
+ * line height, and the marks of vocalized Arabic run into the next line
+ * (issue #546, reported for Amiri in PDF). Such a surface takes the larger of
+ * its own line height and this one.
+ */
+export function noteFontLineHeight(prefs: NoteFontPrefs): number | null {
+  const leading = noteFontLeading(prefs);
+  if (leading === 1) return null;
+  return Math.round(NOTE_FONT_LEADING_BASE * leading * 1000) / 1000;
+}
+
+/**
  * Writes the note font onto `<html>` as `--rn-note-font`. At the default the
  * variable is removed, so every consumer falls back to its own font.
  */
