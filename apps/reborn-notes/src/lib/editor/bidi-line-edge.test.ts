@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { visualLineEdge, type BidiRun } from './bidi-line-edge';
+import { selectionEndOnLineEdge, visualLineEdge, type BidiRun } from './bidi-line-edge';
 
 const runs = (...spans: [from: number, to: number, level: number][]): BidiRun[] =>
   spans.map(([from, to, level]) => ({ from, to, level }));
@@ -93,5 +93,139 @@ describe('visualLineEdge', () => {
     expect(visualLineEdge([], true, 0, 1)).toBe(0);
     expect(visualLineEdge(runs([0, 0, 1]), true, 0, 1)).toBe(0);
     expect(visualLineEdge(runs([0, 0, 0]), true, 0, 1)).toBe(0);
+  });
+});
+
+describe('selectionEndOnLineEdge', () => {
+  // "مرحبا بالعالم 12345", 19 characters. On screen, left to right: the number
+  // 1-5, then the Arabic text. Offset 14 is two spots: the left edge of the
+  // line (side 1, on the "1") and the gap between number and text (side -1).
+  // Offset 19 is that gap seen from the number (side -1, after the "5").
+  const line = runs([0, 14, 1], [14, 19, 2]);
+  const end = (index: number, assoc: number, other: [number, number] | null) =>
+    selectionEndOnLineEdge(
+      line,
+      true,
+      19,
+      { index, assoc },
+      other && { index: other[0], assoc: other[1] }
+    );
+  const lineEnd = { index: 19, assoc: 1 };
+
+  it('takes a drag from the Arabic text to the left edge to the end of the line (#539)', () => {
+    expect(end(14, 1, [2, 1])).toEqual(lineEnd);
+    expect(end(14, 1, [0, 1])).toEqual(lineEnd);
+  });
+
+  it('does the same when the other end is in another line', () => {
+    expect(end(14, 1, null)).toEqual(lineEnd);
+  });
+
+  it('keeps the edge of the number when the other end is inside the number', () => {
+    // From between "3" and "4" to the left edge: "123" is what lies between.
+    expect(end(14, 1, [17, -1])).toBeNull();
+    expect(end(14, 1, [15, 1])).toBeNull();
+  });
+
+  it('selects the whole number between its two edges, in both directions', () => {
+    // From the gap, on the number's side, to the left edge: 14..19 as given.
+    expect(end(14, 1, [19, -1])).toBeNull();
+    // From the gap, on the text's side: the editor sees both ends at 14 and
+    // would select nothing.
+    expect(end(14, 1, [14, -1])).toEqual(lineEnd);
+    // And the anchor on the left edge with the head in the gap.
+    expect(end(14, -1, [14, 1])).toBeNull();
+  });
+
+  it('collapses to the end of the line when both ends are on the left edge', () => {
+    expect(end(14, 1, [14, 1])).toEqual(lineEnd);
+    // The anchor a click left there earlier (shift-click on the same spot).
+    expect(end(14, 1, [19, 1])).toEqual(lineEnd);
+  });
+
+  it('moves an anchor left on the line end back into the number for a head inside it', () => {
+    // Click on the left edge (cursor at 19, facing out), then shift-click
+    // between "2" and "3": "12" lies between the two spots.
+    expect(end(19, 1, [16, -1])).toEqual({ index: 14, assoc: 1 });
+    expect(end(19, 1, [5, 1])).toBeNull();
+  });
+
+  it('treats an anchor of unknown side on the line end as the inner end of the number', () => {
+    expect(end(14, 1, [19, 0])).toBeNull();
+  });
+
+  it('leaves ends that are not on a visual edge alone', () => {
+    expect(end(14, -1, [2, 1])).toBeNull();
+    expect(end(19, -1, [2, 1])).toBeNull();
+    expect(end(16, 1, [2, 1])).toBeNull();
+    expect(end(0, 1, [16, 1])).toBeNull();
+    expect(end(14, 0, [2, 1])).toBeNull();
+  });
+
+  it('handles the start edge of a right-to-left line that starts with a number', () => {
+    // "12345 مرحبا": the number is at the right edge, the line's visual start.
+    const starts = runs([0, 5, 2], [5, 11, 1]);
+    const at = (index: number, assoc: number, other: [number, number] | null) =>
+      selectionEndOnLineEdge(
+        starts,
+        true,
+        11,
+        { index, assoc },
+        other && { index: other[0], assoc: other[1] }
+      );
+    expect(at(5, -1, [8, 1])).toEqual({ index: 0, assoc: -1 });
+    expect(at(5, -1, null)).toEqual({ index: 0, assoc: -1 });
+    expect(at(5, -1, [2, 1])).toBeNull();
+    expect(at(5, -1, [0, 1])).toBeNull();
+    expect(at(5, -1, [5, 1])).toEqual({ index: 0, assoc: -1 });
+  });
+
+  it('goes by visual order in a left-to-right line', () => {
+    // "hello مرحبا 123" shows as "hello 123 مرحبا": the Arabic word (6-12) is
+    // at the right edge, and the end of the line (15) is after "123".
+    const mixed = runs([0, 6, 0], [12, 15, 2], [6, 12, 1]);
+    const at = (index: number, assoc: number, other: [number, number] | null) =>
+      selectionEndOnLineEdge(
+        mixed,
+        false,
+        15,
+        { index, assoc },
+        other && { index: other[0], assoc: other[1] }
+      );
+    expect(at(6, 1, [2, 1])).toEqual({ index: 15, assoc: 1 });
+    expect(at(6, 1, [13, 1])).toEqual({ index: 15, assoc: 1 });
+    expect(at(6, 1, [9, 1])).toBeNull();
+    expect(at(6, 1, [12, -1])).toBeNull();
+  });
+
+  it('selects a line that is one run against its direction from edge to edge', () => {
+    // "12345" as a right-to-left line: the left edge is 0, the right edge 5.
+    const digits = runs([0, 5, 2]);
+    const at = (index: number, assoc: number, other: [number, number] | null) =>
+      selectionEndOnLineEdge(
+        digits,
+        true,
+        5,
+        { index, assoc },
+        other && { index: other[0], assoc: other[1] }
+      );
+    expect(at(0, 1, [5, -1])).toBeNull();
+    expect(at(5, -1, [0, 1])).toBeNull();
+    expect(at(0, 1, [3, 1])).toBeNull();
+    expect(at(0, 1, null)).toEqual({ index: 5, assoc: 1 });
+  });
+
+  it('has nothing to do in a single-direction line', () => {
+    const plain = runs([0, 5, 0]);
+    for (const [index, assoc] of [
+      [0, 1],
+      [5, -1],
+      [5, 1],
+      [0, -1]
+    ]) {
+      expect(
+        selectionEndOnLineEdge(plain, false, 5, { index, assoc }, { index: 2, assoc: 1 })
+      ).toBeNull();
+    }
   });
 });
