@@ -1,5 +1,35 @@
 [
   {
+    "version": "0.52.0",
+    "date": "2026-11-13",
+    "items": [
+      {
+        "id": "0.52.0-archive",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.52.0-note-font",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.52.0-blank-lines",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.51.0",
     "date": "2026-11-12",
     "items": [
