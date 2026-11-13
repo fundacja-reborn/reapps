@@ -20,6 +20,10 @@
  *
  * The selection is painted BELOW the text, so a background on editable text
  * must be translucent or it hides the selection (see `--rn-code-bg`).
+ *
+ * Needs `bidiLines()` in the same editor: with line wrapping on, CodeMirror
+ * does not paint a selected Latin word (or number) at the edge of a row of
+ * Arabic text unless `bidi-line-edge.ts` corrects where that row ends (#539).
  */
 import { EditorView, drawSelection } from '@codemirror/view';
 import { Prec, type Extension } from '@codemirror/state';
