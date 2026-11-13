@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { NOTE_FONT_BASE_STACK, NOTE_FONT_FAMILIES } from './note-font';
+import { NOTE_FONT_BASE_STACK, NOTE_FONT_FAMILIES, NOTE_FONT_LEADING_BASE } from './note-font';
 
 /**
  * The note fonts (issue #546) live in four places that only work together:
@@ -95,6 +95,16 @@ describe('note fonts: registry, stylesheet and files agree', () => {
     for (const { family, sizeAdjust = 100, leading = 1 } of Object.values(NOTE_FONT_FAMILIES)) {
       expect(leading >= sizeAdjust / 100, family).toBe(true);
     }
+  });
+
+  // The leading of a font is set against the editor's line height, and the
+  // PDF export takes the product as the line height the font needs (#546).
+  // Changing the editor's line height without the constant would silently
+  // move the PDF away from what the fonts were measured for.
+  it("keeps NOTE_FONT_LEADING_BASE equal to the editor's line height", () => {
+    const editor = readFileSync(resolve(APP, 'src/lib/components/NoteEditor.svelte'), 'utf-8');
+    const rule = /\.cm-host \.cm-content\)\s*\{[^}]*?line-height:\s*([^;]+);/.exec(editor)?.[1];
+    expect(rule).toBe(`calc(${NOTE_FONT_LEADING_BASE} * var(--rn-note-leading, 1))`);
   });
 
   it('carries the license text next to each font (OFL-1.1 condition)', () => {

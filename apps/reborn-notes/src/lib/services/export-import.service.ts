@@ -36,6 +36,7 @@ import { markExtraBlankLines } from '$lib/utils/blank-lines';
 import {
   loadNoteFonts,
   noteFontLeading,
+  noteFontLineHeight,
   noteFontStack,
   type NoteFontPrefs
 } from '$lib/utils/note-font';
@@ -279,6 +280,23 @@ export async function exportMarkdownString(title: string, content: string): Prom
 const PDF_FONT_STACK =
   "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
+/** Line height of body text in the PDF, as a multiple of its font size. */
+const PDF_BODY_LINE_HEIGHT = 1.55;
+
+/**
+ * Line height of body text in the PDF for the note font of this device.
+ *
+ * The PDF sets text tighter than the editor (1.55 against 1.7), and a font's
+ * leading is set against the editor. Multiplying 1.55 by the leading left
+ * Amiri at 1.86 where vocalized text needs 2.0, so its marks ran into the
+ * next line (issue #546). A font that asks for room now gets the line height
+ * it has in the editor; every other font keeps the PDF's own.
+ */
+export function pdfBodyLineHeight(noteFont?: NoteFontPrefs): number {
+  const needed = noteFont ? noteFontLineHeight(noteFont) : null;
+  return Math.max(PDF_BODY_LINE_HEIGHT, needed ?? 0);
+}
+
 const PDF_STYLES = `
 .reborn-pdf-root, .reborn-pdf-root * { box-sizing: border-box; }
 .reborn-pdf-root {
@@ -286,7 +304,7 @@ const PDF_STYLES = `
   background: #fff;
   font-family: ${PDF_FONT_STACK};
   font-size: 11pt;
-  line-height: calc(1.55 * var(--reborn-pdf-leading, 1));
+  line-height: var(--reborn-pdf-line-height, ${PDF_BODY_LINE_HEIGHT});
   word-spacing: normal;
   letter-spacing: normal;
 }
@@ -470,6 +488,12 @@ export async function exportNoteAsPdf(
   // or Noto Naskh Arabic would otherwise run into the next line). Only that:
   // the line spacing the user set for the screen stays out of the PDF, like
   // the text size, so an export looks the same from every device.
+  // Body text gets the font's full line height (see pdfBodyLineHeight);
+  // headings keep their own, times the font's leading, as on screen.
+  const bodyLineHeight = pdfBodyLineHeight(options.noteFont);
+  if (bodyLineHeight !== PDF_BODY_LINE_HEIGHT) {
+    container.style.setProperty('--reborn-pdf-line-height', String(bodyLineHeight));
+  }
   const fontLeading = options.noteFont ? noteFontLeading(options.noteFont) : 1;
   if (fontLeading !== 1) container.style.setProperty('--reborn-pdf-leading', String(fontLeading));
 

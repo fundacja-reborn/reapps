@@ -2,10 +2,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   NOTE_FONT_BASE_STACK,
+  NOTE_FONT_LEADING_BASE,
   applyNoteFont,
   chosenNoteFontFamilies,
   loadNoteFonts,
   noteFontLeading,
+  noteFontLineHeight,
   noteFontStack,
   type NoteFontPrefs
 } from './note-font';
@@ -73,6 +75,23 @@ describe('noteFontLeading (#546)', () => {
     expect(
       noteFontLeading({ noteFont: 'source-serif-4', noteArabicFont: 'noto-naskh-arabic' })
     ).toBe(1.1);
+  });
+});
+
+describe('noteFontLineHeight (#546)', () => {
+  it('asks for nothing at the default and for fonts that fit the usual line height', () => {
+    expect(noteFontLineHeight(DEFAULTS)).toBeNull();
+    expect(
+      noteFontLineHeight({ noteFont: 'source-serif-4', noteArabicFont: 'tajawal' })
+    ).toBeNull();
+  });
+
+  it("is the editor's line height times the leading of the Naskh font", () => {
+    expect(NOTE_FONT_LEADING_BASE).toBe(1.7);
+    expect(noteFontLineHeight({ ...DEFAULTS, noteArabicFont: 'amiri' })).toBe(2.04);
+    expect(
+      noteFontLineHeight({ noteFont: 'source-serif-4', noteArabicFont: 'noto-naskh-arabic' })
+    ).toBe(1.87);
   });
 });
 
