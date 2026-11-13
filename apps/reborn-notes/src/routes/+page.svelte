@@ -1162,8 +1162,9 @@
     );
   }
 
-  /** "New note in this folder" from the folder tree (right-click menu / kebab):
-   *  navigate into the folder so the note shows in context, then create it there. */
+  /** "New note in this folder" from a folder's menu (tree row, or subfolder
+   *  row in the main panel): navigate into the folder so the note shows in
+   *  context, then create it there. */
   async function handleNewNoteInFolder(folderId: string) {
     if (!$editorModeIntroSeen) {
       editorModeIntroOpen = true;
@@ -1252,6 +1253,17 @@
     if (!activeFolderId) return;
     expandedIds.add(activeFolderId);
     openNewFolderDraft(activeFolderId);
+  }
+
+  /** "New subfolder" from a subfolder row's menu in the main panel (#560): the
+   *  new folder would not show in the list the menu was opened from, so open
+   *  that subfolder first and start the draft there. Opening a folder awaits
+   *  the editor flush, so this is past the tap: a phone may need one more tap
+   *  on the field for its keyboard (#511). */
+  async function handleNewSubfolderInFolder(folderId: string) {
+    await handleFolderSelect(folderId);
+    await tick();
+    openNewFolderDraft(folderId);
   }
 
   // ── Folder drag: drop-to-root zone (#401) ────────────────────────
@@ -2649,6 +2661,8 @@
                 isPeriodic={isPeriodicSection(activeSection)}
                 subfolders={activeFolderSubfolders}
                 onSubfolderSelect={handleFolderSelect}
+                onSubfolderNewNote={handleNewNoteInFolder}
+                onSubfolderNewSubfolder={handleNewSubfolderInFolder}
                 {saveScope}
                 onsavedsearchselect={handleSavedSearchSelect}
                 autoFocusSearch={activeSection === 'search'}
@@ -3286,6 +3300,8 @@
             layoutToggle
             subfolders={activeFolderSubfolders}
             onSubfolderSelect={handleFolderSelect}
+            onSubfolderNewNote={handleNewNoteInFolder}
+            onSubfolderNewSubfolder={handleNewSubfolderInFolder}
             {saveScope}
             onsavedsearchselect={handleSavedSearchSelect}
             onback={activeFolderParentId ? handleFolderBack : undefined}

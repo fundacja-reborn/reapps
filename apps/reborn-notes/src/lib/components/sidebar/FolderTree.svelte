@@ -4,10 +4,9 @@
   // Shared across all FolderTree instances (including recursive children).
   // Set to a folder ID to immediately enter rename mode for that folder.
   export const pendingRenameId = writable<string | null>(null);
-  // Folder currently being moved via the "Move to…" picker. Module-level so a row
-  // action at any depth can request it while only the ROOT instance hosts the
-  // single picker sheet.
-  export const movingFolder = writable<FolderWithChildren | null>(null);
+  // Context key under which the root instance shares the tree's one dialog
+  // host (FolderActionDialogs) with its nested instances.
+  const DIALOGS_CONTEXT = Symbol('folder-tree-dialogs');
   // While a folder row is dragged: ids of that folder and its whole subtree.
   // dataTransfer payloads are unreadable during dragover, so rows consult this
   // store instead to refuse drops that would move a folder into itself.
@@ -37,26 +36,9 @@
 </script>
 
 <script lang="ts">
+  import { getContext, setContext } from 'svelte';
+  import { ChevronRight, Folder, FolderSync, MoreHorizontal, RefreshCw } from '@lucide/svelte';
   import {
-    ArrowDown,
-    ArrowUp,
-    ChevronRight,
-    CornerUpRight,
-    Folder,
-    FolderSync,
-    FolderInput,
-    MoreHorizontal,
-    FolderPlus,
-    FilePlus,
-    Palette,
-    Pencil,
-    RefreshCw,
-    Trash2,
-    Upload,
-    Archive
-  } from '@lucide/svelte';
-  import {
-    Button,
     ContextMenu,
     ContextMenuContent,
     ContextMenuItem,
@@ -67,19 +49,17 @@
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
     toastStore
   } from '@reborn/ui';
   import { flip } from 'svelte/animate';
   import FolderGlyph from '$lib/components/folders/FolderGlyph.svelte';
-  import FolderAppearanceDialog from '$lib/components/folders/FolderAppearanceDialog.svelte';
+  import FolderActionDialogs from '$lib/components/folders/FolderActionDialogs.svelte';
+  import RowActionSheet from '$lib/components/shared/RowActionSheet.svelte';
   import { appearanceTextClass } from '$lib/utils/appearance-colors';
   import { isFolderIcon } from '$lib/utils/folder-icons';
+  import { buildFolderActions } from '$lib/utils/folder-actions';
   import type { RowAction } from '$lib/utils/row-action';
-  import { syncedFolderConfigs, runFolderSync } from '$lib/services/folder-sync.service';
+  import { syncedFolderConfigs } from '$lib/services/folder-sync.service';
   // FolderWithChildren comes from the module script import above (module and
   // instance scripts compile into one module - re-importing here would clash).
   import type { SavedSearchDecrypted } from '@reborn/types';
@@ -97,14 +77,6 @@
     findParentAndSiblings,
     getDescendantFolderIds
   } from '$lib/utils/folder-helpers';
-  import type {
-    DeleteFolderMode,
-    DeleteFolderProgressCallback
-  } from '$lib/services/folder.service';
-  import DeleteFolderDialog from './DeleteFolderDialog.svelte';
-  import { archiveFolder } from '$lib/services/archive-actions';
-  import ImportMarkdownToFolderDialog from '$lib/components/import/ImportMarkdownToFolderDialog.svelte';
-  import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
   import SavedSearchRow from '$lib/components/notes/SavedSearchRow.svelte';
   import FolderTree from './FolderTree.svelte';
 
@@ -185,8 +157,7 @@
     pendingNewFolderDraft.set(null);
   }
 
-  function startRename(folder: FolderWithChildren, e?: Event) {
-    e?.stopPropagation();
+  function startRename(folder: FolderWithChildren) {
     editingId = folder.id;
     editingName = folder.name;
     // Focus after DOM update
@@ -222,50 +193,41 @@
     return folder.decrypt_failed ? $t('folders.undecryptable') : folder.name;
   }
 
-  // ── Context menu (kebab) ────────────────────────────────────────
+  // ── Folder menu (kebab / right-click / phone sheet) ─────────────
   const isMobileQuery = useIsMobile();
+  // Desktop: the row whose kebab or right-click menu is open.
   let menuOpenId = $state<string | null>(null);
+  // Phone: the action sheet and the row it was opened for. The id outlives
+  // the sheet, so its content stays put through the closing animation.
   let folderActionSheetOpen = $state(false);
-  let deleteFolderDialogOpen = $state(false);
-  let folderToDelete = $state<FolderWithChildren | null>(null);
-  let appearanceDialogOpen = $state(false);
-  let appearanceFolder = $state<FolderWithChildren | null>(null);
-
-  const activeMenuFolder = $derived(
-    menuOpenId ? (nodes.find((n) => n.id === menuOpenId) ?? null) : null
+  let sheetFolderId = $state<string | null>(null);
+  const sheetFolder = $derived(
+    sheetFolderId ? (nodes.find((n) => n.id === sheetFolderId) ?? null) : null
   );
 
-  // ── Folder sync ─────────────────────────────────────────────────
-  // The sync link is by folder id, so the marker follows renames and needs no
-  // top-level/name gate (ids are unique). The mobile sheet reads it for the
-  // active folder; the desktop dropdown reads its per-row `syncConfigId`.
-  const activeMenuSyncId = $derived(
-    activeMenuFolder ? ($syncedFolderConfigs.get(activeMenuFolder.id) ?? null) : null
-  );
-  let syncingId = $state<string | null>(null);
+  // Dialogs behind the menu items (color and icon, "Move to…", delete,
+  // import) and the actions without UI (archive, sync now). One host for the
+  // whole tree: the root instance mounts it and shares it through context,
+  // because a nested instance can unmount mid-action (moving or deleting its
+  // last row removes the instance that listed it), and the root never does.
+  type DialogsRef = { readonly current: FolderActionDialogs | undefined };
+  let ownDialogs = $state<FolderActionDialogs | undefined>(undefined);
+  // svelte-ignore state_referenced_locally (depth is fixed per instance)
+  const dialogsRef: DialogsRef =
+    depth === 0
+      ? {
+          get current() {
+            return ownDialogs;
+          }
+        }
+      : getContext<DialogsRef>(DIALOGS_CONTEXT);
+  // svelte-ignore state_referenced_locally (depth is fixed per instance)
+  if (depth === 0) setContext(DIALOGS_CONTEXT, dialogsRef);
 
-  async function handleSyncNow(configId: string, e?: Event) {
-    e?.stopPropagation();
-    menuOpenId = null;
-    folderActionSheetOpen = false;
-    if (syncingId) return;
-    syncingId = configId;
-    try {
-      await runFolderSync('manual', configId);
-      toastStore.success($t('folders.sync_done'));
-    } finally {
-      syncingId = null;
-    }
-  }
-
-  function toggleMenu(id: string, e: Event) {
+  function openActionSheet(id: string, e: Event) {
     e.stopPropagation();
-    if (isMobileQuery.value) {
-      menuOpenId = id;
-      folderActionSheetOpen = true;
-    } else {
-      menuOpenId = menuOpenId === id ? null : id;
-    }
+    sheetFolderId = id;
+    folderActionSheetOpen = true;
   }
 
   // Keep menuOpenId in sync with the desktop kebab / right-click menu open state
@@ -276,271 +238,50 @@
     menuOpenId = isOpen ? id : menuOpenId === id ? null : menuOpenId;
   }
 
-  function handleCreateNote(folderId: string, e?: Event) {
-    e?.stopPropagation();
-    menuOpenId = null;
-    folderActionSheetOpen = false;
-    onnewnote?.(folderId);
-  }
-
-  async function handleCreateSub(parentId: string, e?: Event) {
-    e?.stopPropagation();
-    menuOpenId = null;
-    folderActionSheetOpen = false;
+  async function handleCreateSub(parentId: string) {
     expandedIds.add(parentId);
     const id = await foldersStore.create($t('folders.new_folder'), parentId);
     pendingRenameId.set(id);
   }
 
-  function handleStartRename(folder: FolderWithChildren, e?: Event) {
-    e?.stopPropagation();
-    menuOpenId = null;
-    folderActionSheetOpen = false;
-    startRename(folder);
-  }
-
-  function handleAppearance(folder: FolderWithChildren, e?: Event) {
-    e?.stopPropagation();
-    menuOpenId = null;
-    folderActionSheetOpen = false;
-    appearanceFolder = folder;
-    appearanceDialogOpen = true;
-  }
-
-  function handleDelete(folder: FolderWithChildren, e?: Event) {
-    e?.stopPropagation();
-    menuOpenId = null;
-    folderActionSheetOpen = false;
-    folderToDelete = folder;
-    deleteFolderDialogOpen = true;
-  }
-
-  // Archive the folder with everything in it. No confirmation: nothing is
-  // deleted and the toast carries an Undo. If the folder being browsed is the
-  // one archived, the page moves off it (see +page.svelte).
-  function handleArchive(folder: FolderWithChildren, e?: Event) {
-    e?.stopPropagation();
-    menuOpenId = null;
-    folderActionSheetOpen = false;
-    void archiveFolder(folder);
-  }
-
-  async function confirmDeleteFolder(
-    mode: DeleteFolderMode,
-    onProgress: DeleteFolderProgressCallback
-  ) {
-    if (folderToDelete) {
-      await foldersStore.remove(folderToDelete.id, mode, onProgress);
-      // Cascade soft-deletes notes - refresh the visible note list so they
-      // disappear from the current folder/All-notes view immediately.
-      if (mode === 'cascade') notesStore.refresh();
-    }
-    folderToDelete = null;
-  }
-
-  // ── Move folder ("Move to…" picker) ─────────────────────────────
-  // Any instance can request a move; the picker itself is hosted once, by the
-  // root instance (see markup below), listening on the module-level store.
-  function handleRequestMove(folder: FolderWithChildren, e?: Event) {
-    e?.stopPropagation();
-    menuOpenId = null;
-    folderActionSheetOpen = false;
-    movingFolder.set(folder);
-  }
-
-  // A backdrop dismiss closes the sheet via bind:open without the picker's
-  // onclose, which can leave a stale request in the module store - clear it on
-  // (re)mount so the sheet doesn't resurrect after switching sections/views.
-  // svelte-ignore state_referenced_locally (depth is fixed per instance)
-  if (depth === 0) movingFolder.set(null);
-
-  let moveSheetOpen = $state(false);
-  $effect(() => {
-    if (depth === 0 && $movingFolder) moveSheetOpen = true;
-  });
-
-  async function handleMoveTo(folderId: string | null) {
-    const folder = $movingFolder;
-    if (!folder) return;
-    try {
-      await foldersStore.move(folder.id, folderId);
-      // Reveal the new location, mirroring the drag&drop path.
-      if (folderId) expandedIds.add(folderId);
-    } catch {
-      // Folder or its target deleted remotely mid-pick - tell the user and
-      // refresh so the stale row disappears (audit 013 O56).
-      toastStore.error($t('folders.move_failed_missing'));
-      foldersStore.refresh();
-    } finally {
-      movingFolder.set(null);
-    }
-  }
-
-  // ── Import .md files / folder tree to folder ────────────────────
-  let importDialogOpen = $state(false);
-  let importMode = $state<'files' | 'folder'>('files');
-  let importTargetFolder = $state<FolderWithChildren | null>(null);
-  let importPendingFiles = $state<File[] | null>(null);
-  let importFileInputEl = $state<HTMLInputElement | null>(null);
-  let importFolderInputEl = $state<HTMLInputElement | null>(null);
-
-  function handleImportHere(folder: FolderWithChildren, e?: Event) {
-    e?.stopPropagation();
-    menuOpenId = null;
-    folderActionSheetOpen = false;
-    importMode = 'files';
-    importTargetFolder = folder;
-    // Reset value so re-selecting the same files re-fires `change`.
-    if (importFileInputEl) importFileInputEl.value = '';
-    importFileInputEl?.click();
-  }
-
-  function handleImportFolderHere(folder: FolderWithChildren, e?: Event) {
-    e?.stopPropagation();
-    menuOpenId = null;
-    folderActionSheetOpen = false;
-    importMode = 'folder';
-    importTargetFolder = folder;
-    if (importFolderInputEl) importFolderInputEl.value = '';
-    importFolderInputEl?.click();
-  }
-
-  // Shared by both hidden inputs - `importMode` was set by the trigger.
-  function handleImportFilesSelected(e: Event) {
-    const input = e.target as HTMLInputElement;
-    const files = Array.from(input.files ?? []);
-    input.value = '';
-    if (files.length === 0 || !importTargetFolder) {
-      importTargetFolder = null;
-      return;
-    }
-    importPendingFiles = files;
-    importDialogOpen = true;
-  }
-
-  $effect(() => {
-    // When dialog closes, drop the file/folder context (parent of source of truth).
-    if (!importDialogOpen) {
-      importPendingFiles = null;
-      importTargetFolder = null;
-    }
-  });
-
-  // Single source of truth for a folder's actions - fed to both the desktop kebab
-  // (DropdownMenu) and the desktop right-click ContextMenu, so they can't drift.
+  // A folder's menu. The list itself (items, order, what an undecryptable
+  // folder offers) is `buildFolderActions`, shared with the subfolder rows of
+  // the main panel and the header of the open folder; this only says what
+  // each item does in the tree. The result feeds the desktop kebab, the
+  // right-click menu and the phone sheet alike.
   function folderActions(folder: FolderWithChildren, syncConfigId: string | null): RowAction[] {
-    if (folder.decrypt_failed) {
-      return [
-        {
-          key: 'rename',
-          icon: Pencil,
-          label: $t('folders.rename'),
-          run: (e) => startRename(folder, e)
-        },
-        {
-          key: 'delete',
-          icon: Trash2,
-          label: $t('folders.delete_folder'),
-          run: (e) => handleDelete(folder, e),
-          destructive: true,
-          separatorBefore: true
-        }
-      ];
-    }
-    const actions: RowAction[] = [];
-    if (syncConfigId) {
-      actions.push({
-        key: 'sync',
-        icon: RefreshCw,
-        label: $t('folders.sync_now'),
-        run: (e) => handleSyncNow(syncConfigId, e)
-      });
-    }
-    if (onnewnote) {
-      actions.push({
-        key: 'new-note',
-        icon: FilePlus,
-        label: $t('folders.new_note_here'),
-        run: (e) => handleCreateNote(folder.id, e),
-        separatorBefore: !!syncConfigId
-      });
-    }
-    actions.push(
-      {
-        key: 'new-subfolder',
-        icon: FolderPlus,
-        label: $t('folders.new_subfolder'),
-        run: (e) => handleCreateSub(folder.id, e),
-        separatorBefore: !!syncConfigId && !onnewnote
-      },
-      {
-        key: 'rename',
-        icon: Pencil,
-        label: $t('folders.rename'),
-        run: (e) => startRename(folder, e)
-      },
-      {
-        key: 'appearance',
-        icon: Palette,
-        label: $t('folders.appearance.action'),
-        run: (e) => handleAppearance(folder, e)
-      },
-      {
-        key: 'move',
-        icon: CornerUpRight,
-        label: $t('folders.move_to'),
-        run: (e) => handleRequestMove(folder, e)
-      }
-    );
+    // Every item closes the menus first, then acts.
+    const act = (fn: () => void) => (e?: Event) => {
+      e?.stopPropagation();
+      menuOpenId = null;
+      folderActionSheetOpen = false;
+      fn();
+    };
     // Custom sort only: neighbour swaps, hidden at the group's edges.
-    if ($folderSortMode === 'custom') {
-      const idx = nodes.findIndex((n) => n.id === folder.id);
-      if (idx > 0) {
-        actions.push({
-          key: 'move-up',
-          icon: ArrowUp,
-          label: $t('folders.move_up'),
-          run: (e) => handleNudge(folder, -1, e)
-        });
-      }
-      if (idx !== -1 && idx < nodes.length - 1) {
-        actions.push({
-          key: 'move-down',
-          icon: ArrowDown,
-          label: $t('folders.move_down'),
-          run: (e) => handleNudge(folder, 1, e)
-        });
-      }
-    }
-    actions.push(
+    const idx = $folderSortMode === 'custom' ? nodes.findIndex((n) => n.id === folder.id) : -1;
+    return buildFolderActions(
+      folder,
       {
-        key: 'import-md',
-        icon: Upload,
-        label: $t('folders.import_markdown.action'),
-        run: (e) => handleImportHere(folder, e)
+        syncNow: act(() => {
+          if (syncConfigId) void dialogsRef.current?.syncNow(syncConfigId);
+        }),
+        newNote: onnewnote ? act(() => onnewnote?.(folder.id)) : undefined,
+        newSubfolder: act(() => void handleCreateSub(folder.id)),
+        rename: act(() => startRename(folder)),
+        appearance: act(() => dialogsRef.current?.openAppearance(folder)),
+        move: act(() => dialogsRef.current?.requestMove(folder)),
+        moveUp: idx > 0 ? act(() => void handleNudge(folder, -1)) : undefined,
+        moveDown:
+          idx !== -1 && idx < nodes.length - 1 ? act(() => void handleNudge(folder, 1)) : undefined,
+        importFiles: act(() => dialogsRef.current?.importFiles(folder)),
+        importFolder: act(() => dialogsRef.current?.importFolder(folder)),
+        // If the folder being browsed is the one archived, the page moves off
+        // it (see +page.svelte).
+        archive: act(() => void dialogsRef.current?.archive(folder)),
+        remove: act(() => dialogsRef.current?.requestDelete(folder))
       },
-      {
-        key: 'import-folder',
-        icon: FolderInput,
-        label: $t('folders.import_folder.action'),
-        run: (e) => handleImportFolderHere(folder, e)
-      },
-      {
-        key: 'archive',
-        icon: Archive,
-        label: $t('archive.folder_action'),
-        run: (e) => handleArchive(folder, e),
-        separatorBefore: true
-      },
-      {
-        key: 'delete',
-        icon: Trash2,
-        label: $t('folders.delete_folder'),
-        run: (e) => handleDelete(folder, e),
-        destructive: true
-      }
+      { t: $t, syncConfigId }
     );
-    return actions;
   }
 
   // ── Drag & Drop (desktop, HTML5) ────────────────────────────────
@@ -707,10 +448,7 @@
   // ── Move up / move down (custom sort only) ──────────────────────
   // Keyboard- and touch-reachable counterpart of drag-between-rows: swap the
   // folder with its neighbour in this sibling group.
-  async function handleNudge(folder: FolderWithChildren, dir: -1 | 1, e?: Event) {
-    e?.stopPropagation();
-    menuOpenId = null;
-    folderActionSheetOpen = false;
+  async function handleNudge(folder: FolderWithChildren, dir: -1 | 1) {
     const ids = nodes.map((n) => n.id);
     const i = ids.indexOf(folder.id);
     const j = i + dir;
@@ -1092,7 +830,7 @@
                 cursor-pointer transition-colors
                 {isActive
                 ? 'list-row-active text-accent-foreground font-medium'
-                : menuOpenId === folder.id
+                : menuOpenId === folder.id || (folderActionSheetOpen && sheetFolderId === folder.id)
                   ? 'bg-accent/50 text-foreground'
                   : 'text-foreground hover:bg-accent/50'}
                 {dropZone === 'into' ? 'ring-1 ring-primary bg-accent/30' : ''}
@@ -1187,7 +925,7 @@
                 {#if isMobileQuery.value}
                   <button
                     type="button"
-                    onclick={(e) => toggleMenu(folder.id, e)}
+                    onclick={(e) => openActionSheet(folder.id, e)}
                     class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                     aria-label={$t('folders.folder_actions')}
                     tabindex="-1"
@@ -1285,188 +1023,25 @@
   {/each}
 </ul>
 
-<!-- Mobile: Folder action Sheet -->
-<Sheet bind:open={folderActionSheetOpen}>
-  <SheetContent side="bottom" class="h-auto">
-    <SheetHeader>
-      <SheetTitle>{activeMenuFolder ? folderDisplayName(activeMenuFolder) : ''}</SheetTitle>
-    </SheetHeader>
-    <div class="mt-4 space-y-1">
-      {#if activeMenuFolder?.decrypt_failed}
-        <p class="px-3 pb-2 text-sm text-muted-foreground">
-          {$t('folders.undecryptable_hint')}
-        </p>
-        <Button
-          variant="ghost"
-          class="w-full justify-start"
-          onclick={() => activeMenuFolder && handleStartRename(activeMenuFolder)}
-        >
-          <Pencil class="me-2 h-4 w-4" />
-          {$t('folders.rename')}
-        </Button>
-        <Button
-          variant="ghost"
-          class="w-full justify-start text-destructive hover:text-destructive"
-          onclick={() => activeMenuFolder && handleDelete(activeMenuFolder)}
-        >
-          <Trash2 class="me-2 h-4 w-4" />
-          {$t('folders.delete_folder')}
-        </Button>
-      {:else}
-      {#if activeMenuSyncId}
-        <Button
-          variant="ghost"
-          class="w-full justify-start"
-          onclick={() => activeMenuSyncId && handleSyncNow(activeMenuSyncId)}
-        >
-          <RefreshCw class="me-2 h-4 w-4" />
-          {$t('folders.sync_now')}
-        </Button>
-      {/if}
-      <Button
-        variant="ghost"
-        class="w-full justify-start"
-        onclick={() => menuOpenId && handleCreateSub(menuOpenId)}
-      >
-        <FolderPlus class="me-2 h-4 w-4" />
-        {$t('folders.new_subfolder')}
-      </Button>
-      <Button
-        variant="ghost"
-        class="w-full justify-start"
-        onclick={() => activeMenuFolder && handleStartRename(activeMenuFolder)}
-      >
-        <Pencil class="me-2 h-4 w-4" />
-        {$t('folders.rename')}
-      </Button>
-      <Button
-        variant="ghost"
-        class="w-full justify-start"
-        onclick={() => activeMenuFolder && handleAppearance(activeMenuFolder)}
-      >
-        <Palette class="me-2 h-4 w-4" />
-        {$t('folders.appearance.action')}
-      </Button>
-      <Button
-        variant="ghost"
-        class="w-full justify-start"
-        onclick={() => activeMenuFolder && handleRequestMove(activeMenuFolder)}
-      >
-        <CornerUpRight class="me-2 h-4 w-4" />
-        {$t('folders.move_to')}
-      </Button>
-      {#if $folderSortMode === 'custom' && activeMenuFolder}
-        {@const menuIdx = nodes.findIndex((n) => n.id === activeMenuFolder.id)}
-        {#if menuIdx > 0}
-          <Button
-            variant="ghost"
-            class="w-full justify-start"
-            onclick={() => activeMenuFolder && handleNudge(activeMenuFolder, -1)}
-          >
-            <ArrowUp class="me-2 h-4 w-4" />
-            {$t('folders.move_up')}
-          </Button>
-        {/if}
-        {#if menuIdx !== -1 && menuIdx < nodes.length - 1}
-          <Button
-            variant="ghost"
-            class="w-full justify-start"
-            onclick={() => activeMenuFolder && handleNudge(activeMenuFolder, 1)}
-          >
-            <ArrowDown class="me-2 h-4 w-4" />
-            {$t('folders.move_down')}
-          </Button>
-        {/if}
-      {/if}
-      <Button
-        variant="ghost"
-        class="w-full justify-start"
-        onclick={() => activeMenuFolder && handleImportHere(activeMenuFolder)}
-      >
-        <Upload class="me-2 h-4 w-4" />
-        {$t('folders.import_markdown.action')}
-      </Button>
-      <Button
-        variant="ghost"
-        class="w-full justify-start"
-        onclick={() => activeMenuFolder && handleImportFolderHere(activeMenuFolder)}
-      >
-        <FolderInput class="me-2 h-4 w-4" />
-        {$t('folders.import_folder.action')}
-      </Button>
-      <Button
-        variant="ghost"
-        class="w-full justify-start"
-        onclick={() => activeMenuFolder && handleArchive(activeMenuFolder)}
-      >
-        <Archive class="me-2 h-4 w-4" />
-        {$t('archive.folder_action')}
-      </Button>
-      <Button
-        variant="ghost"
-        class="w-full justify-start text-destructive hover:text-destructive"
-        onclick={() => activeMenuFolder && handleDelete(activeMenuFolder)}
-      >
-        <Trash2 class="me-2 h-4 w-4" />
-        {$t('folders.delete_folder')}
-      </Button>
-      {/if}
-    </div>
-  </SheetContent>
-</Sheet>
-
-<FolderAppearanceDialog bind:open={appearanceDialogOpen} folder={appearanceFolder} />
-
-<DeleteFolderDialog
-  bind:open={deleteFolderDialogOpen}
-  folderId={folderToDelete?.id ?? null}
-  folderName={folderToDelete ? folderDisplayName(folderToDelete) : ''}
-  onConfirm={confirmDeleteFolder}
-/>
-
-<!-- "Move to…" picker - one instance for the whole tree, hosted at the root.
-     Sheet variant on all breakpoints: recursive tree rows inside a scroll
-     container are no anchor for the desktop popup (precedent: saved-search
-     park + bulk move). -->
-{#if depth === 0}
-  <MoveToFolderMenu
-    selection={$movingFolder
-      ? {
-          kind: 'single',
-          id: $movingFolder.id,
-          currentFolderId: $movingFolder.parent_id ?? null
-        }
-      : null}
-    bind:open={moveSheetOpen}
-    forceSheet
-    mode="move-folder"
-    onmove={(folderId) => handleMoveTo(folderId)}
-    onclose={() => movingFolder.set(null)}
+<!-- Phone: folder action sheet - the same list as the desktop menus. -->
+{#if isMobileQuery.value}
+  <RowActionSheet
+    bind:open={folderActionSheetOpen}
+    title={sheetFolder ? folderDisplayName(sheetFolder) : ''}
+    hint={sheetFolder?.decrypt_failed ? $t('folders.undecryptable_hint') : undefined}
+    actions={sheetFolder
+      ? folderActions(sheetFolder, $syncedFolderConfigs.get(sheetFolder.id) ?? null)
+      : []}
   />
 {/if}
 
-<!-- Hidden file inputs for "Import .md here" / "Import folder here" - triggered from the menu -->
-<input
-  bind:this={importFileInputEl}
-  type="file"
-  accept=".md,text/markdown"
-  multiple
-  class="hidden"
-  onchange={handleImportFilesSelected}
-/>
-<input
-  bind:this={importFolderInputEl}
-  type="file"
-  webkitdirectory
-  multiple
-  class="hidden"
-  onchange={handleImportFilesSelected}
-/>
-
-<ImportMarkdownToFolderDialog
-  bind:open={importDialogOpen}
-  files={importPendingFiles}
-  folderId={importTargetFolder?.id ?? null}
-  folderName={importTargetFolder?.name ?? ''}
-  mode={importMode}
-/>
+<!-- Dialogs behind the menu items - one host for the whole tree (see the
+     script). A move reveals the new location, mirroring the drag&drop path. -->
+{#if depth === 0}
+  <FolderActionDialogs
+    bind:this={ownDialogs}
+    onAfterMove={(_folder, targetId) => {
+      if (targetId) expandedIds.add(targetId);
+    }}
+  />
+{/if}
