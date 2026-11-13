@@ -1,5 +1,59 @@
 [
   {
+    "version": "0.53.0",
+    "date": "2026-11-13",
+    "items": [
+      {
+        "id": "0.53.0-line-spacing",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.53.0-subfolder-menu",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.53.0-naskh-size",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.53.0-arabic-review",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.53.0-mixed-cursor",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.53.0-mixed-line-end-selection",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.52.0",
     "date": "2026-11-13",
     "items": [

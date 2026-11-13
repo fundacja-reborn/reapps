@@ -1,3 +1,15 @@
+## 0.53.0 (2026-11-13)
+
+### 🚀 Features
+
+- **notes:** folder menu on subfolder rows in the main panel ([#564](https://github.com/fundacja-reborn/reapps/pull/564), [#560](https://github.com/fundacja-reborn/reapps/issues/560))
+- **notes:** line spacing setting, larger Arabic note fonts ([#566](https://github.com/fundacja-reborn/reapps/pull/566), [#546](https://github.com/fundacja-reborn/reapps/issues/546))
+
+### 🩹 Fixes
+
+- **i18n:** apply the translator's review of Arabic batch 7 ([#567](https://github.com/fundacja-reborn/reapps/pull/567), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **notes:** cursor and mouse selection in mixed-direction text ([#565](https://github.com/fundacja-reborn/reapps/pull/565), [#539](https://github.com/fundacja-reborn/reapps/issues/539))
+
 ## 0.52.0 (2026-11-13)
 
 ### 🚀 Features
