@@ -182,7 +182,7 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(fn).toMatch(/!n\.is_archived/);
     // Archived pending notes get their own bucket and go through pushNoteDelete.
     expect(fn).toMatch(
-      /const\s+pendingArchivedNotes\s*=\s*fetchedPending\.filter\(isPendingArchived\)/
+      /const\s+pendingTrashedNotes\s*=\s*fetchedPending\.filter\(isPendingTrashed\)/
     );
     expect(fn).toMatch(/pushNoteDelete\s*\(\s*n\.id\s*\)/);
   });
@@ -193,7 +193,7 @@ describe('notes-sync - regression (offline data loss)', () => {
       'utf-8'
     );
     // Soft delete branch (the non-permanent one) must bump sync_version and
-    // return the new value, otherwise pull-side version gate skips the archive
+    // return the new value, otherwise pull-side version gate skips the trash
     // propagation on the second device.
     const deleteHandler = deleteSrc.slice(deleteSrc.indexOf('export const DELETE'));
     expect(deleteHandler).toMatch(/deleted_at:\s*new Date\(\)/);
@@ -218,7 +218,7 @@ describe('notes-sync - regression (offline data loss)', () => {
     // edit (silent data loss). The callbacks must leave sync_version at its
     // pre-delete value so the next pull adopts the server content via the
     // strict-greater gate. The SERVER still bumps its own version (asserted in the
-    // BUG-6 endpoint test above) so other devices pick up the archive state.
+    // BUG-6 endpoint test above) so other devices pick up the trash state.
     const src = readSource('./notes-sync.service.ts');
 
     const deleteBody = src.slice(
@@ -248,10 +248,10 @@ describe('notes-sync - regression (offline data loss)', () => {
       src.indexOf('// ── Push helpers')
     );
     // The equal-version branch must check !!localNote.is_archived against
-    // serverArchived and save when they differ.
-    expect(pullNotes).toMatch(/serverArchived\s*=\s*!!n\.deleted_at\s*\|\|\s*!!n\.is_archived/);
-    expect(pullNotes).toMatch(/!!localNote\.is_archived\s*!==\s*serverArchived/);
-    expect(pullNotes).toMatch(/is_archived:\s*serverArchived/);
+    // serverTrashed and save when they differ.
+    expect(pullNotes).toMatch(/serverTrashed\s*=\s*!!n\.deleted_at\s*\|\|\s*!!n\.is_archived/);
+    expect(pullNotes).toMatch(/!!localNote\.is_archived\s*!==\s*serverTrashed/);
+    expect(pullNotes).toMatch(/is_archived:\s*serverTrashed/);
   });
 
   // ── Multi-device reconciliation audit (2026-07-08) ──────────────────────
@@ -264,7 +264,7 @@ describe('notes-sync - regression (offline data loss)', () => {
     );
     // Skip-DELETE branch keys off sync_version (the on-server signal), NOT
     // sync_status: a pending note that IS on the server must still be soft-
-    // deleted, else the next pull's archive reconcile un-archives it out of trash.
+    // deleted, else the next pull's trash-state reconcile restores it out of trash.
     expect(fn).toMatch(/!existing\s*\|\|\s*\(existing\.sync_version\s*\?\?\s*0\)\s*===\s*0/);
     // A pending-on-server note PATCHes its unpushed content BEFORE the DELETE
     // (DELETE carries no ciphertext, so otherwise the unsynced edit is lost).
@@ -414,7 +414,7 @@ describe('notes-sync - regression (offline data loss)', () => {
     // Locate the archived-pending retry sweep and assert it gates on
     // sync_version (notes that never reached the server are skipped).
     const anchorIdx = fn.search(
-      /const\s+retriableArchivedNotes\s*=\s*pendingArchivedNotes\.filter/
+      /const\s+retriableTrashedNotes\s*=\s*pendingTrashedNotes\.filter/
     );
     expect(anchorIdx).toBeGreaterThan(-1);
     const loopBody = fn.slice(anchorIdx);
@@ -446,7 +446,7 @@ describe('notes-sync - regression (offline data loss)', () => {
     expect(fn).toMatch(/settleInBatches\(\s*pendingTags\b/);
     expect(fn).toMatch(/settleInBatches\(\s*pendingSavedSearches\b/);
     expect(fn).toMatch(/settleInBatches\(\s*pendingNotes\b/);
-    expect(fn).toMatch(/settleInBatches\(\s*retriableArchivedNotes\b/);
+    expect(fn).toMatch(/settleInBatches\(\s*retriableTrashedNotes\b/);
 
     // No bare Promise.allSettled CALL left in the function body - those WERE
     // the unbounded bursts. The bounded one now lives inside settleInBatches.
@@ -535,11 +535,11 @@ describe('notes-sync - regression (offline data loss)', () => {
       src.indexOf('/** Retry a function with exponential backoff')
     );
     const anchorIdx = fn.search(
-      /const\s+retriableArchivedNotes\s*=\s*pendingArchivedNotes\.filter/
+      /const\s+retriableTrashedNotes\s*=\s*pendingTrashedNotes\.filter/
     );
     expect(anchorIdx).toBeGreaterThan(-1);
     const sweep = fn.slice(anchorIdx);
-    expect(sweep).toMatch(/await\s+settleInBatches\(\s*retriableArchivedNotes\b/);
+    expect(sweep).toMatch(/await\s+settleInBatches\(\s*retriableTrashedNotes\b/);
     // The trailing join: a no-op chained on the same note entity, awaited.
     expect(sweep).toMatch(
       /await\s+serializePerEntity\(\s*'note',\s*n\.id,\s*\(\)\s*=>\s*Promise\.resolve\(\)\s*\)/

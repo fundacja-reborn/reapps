@@ -35,7 +35,7 @@
   }
 
   /**
-   * Resolve ids → titles via NoteIndex. Trashed (archived) notes stay hidden;
+   * Resolve ids → titles via NoteIndex. Trashed notes stay hidden;
    * ids with no index entry are surfaced as `missing` (broken link) rather than
    * silently dropped. Missing rows sort last, the rest by title.
    */
@@ -43,7 +43,7 @@
     const out: LinkItem[] = [];
     for (const id of ids) {
       const entry = noteIndex.get(id);
-      if (entry?.isArchived) continue;
+      if (entry?.isTrashed) continue;
       if (!entry) {
         out.push({ id, title: $t('linked_notes.missing'), missing: true });
       } else {

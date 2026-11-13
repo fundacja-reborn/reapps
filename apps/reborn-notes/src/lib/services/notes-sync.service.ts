@@ -929,21 +929,21 @@ async function writeNotesPage(
 
       // Skip if server version is not newer than local (sync_version conflict detection)
       const serverVersion = n.sync_version ?? 1;
-      const serverArchived = !!n.deleted_at || !!n.is_archived;
+      const serverTrashed = !!n.deleted_at || !!n.is_archived;
       if (localNote && serverVersion <= (localNote.sync_version ?? 0)) {
-        // Archive-state reconciliation (rule 11.e defense in depth). Even when
-        // versions match, if the server says archived and we say active (or
+        // Trash-state reconciliation (rule 11.e defense in depth). Even when
+        // versions match, if the server says trashed and we say active (or
         // vice versa), trust the server. This guards against:
         //   1. Old server deploys that didn't bump sync_version on soft-delete/restore.
         //   2. Rows where the server bumped but the client's pushNoteDelete/Restore
         //      response was dropped before we could mirror the new version locally.
         // We only adjust is_archived here - content fields stay as they are so
         // local edits aren't clobbered.
-        if (localNote.sync_status === 'synced' && !!localNote.is_archived !== serverArchived) {
+        if (localNote.sync_status === 'synced' && !!localNote.is_archived !== serverTrashed) {
           logger.info(
-            `Reconciling archive state for note ${n.id}: local=${localNote.is_archived} server=${serverArchived}`
+            `Reconciling trash state for note ${n.id}: local=${localNote.is_archived} server=${serverTrashed}`
           );
-          notesToWrite.push({ ...localNote, is_archived: serverArchived });
+          notesToWrite.push({ ...localNote, is_archived: serverTrashed });
         }
 
         // Reconciliation: see pullFolders() for rationale. Covers notes whose edits
@@ -998,7 +998,7 @@ async function writeNotesPage(
         metadata_encrypted: n.metadata_encrypted,
         is_pinned,
         is_starred,
-        is_archived: serverArchived,
+        is_archived: serverTrashed,
         sync_version: serverVersion,
         sync_status: 'synced',
         created_at: n.created_at,
@@ -1158,10 +1158,10 @@ export async function pushPendingItems(): Promise<void> {
   const pendingFolders = allFolders.filter((f) => f.sync_status === 'pending');
   const pendingTags = allTags.filter((t) => t.sync_status === 'pending');
   const pendingSavedSearches = allSavedSearches.filter((s) => s.sync_status === 'pending');
-  // Partition notes by is_archived: non-archived pending rows are failed
-  // creates/updates and go through POST /api/notes; archived pending rows are
+  // Partition notes by is_archived (the trash flag): active pending rows are failed
+  // creates/updates and go through POST /api/notes; trashed pending rows are
   // failed soft-deletes and must be retried via pushNoteDelete. Before this
-  // split, a retried archived note would have been POSTed like a new note,
+  // split, a retried trashed note would have been POSTed like a new note,
   // resurrecting it on the server.
   //
   // is_ephemeral rows are excluded entirely: these are pristine untouched "new
@@ -1170,17 +1170,17 @@ export async function pushPendingItems(): Promise<void> {
   // first deliberate action clears the flag and POSTs the row.
   const isPendingActive = (n: { sync_status?: string; is_archived?: boolean; is_ephemeral?: boolean }) =>
     n.sync_status === 'pending' && !n.is_archived && !n.is_ephemeral;
-  const isPendingArchived = (n: { sync_status?: string; is_archived?: boolean; is_ephemeral?: boolean }) =>
+  const isPendingTrashed = (n: { sync_status?: string; is_archived?: boolean; is_ephemeral?: boolean }) =>
     n.sync_status === 'pending' && n.is_archived && !n.is_ephemeral;
   const pendingNoteMetas = allNoteMetas.filter(isPendingActive);
-  const pendingArchivedMetas = allNoteMetas.filter(isPendingArchived);
+  const pendingTrashedMetas = allNoteMetas.filter(isPendingTrashed);
 
   if (
     pendingFolders.length +
       pendingTags.length +
       pendingSavedSearches.length +
       pendingNoteMetas.length +
-      pendingArchivedMetas.length ===
+      pendingTrashedMetas.length ===
     0
   )
     return;
@@ -1199,7 +1199,7 @@ export async function pushPendingItems(): Promise<void> {
   if (!pendingRowsKeyChecked) {
     const readable = await isEncryptedDataReadable(
       [
-        (pendingNoteMetas[0] ?? pendingArchivedMetas[0])?.title_encrypted,
+        (pendingNoteMetas[0] ?? pendingTrashedMetas[0])?.title_encrypted,
         pendingFolders[0]?.name_encrypted,
         pendingTags[0]?.name_encrypted,
         pendingSavedSearches[0]?.name_encrypted
@@ -1238,13 +1238,13 @@ export async function pushPendingItems(): Promise<void> {
   // semantics the old single full-table snapshot had.
   const fetchedPending = await noteStore.getMany([
     ...pendingNoteMetas.map((n) => n.id),
-    ...pendingArchivedMetas.map((n) => n.id)
+    ...pendingTrashedMetas.map((n) => n.id)
   ]);
   const pendingNotes = fetchedPending.filter(isPendingActive);
-  const pendingArchivedNotes = fetchedPending.filter(isPendingArchived);
+  const pendingTrashedNotes = fetchedPending.filter(isPendingTrashed);
 
   logger.info(
-    `Pushing pending items: ${pendingFolders.length} folders, ${pendingTags.length} tags, ${pendingSavedSearches.length} saved searches, ${pendingNotes.length} notes, ${pendingArchivedNotes.length} archived notes`
+    `Pushing pending items: ${pendingFolders.length} folders, ${pendingTags.length} tags, ${pendingSavedSearches.length} saved searches, ${pendingNotes.length} notes, ${pendingTrashedNotes.length} archived notes`
   );
 
   // Push folders BFS-by-layer so parents land before children. Server's
@@ -1346,17 +1346,17 @@ export async function pushPendingItems(): Promise<void> {
   );
   if (newNoteSyncErrors > 0) notifyBatchSyncErrors(newNoteSyncErrors);
 
-  // Retry archived-pending notes. For notes that exist on the server
+  // Retry trashed-pending notes. For notes that exist on the server
   // (sync_version > 0) we PATCH the content first, then DELETE. Without the
-  // PATCH, a row whose last update push silently failed before being archived
+  // PATCH, a row whose last update push silently failed before being trashed
   // keeps a server-side ciphertext that diverges from local - pull's orphan-
   // edit reconciliation flags it forever (mark pending → push DELETE only →
   // pull still sees drift → mark pending …) and "1 pending" wedges in the UI.
   // pushNoteUpdate + pushNoteDelete are serialized per-entity, so DELETE waits
   // for PATCH to land. Notes with sync_version === 0 never reached the server,
   // so there is nothing to update or delete remotely - skip both.
-  const retriableArchivedNotes = pendingArchivedNotes.filter((n) => (n.sync_version ?? 0) > 0);
-  await settleInBatches(retriableArchivedNotes, async (n) => {
+  const retriableTrashedNotes = pendingTrashedNotes.filter((n) => (n.sync_version ?? 0) > 0);
+  await settleInBatches(retriableTrashedNotes, async (n) => {
     pushNoteUpdate(n.id, {
       title_encrypted: n.title_encrypted,
       content_encrypted: n.content_encrypted,
@@ -1365,7 +1365,7 @@ export async function pushPendingItems(): Promise<void> {
     });
     pushNoteDelete(n.id);
     // pushNoteUpdate/pushNoteDelete are fire-and-forget (void), so without a
-    // join the loop would enqueue every archived note at once and the cap would
+    // join the loop would enqueue every trashed note at once and the cap would
     // be a no-op. Await a trailing no-op on the same per-entity chain: it runs
     // FIFO after the queued PATCH+DELETE, so this task only settles once they
     // have - giving settleInBatches real backpressure (<= SYNC_BATCH_SIZE notes
@@ -1701,16 +1701,16 @@ export function pushNoteDelete(id: string, permanent = false): void {
         // Do NOT mirror the server's bumped sync_version onto the local row.
         // The soft-delete bumps the server version but carries no ciphertext, so
         // local CONTENT is not refreshed here. If a peer edited this note just
-        // before we archived it, copying the server version onto our stale
+        // before we trashed it, copying the server version onto our stale
         // content produces "server-version + differing ciphertext", which rule-10
         // reconcile misreads as an unpushed LOCAL edit and re-pushes over the
         // peer's newer content - silent data loss (audit 2026-07-08 finding A).
         // Leaving sync_version at its pre-delete value makes the next pull see
-        // server > local and adopt the server's current content + archive state
+        // server > local and adopt the server's current content + trash state
         // via the strict-greater gate, so the peer edit survives. Cost: one
         // benign re-adopt (the churn the mirror was added to avoid); a later
         // content push re-syncs the version anyway. The server still bumps its
-        // own version so OTHER devices pick up the archive state (rule 11.e).
+        // own version so OTHER devices pick up the trash state (rule 11.e).
         //
         // Intent-check: if the user restored the note while DELETE was in flight,
         // `current.is_archived` will be false. Marking 'synced' would strand the
@@ -1754,16 +1754,16 @@ export function pushNoteRestore(id: string): void {
         // the next pull adopt the server's current content via strict-greater,
         // instead of an equal-version reconcile re-pushing possibly-stale local
         // content over a peer edit (audit 2026-07-08 finding A). The server still
-        // bumps so other devices pick up the un-archive (rule 11.e).
+        // bumps so other devices pick up the restore (rule 11.e).
         //
-        // Intent-check: if the user re-archived the note while /restore was in
+        // Intent-check: if the user re-trashed the note while /restore was in
         // flight, chain a pushNoteDelete to catch up. See guideline 36 rule 11.b.
         const current = await noteStore.get(id);
         if (!current) return;
         if (!current.is_archived) {
           await noteStore.save({ ...current, sync_status: 'synced' });
         } else {
-          logger.debug(`Note ${id} re-archived during restore push - chaining delete`);
+          logger.debug(`Note ${id} re-trashed during restore push - chaining delete`);
           await noteStore.save({ ...current, sync_status: 'pending' });
           pushNoteDelete(id);
         }
@@ -2144,7 +2144,7 @@ export function pushNoteVersion(entry: NoteHistoryEntry): void {
       // note is not on the server. `sync_status` is NOT a reliable "on server"
       // signal - a never-synced note trashed via folder cascade is marked
       // 'synced' locally without ever being POSTed - so gate on sync_version > 0
-      // (the same signal the archived-note retry uses). Leave the row 'pending'
+      // (the same signal the trashed-note retry uses). Leave the row 'pending'
       // for pushPendingVersions(), which decides push/defer/drop once the note
       // lands (or is confirmed gone). Avoids three doomed 404 retries here.
       const parent = await noteStore.get(entry.note_id);

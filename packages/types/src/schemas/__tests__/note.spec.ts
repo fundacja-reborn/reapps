@@ -30,7 +30,7 @@ describe('Note Schemas', () => {
         content: 'This is test content',
         tags: ['work', 'important'],
         is_pinned: true,
-        is_archived: false,
+        is_trashed: false,
         created_at: '2024-01-01T00:00:00.000Z',
         updated_at: '2024-01-01T00:00:00.000Z'
       };

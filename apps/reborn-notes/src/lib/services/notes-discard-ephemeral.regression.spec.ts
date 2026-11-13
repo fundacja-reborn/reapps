@@ -115,10 +115,10 @@ describe('#349 the sync sweep never pushes an ephemeral note (zero-knowledge)', 
     expect(fn).toMatch(/const\s+pendingNotes\s*=\s*fetchedPending\.filter\(isPendingActive\)/);
     // Archived pending soft-deletes.
     expect(fn).toMatch(
-      /const\s+pendingArchivedMetas\s*=\s*allNoteMetas\.filter\(isPendingArchived\)/
+      /const\s+pendingTrashedMetas\s*=\s*allNoteMetas\.filter\(isPendingTrashed\)/
     );
     expect(fn).toMatch(
-      /const\s+pendingArchivedNotes\s*=\s*fetchedPending\.filter\(isPendingArchived\)/
+      /const\s+pendingTrashedNotes\s*=\s*fetchedPending\.filter\(isPendingTrashed\)/
     );
     // BOTH shared predicates must drop ephemeral rows - the server must never
     // learn the note existed until the user's first deliberate action promotes
@@ -194,9 +194,9 @@ describe('#349 discard leaves no trace', () => {
 
   it('deleteNote hard-deletes an ephemeral note instead of moving it to Trash', () => {
     const fn = sliceFn(noteServiceSrc(), 'export async function deleteNote');
-    // The ephemeral branch must come BEFORE the archive call and return early.
+    // The ephemeral branch must come BEFORE the move-to-trash call and return early.
     const branchIdx = fn.search(/if\s*\(\s*existing\?\.is_ephemeral\s*\)/);
-    const archiveIdx = fn.search(/noteOperations\.archive/);
+    const archiveIdx = fn.search(/noteOperations\.moveToTrash/);
     expect(branchIdx).toBeGreaterThan(-1);
     expect(archiveIdx).toBeGreaterThan(branchIdx);
     expect(fn).toMatch(/discardEphemeralNote\s*\(\s*id\s*\)/);

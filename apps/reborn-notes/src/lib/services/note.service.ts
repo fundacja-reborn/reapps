@@ -83,7 +83,7 @@ function toUndecryptable(enc: NoteStoredLocal): NoteDecrypted {
     content: '',
     is_pinned: enc.is_pinned,
     is_starred: enc.is_starred,
-    is_archived: enc.is_archived,
+    is_trashed: enc.is_archived,
     created_at: enc.created_at,
     updated_at: enc.updated_at,
     decrypt_failed: true
@@ -107,7 +107,7 @@ async function toDecrypted(enc: NoteStoredLocal): Promise<NoteDecrypted> {
     // Shadow indexes (available directly on NoteStoredLocal)
     is_pinned: enc.is_pinned,
     is_starred: enc.is_starred,
-    is_archived: enc.is_archived,
+    is_trashed: enc.is_archived,
     created_at: enc.created_at,
     updated_at: enc.updated_at
   };
@@ -122,7 +122,7 @@ export async function decryptTitleOnly(enc: NoteMetaLocal): Promise<{
   folderId: string | undefined;
   isPinned: boolean;
   isStarred: boolean;
-  isArchived: boolean;
+  isTrashed: boolean;
   createdAt: string;
   updatedAt: string;
   decryptFailed: boolean;
@@ -161,7 +161,7 @@ export async function decryptTitleOnly(enc: NoteMetaLocal): Promise<{
     // Shadow indexes (available directly on NoteStoredLocal)
     isPinned: enc.is_pinned ?? false,
     isStarred: enc.is_starred ?? false,
-    isArchived: enc.is_archived ?? false,
+    isTrashed: enc.is_archived ?? false,
     createdAt: enc.created_at,
     updatedAt: enc.updated_at,
     decryptFailed,
@@ -217,7 +217,7 @@ async function attachTagIds(notes: NoteDecrypted[]): Promise<NoteDecrypted[]> {
 
 // ── Public API ───────────────────────────────────────────────────
 
-/** All active (non-archived) notes, sorted by last updated. */
+/** All active (non-trashed) notes, sorted by last updated. */
 export async function getAllNotes(): Promise<NoteDecrypted[]> {
   const notes = await noteQueries.getActive();
   const decrypted = await Promise.all(notes.map(toDecrypted));
@@ -279,8 +279,8 @@ export async function isNoteOpenable(id: string): Promise<boolean> {
   return enc != null && !enc.is_archived && !enc.is_ephemeral;
 }
 
-/** Get a single note by ID, including archived (trash) notes. */
-export async function getNoteIncludingArchived(id: string): Promise<NoteDecrypted | null> {
+/** Get a single note by ID, including notes in the trash. */
+export async function getNoteIncludingTrashed(id: string): Promise<NoteDecrypted | null> {
   const enc = await noteStore.get(id);
   if (!enc) return null;
   return toDecrypted(enc);
@@ -368,7 +368,7 @@ export async function createNote(
     folderId: folderId,
     isPinned: false,
     isStarred: false,
-    isArchived: false,
+    isTrashed: false,
     createdAt,
     updatedAt,
     tagIds: []
@@ -441,7 +441,7 @@ export async function renameNote(id: string, title: string): Promise<void> {
   });
 }
 
-/** Soft-delete (archive) a note. */
+/** Soft-delete a note (move it to the trash). */
 export async function deleteNote(id: string): Promise<void> {
   const existing = await noteStore.get(id);
   // A pristine ephemeral note never reached the server and holds nothing the
@@ -451,11 +451,11 @@ export async function deleteNote(id: string): Promise<void> {
     await discardEphemeralNote(id);
     return;
   }
-  await noteOperations.archive(id);
+  await noteOperations.moveToTrash(id);
 
-  // Update cache: mark as archived
+  // Update cache: mark as trashed
   noteIndex.patch(id, {
-    isArchived: true,
+    isTrashed: true,
     updatedAt: new Date().toISOString()
   });
 
@@ -463,17 +463,17 @@ export async function deleteNote(id: string): Promise<void> {
   // Gate on sync_version === 0 (the authoritative "on the server yet?" signal
   // used across the sync layer), NOT sync_status: a note that IS on the server
   // but currently 'pending' (an unpushed edit) must still be soft-DELETE'd,
-  // otherwise the server keeps it active and the next pull's archive reconcile
-  // (rule 11.e) un-archives it straight back out of trash. See guideline 36.
+  // otherwise the server keeps it active and the next pull's trash-state reconcile
+  // (rule 11.e) restores it straight back out of trash. See guideline 36.
   if (!existing || (existing.sync_version ?? 0) === 0) {
-    const archived = await noteStore.get(id);
-    if (archived) await noteStore.save({ ...archived, sync_status: 'synced' });
+    const trashed = await noteStore.get(id);
+    if (trashed) await noteStore.save({ ...trashed, sync_status: 'synced' });
     return;
   }
 
   // Mark pending so pushPendingItems can retry if the push fails.
-  const archived = await noteStore.get(id);
-  if (archived) await noteStore.save({ ...archived, sync_status: 'pending' });
+  const trashed = await noteStore.get(id);
+  if (trashed) await noteStore.save({ ...trashed, sync_status: 'pending' });
 
   // If the note carried an unpushed edit (it was 'pending' before this delete),
   // PATCH the latest content BEFORE the soft-delete: DELETE sends no ciphertext,
@@ -678,22 +678,22 @@ export async function setNoteColor(id: string, color: string | undefined): Promi
 
 // ── Trash (Kosz) ─────────────────────────────────────────────────
 
-/** Get all archived (trashed) notes, newest first. */
-export async function getArchivedNotes(): Promise<NoteDecrypted[]> {
-  const notes = await noteQueries.getArchived();
+/** Get all trashed notes, newest first. */
+export async function getTrashedNotes(): Promise<NoteDecrypted[]> {
+  const notes = await noteQueries.getTrashed();
   const decrypted = await Promise.all(notes.map(toDecrypted));
   return decrypted.sort(
     (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
 }
 
-/** Restore a note from trash (unarchive). */
+/** Restore a note from trash. */
 export async function restoreNote(id: string): Promise<void> {
-  await noteOperations.unarchive(id);
+  await noteOperations.restoreFromTrash(id);
   const current = await noteStore.get(id);
   if (current) await noteStore.save({ ...current, sync_status: 'pending' });
-  // Update cache: mark as not archived
-  noteIndex.patch(id, { isArchived: false });
+  // Update cache: mark as not trashed
+  noteIndex.patch(id, { isTrashed: false });
   pushNoteRestore(id);
 }
 
@@ -762,17 +762,17 @@ export async function cleanEphemeralNotes(): Promise<number> {
 
 /** Permanently delete all notes in trash (and their history). */
 export async function emptyTrash(): Promise<number> {
-  const archived = await noteQueries.getArchived();
-  if (archived.length === 0) return 0;
+  const trashed = await noteQueries.getTrashed();
+  if (trashed.length === 0) return 0;
 
   // Delete version history for every trashed note
-  await Promise.all(archived.map((n) => noteHistoryOperations.deleteAllForNote(n.id)));
+  await Promise.all(trashed.map((n) => noteHistoryOperations.deleteAllForNote(n.id)));
 
   // Batch-delete from IndexedDB
-  await noteStore.deleteMany(archived.map((n) => n.id));
+  await noteStore.deleteMany(trashed.map((n) => n.id));
 
   // Remove from index cache
-  for (const n of archived) {
+  for (const n of trashed) {
     noteIndex.remove(n.id);
     noteLinkGraph.onNoteRemoved(n.id);
     noteNavHistory.remove(n.id);
@@ -780,23 +780,23 @@ export async function emptyTrash(): Promise<number> {
 
   // Push permanent deletes to server (fire-and-forget). Gate on sync_version > 0
   // (the authoritative "reached the server" signal, same as pushPendingItems'
-  // archived retry), NOT sync_status: a trashed note whose soft-delete is still
+  // trashed-note retry), NOT sync_status: a trashed note whose soft-delete is still
   // 'pending' IS on the server, and skipping its permanent DELETE would leave the
   // server row while the local row was just hard-deleted above - the next pull
   // then re-adopts it and the note resurrects in trash. A never-synced note
   // (sync_version === 0) has nothing to delete remotely. See guideline 36.
-  for (const n of archived) {
+  for (const n of trashed) {
     if ((n.sync_version ?? 0) > 0) {
       pushNoteDelete(n.id, true);
     }
   }
 
-  return archived.length;
+  return trashed.length;
 }
 
-/** Remove archived notes older than `daysOld` days permanently. */
+/** Remove trashed notes older than `daysOld` days permanently. */
 export async function cleanTrash(daysOld = 30): Promise<number> {
-  return noteOperations.cleanArchived(daysOld);
+  return noteOperations.cleanTrashed(daysOld);
 }
 
 // ── Version History ───────────────────────────────────────────────

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { SyncableEncryptedEntitySchema } from '../base';
 
 /**
- * Schema for PeriodicNoteMetadata — see entities/note.ts for semantics.
+ * Schema for PeriodicNoteMetadata - see entities/note.ts for semantics.
  * `anchor` is an ISO `YYYY-MM-DD` (10 chars, deterministic), locale-independent.
  */
 export const PeriodicNoteMetadataSchema = z.object({
@@ -11,7 +11,7 @@ export const PeriodicNoteMetadataSchema = z.object({
 });
 
 /**
- * Schema for NoteSensitiveMetadata — bundled into metadata_encrypted
+ * Schema for NoteSensitiveMetadata - bundled into metadata_encrypted
  */
 export const NoteSensitiveMetadataSchema = z.object({
   is_starred: z.boolean().optional(),
@@ -35,7 +35,7 @@ export const NoteDecryptedSchema = z.object({
   tags: z.array(z.string()).optional(),
   is_pinned: z.boolean().optional(),
   is_starred: z.boolean().optional(),
-  is_archived: z.boolean().optional(),
+  is_trashed: z.boolean().optional(),
   color: z.string().max(32).optional(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
@@ -43,7 +43,7 @@ export const NoteDecryptedSchema = z.object({
 });
 
 /**
- * Schema for encrypted note (wire format — no plaintext sensitive data)
+ * Schema for encrypted note (wire format - no plaintext sensitive data)
  */
 export const NoteEncryptedSchema = SyncableEncryptedEntitySchema.extend({
   // Server (Prisma) returns `null` for root-level notes; client code uses `undefined`.
@@ -52,11 +52,11 @@ export const NoteEncryptedSchema = SyncableEncryptedEntitySchema.extend({
   title_encrypted: z.string().min(1),
   content_encrypted: z.string(),
   metadata_encrypted: z.string().optional(), // Contains NoteSensitiveMetadata
-  is_archived: z.boolean().optional()        // Operational — stays plain
+  is_archived: z.boolean().optional()        // Trash flag (historical wire name) - operational, stays plain
 });
 
 /**
- * Schema for NoteStoredLocal — extends encrypted with local shadow indexes
+ * Schema for NoteStoredLocal - extends encrypted with local shadow indexes
  */
 export const NoteStoredLocalSchema = NoteEncryptedSchema.extend({
   is_pinned: z.boolean().optional(),

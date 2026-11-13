@@ -50,7 +50,11 @@ export interface NoteDecrypted {
   tags?: string[];
   is_pinned?: boolean;
   is_starred?: boolean;
-  is_archived?: boolean;
+  /**
+   * The note is in the trash. Mapped from the persisted `is_archived` flag
+   * (wire / database name, see NoteEncrypted) when a row is decrypted.
+   */
+  is_trashed?: boolean;
   /**
    * Color mark key from `metadata_encrypted` (see NoteSensitiveMetadata.color).
    * UI-only: held in the RAM note index, never stored in plaintext locally.
@@ -77,7 +81,13 @@ export interface NoteEncrypted extends SyncableEncryptedEntity {
   title_encrypted: string;
   content_encrypted: string;
   metadata_encrypted?: string; // Contains NoteSensitiveMetadata
-  is_archived?: boolean; // Operational (like deleted_at) - stays plain
+  /**
+   * Trash flag. Operational (like deleted_at), so it stays plain. The name is
+   * historical: it is the wire and database name and is kept to avoid a
+   * migration. Everything above the storage layer calls it "trashed"
+   * (`NoteDecrypted.is_trashed`).
+   */
+  is_archived?: boolean;
 }
 
 // ─── Local storage type (IndexedDB - shadow indexes for queries) ─────

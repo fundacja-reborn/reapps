@@ -53,7 +53,7 @@ describe('notes-sync - cross-key pending guard (audit 012 S6)', () => {
   it('probes one ciphertext per pending entity kind', () => {
     // Notes probe title_encrypted off the metadata projection (DB v14 split) -
     // the probe must not require joining content blobs.
-    expect(body).toMatch(/pendingNoteMetas\[0\] \?\? pendingArchivedMetas\[0\]/);
+    expect(body).toMatch(/pendingNoteMetas\[0\] \?\? pendingTrashedMetas\[0\]/);
     expect(body).toMatch(/pendingFolders\[0\]\?\.name_encrypted/);
     expect(body).toMatch(/pendingTags\[0\]\?\.name_encrypted/);
     expect(body).toMatch(/pendingSavedSearches\[0\]\?\.name_encrypted/);
