@@ -15,6 +15,8 @@
     Trash2,
     RotateCcw,
     Trash,
+    Archive,
+    ArchiveRestore,
     Clock,
     Waypoints,
     ListTree,
@@ -42,6 +44,8 @@
     ondelete,
     onrestore,
     onpermanentdelete,
+    onarchive,
+    onunarchive,
     onhistory,
     onlinkednotes,
     onoutline,
@@ -70,6 +74,10 @@
     ondelete: (id: string) => void;
     onrestore: (id: string) => void;
     onpermanentdelete: (id: string) => void;
+    /** Archive the note. Hidden when not wired. */
+    onarchive?: (id: string) => void;
+    /** Take the note out of the archive (its own marker). Hidden when not wired. */
+    onunarchive?: (id: string) => void;
     /** Opens version history panel (mobile only) */
     onhistory?: () => void;
     /** Opens Linked notes panel (mobile only) */
@@ -205,6 +213,37 @@
           <FolderInput class="me-2 h-4 w-4" />
           {$t('notes.move_to_folder')}
         </Button>
+        <!-- Archive: a note held by an archived folder has no Restore of its
+             own (it comes back with the folder, or by moving it out above). -->
+        {#if onunarchive && note?.archive && !note.archive.folderId}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => {
+              if (note) {
+                open = false;
+                onunarchive?.(note.id);
+              }
+            }}
+          >
+            <ArchiveRestore class="me-2 h-4 w-4" />
+            {$t('archive.restore')}
+          </Button>
+        {:else if onarchive && note && !note.archive}
+          <Button
+            variant="ghost"
+            class="w-full justify-start"
+            onclick={() => {
+              if (note) {
+                open = false;
+                onarchive?.(note.id);
+              }
+            }}
+          >
+            <Archive class="me-2 h-4 w-4" />
+            {$t('archive.action')}
+          </Button>
+        {/if}
         <!-- Navigate / structure this note -->
         {#if hasContentTools}
           <div class="my-1 h-px bg-border" role="separator"></div>

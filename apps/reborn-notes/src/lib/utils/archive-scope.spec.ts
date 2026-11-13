@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { FolderWithChildren } from '@reborn/types';
 import {
   buildArchivedFolderScope,
+  collectFolderIds,
+  folderArchiveBlock,
   listArchiveRoots,
   pruneArchivedFolders,
   sameArchivedFolderScope
@@ -121,5 +123,27 @@ describe('sameArchivedFolderScope', () => {
     moved[1].archived_at = LATER;
     expect(sameArchivedFolderScope(a, buildArchivedFolderScope(moved))).toBe(false);
     expect(sameArchivedFolderScope(a, new Map())).toBe(false);
+  });
+});
+
+describe('folderArchiveBlock', () => {
+  const work = sampleTree()[0];
+  const subtree = collectFolderIds(work);
+
+  it('collects the folder and everything below it', () => {
+    expect(subtree).toEqual(['work', 'projects', 'old', 'deep', 'inner', 'current']);
+  });
+
+  it('allows a folder nothing writes into on its own', () => {
+    expect(folderArchiveBlock(subtree, [null, undefined, 'elsewhere'], ['other'])).toBeNull();
+  });
+
+  it('blocks a folder whose subtree holds a periodic-notes folder', () => {
+    expect(folderArchiveBlock(subtree, [null, 'current'], [])).toBe('periodic');
+    expect(folderArchiveBlock(subtree, ['work'], [])).toBe('periodic');
+  });
+
+  it('blocks a folder whose subtree holds a folder-sync destination', () => {
+    expect(folderArchiveBlock(subtree, [], ['deep'])).toBe('sync');
   });
 });

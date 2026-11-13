@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Waypoints, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Loader2 } from '@lucide/svelte';
+  import { Waypoints, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Loader2, Archive } from '@lucide/svelte';
   import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@reborn/ui';
   import { noteLinkGraph } from '$lib/services/note-link-graph.svelte';
   import { noteIndex } from '$lib/services/note-index.svelte';
@@ -32,10 +32,13 @@
     title: string;
     /** Link target whose note no longer exists (deleted) - shown disabled. */
     missing: boolean;
+    /** The note is in the archive: still listed and openable, marked as such. */
+    archived: boolean;
   }
 
   /**
-   * Resolve ids → titles via NoteIndex. Trashed notes stay hidden;
+   * Resolve ids → titles via NoteIndex. Trashed notes stay hidden; archived
+   * ones are kept (the link works and opens the note) and get a marker;
    * ids with no index entry are surfaced as `missing` (broken link) rather than
    * silently dropped. Missing rows sort last, the rest by title.
    */
@@ -45,9 +48,14 @@
       const entry = noteIndex.get(id);
       if (entry?.isTrashed) continue;
       if (!entry) {
-        out.push({ id, title: $t('linked_notes.missing'), missing: true });
+        out.push({ id, title: $t('linked_notes.missing'), missing: true, archived: false });
       } else {
-        out.push({ id, title: entry.title || $t('notes.untitled'), missing: false });
+        out.push({
+          id,
+          title: entry.title || $t('notes.untitled'),
+          missing: false,
+          archived: noteIndex.isInArchive(id)
+        });
       }
     }
     out.sort((a, b) => {
@@ -109,6 +117,11 @@
           class="min-w-0 flex-1 truncate text-sm text-muted-foreground transition-colors group-hover:text-foreground"
           ><bdi>{item.title}</bdi></span
         >
+        {#if item.archived}
+          <span title={$t('archive.in_archive')} class="shrink-0 text-muted-foreground/70">
+            <Archive class="h-3.5 w-3.5" aria-label={$t('archive.in_archive')} />
+          </span>
+        {/if}
         <span class="flex w-6 shrink-0 items-center justify-center">
           {#if mutual.has(item.id)}
             <span title={$t('linked_notes.mutual')} class="text-muted-foreground/70">

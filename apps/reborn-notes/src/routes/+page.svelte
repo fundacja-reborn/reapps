@@ -53,6 +53,9 @@
   import TagActionSheet from '$lib/components/tags/TagActionSheet.svelte';
   import SharesList from '$lib/components/shares/SharesList.svelte';
   import ShareDetailPanel from '$lib/components/shares/ShareDetailPanel.svelte';
+  import ArchivedNoteBar from '$lib/components/archive/ArchivedNoteBar.svelte';
+  import { archiveNote, restoreNote, restoreFolder } from '$lib/services/archive-actions';
+  import type { ArchiveRoot } from '$lib/utils/archive-scope';
 
   // Stores / services
   import { notesStore, activeNoteId, type NoteListItem } from '$lib/stores/notes.store';
@@ -169,6 +172,27 @@
   const activeStarred = $derived(activeSection === 'starred');
   const activeTrash = $derived(activeSection === 'trash');
 
+  // ── Archive view ────────────────────────────────────────────────
+  // The view lists archived folders above the archived notes. Opening one of
+  // those folders narrows the list to its subtree (`archiveFolderRootId`);
+  // null = the whole archive. Derived from the store by id, so a folder that
+  // gets restored or deleted while open drops out (guard effect below).
+  const activeArchive = $derived(activeSection === 'archive');
+  const archiveRoots = foldersStore.archiveRoots;
+  const allFolders = foldersStore.all;
+  let archiveFolderRootId = $state<string | null>(null);
+  const activeArchiveRoot = $derived(
+    archiveFolderRootId !== null
+      ? ($archiveRoots.find((r) => r.folder.id === archiveFolderRootId) ?? null)
+      : null
+  );
+  // Value-compared key of the open archived folder's subtree, so the section
+  // effect re-filters only when the set of folders really changes, not on every
+  // folder-store tick (which yields fresh arrays).
+  const activeArchiveFolderKey = $derived(
+    activeArchiveRoot ? activeArchiveRoot.folderIds.join(',') : null
+  );
+
   // The note-list collapse is a focus affordance for an OPEN note. With no note
   // in the main pane (e.g. right after clicking a rail section, which clears
   // activeNoteId), a collapsed list would leave an empty pane - so the panel
@@ -252,6 +276,33 @@
     detailActionSheetOpen = false;
     if (!$activeNoteId) return;
     await notesStore.toggleStar($activeNoteId);
+  }
+
+  // Archiving the open note keeps it open: the bar under the header then says
+  // it is archived and offers Restore, so a mis-tap is one tap to undo.
+  async function handleDetailArchive() {
+    detailActionSheetOpen = false;
+    if (!$activeNoteId) return;
+    await archiveNote($activeNoteId);
+  }
+
+  async function handleDetailUnarchive() {
+    detailActionSheetOpen = false;
+    if (!$activeNoteId) return;
+    await restoreNote($activeNoteId);
+  }
+
+  // "Move to folder" from the archive bar: a sheet on every screen size (the
+  // bar has no stable anchor for the desktop popup).
+  let archiveBarMoveOpen = $state(false);
+
+  async function handleArchiveBarMove(folderId: string | null, e?: Event) {
+    e?.stopPropagation();
+    archiveBarMoveOpen = false;
+    const noteId = $activeNoteId;
+    if (!noteId) return;
+    await notesStore.move(noteId, folderId);
+    noteDetailService.folderId = folderId;
   }
 
   function handleDetailColor() {
@@ -608,6 +659,8 @@
     } else if ($activeNoteId != null) {
       noteDetailService.flushAndSnapshot();
       activeNoteId.set(null);
+    } else if (mobileView === 'list' && activeSection === 'archive' && archiveFolderRootId !== null) {
+      archiveFolderRootId = null;
     } else if (mobileView === 'list' && activeSection === 'folders' && activeFolderId !== undefined) {
       void exitCurrentFolder();
     } else if (mobileView === 'list' && activeSection === 'folders' && activeSavedSearchId !== null) {
@@ -738,6 +791,7 @@
    *  folder/tag selections and any flat-list view (starred, trash, periodic). */
   const noteListOwnsMobileHeader = $derived(
     activeSection === 'starred' ||
+      activeSection === 'archive' ||
       activeSection === 'trash' ||
       activeSection === 'shares' ||
       isPeriodicSection(activeSection) ||
@@ -755,6 +809,13 @@
       return activeSavedSearch?.name ?? $t('nav.folders');
     }
     if (activeSection === 'trash') return $t('nav.trash');
+    if (activeSection === 'archive') {
+      // An archived folder opened from the Archive view titles the list.
+      if (!activeArchiveRoot) return $t('nav.archive');
+      return activeArchiveRoot.folder.decrypt_failed
+        ? $t('folders.undecryptable')
+        : activeArchiveRoot.folder.name;
+    }
     if (activeSection === 'starred') return $t('nav.starred');
     if (activeSection === 'all') return $t('nav.all_notes');
     if (activeSection === 'tags') {
@@ -779,9 +840,11 @@
     return folder?.name ?? $t('nav.folders');
   });
 
+  // Looked up in the full tree: an archived note's folder may itself be
+  // archived, and the everyday tree leaves archived folders out.
   let activeNoteFolderName = $derived.by(() => {
     if (!$activeNoteId || noteDetailService.folderId == null) return null;
-    const folder = flattenFolderTree($foldersStore).find(
+    const folder = flattenFolderTree($allFolders).find(
       (f) => f.id === noteDetailService.folderId
     );
     if (folder?.decrypt_failed) return $t('folders.undecryptable');
@@ -828,6 +891,8 @@
     // an actual edit, not on every saved-searches store tick.
     const smartQuery = savedSearchId ? activeSmartFolderQuery : null;
     const smartInContent = savedSearchId ? activeSmartFolderInContent : false;
+    // The archived folder open inside the Archive view (null = whole archive).
+    const archiveFolderKey = section === 'archive' ? activeArchiveFolderKey : null;
 
     if (section !== prevSection) {
       untrack(() => {
@@ -855,6 +920,9 @@
         // A section switch always exits any open smart folder - entering Folders
         // fresh lands on a real folder (#384), not the previously-open smart one.
         activeSavedSearchId = null;
+        // ...and any archived folder open in the Archive view, unless a handler
+        // is on its way in with one (navigateToNoteFolder arms it after tick()).
+        archiveFolderRootId = null;
         if (section !== 'tags') {
           activeTagId = null;
           tagManager.resetSection();
@@ -896,6 +964,8 @@
     untrack(() => {
       if (section === 'trash') {
         notesStore.setTrash(true);
+      } else if (section === 'archive') {
+        notesStore.setArchive(archiveFolderKey ? archiveFolderKey.split(',') : undefined);
       } else if (section === 'starred') {
         notesStore.setStarred(true);
       } else if (section === 'tags' && tagId) {
@@ -915,6 +985,59 @@
         notesStore.setFolder(undefined);
       }
     });
+  });
+
+  // Drop an archived folder that was restored or deleted while open in the
+  // Archive view: back to the whole archive.
+  $effect(() => {
+    if (archiveFolderRootId !== null && activeArchiveRoot === null) {
+      untrack(() => {
+        archiveFolderRootId = null;
+      });
+    }
+  });
+
+  // The folder being browsed (or one above it) was archived - from its own
+  // menu, the tree, or another device. It is no longer in the everyday tree,
+  // so leave it the way a deleted folder is left: tree root on a phone, the
+  // entry folder on desktop (#384).
+  $effect(() => {
+    if (activeSection !== 'folders' || typeof activeFolderId !== 'string') return;
+    if (!noteIndex.archivedFolder(activeFolderId)) return;
+    untrack(() => {
+      if (isMobile) {
+        activeFolderId = undefined;
+        mobileView = 'folder-tree';
+      } else {
+        activeFolderId = resolveFoldersEntryFolderId();
+      }
+    });
+  });
+
+  /** Open an archived folder from the Archive view's folder list. */
+  async function openArchiveFolder(root: ArchiveRoot) {
+    await noteDetailService.flushAndSnapshot();
+    archiveFolderRootId = root.folder.id;
+    activeNoteId.set(null);
+    if (isMobile) pushMobileHistory();
+  }
+
+  /** Back from an archived folder to the whole archive. */
+  function exitArchiveFolder() {
+    if (isMobile && mobileHistoryDepth > 0) {
+      history.back();
+    } else {
+      archiveFolderRootId = null;
+    }
+  }
+
+  /** Name of the archived folder that holds the open note (archive bar). */
+  const archivedNoteFolderName = $derived.by(() => {
+    const folderId = detailMenuNote?.archive?.folderId;
+    if (!folderId) return '';
+    const folder = flattenFolderTree($allFolders).find((f) => f.id === folderId);
+    if (!folder) return '';
+    return folder.decrypt_failed ? $t('folders.undecryptable') : folder.name;
   });
 
   // Drop a smart folder whose saved search was deleted while open: its row
@@ -1012,12 +1135,13 @@
       return;
     }
 
-    // Trash/starred/tags filter out a freshly created note (no deletion / star /
-    // tag yet), so the user would create a note and see nothing. Switch to "All
+    // Trash/archive/starred/tags filter out a freshly created note (no deletion /
+    // archive marker / star / tag yet), so the user would create a note and see nothing. Switch to "All
     // notes" first and await tick so the section $effect drives the store filter
     // before we call create() + refresh().
     if (
       activeSection === 'trash' ||
+      activeSection === 'archive' ||
       activeSection === 'starred' ||
       activeSection === 'tags' ||
       isPeriodicSection(activeSection)
@@ -1975,6 +2099,17 @@
   async function navigateToNoteFolder() {
     const targetFolderId = noteDetailService.folderId as string | null | undefined;
     await noteDetailService.flushAndSnapshot();
+    // An archived folder is not in the everyday tree: open it where it lives,
+    // in the Archive view (narrowed to the archived folder that holds it).
+    const archivedFolder = noteIndex.archivedFolder(targetFolderId);
+    if (archivedFolder) {
+      activeSection = 'archive';
+      await tick();
+      archiveFolderRootId = archivedFolder.rootId;
+      activeNoteId.set(null);
+      if (isMobile) pushMobileHistory();
+      return;
+    }
     activeSection = 'folders';
     await tick();
     activeFolderId = targetFolderId;
@@ -2508,6 +2643,9 @@
                 {activeSection}
                 activeFolderId={activeFolderId ?? null}
                 isTrash={activeTrash}
+                isArchive={activeArchive}
+                archiveRoots={activeArchive && !activeArchiveRoot ? $archiveRoots : []}
+                onArchiveFolderOpen={openArchiveFolder}
                 isPeriodic={isPeriodicSection(activeSection)}
                 subfolders={activeFolderSubfolders}
                 onSubfolderSelect={handleFolderSelect}
@@ -2516,7 +2654,9 @@
                 autoFocusSearch={activeSection === 'search'}
                 searchOnly={activeSection === 'search'}
                 prominentHeader={noteListOwnsMobileHeader}
-                onback={activeSection === 'folders' &&
+                onback={activeArchive && activeArchiveRoot
+                  ? exitArchiveFolder
+                  : activeSection === 'folders' &&
                 (activeFolderId !== undefined || activeSavedSearchId !== null)
                   ? () => {
                       if (isMobile && mobileHistoryDepth > 0) {
@@ -2665,9 +2805,21 @@
                   onshare={() => handleDetailShare()}
                   onshowxray={() => { showEncryptionXRay = true; }}
                   ondelete={handleDetailDelete}
+                  onarchive={handleDetailArchive}
+                  onunarchive={handleDetailUnarchive}
                 />
               {/snippet}
             </NoteEditorHeader>
+
+            {#if detailMenuNote?.archive && !detailMenuNote.is_trashed}
+              <ArchivedNoteBar
+                archive={detailMenuNote.archive}
+                folderName={archivedNoteFolderName}
+                onrestore={handleDetailUnarchive}
+                onrestorefolder={(folderId) => void restoreFolder(folderId)}
+                onmove={() => (archiveBarMoveOpen = true)}
+              />
+            {/if}
 
             <!-- Scroll container + X-Ray overlay share one positioned box so the
                  overlay pins to the visible editor region, not the scroll
@@ -2891,6 +3043,10 @@
               {activeFolderName}
               {activeSection}
               isTrash={activeTrash}
+              isArchive={activeArchive}
+              archiveRoots={activeArchive && !activeArchiveRoot ? $archiveRoots : []}
+              onArchiveFolderOpen={openArchiveFolder}
+              onback={activeArchive && activeArchiveRoot ? exitArchiveFolder : undefined}
               isPeriodic={isPeriodicSection(activeSection)}
               {saveScope}
               oncreate={handleNewNote}
@@ -2999,6 +3155,8 @@
                 onshare={() => handleDetailShare()}
                 onshowxray={() => { showEncryptionXRay = true; }}
                 ondelete={handleDetailDelete}
+                onarchive={handleDetailArchive}
+                onunarchive={handleDetailUnarchive}
                 {tocMenuMode}
                 tocStale={tocStaleMenu}
                 onTocApply={handleDetailTocApply}
@@ -3006,6 +3164,16 @@
               />
             {/snippet}
           </NoteEditorHeader>
+
+          {#if detailMenuNote?.archive && !detailMenuNote.is_trashed}
+            <ArchivedNoteBar
+              archive={detailMenuNote.archive}
+              folderName={archivedNoteFolderName}
+              onrestore={handleDetailUnarchive}
+              onrestorefolder={(folderId) => void restoreFolder(folderId)}
+              onmove={() => (archiveBarMoveOpen = true)}
+            />
+          {/if}
 
           <!-- Scroll container + X-Ray overlay share one positioned box so the
                overlay pins to the visible editor region (not the scroll
@@ -3335,10 +3503,23 @@
   onshowxray={() => { showEncryptionXRay = true; }}
   onrestore={() => {}}
   onpermanentdelete={() => {}}
+  onarchive={() => handleDetailArchive()}
+  onunarchive={() => handleDetailUnarchive()}
   {tocMenuMode}
   tocStale={tocStaleMenu}
   onTocApply={handleDetailTocApply}
   onTocRemove={handleDetailTocRemove}
+/>
+
+<!-- "Move to folder" from the archive bar of the open note: moving the note
+     into an active folder takes it out of an archived one. -->
+<MoveToFolderMenu
+  selection={$activeNoteId
+    ? { kind: 'single', id: $activeNoteId, currentFolderId: noteDetailService.folderId ?? null }
+    : null}
+  bind:open={archiveBarMoveOpen}
+  forceSheet
+  onmove={handleArchiveBarMove}
 />
 
 <!-- Detail-view move-to-folder (mobile bottom sheet) -->

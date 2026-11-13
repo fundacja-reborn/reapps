@@ -118,3 +118,37 @@ export function sameArchivedFolderScope(a: ArchivedFolderScope, b: ArchivedFolde
   }
   return true;
 }
+
+/** The folder and every folder below it. */
+export function collectFolderIds(folder: FolderWithChildren): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  function walk(node: FolderWithChildren): void {
+    if (seen.has(node.id)) return;
+    seen.add(node.id);
+    ids.push(node.id);
+    for (const child of node.children ?? []) walk(child);
+  }
+  walk(folder);
+  return ids;
+}
+
+/** Why a folder cannot be archived. */
+export type FolderArchiveBlock = 'periodic' | 'sync';
+
+/**
+ * A folder cannot be archived while something keeps writing into its subtree
+ * on its own: the Periodic Notes feature (it would go on creating today's
+ * note inside a hidden folder) or a folder-sync destination (the sync would
+ * add notes nobody sees). Returns the reason, or null when archiving is fine.
+ */
+export function folderArchiveBlock(
+  subtreeIds: string[],
+  periodicFolderIds: Iterable<string | null | undefined>,
+  syncedFolderIds: Iterable<string>
+): FolderArchiveBlock | null {
+  const subtree = new Set(subtreeIds);
+  for (const id of periodicFolderIds) if (id && subtree.has(id)) return 'periodic';
+  for (const id of syncedFolderIds) if (subtree.has(id)) return 'sync';
+  return null;
+}

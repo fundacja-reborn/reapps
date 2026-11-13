@@ -14,6 +14,8 @@
     Trash2,
     RotateCcw,
     Trash,
+    Archive,
+    ArchiveRestore,
     AlertTriangle
   } from '@lucide/svelte';
   import { MAX_NOTE_CONTENT_BYTES } from '@reborn/types';
@@ -47,6 +49,7 @@
   let {
     note,
     isTrash = false,
+    isArchive = false,
     breadcrumb = '',
     movingNoteId = $bindable<string | null>(null),
     selectionMode = false,
@@ -64,13 +67,17 @@
     ondelete,
     onrestore,
     onpermanentdelete,
+    onarchive,
+    onunarchive,
     inGrid = false,
     onopenmove,
     class: className = ''
   }: {
     note: NoteListItem;
     isTrash?: boolean;
-    /** Folder path to show under the title - used for search results from subfolders. */
+    /** Row of the Archive view: shows the archive date and a visible Restore. */
+    isArchive?: boolean;
+    /** Folder path to show under the title - search results from subfolders, and every row of the Archive view. */
     breadcrumb?: string;
     movingNoteId: string | null;
     /** Whether the parent NoteList is currently in multi-select mode. */
@@ -93,6 +100,10 @@
     ondelete: (noteId: string, e?: Event) => void;
     onrestore: (noteId: string, e?: Event) => void;
     onpermanentdelete: (noteId: string, e?: Event) => void;
+    /** Archive this note. The item is hidden when not wired. */
+    onarchive?: (noteId: string, e?: Event) => void;
+    /** Take this note out of the archive (its own marker). */
+    onunarchive?: (noteId: string, e?: Event) => void;
     /** A cell of the grid layout (#523): the card fills the row height. */
     inGrid?: boolean;
     /**
@@ -112,6 +123,32 @@
   // Display the date matching the active sort key so the visible value matches the sort.
   // For 'title' sort fall back to updated_at (most recent activity).
   const displayDate = $derived($sortByStore === 'created_at' ? note.created_at : note.updated_at);
+
+  // Archive: a note archived on its own can be restored right here. One that an
+  // archived folder holds comes back with the folder (or by moving it out), so
+  // it gets no Restore of its own - removing its marker would change nothing.
+  const canUnarchive = $derived(!!onunarchive && !!note.archive && !note.archive.folderId);
+  const archiveAction: RowAction[] = $derived(
+    canUnarchive
+      ? [
+          {
+            key: 'unarchive',
+            icon: ArchiveRestore,
+            label: $t('archive.restore'),
+            run: (e?: Event) => onunarchive?.(note.id, e)
+          }
+        ]
+      : onarchive && !note.archive
+        ? [
+            {
+              key: 'archive',
+              icon: Archive,
+              label: $t('archive.action'),
+              run: (e?: Event) => onarchive?.(note.id, e)
+            }
+          ]
+        : []
+  );
 
   // Color mark: a dot before the title. A key this build does not know (set by
   // a newer version) shows no dot; the name is spoken after the title.
@@ -221,6 +258,7 @@
               movingNoteId = movingNoteId === note.id ? null : note.id;
             }
           },
+          ...archiveAction,
           {
             key: 'export',
             icon: Download,
@@ -403,7 +441,12 @@
               </div>
             {/if}
             <p class="mt-0.5 text-[0.8125rem] md:text-xs text-muted-foreground line-clamp-2">
-              {formatNoteDate(displayDate, $dateFormat, $timeFormat)}
+              {#if isArchive && note.archive}
+                {$t('archive.archived_label')}
+                <bdi>{formatNoteDate(note.archive.at, $dateFormat, $timeFormat)}</bdi>
+              {:else}
+                {formatNoteDate(displayDate, $dateFormat, $timeFormat)}
+              {/if}
             </p>
             <!-- Visible per-note rejection reason - not just the badge/hover tooltip,
                  so the user knows WHY a note won't sync (and it works on touch). -->
@@ -413,6 +456,22 @@
               </p>
             {/if}
           </div>
+
+          <!-- Archive view: Restore is one visible tap away, not only in the menu. -->
+          {#if isArchive && canUnarchive && !selectionMode}
+            <button
+              type="button"
+              onclick={(e) => {
+                e.stopPropagation();
+                onunarchive?.(note.id, e);
+              }}
+              title={$t('archive.restore')}
+              aria-label={$t('archive.restore')}
+              class="-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <RotateCcw class="h-4 w-4" />
+            </button>
+          {/if}
 
           <!-- Kebab menu button (hidden in selection mode - bulk actions live in the selection bar) -->
           <div class="shrink-0 mt-1.5 md:-mt-1 {selectionMode ? 'invisible pointer-events-none' : ''}">
