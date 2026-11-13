@@ -1,5 +1,6 @@
 /**
- * Shared marked renderer overrides for list / task-list / image rendering.
+ * Shared marked renderer overrides for list / task-list / image rendering and
+ * for kept blank lines (see blank-lines.ts).
  *
  * Used by:
  *  - `MarkdownPreview.svelte` (interactive - checkbox click toggles source via
@@ -13,9 +14,14 @@
  * is captured per factory call so two concurrent renders don't interleave; call
  * `reset()` at the start of each parse so `data-task-index` ordinals start at 0
  * and `data-d` depth attrs match Live Preview's geometry.
+ *
+ * Kept blank lines: `space` and the end of a list item render the empty lines
+ * that `markExtraBlankLines` stamped on the tokens. Without the stamps (the
+ * setting is off, or the caller never ran it) both render nothing, as before.
  */
 import type { RendererObject, Tokens } from 'marked';
 import type { ImageLoadMode } from '@reborn/storage';
+import { blankLinesHtml, extraBlankLines, type BlankLineListItem } from './blank-lines';
 
 /** Visual cap mirroring MAX_LIST_DEPTH in editor/live-preview/decorations.ts. */
 export const PREVIEW_MAX_LIST_DEPTH = 12;
@@ -28,6 +34,10 @@ export function createMarkdownListRenderers(): {
   let taskCounter = 0;
 
   const renderer: RendererObject = {};
+
+  // Extra blank lines between two blocks (top level, inside a quote, inside a
+  // list item). An unstamped `space` token renders nothing - marked's default.
+  renderer.space = (token: Tokens.Space) => blankLinesHtml(extraBlankLines(token));
 
   // Stateful depth-aware list renderer. `this` is bound to the renderer
   // instance by marked's use({renderer}) wrapper, so we delegate item
@@ -66,9 +76,13 @@ export function createMarkdownListRenderers(): {
         parse: (t: Tokens.ListItem['tokens'], loose?: boolean) => string;
       };
     };
+    // Extra blank lines between this item and the next one: rendered at the
+    // end of the item, after any nested list, so the list stays one list (and
+    // an ordered one keeps counting) while the two groups stand apart.
+    const blankAfter = blankLinesHtml((token as BlankLineListItem)._blankLinesAfter ?? 0);
     if (!token.task) {
       const inner = self.parser.parse(token.tokens, !!token.loose);
-      return `<li>${inner}</li>\n`;
+      return `<li>${inner}${blankAfter}</li>\n`;
     }
     // Reserve this item's index *before* recursing into children. Inner
     // parsing runs nested list items through this same override, and they'd
@@ -100,7 +114,7 @@ export function createMarkdownListRenderers(): {
     const cls = token.checked
       ? 'task-list-item task-list-item-checked'
       : 'task-list-item';
-    return `<li class="${cls}" data-task-index="${idx}"><span class="task-list-item-content">${inlineHtml}</span>${nestedHtml}</li>\n`;
+    return `<li class="${cls}" data-task-index="${idx}"><span class="task-list-item-content">${inlineHtml}</span>${nestedHtml}${blankAfter}</li>\n`;
   };
 
   // Drop `disabled` from the GFM checkbox so Preview can route clicks; tag

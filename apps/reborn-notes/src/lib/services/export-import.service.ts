@@ -32,6 +32,7 @@ import {
 import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { applyBlockDirection, createMarkdownListRenderers } from '$lib/utils/markdown-to-html';
+import { markExtraBlankLines } from '$lib/utils/blank-lines';
 import { detectTextDirection } from '@reborn/i18n';
 import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
@@ -404,7 +405,10 @@ const PDF_STYLES = `
  * worked on Android PWA - the platform print framework treated the iframe as
  * a viewport snapshot and ignored multi-page pagination.
  */
-export async function exportNoteAsPdf(note: NoteDecrypted): Promise<void> {
+export async function exportNoteAsPdf(
+  note: NoteDecrypted,
+  options: { preserveBlankLines?: boolean } = {}
+): Promise<void> {
   // Fresh Marked instance - don't inherit MarkdownPreview's custom image
   // renderer (which emits placeholders); we want real <img> in the PDF.
   // The list / task-list renderers ARE shared with Preview so checklist items
@@ -413,7 +417,12 @@ export async function exportNoteAsPdf(note: NoteDecrypted): Promise<void> {
   const printMarked = new Marked({ gfm: true, breaks: true });
   const { renderer } = createMarkdownListRenderers();
   printMarked.use({ renderer });
-  const rawHtml = printMarked.parse(note.content ?? '', { async: false }) as string;
+  // lexer + parser instead of parse(), so the kept blank lines can be stamped
+  // on the tokens in between - the same step Preview takes, so the PDF spaces
+  // the note the way the preview does (issue #549).
+  const tokens = printMarked.lexer(note.content ?? '');
+  if (options.preserveBlankLines ?? true) markExtraBlankLines(tokens);
+  const rawHtml = printMarked.parser(tokens) as string;
   // Per-block direction (dir="auto") exactly as in the preview, so an Arabic
   // paragraph and an English one each render in their own direction.
   const safeBodyHtml = applyBlockDirection(

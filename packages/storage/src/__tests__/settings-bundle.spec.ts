@@ -335,6 +335,26 @@ describe('settings-bundle: migrate (decrypt → unknown JSON → typed bundle)',
     );
   });
 
+  it('preserveBlankLines travels only as an explicit boolean (#549)', () => {
+    expect(migrateAppBundle({ preserveBlankLines: false }).preserveBlankLines).toBe(false);
+    expect(migrateAppBundle({ preserveBlankLines: true }).preserveBlankLines).toBe(true);
+    expect(migrateAppBundle({ preserveBlankLines: 'no' }).preserveBlankLines).toBeUndefined();
+
+    // Never touched (absent = on): not in the bundle, so a fresh device cannot
+    // switch the option back on for a user who turned it off elsewhere.
+    expect('preserveBlankLines' in extractAppBundle(NOTES_FIXTURE)).toBe(false);
+    const off = extractAppBundle({ ...NOTES_FIXTURE, preserveBlankLines: false });
+    expect(off.preserveBlankLines).toBe(false);
+    expect(applyBundlesToSettings(NOTES_FIXTURE, null, off).preserveBlankLines).toBe(false);
+    expect(
+      applyBundlesToSettings(
+        { ...NOTES_FIXTURE, preserveBlankLines: false },
+        null,
+        extractAppBundle(NOTES_FIXTURE)
+      ).preserveBlankLines
+    ).toBe(false);
+  });
+
   it('migrateAppBundle reads autoBackupPhrase only with a valid {wrapped, updatedAt} shape', () => {
     const valid = { wrapped: 'aXY=:Y2lwaGVydGV4dA==', updatedAt: '2026-07-10T10:00:00.000Z' };
     expect(migrateAppBundle({ autoBackupPhrase: valid }).autoBackupPhrase).toEqual(valid);

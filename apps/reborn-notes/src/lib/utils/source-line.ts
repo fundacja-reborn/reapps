@@ -10,12 +10,13 @@
  * both `_line` and `_endLine` so the preview side can interpolate y ↔ line
  * fractionally inside long blocks (code fences, lists, tables). Without
  * the end marker, scrolling 30 lines through a code block would land on
- * the block's first line until the block scrolled out — visible as the
+ * the block's first line until the block scrolled out - visible as the
  * preview "freezing" relative to the editor.
  */
 import type { Token } from 'marked';
+import { extraBlankLines } from './blank-lines';
 
-// Marked's `Token` is a discriminated union — `interface extends` can't
+// Marked's `Token` is a discriminated union - `interface extends` can't
 // widen it without losing the narrowing, so we use an intersection.
 export type AnnotatedToken = Token & { _line?: number; _endLine?: number };
 
@@ -23,7 +24,7 @@ export type AnnotatedToken = Token & { _line?: number; _endLine?: number };
  * Stamp `_line` and `_endLine` on each top-level token using a running
  * newline counter. Marked tokens cover the entire source contiguously
  * (incl. blank-line `space` tokens), so summing newlines in `raw` gives
- * the next token's starting line — no need to search the source string.
+ * the next token's starting line - no need to search the source string.
  *
  * `_endLine` is the last source line the rendered block visually represents.
  * Tokens whose `raw` ends in `\n` (e.g. `space`) "own" up to but not
@@ -54,10 +55,12 @@ function countNewlines(s: string): number {
  * Walk the container's direct children in render order and stamp
  * `data-source-line="N"` and `data-source-line-end="M"` from the matching
  * top-level token. `space` tokens render to empty string so they're skipped
- * during pairing.
+ * during pairing - except one stamped with kept blank lines (blank-lines.ts),
+ * which renders a spacer block of its own and takes that block's slot, so the
+ * empty lines map to their own source lines in scroll-sync.
  *
  * Mismatches (e.g. a custom image renderer producing multiple top-level
- * nodes) only cost ±1 line of alignment drift — acceptable, since the
+ * nodes) only cost ±1 line of alignment drift - acceptable, since the
  * editor side also snaps to the nearest line block.
  */
 export function applySourceLineAttrs(container: HTMLElement, tokens: Token[]): void {
@@ -68,14 +71,24 @@ export function applySourceLineAttrs(container: HTMLElement, tokens: Token[]): v
     // Skip auxiliary controls (e.g. the "Load all images" button) so
     // they don't consume a token slot and shift the anchor map.
     if (child.classList.contains('load-all-images-btn')) continue;
-    while (tokenIdx < annotated.length && annotated[tokenIdx].type === 'space') {
+    while (
+      tokenIdx < annotated.length &&
+      annotated[tokenIdx].type === 'space' &&
+      extraBlankLines(annotated[tokenIdx]) === 0
+    ) {
       tokenIdx++;
     }
     if (tokenIdx >= annotated.length) break;
     const t = annotated[tokenIdx];
     if (t._line != null) {
-      child.setAttribute('data-source-line', String(t._line));
-      child.setAttribute('data-source-line-end', String(t._endLine ?? t._line));
+      const endLine = t._endLine ?? t._line;
+      // A spacer's `space` token starts on the last line of the block before it
+      // (its raw opens with that line's newline), so its own first line is the
+      // next one. Without the shift two anchors would share a start line and
+      // `offsetForLine` would land on the spacer instead of the block.
+      const startLine = t.type === 'space' ? Math.min(t._line + 1, endLine) : t._line;
+      child.setAttribute('data-source-line', String(startLine));
+      child.setAttribute('data-source-line-end', String(endLine));
     }
     tokenIdx++;
   }
@@ -152,7 +165,7 @@ export function topLineFor(anchors: PreviewAnchor[], y: number): number {
     const ratio = (y - a.top) / span;
     return a.startLine + ratio * (a.endLine - a.startLine);
   }
-  // Past this anchor's bottom — interpolate the gap to the next, else clamp.
+  // Past this anchor's bottom - interpolate the gap to the next, else clamp.
   const next = anchors[best + 1];
   if (next && y < next.top) {
     const span = next.top - a.bottom;
@@ -190,7 +203,7 @@ export function offsetForLine(anchors: PreviewAnchor[], line: number): number {
     const ratio = (line - a.startLine) / lineSpan;
     return a.top + ratio * (a.bottom - a.top);
   }
-  // Past this anchor's endLine — interpolate gap to next, else clamp.
+  // Past this anchor's endLine - interpolate gap to next, else clamp.
   const next = anchors[best + 1];
   if (next && line < next.startLine) {
     const lineSpan = next.startLine - a.endLine;

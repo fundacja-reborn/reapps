@@ -21,13 +21,15 @@
     FolderInput,
     House,
     Pencil,
-    Trash2
+    Trash2,
+    UnfoldVertical
   } from '@lucide/svelte';
   import {
     appSettings,
     confirmBeforeDelete as confirmBeforeDeleteStore,
     editorMode as editorModeStore,
-    newNoteFolderId as newNoteFolderIdStore
+    newNoteFolderId as newNoteFolderIdStore,
+    preserveBlankLines as preserveBlankLinesStore
   } from '$lib/stores/app-settings.store';
   import { foldersStore } from '$lib/stores/folders.store';
   import { flattenFolderTree } from '$lib/utils/folder-helpers';
@@ -82,6 +84,7 @@
   }
   let editorModeValue = $state<EditorMode>('markdown');
   let confirmDeleteValue = $state(true);
+  let blankLinesValue = $state(true);
 
   // Folder for new notes (#522). A folder deleted since reads as "No folder",
   // which is also what "New note" does with it.
@@ -139,6 +142,16 @@
     }
   }
 
+  async function updateBlankLines(value: boolean) {
+    try {
+      await appSettings.update('preserveBlankLines', value);
+      blankLinesValue = value;
+      toast.success($t('settings_page.behavior.blank_lines_updated'));
+    } catch (err: unknown) {
+      logger.error('Failed to update blank lines setting', err);
+    }
+  }
+
   async function updateConfirmDelete(value: boolean) {
     try {
       await appSettings.update('confirmBeforeDelete', value);
@@ -154,6 +167,7 @@
       startPageStore.subscribe((v) => (startPageValue = v)),
       noteOpenModeStore.subscribe((v) => (openModeValue = v)),
       editorModeStore.subscribe((v) => (editorModeValue = v)),
+      preserveBlankLinesStore.subscribe((v) => (blankLinesValue = v)),
       confirmBeforeDeleteStore.subscribe((v) => (confirmDeleteValue = v))
     ];
     return () => unsubscribes.forEach((fn) => fn());
@@ -161,7 +175,7 @@
 </script>
 
 <svelte:head>
-  <title>{$t('settings_page.behavior.title')} — re/notes</title>
+  <title>{$t('settings_page.behavior.title')} - re/notes</title>
 </svelte:head>
 
 <SettingsLayout title={$t('settings_page.behavior.title')} backHref="/settings">
@@ -318,6 +332,30 @@
             <SelectItem value="live">{$t('settings_page.behavior.editor_mode_live')}</SelectItem>
           </SelectContent>
         </Select>
+      </CardContent>
+    </Card>
+
+    <!-- Keep extra blank lines in Preview / PDF (synced across devices) -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-base flex items-center gap-2">
+          <UnfoldVertical class="h-4 w-4 text-muted-foreground" />
+          {$t('settings_page.behavior.blank_lines')}
+        </CardTitle>
+        <CardDescription>{$t('settings_page.behavior.blank_lines_desc')}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div class="flex items-center justify-between gap-4">
+          <span class="text-sm text-muted-foreground">
+            {blankLinesValue
+              ? $t('settings_page.behavior.blank_lines_on')
+              : $t('settings_page.behavior.blank_lines_off')}
+          </span>
+          <Switch
+            checked={blankLinesValue}
+            onCheckedChange={(v: boolean) => updateBlankLines(v)}
+          />
+        </div>
       </CardContent>
     </Card>
 

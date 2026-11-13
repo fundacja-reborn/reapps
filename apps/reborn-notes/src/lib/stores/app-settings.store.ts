@@ -307,6 +307,17 @@ export const confirmBeforeDelete = derived(
 );
 
 /**
+ * Keep extra blank lines between blocks as empty lines in Preview and in the
+ * PDF export (issue #549). On unless the user turned it off; a settings row
+ * without the field - and a shared note's reader, who has no row - gets `true`.
+ * Synced across devices.
+ */
+export const preserveBlankLines = derived(
+  appSettings,
+  ($settings) => $settings?.preserveBlankLines ?? true
+);
+
+/**
  * Per-kind Periodic Notes settings (Daily / Weekly / Monthly).
  * Falls back to defaults when settings haven't loaded yet so consumers can
  * render eagerly without null checks; missing kinds (e.g. legacy settings
