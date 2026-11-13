@@ -5,17 +5,17 @@
  * `iv:ciphertext` base64 format AND that no sensitive plaintext fields leak
  * into payloads bound for the server. They are used at three levels:
  *   1. Post-encrypt assertion (cryptoManager.encryptString)
- *   2. Pre-save guard (@reborn/storage — before IndexedDB write)
+ *   2. Pre-save guard (@reborn/storage - before IndexedDB write)
  *   3. Pre-sync guard (api-client interceptor & reborn-notes push*)
  *
  * Design decisions:
- *   - Auto-detect fields by `_encrypted` suffix — no changes needed when adding new fields
- *   - Fail-fast (throw) — better to block a write than leak plaintext
- *   - Always active in production — security layer, not dev-only
+ *   - Auto-detect fields by `_encrypted` suffix - no changes needed when adding new fields
+ *   - Fail-fast (throw) - better to block a write than leak plaintext
+ *   - Always active in production - security layer, not dev-only
  *   - null/undefined values are skipped (optional fields like description_encrypted)
  *   - Logger.error includes field name but NEVER the value
  *   - Plaintext leak detection only runs on payloads that already contain at
- *     least one `_encrypted` field — i.e. entity-shaped objects bound for the
+ *     least one `_encrypted` field - i.e. entity-shaped objects bound for the
  *     server. This avoids false positives on settings/sync/auth payloads.
  */
 
@@ -78,7 +78,7 @@ export function assertEncrypted(value: string, fieldName?: string): void {
   if (!isValidEncryptedFormat(value)) {
     const context = fieldName ? ` (field: ${fieldName})` : '';
     logger.error(
-      `Encrypted field validation failed${context} — value does not match iv:ciphertext base64 format`
+      `Encrypted field validation failed${context} - value does not match iv:ciphertext base64 format`
     );
     throw new Error(
       `Encryption guard: invalid encrypted format${context}. ` +
@@ -96,7 +96,7 @@ export function assertEncrypted(value: string, fieldName?: string): void {
  *
  * Detection only runs when the payload already contains at least one
  * `_encrypted` field (i.e. it is an entity payload, not a setting or auth
- * request) — see `validateEncryptedPayload`.
+ * request) - see `validateEncryptedPayload`.
  */
 export const KNOWN_SENSITIVE_FIELDS = [
   'title',
@@ -104,6 +104,7 @@ export const KNOWN_SENSITIVE_FIELDS = [
   'description',
   'content',
   'color',
+  'archived_at',
   'metadata'
 ] as const;
 
@@ -111,15 +112,15 @@ export const KNOWN_SENSITIVE_FIELDS = [
  * Detect plaintext leaks in an entity payload.
  *
  * Two complementary checks:
- *   1. **Sibling check** — for every `<base>_encrypted` field present, the
+ *   1. **Sibling check** - for every `<base>_encrypted` field present, the
  *      sibling `<base>` plaintext field MUST NOT also be present. Catches
  *      regressions where a developer forgot to drop the plaintext source
  *      after encrypting.
- *   2. **Known-sensitive check** — none of `KNOWN_SENSITIVE_FIELDS` may appear
+ *   2. **Known-sensitive check** - none of `KNOWN_SENSITIVE_FIELDS` may appear
  *      in plaintext on an entity payload. Catches cases where the plaintext
  *      and encrypted forms use different base names.
  *
- * `null` / `undefined` plaintext values are tolerated (defensive — they carry
+ * `null` / `undefined` plaintext values are tolerated (defensive - they carry
  * no information).
  *
  * @throws Error if any plaintext leak is detected
@@ -127,7 +128,7 @@ export const KNOWN_SENSITIVE_FIELDS = [
 export function detectPlaintextLeaks(data: Record<string, unknown>): void {
   const keys = Object.keys(data);
 
-  // Check 1: sibling fields — `<base>` next to `<base>_encrypted`
+  // Check 1: sibling fields - `<base>` next to `<base>_encrypted`
   for (const key of keys) {
     if (!key.endsWith('_encrypted')) continue;
     const base = key.slice(0, -'_encrypted'.length);
@@ -138,7 +139,7 @@ export function detectPlaintextLeaks(data: Record<string, unknown>): void {
     if (plaintextValue === null || plaintextValue === undefined) continue;
 
     logger.error(
-      `Plaintext leak: field "${base}" present alongside "${key}" — possible regression`
+      `Plaintext leak: field "${base}" present alongside "${key}" - possible regression`
     );
     throw new Error(
       `Encryption guard: plaintext field "${base}" must not be sent alongside "${key}". ` +
@@ -189,7 +190,7 @@ export function validateEncryptedPayload(data: Record<string, unknown>): void {
 
     const value = data[key];
 
-    // Optional fields may be null/undefined — skip them
+    // Optional fields may be null/undefined - skip them
     if (value === null || value === undefined) continue;
 
     if (typeof value !== 'string') {

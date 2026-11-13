@@ -4,6 +4,7 @@
     | 'starred'
     | 'folders'
     | 'tags'
+    | 'archive'
     | 'trash'
     | 'shares'
     | 'search'
@@ -25,6 +26,7 @@
     Star,
     Folder,
     Tag,
+    Archive,
     Trash2,
     Settings,
     LogOut,
@@ -165,6 +167,13 @@
     { id: 'tags' as Section, label: $t('nav.tags'), short: $t('nav.tags'), icon: Tag }
   ]);
 
+  const ARCHIVE_SECTION = $derived({
+    id: 'archive' as Section,
+    label: $t('nav.archive'),
+    short: $t('nav.archive'),
+    icon: Archive
+  });
+
   const TRASH_SECTION = $derived({
     id: 'trash' as Section,
     label: $t('nav.trash'),
@@ -291,6 +300,23 @@
         {/if}
       </span>
       <span class="text-[0.6875rem] leading-none">{$t('nav.shares')}</span>
+    </button>
+    <!-- Archive -->
+    <button
+      type="button"
+      onclick={() => {
+        activeSection = ARCHIVE_SECTION.id;
+        onsectionclick?.(ARCHIVE_SECTION.id);
+      }}
+      class="flex flex-1 flex-col items-center gap-0.5 rounded-md py-2 px-1.5 text-xs transition-colors
+        {activeSection === ARCHIVE_SECTION.id
+        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+        : 'text-muted-foreground hover:bg-sidebar-accent/60'}"
+      aria-label={ARCHIVE_SECTION.label}
+      aria-current={activeSection === ARCHIVE_SECTION.id ? 'page' : undefined}
+    >
+      <ARCHIVE_SECTION.icon class="h-5 w-5" />
+      <span class="text-[0.6875rem] leading-none">{ARCHIVE_SECTION.short}</span>
     </button>
     <!-- Trash -->
     <button
@@ -487,6 +513,31 @@
         {/snippet}
       </Tooltip.Trigger>
       <Tooltip.Content side={endSide} sideOffset={6}>{$t('nav.shares')}</Tooltip.Content>
+    </Tooltip.Root>
+
+    <!-- Archive -->
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <button
+            {...props}
+            type="button"
+            onclick={() => {
+              activeSection = ARCHIVE_SECTION.id;
+              onsectionclick?.(ARCHIVE_SECTION.id);
+            }}
+            class="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-lg transition-colors
+              {activeSection === ARCHIVE_SECTION.id
+              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+              : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
+            aria-label={ARCHIVE_SECTION.label}
+            aria-current={activeSection === ARCHIVE_SECTION.id ? 'page' : undefined}
+          >
+            <ARCHIVE_SECTION.icon class="h-6 w-6 md:h-5 md:w-5" />
+          </button>
+        {/snippet}
+      </Tooltip.Trigger>
+      <Tooltip.Content side={endSide} sideOffset={6}>{ARCHIVE_SECTION.label}</Tooltip.Content>
     </Tooltip.Root>
 
     <!-- Trash -->

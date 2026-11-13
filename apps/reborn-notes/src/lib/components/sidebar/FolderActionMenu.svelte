@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     MoreVertical,
+    Archive,
     CornerUpRight,
     FilePlus,
     FolderPlus,
@@ -38,6 +39,7 @@
   import ImportMarkdownToFolderDialog from '$lib/components/import/ImportMarkdownToFolderDialog.svelte';
   import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
   import FolderAppearanceDialog from '$lib/components/folders/FolderAppearanceDialog.svelte';
+  import { archiveFolder } from '$lib/services/archive-actions';
 
   let {
     folder,
@@ -59,7 +61,7 @@
     onNewSubfolder?: () => void;
     /** Parent owns the rename UI (e.g. inline input). */
     onStartRename: () => void;
-    /** Called after a successful delete - parent can navigate back to parent folder. */
+    /** Called after a successful delete or archive - parent can navigate back to parent folder. */
     onAfterDelete?: () => void;
   } = $props();
 
@@ -189,6 +191,15 @@
     deleteDialogOpen = true;
   }
 
+  // Archive the folder with everything in it. No confirmation: nothing is
+  // deleted and the toast carries an Undo. The folder leaves the everyday
+  // tree, so the parent navigates away like after a delete.
+  async function handleArchive() {
+    sheetOpen = false;
+    if (!folder) return;
+    if (await archiveFolder(folder)) onAfterDelete?.();
+  }
+
   async function confirmDeleteFolder(
     mode: DeleteFolderMode,
     onProgress: DeleteFolderProgressCallback
@@ -269,6 +280,12 @@
           {$t('folders.import_folder.action')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        {#if !folder.decrypt_failed}
+          <DropdownMenuItem onclick={handleArchive}>
+            <Archive class="h-3.5 w-3.5" />
+            {$t('archive.folder_action')}
+          </DropdownMenuItem>
+        {/if}
         <DropdownMenuItem
           class="text-destructive focus:text-destructive"
           onclick={handleDelete}
@@ -328,6 +345,12 @@
         <FolderInput class="me-2 h-4 w-4" />
         {$t('folders.import_folder.action')}
       </Button>
+      {#if folder && !folder.decrypt_failed}
+        <Button variant="ghost" class="w-full justify-start" onclick={handleArchive}>
+          <Archive class="me-2 h-4 w-4" />
+          {$t('archive.folder_action')}
+        </Button>
+      {/if}
       <Button
         variant="ghost"
         class="w-full justify-start text-destructive hover:text-destructive"

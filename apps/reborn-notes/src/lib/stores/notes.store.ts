@@ -43,11 +43,16 @@ function createNotesStore() {
   const baseQuery = writable('');
   const baseSearchInContent = writable(false);
 
-  // Filter state (mutually exclusive: folder, tag, starred, or trash)
+  // Filter state (mutually exclusive: folder, tag, starred, archive, or trash)
   let currentFolderId: string | null | undefined = undefined;
   let currentTagId: string | null = null;
   let currentStarred = false;
   let currentTrash = false;
+  // Archive view. `currentArchiveFolderIds` narrows it to one archived folder
+  // (the folder and its descendants) when the user opens it from the view's
+  // folder section; undefined = the whole archive.
+  let currentArchive = false;
+  let currentArchiveFolderIds: string[] | undefined = undefined;
 
   // Version counter to discard stale async results
   let refreshVersion = 0;
@@ -67,9 +72,10 @@ function createNotesStore() {
   }
 
   // Derived visible list - _raw is already filtered (search query + AST + content) by refresh().
-  // Trash mode keeps the natural order; everything else gets pin-first re-sort by user's sortBy.
+  // Trash and archive keep the index's own order (archive: newest archived
+  // first); everything else gets pin-first re-sort by user's sortBy.
   const notes = derived([_raw, sortBy], ([$raw, $sort]) =>
-    currentTrash ? $raw : sortItems($raw, $sort)
+    currentTrash || currentArchive ? $raw : sortItems($raw, $sort)
   );
 
   /**
@@ -80,7 +86,7 @@ function createNotesStore() {
    * not expand the scope.
    */
   function getSearchSubtreeFolderIds(): string[] | null {
-    if (currentTrash || currentStarred || currentTagId) return null;
+    if (currentTrash || currentArchive || currentStarred || currentTagId) return null;
     if (typeof currentFolderId !== 'string') return null;
     if (!get(searchQuery).trim()) return null;
     const tree = get(foldersStore);
@@ -90,8 +96,14 @@ function createNotesStore() {
 
   /** Build filter options from current store state. */
   function buildFilterOptions() {
-    if (currentTrash) return { trashed: true as const };
-    const base = { trashed: false as const };
+    if (currentTrash) return { scope: 'trash' as const };
+    if (currentArchive) {
+      return {
+        scope: 'archive' as const,
+        ...(currentArchiveFolderIds ? { folderIds: currentArchiveFolderIds } : {})
+      };
+    }
+    const base = { scope: 'active' as const };
     if (currentStarred) return { ...base, starred: true as const };
     if (currentTagId) return { ...base, tagId: currentTagId };
     const subtreeIds = getSearchSubtreeFolderIds();
@@ -262,11 +274,16 @@ function createNotesStore() {
     }
   }
 
-  /** A concrete scope change (folder/tag/starred/trash) exits any open smart
-   *  folder - the membership filter belongs to the smart folder alone. */
+  /** A concrete scope change (folder/tag/starred/archive/trash) exits any open
+   *  smart folder - the membership filter belongs to the smart folder alone. */
   function resetBaseQuery() {
     baseQuery.set('');
     baseSearchInContent.set(false);
+  }
+
+  function leaveArchive() {
+    currentArchive = false;
+    currentArchiveFolderIds = undefined;
   }
 
   function setFolder(folderId: string | null | undefined) {
@@ -274,6 +291,7 @@ function createNotesStore() {
     currentTagId = null;
     currentStarred = false;
     currentTrash = false;
+    leaveArchive();
     resetBaseQuery();
     refresh();
   }
@@ -283,6 +301,7 @@ function createNotesStore() {
     currentFolderId = undefined;
     currentStarred = false;
     currentTrash = false;
+    leaveArchive();
     resetBaseQuery();
     refresh();
   }
@@ -293,6 +312,7 @@ function createNotesStore() {
       currentTagId = null;
       currentFolderId = undefined;
       currentTrash = false;
+      leaveArchive();
     }
     resetBaseQuery();
     refresh();
@@ -304,7 +324,25 @@ function createNotesStore() {
       currentTagId = null;
       currentFolderId = undefined;
       currentStarred = false;
+      leaveArchive();
     }
+    resetBaseQuery();
+    refresh();
+  }
+
+  /**
+   * Show the archive: notes with their own archive marker plus everything
+   * inside archived folders. `folderIds` narrows the list to one archived
+   * folder (pass the folder and its descendants); omit it for the whole
+   * archive. Mutually exclusive with folder/tag/starred/trash, like the others.
+   */
+  function setArchive(folderIds?: string[]) {
+    currentArchive = true;
+    currentArchiveFolderIds = folderIds;
+    currentTagId = null;
+    currentFolderId = undefined;
+    currentStarred = false;
+    currentTrash = false;
     resetBaseQuery();
     refresh();
   }
@@ -320,6 +358,7 @@ function createNotesStore() {
     currentTagId = null;
     currentStarred = false;
     currentTrash = false;
+    leaveArchive();
     baseQuery.set(query);
     baseSearchInContent.set(inContent);
     refresh();
@@ -405,6 +444,21 @@ function createNotesStore() {
     return result;
   }
 
+  /**
+   * Archive a note (its own marker). The note leaves every everyday list and
+   * shows up in the Archive view; an open editor stays open.
+   */
+  async function archive(id: string): Promise<void> {
+    await NoteService.setNoteArchived(id, true);
+    refresh();
+  }
+
+  /** Take a note out of the archive (removes its own marker). */
+  async function unarchive(id: string): Promise<void> {
+    await NoteService.setNoteArchived(id, false);
+    refresh();
+  }
+
   /** Restore a note from trash. */
   async function restore(id: string): Promise<void> {
     await NoteService.restoreNote(id);
@@ -444,6 +498,7 @@ function createNotesStore() {
     setTag,
     setStarred,
     setTrash,
+    setArchive,
     setSmartFolder,
     setSearch,
     setSearchInContent,
@@ -456,6 +511,8 @@ function createNotesStore() {
     togglePin,
     toggleStar,
     setColor,
+    archive,
+    unarchive,
     restore,
     permanentDelete,
     emptyTrash,

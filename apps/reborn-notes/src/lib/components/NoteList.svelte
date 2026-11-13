@@ -24,7 +24,9 @@
     CheckCheck,
     ListX,
     Rows3,
-    LayoutGrid
+    LayoutGrid,
+    Archive,
+    ArchiveRestore
   } from '@lucide/svelte';
   import { exportNoteAsMarkdown } from '$lib/services/export-import.service';
   import * as NoteService from '$lib/services/note.service';
@@ -68,6 +70,14 @@
     noteListLayout,
     type NoteListLayout
   } from '$lib/stores/device-prefs.store';
+  import ArchivedFolderList from './archive/ArchivedFolderList.svelte';
+  import {
+    archiveNote,
+    archiveNotes,
+    restoreNote,
+    restoreNotes
+  } from '$lib/services/archive-actions';
+  import type { ArchiveRoot } from '$lib/utils/archive-scope';
 
   function findFolderNode(
     nodes: FolderWithChildren[],
@@ -148,6 +158,9 @@
     activeSection = 'all',
     activeFolderId = null,
     isTrash = false,
+    isArchive = false,
+    archiveRoots = [],
+    onArchiveFolderOpen,
     isPeriodic = false,
     showSidebarTrigger = false,
     layoutToggle = false,
@@ -168,6 +181,12 @@
     /** Current folder ID — used to render a breadcrumb under search results from subfolders. */
     activeFolderId?: string | null;
     isTrash?: boolean;
+    /** The Archive view: archived notes, with the archived folders listed above them. */
+    isArchive?: boolean;
+    /** Archived folders to list above the notes (empty once the view is narrowed to one). */
+    archiveRoots?: ArchiveRoot[];
+    /** Narrow the Archive view to one archived folder. */
+    onArchiveFolderOpen?: (root: ArchiveRoot) => void;
     isPeriodic?: boolean;
     showSidebarTrigger?: boolean;
     /**
@@ -197,6 +216,10 @@
   } = $props();
 
   const isMobileQuery = useIsMobile();
+
+  // Full folder tree, archived folders included (the default store value
+  // leaves them out) - for the folder path of rows in the Archive view.
+  const allFolders = foldersStore.all;
 
   // Grid layout (#523): the same cards in 2-3 columns, by the width of the list
   // (container queries on the scroll box, so a narrow window or a larger text
@@ -417,6 +440,20 @@
     openNoteColorDialog([noteId]);
   }
 
+  async function handleArchive(noteId: string, e?: Event) {
+    e?.stopPropagation();
+    menuOpenId = null;
+    noteActionSheetOpen = false;
+    await archiveNote(noteId);
+  }
+
+  async function handleUnarchive(noteId: string, e?: Event) {
+    e?.stopPropagation();
+    menuOpenId = null;
+    noteActionSheetOpen = false;
+    await restoreNote(noteId);
+  }
+
   async function handleRestore(noteId: string, e?: Event) {
     e?.stopPropagation();
     menuOpenId = null;
@@ -493,6 +530,9 @@
     void activeSection;
     void activeFolderId;
     void isTrash;
+    void isArchive;
+    // Opening / leaving an archived folder inside the Archive view.
+    void archiveRoots.length;
     untrack(() => {
       if (selectionMode || selectedIds.size > 0) exitSelectionMode();
     });
@@ -661,6 +701,25 @@
     exitSelectionMode();
   }
 
+  async function bulkArchive() {
+    const ids = selectedItems.map((n) => n.id);
+    if (ids.length === 0) return;
+    await archiveNotes(ids);
+    exitSelectionMode();
+  }
+
+  // Archive view. Only notes archived on their own can be restored one by one;
+  // a note held by an archived folder comes back with the folder or by moving
+  // it out, so it is skipped here and the reason is shown.
+  async function bulkUnarchive() {
+    const items = selectedItems;
+    if (items.length === 0) return;
+    const ids = items.filter((n) => n.archive && !n.archive.folderId).map((n) => n.id);
+    if (ids.length < items.length) toastStore.info($t('archive.restore_needs_folder'));
+    if (ids.length > 0) await restoreNotes(ids);
+    exitSelectionMode();
+  }
+
   function openBulkColor() {
     if (selectedIds.size === 0) return;
     // Visible selection only (stale ids that left the view are skipped), like
@@ -730,6 +789,15 @@
    * not apply (no active folder, or note has no folder).
    */
   function getRelativeBreadcrumb(noteFolderId: string | undefined): string {
+    // Archive view: always the full path. Archived notes come from anywhere in
+    // the tree, and the path is how the user tells where one will return to.
+    // Read from the full tree - the everyday one leaves archived folders out.
+    if (isArchive) {
+      if (!noteFolderId) return '';
+      return buildBreadcrumb($allFolders, noteFolderId)
+        .map((c) => c.name)
+        .join(' / ');
+    }
     if (!searchInput) return '';
     if (activeFolderId === null || activeFolderId === undefined) return '';
     if (!noteFolderId || noteFolderId === activeFolderId) return '';
@@ -775,6 +843,17 @@
     rowTwoProminent
       ? 'h-11 w-11 @max-[18rem]:w-9 @max-[15rem]:w-7'
       : 'h-9 w-9 @max-[15rem]:w-7'
+  );
+  // The everyday list has two more buttons than trash / archive (eight with
+  // Archive), so its steps start earlier: 23.75rem at w-11, 19.75rem at w-9,
+  // 17.75rem at w-8, 15.75rem at w-7.
+  const selectionBtnClassWide = $derived(
+    rowTwoProminent
+      ? 'h-11 w-11 @max-[26rem]:w-9 @max-[22rem]:w-8 @max-[19.5rem]:w-7'
+      : 'h-9 w-9 @max-[23rem]:w-8 @max-[20rem]:w-7'
+  );
+  const toolbarBtnClass = $derived(
+    isTrash || isArchive ? selectionBtnClass : selectionBtnClassWide
   );
 
   // ── Active folder action menu + inline rename ─────────────────
@@ -977,7 +1056,7 @@
         <button
           type="button"
           onclick={exitSelectionMode}
-          class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors"
+          class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors"
           aria-label={$t('notes.multiselect.exit')}
           title={$t('notes.multiselect.exit')}
         >
@@ -991,7 +1070,7 @@
           type="button"
           onclick={allSelected ? deselectAll : selectAll}
           disabled={$notesStore.length === 0}
-          class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+          class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
           aria-label={allSelected
             ? $t('notes.multiselect.deselect_all')
             : $t('notes.multiselect.select_all')}
@@ -1011,7 +1090,7 @@
             type="button"
             onclick={bulkRestore}
             disabled={selectedIds.size === 0}
-            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.restore_all')}
             title={$t('notes.multiselect.restore_all')}
           >
@@ -1021,18 +1100,49 @@
             type="button"
             onclick={() => (bulkPermanentDeleteDialogOpen = true)}
             disabled={selectedIds.size === 0}
-            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.permanent_delete_all')}
             title={$t('notes.multiselect.permanent_delete_all')}
           >
             <Trash class={rowTwoIconClass} />
+          </button>
+        {:else if isArchive}
+          <button
+            type="button"
+            onclick={bulkUnarchive}
+            disabled={selectedIds.size === 0}
+            class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            aria-label={$t('archive.restore')}
+            title={$t('archive.restore')}
+          >
+            <ArchiveRestore class={rowTwoIconClass} />
+          </button>
+          <button
+            type="button"
+            onclick={openBulkMove}
+            disabled={selectedIds.size === 0}
+            class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            aria-label={$t('notes.multiselect.move_all')}
+            title={$t('notes.multiselect.move_all')}
+          >
+            <FolderInput class={rowTwoIconClass} />
+          </button>
+          <button
+            type="button"
+            onclick={() => (bulkDeleteDialogOpen = true)}
+            disabled={selectedIds.size === 0}
+            class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
+            aria-label={$t('notes.multiselect.delete_all')}
+            title={$t('notes.multiselect.delete_all')}
+          >
+            <Trash2 class={rowTwoIconClass} />
           </button>
         {:else}
           <button
             type="button"
             onclick={bulkPin}
             disabled={selectedIds.size === 0}
-            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={allPinned
               ? $t('notes.multiselect.unpin_all')
               : $t('notes.multiselect.pin_all')}
@@ -1050,7 +1160,7 @@
             type="button"
             onclick={bulkStar}
             disabled={selectedIds.size === 0}
-            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={allStarred
               ? $t('notes.multiselect.unstar_all')
               : $t('notes.multiselect.star_all')}
@@ -1068,7 +1178,7 @@
             type="button"
             onclick={openBulkColor}
             disabled={selectedIds.size === 0}
-            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.color_all')}
             title={$t('notes.multiselect.color_all')}
           >
@@ -1078,7 +1188,7 @@
             type="button"
             onclick={openBulkMove}
             disabled={selectedIds.size === 0}
-            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.move_all')}
             title={$t('notes.multiselect.move_all')}
           >
@@ -1086,9 +1196,19 @@
           </button>
           <button
             type="button"
+            onclick={bulkArchive}
+            disabled={selectedIds.size === 0}
+            class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:pointer-events-none disabled:opacity-40"
+            aria-label={$t('archive.action')}
+            title={$t('archive.action')}
+          >
+            <Archive class={rowTwoIconClass} />
+          </button>
+          <button
+            type="button"
             onclick={() => (bulkDeleteDialogOpen = true)}
             disabled={selectedIds.size === 0}
-            class="flex {selectionBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
+            class="flex {toolbarBtnClass} shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:pointer-events-none disabled:opacity-40"
             aria-label={$t('notes.multiselect.delete_all')}
             title={$t('notes.multiselect.delete_all')}
           >
@@ -1118,7 +1238,8 @@
           </button>
         {/if}
 
-        {#if !isTrash}
+        <!-- Trash and archive have a fixed order (archive: newest archived first). -->
+        {#if !isTrash && !isArchive}
           <NoteListSortMenu bind:sortSheetOpen prominent={rowTwoProminent} />
         {/if}
 
@@ -1174,13 +1295,13 @@
     {@render listToolbar()}
   {/if}
 
-  <!-- Search bar. No save affordance in trash: the trash bucket has no query
-       operator, so a saved view could never reproduce a trash-scoped result. -->
+  <!-- Search bar. No save affordance in trash or archive: neither bucket has a
+       query operator, so a saved view could never reproduce such a result. -->
   <NoteListSearchBar
     bind:searchInput
     bind:searchInContent
     bind:searchInputEl
-    onsavesearch={isTrash ? undefined : () => (saveSearchDialogOpen = true)}
+    onsavesearch={isTrash || isArchive ? undefined : () => (saveSearchDialogOpen = true)}
   />
 
   <!-- Trash retention notice: trashed notes are auto-purged after 30 days
@@ -1195,6 +1316,17 @@
     >
       <Info class="mt-px h-3.5 w-3.5 shrink-0" />
       <span>{$t('trash.auto_delete_notice', { values: { days: 30 } })}</span>
+    </div>
+  {/if}
+
+  <!-- Archive notice: what the archive is, in one line, same slot and look as
+       the trash notice above. -->
+  {#if isArchive}
+    <div
+      class="flex items-start gap-1.5 px-4 py-2 text-[0.6875rem] leading-snug text-muted-foreground md:border-b"
+    >
+      <Info class="mt-px h-3.5 w-3.5 shrink-0" />
+      <span>{$t('archive.notice')}</span>
     </div>
   {/if}
 
@@ -1230,6 +1362,9 @@
         parentId={activeFolderId}
         onselect={(id) => onSubfolderSelect?.(id)}
       />
+      {#if isArchive}
+        <ArchivedFolderList roots={archiveRoots} onopen={(root) => onArchiveFolderOpen?.(root)} />
+      {/if}
     {/if}
     {#if searchOnly && !searchInput}
       {#if $savedSearchesStore.length > 0}
@@ -1241,7 +1376,7 @@
         </div>
       {/if}
     {:else if $notesStore.length === 0}
-      {#if subfolders.length === 0 || searchInput}
+      {#if (subfolders.length === 0 && !(isArchive && archiveRoots.length > 0)) || searchInput}
         <div class="px-4 py-8 text-center">
           {#if searchInput}
             <p class="text-sm text-muted-foreground">
@@ -1262,6 +1397,8 @@
             </button>
           {:else if isTrash}
             <p class="text-sm text-muted-foreground">{$t('trash.empty_short')}</p>
+          {:else if isArchive}
+            <p class="text-sm text-muted-foreground">{$t('archive.empty')}</p>
           {:else if $sessionExpired}
             <p class="text-sm text-muted-foreground">{$t('auth.session.empty_no_data')}</p>
           {:else if $isInitialSync}
@@ -1295,6 +1432,7 @@
           <NoteListItemComponent
             {note}
             {isTrash}
+            {isArchive}
             inGrid={isGrid}
             class={i > 0 && i === firstUnpinnedIndex ? 'col-start-1' : ''}
             onopenmove={isGrid ? openMoveMenu : undefined}
@@ -1315,6 +1453,8 @@
             ondelete={handleDelete}
             onrestore={handleRestore}
             onpermanentdelete={handlePermanentDelete}
+            onarchive={handleArchive}
+            onunarchive={handleUnarchive}
           />
         {/each}
       </ul>
@@ -1340,6 +1480,8 @@
   ondelete={handleDelete}
   onrestore={handleRestore}
   onpermanentdelete={handlePermanentDelete}
+  onarchive={handleArchive}
+  onunarchive={handleUnarchive}
 />
 
 <!-- Move to folder: bottom sheet on the phone, centered dialog for a grid card

@@ -8,8 +8,16 @@
  * Consumers: NoteList, NotePicker, autocomplete [[, search sidebar.
  *
  * Replaces the old NoteTitleIndex - now stores all metadata needed for list rendering:
- * title, folderId, isPinned, isStarred, isTrashed, createdAt, updatedAt, tagIds, color.
+ * title, folderId, isPinned, isStarred, isTrashed, createdAt, updatedAt, tagIds, color,
+ * archivedAt.
  * Full content is NEVER stored here - loaded on demand by note-detail.service.
+ *
+ * Three buckets, never mixed in one list (see NoteScope):
+ *   - active  - what every everyday view, search and [[link]] suggestion shows;
+ *   - archive - notes with their own archive marker, plus every note inside an
+ *               archived folder (the folder scope comes from the folder store via
+ *               setArchivedFolders); shown only in the Archive view;
+ *   - trash   - the plain `is_archived` wire flag, whatever the archive state.
  */
 import { noteStore, noteTagStore, noteTagQueries } from '@reborn/storage';
 import { cryptoManager } from '@reborn/crypto';
@@ -24,6 +32,11 @@ import {
   type SearchContext,
   type SearchEntity
 } from '@reborn/utils';
+import {
+  sameArchivedFolderScope,
+  type ArchivedFolderInfo,
+  type ArchivedFolderScope
+} from '$lib/utils/archive-scope';
 
 export interface NoteIndexEntry {
   title: string;
@@ -37,13 +50,34 @@ export interface NoteIndexEntry {
   /** Color mark key from the encrypted metadata bundle (RAM only, like the
    *  title - never persisted in plaintext). Absent = no color. */
   color?: string;
+  /** The note's OWN archive marker from the encrypted metadata bundle (RAM
+   *  only). Absent does not mean "active": the note can still be in the
+   *  archive through an archived folder - ask `archiveOf()`. */
+  archivedAt?: string;
   /** Row's ciphertext failed to decrypt (see undecryptable-rows.ts) - the list
    *  renders an explicit placeholder and the row cannot be opened. */
   decryptFailed?: boolean;
 }
 
+/**
+ * Why and since when a note is in the archive. `folderId` is set when an
+ * archived folder holds the note (the topmost archived folder above it): the
+ * note then comes back by restoring that folder or by moving the note out, and
+ * removing the note's own marker alone would not surface it.
+ */
+export interface NoteArchiveInfo {
+  at: string;
+  folderId?: string;
+}
+
 /** Lightweight note type for list views - NoteDecrypted minus content. */
-export type NoteListItem = Omit<NoteDecrypted, 'content' | 'deleted_at'>;
+export type NoteListItem = Omit<NoteDecrypted, 'content' | 'deleted_at'> & {
+  /** Present when the note is in the archive (own marker or archived folder). */
+  archive?: NoteArchiveInfo;
+};
+
+/** The bucket a list shows. Default everywhere: 'active'. */
+export type NoteScope = 'active' | 'archive' | 'trash';
 
 export type SortBy = 'updated_at' | 'created_at' | 'title';
 
@@ -56,7 +90,7 @@ export interface FilterOptions {
   folderIds?: string[];
   tagId?: string;
   starred?: boolean;
-  trashed?: boolean;
+  scope?: NoteScope;
   search?: string;
   sortBy?: SortBy;
   page?: number;
@@ -71,7 +105,7 @@ export interface FilterResult {
 
 /**
  * AST-driven filter options. Mirrors the pre-filter slice of FilterOptions
- * (folder/tag/starred/trashed) - body content is NOT handled here. Operators
+ * (folder/tag/starred/scope) - body content is NOT handled here. Operators
  * that need decrypted content (`has:link`, freetext-in-body) are evaluated by
  * the content-search path in `notes.store.ts`, which streams one body at a
  * time through the bare `evaluate()` + `toSearchEntity()` helpers.
@@ -81,7 +115,7 @@ export interface FilterByAstOptions {
   folderIds?: string[];
   tagId?: string;
   starred?: boolean;
-  trashed?: boolean;
+  scope?: NoteScope;
   sortBy?: SortBy;
   page?: number;
   pageSize?: number;
@@ -97,6 +131,10 @@ class NoteIndex {
   private _version = $state(0);
 
   private _building = $state(false);
+
+  /** Folders in the archive (archived folders + descendants), from the folder
+   *  store. Not reactive on its own - setArchivedFolders bumps _version. */
+  private _archivedFolders: ArchivedFolderScope = new Map<string, ArchivedFolderInfo>();
 
   // ── Bulk operations ────────────────────────────────────────────
 
@@ -139,6 +177,7 @@ class NoteIndex {
             updatedAt: e.updatedAt,
             tagIds: tagMap.get(e.id) ?? [],
             ...(e.color ? { color: e.color } : {}),
+            ...(e.archivedAt ? { archivedAt: e.archivedAt } : {}),
             ...(e.decryptFailed ? { decryptFailed: true } : {})
           });
         }
@@ -183,6 +222,7 @@ class NoteIndex {
           updatedAt: e.updatedAt,
           tagIds,
           ...(e.color ? { color: e.color } : {}),
+          ...(e.archivedAt ? { archivedAt: e.archivedAt } : {}),
           ...(e.decryptFailed ? { decryptFailed: true } : {})
         });
         changed = true;
@@ -218,6 +258,7 @@ class NoteIndex {
   /** Wipe cache (lock / logout). */
   clear(): void {
     this._map.clear();
+    this._archivedFolders = new Map();
     this._version++;
     noteLinkGraph.clear();
     // Navigation trail is session-scoped: drop it on lock/logout so Back can't
@@ -247,15 +288,119 @@ class NoteIndex {
     }
   }
 
+  // ── Archive ────────────────────────────────────────────────────
+
+  /**
+   * Replace the set of folders that are in the archive. Called by the folder
+   * store on every tree refresh (it owns the decrypted tree). Returns true
+   * when the set actually changed, so the caller knows the lists need a
+   * refresh; an unchanged set costs no re-render.
+   */
+  setArchivedFolders(scope: ArchivedFolderScope): boolean {
+    if (sameArchivedFolderScope(this._archivedFolders, scope)) return false;
+    this._archivedFolders = scope;
+    this._version++;
+    return true;
+  }
+
+  /** The archived folder above (or at) `folderId`, if any. Reactive. */
+  archivedFolder(folderId: string | null | undefined): ArchivedFolderInfo | undefined {
+    void this._version;
+    return folderId ? this._archivedFolders.get(folderId) : undefined;
+  }
+
+  /** Archive state of an entry; undefined = not in the archive. */
+  archiveOf(entry: NoteIndexEntry): NoteArchiveInfo | undefined {
+    const viaFolder = entry.folderId ? this._archivedFolders.get(entry.folderId) : undefined;
+    if (viaFolder) return { at: entry.archivedAt ?? viaFolder.at, folderId: viaFolder.rootId };
+    if (entry.archivedAt) return { at: entry.archivedAt };
+    return undefined;
+  }
+
+  /** Whether a note is in the archive (own marker or archived folder). Reactive. */
+  isInArchive(id: string): boolean {
+    void this._version;
+    const entry = this._map.get(id);
+    return entry !== undefined && this.archiveOf(entry) !== undefined;
+  }
+
+  /** Number of non-trashed notes in the archive that live in `folderIds`. Reactive. */
+  countInFolders(folderIds: string[]): number {
+    void this._version;
+    const set = new Set(folderIds);
+    let count = 0;
+    for (const e of this._map.values()) {
+      if (!e.isTrashed && e.folderId !== undefined && set.has(e.folderId)) count++;
+    }
+    return count;
+  }
+
+  private inScope(entry: NoteIndexEntry, scope: NoteScope): boolean {
+    if (scope === 'trash') return entry.isTrashed;
+    if (entry.isTrashed) return false;
+    return (this.archiveOf(entry) !== undefined) === (scope === 'archive');
+  }
+
+  private toListItem(id: string, e: NoteIndexEntry): NoteListItem {
+    const archive = this.archiveOf(e);
+    return {
+      id,
+      title: e.title,
+      folder_id: e.folderId,
+      is_pinned: e.isPinned,
+      is_starred: e.isStarred,
+      is_trashed: e.isTrashed,
+      created_at: e.createdAt,
+      updated_at: e.updatedAt,
+      tags: e.tagIds,
+      ...(e.color ? { color: e.color } : {}),
+      ...(e.archivedAt ? { archived_at: e.archivedAt } : {}),
+      ...(archive ? { archive } : {}),
+      ...(e.decryptFailed ? { decrypt_failed: true } : {})
+    };
+  }
+
+  /**
+   * List order. Pinned notes lead in the active bucket only (trash and archive
+   * have no pin concept). The archive is ordered by when things were archived,
+   * newest first; everything else by the caller's sort key.
+   */
+  private compare(
+    a: NoteIndexEntry,
+    b: NoteIndexEntry,
+    scope: NoteScope,
+    sortBy: SortBy
+  ): number {
+    if (scope === 'active') {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+    }
+    if (scope === 'archive') {
+      const aAt = this.archiveOf(a)?.at ?? '';
+      const bAt = this.archiveOf(b)?.at ?? '';
+      const byArchived = bAt.localeCompare(aAt);
+      if (byArchived !== 0) return byArchived;
+      return b.updatedAt.localeCompare(a.updatedAt);
+    }
+    if (sortBy === 'title') {
+      return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+    }
+    const aTime = sortBy === 'created_at' ? a.createdAt : a.updatedAt;
+    const bTime = sortBy === 'created_at' ? b.createdAt : b.updatedAt;
+    return bTime.localeCompare(aTime); // desc (newest first)
+  }
+
   // ── Read API (backward-compatible with NoteTitleIndex) ─────────
 
-  /** All non-trashed titles sorted by updatedAt desc. Reactive via _version.
-   *  Excludes undecryptable rows - they feed [[link]] autocomplete and pickers,
-   *  where a blank garbage target must not be offered. */
+  /** All ACTIVE titles (not trashed, not archived) sorted by updatedAt desc.
+   *  Reactive via _version. Feeds [[link]] autocomplete and the note picker:
+   *  archived notes are not offered as new link targets (an existing link to
+   *  one still works), and undecryptable rows are excluded because a blank
+   *  garbage target must not be offered. */
   getAll(): { id: string; title: string }[] {
     void this._version;
     return Array.from(this._map.entries())
-      .filter(([, e]) => !e.isTrashed && !e.decryptFailed)
+      .filter(([, e]) => this.inScope(e, 'active') && !e.decryptFailed)
       .sort((a, b) => b[1].updatedAt.localeCompare(a[1].updatedAt))
       .map(([id, e]) => ({ id, title: e.title }));
   }
@@ -278,43 +423,36 @@ class NoteIndex {
     void this._version;
     const e = this._map.get(id);
     if (!e) return null;
-    return {
-      id,
-      title: e.title,
-      folder_id: e.folderId,
-      is_pinned: e.isPinned,
-      is_starred: e.isStarred,
-      is_trashed: e.isTrashed,
-      created_at: e.createdAt,
-      updated_at: e.updatedAt,
-      tags: e.tagIds,
-      ...(e.color ? { color: e.color } : {}),
-      ...(e.decryptFailed ? { decrypt_failed: true } : {})
-    };
+    return this.toListItem(id, e);
   }
 
-  /** Instant substring search across titles (sync). Reactive. */
+  /** Instant substring search across ACTIVE titles (sync). Reactive. */
   search(query: string): { id: string; title: string }[] {
     void this._version;
     if (!query.trim()) return [];
     const q = foldSearchText(query);
     return Array.from(this._map.entries())
-      .filter(([, e]) => !e.isTrashed && foldSearchText(e.title).includes(q))
+      .filter(([, e]) => this.inScope(e, 'active') && foldSearchText(e.title).includes(q))
       .sort((a, b) => b[1].updatedAt.localeCompare(a[1].updatedAt))
       .map(([id, e]) => ({ id, title: e.title }));
   }
 
-  /** Total number of entries (including trashed). Reactive. */
+  /** Total number of entries (including trashed and archived). Reactive. */
   get count(): number {
     void this._version;
     return this._map.size;
   }
 
   /**
-   * Snapshot of all non-trashed entries for dedup / lookup callers (e.g.
-   * the markdown import pipeline). Returns a new array each call - safe
-   * to mutate. Excludes trashed notes; importer should not collide with
+   * Snapshot of all non-trashed entries for dedup / lookup callers (the
+   * markdown import pipeline, periodic notes). Returns a new array each call -
+   * safe to mutate. Excludes trashed notes; importer should not collide with
    * trashed titles.
+   *
+   * INCLUDES archived notes, on purpose: an archived note is a live note that
+   * is only hidden. If these callers did not see it, archiving old daily notes
+   * would make "open today's note" create duplicates, and re-importing a file
+   * would silently add a second copy next to the archived one.
    */
   entries(): { id: string; title: string; folderId: string | undefined }[] {
     void this._version;
@@ -334,31 +472,20 @@ class NoteIndex {
   // ── Filtered list API ──────────────────────────────────────────
 
   /**
-   * Unified filtering + sorting + pagination over the in-memory index.
-   *
-   * All operations are synchronous on the Map - no IndexedDB hit, no decryption.
-   * Typical cost: <1ms for 10K entries.
+   * Shared pre-filter of both list paths: bucket (active / archive / trash),
+   * folder, tag, starred. Body content is never involved.
    */
-  getFiltered(options: FilterOptions = {}): FilterResult {
-    void this._version;
-
-    const {
-      folderId,
-      folderIds,
-      tagId,
-      starred,
-      trashed = false,
-      search,
-      sortBy = 'updated_at',
-      page = 1,
-      pageSize = 50
-    } = options;
-
-    // 1. Filter
+  private preFilter(options: {
+    folderId?: string | null;
+    folderIds?: string[];
+    tagId?: string;
+    starred?: boolean;
+    scope: NoteScope;
+  }): [string, NoteIndexEntry][] {
+    const { folderId, folderIds, tagId, starred, scope } = options;
     let entries = Array.from(this._map.entries());
 
-    // trashed filter
-    entries = entries.filter(([, e]) => e.isTrashed === trashed);
+    entries = entries.filter(([, e]) => this.inScope(e, scope));
 
     // folder filter - folderIds (set) takes precedence over folderId (single)
     if (folderIds !== undefined) {
@@ -373,15 +500,54 @@ class NoteIndex {
       }
     }
 
-    // tag filter
     if (tagId) {
       entries = entries.filter(([, e]) => e.tagIds.includes(tagId));
     }
 
-    // starred filter
     if (starred) {
       entries = entries.filter(([, e]) => e.isStarred);
     }
+
+    return entries;
+  }
+
+  /** Sort, paginate and convert a filtered entry set. */
+  private toResult(
+    entries: [string, NoteIndexEntry][],
+    scope: NoteScope,
+    sortBy: SortBy,
+    page: number,
+    pageSize: number
+  ): FilterResult {
+    entries.sort((a, b) => this.compare(a[1], b[1], scope, sortBy));
+    const total = entries.length;
+    const start = (page - 1) * pageSize;
+    const items = entries.slice(start, start + pageSize).map(([id, e]) => this.toListItem(id, e));
+    return { items, total, hasMore: start + pageSize < total };
+  }
+
+  /**
+   * Unified filtering + sorting + pagination over the in-memory index.
+   *
+   * All operations are synchronous on the Map - no IndexedDB hit, no decryption.
+   * Typical cost: <1ms for 10K entries.
+   */
+  getFiltered(options: FilterOptions = {}): FilterResult {
+    void this._version;
+
+    const {
+      folderId,
+      folderIds,
+      tagId,
+      starred,
+      scope = 'active',
+      search,
+      sortBy = 'updated_at',
+      page = 1,
+      pageSize = 50
+    } = options;
+
+    let entries = this.preFilter({ folderId, folderIds, tagId, starred, scope });
 
     // title search
     if (search?.trim()) {
@@ -389,54 +555,13 @@ class NoteIndex {
       entries = entries.filter(([, e]) => foldSearchText(e.title).includes(q));
     }
 
-    // 2. Sort (pinned always first, then by sort key)
-    entries.sort((a, b) => {
-      // Pinned first (skip in trash mode - no pin concept)
-      if (!trashed) {
-        if (a[1].isPinned && !b[1].isPinned) return -1;
-        if (!a[1].isPinned && b[1].isPinned) return 1;
-      }
-
-      if (sortBy === 'title') {
-        return a[1].title.localeCompare(b[1].title, undefined, { sensitivity: 'base' });
-      }
-      const aTime = sortBy === 'created_at' ? a[1].createdAt : a[1].updatedAt;
-      const bTime = sortBy === 'created_at' ? b[1].createdAt : b[1].updatedAt;
-      return bTime.localeCompare(aTime); // desc (newest first)
-    });
-
-    const total = entries.length;
-
-    // 3. Paginate
-    const start = (page - 1) * pageSize;
-    const paged = entries.slice(start, start + pageSize);
-
-    // 4. Convert to NoteListItem
-    const items: NoteListItem[] = paged.map(([id, e]) => ({
-      id,
-      title: e.title,
-      folder_id: e.folderId,
-      is_pinned: e.isPinned,
-      is_starred: e.isStarred,
-      is_trashed: e.isTrashed,
-      created_at: e.createdAt,
-      updated_at: e.updatedAt,
-      tags: e.tagIds,
-      ...(e.color ? { color: e.color } : {}),
-      ...(e.decryptFailed ? { decrypt_failed: true } : {})
-    }));
-
-    return {
-      items,
-      total,
-      hasMore: start + pageSize < total
-    };
+    return this.toResult(entries, scope, sortBy, page, pageSize);
   }
 
   /**
    * AST-driven filtering over the in-memory index.
    *
-   * Pre-filter (folder/tag/starred/trashed) narrows the candidate set, then
+   * Pre-filter (folder/tag/starred/scope) narrows the candidate set, then
    * each remaining entry is mapped to a SearchEntity (with `body = undefined`)
    * and evaluated against the AST. Operators that require content
    * (`has:link`, freetext-in-body) are NOT served here - the caller must take
@@ -448,8 +573,9 @@ class NoteIndex {
    *   - `is:completed`/`is:overdue`/`due:`     → always false (notes have no completion/due semantics)
    *   - `list:`       → always false (notes have no lists)
    *
-   * The active/trash split is handled by the `trashed` pre-filter above -
-   * there is no public `is:trashed` operator.
+   * The active / archive / trash split is handled by the `scope` pre-filter
+   * above - there is no public `is:trashed` or `is:archived` operator, so a
+   * query can never pull notes across buckets.
    */
   getFilteredByAst(
     ast: QueryAST,
@@ -463,69 +589,17 @@ class NoteIndex {
       folderIds,
       tagId,
       starred,
-      trashed = false,
+      scope = 'active',
       sortBy = 'updated_at',
       page = 1,
       pageSize = 50
     } = options;
 
-    let entries = Array.from(this._map.entries());
+    const entries = this.preFilter({ folderId, folderIds, tagId, starred, scope }).filter(
+      ([id, e]) => evaluate(ast, toSearchEntity(id, e), ctx)
+    );
 
-    entries = entries.filter(([, e]) => e.isTrashed === trashed);
-
-    if (folderIds !== undefined) {
-      const set = new Set(folderIds);
-      entries = entries.filter(([, e]) => e.folderId !== undefined && set.has(e.folderId));
-    } else if (folderId !== undefined) {
-      if (folderId === null) {
-        entries = entries.filter(([, e]) => !e.folderId);
-      } else {
-        entries = entries.filter(([, e]) => e.folderId === folderId);
-      }
-    }
-
-    if (tagId) {
-      entries = entries.filter(([, e]) => e.tagIds.includes(tagId));
-    }
-
-    if (starred) {
-      entries = entries.filter(([, e]) => e.isStarred);
-    }
-
-    entries = entries.filter(([id, e]) => evaluate(ast, toSearchEntity(id, e), ctx));
-
-    entries.sort((a, b) => {
-      if (!trashed) {
-        if (a[1].isPinned && !b[1].isPinned) return -1;
-        if (!a[1].isPinned && b[1].isPinned) return 1;
-      }
-      if (sortBy === 'title') {
-        return a[1].title.localeCompare(b[1].title, undefined, { sensitivity: 'base' });
-      }
-      const aTime = sortBy === 'created_at' ? a[1].createdAt : a[1].updatedAt;
-      const bTime = sortBy === 'created_at' ? b[1].createdAt : b[1].updatedAt;
-      return bTime.localeCompare(aTime);
-    });
-
-    const total = entries.length;
-    const start = (page - 1) * pageSize;
-    const paged = entries.slice(start, start + pageSize);
-
-    const items: NoteListItem[] = paged.map(([id, e]) => ({
-      id,
-      title: e.title,
-      folder_id: e.folderId,
-      is_pinned: e.isPinned,
-      is_starred: e.isStarred,
-      is_trashed: e.isTrashed,
-      created_at: e.createdAt,
-      updated_at: e.updatedAt,
-      tags: e.tagIds,
-      ...(e.color ? { color: e.color } : {}),
-      ...(e.decryptFailed ? { decrypt_failed: true } : {})
-    }));
-
-    return { items, total, hasMore: start + pageSize < total };
+    return this.toResult(entries, scope, sortBy, page, pageSize);
   }
 }
 

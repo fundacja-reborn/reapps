@@ -38,6 +38,15 @@ export interface NoteSensitiveMetadata {
    * per theme at render time. Absent = no color.
    */
   color?: string;
+  /**
+   * Archive marker: ISO timestamp of when the user archived this note.
+   * Absent = not archived on its own (it can still sit in the archive through
+   * an archived folder, see FolderSensitiveMetadata.archived_at). Lives only
+   * here, in the encrypted bundle - the server never learns that an archive
+   * exists. NOT the trash: that is the plain `is_archived` flag (see
+   * NoteEncrypted).
+   */
+  archived_at?: string;
 }
 
 // ─── Decrypted type (UI representation) ──────────────────────────────
@@ -60,6 +69,12 @@ export interface NoteDecrypted {
    * UI-only: held in the RAM note index, never stored in plaintext locally.
    */
   color?: string;
+  /**
+   * The note's own archive marker from `metadata_encrypted` (see
+   * NoteSensitiveMetadata.archived_at). UI-only and, like `color`, filled in
+   * from the RAM note index (list items); a full-note read leaves it unset.
+   */
+  archived_at?: string;
   created_at: string;
   updated_at: string;
   deleted_at?: string;
@@ -147,7 +162,7 @@ export const MAX_ENCRYPTED_CONTENT_BYTES = 750_000; // ~500 KB plaintext + encry
 /** Maximum encrypted note title size - server Zod. */
 export const MAX_ENCRYPTED_NOTE_TITLE_BYTES = 1_500; // ~1 KB plaintext + encryption overhead
 
-/** Maximum encrypted metadata bundle size - server Zod. Contains is_starred, is_pinned, tag IDs, color. */
+/** Maximum encrypted metadata bundle size - server Zod. Contains is_starred, is_pinned, tag IDs, color, archive marker. */
 export const MAX_ENCRYPTED_NOTE_METADATA_BYTES = 10_000; // ~7 KB plaintext - enough for ~200 tag UUIDs
 
 /** Default per-user storage quota in bytes (configurable via USER_STORAGE_LIMIT_BYTES env). */

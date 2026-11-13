@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { derived, writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import type { FolderWithChildren } from '@reborn/types';
 import * as FolderService from '$lib/services/folder.service';
@@ -7,9 +7,28 @@ import type {
   DeleteFolderProgressCallback,
   FolderDeleteSummary
 } from '$lib/services/folder.service';
+import { noteIndex } from '$lib/services/note-index.svelte';
+import {
+  buildArchivedFolderScope,
+  listArchiveRoots,
+  pruneArchivedFolders
+} from '$lib/utils/archive-scope';
 
+/**
+ * The store value is the EVERYDAY tree: archived folders and everything below
+ * them are left out, so the sidebar, the pickers, breadcrumbs and "new note
+ * in folder" never offer an archived folder. The full tree (archive included)
+ * is on `.all`, for the Archive view and for looking up the path of an
+ * archived note; `.archiveRoots` lists the archived folders that view shows.
+ *
+ * Every refresh also hands the archived-folder scope to the note index, which
+ * decides from it which notes are in the archive (a note inside an archived
+ * folder carries no marker of its own).
+ */
 function createFoldersStore() {
   const tree = writable<FolderWithChildren[]>([]);
+  const all = writable<FolderWithChildren[]>([]);
+  const archiveRoots = derived(all, ($all) => listArchiveRoots($all));
   const loading = writable(false);
   const error = writable<string | null>(null);
 
@@ -19,7 +38,11 @@ function createFoldersStore() {
     error.set(null);
     try {
       const data = await FolderService.getFolderTree();
-      tree.set(data);
+      // Scope first: a list that re-reads the index on the store tick below
+      // must already see which folders are archived.
+      noteIndex.setArchivedFolders(buildArchivedFolderScope(data));
+      all.set(data);
+      tree.set(pruneArchivedFolders(data));
     } catch (e: unknown) {
       error.set(e instanceof Error ? e.message : 'Failed to load folders');
     } finally {
@@ -81,8 +104,24 @@ function createFoldersStore() {
     await refresh();
   }
 
+  /** Archive a folder with everything in it (one marker on the folder). */
+  async function archive(id: string): Promise<void> {
+    await FolderService.setFolderArchived(id, true);
+    await refresh();
+  }
+
+  /** Take a folder out of the archive; it reappears where it was. */
+  async function unarchive(id: string): Promise<void> {
+    await FolderService.setFolderArchived(id, false);
+    await refresh();
+  }
+
   return {
     subscribe: tree.subscribe,
+    /** Full tree, archived folders included (they carry `archived_at`). */
+    all: { subscribe: all.subscribe },
+    /** Topmost archived folders, for the Archive view. */
+    archiveRoots: { subscribe: archiveRoots.subscribe },
     loading: { subscribe: loading.subscribe },
     error: { subscribe: error.subscribe },
     refresh,
@@ -92,7 +131,9 @@ function createFoldersStore() {
     getDeleteSummary,
     move,
     reorder,
-    setAppearance
+    setAppearance,
+    archive,
+    unarchive
   };
 }
 

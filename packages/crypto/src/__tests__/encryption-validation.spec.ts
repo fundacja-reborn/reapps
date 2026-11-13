@@ -226,6 +226,7 @@ describe('detectPlaintextLeaks', () => {
       'description',
       'content',
       'color',
+      'archived_at',
       'metadata'
     ]);
   });

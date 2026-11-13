@@ -19,7 +19,9 @@
     ListX,
     ListTree,
     Waypoints,
-    Clock
+    Clock,
+    Archive,
+    ArchiveRestore
   } from '@lucide/svelte';
   import {
     DropdownMenu,
@@ -47,6 +49,8 @@
     onshare,
     onshowxray,
     ondelete,
+    onarchive,
+    onunarchive,
     tocMenuMode = 'hidden',
     tocStale = false,
     onTocApply,
@@ -71,6 +75,10 @@
     onshare?: () => void;
     onshowxray: () => void;
     ondelete: () => void;
+    /** Archive the note. */
+    onarchive?: () => void;
+    /** Take the note out of the archive (its own marker). */
+    onunarchive?: () => void;
     /** Table-of-contents menu state: insert (has headings, no block), manage
      *  (block present), or hidden (nothing to offer). */
     tocMenuMode?: 'insert' | 'manage' | 'hidden';
@@ -200,6 +208,19 @@
             <FolderInput class="h-3.5 w-3.5" />
             {$t('notes.move_to_folder')}
           </DropdownMenuItem>
+          <!-- A note held by an archived folder has no Restore of its own: the
+               bar under the header offers "Restore folder" / moving it out. -->
+          {#if onunarchive && note.archive && !note.archive.folderId}
+            <DropdownMenuItem onclick={onunarchive}>
+              <ArchiveRestore class="h-3.5 w-3.5" />
+              {$t('archive.restore')}
+            </DropdownMenuItem>
+          {:else if onarchive && !note.archive}
+            <DropdownMenuItem onclick={onarchive}>
+              <Archive class="h-3.5 w-3.5" />
+              {$t('archive.action')}
+            </DropdownMenuItem>
+          {/if}
           <DropdownMenuSeparator />
           <!-- Content tools (conditional on the note having headings / a TOC block) -->
           {#if tocMenuMode === 'insert'}

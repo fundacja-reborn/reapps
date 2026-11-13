@@ -171,8 +171,11 @@ describe('#349 the first deliberate action promotes via POST', () => {
 
   it('folder detach skips the push for an ephemeral note (no promotion, no 404)', () => {
     const fn = readSource('./folder.service.ts');
-    const detach = fn.slice(fn.indexOf('// Detach'), fn.indexOf('// Detach') + 600);
-    expect(detach).toMatch(/if\s*\(\s*!current\?\.is_ephemeral\s*\)\s*pushNoteUpdate/);
+    const detach = fn.slice(fn.indexOf('// Detach'), fn.indexOf('// Detach') + 1600);
+    expect(detach).toMatch(/if\s*\(\s*!current\?\.is_ephemeral\s*\)\s*\{\s*pushNoteUpdate/);
+    // An ephemeral note is not given an archive marker either: that write would
+    // be a metadata change on a note the server must never see.
+    expect(detach).toMatch(/archivedVia\s*&&\s*!current\.is_ephemeral/);
   });
 });
 

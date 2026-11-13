@@ -52,7 +52,8 @@
     Pencil,
     RefreshCw,
     Trash2,
-    Upload
+    Upload,
+    Archive
   } from '@lucide/svelte';
   import {
     Button,
@@ -101,6 +102,7 @@
     DeleteFolderProgressCallback
   } from '$lib/services/folder.service';
   import DeleteFolderDialog from './DeleteFolderDialog.svelte';
+  import { archiveFolder } from '$lib/services/archive-actions';
   import ImportMarkdownToFolderDialog from '$lib/components/import/ImportMarkdownToFolderDialog.svelte';
   import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
   import SavedSearchRow from '$lib/components/notes/SavedSearchRow.svelte';
@@ -313,6 +315,16 @@
     deleteFolderDialogOpen = true;
   }
 
+  // Archive the folder with everything in it. No confirmation: nothing is
+  // deleted and the toast carries an Undo. If the folder being browsed is the
+  // one archived, the page moves off it (see +page.svelte).
+  function handleArchive(folder: FolderWithChildren, e?: Event) {
+    e?.stopPropagation();
+    menuOpenId = null;
+    folderActionSheetOpen = false;
+    void archiveFolder(folder);
+  }
+
   async function confirmDeleteFolder(
     mode: DeleteFolderMode,
     onProgress: DeleteFolderProgressCallback
@@ -514,12 +526,18 @@
         run: (e) => handleImportFolderHere(folder, e)
       },
       {
+        key: 'archive',
+        icon: Archive,
+        label: $t('archive.folder_action'),
+        run: (e) => handleArchive(folder, e),
+        separatorBefore: true
+      },
+      {
         key: 'delete',
         icon: Trash2,
         label: $t('folders.delete_folder'),
         run: (e) => handleDelete(folder, e),
-        destructive: true,
-        separatorBefore: true
+        destructive: true
       }
     );
     return actions;
@@ -1375,6 +1393,14 @@
       >
         <FolderInput class="me-2 h-4 w-4" />
         {$t('folders.import_folder.action')}
+      </Button>
+      <Button
+        variant="ghost"
+        class="w-full justify-start"
+        onclick={() => activeMenuFolder && handleArchive(activeMenuFolder)}
+      >
+        <Archive class="me-2 h-4 w-4" />
+        {$t('archive.folder_action')}
       </Button>
       <Button
         variant="ghost"

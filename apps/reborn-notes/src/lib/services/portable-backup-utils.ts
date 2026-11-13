@@ -27,6 +27,7 @@ import {
   readFolderAppearance
 } from './folder-metadata';
 import { encodeNoteMetadata, readNoteColor } from './note-metadata';
+import { readArchivedAt } from './archive-marker';
 
 /** Minimal crypto surface needed by the transforms (a subset of cryptoManager). */
 export interface PortableCrypto {
@@ -52,6 +53,11 @@ export interface PortableNote {
   periodic?: PeriodicNoteMetadata;
   /** Color mark key (palette key, not hex), from the note's metadata bundle. */
   color?: string;
+  /**
+   * Archive marker (ISO timestamp) from the note's metadata bundle. Not the
+   * trash: that is `is_archived` above (historical name of the trash flag).
+   */
+  archived_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -63,6 +69,8 @@ export interface PortableFolder {
   /** Appearance keys (palette color / icon), from the folder's metadata bundle. */
   color?: string;
   icon?: string;
+  /** Archive marker (ISO timestamp) from the folder's metadata bundle. */
+  archived_at?: string;
   order_index: number;
   is_archived: boolean;
   created_at: string;
@@ -123,6 +131,7 @@ export async function noteToPortable(
   let tags: string[] = [];
   let periodic: PeriodicNoteMetadata | undefined;
   let color: string | undefined;
+  let archivedAt: string | undefined;
   if (note.metadata_encrypted) {
     try {
       const meta = await crypto.decryptObject<NoteSensitiveMetadata>(note.metadata_encrypted);
@@ -131,6 +140,7 @@ export async function noteToPortable(
       tags = meta.tags ?? [];
       periodic = meta.periodic;
       color = readNoteColor(meta);
+      archivedAt = readArchivedAt(meta);
     } catch {
       // Leave defaults - a row whose metadata can't be decrypted on its own
       // account is already broken locally; don't abort the export for it.
@@ -147,6 +157,7 @@ export async function noteToPortable(
     tags,
     ...(periodic ? { periodic } : {}),
     ...(color ? { color } : {}),
+    ...(archivedAt ? { archived_at: archivedAt } : {}),
     created_at: note.created_at,
     updated_at: note.updated_at
   };
@@ -156,16 +167,18 @@ export async function folderToPortable(
   crypto: PortableCrypto,
   folder: FolderEncrypted
 ): Promise<PortableFolder> {
-  // An undecryptable bundle exports as "no appearance" (null -> {}), like the
-  // note metadata above - one broken row must not abort the export.
-  const appearance = readFolderAppearance(
-    await decodeFolderMetadata(crypto, folder.metadata_encrypted)
-  );
+  // An undecryptable bundle exports as "no appearance, not archived"
+  // (null -> {}), like the note metadata above - one broken row must not
+  // abort the export.
+  const bundle = await decodeFolderMetadata(crypto, folder.metadata_encrypted);
+  const appearance = readFolderAppearance(bundle);
+  const archivedAt = readArchivedAt(bundle);
   return {
     id: folder.id,
     parent_id: folder.parent_id ?? undefined,
     name: (await decryptFieldOr(crypto, folder.name_encrypted, '')) || 'Untitled',
     ...appearance,
+    ...(archivedAt ? { archived_at: archivedAt } : {}),
     order_index: folder.order_index,
     is_archived: folder.is_archived,
     created_at: folder.created_at,
@@ -275,14 +288,24 @@ export async function reencryptPortablePayload(
       // Same shape checks as on decrypt (strings, length caps); keys this
       // build does not know are kept and render as the default.
       const appearance = readFolderAppearance({ color: f.color, icon: f.icon });
-      const hasAppearance = appearance.color !== undefined || appearance.icon !== undefined;
+      // The archive marker travels with the backup: without it, restoring a
+      // backup would silently bring every archived folder back among the
+      // active ones.
+      const archivedAt = readArchivedAt(f);
+      const hasBundle =
+        appearance.color !== undefined || appearance.icon !== undefined || archivedAt !== undefined;
       return {
         id: folderIdMap.get(f.id)!,
         user_id: userId,
         parent_id: f.parent_id ? (folderIdMap.get(f.parent_id) ?? undefined) : undefined,
         name_encrypted: await crypto.encryptText(f.name || 'Untitled'),
-        ...(hasAppearance
-          ? { metadata_encrypted: await encodeFolderMetadata(crypto, { ...appearance }) }
+        ...(hasBundle
+          ? {
+              metadata_encrypted: await encodeFolderMetadata(crypto, {
+                ...appearance,
+                ...(archivedAt ? { archived_at: archivedAt } : {})
+              })
+            }
           : {}),
         order_index: f.order_index ?? 0,
         is_archived: f.is_archived ?? false,
@@ -322,6 +345,8 @@ export async function reencryptPortablePayload(
       if (n.periodic) metadata.periodic = n.periodic;
       const color = readNoteColor(n);
       if (color) metadata.color = color;
+      const archivedAt = readArchivedAt(n);
+      if (archivedAt) metadata.archived_at = archivedAt;
       return {
         id: noteIdMap.get(n.id)!,
         user_id: userId,

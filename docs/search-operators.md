@@ -209,7 +209,7 @@ Arabic text is matched on its base letters: tashkeel (short vowels, shadda, suku
 
 Any query you can type, you can save as a named view. With a query in the search box, click **Save search** (next to the *Search in content* toggle), give it a name, and it appears in the search panel - open search with an empty box to see your saved views. Clicking one puts its query back into the search box **and restores the *Search in content* toggle** to the state it was saved with, so the view reproduces the exact result set - always **live**: a saved search is a stored query, not a snapshot.
 
-Saving works from any view, not just the search panel. When you save while browsing a folder, a tag, or starred notes, the view's scope is composed into the query as a regular operator (`folder:"…"`, `tag:"…"`, `is:starred`) - the dialog previews the exact query being saved, so the saved view returns precisely what you were looking at. When saving from a folder, the dialog also offers to **pin the new view to that folder** right away. (The trash view has no save button: trash is a separate bucket with no query operator.)
+Saving works from any view, not just the search panel. When you save while browsing a folder, a tag, or starred notes, the view's scope is composed into the query as a regular operator (`folder:"…"`, `tag:"…"`, `is:starred`) - the dialog previews the exact query being saved, so the saved view returns precisely what you were looking at. When saving from a folder, the dialog also offers to **pin the new view to that folder** right away. (The trash and archive views have no save button: each is a separate bucket with no query operator.)
 
 Saved searches can also be **pinned to a folder** (context menu → *Pin to folder*). A pinned search shows up inside the folder tree as a leaf node - a "smart folder" sitting next to your real folders. Example: pin `folder:projects tag:urgent` to the *Projects* folder as **Urgent projects**. Pinning is purely presentational; it does not scope the query. Deleting a folder never deletes the searches pinned to it - they just unpin back to the search panel.
 
@@ -219,9 +219,11 @@ Privacy note: the name, the query string, and the behavioral metadata (the conte
 
 ---
 
-## Searching in trash
+## Searching in trash and in the archive
 
 Both apps have a dedicated trash view, and the search box always scans the current bucket only - active items in normal views, trashed items in the trash view. There is no operator to mix the two; to browse deleted items, switch to the trash view directly. Search there works with all the operators above (tag, folder, list, dates, …) over the trashed set.
+
+re/notes also has an **Archive** view, and it follows the same rule. Archived notes (archived on their own, or sitting in an archived folder) are left out of every everyday view, of search, of saved searches and of `[[link]]` suggestions. To search them, open the Archive view and use its search box: it scans the archive only, with all the operators above. A link that already points to an archived note keeps working and opens it.
 
 This is by design: cross-bucket search is rarely useful and would surface stale matches in everyday queries. A future version may introduce an explicit unified search mode.
 
