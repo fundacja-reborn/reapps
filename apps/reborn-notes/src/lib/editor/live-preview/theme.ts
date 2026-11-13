@@ -3,6 +3,7 @@
  * Mirrors typography of MarkdownPreview.svelte so the editor and preview look alike.
  */
 import { EditorView } from '@codemirror/view';
+import { NOTE_FONT_BASE_STACK } from '$lib/utils/note-font';
 
 /**
  * A note-content font size: `rem` scaled by the note text size of this device
@@ -15,11 +16,11 @@ function noteRem(rem: number): string {
 }
 
 export const livePreviewTheme = EditorView.theme({
-  // Use proportional Roboto in Live Preview so the view mirrors MarkdownPreview.
+  // Use proportional Roboto in Live Preview so the view mirrors MarkdownPreview,
+  // or the note font of this device (`--rn-note-font` on <html>, issue #546).
   // Markdown (raw) mode keeps the global monospace stack from app.css.
   '.cm-content': {
-    fontFamily:
-      "'Roboto', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'"
+    fontFamily: `var(--rn-note-font, ${NOTE_FONT_BASE_STACK})`
   },
 
   // Headings - applied via Decoration.line on the heading line element.

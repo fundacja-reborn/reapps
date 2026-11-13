@@ -956,7 +956,7 @@
     },
     "appearance": {
       "title": "Apariencia",
-      "hub_desc": "Tema de la aplicación, tamaño del texto, idioma de la interfaz, formato de fecha y hora",
+      "hub_desc": "Tema de la aplicación, tamaño del texto, fuente de las notas, idioma de la interfaz, formato de fecha y hora",
       "theme": "Tema",
       "theme_desc": "Elija el esquema de colores de la aplicación",
       "language": "Idioma",
@@ -990,7 +990,15 @@
       "text_size_default": "Predeterminado",
       "text_size_preview": "Vista previa",
       "text_size_sample_heading": "Encabezado",
-      "text_size_sample_body": "Así se verá el texto de sus notas en este dispositivo."
+      "text_size_sample_body": "Así se verá el texto de sus notas en este dispositivo.",
+      "note_font": "Fuente de las notas",
+      "note_font_desc": "Cambia el texto de sus notas (vista previa en vivo, vista previa, exportación a PDF), no la interfaz. Se aplica solo a este dispositivo.",
+      "note_font_latin": "Escritura latina",
+      "note_font_arabic": "Escritura árabe",
+      "note_font_default_latin": "Predeterminada (Roboto)",
+      "note_font_default_arabic": "Predeterminada (fuente del sistema)",
+      "note_font_sample_latin": "Una buena fuente de lectura hace más cómoda la lectura de notas largas.",
+      "note_font_sample_arabic": "الخط الجميل يجعل قراءة الملاحظات الطويلة أسهل. الخَطُّ العَرَبِيُّ فَنٌّ جَمِيلٌ."
     },
     "security": {
       "title": "Seguridad",

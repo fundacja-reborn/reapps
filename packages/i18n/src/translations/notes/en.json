@@ -956,7 +956,7 @@
     },
     "appearance": {
       "title": "Appearance",
-      "hub_desc": "App theme, text size, interface language, date and time format",
+      "hub_desc": "App theme, text size, note font, interface language, date and time format",
       "theme": "Theme",
       "theme_desc": "Choose the app colour scheme",
       "language": "Language",
@@ -990,7 +990,15 @@
       "text_size_default": "Default",
       "text_size_preview": "Preview",
       "text_size_sample_heading": "Heading",
-      "text_size_sample_body": "This is how the text of your notes will look on this device."
+      "text_size_sample_body": "This is how the text of your notes will look on this device.",
+      "note_font": "Note font",
+      "note_font_desc": "Changes the text of your notes (live preview, preview, PDF export), not the interface. Applies to this device only.",
+      "note_font_latin": "Latin script",
+      "note_font_arabic": "Arabic script",
+      "note_font_default_latin": "Default (Roboto)",
+      "note_font_default_arabic": "Default (system font)",
+      "note_font_sample_latin": "A good reading font makes long notes easier on the eyes.",
+      "note_font_sample_arabic": "الخط الجميل يجعل قراءة الملاحظات الطويلة أسهل. الخَطُّ العَرَبِيُّ فَنٌّ جَمِيلٌ."
     },
     "security": {
       "title": "Security",

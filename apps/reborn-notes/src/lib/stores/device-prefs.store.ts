@@ -2,6 +2,13 @@ import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { createLogger } from '@reborn/utils';
 import { clearSessionPlace, forgetRememberedPlace } from './start-place';
+import {
+  DEFAULT_NOTE_FONT,
+  isNoteArabicFont,
+  isNoteFont,
+  type NoteArabicFont,
+  type NoteFont
+} from '$lib/utils/note-font';
 
 const logger = createLogger('device-prefs');
 
@@ -12,7 +19,7 @@ const logger = createLogger('device-prefs');
  * ONLY in this device's localStorage and never sync. They capture how *this*
  * device should behave - e.g. a desktop where you mostly edit vs a phone where
  * you mostly read. There is no user content here (view-mode enums, flags,
- * text-size steps and the start page), so plain localStorage is fine and
+ * text-size steps, font names and the start page), so plain localStorage is fine and
  * outside the Zero-Knowledge sync surface.
  */
 export type NoteOpenMode = 'preview' | 'edit' | 'split';
@@ -90,6 +97,13 @@ export interface DevicePrefs {
   /** Note text size on this device, relative to {@link DevicePrefs.uiScale}. */
   noteTextScale: NoteTextScale;
   /**
+   * Font of note content in Latin script on this device (issue #546). Kept per
+   * device next to the text size: both are about how this screen reads.
+   */
+  noteFont: NoteFont;
+  /** Font of note content in Arabic script on this device (issue #546). */
+  noteArabicFont: NoteArabicFont;
+  /**
    * What the app opens on, on this device (issue #511). A habit tied to the
    * screen (a phone you browse folders on vs a desktop you write on), so it
    * stays per device rather than in the synced settings bundle.
@@ -117,6 +131,8 @@ const DEFAULTS: DevicePrefs = {
   tocPinned: false,
   uiScale: DEFAULT_TEXT_SCALE,
   noteTextScale: DEFAULT_TEXT_SCALE,
+  noteFont: DEFAULT_NOTE_FONT,
+  noteArabicFont: DEFAULT_NOTE_FONT,
   startPage: 'all',
   noteListLayout: 'list',
   newNoteFab: true
@@ -198,6 +214,10 @@ function load(): DevicePrefs {
       noteTextScale: isNoteTextScale(parsed.noteTextScale)
         ? parsed.noteTextScale
         : DEFAULTS.noteTextScale,
+      noteFont: isNoteFont(parsed.noteFont) ? parsed.noteFont : DEFAULTS.noteFont,
+      noteArabicFont: isNoteArabicFont(parsed.noteArabicFont)
+        ? parsed.noteArabicFont
+        : DEFAULTS.noteArabicFont,
       startPage: isStartPage(parsed.startPage) ? parsed.startPage : DEFAULTS.startPage,
       noteListLayout: isNoteListLayout(parsed.noteListLayout)
         ? parsed.noteListLayout
@@ -274,6 +294,37 @@ function createDevicePrefsStore() {
     });
   }
 
+  function setNoteFont(font: NoteFont): void {
+    if (!isNoteFont(font)) return;
+    store.update((prev) => {
+      const next = { ...prev, noteFont: font };
+      persist(next);
+      return next;
+    });
+  }
+
+  function setNoteArabicFont(font: NoteArabicFont): void {
+    if (!isNoteArabicFont(font)) return;
+    store.update((prev) => {
+      const next = { ...prev, noteArabicFont: font };
+      persist(next);
+      return next;
+    });
+  }
+
+  /** Both note fonts back to the default (Appearance > Reset to defaults). */
+  function resetNoteFont(): void {
+    store.update((prev) => {
+      const next = {
+        ...prev,
+        noteFont: DEFAULTS.noteFont,
+        noteArabicFont: DEFAULTS.noteArabicFont
+      };
+      persist(next);
+      return next;
+    });
+  }
+
   /**
    * Choosing any start page other than `last` also drops the remembered place,
    * so the device keeps no trace of the last open note it no longer needs, and
@@ -332,6 +383,9 @@ function createDevicePrefsStore() {
     setUiScale,
     setNoteTextScale,
     resetTextSize,
+    setNoteFont,
+    setNoteArabicFont,
+    resetNoteFont,
     setStartPage,
     setNoteListLayout,
     setNewNoteFab

@@ -33,6 +33,7 @@ import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { applyBlockDirection, createMarkdownListRenderers } from '$lib/utils/markdown-to-html';
 import { markExtraBlankLines } from '$lib/utils/blank-lines';
+import { loadNoteFonts, noteFontStack, type NoteFontPrefs } from '$lib/utils/note-font';
 import { detectTextDirection } from '@reborn/i18n';
 import { get } from 'svelte/store';
 import { authStore } from '$lib/stores/auth.store';
@@ -266,14 +267,19 @@ export async function exportMarkdownString(title: string, content: string): Prom
  *
  * Fonts are kept to system stacks. Web fonts that haven't been used elsewhere
  * on the page may not be loaded by the time html2canvas snapshots, which
- * silently substitutes them and can shift line widths.
+ * silently substitutes them and can shift line widths. The one exception is
+ * the note font the user picked in Settings (issue #546): `exportNoteAsPdf`
+ * puts it in front of this stack and waits for its files before measuring.
  */
+const PDF_FONT_STACK =
+  "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+
 const PDF_STYLES = `
 .reborn-pdf-root, .reborn-pdf-root * { box-sizing: border-box; }
 .reborn-pdf-root {
   color: #000;
   background: #fff;
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: ${PDF_FONT_STACK};
   font-size: 11pt;
   line-height: 1.55;
   word-spacing: normal;
@@ -404,10 +410,16 @@ const PDF_STYLES = `
  * Replaces the previous native-print approach (3 iterations) which never
  * worked on Android PWA - the platform print framework treated the iframe as
  * a viewport snapshot and ignored multi-page pagination.
+ *
+ * `noteFont` is the note font of this device (Settings > Appearance). The
+ * browser lays the text out and shapes it (Arabic joining included) before
+ * the raster is taken, so the chosen font ends up in the PDF as drawn - there
+ * is nothing to embed. Left out or at the default, the PDF keeps its system
+ * font stack.
  */
 export async function exportNoteAsPdf(
   note: NoteDecrypted,
-  options: { preserveBlankLines?: boolean } = {}
+  options: { preserveBlankLines?: boolean; noteFont?: NoteFontPrefs } = {}
 ): Promise<void> {
   // Fresh Marked instance - don't inherit MarkdownPreview's custom image
   // renderer (which emits placeholders); we want real <img> in the PDF.
@@ -447,6 +459,8 @@ export async function exportNoteAsPdf(
     'pointer-events:none',
     'z-index:-1'
   ].join(';');
+  const fontStack = options.noteFont ? noteFontStack(options.noteFont, PDF_FONT_STACK) : null;
+  if (fontStack) container.style.fontFamily = fontStack;
 
   const styleEl = document.createElement('style');
   styleEl.textContent = PDF_STYLES;
@@ -466,6 +480,16 @@ export async function exportNoteAsPdf(
   document.body.appendChild(container);
 
   try {
+    // The chosen note font must be loaded before anything is measured: page
+    // breaks and the raster both come from this layout, and a face that
+    // arrives later would be swapped in after the snapshot. Only the faces
+    // this note's text needs are fetched; a font that fails to load (offline
+    // and never cached) falls back to the system stack instead of failing
+    // the export.
+    if (fontStack && options.noteFont) {
+      await loadNoteFonts(options.noteFont, bodyEl.textContent ?? '');
+    }
+
     // Collect candidate page-break boundaries in container-local CSS pixels.
     // Measured BEFORE html2canvas runs because html2canvas removes its
     // overlay clone after rendering - the source container is unaffected.
@@ -1266,7 +1290,7 @@ export async function importJsonBackup(
         }
       } catch (decryptErr) {
         logger.error(
-          `METADATA_DECRYPT_FAILED for imported note ${validated.id} — shadow indexes will use defaults`,
+          `METADATA_DECRYPT_FAILED for imported note ${validated.id} - shadow indexes will use defaults`,
           decryptErr
         );
       }
@@ -1289,7 +1313,7 @@ export async function importJsonBackup(
           }
         } catch (sanitizeErr) {
           logger.warn(
-            `Could not sanitize content for imported note ${validated.id} — keeping ciphertext as-is`,
+            `Could not sanitize content for imported note ${validated.id} - keeping ciphertext as-is`,
             sanitizeErr
           );
         }

@@ -311,7 +311,13 @@
       return;
     }
     try {
-      await exportNoteAsPdf(fullNote, { preserveBlankLines: $preserveBlankLines });
+      await exportNoteAsPdf(fullNote, {
+        preserveBlankLines: $preserveBlankLines,
+        noteFont: {
+          noteFont: $devicePrefs.noteFont,
+          noteArabicFont: $devicePrefs.noteArabicFont
+        }
+      });
     } catch {
       toastStore.error($t('notes.export_failed'));
     }

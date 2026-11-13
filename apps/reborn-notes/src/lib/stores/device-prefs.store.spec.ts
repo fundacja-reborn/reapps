@@ -3,9 +3,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 
 /**
- * Per-device prefs from issue #511 (localStorage, never synced, validated on
- * load): text size (interface scale + note text size, written onto <html> by
- * `applyTextSize`) and the start page.
+ * Per-device prefs (localStorage, never synced, validated on load): text size
+ * from issue #511 (interface scale + note text size, written onto <html> by
+ * `applyTextSize`), the start page and the note font (#546).
  */
 
 vi.mock('$app/environment', () => ({ browser: true }));
@@ -39,6 +39,8 @@ describe('device prefs: text size', () => {
       tocPinned: true,
       uiScale: 100,
       noteTextScale: 100,
+      noteFont: 'default',
+      noteArabicFont: 'default',
       startPage: 'all',
       noteListLayout: 'list',
       newNoteFab: true
@@ -196,6 +198,60 @@ describe('device prefs: note list layout (#523)', () => {
     expect(get(devicePrefs).noteListLayout).toBe('list');
     // A bad layout does not cost the other prefs.
     expect(get(devicePrefs).tocPinned).toBe(true);
+  });
+});
+
+describe('device prefs: note font (#546)', () => {
+  it('keeps the app font by default, also for prefs saved before it existed', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ uiScale: 125 }));
+    const { devicePrefs } = await loadStore();
+    expect(get(devicePrefs).noteFont).toBe('default');
+    expect(get(devicePrefs).noteArabicFont).toBe('default');
+  });
+
+  it('persists the Latin and the Arabic choice separately and reads them back', async () => {
+    const first = await loadStore();
+    first.devicePrefs.setNoteFont('source-serif-4');
+    first.devicePrefs.setNoteArabicFont('amiri');
+    expect(stored()).toMatchObject({ noteFont: 'source-serif-4', noteArabicFont: 'amiri' });
+
+    const second = await loadStore();
+    expect(get(second.devicePrefs).noteFont).toBe('source-serif-4');
+    expect(get(second.devicePrefs).noteArabicFont).toBe('amiri');
+  });
+
+  it.each([
+    ['an unknown font', 'comic-sans', 'papyrus'],
+    ['an Arabic font in the Latin slot and the other way round', 'amiri', 'source-serif-4'],
+    ['a CSS value', "'x'; color: red", 'serif'],
+    ['not a string', 4, null]
+  ])('falls back to the default for %s', async (_label, noteFont, noteArabicFont) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ noteFont, noteArabicFont }));
+    const { devicePrefs } = await loadStore();
+    expect(get(devicePrefs).noteFont).toBe('default');
+    expect(get(devicePrefs).noteArabicFont).toBe('default');
+  });
+
+  it('ignores a value that is not on the list', async () => {
+    const { devicePrefs } = await loadStore();
+    devicePrefs.setNoteFont('amiri' as never);
+    devicePrefs.setNoteArabicFont('source-serif-4' as never);
+    expect(get(devicePrefs).noteFont).toBe('default');
+    expect(get(devicePrefs).noteArabicFont).toBe('default');
+  });
+
+  it('resets both fonts without touching the text size', async () => {
+    const { devicePrefs } = await loadStore();
+    devicePrefs.setUiScale(125);
+    devicePrefs.setNoteFont('source-serif-4');
+    devicePrefs.setNoteArabicFont('tajawal');
+    devicePrefs.resetNoteFont();
+    expect(get(devicePrefs)).toMatchObject({
+      uiScale: 125,
+      noteFont: 'default',
+      noteArabicFont: 'default'
+    });
+    expect(stored()).toMatchObject({ noteFont: 'default', noteArabicFont: 'default' });
   });
 });
 

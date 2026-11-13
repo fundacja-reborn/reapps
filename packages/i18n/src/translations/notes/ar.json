@@ -979,7 +979,7 @@
     },
     "appearance": {
       "title": "العرض",
-      "hub_desc": "مظهر التطبيق، وحجم النص، ولغة الواجهة، وتنسيق التاريخ والوقت",
+      "hub_desc": "مظهر التطبيق، وحجم النص، وخط الملاحظات، ولغة الواجهة، وتنسيق التاريخ والوقت",
       "theme": "المظهر",
       "theme_desc": "اختر نظام ألوان التطبيق",
       "language": "اللغة",
@@ -1013,7 +1013,15 @@
       "text_size_default": "الافتراضي",
       "text_size_preview": "معاينة",
       "text_size_sample_heading": "عنوان فرعي",
-      "text_size_sample_body": "هكذا سيبدو نص ملاحظاتك على هذا الجهاز."
+      "text_size_sample_body": "هكذا سيبدو نص ملاحظاتك على هذا الجهاز.",
+      "note_font": "خط الملاحظات",
+      "note_font_desc": "يغيّر نص ملاحظاتك (المعاينة المباشرة، والمعاينة، وتصدير PDF) دون الواجهة. ينطبق على هذا الجهاز فقط.",
+      "note_font_latin": "الحروف اللاتينية",
+      "note_font_arabic": "الحروف العربية",
+      "note_font_default_latin": "الافتراضي (Roboto)",
+      "note_font_default_arabic": "الافتراضي (خط النظام)",
+      "note_font_sample_latin": "A good reading font makes long notes easier on the eyes.",
+      "note_font_sample_arabic": "الخط الجميل يجعل قراءة الملاحظات الطويلة أسهل. الخَطُّ العَرَبِيُّ فَنٌّ جَمِيلٌ."
     },
     "security": {
       "title": "الأمان",

@@ -50,6 +50,7 @@
   import { resolveWhatsNewPlatform } from '$lib/utils/whats-new-platform';
   import { maybeShowWhatsNew } from '$lib/services/whats-new.service';
   import { applyTextSize, devicePrefs } from '$lib/stores/device-prefs.store';
+  import { applyNoteFont, loadNoteFonts } from '$lib/utils/note-font';
 
   const logger = createLogger('notes:layout');
 
@@ -607,6 +608,21 @@
   $effect(() => {
     if (!browser) return;
     applyTextSize(document.documentElement, $devicePrefs);
+  });
+
+  // Note font (this device only, issue #546): `--rn-note-font` on <html>, read
+  // by the Live Preview editor, the preview and the note title. Loading every
+  // file of the chosen fonts here (not just what the first note needs) puts
+  // them in the service worker's font cache while online, so the choice keeps
+  // working offline. Nothing is fetched at the default.
+  $effect(() => {
+    if (!browser) return;
+    const fonts = {
+      noteFont: $devicePrefs.noteFont,
+      noteArabicFont: $devicePrefs.noteArabicFont
+    };
+    applyNoteFont(document.documentElement, fonts);
+    void loadNoteFonts(fonts);
   });
 
   // iOS Safari safety net + visual-viewport tracker.

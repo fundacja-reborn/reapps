@@ -12,17 +12,26 @@ const base = sw.registration?.scope ? new URL(sw.registration.scope).pathname.re
 
 // Cache names are prefixed with `reborn-notes-` so we can isolate them from
 // other apps deployed under the same origin (e.g. reborn-task at /task).
-// The Cache Storage API is per-origin, NOT per-scope — without the prefix,
+// The Cache Storage API is per-origin, NOT per-scope - without the prefix,
 // each SW would wipe the other app's caches on activate.
 const CACHE_PREFIX = 'reborn-notes-';
 const CACHE = `${CACHE_PREFIX}cache-${version}`;
 const ROUTES_CACHE = `${CACHE_PREFIX}routes-${version}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-${version}`;
 
-// All static assets to pre-cache
-const ASSETS = [...build, ...files];
+// Optional note fonts (Settings > Appearance > Note font, issue #546): the
+// files under `static/fonts/note/`. They are NOT pre-cached - only a user who
+// picks one of them downloads it. What was fetched goes to a cache of its own
+// that carries no app version, so the chosen font survives every release and
+// keeps working offline. Bump the suffix if a font file is ever replaced under
+// the same name.
+const NOTE_FONTS_PATH = `${base}/fonts/note/`;
+const NOTE_FONTS_CACHE = `${CACHE_PREFIX}note-fonts-v1`;
 
-// Critical routes to pre-cache for offline support — prefixed with `base`
+// All static assets to pre-cache
+const ASSETS = [...build, ...files.filter((file) => !file.startsWith(NOTE_FONTS_PATH))];
+
+// Critical routes to pre-cache for offline support - prefixed with `base`
 // so the list survives sub-path deployments (e.g. PUBLIC_BASE_PATH=/notes).
 const CRITICAL_ROUTES = [
   `${base}/`,
@@ -41,7 +50,7 @@ const APP_SHELL = `${base}/`;
 // not require a CSP nonce. Reload button triggers a normal navigation which
 // will retry the fetch handler.
 const OFFLINE_HTML = `<!DOCTYPE html>
-<html lang="pl"><head><meta charset="utf-8"><title>Offline — re/notes</title>
+<html lang="pl"><head><meta charset="utf-8"><title>Offline - re/notes</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>html,body{margin:0;height:100%;font-family:system-ui;background:#ffffff;color:#374151;display:flex;align-items:center;justify-content:center}
 .box{max-width:320px;text-align:center;padding:24px}
@@ -73,14 +82,14 @@ async function fetchWithTimeout(request: Request, timeoutMs: number): Promise<Re
   }
 }
 
-// Background refresh for stale-while-revalidate — never throws.
+// Background refresh for stale-while-revalidate - never throws.
 function refreshInBackground(cache: Cache, request: Request, timeoutMs = 5000): Promise<void> {
   return fetchWithTimeout(request, timeoutMs)
     .then((response) => {
       if (response.ok) return cache.put(request, response.clone()).catch(() => {});
     })
     .catch(() => {
-      /* best-effort refresh — silent on failure */
+      /* best-effort refresh - silent on failure */
     });
 }
 
@@ -107,7 +116,7 @@ sw.addEventListener('install', (event) => {
           const res = await fetch(route);
           if (res.ok) await routesCache.put(route, res);
         } catch {
-          /* offline during install — skip */
+          /* offline during install - skip */
         }
       })
     );
@@ -119,13 +128,18 @@ sw.addEventListener('install', (event) => {
 // ── Activate ─────────────────────────────────────────────────────────────────
 
 sw.addEventListener('activate', (event) => {
-  // Remove previous cached data from disk — but ONLY caches owned by this app.
+  // Remove previous cached data from disk - but ONLY caches owned by this app.
   // Cache Storage is per-origin, so iterating without the prefix filter would
   // wipe out other apps' caches (e.g. reborn-task) on every activation.
   async function deleteOldCaches() {
     for (const key of await caches.keys()) {
       if (!key.startsWith(CACHE_PREFIX)) continue;
-      if (key !== CACHE && key !== ROUTES_CACHE && key !== RUNTIME_CACHE) {
+      if (
+        key !== CACHE &&
+        key !== ROUTES_CACHE &&
+        key !== RUNTIME_CACHE &&
+        key !== NOTE_FONTS_CACHE
+      ) {
         await caches.delete(key);
       }
     }
@@ -153,9 +167,23 @@ sw.addEventListener('fetch', (event) => {
 
   async function respond() {
     const url = new URL(event.request.url);
+
+    // Optional note fonts - cache first, in their own unversioned cache. On a
+    // miss the plain network answer is returned (and kept): offline with the
+    // font never fetched, the request fails and the text falls back to the
+    // next font in the stack.
+    if (url.origin === sw.location.origin && url.pathname.startsWith(NOTE_FONTS_PATH)) {
+      const fontsCache = await caches.open(NOTE_FONTS_CACHE);
+      const cachedFont = await fontsCache.match(url.pathname);
+      if (cachedFont) return cachedFont;
+      const response = await fetch(event.request);
+      if (response.ok) fontsCache.put(url.pathname, response.clone()).catch(() => {});
+      return response;
+    }
+
     const cache = await caches.open(CACHE);
 
-    // Static assets (build output + static files) — cache first
+    // Static assets (build output + static files) - cache first
     if (ASSETS.includes(url.pathname)) {
       const cached = await cache.match(url.pathname);
       if (cached) return cached;
@@ -164,7 +192,7 @@ sw.addEventListener('fetch', (event) => {
       if (runtimeFallback) return runtimeFallback;
     }
 
-    // Navigation requests — cache-first with SPA app-shell fallback.
+    // Navigation requests - cache-first with SPA app-shell fallback.
     //
     // The previous "network-first" strategy blocked offline cold start in
     // airplane mode because mobile browsers wait 30+ s for `fetch()` to
@@ -181,7 +209,7 @@ sw.addEventListener('fetch', (event) => {
         return cachedExact;
       }
 
-      // 2. SPA fallback — cached app-shell HTML. SvelteKit's client router
+      // 2. SPA fallback - cached app-shell HTML. SvelteKit's client router
       //    takes over after hydration and resolves the real route.
       const shell = await routesCache.match(APP_SHELL);
       if (shell) {
@@ -189,7 +217,7 @@ sw.addEventListener('fetch', (event) => {
         return shell;
       }
 
-      // 3. No cached shell — try network with a short timeout so we don't
+      // 3. No cached shell - try network with a short timeout so we don't
       //    hang on a stale DNS lookup.
       try {
         const response = await fetchWithTimeout(event.request, 3000);
@@ -198,12 +226,12 @@ sw.addEventListener('fetch', (event) => {
         }
         return response;
       } catch {
-        // 4. Absolute last resort — minimal inline offline page.
+        // 4. Absolute last resort - minimal inline offline page.
         return OFFLINE_RESPONSE();
       }
     }
 
-    // App JS/CSS — stale-while-revalidate
+    // App JS/CSS - stale-while-revalidate
     if (url.pathname.startsWith('/_app/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
       const runtimeCache = await caches.open(RUNTIME_CACHE);
       const cached = await runtimeCache.match(event.request);
@@ -216,14 +244,14 @@ sw.addEventListener('fetch', (event) => {
         if (response.ok) runtimeCache.put(event.request, response.clone()).catch(() => {});
         return response;
       } catch {
-        // Network failed — cross-cache fallback: check build assets cache
+        // Network failed - cross-cache fallback: check build assets cache
         const buildFallback = await cache.match(url.pathname);
         if (buildFallback) return buildFallback;
         return new Response('Not found', { status: 404 });
       }
     }
 
-    // Everything else — network with a timeout, fall back to cache
+    // Everything else - network with a timeout, fall back to cache
     try {
       const response = await fetchWithTimeout(event.request, 3000);
       if (response.ok) cache.put(event.request, response.clone()).catch(() => {});

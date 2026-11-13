@@ -956,7 +956,7 @@
     },
     "appearance": {
       "title": "Wygląd",
-      "hub_desc": "Motyw aplikacji, rozmiar tekstu, język interfejsu, format daty i czasu",
+      "hub_desc": "Motyw aplikacji, rozmiar tekstu, czcionka notatek, język interfejsu, format daty i czasu",
       "theme": "Motyw",
       "theme_desc": "Wybierz schemat kolorów aplikacji",
       "language": "Język",
@@ -990,7 +990,15 @@
       "text_size_default": "Domyślny",
       "text_size_preview": "Podgląd",
       "text_size_sample_heading": "Nagłówek",
-      "text_size_sample_body": "Tak będzie wyglądał tekst Twoich notatek na tym urządzeniu."
+      "text_size_sample_body": "Tak będzie wyglądał tekst Twoich notatek na tym urządzeniu.",
+      "note_font": "Czcionka notatek",
+      "note_font_desc": "Zmienia tekst notatek (podgląd na żywo, podgląd, eksport PDF), nie interfejs. Dotyczy tylko tego urządzenia.",
+      "note_font_latin": "Pismo łacińskie",
+      "note_font_arabic": "Pismo arabskie",
+      "note_font_default_latin": "Domyślna (Roboto)",
+      "note_font_default_arabic": "Domyślna (czcionka systemowa)",
+      "note_font_sample_latin": "Dobra czcionka sprawia, że długie notatki czyta się wygodniej.",
+      "note_font_sample_arabic": "الخط الجميل يجعل قراءة الملاحظات الطويلة أسهل. الخَطُّ العَرَبِيُّ فَنٌّ جَمِيلٌ."
     },
     "security": {
       "title": "Bezpieczeństwo",

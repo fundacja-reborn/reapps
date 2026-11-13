@@ -173,9 +173,10 @@
   /* Note title: 1.5rem (text-2xl) on mobile, 1.25rem (text-xl) from md, times
      the note text size of this device (--rn-note-scale on <html>, 1 by
      default), so the title grows with the note body (editor and preview scale
-     the same way). */
+     the same way). Same for the note font (--rn-note-font, issue #546). */
   .note-title {
     font-size: calc(1.5rem * var(--rn-note-scale, 1));
+    font-family: var(--rn-note-font, inherit);
   }
   @media (min-width: 768px) {
     .note-title {
