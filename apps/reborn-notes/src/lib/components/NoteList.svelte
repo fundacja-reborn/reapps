@@ -173,6 +173,8 @@
     onback,
     oncreate,
     onSubfolderSelect,
+    onSubfolderNewNote,
+    onSubfolderNewSubfolder,
     onNewSubfolder,
     onsavedsearchselect
   }: {
@@ -209,6 +211,9 @@
     onback?: () => void;
     oncreate?: () => void | Promise<void>;
     onSubfolderSelect?: (id: string) => void;
+    /** Subfolder row menu: "New note here" / "New subfolder" for that subfolder. */
+    onSubfolderNewNote?: (folderId: string) => void;
+    onSubfolderNewSubfolder?: (folderId: string) => void;
     /** Only provided when we're inside a specific folder — renders the "new subfolder" icon. */
     onNewSubfolder?: () => void;
     /** Clicking a saved search pinned to the current folder - jumps to the search section. */
@@ -1361,6 +1366,8 @@
         {subfolders}
         parentId={activeFolderId}
         onselect={(id) => onSubfolderSelect?.(id)}
+        onnewnote={onSubfolderNewNote}
+        onnewsubfolder={onSubfolderNewSubfolder}
       />
       {#if isArchive}
         <ArchivedFolderList roots={archiveRoots} onopen={(root) => onArchiveFolderOpen?.(root)} />
