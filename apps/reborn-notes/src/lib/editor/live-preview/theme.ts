@@ -152,7 +152,9 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-code': {
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     fontSize: '0.875em',
-    backgroundColor: 'var(--muted)',
+    // Translucent (same look as --muted on the page background): the editor's
+    // drawn selection sits below the text and must show through (#539).
+    backgroundColor: 'var(--rn-code-bg, var(--muted))',
     padding: '0.125em 0.25em',
     borderRadius: '0.25em'
   },
@@ -336,7 +338,7 @@ export const livePreviewTheme = EditorView.theme({
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     fontSize: '0.875em',
     lineHeight: '1.5',
-    backgroundColor: 'var(--muted)',
+    backgroundColor: 'var(--rn-code-bg, var(--muted))',
     color: 'var(--foreground)',
     padding: '0.75em 1em',
     margin: '0',
@@ -487,7 +489,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-code-line': {
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     fontSize: '0.875em',
-    backgroundColor: 'var(--muted)',
+    backgroundColor: 'var(--rn-code-bg, var(--muted))',
     paddingInlineStart: '1em',
     paddingInlineEnd: '1em'
   },
@@ -577,7 +579,7 @@ export const livePreviewTheme = EditorView.theme({
     wordBreak: 'break-word'
   },
   '.cm-lp-table th': {
-    backgroundColor: 'var(--muted)',
+    backgroundColor: 'var(--rn-code-bg, var(--muted))',
     fontWeight: '600'
   },
   // Focus highlight on the active cell. Inset ring so it doesn't shift the
