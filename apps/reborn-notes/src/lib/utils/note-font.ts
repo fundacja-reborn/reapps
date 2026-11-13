@@ -43,6 +43,21 @@ export interface NoteFontFamily {
    * faces with this text fetches all of its files (see {@link loadNoteFonts}).
    */
   probe: string;
+  /**
+   * `size-adjust` of every @font-face of the family in `note-fonts.css`, in
+   * percent (left out = 100). Naskh letters are small for their em square, so
+   * at the same font size they read smaller than the Latin text next to them.
+   */
+  sizeAdjust?: number;
+  /**
+   * Line-height multiplier for note content while this font is chosen (left
+   * out = 1). A fixed line height does not follow the font, and vocalized
+   * Arabic (marks above and below the letters) needs more room than Latin
+   * text: without it the marks of one line run into the next. Set so that the
+   * editor's line height is about the font's own designed line height at its
+   * adjusted size.
+   */
+  leading?: number;
 }
 
 const STATIC_FACES: readonly NoteFontFace[] = [
@@ -67,12 +82,27 @@ export const NOTE_FONT_FAMILIES: Record<
     // "a" is in the latin subset, "ą" (U+0105) in latin-ext.
     probe: 'a\u{0105}'
   },
-  amiri: { family: 'Amiri', faces: STATIC_FACES, probe: ARABIC_PROBE },
+  // Sizes and leading asked for by the Arabic translator after v0.52.0 (#546).
+  // Measured against the files we ship: at the same font size a line of Amiri
+  // is 11% shorter than the same line in Noto Naskh Arabic, and the alef of
+  // Noto Naskh Arabic is 0.67em against Roboto's 0.75em ascenders. The fonts'
+  // own line heights (ascent + descent) are 1.76em and 1.70em; times the size
+  // adjustment that is 2.02 and 1.87, which is the editor's 1.7 times the
+  // leading below.
+  amiri: {
+    family: 'Amiri',
+    faces: STATIC_FACES,
+    probe: ARABIC_PROBE,
+    sizeAdjust: 115,
+    leading: 1.2
+  },
   'noto-naskh-arabic': {
     family: 'Noto Naskh Arabic',
     // One variable file covers 400-700.
     faces: [{ weight: 400, style: 'normal' }],
-    probe: ARABIC_PROBE
+    probe: ARABIC_PROBE,
+    sizeAdjust: 110,
+    leading: 1.1
   },
   tajawal: { family: 'Tajawal', faces: STATIC_FACES, probe: ARABIC_PROBE }
 };
@@ -115,6 +145,15 @@ export function noteFontStack(
   const chosen = chosenNoteFontFamilies(prefs);
   if (chosen.length === 0) return null;
   return [...chosen.map((font) => `'${font.family}'`), base].join(', ');
+}
+
+/**
+ * The line-height multiplier the chosen fonts ask for (1 when none does). It
+ * applies to all note content of the device, not only to lines in that script:
+ * CSS has one line height per block, whatever characters a line holds.
+ */
+export function noteFontLeading(prefs: NoteFontPrefs): number {
+  return Math.max(1, ...chosenNoteFontFamilies(prefs).map((font) => font.leading ?? 1));
 }
 
 /**

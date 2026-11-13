@@ -1180,7 +1180,10 @@
     /* 16px - prevents iOS auto-zoom on focus. --rn-note-scale (note text size,
        this device) only ever enlarges it, so the 16px floor holds. */
     font-size: calc(1rem * var(--rn-note-scale, 1));
-    line-height: 1.7;
+    /* --rn-note-leading: line spacing of this device times what the note font
+       asks for (issue #546), 1 by default. Both editor modes use it, so the
+       text keeps its place when the mode is switched. */
+    line-height: calc(1.7 * var(--rn-note-leading, 1));
     box-sizing: border-box;
     /* Belt-and-braces: even if some descendant widget tries to push intrinsic
        min-content (a wide <pre>/<table>), this lets `.cm-content` shrink to

@@ -49,7 +49,7 @@
   import { whatsNew } from '$lib/stores/whats-new.svelte';
   import { resolveWhatsNewPlatform } from '$lib/utils/whats-new-platform';
   import { maybeShowWhatsNew } from '$lib/services/whats-new.service';
-  import { applyTextSize, devicePrefs } from '$lib/stores/device-prefs.store';
+  import { applyNoteLeading, applyTextSize, devicePrefs } from '$lib/stores/device-prefs.store';
   import { applyNoteFont, loadNoteFonts } from '$lib/utils/note-font';
 
   const logger = createLogger('notes:layout');
@@ -623,6 +623,18 @@
     };
     applyNoteFont(document.documentElement, fonts);
     void loadNoteFonts(fonts);
+  });
+
+  // Line spacing of note content (this device only, issue #546):
+  // `--rn-note-leading` on <html> = the chosen line spacing times the extra
+  // line height the chosen note font asks for.
+  $effect(() => {
+    if (!browser) return;
+    applyNoteLeading(document.documentElement, {
+      noteLineSpacing: $devicePrefs.noteLineSpacing,
+      noteFont: $devicePrefs.noteFont,
+      noteArabicFont: $devicePrefs.noteArabicFont
+    });
   });
 
   // iOS Safari safety net + visual-viewport tracker.

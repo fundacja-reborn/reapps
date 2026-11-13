@@ -92,7 +92,7 @@
   {#if activeTrash}
     <h1
       dir="auto"
-      class="note-title font-bold text-muted-foreground leading-snug"
+      class="note-title font-bold text-muted-foreground"
     >{title || $t('notes.untitled')}</h1>
   {:else}
     <!-- No dir="auto" here: the global `unicode-bidi: plaintext` on text fields
@@ -105,7 +105,7 @@
       placeholder={$t('notes.untitled')}
       rows={1}
       class="w-full resize-none overflow-hidden bg-transparent note-title font-bold
-           leading-snug placeholder:text-muted-foreground/50 focus:outline-none"
+           placeholder:text-muted-foreground/50 focus:outline-none"
       aria-label={$t('notes.note_title_label')}
     ></textarea>
   {/if}
@@ -173,10 +173,13 @@
   /* Note title: 1.5rem (text-2xl) on mobile, 1.25rem (text-xl) from md, times
      the note text size of this device (--rn-note-scale on <html>, 1 by
      default), so the title grows with the note body (editor and preview scale
-     the same way). Same for the note font (--rn-note-font, issue #546). */
+     the same way). Same for the note font (--rn-note-font, issue #546) and
+     for the line height (was the `leading-snug` class, 1.375; times
+     --rn-note-leading, the line spacing of this device and of its note font). */
   .note-title {
     font-size: calc(1.5rem * var(--rn-note-scale, 1));
     font-family: var(--rn-note-font, inherit);
+    line-height: calc(1.375 * var(--rn-note-leading, 1));
   }
   @media (min-width: 768px) {
     .note-title {

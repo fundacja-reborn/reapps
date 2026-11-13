@@ -553,7 +553,7 @@
      but not used" warnings. -->
 <div
   bind:this={containerEl}
-  class="preview overflow-auto bg-background pt-4 pb-5 leading-relaxed text-foreground {className}"
+  class="preview overflow-auto bg-background pt-4 pb-5 text-foreground {className}"
   aria-label={$t('editor.markdown_preview')}
   onclick={handleClick}
   role="presentation"
@@ -599,6 +599,10 @@
     /* Note font of this device (issue #546); unset = the app font. Code keeps
        its monospace stack (own font-family below). */
     font-family: var(--rn-note-font, inherit);
+    /* Was the `leading-relaxed` class (1.625). --rn-note-leading: line spacing
+       of this device times what the note font asks for (issue #546), 1 by
+       default. Code blocks keep their own line height. */
+    line-height: calc(1.625 * var(--rn-note-leading, 1));
   }
   @media (min-width: 768px) {
     .preview {
@@ -614,7 +618,7 @@
   .preview :global(h5),
   .preview :global(h6) {
     font-weight: 600;
-    line-height: 1.3;
+    line-height: calc(1.3 * var(--rn-note-leading, 1));
     margin-top: 1.5em;
     margin-bottom: 0.5em;
     /* Breathing room when an in-note/cross-note anchor scrolls a heading to the
@@ -673,13 +677,13 @@
   .preview :global(p) {
     margin-top: 0;
     margin-bottom: 1em;
-    line-height: 1.75;
+    line-height: calc(1.75 * var(--rn-note-leading, 1));
   }
 
   /* Kept blank lines (blank-lines.ts): one <br> per extra empty line, each as
      tall as a line of paragraph text. */
   .preview :global(.md-blank-lines) {
-    line-height: 1.75;
+    line-height: calc(1.75 * var(--rn-note-leading, 1));
   }
 
   .preview :global(a) {
@@ -712,7 +716,7 @@
   .preview :global(ol) {
     margin: 0 0 1em 1.5em;
     padding: 0;
-    line-height: 1.75;
+    line-height: calc(1.75 * var(--rn-note-leading, 1));
   }
   .preview :global(ul) {
     list-style-type: disc;

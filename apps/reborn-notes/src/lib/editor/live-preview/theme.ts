@@ -15,6 +15,16 @@ function noteRem(rem: number): string {
   return `calc(${rem}rem * var(--rn-note-scale, 1))`;
 }
 
+/**
+ * A line height of note content: `ratio` times the line spacing of this device
+ * and the extra line height its note font asks for (`--rn-note-leading` on
+ * <html>, 1 by default; issue #546). Body lines take theirs from `.cm-content`
+ * in NoteEditor.svelte; this is for the lines that set their own.
+ */
+function noteLeading(ratio: number): string {
+  return `calc(${ratio} * var(--rn-note-leading, 1))`;
+}
+
 export const livePreviewTheme = EditorView.theme({
   // Use proportional Roboto in Live Preview so the view mirrors MarkdownPreview,
   // or the note font of this device (`--rn-note-font` on <html>, issue #546).
@@ -33,7 +43,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-h1-line': {
     fontSize: noteRem(2),
     fontWeight: '600',
-    lineHeight: '1.3',
+    lineHeight: noteLeading(1.3),
     paddingTop: '1.5em',
     paddingBottom: '0.5em',
     '& span': { textDecoration: 'none' }
@@ -41,7 +51,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-h2-line': {
     fontSize: noteRem(1.625),
     fontWeight: '600',
-    lineHeight: '1.3',
+    lineHeight: noteLeading(1.3),
     paddingTop: '1.5em',
     paddingBottom: '0.5em',
     '& span': { textDecoration: 'none' }
@@ -49,7 +59,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-h3-line': {
     fontSize: noteRem(1.375),
     fontWeight: '600',
-    lineHeight: '1.3',
+    lineHeight: noteLeading(1.3),
     paddingTop: '1.5em',
     paddingBottom: '0.5em',
     '& span': { textDecoration: 'none' }
@@ -57,7 +67,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-h4-line': {
     fontSize: noteRem(1.125),
     fontWeight: '600',
-    lineHeight: '1.3',
+    lineHeight: noteLeading(1.3),
     paddingTop: '1.5em',
     paddingBottom: '0.5em',
     '& span': { textDecoration: 'none' }
@@ -65,7 +75,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-h5-line': {
     fontSize: noteRem(1),
     fontWeight: '600',
-    lineHeight: '1.3',
+    lineHeight: noteLeading(1.3),
     paddingTop: '1.5em',
     paddingBottom: '0.5em',
     '& span': { textDecoration: 'none' }
@@ -73,7 +83,7 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-lp-h6-line': {
     fontSize: noteRem(0.9375),
     fontWeight: '600',
-    lineHeight: '1.3',
+    lineHeight: noteLeading(1.3),
     paddingTop: '1.5em',
     paddingBottom: '0.5em',
     color: 'var(--muted-foreground)',

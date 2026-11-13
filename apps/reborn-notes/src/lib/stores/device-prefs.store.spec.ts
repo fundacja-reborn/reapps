@@ -39,6 +39,7 @@ describe('device prefs: text size', () => {
       tocPinned: true,
       uiScale: 100,
       noteTextScale: 100,
+      noteLineSpacing: 100,
       noteFont: 'default',
       noteArabicFont: 'default',
       startPage: 'all',
@@ -92,6 +93,103 @@ describe('device prefs: text size', () => {
     devicePrefs.setNoteTextScale(90 as never);
     expect(get(devicePrefs).uiScale).toBe(125);
     expect(get(devicePrefs).noteTextScale).toBe(100);
+  });
+});
+
+describe('device prefs: line spacing (#546)', () => {
+  it('offers one step below the default and reads a saved step back', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ noteLineSpacing: 85 }));
+    const { NOTE_LINE_SPACING_STEPS, noteLineSpacing } = await loadStore();
+    expect(NOTE_LINE_SPACING_STEPS).toEqual([85, 100, 115, 130, 150]);
+    expect(get(noteLineSpacing)).toBe(85);
+  });
+
+  it.each([
+    ['not a step', 110],
+    ['out of range', 200],
+    ['a numeric string', '115'],
+    ['null', null]
+  ])('falls back to 100%% for a stored value %s', async (_label, value) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ noteLineSpacing: value }));
+    const { devicePrefs } = await loadStore();
+    expect(get(devicePrefs).noteLineSpacing).toBe(100);
+  });
+
+  it('persists a change, ignores a non-step and resets with the text size', async () => {
+    const { devicePrefs } = await loadStore();
+    devicePrefs.setNoteLineSpacing(130);
+    devicePrefs.setNoteLineSpacing(120 as never);
+    expect(stored()).toMatchObject({ noteLineSpacing: 130 });
+
+    devicePrefs.resetTextSize();
+    expect(stored()).toMatchObject({ noteLineSpacing: 100 });
+  });
+
+  it('steps down below the default and stops at both ends', async () => {
+    const { stepTextScale, NOTE_LINE_SPACING_STEPS } = await loadStore();
+    expect(stepTextScale(NOTE_LINE_SPACING_STEPS, 100, -1)).toBe(85);
+    expect(stepTextScale(NOTE_LINE_SPACING_STEPS, 85, -1)).toBe(85);
+    expect(stepTextScale(NOTE_LINE_SPACING_STEPS, 150, 1)).toBe(150);
+  });
+
+  it('snaps a value that is not a step to the default, not to the lowest step', async () => {
+    const { stepTextScale, NOTE_LINE_SPACING_STEPS } = await loadStore();
+    expect(stepTextScale(NOTE_LINE_SPACING_STEPS, 120 as never, 1)).toBe(100);
+  });
+});
+
+describe('noteLeading / applyNoteLeading (#546)', () => {
+  const DEFAULT_FONTS = { noteFont: 'default', noteArabicFont: 'default' } as const;
+
+  it('is 1 at the defaults and nothing is written', async () => {
+    const { noteLeading, applyNoteLeading } = await loadStore();
+    const prefs = { noteLineSpacing: 100, ...DEFAULT_FONTS } as const;
+    expect(noteLeading(prefs)).toBe(1);
+    applyNoteLeading(document.documentElement, prefs);
+    expect(document.documentElement.style.getPropertyValue('--rn-note-leading')).toBe('');
+  });
+
+  it('follows the line spacing of this device', async () => {
+    const { noteLeading } = await loadStore();
+    expect(noteLeading({ noteLineSpacing: 85, ...DEFAULT_FONTS })).toBe(0.85);
+    expect(noteLeading({ noteLineSpacing: 150, ...DEFAULT_FONTS })).toBe(1.5);
+  });
+
+  it('adds the room a Naskh font needs, at the default line spacing too', async () => {
+    const { noteLeading } = await loadStore();
+    expect(
+      noteLeading({ noteLineSpacing: 100, noteFont: 'default', noteArabicFont: 'amiri' })
+    ).toBe(1.2);
+    expect(
+      noteLeading({
+        noteLineSpacing: 100,
+        noteFont: 'default',
+        noteArabicFont: 'noto-naskh-arabic'
+      })
+    ).toBe(1.1);
+  });
+
+  it('multiplies the two and keeps the number short', async () => {
+    const { noteLeading } = await loadStore();
+    expect(
+      noteLeading({ noteLineSpacing: 115, noteFont: 'default', noteArabicFont: 'amiri' })
+    ).toBe(1.38);
+    expect(
+      noteLeading({
+        noteLineSpacing: 85,
+        noteFont: 'source-serif-4',
+        noteArabicFont: 'noto-naskh-arabic'
+      })
+    ).toBe(0.935);
+  });
+
+  it('writes --rn-note-leading and removes it again at 1', async () => {
+    const { applyNoteLeading } = await loadStore();
+    const root = document.documentElement;
+    applyNoteLeading(root, { noteLineSpacing: 130, noteFont: 'default', noteArabicFont: 'amiri' });
+    expect(root.style.getPropertyValue('--rn-note-leading')).toBe('1.56');
+    applyNoteLeading(root, { noteLineSpacing: 100, ...DEFAULT_FONTS });
+    expect(root.style.getPropertyValue('--rn-note-leading')).toBe('');
   });
 });
 

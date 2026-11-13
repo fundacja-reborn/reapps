@@ -8,8 +8,10 @@
     devicePrefs,
     stepTextScale,
     DEFAULT_TEXT_SCALE,
+    NOTE_LINE_SPACING_STEPS,
     NOTE_TEXT_SCALE_STEPS,
     UI_SCALE_STEPS,
+    type NoteLineSpacing,
     type NoteTextScale,
     type UiScale
   } from '$lib/stores/device-prefs.store';
@@ -17,19 +19,22 @@
 
   /**
    * Text size for this device (issue #511): interface scale + note text size,
-   * both as -/+ steppers. A change applies at once to the whole app (the root
-   * layout writes it onto <html>), so the page itself is the preview of the
-   * interface scale; the sample below previews the note text.
+   * and the line spacing of note content (issue #546), all as -/+ steppers. A
+   * change applies at once to the whole app (the root layout writes it onto
+   * <html>), so the page itself is the preview of the interface scale; the
+   * sample below previews the note text and its line spacing.
    */
 
   const percentFormat = $derived(
     new Intl.NumberFormat(intlLocale($locale), { style: 'percent', maximumFractionDigits: 1 })
   );
 
+  // One paragraph of two sentences: long enough to wrap on a wide screen too,
+  // because the line spacing only shows between the lines of one paragraph.
   const sampleMarkdown = $derived(
     `## ${$t('settings_page.appearance.text_size_sample_heading')}\n\n${$t(
       'settings_page.appearance.text_size_sample_body'
-    )}`
+    )} ${$t('settings_page.appearance.text_size_sample_wrap')}`
   );
 
   // The "Default" button disappears once used; hand focus to the group's "+"
@@ -49,6 +54,11 @@
     void focusIncrease('note-scale');
   }
 
+  function resetLineSpacing() {
+    devicePrefs.setNoteLineSpacing(DEFAULT_TEXT_SCALE);
+    void focusIncrease('note-line-spacing');
+  }
+
   function stepUi(direction: 1 | -1) {
     devicePrefs.setUiScale(stepTextScale<UiScale>(UI_SCALE_STEPS, $devicePrefs.uiScale, direction));
   }
@@ -56,6 +66,16 @@
   function stepNote(direction: 1 | -1) {
     devicePrefs.setNoteTextScale(
       stepTextScale<NoteTextScale>(NOTE_TEXT_SCALE_STEPS, $devicePrefs.noteTextScale, direction)
+    );
+  }
+
+  function stepLineSpacing(direction: 1 | -1) {
+    devicePrefs.setNoteLineSpacing(
+      stepTextScale<NoteLineSpacing>(
+        NOTE_LINE_SPACING_STEPS,
+        $devicePrefs.noteLineSpacing,
+        direction
+      )
     );
   }
 </script>
@@ -149,8 +169,21 @@
       resetNote
     )}
 
+    {@render stepper(
+      'note-line-spacing',
+      $t('settings_page.appearance.line_spacing'),
+      $t('settings_page.appearance.line_spacing_hint'),
+      $devicePrefs.noteLineSpacing,
+      NOTE_LINE_SPACING_STEPS,
+      $t('settings_page.appearance.line_spacing_decrease'),
+      $t('settings_page.appearance.line_spacing_increase'),
+      stepLineSpacing,
+      resetLineSpacing
+    )}
+
     <!-- Note text sample: the real preview renderer, so it matches notes 1:1
-         (mobile vs desktop base size, heading scale, --rn-note-scale). -->
+         (mobile vs desktop base size, heading scale, --rn-note-scale,
+         --rn-note-leading). -->
     <figure class="space-y-1.5">
       <figcaption class="text-xs text-muted-foreground">
         {$t('settings_page.appearance.text_size_preview')}
