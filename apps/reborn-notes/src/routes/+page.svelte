@@ -76,7 +76,8 @@
     editorModeIntroSeen,
     periodicNotesSettings,
     newNoteFolderId,
-    confirmBeforeDelete
+    confirmBeforeDelete,
+    preserveBlankLines
   } from '$lib/stores/app-settings.store';
   import {
     devicePrefs,
@@ -310,7 +311,7 @@
       return;
     }
     try {
-      await exportNoteAsPdf(fullNote);
+      await exportNoteAsPdf(fullNote, { preserveBlankLines: $preserveBlankLines });
     } catch {
       toastStore.error($t('notes.export_failed'));
     }

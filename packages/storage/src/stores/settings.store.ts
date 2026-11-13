@@ -118,6 +118,16 @@ export interface AppSettings {
    */
   newNoteFolderId?: string | null;
   /**
+   * Notes-only: keep extra blank lines between blocks as empty lines in
+   * Preview and in the PDF export, instead of collapsing them the way plain
+   * Markdown does (issue #549). Absent = on (the default): `initializeDefaults`
+   * does not write it, so a fresh device never overwrites a choice made on
+   * another one with a default, and a shared note's reader (no settings row)
+   * gets the same rendering as a new user. Synced across devices via the Notes
+   * app bundle - it is a reading preference, not a device trait.
+   */
+  preserveBlankLines?: boolean;
+  /**
    * Notes-only: per-kind settings for Daily / Weekly / Monthly Notes (Obsidian-style).
    * Local & device-specific - not synced. Optional in the type so reborn-task settings
    * don't carry the field. Defaults are written by `initializeDefaults` for the notes app.

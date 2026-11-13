@@ -5,6 +5,7 @@
   import MarkdownDiffView from '$lib/components/MarkdownDiffView.svelte';
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import { t } from '$lib/stores/i18n.store';
+  import { preserveBlankLines } from '$lib/stores/app-settings.store';
   import { applyToc, removeToc, isTocStale } from '$lib/utils/toc';
   import { copyText } from '$lib/utils/clipboard';
   import { buildHeadingLink } from '$lib/services/note-link-utils';
@@ -165,7 +166,12 @@
     {#if historyViewMode === 'diff' && previousVersion}
       <MarkdownDiffView oldText={previousVersion.content} newText={selectedVersion.content} />
     {:else}
-      <MarkdownPreview content={selectedVersion.content} class="flex-1 px-5" {imageLoadMode} />
+      <MarkdownPreview
+        content={selectedVersion.content}
+        class="flex-1 px-5"
+        {imageLoadMode}
+        preserveBlankLines={$preserveBlankLines}
+      />
     {/if}
   {:else}
     <!-- Normal editor content -->
@@ -233,6 +239,7 @@
               headingLinkLabel={$t('editor.copy_heading_link')}
               {tocStale}
               {imageLoadMode}
+              preserveBlankLines={$preserveBlankLines}
               {loadAllImagesHint}
               {settingsLinkLabel}
               {settingsLinkHref}
@@ -255,6 +262,7 @@
             headingLinkLabel={$t('editor.copy_heading_link')}
             {tocStale}
             {imageLoadMode}
+            preserveBlankLines={$preserveBlankLines}
             {loadAllImagesHint}
             {settingsLinkLabel}
             {settingsLinkHref}

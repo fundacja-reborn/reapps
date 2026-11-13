@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { marked } from 'marked';
+import { marked, Marked } from 'marked';
+import { markExtraBlankLines } from './blank-lines';
+import { createMarkdownListRenderers } from './markdown-to-html';
 import {
   annotateTopLevelLines,
   applySourceLineAttrs,
@@ -18,7 +20,7 @@ describe('annotateTopLevelLines', () => {
     annotateTopLevelLines(tokens);
     const annotated = tokens as AnnotatedToken[];
     expect(annotated[0]._line).toBe(1); // "Hello"
-    // tokens[1] is `space` — its _line is the line where the token starts in
+    // tokens[1] is `space` - its _line is the line where the token starts in
     // source (immediately after "Hello", same line, since marked strips the
     // paragraph's trailing newline). Space tokens render to empty string so
     // their _line is irrelevant for alignment; only paragraphs/headings/etc.
@@ -129,6 +131,34 @@ describe('applySourceLineAttrs', () => {
     expect(container.querySelector('p')?.getAttribute('data-source-line')).toBe('5');
   });
 
+  it('pairs a kept-blank-lines spacer with its own space token (#549)', () => {
+    // Lines: 1 title, 2-4 blank, 5 para, 6 blank, 7 last.
+    const src = '# Title\n\n\n\npara\n\nlast';
+    const md = new Marked({ gfm: true, breaks: true });
+    md.use({ renderer: createMarkdownListRenderers().renderer });
+    const tokens = md.lexer(src);
+    annotateTopLevelLines(tokens);
+    markExtraBlankLines(tokens);
+    const container = document.createElement('div');
+    container.innerHTML = md.parser(tokens) as string;
+    applySourceLineAttrs(container, tokens);
+
+    const lines = [...container.children].map((el) => [
+      el.tagName,
+      el.getAttribute('data-source-line'),
+      el.getAttribute('data-source-line-end')
+    ]);
+    // The spacer starts on the line AFTER the heading (not on it), so no two
+    // anchors share a start line; the single blank line before "last" renders
+    // nothing and is skipped as before.
+    expect(lines).toEqual([
+      ['H1', '1', '1'],
+      ['DIV', '2', '4'],
+      ['P', '5', '5'],
+      ['P', '7', '7']
+    ]);
+  });
+
   it('stamps `data-source-line-end` equal to start for single-line blocks', () => {
     const src = '# Title\n\npara';
     const tokens = marked.lexer(src);
@@ -157,7 +187,7 @@ describe('applySourceLineAttrs', () => {
 
 describe('topLineFor / offsetForLine', () => {
   // Single-line anchors (startLine === endLine, top === bottom would be
-  // degenerate in real DOM but works mathematically — the functions clamp).
+  // degenerate in real DOM but works mathematically - the functions clamp).
   const single: PreviewAnchor[] = [
     { startLine: 1, endLine: 1, top: 0, bottom: 20 },
     { startLine: 5, endLine: 5, top: 100, bottom: 120 },
@@ -229,7 +259,7 @@ describe('topLineFor / offsetForLine', () => {
   it('finds offset for line clamped before/after the range', () => {
     expect(offsetForLine(single, 0)).toBe(0);
     expect(offsetForLine(single, 1)).toBe(0);
-    // Past the last endLine — clamp to bottom of last anchor.
+    // Past the last endLine - clamp to bottom of last anchor.
     expect(offsetForLine(single, 9999)).toBe(520);
   });
 });

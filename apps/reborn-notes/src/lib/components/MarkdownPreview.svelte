@@ -24,6 +24,7 @@
   import { extractHeadings, assignHeadingSlugs } from '$lib/utils/heading-outline';
   import { scrollToHeading } from '$lib/utils/heading-scroll';
   import { hasToc, tocInnerMarkdown, toEditableTocBlock } from '$lib/utils/toc';
+  import { markExtraBlankLines } from '$lib/utils/blank-lines';
 
   // Toolbar icons for the owner's in-note table of contents (refresh + remove).
   // Static, self-contained Lucide-style SVGs (16px, `stroke="currentColor"` so
@@ -66,6 +67,7 @@
     // eslint-disable-next-line no-useless-assignment -- $bindable prop default (set by parent via bind:), not dead
     contentEl = $bindable<HTMLElement | null>(null),
     imageLoadMode = 'ask' as ImageLoadMode,
+    preserveBlankLines = true,
     loadAllImagesHint,
     settingsLinkLabel,
     settingsLinkHref,
@@ -89,6 +91,13 @@
      */
     contentEl?: HTMLElement | null;
     imageLoadMode?: ImageLoadMode;
+    /**
+     * Keep extra blank lines between blocks as empty lines (issue #549) instead
+     * of collapsing them the way plain Markdown does. On by default - which is
+     * also what a shared note's reader and the share previews get, since they
+     * leave it unset; the owner's preview passes the synced setting.
+     */
+    preserveBlankLines?: boolean;
     /**
      * Optional plain-text caption rendered next to the "Load all images"
      * button. Used by the shared-snapshot viewer to explain to non-technical
@@ -297,6 +306,9 @@
     }
     const tokens = md.lexer(source);
     annotateTopLevelLines(tokens);
+    // Reading the prop here makes it a dep of this derivation, so toggling the
+    // setting re-renders. The stamps are picked up by the shared renderer.
+    if (preserveBlankLines) markExtraBlankLines(tokens);
     lastTokens = tokens;
     const raw = sanitize(md.parser(tokens) as string);
     // Wrap each rendered table in a horizontally-scrollable container so wide
@@ -658,6 +670,12 @@
   .preview :global(p) {
     margin-top: 0;
     margin-bottom: 1em;
+    line-height: 1.75;
+  }
+
+  /* Kept blank lines (blank-lines.ts): one <br> per extra empty line, each as
+     tall as a line of paragraph text. */
+  .preview :global(.md-blank-lines) {
     line-height: 1.75;
   }
 

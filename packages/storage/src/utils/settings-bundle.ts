@@ -69,6 +69,8 @@ export interface AppSettingsBundle {
   folderSortMode?: AppSettings['folderSortMode'];
   /** Notes-only (#522): `null` travels too, so clearing the choice syncs. */
   newNoteFolderId?: AppSettings['newNoteFolderId'];
+  /** Notes-only (#549): absent = on, so only an explicit choice travels. */
+  preserveBlankLines?: AppSettings['preserveBlankLines'];
   periodicNotes?: AppSettings['periodicNotes'];
   /**
    * Notes-only: recovery phrase wrapped as its own ciphertext under the master
@@ -119,6 +121,9 @@ export function extractAppBundle(s: AppSettings): AppSettingsBundle {
   if (s.newNoteFolderId !== undefined) {
     bundle.newNoteFolderId = s.newNoteFolderId;
   }
+  if (s.preserveBlankLines !== undefined) {
+    bundle.preserveBlankLines = s.preserveBlankLines;
+  }
   if (s.periodicNotes !== undefined) {
     bundle.periodicNotes = s.periodicNotes;
   }
@@ -160,6 +165,7 @@ export function applyBundlesToSettings(
     if (app.confirmBeforeDelete !== undefined) merged.confirmBeforeDelete = app.confirmBeforeDelete;
     if (app.folderSortMode !== undefined) merged.folderSortMode = app.folderSortMode;
     if (app.newNoteFolderId !== undefined) merged.newNoteFolderId = app.newNoteFolderId;
+    if (app.preserveBlankLines !== undefined) merged.preserveBlankLines = app.preserveBlankLines;
     if (app.periodicNotes !== undefined) merged.periodicNotes = app.periodicNotes;
     if (app.autoBackupPhrase !== undefined) {
       // Newest-wins on the field's OWN stamp, independent of the row's
@@ -229,6 +235,7 @@ export function migrateAppBundle(raw: unknown): AppSettingsBundle {
   if (obj.newNoteFolderId === null || (typeof obj.newNoteFolderId === 'string' && obj.newNoteFolderId !== '')) {
     out.newNoteFolderId = obj.newNoteFolderId;
   }
+  if (typeof obj.preserveBlankLines === 'boolean') out.preserveBlankLines = obj.preserveBlankLines;
   if (typeof obj.periodicNotes === 'object' && obj.periodicNotes !== null) {
     out.periodicNotes = obj.periodicNotes as AppSettings['periodicNotes'];
   }
