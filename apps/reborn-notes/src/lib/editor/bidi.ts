@@ -19,7 +19,8 @@
  * The user can override a line's direction: see `direction-mark.ts`.
  *
  * A click or Home/End on the visual edge of a mixed-direction line lands on
- * the logical edge of the line: see `bidi-line-edge.ts` (#539).
+ * the logical edge of the line, and the drawn selection covers a Latin word
+ * at the edge of a row: see `bidi-line-edge.ts` (#539).
  *
  * Live Preview's list / quote geometry uses logical properties
  * (`padding-inline-start`, ...) so it mirrors on RTL lines (theme.ts).
