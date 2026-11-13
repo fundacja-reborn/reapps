@@ -1443,7 +1443,7 @@
       noteNavHistory.remove(targetId); // broken entry - drop so it's skipped next time
       return;
     }
-    if (note.is_archived) {
+    if (note.is_trashed) {
       toastStore.info($t('notes.note_in_trash'));
       noteNavHistory.remove(targetId);
       return;
@@ -1474,7 +1474,7 @@
       toastStore.error($t('notes.note_not_found'));
       return;
     }
-    if (note.is_archived) {
+    if (note.is_trashed) {
       toastStore.info($t('notes.note_in_trash'));
       return;
     }
@@ -1513,7 +1513,7 @@
       toastStore.error($t('notes.note_not_found'));
       return;
     }
-    if (note.is_archived) {
+    if (note.is_trashed) {
       toastStore.info($t('notes.note_in_trash'));
       return;
     }

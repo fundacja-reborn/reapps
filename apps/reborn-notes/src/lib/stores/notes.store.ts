@@ -53,7 +53,7 @@ function createNotesStore() {
   let refreshVersion = 0;
   let contentSearchVersion = 0;
 
-  /** Sort NoteListItem[] — same logic as NoteService.sortNotes but typed for NoteListItem. */
+  /** Sort NoteListItem[] - same logic as NoteService.sortNotes but typed for NoteListItem. */
   function sortItems(items: NoteListItem[], sort: SortBy): NoteListItem[] {
     const sorted = [...items].sort((a, b) => {
       if (sort === 'title') {
@@ -66,7 +66,7 @@ function createNotesStore() {
     return [...sorted.filter((n) => n.is_pinned), ...sorted.filter((n) => !n.is_pinned)];
   }
 
-  // Derived visible list — _raw is already filtered (search query + AST + content) by refresh().
+  // Derived visible list - _raw is already filtered (search query + AST + content) by refresh().
   // Trash mode keeps the natural order; everything else gets pin-first re-sort by user's sortBy.
   const notes = derived([_raw, sortBy], ([$raw, $sort]) =>
     currentTrash ? $raw : sortItems($raw, $sort)
@@ -90,8 +90,8 @@ function createNotesStore() {
 
   /** Build filter options from current store state. */
   function buildFilterOptions() {
-    if (currentTrash) return { archived: true as const };
-    const base = { archived: false as const };
+    if (currentTrash) return { trashed: true as const };
+    const base = { trashed: false as const };
     if (currentStarred) return { ...base, starred: true as const };
     if (currentTagId) return { ...base, tagId: currentTagId };
     const subtreeIds = getSearchSubtreeFolderIds();
@@ -107,7 +107,7 @@ function createNotesStore() {
    * else (multi-word AND, quoted phrase, `-exclude`, or any operator) goes
    * through AST evaluation. Operators that need note content (`has:link`,
    * freetext-in-body when the user enabled "search in content") delegate
-   * entirely to `triggerContentSearch()` — the title-only intermediate is
+   * entirely to `triggerContentSearch()` - the title-only intermediate is
    * skipped to avoid flashing wrong results, and the previous `_raw` stays
    * visible until the body-aware pass completes.
    */
@@ -125,20 +125,20 @@ function createNotesStore() {
 
       if (wantsContent) {
         // Body-aware path takes over fully. Don't pre-populate `_raw` from the
-        // title-only path — title-only would drop notes whose freetext only
+        // title-only path - title-only would drop notes whose freetext only
         // appears in body (the original "Search in content" regression).
         triggerContentSearch(ast, filterOpts);
         return;
       }
 
-      // Cancel any in-flight content search — its result would now be stale.
+      // Cancel any in-flight content search - its result would now be stale.
       contentSearchVersion++;
 
       const items = untrack(() => evaluateAgainstIndex(ast, filterOpts));
       if (myVersion !== refreshVersion) return;
       _raw.set(items);
     } catch {
-      // Index might not be built yet (e.g. before E2E unlock) — return empty
+      // Index might not be built yet (e.g. before E2E unlock) - return empty
       if (myVersion !== refreshVersion) return;
       _raw.set([]);
     }
@@ -148,10 +148,10 @@ function createNotesStore() {
    * Synchronous AST evaluation against the in-memory NoteIndex (no body).
    *
    * Three routing cases:
-   *   1. Empty AST — return the visible scope as-is.
-   *   2. Single positive leaf-text — fast title-substring path through
+   *   1. Empty AST - return the visible scope as-is.
+   *   2. Single positive leaf-text - fast title-substring path through
    *      `getFiltered({ search })`. Bypasses building a SearchContext.
-   *   3. Anything else — full AST evaluation via `getFilteredByAst`.
+   *   3. Anything else - full AST evaluation via `getFilteredByAst`.
    */
   function evaluateAgainstIndex(
     ast: QueryAST,
@@ -194,10 +194,10 @@ function createNotesStore() {
    * by the index entry size, not by note body sizes.
    *
    * Pre-filter strategy:
-   *   - Drop freetext from `liteAst` — we re-check it against title+body
+   *   - Drop freetext from `liteAst` - we re-check it against title+body
    *     post-decryption. Keeping it would exclude notes whose freetext lives
    *     only in body (the legacy "Search in content" regression).
-   *   - Drop `has:*` filters — they need decrypted body, can't pre-check.
+   *   - Drop `has:*` filters - they need decrypted body, can't pre-check.
    *   - Keep structural operators (tag/folder/list/dates/is:*) so they narrow
    *     the candidate set before we pay the decryption cost.
    *
@@ -214,7 +214,7 @@ function createNotesStore() {
     try {
       // 1. Pre-filter: lite-AST drops body-dependent leaves (leaf-text,
       //    has:*) so the candidate set isn't pruned by predicates that need
-      //    the decrypted body. Polarity-aware — `-(cat) tag:work` keeps
+      //    the decrypted body. Polarity-aware - `-(cat) tag:work` keeps
       //    tag:work, doesn't collapse to FALSE.
       const liteAst = buildLiteAst(ast);
       const ctx = buildSearchContext();
@@ -238,7 +238,7 @@ function createNotesStore() {
         if (myVersion !== contentSearchVersion) return;
         const item = candidates[i];
         const full = currentTrash
-          ? await NoteService.getNoteIncludingArchived(item.id)
+          ? await NoteService.getNoteIncludingTrashed(item.id)
           : await NoteService.getNote(item.id);
         const entry = noteIndex.get(item.id);
         if (
@@ -429,7 +429,7 @@ function createNotesStore() {
 
   /** Load a full note (with content) for the editor. */
   async function loadNote(id: string): Promise<NoteDecrypted | null> {
-    return NoteService.getNoteIncludingArchived(id);
+    return NoteService.getNoteIncludingTrashed(id);
   }
 
   return {

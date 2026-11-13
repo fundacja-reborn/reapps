@@ -8,7 +8,7 @@
  * Consumers: NoteList, NotePicker, autocomplete [[, search sidebar.
  *
  * Replaces the old NoteTitleIndex - now stores all metadata needed for list rendering:
- * title, folderId, isPinned, isStarred, isArchived, createdAt, updatedAt, tagIds, color.
+ * title, folderId, isPinned, isStarred, isTrashed, createdAt, updatedAt, tagIds, color.
  * Full content is NEVER stored here - loaded on demand by note-detail.service.
  */
 import { noteStore, noteTagStore, noteTagQueries } from '@reborn/storage';
@@ -30,7 +30,7 @@ export interface NoteIndexEntry {
   folderId: string | undefined;
   isPinned: boolean;
   isStarred: boolean;
-  isArchived: boolean;
+  isTrashed: boolean;
   createdAt: string;
   updatedAt: string;
   tagIds: string[];
@@ -56,7 +56,7 @@ export interface FilterOptions {
   folderIds?: string[];
   tagId?: string;
   starred?: boolean;
-  archived?: boolean;
+  trashed?: boolean;
   search?: string;
   sortBy?: SortBy;
   page?: number;
@@ -71,7 +71,7 @@ export interface FilterResult {
 
 /**
  * AST-driven filter options. Mirrors the pre-filter slice of FilterOptions
- * (folder/tag/starred/archived) - body content is NOT handled here. Operators
+ * (folder/tag/starred/trashed) - body content is NOT handled here. Operators
  * that need decrypted content (`has:link`, freetext-in-body) are evaluated by
  * the content-search path in `notes.store.ts`, which streams one body at a
  * time through the bare `evaluate()` + `toSearchEntity()` helpers.
@@ -81,7 +81,7 @@ export interface FilterByAstOptions {
   folderIds?: string[];
   tagId?: string;
   starred?: boolean;
-  archived?: boolean;
+  trashed?: boolean;
   sortBy?: SortBy;
   page?: number;
   pageSize?: number;
@@ -134,7 +134,7 @@ class NoteIndex {
             folderId: e.folderId,
             isPinned: e.isPinned,
             isStarred: e.isStarred,
-            isArchived: e.isArchived,
+            isTrashed: e.isTrashed,
             createdAt: e.createdAt,
             updatedAt: e.updatedAt,
             tagIds: tagMap.get(e.id) ?? [],
@@ -178,7 +178,7 @@ class NoteIndex {
           folderId: e.folderId,
           isPinned: e.isPinned,
           isStarred: e.isStarred,
-          isArchived: e.isArchived,
+          isTrashed: e.isTrashed,
           createdAt: e.createdAt,
           updatedAt: e.updatedAt,
           tagIds,
@@ -249,13 +249,13 @@ class NoteIndex {
 
   // ── Read API (backward-compatible with NoteTitleIndex) ─────────
 
-  /** All non-archived titles sorted by updatedAt desc. Reactive via _version.
+  /** All non-trashed titles sorted by updatedAt desc. Reactive via _version.
    *  Excludes undecryptable rows - they feed [[link]] autocomplete and pickers,
    *  where a blank garbage target must not be offered. */
   getAll(): { id: string; title: string }[] {
     void this._version;
     return Array.from(this._map.entries())
-      .filter(([, e]) => !e.isArchived && !e.decryptFailed)
+      .filter(([, e]) => !e.isTrashed && !e.decryptFailed)
       .sort((a, b) => b[1].updatedAt.localeCompare(a[1].updatedAt))
       .map(([id, e]) => ({ id, title: e.title }));
   }
@@ -284,7 +284,7 @@ class NoteIndex {
       folder_id: e.folderId,
       is_pinned: e.isPinned,
       is_starred: e.isStarred,
-      is_archived: e.isArchived,
+      is_trashed: e.isTrashed,
       created_at: e.createdAt,
       updated_at: e.updatedAt,
       tags: e.tagIds,
@@ -299,28 +299,28 @@ class NoteIndex {
     if (!query.trim()) return [];
     const q = foldSearchText(query);
     return Array.from(this._map.entries())
-      .filter(([, e]) => !e.isArchived && foldSearchText(e.title).includes(q))
+      .filter(([, e]) => !e.isTrashed && foldSearchText(e.title).includes(q))
       .sort((a, b) => b[1].updatedAt.localeCompare(a[1].updatedAt))
       .map(([id, e]) => ({ id, title: e.title }));
   }
 
-  /** Total number of entries (including archived). Reactive. */
+  /** Total number of entries (including trashed). Reactive. */
   get count(): number {
     void this._version;
     return this._map.size;
   }
 
   /**
-   * Snapshot of all non-archived entries for dedup / lookup callers (e.g.
+   * Snapshot of all non-trashed entries for dedup / lookup callers (e.g.
    * the markdown import pipeline). Returns a new array each call - safe
-   * to mutate. Excludes archived notes; importer should not collide with
+   * to mutate. Excludes trashed notes; importer should not collide with
    * trashed titles.
    */
   entries(): { id: string; title: string; folderId: string | undefined }[] {
     void this._version;
     const out: { id: string; title: string; folderId: string | undefined }[] = [];
     for (const [id, e] of this._map) {
-      if (e.isArchived) continue;
+      if (e.isTrashed) continue;
       out.push({ id, title: e.title, folderId: e.folderId });
     }
     return out;
@@ -347,7 +347,7 @@ class NoteIndex {
       folderIds,
       tagId,
       starred,
-      archived = false,
+      trashed = false,
       search,
       sortBy = 'updated_at',
       page = 1,
@@ -357,8 +357,8 @@ class NoteIndex {
     // 1. Filter
     let entries = Array.from(this._map.entries());
 
-    // archived filter
-    entries = entries.filter(([, e]) => e.isArchived === archived);
+    // trashed filter
+    entries = entries.filter(([, e]) => e.isTrashed === trashed);
 
     // folder filter - folderIds (set) takes precedence over folderId (single)
     if (folderIds !== undefined) {
@@ -391,8 +391,8 @@ class NoteIndex {
 
     // 2. Sort (pinned always first, then by sort key)
     entries.sort((a, b) => {
-      // Pinned first (skip in archived/trash mode - no pin concept)
-      if (!archived) {
+      // Pinned first (skip in trash mode - no pin concept)
+      if (!trashed) {
         if (a[1].isPinned && !b[1].isPinned) return -1;
         if (!a[1].isPinned && b[1].isPinned) return 1;
       }
@@ -418,7 +418,7 @@ class NoteIndex {
       folder_id: e.folderId,
       is_pinned: e.isPinned,
       is_starred: e.isStarred,
-      is_archived: e.isArchived,
+      is_trashed: e.isTrashed,
       created_at: e.createdAt,
       updated_at: e.updatedAt,
       tags: e.tagIds,
@@ -436,7 +436,7 @@ class NoteIndex {
   /**
    * AST-driven filtering over the in-memory index.
    *
-   * Pre-filter (folder/tag/starred/archived) narrows the candidate set, then
+   * Pre-filter (folder/tag/starred/trashed) narrows the candidate set, then
    * each remaining entry is mapped to a SearchEntity (with `body = undefined`)
    * and evaluated against the AST. Operators that require content
    * (`has:link`, freetext-in-body) are NOT served here - the caller must take
@@ -448,7 +448,7 @@ class NoteIndex {
    *   - `is:completed`/`is:overdue`/`due:`     → always false (notes have no completion/due semantics)
    *   - `list:`       → always false (notes have no lists)
    *
-   * The active/trash split is handled by the `archived` pre-filter above -
+   * The active/trash split is handled by the `trashed` pre-filter above -
    * there is no public `is:trashed` operator.
    */
   getFilteredByAst(
@@ -463,7 +463,7 @@ class NoteIndex {
       folderIds,
       tagId,
       starred,
-      archived = false,
+      trashed = false,
       sortBy = 'updated_at',
       page = 1,
       pageSize = 50
@@ -471,7 +471,7 @@ class NoteIndex {
 
     let entries = Array.from(this._map.entries());
 
-    entries = entries.filter(([, e]) => e.isArchived === archived);
+    entries = entries.filter(([, e]) => e.isTrashed === trashed);
 
     if (folderIds !== undefined) {
       const set = new Set(folderIds);
@@ -495,7 +495,7 @@ class NoteIndex {
     entries = entries.filter(([id, e]) => evaluate(ast, toSearchEntity(id, e), ctx));
 
     entries.sort((a, b) => {
-      if (!archived) {
+      if (!trashed) {
         if (a[1].isPinned && !b[1].isPinned) return -1;
         if (!a[1].isPinned && b[1].isPinned) return 1;
       }
@@ -517,7 +517,7 @@ class NoteIndex {
       folder_id: e.folderId,
       is_pinned: e.isPinned,
       is_starred: e.isStarred,
-      is_archived: e.isArchived,
+      is_trashed: e.isTrashed,
       created_at: e.createdAt,
       updated_at: e.updatedAt,
       tags: e.tagIds,
@@ -555,7 +555,7 @@ export function toSearchEntity(
     flags: {
       starred: entry.isStarred,
       pinned: entry.isPinned,
-      trashed: entry.isArchived
+      trashed: entry.isTrashed
     }
   };
 }

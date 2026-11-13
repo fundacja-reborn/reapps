@@ -81,7 +81,7 @@ export function groupDuplicates(candidates: DedupCandidate[]): DedupGroup[] {
 /**
  * Build merged note content: the canonical body, then each non-empty younger
  * body prefixed with its separator. Empty younger copies (title only, no body)
- * contribute nothing - they are merely archived, with no stray separator.
+ * contribute nothing - they are merely trashed, with no stray separator.
  */
 export function buildMergedContent(
   canonicalContent: string,

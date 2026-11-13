@@ -31,7 +31,7 @@ import { createLogger } from '@reborn/utils';
 import { toastStore } from '@reborn/ui';
 import { noteIndex } from '$lib/services/note-index.svelte';
 import {
-  getNoteIncludingArchived,
+  getNoteIncludingTrashed,
   updateNote,
   deleteNote,
   readNoteMetadata,
@@ -159,19 +159,19 @@ function separatorFor(createdAtIso: string): string {
  * Re-detects at call time (does not trust a stale group list captured when the
  * toast was shown).
  */
-export async function mergeAllPeriodicDuplicates(): Promise<{ groups: number; archived: number }> {
+export async function mergeAllPeriodicDuplicates(): Promise<{ groups: number; trashed: number }> {
   const groups = await detectPeriodicDuplicates();
   let mergedGroups = 0;
-  let archivedNotes = 0;
+  let trashedNotes = 0;
 
   for (const group of groups) {
     const [canonical, ...younger] = group.members;
-    const canonicalNote = await getNoteIncludingArchived(canonical.id);
+    const canonicalNote = await getNoteIncludingTrashed(canonical.id);
     if (!canonicalNote) continue;
 
     const additions: { content: string; separator: string }[] = [];
     for (const y of younger) {
-      const yNote = await getNoteIncludingArchived(y.id);
+      const yNote = await getNoteIncludingTrashed(y.id);
       if (!yNote) continue;
       additions.push({ content: yNote.content, separator: separatorFor(y.createdAt) });
     }
@@ -189,13 +189,13 @@ export async function mergeAllPeriodicDuplicates(): Promise<{ groups: number; ar
 
     for (const y of younger) {
       await deleteNote(y.id); // soft-delete -> trash (recoverable), syncs
-      archivedNotes++;
+      trashedNotes++;
     }
     mergedGroups++;
   }
 
   notesStore.refresh();
-  return { groups: mergedGroups, archived: archivedNotes };
+  return { groups: mergedGroups, trashed: trashedNotes };
 }
 
 // ── Detect + notify (the post-pull hook) ──────────────────────────
@@ -263,10 +263,10 @@ export function dismissPeriodicDuplicatePrompt(): void {
  */
 export async function confirmMergePeriodicDuplicates(): Promise<void> {
   try {
-    const { archived } = await mergeAllPeriodicDuplicates();
+    const { trashed } = await mergeAllPeriodicDuplicates();
     notifiedKeys.clear();
-    if (archived > 0) {
-      toastStore.success(tr('notes.periodic.dedup.merge_success', { count: archived }));
+    if (trashed > 0) {
+      toastStore.success(tr('notes.periodic.dedup.merge_success', { count: trashed }));
     }
   } catch (e) {
     logger.error('Periodic duplicate merge failed', e);

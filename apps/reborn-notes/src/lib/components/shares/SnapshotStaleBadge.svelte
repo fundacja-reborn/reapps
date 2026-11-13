@@ -9,7 +9,7 @@
   // load the live note by the id baked into the snapshot payload only to read its
   // updated_at, and compare it to when the snapshot was frozen. Reads IndexedDB
   // (already-decrypted plaintext) - no server call, fully ZK-safe. A trashed
-  // (is_archived) or absent note yields no badge, same gate as the panel.
+  // (is_trashed) or absent note yields no badge, same gate as the panel.
   let {
     sourceId,
     sharedAt
@@ -26,7 +26,7 @@
     let cancelled = false;
     void notesStore.loadNote(sid).then((n) => {
       if (cancelled) return;
-      sourceUpdatedAt = n && !n.is_archived ? n.updated_at : null;
+      sourceUpdatedAt = n && !n.is_trashed ? n.updated_at : null;
     });
     return () => {
       cancelled = true;

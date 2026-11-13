@@ -35,7 +35,7 @@ vi.mock('@reborn/storage', () => ({
   folderQueries: {},
   folderStore: {},
   noteOperations: {
-    archive: async (id: string) => {
+    moveToTrash: async (id: string) => {
       const n = notesById.get(id);
       if (n) n.is_archived = true;
     },

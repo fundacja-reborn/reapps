@@ -536,7 +536,7 @@ export const noteStore = new SplitNoteStore();
  */
 export const noteQueries = {
   /**
-   * Get all active notes (not deleted)
+   * Get all active notes (not in the trash)
    */
   getActive: async (): Promise<NoteStoredLocal[]> => {
     const all = await noteStore.getAll();
@@ -590,9 +590,11 @@ export const noteQueries = {
 
 
   /**
-   * Get archived notes
+   * Get notes in the trash. The persisted flag is still called `is_archived`
+   * (wire / database name, kept so no migration is needed); in the domain
+   * layer it means "trashed".
    */
-  getArchived: async (): Promise<NoteStoredLocal[]> => {
+  getTrashed: async (): Promise<NoteStoredLocal[]> => {
     // IndexedDB does not support boolean keys in indexes, so we filter in memory
     const all = await noteStore.getAll();
     return all.filter(note => note.is_archived);
@@ -614,9 +616,9 @@ export const noteQueries = {
  */
 export const noteOperations = {
   /**
-   * Archive a note
+   * Move a note to the trash (sets the persisted `is_archived` flag)
    */
-  archive: async (noteId: string): Promise<void> => {
+  moveToTrash: async (noteId: string): Promise<void> => {
     const note = await noteStore.get(noteId);
     if (!note) throw new Error('Note not found');
 
@@ -628,9 +630,9 @@ export const noteOperations = {
   },
 
   /**
-   * Unarchive a note
+   * Restore a note from the trash (clears the persisted `is_archived` flag)
    */
-  unarchive: async (noteId: string): Promise<void> => {
+  restoreFromTrash: async (noteId: string): Promise<void> => {
     const note = await noteStore.get(noteId);
     if (!note) throw new Error('Note not found');
 
@@ -686,14 +688,14 @@ export const noteOperations = {
   },
 
   /**
-   * Permanently delete archived notes older than specified days
+   * Permanently delete trashed notes older than specified days
    */
-  cleanArchived: async (daysOld = 90): Promise<number> => {
-    const archived = await noteQueries.getArchived();
+  cleanTrashed: async (daysOld = 90): Promise<number> => {
+    const trashed = await noteQueries.getTrashed();
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
-    const toDelete = archived.filter(note => {
+    const toDelete = trashed.filter(note => {
       return new Date(note.updated_at) < cutoffDate;
     });
 

@@ -39,15 +39,6 @@ export const folderQueries = {
   },
 
   /**
-   * Get archived folders
-   */
-  getArchived: async (): Promise<FolderEncrypted[]> => {
-    // IndexedDB does not support boolean keys in indexes, so we filter in memory
-    const all = await folderStore.getAll();
-    return all.filter(folder => folder.is_archived);
-  },
-
-  /**
    * Get folder tree structure
    */
   getFolderTree: async (): Promise<FolderTreeNode[]> => {
@@ -157,41 +148,6 @@ export const folderOperations = {
       parent_id: newParentId ?? undefined,
       order_index: maxOrder + 1,
       sync_status: 'pending',
-      updated_at: new Date().toISOString()
-    });
-  },
-
-  /**
-   * Archive folder (and all subfolders)
-   */
-  archiveFolder: async (folderId: string): Promise<void> => {
-    const folder = await folderStore.get(folderId);
-    if (!folder) throw new Error('Folder not found');
-    
-    // Archive the folder
-    await folderStore.save({
-      ...folder,
-      is_archived: true,
-      updated_at: new Date().toISOString()
-    });
-    
-    // Recursively archive all subfolders
-    const children = await folderQueries.getChildren(folderId);
-    for (const child of children) {
-      await folderOperations.archiveFolder(child.id);
-    }
-  },
-
-  /**
-   * Restore archived folder
-   */
-  restoreFolder: async (folderId: string): Promise<void> => {
-    const folder = await folderStore.get(folderId);
-    if (!folder) throw new Error('Folder not found');
-    
-    await folderStore.save({
-      ...folder,
-      is_archived: false,
       updated_at: new Date().toISOString()
     });
   },

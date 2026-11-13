@@ -39,7 +39,7 @@ vi.mock('@reborn/storage', () => ({
   },
   noteQueries: {
     getActive: async () => [...rows.values()].filter((n) => !n.is_archived),
-    getArchived: async () => [...rows.values()].filter((n) => n.is_archived),
+    getTrashed: async () => [...rows.values()].filter((n) => n.is_archived),
     byFolder: async () => [],
     byFolders: async () => []
   },

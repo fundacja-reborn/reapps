@@ -72,7 +72,7 @@
   // Stale hint: load the source note (by the id baked into the encrypted payload)
   // only to read its updated_at, and compare it to when the snapshot was taken.
   // loadNote returns null when the note isn't on this device (or was deleted) ->
-  // no badge. Archived (trashed) notes are treated as "gone", so we suppress the
+  // no badge. Trashed notes are treated as "gone", so we suppress the
   // badge rather than flag a trash-induced bump. NOTE: updated_at also moves on
   // non-content edits (pin / move), so this is an informational hint, not a proof
   // the shared text changed.
@@ -95,7 +95,7 @@
     let cancelled = false;
     void notesStore.loadNote(sid).then((n) => {
       if (cancelled) return;
-      if (n && !n.is_archived) {
+      if (n && !n.is_trashed) {
         sourceUpdatedAt = n.updated_at;
         sourceNoteState = 'open';
       } else {
