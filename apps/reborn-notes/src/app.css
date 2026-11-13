@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import './styles/fonts.css';
+@import './styles/note-fonts.css';
 @import '../../../packages/ui/src/styles/global.css';
 
 /*
@@ -11,18 +12,18 @@
 :root {
   --accent: oklch(0.95 0 0);
   --sidebar-accent: oklch(0.95 0 0);
-  /* Selected/active list row — subtle background shared by note list, folder
+  /* Selected/active list row - subtle background shared by note list, folder
      tree and tag list (only a touch darker than a resting row). On note cards a
      yellow left bracket (--rn-list-row-accent) carries the "open" signal, so the
      background stays light instead of doing the work itself. */
   --rn-list-row-active: #ededed;
   --rn-list-row-accent: #f5c800; /* left accent bar on the active note card */
-  --sidebar: oklch(0.98 0 0); /* very subtle gray — columns 1 & 2 */
+  --sidebar: oklch(0.98 0 0); /* very subtle gray - columns 1 & 2 */
   --icon-rail: oklch(0.98 0 0); /* slightly darker for icon rail */
   --tag-mix: 13%;
   --tag-fg-mix: 100%;
   --tag-border-mix: 33%;
-  /* In-note search (find) highlight palette — shared by the CodeMirror editor
+  /* In-note search (find) highlight palette - shared by the CodeMirror editor
      (.cm-note-search-match) and the rendered preview's CSS Custom Highlight API
      ranges (::highlight rules below). */
   --rn-find-bg: rgba(250, 204, 21, 0.4);
@@ -34,7 +35,7 @@
   --accent-foreground: oklch(0.87 0 0);
   --sidebar: oklch(0.17 0 0);
   --sidebar-accent: oklch(0.2 0 0);
-  --rn-list-row-active: oklch(0.32 0 0); /* subtle — lighter than the list bg; the yellow accent stays visible */
+  --rn-list-row-active: oklch(0.32 0 0); /* subtle - lighter than the list bg; the yellow accent stays visible */
   --icon-rail: oklch(0.12 0 0);
   --tag-mix: 18%;
   --tag-fg-mix: 55%;
@@ -150,7 +151,7 @@
   }
 }
 
-/* Note item colors — consistent with reborn-task .task-item-bg */
+/* Note item colors - consistent with reborn-task .task-item-bg */
 @layer base {
   .note-item-bg {
     background-color: #f2f2f2;
@@ -170,7 +171,7 @@
     background-color: oklch(0.371 0 0);
   }
 
-  /* Selected/active list row — subtle background shared by the note list,
+  /* Selected/active list row - subtle background shared by the note list,
      folder tree and tag list (var resolves per theme) so the open item reads
      the same everywhere. Folder/tag rows swap classes on select (no hover rule
      on the active row), so this plain class is enough for them. */

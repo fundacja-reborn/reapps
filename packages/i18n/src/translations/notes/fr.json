@@ -956,7 +956,7 @@
     },
     "appearance": {
       "title": "Apparence",
-      "hub_desc": "Thème de l'application, taille du texte, langue de l'interface, format de date et d'heure",
+      "hub_desc": "Thème de l'application, taille du texte, police des notes, langue de l'interface, format de date et d'heure",
       "theme": "Thème",
       "theme_desc": "Choisissez le schéma de couleurs de l'application",
       "language": "Langue",
@@ -990,7 +990,15 @@
       "text_size_default": "Par défaut",
       "text_size_preview": "Aperçu",
       "text_size_sample_heading": "Titre de section",
-      "text_size_sample_body": "Voici à quoi ressemblera le texte de vos notes sur cet appareil."
+      "text_size_sample_body": "Voici à quoi ressemblera le texte de vos notes sur cet appareil.",
+      "note_font": "Police des notes",
+      "note_font_desc": "Modifie le texte de vos notes (aperçu en direct, aperçu, export PDF), pas l'interface. S'applique uniquement à cet appareil.",
+      "note_font_latin": "Écriture latine",
+      "note_font_arabic": "Écriture arabe",
+      "note_font_default_latin": "Par défaut (Roboto)",
+      "note_font_default_arabic": "Par défaut (police système)",
+      "note_font_sample_latin": "Une bonne police de lecture rend les longues notes plus agréables à lire.",
+      "note_font_sample_arabic": "الخط الجميل يجعل قراءة الملاحظات الطويلة أسهل. الخَطُّ العَرَبِيُّ فَنٌّ جَمِيلٌ."
     },
     "security": {
       "title": "Sécurité",

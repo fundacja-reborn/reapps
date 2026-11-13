@@ -34,6 +34,26 @@ sit outside the shipped bundle:
 - `sharp`/libvips (Apache-2.0/LGPL-3.0) - development tool (asset
   generation), not distributed.
 
+## Bundled fonts
+
+re/notes ships the following fonts as self-hosted files (no requests to a
+font CDN). All are licensed under the SIL Open Font License 1.1, which
+permits bundling with software under another license; the fonts themselves
+remain under the OFL. The full license text is distributed next to each
+font, as `OFL.txt` in its directory under `apps/reborn-notes/static/fonts/`.
+
+| Font | Copyright | Used for |
+|---|---|---|
+| Roboto | 2011 The Roboto Project Authors | interface and default note font |
+| Source Serif 4 | 2014 The Source Serif 4 Project Authors | optional note font (Latin script) |
+| Amiri | 2010-2022 The Amiri Project Authors | optional note font (Arabic script) |
+| Noto Naskh Arabic | 2022 The Noto Project Authors | optional note font (Arabic script) |
+| Tajawal | 2018 Boutros International | optional note font (Arabic script) |
+
+The files are the script subsets published by Google Fonts (Latin, Latin
+Extended, Arabic), which the OFL treats as Modified Versions. None of these
+fonts declares a Reserved Font Name, so the subsets keep the original names.
+
 ## Attribution and license texts
 
 Exact bundled versions are pinned in `pnpm-lock.yaml`; each package carries

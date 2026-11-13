@@ -40,6 +40,7 @@
   import { toast } from '@reborn/ui';
   import { devicePrefs } from '$lib/stores/device-prefs.store';
   import TextSizeCard from '$lib/components/settings/TextSizeCard.svelte';
+  import NoteFontCard from '$lib/components/settings/NoteFontCard.svelte';
 
   const logger = createLogger('appearance-settings');
 
@@ -176,9 +177,10 @@
       isLoading = true;
       error = null;
       await appSettings.reset();
-      // Text size is per device (not in the synced settings) but lives on this
-      // page, so "Reset to defaults" covers it too.
+      // Text size and note font are per device (not in the synced settings) but
+      // live on this page, so "Reset to defaults" covers them too.
       devicePrefs.resetTextSize();
+      devicePrefs.resetNoteFont();
       theme = 'system';
       language = 'en';
       dateFormatValue = 'DD/MM/YYYY';
@@ -238,6 +240,9 @@
 
     <!-- Text size (this device only) -->
     <TextSizeCard />
+
+    <!-- Note font (this device only) -->
+    <NoteFontCard />
 
     <!-- Language -->
     <Card>

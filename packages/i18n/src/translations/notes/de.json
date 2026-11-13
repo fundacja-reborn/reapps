@@ -956,7 +956,7 @@
     },
     "appearance": {
       "title": "Erscheinungsbild",
-      "hub_desc": "App-Thema, Textgröße, Sprache der Benutzeroberfläche, Datums- und Zeitformat",
+      "hub_desc": "App-Thema, Textgröße, Schriftart der Notizen, Sprache der Benutzeroberfläche, Datums- und Zeitformat",
       "theme": "Thema",
       "theme_desc": "Wählen Sie das Farbschema der App",
       "language": "Sprache",
@@ -990,7 +990,15 @@
       "text_size_default": "Standard",
       "text_size_preview": "Vorschau",
       "text_size_sample_heading": "Überschrift",
-      "text_size_sample_body": "So sieht der Text Ihrer Notizen auf diesem Gerät aus."
+      "text_size_sample_body": "So sieht der Text Ihrer Notizen auf diesem Gerät aus.",
+      "note_font": "Schriftart der Notizen",
+      "note_font_desc": "Ändert den Text Ihrer Notizen (Live-Vorschau, Vorschau, PDF-Export), nicht die Benutzeroberfläche. Gilt nur für dieses Gerät.",
+      "note_font_latin": "Lateinische Schrift",
+      "note_font_arabic": "Arabische Schrift",
+      "note_font_default_latin": "Standard (Roboto)",
+      "note_font_default_arabic": "Standard (Systemschrift)",
+      "note_font_sample_latin": "Eine gute Leseschrift macht lange Notizen angenehmer für die Augen.",
+      "note_font_sample_arabic": "الخط الجميل يجعل قراءة الملاحظات الطويلة أسهل. الخَطُّ العَرَبِيُّ فَنٌّ جَمِيلٌ."
     },
     "security": {
       "title": "Sicherheit",

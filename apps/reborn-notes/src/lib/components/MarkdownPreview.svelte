@@ -596,6 +596,9 @@
      inside the preview (the load-images row) stay in plain rem. */
   .preview {
     font-size: calc(1rem * var(--rn-note-scale, 1));
+    /* Note font of this device (issue #546); unset = the app font. Code keeps
+       its monospace stack (own font-family below). */
+    font-family: var(--rn-note-font, inherit);
   }
   @media (min-width: 768px) {
     .preview {
@@ -1230,6 +1233,9 @@
      banner with bg + border to anchor the privacy hint visually.
      Owner-side previews (no hint) keep the bare-row layout. */
   .load-all-images-row {
+    /* Interface, not note content: keeps the app font when a note font is set
+       (mirrors --font-sans in app.css). */
+    font-family: 'Roboto', ui-sans-serif, system-ui, sans-serif;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
