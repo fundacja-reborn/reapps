@@ -13,6 +13,7 @@ import {
 } from './folder-metadata';
 import { APPEARANCE_COLORS } from '$lib/utils/appearance-colors';
 import { FOLDER_ICONS } from '$lib/utils/folder-icons';
+import { withArchivedAt } from './archive-marker';
 
 /**
  * Length-preserving fake: like AES-GCM, ciphertext length is a function of
@@ -47,6 +48,25 @@ describe('padFolderMetadataJson', () => {
     const longestIcon = [...FOLDER_ICONS].sort((a, b) => b.length - a.length)[0];
     const json = padFolderMetadataJson({ color: longestColor, icon: longestIcon });
     expect(byteLength(json)).toBe(FOLDER_METADATA_BLOCK_BYTES);
+  });
+
+  it('gives an archived folder the same length as an active one', () => {
+    const longestColor = [...APPEARANCE_COLORS].sort((a, b) => b.length - a.length)[0];
+    const longestIcon = [...FOLDER_ICONS].sort((a, b) => b.length - a.length)[0];
+    const at = '2026-11-13T09:27:41.123Z';
+    const bundles: FolderMetadataBundle[] = [
+      {},
+      { color: 'red' },
+      { color: longestColor, icon: longestIcon }
+    ];
+    for (const bundle of bundles) {
+      const active = padFolderMetadataJson(bundle);
+      const archived = padFolderMetadataJson(withArchivedAt(bundle, at));
+      expect(byteLength(archived)).toBe(FOLDER_METADATA_BLOCK_BYTES);
+      expect(byteLength(archived)).toBe(byteLength(active));
+      expect(JSON.parse(archived).archived_at).toBe(at);
+      expect(JSON.parse(active)).not.toHaveProperty('archived_at');
+    }
   });
 
   it('steps up by whole blocks for a larger bundle, counting UTF-8 bytes', () => {

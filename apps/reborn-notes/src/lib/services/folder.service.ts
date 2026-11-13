@@ -13,7 +13,7 @@ import {
   noteStore,
   savedSearchStore
 } from '@reborn/storage';
-import type { FolderEncrypted } from '@reborn/types';
+import type { FolderEncrypted, NoteStoredLocal } from '@reborn/types';
 import type { FolderWithChildren } from '@reborn/types';
 import { cryptoManager } from '@reborn/crypto';
 import { get } from 'svelte/store';
@@ -37,6 +37,8 @@ import {
   mergeFolderAppearance,
   readFolderAppearance
 } from './folder-metadata';
+import { decodeNoteMetadata, encodeNoteMetadata } from './note-metadata';
+import { newArchivedAt, readArchivedAt, withArchivedAt } from './archive-marker';
 
 // ── User identity ─────────────────────────────────────────────────
 
@@ -58,16 +60,19 @@ async function encodeName(name: string): Promise<string> {
 // undecryptable-rows.ts for the shared pattern (guideline 63, #15).
 const undecryptableRows = createUndecryptableRowCache();
 
-// Separate cache for an undecryptable appearance bundle on a row whose NAME
+// Separate cache for an undecryptable metadata bundle on a row whose NAME
 // decrypts. Deliberately NOT the row-level `decrypt_failed` flag: appearance is
 // cosmetic, the folder stays fully usable with the default look, and the
 // repair path for a flagged folder (rename) would not rewrite the bundle - the
 // flag would stick. Choosing a color/icon again rewrites the bundle (= repair).
 // The cache only keeps a broken bundle from re-logging crypto errors on every
-// store refresh.
+// store refresh. A folder with a broken bundle also reads as "not archived":
+// the safe direction, it stays visible.
 const undecryptableMetadata = createUndecryptableRowCache();
 
-async function decodeAppearance(enc: FolderEncrypted): Promise<{ color?: string; icon?: string }> {
+async function decodeBundleFields(
+  enc: FolderEncrypted
+): Promise<{ color?: string; icon?: string; archived_at?: string }> {
   if (!enc.metadata_encrypted) return {};
   if (undecryptableMetadata.has(enc.id, enc.updated_at)) return {};
   const bundle = await decodeFolderMetadata(cryptoManager, enc.metadata_encrypted);
@@ -76,7 +81,8 @@ async function decodeAppearance(enc: FolderEncrypted): Promise<{ color?: string;
     return {};
   }
   undecryptableMetadata.clear(enc.id);
-  return readFolderAppearance(bundle);
+  const archivedAt = readArchivedAt(bundle);
+  return { ...readFolderAppearance(bundle), ...(archivedAt ? { archived_at: archivedAt } : {}) };
 }
 
 // The name is the folder's ONLY ciphertext: structure (parent_id), ordering and
@@ -108,7 +114,7 @@ async function toDecrypted(enc: FolderEncrypted): Promise<Omit<FolderWithChildre
     id: enc.id,
     parent_id: enc.parent_id,
     name,
-    ...(await decodeAppearance(enc)),
+    ...(await decodeBundleFields(enc)),
     order_index: enc.order_index,
     is_archived: enc.is_archived,
     created_at: enc.created_at,
@@ -123,6 +129,10 @@ async function toDecrypted(enc: FolderEncrypted): Promise<Omit<FolderWithChildre
 // on the user's folderSortMode setting: 'alphabetical' (default) sorts by
 // decrypted name; 'custom' renders the user-arranged order_index with a name
 // tiebreak (see sortFoldersByCustomOrder in folder-helpers).
+//
+// This is the FULL tree: archived folders are included and carry their
+// `archived_at` marker. The folder store splits it into the everyday tree and
+// the archive scope (utils/archive-scope.ts).
 export async function getFolderTree(): Promise<FolderWithChildren[]> {
   const all = await folderQueries.getFolderTree();
   const mode = (await getSetting('folderSortMode')) ?? 'alphabetical';
@@ -228,6 +238,57 @@ export async function setFolderAppearance(
   pushFolderUpdate(id, { metadata_encrypted });
 }
 
+/**
+ * Archive a folder or take it out of the archive. Sets / removes the
+ * `archived_at` marker inside the folder's encrypted metadata bundle. The
+ * marker covers the whole subtree - subfolders and every note inside - and
+ * nothing is moved or rewritten: one folder record changes, so archiving a
+ * folder with hundreds of notes is a single sync push, and restoring puts
+ * everything back in place.
+ *
+ * Zero Knowledge: the bundle keeps its padded length, so the server sees one
+ * more folder metadata update (like a color change). The plain `is_archived`
+ * column on folders is deliberately NOT used.
+ *
+ * Returns false when nothing changed (already in the requested state).
+ */
+export async function setFolderArchived(id: string, archived: boolean): Promise<boolean> {
+  if (!cryptoManager.isInitialized()) {
+    throw new Error('[E2E] setFolderArchived called without master key loaded');
+  }
+  const existing = await folderStore.get(id);
+  if (!existing) throw new Error('Folder not found');
+  const decoded = await decodeFolderMetadata(cryptoManager, existing.metadata_encrypted);
+  if (decoded && (readArchivedAt(decoded) !== undefined) === archived) return false;
+  // An undecryptable bundle holds nothing this device can read: there is no
+  // marker to remove, and archiving replaces it (null -> {}), like a new
+  // color choice does.
+  if (!decoded && !archived) return false;
+  const metadata_encrypted = await encodeFolderMetadata(
+    cryptoManager,
+    withArchivedAt(decoded ?? {}, archived ? newArchivedAt() : undefined)
+  );
+  await folderStore.save({
+    ...existing,
+    metadata_encrypted,
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending'
+  });
+  pushFolderUpdate(id, { metadata_encrypted });
+  return true;
+}
+
+/**
+ * The note's metadata bundle with its own archive marker set to `at`, or null
+ * when the note already has one or its bundle cannot be read (then nothing is
+ * rewritten). Used when a folder that kept the note in the archive goes away.
+ */
+async function ownArchiveMarkerFor(note: NoteStoredLocal, at: string): Promise<string | null> {
+  const decoded = await decodeNoteMetadata(cryptoManager, note.metadata_encrypted);
+  if (!decoded || readArchivedAt(decoded) !== undefined) return null;
+  return encodeNoteMetadata(cryptoManager, withArchivedAt(decoded, at));
+}
+
 export type DeleteFolderMode = 'detach' | 'cascade';
 
 export interface FolderDeleteSummary {
@@ -269,7 +330,10 @@ export type DeleteFolderProgressCallback = (progress: DeleteFolderProgress) => v
  *
  * - `detach` (default): notes (in this folder and any descendant) keep
  *   existing but get `folder_id = null`, ending up in "All Notes". Mirrors
- *   Prisma's `onDelete: SetNull`.
+ *   Prisma's `onDelete: SetNull`. Notes that were in the archive only because
+ *   one of these folders (or a folder above) is archived get their own
+ *   archive marker in the same write, so deleting the folder does not drop
+ *   them back among the active notes - they stay in the archive, folderless.
  * - `cascade`: notes are soft-deleted (moved to Trash) following the same
  *   path as `deleteNote`. They remain restorable from the trash for the
  *   normal retention window.
@@ -326,15 +390,35 @@ export async function deleteFolder(
         });
         if (wasSynced) pushNoteDelete(note.id);
       } else {
-        // Detach: clear folder_id locally + on the server.
+        // Detach: clear folder_id locally + on the server. A note archived
+        // through this folder keeps its place in the archive via its own marker.
+        const archivedVia = noteIndex.archivedFolder(fid);
         await noteOperations.moveToFolder(note.id, null);
         const current = await noteStore.get(note.id);
-        if (current) await noteStore.save({ ...current, sync_status: 'pending' });
-        noteIndex.patch(note.id, { folderId: undefined });
+        const ownMarker =
+          current && archivedVia && !current.is_ephemeral
+            ? await ownArchiveMarkerFor(current, archivedVia.at)
+            : null;
+        if (current) {
+          await noteStore.save({
+            ...current,
+            ...(ownMarker ? { metadata_encrypted: ownMarker } : {}),
+            sync_status: 'pending'
+          });
+        }
+        noteIndex.patch(note.id, {
+          folderId: undefined,
+          ...(ownMarker && archivedVia ? { archivedAt: archivedVia.at } : {})
+        });
         // A pristine ephemeral note has no server row (deleting its folder is not
         // a deliberate action on the note, so it is not promoted) - skip the push
         // to avoid a 404; it stays ephemeral and is cleaned up. #349
-        if (!current?.is_ephemeral) pushNoteUpdate(note.id, { folder_id: null });
+        if (!current?.is_ephemeral) {
+          pushNoteUpdate(note.id, {
+            folder_id: null,
+            ...(ownMarker ? { metadata_encrypted: ownMarker } : {})
+          });
+        }
       }
       notesDone += 1;
       // Clamped: a note that appeared between the count sweep and this loop

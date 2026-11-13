@@ -1,16 +1,25 @@
 import type { SyncableEncryptedEntity } from '../base';
 
 /**
- * Folder appearance bundled into `metadata_encrypted` (zero knowledge: the
- * server only ever sees one padded ciphertext). Both values are KEYS from the
- * client's closed sets (a palette color like `blue`, a lucide icon like
- * `briefcase`), never a hex value or an arbitrary icon name - the client maps
- * them to theme-aware shades and components, and renders the default for a
- * key it does not know (e.g. one written by a newer app version).
+ * Folder metadata bundled into `metadata_encrypted` (zero knowledge: the
+ * server only ever sees one padded ciphertext).
+ *
+ * Appearance: both values are KEYS from the client's closed sets (a palette
+ * color like `blue`, a lucide icon like `briefcase`), never a hex value or an
+ * arbitrary icon name - the client maps them to theme-aware shades and
+ * components, and renders the default for a key it does not know (e.g. one
+ * written by a newer app version).
+ *
+ * Archive: `archived_at` is the ISO timestamp of when the user archived the
+ * folder. The folder, its subfolders and all their notes are then in the
+ * archive; nothing is moved, so restoring is removing the marker. The plain
+ * `is_archived` column on folders is NOT used for this (it is unused legacy
+ * and visible to the server).
  */
 export interface FolderSensitiveMetadata {
   color?: string;
   icon?: string;
+  archived_at?: string;
 }
 
 export interface FolderDecrypted {
@@ -21,6 +30,8 @@ export interface FolderDecrypted {
   color?: string;
   /** Icon key from `metadata_encrypted` (see FolderSensitiveMetadata). */
   icon?: string;
+  /** The folder's own archive marker from `metadata_encrypted`. */
+  archived_at?: string;
   order_index: number;
   is_archived: boolean;
   created_at: string;

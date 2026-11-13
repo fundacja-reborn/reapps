@@ -12,6 +12,7 @@ type NoteRow = {
   folder_id?: string | null;
   is_archived?: boolean;
   is_ephemeral?: boolean;
+  metadata_encrypted?: string;
   sync_status: string;
 };
 
@@ -82,8 +83,14 @@ vi.mock('./notes-sync.service', () => ({
   pushSavedSearchUpdate: vi.fn()
 }));
 
+// Folders that are in the archive, as the folder store would report them.
+const archivedFolders = new Map<string, { rootId: string; at: string }>();
+const indexPatchSpy = vi.fn();
 vi.mock('$lib/services/note-index.svelte', () => ({
-  noteIndex: { patch: vi.fn() }
+  noteIndex: {
+    patch: (...args: unknown[]) => indexPatchSpy(...args),
+    archivedFolder: (fid: string) => archivedFolders.get(fid)
+  }
 }));
 
 // Imported dynamically AFTER the mock/state declarations above so the mock
@@ -98,6 +105,8 @@ beforeEach(() => {
   notesById.clear();
   descendantIds = [];
   deletedFolderIds.length = 0;
+  archivedFolders.clear();
+  indexPatchSpy.mockClear();
   byFolderSpy.mockClear();
   pushNoteUpdateSpy.mockClear();
   pushNoteDeleteSpy.mockClear();
@@ -196,5 +205,60 @@ describe('deleteFolder progress reporting', () => {
       { phase: 'notes', current: 1, total: 1 },
       { phase: 'notes', current: 1, total: 1 }
     ]);
+  });
+});
+
+// The mocked crypto is the identity, so a "ciphertext" is the padded JSON.
+const bundleOf = (id: string) => JSON.parse(notesById.get(id)!.metadata_encrypted ?? '{}');
+
+describe('deleteFolder (detach) keeps archived notes in the archive', () => {
+  const AT = '2026-11-13T09:00:00.000Z';
+
+  it('gives a note archived through the folder its own marker, in the same push', async () => {
+    descendantIds = ['child'];
+    archivedFolders.set('child', { rootId: 'child', at: AT });
+    seedNote('active', 'root');
+    seedNote('via-folder', 'child');
+    notesById.get('via-folder')!.metadata_encrypted = JSON.stringify({ is_starred: true, tags: [] });
+
+    await deleteFolder('root', 'detach');
+
+    // The note that was only in the archive because of its folder stays there.
+    expect(notesById.get('via-folder')!.folder_id).toBeNull();
+    expect(bundleOf('via-folder')).toMatchObject({ is_starred: true, tags: [], archived_at: AT });
+    expect(pushNoteUpdateSpy).toHaveBeenCalledWith('via-folder', {
+      folder_id: null,
+      metadata_encrypted: notesById.get('via-folder')!.metadata_encrypted
+    });
+    expect(indexPatchSpy).toHaveBeenCalledWith('via-folder', {
+      folderId: undefined,
+      archivedAt: AT
+    });
+    // A note from an active folder is detached as before, bundle untouched.
+    expect(notesById.get('active')!.metadata_encrypted).toBeUndefined();
+    expect(pushNoteUpdateSpy).toHaveBeenCalledWith('active', { folder_id: null });
+    expect(indexPatchSpy).toHaveBeenCalledWith('active', { folderId: undefined });
+  });
+
+  it('leaves a note that already has its own marker alone', async () => {
+    archivedFolders.set('root', { rootId: 'root', at: AT });
+    seedNote('own', 'root');
+    const own = JSON.stringify({ tags: [], archived_at: '2026-01-01T00:00:00.000Z' });
+    notesById.get('own')!.metadata_encrypted = own;
+
+    await deleteFolder('root', 'detach');
+
+    expect(notesById.get('own')!.metadata_encrypted).toBe(own);
+    expect(pushNoteUpdateSpy).toHaveBeenCalledWith('own', { folder_id: null });
+  });
+
+  it('does not touch the bundle in cascade mode (the note goes to the trash)', async () => {
+    archivedFolders.set('root', { rootId: 'root', at: AT });
+    seedNote('n1', 'root');
+
+    await deleteFolder('root', 'cascade');
+
+    expect(notesById.get('n1')!.metadata_encrypted).toBeUndefined();
+    expect(notesById.get('n1')!.is_archived).toBe(true); // wire name of the trash flag
   });
 });

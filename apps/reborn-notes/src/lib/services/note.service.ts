@@ -44,6 +44,7 @@ import {
   readNoteColor,
   withNoteColor
 } from './note-metadata';
+import { newArchivedAt, readArchivedAt, withArchivedAt } from './archive-marker';
 
 const logger = createLogger('Note-Service');
 
@@ -127,6 +128,7 @@ export async function decryptTitleOnly(enc: NoteMetaLocal): Promise<{
   updatedAt: string;
   decryptFailed: boolean;
   color: string | undefined;
+  archivedAt: string | undefined;
 }> {
   // Cache-hit also covers content-only corruption found by toDecrypted: the
   // index entry then flags the row even though its title alone would decode.
@@ -136,11 +138,13 @@ export async function decryptTitleOnly(enc: NoteMetaLocal): Promise<{
   let title: string | null = '';
   let decryptFailed = true;
   let color: string | undefined;
+  let archivedAt: string | undefined;
   if (!undecryptableRows.has(enc.id, enc.updated_at)) {
-    // The color mark lives only in the encrypted metadata bundle; it is
-    // decoded here, next to the title, and held in the RAM index - never
-    // stored in plaintext locally (the Encryption Guard treats `color` as a
-    // sensitive field). An undecryptable bundle just means no mark.
+    // The color mark and the archive marker live only in the encrypted
+    // metadata bundle; they are decoded here, next to the title, and held in
+    // the RAM index - never stored in plaintext locally (the Encryption Guard
+    // treats `color` and `archived_at` as sensitive fields). An undecryptable
+    // bundle just means no mark and "not archived" (the note stays visible).
     const [decodedTitle, meta] = await Promise.all([
       decodeTextField(enc.title_encrypted, 'note title'),
       enc.metadata_encrypted
@@ -152,6 +156,7 @@ export async function decryptTitleOnly(enc: NoteMetaLocal): Promise<{
     else {
       decryptFailed = false;
       color = readNoteColor(meta);
+      archivedAt = readArchivedAt(meta);
     }
   }
   return {
@@ -165,7 +170,8 @@ export async function decryptTitleOnly(enc: NoteMetaLocal): Promise<{
     createdAt: enc.created_at,
     updatedAt: enc.updated_at,
     decryptFailed,
-    color
+    color,
+    archivedAt
   };
 }
 
@@ -673,6 +679,57 @@ export async function setNoteColor(id: string, color: string | undefined): Promi
   // Like pin/star: the index keeps its updatedAt until the next rebuild, so the
   // row does not jump while the color dialog is still open over the list.
   noteIndex.patch(id, { color });
+  return true;
+}
+
+// ── Archive ──────────────────────────────────────────────────────
+
+/**
+ * Archive a note or take it out of the archive. Sets / removes the
+ * `archived_at` marker inside the encrypted metadata bundle - the note keeps
+ * its folder, tags, pin and star, so restoring puts it back exactly where it
+ * was. Zero Knowledge: the bundle is re-encoded padded to the same length, so
+ * the server sees one more metadata update and nothing else (no plain flag,
+ * no folder change). Like pin/star it promotes a pristine new note (#349).
+ *
+ * This is the note's OWN marker. A note inside an archived folder is in the
+ * archive regardless of it (see utils/archive-scope.ts).
+ *
+ * Returns false when nothing changed (no such note, or it is already in the
+ * requested state) - no write, no push.
+ */
+export async function setNoteArchived(id: string, archived: boolean): Promise<boolean> {
+  const existing = await noteStore.get(id);
+  if (!existing) return false;
+
+  const decoded = await decodeNoteMetadata(cryptoManager, existing.metadata_encrypted);
+  if (decoded && (readArchivedAt(decoded) !== undefined) === archived) return false;
+  // Undecryptable bundle: rebuild it from what this device knows, as the
+  // color, tag and pin/star writers do. Nothing to restore in that case.
+  if (!decoded && !archived) return false;
+  const meta: NoteSensitiveMetadata = decoded ?? {
+    is_pinned: existing.is_pinned ?? false,
+    is_starred: existing.is_starred ?? false,
+    tags: await noteTagQueries.getTagsForNote(id)
+  };
+  const archivedAt = archived ? newArchivedAt() : undefined;
+  const metadataEncrypted = await encodeNoteMetadata(
+    cryptoManager,
+    withArchivedAt(meta, archivedAt)
+  );
+
+  const wasEphemeral = existing.is_ephemeral === true;
+  const updated: NoteStoredLocal = {
+    ...existing,
+    metadata_encrypted: metadataEncrypted,
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending',
+    ...(wasEphemeral ? { is_ephemeral: false } : {})
+  };
+  await noteStore.save(updated);
+  pushNoteMutation(updated, wasEphemeral, { metadata_encrypted: metadataEncrypted });
+  // Like pin/star/color: the index keeps its updatedAt until the next rebuild.
+  noteIndex.patch(id, { archivedAt });
   return true;
 }
 

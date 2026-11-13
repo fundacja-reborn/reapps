@@ -1,6 +1,6 @@
 /**
  * Codec for a note's `metadata_encrypted` bundle (NoteSensitiveMetadata:
- * pinned / starred / tag ids / periodic stamp / color).
+ * pinned / starred / tag ids / periodic stamp / color / archive marker).
  *
  * Zero Knowledge: every write pads the JSON to whole 128-byte blocks before
  * encryption (see metadata-padding.ts). Without it the ciphertext length
@@ -8,9 +8,10 @@
  * palette keys differ in length ("red" vs "orange") - and whether it is
  * starred or pinned (`true` vs `false`). The block count is taken from a
  * "sizing twin" with every closed-set value at its longest (color set to the
- * longest key, both flags `false`, periodic kind `monthly`), so the length
- * depends only on the number of tags (in steps of ~3 tag ids) and on whether
- * the note is a periodic one - never on its color, star or pin.
+ * longest key, both flags `false`, periodic kind `monthly`, the archive
+ * marker always counted), so the length depends only on the number of tags
+ * (in steps of ~3 tag ids) and on whether the note is a periodic one - never
+ * on its color, star or pin, and never on whether it is archived.
  *
  * Reading stays on `cryptoManager.decryptObject` (padded JSON is plain JSON
  * with an extra `_pad` field); writers merge into the decoded object and
@@ -25,6 +26,7 @@
 import { MAX_ENCRYPTED_NOTE_METADATA_BYTES, type NoteSensitiveMetadata } from '@reborn/types';
 import { APPEARANCE_COLORS, isAppearanceColor } from '$lib/utils/appearance-colors';
 import { padBundleJson, stripPadField } from './metadata-padding';
+import { ARCHIVED_AT_SIZING } from './archive-marker';
 
 export interface NoteMetadataCrypto {
   encryptText(text: string): Promise<string>;
@@ -46,7 +48,12 @@ function sizingTwin(meta: NoteSensitiveMetadata): NoteSensitiveMetadata {
     is_pinned: false,
     is_starred: false,
     color: 'x'.repeat(Math.max(LONGEST_COLOR_LENGTH, meta.color?.length ?? 0)),
-    periodic: meta.periodic ? { ...meta.periodic, kind: 'monthly' } : undefined
+    periodic: meta.periodic ? { ...meta.periodic, kind: 'monthly' } : undefined,
+    // Always counted, archived or not, so the marker never shows in the length.
+    archived_at:
+      typeof meta.archived_at === 'string' && meta.archived_at.length > ARCHIVED_AT_SIZING.length
+        ? meta.archived_at
+        : ARCHIVED_AT_SIZING
   };
 }
 

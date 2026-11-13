@@ -1,14 +1,15 @@
 /**
  * Codec for a folder's `metadata_encrypted` bundle (FolderSensitiveMetadata:
- * appearance color + icon).
+ * appearance color + icon, archive marker).
  *
  * Zero Knowledge: the bundle is one AES-GCM ciphertext. AES-GCM does not hide
  * the plaintext length, and with closed sets of short keys the length alone
  * would narrow down which color/icon a folder has ("red" vs "violet",
- * "house" vs "graduation-cap"). The JSON is therefore padded to a fixed
- * block (`_pad` filler, see metadata-padding.ts) before encryption, so every
- * bundle the app writes today has the same ciphertext length and the server
- * learns only that a folder has a bundle at all.
+ * "house" vs "graduation-cap") or whether it is archived. The JSON is
+ * therefore padded to a fixed block (`_pad` filler, see metadata-padding.ts)
+ * before encryption, sized as if the archive marker were always present, so
+ * every bundle the app writes today has the same ciphertext length and the
+ * server learns only that a folder has a bundle at all.
  *
  * Forward compatibility: decoding keeps every field it finds (minus the
  * filler), and updates merge into the existing bundle, so a field written by
@@ -22,6 +23,7 @@ import type { FolderSensitiveMetadata } from '@reborn/types';
 import { isAppearanceColor } from '$lib/utils/appearance-colors';
 import { isFolderIcon } from '$lib/utils/folder-icons';
 import { padBundleJson, stripPadField } from './metadata-padding';
+import { ARCHIVED_AT_SIZING } from './archive-marker';
 
 export interface FolderMetadataCrypto {
   encryptText(text: string): Promise<string>;
@@ -33,15 +35,30 @@ export type FolderMetadataBundle = FolderSensitiveMetadata & { [field: string]: 
 
 /**
  * Padding block in UTF-8 bytes. The largest bundle the app writes today
- * (`{"color":"orange","icon":"graduation-cap","_pad":""}`) is ~55 bytes, so
- * one block holds it with room for a few more fields before the length steps
- * up to the next block.
+ * (longest color and icon keys plus the archive marker) is ~100 bytes, so one
+ * block holds it; a larger bundle from a newer version steps up by whole
+ * blocks.
  */
 export const FOLDER_METADATA_BLOCK_BYTES = 128;
 
+/**
+ * The bundle with the archive marker always counted - the size the padding is
+ * computed from, so archiving or restoring a folder never moves its bundle
+ * across a block boundary. Never encrypted.
+ */
+function sizingTwin(bundle: FolderMetadataBundle): FolderMetadataBundle {
+  return {
+    ...bundle,
+    archived_at:
+      typeof bundle.archived_at === 'string' && bundle.archived_at.length > ARCHIVED_AT_SIZING.length
+        ? bundle.archived_at
+        : ARCHIVED_AT_SIZING
+  };
+}
+
 /** JSON of `bundle` padded to a whole number of blocks (exported for tests). */
 export function padFolderMetadataJson(bundle: FolderMetadataBundle): string {
-  return padBundleJson(bundle, FOLDER_METADATA_BLOCK_BYTES);
+  return padBundleJson(bundle, FOLDER_METADATA_BLOCK_BYTES, sizingTwin(bundle));
 }
 
 export async function encodeFolderMetadata(

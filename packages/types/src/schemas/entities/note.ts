@@ -19,7 +19,9 @@ export const NoteSensitiveMetadataSchema = z.object({
   tags: z.array(z.string()).optional(),
   periodic: PeriodicNoteMetadataSchema.optional(),
   // Palette key (re/notes APPEARANCE_COLORS), not a hex value.
-  color: z.string().max(32).optional()
+  color: z.string().max(32).optional(),
+  // Archive marker (ISO timestamp). Not the trash flag.
+  archived_at: z.string().max(40).optional()
 });
 
 /**
@@ -37,6 +39,7 @@ export const NoteDecryptedSchema = z.object({
   is_starred: z.boolean().optional(),
   is_trashed: z.boolean().optional(),
   color: z.string().max(32).optional(),
+  archived_at: z.string().max(40).optional(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
   deleted_at: z.string().datetime().optional()

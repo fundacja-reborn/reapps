@@ -110,6 +110,19 @@ function isAuthenticated(): boolean {
 // ── Post-pull store refresh ──────────────────────────────────────
 
 /**
+ * Refresh the folder store between the folder pull and the note pull (see the
+ * call site). Best effort: the full post-pull refresh runs anyway.
+ */
+async function refreshFoldersBeforeNotes(): Promise<void> {
+  try {
+    const { foldersStore } = await import('$lib/stores/folders.store');
+    await foldersStore.refresh();
+  } catch (e) {
+    logger.warn('Folder refresh before the note pull failed', e);
+  }
+}
+
+/**
  * Rebuild in-memory indexes and refresh Svelte stores after a successful pull.
  *
  * `pullFromServer()` only writes to IndexedDB - the in-memory `noteIndex`,
@@ -245,6 +258,12 @@ async function runPullFromServer(): Promise<boolean> {
         success = false;
       })
     ]);
+    // The archive scope lives in the folder tree: an archived folder keeps all
+    // its notes out of the everyday lists, and those notes carry no marker of
+    // their own. Refresh the tree before note pages start landing in the index,
+    // so on a first sync the notes of an archived folder never flash in
+    // "All notes" while waiting for the post-pull store refresh.
+    await refreshFoldersBeforeNotes();
     // Notes after folders/tags (they reference them). pullNotes still reports the
     // ids it actually wrote (new, or server sync_version newer); the result is
     // unused here in stage 2a and kept for the paginated delta sync in 2b.

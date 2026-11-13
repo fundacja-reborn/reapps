@@ -10,6 +10,7 @@ import {
   type NoteMetadataCrypto
 } from './note-metadata';
 import { APPEARANCE_COLORS } from '$lib/utils/appearance-colors';
+import { withArchivedAt } from './archive-marker';
 
 /**
  * Length-preserving fake: like AES-GCM, ciphertext length is a function of
@@ -57,14 +58,43 @@ describe('encodeNoteMetadata - Zero Knowledge padding', () => {
     }
   });
 
-  it('fits a typical note (a tag, a color) in one block', async () => {
-    const ct = await encodeNoteMetadata(fakeCrypto, {
-      is_pinned: false,
-      is_starred: false,
-      tags: [TAG],
-      color: 'orange'
-    });
-    expect(byteLength(await plaintextOf(ct))).toBe(NOTE_METADATA_BLOCK_BYTES);
+  it('hides the archive marker at every tag count', async () => {
+    // Archiving and restoring rewrite the bundle; the length must not move.
+    for (let tagCount = 0; tagCount <= 12; tagCount++) {
+      for (const periodic of [false, true]) {
+        const base: NoteSensitiveMetadata = {
+          is_pinned: false,
+          is_starred: true,
+          tags: Array(tagCount).fill(TAG),
+          color: 'red',
+          ...(periodic ? { periodic: { kind: 'daily' as const, anchor: '2026-11-09' } } : {})
+        };
+        const active = await encodeNoteMetadata(fakeCrypto, base);
+        const archived = await encodeNoteMetadata(
+          fakeCrypto,
+          withArchivedAt(base, '2026-11-13T09:27:41.123Z')
+        );
+        expect(archived.length, `${tagCount} tags, periodic=${periodic}`).toBe(active.length);
+      }
+    }
+  });
+
+  it('fits a note without tags in one block, archived or not', async () => {
+    const meta: NoteSensitiveMetadata = { is_pinned: false, is_starred: false, color: 'orange' };
+    for (const m of [meta, withArchivedAt(meta, new Date().toISOString())]) {
+      const ct = await encodeNoteMetadata(fakeCrypto, m);
+      expect(byteLength(await plaintextOf(ct))).toBe(NOTE_METADATA_BLOCK_BYTES);
+    }
+  });
+
+  it('keeps the archive marker through a read-modify-write of another field', async () => {
+    const at = '2026-11-13T09:27:41.123Z';
+    const ct = await encodeNoteMetadata(fakeCrypto, { is_starred: false, archived_at: at });
+    // What togglePin / the tag writers do: decode, change one field, re-encode.
+    const decoded = (await decodeNoteMetadata(fakeCrypto, ct))!;
+    decoded.is_pinned = true;
+    const again = await decodeNoteMetadata(fakeCrypto, await encodeNoteMetadata(fakeCrypto, decoded));
+    expect(again).toEqual({ is_starred: false, is_pinned: true, archived_at: at });
   });
 
   it('pads the plaintext to whole blocks', async () => {

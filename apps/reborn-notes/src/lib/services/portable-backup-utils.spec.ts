@@ -470,3 +470,93 @@ describe('note color in portable backups', () => {
     expect((await noteToPortable(A, note)).color).toBeUndefined();
   });
 });
+
+describe('archive marker in portable backups', () => {
+  const AT = '2026-11-13T09:27:41.123Z';
+
+  it('carries an archived note across accounts, and keeps it apart from the trash flag', async () => {
+    const notes = [
+      await makeStoredNote(A, {
+        id: 'n1',
+        title: 'Archived',
+        content: '',
+        meta: { is_pinned: false, is_starred: false, tags: [], archived_at: AT }
+      }),
+      await makeStoredNote(A, {
+        id: 'n2',
+        title: 'Active',
+        content: '',
+        meta: { is_pinned: false, is_starred: false, tags: [] }
+      })
+    ];
+    const payload = await buildPortablePayload(A, notes, [], [], '2026-11-13T10:00:00.000Z');
+
+    expect(payload.data.notes[0].archived_at).toBe(AT);
+    expect(payload.data.notes[0].is_archived).toBe(false); // trash flag, untouched
+    expect(payload.data.notes[1].archived_at).toBeUndefined();
+
+    const wire = await reencryptPortablePayload(B, payload, 'user-B', seqIds());
+    const archived = field(wire.notes[0], 'metadata_encrypted');
+    const active = field(wire.notes[1], 'metadata_encrypted');
+    expect(await decodeNoteMetadata(B, archived)).toEqual({
+      is_pinned: false,
+      is_starred: false,
+      tags: [],
+      archived_at: AT
+    });
+    expect((await decodeNoteMetadata(B, active))?.archived_at).toBeUndefined();
+    // Same padded length either way: the restored account's server cannot
+    // tell the archived note from the active one.
+    expect((await B.decryptText(archived)).length).toBe((await B.decryptText(active)).length);
+    // The marker never becomes a plain field of the row.
+    expect(wire.notes[0]).not.toHaveProperty('archived_at');
+  });
+
+  it('carries an archived folder, with and without appearance', async () => {
+    const folders = [
+      await makeStoredFolder(A, { id: 'f1', name: 'Old project' }),
+      await makeStoredFolder(A, {
+        id: 'f2',
+        name: 'Old, colored',
+        appearance: { color: 'blue', icon: 'briefcase' }
+      }),
+      await makeStoredFolder(A, { id: 'f3', name: 'Active' })
+    ];
+    folders[0].metadata_encrypted = await encodeFolderMetadata(A, { archived_at: AT });
+    folders[1].metadata_encrypted = await encodeFolderMetadata(A, {
+      color: 'blue',
+      icon: 'briefcase',
+      archived_at: AT
+    });
+    const payload = await buildPortablePayload(A, [], folders, [], '2026-11-13T10:00:00.000Z');
+
+    expect(payload.data.folders[0].archived_at).toBe(AT);
+    expect(payload.data.folders[1]).toMatchObject({ color: 'blue', archived_at: AT });
+    expect(payload.data.folders[2].archived_at).toBeUndefined();
+
+    const wire = await reencryptPortablePayload(B, payload, 'user-B', seqIds());
+    expect(await decodeFolderMetadata(B, field(wire.folders[0], 'metadata_encrypted'))).toEqual({
+      archived_at: AT
+    });
+    expect(await decodeFolderMetadata(B, field(wire.folders[1], 'metadata_encrypted'))).toEqual({
+      color: 'blue',
+      icon: 'briefcase',
+      archived_at: AT
+    });
+    expect(wire.folders[2].metadata_encrypted).toBeUndefined();
+    // Plain column stays what it was: the archive does not use it.
+    expect(wire.folders[0].is_archived).toBe(false);
+    expect(wire.folders[0]).not.toHaveProperty('archived_at');
+  });
+
+  it('drops a malformed marker from a hand-edited backup instead of archiving on garbage', async () => {
+    const notes = [
+      await makeStoredNote(A, { id: 'n1', title: 't', content: '', meta: { tags: [] } })
+    ];
+    const payload = await buildPortablePayload(A, notes, [], [], '2026-11-13T10:00:00.000Z');
+    (payload.data.notes[0] as unknown as Record<string, unknown>).archived_at = 'not a date';
+    const wire = await reencryptPortablePayload(B, payload, 'user-B', seqIds());
+    const meta = await decodeNoteMetadata(B, field(wire.notes[0], 'metadata_encrypted'));
+    expect(meta?.archived_at).toBeUndefined();
+  });
+});
