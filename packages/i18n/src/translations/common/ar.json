@@ -329,7 +329,7 @@
     "minute": "الدقيقة"
   },
   "brand": {
-    "copyright": "© {years} Reborn Foundation. جميع الحقوق محفوظة.",
+    "copyright": "جميع الحقوق محفوظة © {years} Reborn Foundation.",
     "license": "AGPL-3.0"
   },
   "pwa": {
