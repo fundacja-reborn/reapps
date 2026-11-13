@@ -29,6 +29,16 @@
   --rn-find-bg: rgba(250, 204, 21, 0.4);
   --rn-find-active-bg: #f59e0b;
   --rn-find-active-fg: #1c1917;
+  /* Editor: code backgrounds (inline code, code blocks, table header). The
+     same grey as --muted on the page background, but as a translucent layer:
+     the editor draws its selection BELOW the text (editor/own-selection.ts),
+     and an opaque background would hide it. Alpha = the share of --foreground
+     that gives --muted over --background (4.1% light, 13.9% dark). */
+  --rn-code-bg: color-mix(in srgb, var(--foreground) 4.1%, transparent);
+  /* Editor: drawn selection, with and without focus. Neutral like the rest of
+     the palette (--primary is a grey here). */
+  --rn-editor-selection: color-mix(in srgb, var(--primary) 22%, transparent);
+  --rn-editor-selection-blur: color-mix(in srgb, var(--primary) 12%, transparent);
 }
 .dark {
   --accent: oklch(0.371 0 0);
@@ -43,6 +53,9 @@
   --rn-find-bg: rgba(250, 204, 21, 0.32);
   --rn-find-active-bg: #f59e0b;
   --rn-find-active-fg: #1c1917;
+  --rn-code-bg: color-mix(in srgb, var(--foreground) 13.9%, transparent);
+  --rn-editor-selection: color-mix(in srgb, var(--primary) 28%, transparent);
+  --rn-editor-selection-blur: color-mix(in srgb, var(--primary) 16%, transparent);
 }
 
 /* Desktop side panels (note list, docked outline). Text size (issue #511) sets
