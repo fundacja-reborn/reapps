@@ -1,3 +1,16 @@
+## 0.52.0 (2026-11-13)
+
+### 🚀 Features
+
+- **notes:** keep extra blank lines in Preview and PDF export ([#557](https://github.com/fundacja-reborn/reapps/pull/557), [#549](https://github.com/fundacja-reborn/reapps/issues/549))
+- **notes:** add a note font setting for Latin and Arabic script ([#558](https://github.com/fundacja-reborn/reapps/pull/558), [#546](https://github.com/fundacja-reborn/reapps/issues/546))
+- **notes:** archive for notes and folders ([#561](https://github.com/fundacja-reborn/reapps/pull/561), [#542](https://github.com/fundacja-reborn/reapps/issues/542))
+
+### 🩹 Fixes
+
+- **deps:** clear the red CI security audit (hono, @hono/node-server) ([#556](https://github.com/fundacja-reborn/reapps/pull/556))
+- **deps:** update codemirror ([#551](https://github.com/fundacja-reborn/reapps/pull/551))
+
 ## 0.51.0 (2026-11-12)
 
 ### 🚀 Features
