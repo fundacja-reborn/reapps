@@ -37,7 +37,7 @@
     "@nx/workspace": "22.7.12",
     "@sveltejs/adapter-auto": "7.0.1",
     "@sveltejs/adapter-static": "3.0.10",
-    "@sveltejs/kit": "2.70.2",
+    "@sveltejs/kit": "2.70.4",
     "@sveltejs/vite-plugin-svelte": "7.1.2",
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.41",
