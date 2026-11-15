@@ -1268,17 +1268,6 @@
       "username_required": "Le nom d'utilisateur est obligatoire",
       "password_required": "Le mot de passe est obligatoire"
     },
-    "unlock": {
-      "title": "Déverrouillez vos notes",
-      "signed_in_as": "Connecté en tant que",
-      "password_label": "Mot de passe",
-      "password_placeholder": "Saisissez votre mot de passe",
-      "submit": "Déverrouiller",
-      "unlocking": "Déverrouillage…",
-      "error_attempts": "Mot de passe incorrect. {count} tentative(s) restante(s).",
-      "info": "Vos notes sont chiffrées de bout en bout. Saisissez le mot de passe de votre compte Reborn pour les déchiffrer.",
-      "different_account": "Se connecter avec un autre compte"
-    },
     "two_factor": {
       "title": "Authentification à deux facteurs",
       "totp_desc": "Saisissez le code à 6 chiffres de votre application d'authentification",

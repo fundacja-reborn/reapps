@@ -19,3 +19,5 @@ export {
   type RequireSessionPromptState
 } from './require-session';
 export type { ReAuthResult } from './reauth-types';
+export { formatUnlockCountdown } from './unlock-types';
+export type { UnlockOutcome, UnlockFailure } from './unlock-types';

@@ -22,6 +22,19 @@ import {
   LocalPasscodeThrottledError,
   unlockThrottleDelayMs
 } from './local-passcode';
+import {
+  ACCOUNT_UNLOCK_ATTEMPTS_KEY,
+  WEB_LOCK_ACCOUNT_MARKER_KEY,
+  WEB_LOCK_ACTIVITY_KEY,
+  WEB_LOCK_CONFIG_KEY,
+  WEB_LOCK_CONFIG_VERSION,
+  WEB_LOCK_DEFAULT_TIMEOUT_MS,
+  WEB_LOCK_EPOCH_KEY,
+  WEB_LOCK_HANDOFF_CHANNEL,
+  WEB_LOCK_HANDOFF_TIMEOUT_MS,
+  normalizeWebLockTimeout,
+  parseStoredTimestamp
+} from './web-lock';
 import { createLogger } from '@reborn/utils';
 
 const logger = createLogger('CryptoManager');
@@ -30,12 +43,12 @@ const logger = createLogger('CryptoManager');
  * Cross-app key event broadcast.
  *
  * Both reborn-task and reborn-notes share origin (and therefore IndexedDB).
- * After one app calls `setMasterKey()` / `clearMasterKey()`, the other app —
- * if already open — has no way to discover the change without polling. The
+ * After one app calls `setMasterKey()` / `clearMasterKey()`, the other app -
+ * if already open - has no way to discover the change without polling. The
  * BroadcastChannel `reborn_e2e` lets the crypto layer notify all peers on
  * the same origin; subscribers (auth stores, layout guards) react by flipping
  * `hasE2E` and redirecting away from `/auth/unlock` without a second password
- * prompt. The key itself stays in IndexedDB — we never put plaintext on the
+ * prompt. The key itself stays in IndexedDB - we never put plaintext on the
  * wire and never leak it across origins.
  */
 const KEY_EVENT_CHANNEL = 'reborn_e2e';
@@ -43,6 +56,31 @@ const KEY_EVENT_CHANNEL = 'reborn_e2e';
 export type CryptoKeyEvent = 'unlocked' | 'cleared' | 'locked';
 
 export type KeyEventHandler = (event: CryptoKeyEvent) => void;
+
+/**
+ * Messages of the Web App Lock key handoff that a tab's lock controller acts
+ * on: a locked tab asking for the key, and a tab announcing that it just got
+ * the key from the password. (The reply carrying the key is consumed inside
+ * CryptoManager and never handed to subscribers.)
+ */
+export type WebLockHandoffSignal = { t: 'request'; id: string } | { t: 'available' };
+
+export type WebLockHandoffHandler = (signal: WebLockHandoffSignal) => void;
+
+/** The reply to a key request. */
+interface WebLockKeyOffer {
+  t: 'offer';
+  id: string;
+  key: CryptoKey;
+  /** Epoch ms at which the sender, still entitled to the key, sent it. */
+  sentAt: number;
+}
+
+/** The slice of BroadcastChannel the handoff uses. */
+interface HandoffChannel {
+  postMessage(message: unknown): void;
+  onmessage: ((event: { data: unknown }) => void) | null;
+}
 
 /**
  * Pluggable at-rest persistence for the master key (raw bytes, Base64).
@@ -112,14 +150,27 @@ export class CryptoManager {
    */
   private readonly APP_LOCK_ENABLED_KEY = 'reborn_app_lock_enabled';
   private restoreKeyAttempted = false;
+  /**
+   * Epoch ms at which the current in-memory key was loaded (0 = no key yet).
+   * The Web App Lock compares it with the shared lock timestamp: a tab whose
+   * key predates the last lock must lock itself.
+   */
+  private keyLoadedAt = 0;
   private restorePromise: Promise<boolean> | null = null;
   private vault: MasterKeyVault | null = null;
 
-  // Cross-app key event channel — single instance with a fanout list of
+  // Cross-app key event channel - single instance with a fanout list of
   // subscribers so HMR re-subscribing doesn't allocate extra channels.
   private channel: BroadcastChannel | null = null;
   private channelInitialized = false;
   private keyEventHandlers: Set<KeyEventHandler> = new Set();
+
+  // Web App Lock key handoff (tab to tab, in memory).
+  private handoffChannel: HandoffChannel | null = null;
+  private handoffChannelInitialized = false;
+  private handoffHandlers: Set<WebLockHandoffHandler> = new Set();
+  private pendingHandoff: { id: string; resolve: (offer: WebLockKeyOffer) => void } | null = null;
+  private handoffRequest: Promise<boolean> | null = null;
 
   // Private constructor for singleton pattern
   private constructor() {
@@ -190,6 +241,29 @@ export class CryptoManager {
         return false;
       }
 
+      // Web App Lock (account session, browser/PWA): the user opted into a
+      // memory-only key. Nothing unwrapped may be read from disk - stay locked
+      // and let the password unlock screen re-derive the key from the account
+      // wrap. Any raw copy still around (written by another tab in the instant
+      // the lock was being enabled, or this tab's own sessionStorage export
+      // from before) is removed here, before any source is read. Inert without
+      // an account session and on native (see readWebLockConfig).
+      if (this.readWebLockConfig()) {
+        this.restoreKeyAttempted = true;
+        await this.clearKeyFromIDB();
+        this.dropSessionKeyExport();
+        // Another tab of this origin may be unlocked: it can hand the key over
+        // in memory, so a new tab or a reload does not ask for the password
+        // again. With no unlocked tab around this falls through to the unlock
+        // screen after a short wait.
+        if (await this.requestKeyFromPeer()) {
+          logger.info('Web App Lock enabled - key received from an unlocked tab');
+          return true;
+        }
+        logger.info('Web App Lock enabled - key locked, awaiting password unlock');
+        return false;
+      }
+
       // 0. Vault (native) - the platform key store is the single source of
       // truth. IndexedDB is only consulted to migrate (then purge) a key
       // persisted by a pre-vault build; the sessionStorage raw-key copy is
@@ -213,6 +287,7 @@ export class CryptoManager {
         if (idbKey) {
           this.masterKey = idbKey;
           this.initialized = true;
+          this.keyLoadedAt = Date.now();
           this.restoreKeyAttempted = true;
           logger.info('Successfully restored master key from IndexedDB');
           try {
@@ -250,7 +325,7 @@ export class CryptoManager {
 
   // ── IndexedDB persistence ────────────────────────────────────
 
-  /** Timeout (ms) for IndexedDB open — prevents hanging on locked/corrupted DB. */
+  /** Timeout (ms) for IndexedDB open - prevents hanging on locked/corrupted DB. */
   private readonly IDB_TIMEOUT_MS = 5_000;
 
   private openIDB(): Promise<IDBDatabase> {
@@ -372,6 +447,7 @@ export class CryptoManager {
       );
       this.masterKey = key;
       this.initialized = true;
+      this.keyLoadedAt = Date.now();
       await this.verifyEncryption();
       logger.info('Successfully restored master key from vault');
       return true;
@@ -401,6 +477,7 @@ export class CryptoManager {
 
     this.masterKey = idbKey;
     this.initialized = true;
+    this.keyLoadedAt = Date.now();
     try {
       await this.verifyEncryption();
     } catch (verifyError) {
@@ -492,7 +569,7 @@ export class CryptoManager {
   }
 
   /**
-   * Restore key from sessionStorage — fallback for same-session navigation.
+   * Restore key from sessionStorage - fallback for same-session navigation.
    */
   private async restoreKeyFromSessionStorage(savedKey: string): Promise<boolean> {
     try {
@@ -500,6 +577,7 @@ export class CryptoManager {
       const key = await importKey(rawKey, 'AES-GCM', ['encrypt', 'decrypt'], true);
       this.masterKey = key;
       this.initialized = true;
+      this.keyLoadedAt = Date.now();
       logger.info('Successfully restored master key from session storage');
 
       try {
@@ -530,7 +608,7 @@ export class CryptoManager {
     }
   }
 
-  /** Timeout (ms) for waitForRestore — prevents layout from hanging on slow IDB. */
+  /** Timeout (ms) for waitForRestore - prevents layout from hanging on slow IDB. */
   private readonly RESTORE_TIMEOUT_MS = 5_000;
 
   /**
@@ -544,7 +622,7 @@ export class CryptoManager {
     // (e.g. the public snapshot view) never open the crypto IDB.
     const restorePromise = this.ensureRestoreStarted();
 
-    // Clear the timer the moment the restore promise wins the race — otherwise
+    // Clear the timer the moment the restore promise wins the race - otherwise
     // the setTimeout callback still fires (with its `resolve(false)` ignored)
     // and emits a spurious "timed out" warning even when restore finished in
     // milliseconds. waitForRestore is called from multiple places per cold
@@ -555,7 +633,7 @@ export class CryptoManager {
         restorePromise,
         new Promise<boolean>((resolve) => {
           timer = setTimeout(() => {
-            logger.warn('waitForRestore timed out — proceeding without key');
+            logger.warn('waitForRestore timed out - proceeding without key');
             resolve(false);
           }, this.RESTORE_TIMEOUT_MS);
         })
@@ -572,9 +650,9 @@ export class CryptoManager {
   /**
    * Lazily create the BroadcastChannel and wire its listener. Called once on
    * first emit/subscribe. Some sandboxed environments (older iOS PWA, hardened
-   * browser modes) throw when constructing BroadcastChannel — we degrade
+   * browser modes) throw when constructing BroadcastChannel - we degrade
    * silently so the rest of crypto keeps working (fast-path on /auth/unlock
-   * still covers cold-start scenarios; only S3 — warm cross-app unlock —
+   * still covers cold-start scenarios; only S3 - warm cross-app unlock -
    * regresses to the previous behaviour).
    */
   private ensureChannel(): void {
@@ -599,13 +677,13 @@ export class CryptoManager {
         }
       };
     } catch (error) {
-      logger.warn('BroadcastChannel unavailable — cross-app key events disabled:', error);
+      logger.warn('BroadcastChannel unavailable - cross-app key events disabled:', error);
       this.channel = null;
     }
   }
 
   /**
-   * Emit a key event to peer apps on the same origin. Fire-and-forget —
+   * Emit a key event to peer apps on the same origin. Fire-and-forget -
    * failure to broadcast must not break the local set/clear operation.
    */
   private postKeyEvent(type: CryptoKeyEvent): void {
@@ -623,7 +701,7 @@ export class CryptoManager {
    *
    * Usage: the peer app's auth store calls this once during initialization
    * and reacts to `unlocked` (flip hasE2E, redirect away from /auth/unlock)
-   * and `cleared` (defense-in-depth — main logout path is the storage event
+   * and `cleared` (defense-in-depth - main logout path is the storage event
    * on `reborn_auth_credentials`).
    *
    * BroadcastChannel only delivers messages to *other* contexts on the same
@@ -730,7 +808,7 @@ export class CryptoManager {
         'raw',
         keyData,
         { name: 'AES-GCM' },
-        true, // extractable — master key must be exportable for wrapping
+        true, // extractable - master key must be exportable for wrapping
         ['encrypt', 'decrypt']
       );
 
@@ -749,6 +827,7 @@ export class CryptoManager {
   public async setMasterKey(key: CryptoKey): Promise<void> {
     this.masterKey = key;
     this.initialized = true;
+    this.keyLoadedAt = Date.now();
 
     // Establishing a fresh at-rest key (account login/upgrade, or returning to
     // base local mode) invalidates any prior local passcode wrap - remove it so
@@ -780,11 +859,29 @@ export class CryptoManager {
       return;
     }
 
+    // Web App Lock: the key stays in this tab's memory only - no IndexedDB
+    // copy, no sessionStorage export, and no `unlocked` broadcast (peers have
+    // nothing at rest to read; each tab unlocks with the password itself).
+    if (this.readWebLockConfig()) {
+      void this.clearKeyFromIDB();
+      this.dropSessionKeyExport();
+      try {
+        await this.verifyEncryption();
+      } catch (error) {
+        logger.error('Encryption verification after unlock failed:', error);
+      }
+      // Tell locked tabs of this origin that a key is available: they ask for
+      // it and unlock without a second password prompt.
+      this.postHandoff({ t: 'available' });
+      logger.debug('Master key set (memory only - Web App Lock)');
+      return;
+    }
+
     // Persist to IndexedDB (survives tab close / PWA restart)
     await this.persistKeyToIDB();
 
     // Notify peer apps (Notes ↔ Task on same origin) so they can flip
-    // hasE2E and skip the password prompt — IDB has the key and they
+    // hasE2E and skip the password prompt - IDB has the key and they
     // can read it directly.
     this.postKeyEvent('unlocked');
 
@@ -834,7 +931,11 @@ export class CryptoManager {
       logger.debug('Temporary master key removed from session storage');
     }
 
-    // Defense-in-depth — the primary logout path is the storage event on
+    // The account is going away on this device: a leftover failed-attempt
+    // record must not throttle the next login's unlock.
+    this.clearAccountUnlockAttempts();
+
+    // Defense-in-depth - the primary logout path is the storage event on
     // `reborn_auth_credentials`. Peer apps that already handle that event
     // will treat this as a no-op; the broadcast only matters when someone
     // calls clearMasterKey() without touching credentials (rare/buggy).
@@ -1068,7 +1169,7 @@ export class CryptoManager {
    * @param key String key to initialize with
    */
   /**
-   * @internal Test-only helper — initializes CryptoManager with a raw string key.
+   * @internal Test-only helper - initializes CryptoManager with a raw string key.
    * NOT safe for production use (zero-pads short keys, no KDF).
    */
   public async initWithKey(key: string): Promise<void> {
@@ -1093,7 +1194,7 @@ export class CryptoManager {
         'raw',
         properKeyBytes,
         { name: 'AES-GCM' },
-        true, // extractable — master key
+        true, // extractable - master key
         ['encrypt', 'decrypt']
       );
 
@@ -1155,6 +1256,8 @@ export class CryptoManager {
     try {
       const masterKey = await this.decryptMasterKey(encryptedMasterKey, salt, password);
       await this.setMasterKey(masterKey);
+      // A correct account password ends any failed-attempt streak.
+      this.clearAccountUnlockAttempts();
       return true;
     } catch (error) {
       logger.error('Failed to load user master key:', error);
@@ -1208,10 +1311,12 @@ export class CryptoManager {
   // local-passcode.ts naming note). The record itself is non-secret counters.
 
   /** Parsed failure record, or the zero state when absent/invalid. */
-  private readUnlockThrottleRecord(): { count: number; lockedUntil: number } {
+  private readUnlockThrottleRecord(
+    storageKey: string = this.LOCAL_PASSCODE_ATTEMPTS_KEY
+  ): { count: number; lockedUntil: number } {
     const zero = { count: 0, lockedUntil: 0 };
     if (typeof window === 'undefined' || !window.localStorage) return zero;
-    const raw = window.localStorage.getItem(this.LOCAL_PASSCODE_ATTEMPTS_KEY);
+    const raw = window.localStorage.getItem(storageKey);
     if (!raw) return zero;
     try {
       const rec = JSON.parse(raw) as { count?: number; lockedUntil?: number };
@@ -1225,14 +1330,52 @@ export class CryptoManager {
   }
 
   /** Record one failed unlock and (past the free attempts) open a delay window. */
-  private recordUnlockThrottleFailure(): void {
-    if (typeof window === 'undefined' || !window.localStorage) return;
-    const count = this.readUnlockThrottleRecord().count + 1;
+  private recordUnlockThrottleFailure(
+    storageKey: string = this.LOCAL_PASSCODE_ATTEMPTS_KEY
+  ): number {
+    if (typeof window === 'undefined' || !window.localStorage) return 0;
+    const count = this.readUnlockThrottleRecord(storageKey).count + 1;
     const delayMs = unlockThrottleDelayMs(count);
     window.localStorage.setItem(
-      this.LOCAL_PASSCODE_ATTEMPTS_KEY,
+      storageKey,
       JSON.stringify({ count, lockedUntil: delayMs > 0 ? Date.now() + delayMs : 0 })
     );
+    return delayMs;
+  }
+
+  // ── Account-unlock failure throttle ──────────────────────────
+  //
+  // The same growing delay for the account-password unlock screen
+  // (/auth/unlock). It replaces the old "5 wrong passwords = forced logout"
+  // rule: that counter lived in memory (a reload reset it) and its only real
+  // effect was wiping local data - including unsynced offline edits - for
+  // anyone who mistyped, or for the owner when someone else guessed at the
+  // device. Like the passcode throttle this is on-device friction against
+  // typed guesses, not a cryptographic boundary: same-origin script can clear
+  // the record. The callers (the apps' unlock flows) enforce and record,
+  // because an online fallback may still turn a failed local unwrap into a
+  // success (password changed on another device).
+
+  /** Milliseconds until the next account-unlock attempt is allowed (0 = now). */
+  public getAccountUnlockRetryDelayMs(): number {
+    return Math.max(
+      0,
+      this.readUnlockThrottleRecord(ACCOUNT_UNLOCK_ATTEMPTS_KEY).lockedUntil - Date.now()
+    );
+  }
+
+  /**
+   * Record one failed account-unlock attempt. Returns the delay (ms) now in
+   * force before the next attempt - 0 while inside the free attempts.
+   */
+  public recordAccountUnlockFailure(): number {
+    return this.recordUnlockThrottleFailure(ACCOUNT_UNLOCK_ATTEMPTS_KEY);
+  }
+
+  /** Forget failed account-unlock attempts (successful unlock, logout). */
+  public clearAccountUnlockAttempts(): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    window.localStorage.removeItem(ACCOUNT_UNLOCK_ATTEMPTS_KEY);
   }
 
   private clearLocalPasscodeAttempts(): void {
@@ -1360,6 +1503,7 @@ export class CryptoManager {
       const key = await this.decryptMasterKey(record.wrapped, record.salt, passcode);
       this.masterKey = key;
       this.initialized = true;
+      this.keyLoadedAt = Date.now();
       // Memory-only on purpose: do NOT persist to IndexedDB/sessionStorage/vault,
       // and do NOT broadcast `unlocked` (peers have no at-rest key to read).
       await this.verifyEncryption();
@@ -1450,6 +1594,400 @@ export class CryptoManager {
     this.masterKey = null;
     this.initialized = false;
     logger.info('Local passcode forgotten (reset path)');
+  }
+
+  // ── Web App Lock (account sessions in the browser / PWA) ─────
+  //
+  // Opt-in lock for an account session on the web, off by default. While it is
+  // enabled the master key is never persisted unwrapped: no CryptoKey in
+  // IndexedDB, no raw export in sessionStorage. The only at-rest form is the
+  // account's password-wrapped key in the credentials record - the same
+  // envelope the server stores - so opening the app asks for the account
+  // password, and "Lock now" / the idle timeout simply drop the in-memory
+  // key. Tabs open at the same time share the key in memory (see "key handoff
+  // between tabs" below), so only the first one asks. Unlike the native App Lock (a UX gate on reading
+  // the vault) this is a cryptographic lock: its strength is the strength of
+  // the account password. See web-lock.ts for the policy and
+  // web-lock-controller.ts for the idle / cross-tab part.
+
+  /**
+   * The lock config, or null when the lock is off or cannot apply: native
+   * (a vault is injected - the native App Lock covers that) or no account
+   * session (logged out / local-only mode, where no wrap exists to unlock
+   * with). An unreadable record still counts as enabled with the default
+   * timeout - fail closed.
+   */
+  private readWebLockConfig(): { timeoutMs: number } | null {
+    if (this.vault) return null;
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const raw = window.localStorage.getItem(WEB_LOCK_CONFIG_KEY);
+    if (raw === null) return null;
+    if (window.localStorage.getItem(WEB_LOCK_ACCOUNT_MARKER_KEY) === null) return null;
+    try {
+      const rec = JSON.parse(raw) as { timeoutMs?: unknown } | null;
+      return { timeoutMs: normalizeWebLockTimeout(rec?.timeoutMs) };
+    } catch {
+      return { timeoutMs: WEB_LOCK_DEFAULT_TIMEOUT_MS };
+    }
+  }
+
+  /** Remove this tab's raw key export from sessionStorage (no-op when absent). */
+  public dropSessionKeyExport(): void {
+    if (typeof window === 'undefined' || !window.sessionStorage) return;
+    window.sessionStorage.removeItem(this.TEMP_KEY_STORAGE_KEY);
+  }
+
+  /** Whether the Web App Lock is on for this session (synchronous). */
+  public isWebLockEnabled(): boolean {
+    return this.readWebLockConfig() !== null;
+  }
+
+  /** Idle timeout (ms) of the Web App Lock; the default when the lock is off. */
+  public getWebLockTimeoutMs(): number {
+    return this.readWebLockConfig()?.timeoutMs ?? WEB_LOCK_DEFAULT_TIMEOUT_MS;
+  }
+
+  /** Change the idle timeout. No-op while the lock is off. */
+  public setWebLockTimeoutMs(timeoutMs: number): void {
+    if (!this.readWebLockConfig()) return;
+    window.localStorage.setItem(
+      WEB_LOCK_CONFIG_KEY,
+      JSON.stringify({ v: WEB_LOCK_CONFIG_VERSION, timeoutMs: normalizeWebLockTimeout(timeoutMs) })
+    );
+  }
+
+  /** The lock is on and this tab holds no key: show the password unlock screen. */
+  public isWebLockLocked(): boolean {
+    return this.isWebLockEnabled() && !this.isInitialized();
+  }
+
+  /** Epoch ms at which the in-memory key was loaded (0 when there is none). */
+  public getKeyLoadedAt(): number {
+    return this.isInitialized() ? this.keyLoadedAt : 0;
+  }
+
+  /**
+   * Whether `password` opens the given account wrap AND the result is the key
+   * currently in memory. Guards enable/disable: turning the lock on with a
+   * wrap that does not lead back to this key would leave a lock nothing opens.
+   */
+  private async wrapOpensCurrentKey(
+    encryptedMasterKey: string,
+    salt: string,
+    password: string
+  ): Promise<boolean> {
+    if (!this.masterKey) return false;
+    try {
+      const candidate = await this.decryptMasterKey(encryptedMasterKey, salt, password);
+      const [a, b] = await Promise.all([exportKey(candidate), exportKey(this.masterKey)]);
+      const left = new Uint8Array(a);
+      const right = new Uint8Array(b);
+      if (left.length !== right.length) return false;
+      let diff = 0;
+      for (let i = 0; i < left.length; i++) diff |= left[i] ^ right[i];
+      return diff === 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Turn the Web App Lock on. Verifies the account password against the
+   * account wrap (`encryptedMasterKey` + `salt` from the credentials record),
+   * writes the config and removes every unwrapped at-rest copy of the key,
+   * reading back to make sure it is gone. The key stays in memory, so the
+   * current tab keeps working. Returns false on a wrong password (nothing
+   * changes); throws when a raw copy survives the purge - the config is rolled
+   * back first, so the device stays in the consistent "lock off" state.
+   */
+  public async enableWebLock(opts: {
+    password: string;
+    encryptedMasterKey: string;
+    salt: string;
+    timeoutMs?: number;
+  }): Promise<boolean> {
+    if (this.vault) {
+      throw new Error('Web App Lock is not available on native builds');
+    }
+    if (!this.isInitialized() || !this.masterKey) {
+      throw new Error('Cannot enable the Web App Lock without an unlocked master key');
+    }
+    if (typeof window === 'undefined' || !window.localStorage) {
+      throw new Error('Web App Lock requires a browser environment');
+    }
+    if (window.localStorage.getItem(WEB_LOCK_ACCOUNT_MARKER_KEY) === null) {
+      throw new Error('Web App Lock requires an account session');
+    }
+    if (!(await this.wrapOpensCurrentKey(opts.encryptedMasterKey, opts.salt, opts.password))) {
+      return false;
+    }
+
+    window.localStorage.setItem(
+      WEB_LOCK_CONFIG_KEY,
+      JSON.stringify({
+        v: WEB_LOCK_CONFIG_VERSION,
+        timeoutMs: normalizeWebLockTimeout(opts.timeoutMs ?? WEB_LOCK_DEFAULT_TIMEOUT_MS)
+      })
+    );
+    // A lock timestamp from an earlier enable would lock tabs that were opened
+    // while the lock was off - start clean.
+    window.localStorage.removeItem(WEB_LOCK_EPOCH_KEY);
+    window.localStorage.setItem(WEB_LOCK_ACTIVITY_KEY, String(Date.now()));
+
+    try {
+      const idbCleared = await this.clearKeyFromIDB();
+      if (!idbCleared || (await this.restoreKeyFromIDB()) !== null) {
+        throw new Error('raw master key still present in IndexedDB');
+      }
+      this.dropSessionKeyExport();
+    } catch (error) {
+      this.clearWebLock();
+      logger.error('Failed to purge raw key copies - Web App Lock NOT enabled:', error);
+      throw new Error('Failed to remove the unprotected key copy - lock not enabled', {
+        cause: error
+      });
+    }
+
+    logger.info('Web App Lock enabled - master key kept in memory only');
+    return true;
+  }
+
+  /**
+   * Turn the Web App Lock off: verify the account password, drop the config
+   * and persist the in-memory key the way a session without the lock does.
+   * Returns false on a wrong password. Requires an unlocked key.
+   */
+  public async disableWebLock(opts: {
+    password: string;
+    encryptedMasterKey: string;
+    salt: string;
+  }): Promise<boolean> {
+    if (!this.isInitialized() || !this.masterKey) {
+      throw new Error('Cannot disable the Web App Lock without an unlocked master key');
+    }
+    if (!(await this.wrapOpensCurrentKey(opts.encryptedMasterKey, opts.salt, opts.password))) {
+      return false;
+    }
+    this.clearWebLock();
+    await this.setMasterKey(this.masterKey);
+    logger.info('Web App Lock disabled - key persisted for this device again');
+    return true;
+  }
+
+  /**
+   * Drop the Web App Lock settings without touching any key. Logout calls
+   * this: the next account (or local-only mode) must not inherit a lock.
+   */
+  public clearWebLock(): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    window.localStorage.removeItem(WEB_LOCK_CONFIG_KEY);
+    window.localStorage.removeItem(WEB_LOCK_EPOCH_KEY);
+    window.localStorage.removeItem(WEB_LOCK_ACTIVITY_KEY);
+  }
+
+  /**
+   * Lock now: drop the in-memory key. With `announce` (the default) the lock
+   * timestamp is written so every other tab of the origin locks too; pass
+   * `{ announce: false }` when reacting to another tab's lock.
+   */
+  public lockWeb(opts: { announce?: boolean } = {}): void {
+    const { announce = true } = opts;
+    this.masterKey = null;
+    this.initialized = false;
+    this.keyLoadedAt = 0;
+    this.dropSessionKeyExport();
+    if (typeof window !== 'undefined') {
+      window.sessionStorage?.removeItem(this.CRYPTO_VERIFIED_KEY);
+      if (announce && window.localStorage) {
+        window.localStorage.setItem(WEB_LOCK_EPOCH_KEY, String(Date.now()));
+      }
+    }
+    logger.debug('Master key dropped from memory (Web App Lock)');
+  }
+
+  // ── Web App Lock: key handoff between tabs ───────────────────
+  //
+  // With the lock on, each tab holds the key in its own memory, so a tab that
+  // was locked (or just opened / reloaded) has nothing to read. Instead of
+  // asking for the password in every tab, an unlocked tab hands the key over:
+  //
+  //   locked tab   -> { t: 'request', id }
+  //   unlocked tab -> { t: 'offer', id, key, sentAt }
+  //   a tab that just unlocked with the password -> { t: 'available' }
+  //
+  // The channel is a BroadcastChannel: same-origin, same browser profile, in
+  // memory. Nothing reaches disk, so the at-rest promise is untouched and a
+  // closed browser is still a locked one. What changes is isolation between
+  // tabs: script running in another tab of this origin can now ask for the
+  // key, which is the level the app has with the lock off. Decided
+  // 2026-11-15 (planning/web-app-lock-plan.md, section 13).
+  //
+  // CryptoManager owns the channel, the request and the adoption of an offer.
+  // WHEN to answer a request is the lock controller's call (it knows whether
+  // this tab is itself due to lock), so requests are forwarded to subscribers.
+
+  /** Lazily open the handoff channel; null where BroadcastChannel is missing. */
+  private ensureHandoffChannel(): HandoffChannel | null {
+    if (this.handoffChannelInitialized) return this.handoffChannel;
+    this.handoffChannelInitialized = true;
+    const Channel =
+      typeof window !== 'undefined'
+        ? (window as unknown as { BroadcastChannel?: new (name: string) => HandoffChannel })
+            .BroadcastChannel
+        : undefined;
+    if (!Channel) return null;
+    try {
+      const channel = new Channel(WEB_LOCK_HANDOFF_CHANNEL);
+      channel.onmessage = (event) => this.onHandoffMessage(event.data);
+      this.handoffChannel = channel;
+    } catch (error) {
+      logger.warn('BroadcastChannel unavailable - tabs unlock separately:', error);
+      this.handoffChannel = null;
+    }
+    return this.handoffChannel;
+  }
+
+  private postHandoff(message: WebLockHandoffSignal | WebLockKeyOffer): void {
+    const channel = this.ensureHandoffChannel();
+    if (!channel) return;
+    try {
+      channel.postMessage(message);
+    } catch (error) {
+      logger.warn(`Failed to post handoff message "${message.t}":`, error);
+    }
+  }
+
+  private onHandoffMessage(data: unknown): void {
+    if (!data || typeof data !== 'object') return;
+    const message = data as Partial<WebLockKeyOffer> & { t?: string };
+    if (message.t === 'offer') {
+      if (this.pendingHandoff && message.id === this.pendingHandoff.id) {
+        this.pendingHandoff.resolve(message as WebLockKeyOffer);
+      }
+      return;
+    }
+    let signal: WebLockHandoffSignal;
+    if (message.t === 'request' && typeof message.id === 'string') {
+      signal = { t: 'request', id: message.id };
+    } else if (message.t === 'available') {
+      signal = { t: 'available' };
+    } else {
+      return;
+    }
+    for (const handler of this.handoffHandlers) {
+      try {
+        handler(signal);
+      } catch (error) {
+        logger.error('Handoff handler threw:', error);
+      }
+    }
+  }
+
+  /**
+   * Listen for handoff requests and "key available" announcements from other
+   * tabs. Used by the lock controller; returns an unsubscriber.
+   */
+  public subscribeToHandoff(handler: WebLockHandoffHandler): () => void {
+    this.ensureHandoffChannel();
+    this.handoffHandlers.add(handler);
+    return () => {
+      this.handoffHandlers.delete(handler);
+    };
+  }
+
+  /**
+   * Answer a key request from another tab. Only with the lock on and a key in
+   * memory; the caller (the lock controller) has already made sure this tab
+   * is not itself due to lock.
+   */
+  public offerKeyToPeer(requestId: string): void {
+    if (!this.readWebLockConfig() || !this.isInitialized() || !this.masterKey) return;
+    this.postHandoff({ t: 'offer', id: requestId, key: this.masterKey, sentAt: Date.now() });
+  }
+
+  /**
+   * Ask the other tabs of this origin for the key. Resolves true when an
+   * unlocked tab handed it over and it is now in this tab's memory; false
+   * when the lock is off, this tab already has a key, or nobody answered in
+   * time. Concurrent callers share one request.
+   */
+  public requestKeyFromPeer(timeoutMs: number = WEB_LOCK_HANDOFF_TIMEOUT_MS): Promise<boolean> {
+    if (!this.handoffRequest) {
+      this.handoffRequest = this.runHandoffRequest(timeoutMs).finally(() => {
+        this.handoffRequest = null;
+      });
+    }
+    return this.handoffRequest;
+  }
+
+  private async runHandoffRequest(timeoutMs: number): Promise<boolean> {
+    if (!this.readWebLockConfig() || this.isInitialized()) return false;
+    const channel = this.ensureHandoffChannel();
+    if (!channel) return false;
+
+    const id = arrayBufferToBase64(crypto.getRandomValues(new Uint8Array(12)));
+    const offer = await new Promise<WebLockKeyOffer | null>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingHandoff = null;
+        resolve(null);
+      }, timeoutMs);
+      this.pendingHandoff = {
+        id,
+        resolve: (received) => {
+          clearTimeout(timer);
+          this.pendingHandoff = null;
+          resolve(received);
+        }
+      };
+      try {
+        channel.postMessage({ t: 'request', id });
+      } catch {
+        clearTimeout(timer);
+        this.pendingHandoff = null;
+        resolve(null);
+      }
+    });
+    if (!offer) return false;
+    return this.adoptOfferedKey(offer);
+  }
+
+  /** Take a key handed over by another tab into memory - never to storage. */
+  private async adoptOfferedKey(offer: WebLockKeyOffer): Promise<boolean> {
+    // The lock was switched off or the password was typed while waiting.
+    if (!this.readWebLockConfig() || this.isInitialized()) return false;
+
+    const { key, sentAt } = offer;
+    const usable =
+      !!key &&
+      typeof key === 'object' &&
+      key.type === 'secret' &&
+      key.algorithm?.name === 'AES-GCM' &&
+      Array.isArray(key.usages) &&
+      key.usages.includes('encrypt') &&
+      key.usages.includes('decrypt');
+    if (!usable || typeof sentAt !== 'number' || !Number.isFinite(sentAt)) return false;
+
+    // A lock performed after the offer was sent wins: the sender was entitled
+    // to the key at `sentAt`, not necessarily any more.
+    const lockedAt = parseStoredTimestamp(window.localStorage.getItem(WEB_LOCK_EPOCH_KEY));
+    if (lockedAt > sentAt) return false;
+
+    this.masterKey = key;
+    this.initialized = true;
+    // Date the key from the moment it was sent, not received, so a lock that
+    // lands in between still locks this tab (the controller compares the lock
+    // timestamp with this value).
+    this.keyLoadedAt = Math.min(sentAt, Date.now());
+    try {
+      await this.verifyEncryption();
+    } catch (error) {
+      logger.error('Key received from another tab failed verification:', error);
+      this.masterKey = null;
+      this.initialized = false;
+      this.keyLoadedAt = 0;
+      return false;
+    }
+    return true;
   }
 
   // Expose utility methods from encryption module

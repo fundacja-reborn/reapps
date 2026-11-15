@@ -15,6 +15,42 @@
       "recommended_description": "Une version plus récente de l'application est disponible dans la boutique."
     }
   },
+  "web_lock": {
+    "title": "Verrouillage de l'app",
+    "settings_item_desc": "Demander le mot de passe à l'ouverture de l'app et après une période d'inactivité",
+    "intro": "Lorsque le verrouillage de l'app est activé, votre clé de chiffrement reste uniquement en mémoire et n'est jamais enregistrée dans ce navigateur. Vous saisissez le mot de passe de votre compte à l'ouverture de l'app et après le délai d'inactivité défini ci-dessous. Tant qu'un onglet est déverrouillé, les autres onglets de l'app s'ouvrent sans rien demander.",
+    "status_on": "Le verrouillage de l'app est activé",
+    "status_on_desc": "Le mot de passe de votre compte est nécessaire pour ouvrir l'app sur cet appareil.",
+    "status_off": "Le verrouillage de l'app est désactivé",
+    "status_off_desc": "Votre clé de chiffrement est enregistrée dans ce navigateur : l'app s'ouvre sans demander votre mot de passe.",
+    "enable_cta": "Activer le verrouillage de l'app",
+    "disable_cta": "Désactiver",
+    "confirm_enable_title": "Activer le verrouillage de l'app",
+    "confirm_enable_desc": "Entrez le mot de passe de votre compte. Il sera désormais nécessaire pour ouvrir l'app sur cet appareil.",
+    "confirm_disable_title": "Désactiver le verrouillage de l'app",
+    "confirm_disable_desc": "Entrez le mot de passe de votre compte. Votre clé de chiffrement sera de nouveau enregistrée dans ce navigateur.",
+    "wrong_password": "Mot de passe incorrect.",
+    "failed": "Impossible de modifier le verrouillage de l'app. Veuillez réessayer.",
+    "success_enabled": "Verrouillage de l'app activé",
+    "success_disabled": "Verrouillage de l'app désactivé",
+    "timeout_title": "Reverrouiller après",
+    "timeout_desc": "Combien de temps l'app peut rester inutilisée avant de se verrouiller. L'activité dans n'importe quel onglet ouvert compte.",
+    "timeout": {
+      "min1": "Après 1 minute",
+      "min5": "Après 5 minutes",
+      "min15": "Après 15 minutes",
+      "min60": "Après 1 heure",
+      "never": "Seulement quand je la verrouille ou la ferme"
+    },
+    "lock_now_title": "Verrouiller maintenant",
+    "lock_now_desc": "Verrouiller l'app dans tous les onglets ouverts.",
+    "lock_now_cta": "Verrouiller maintenant",
+    "lock_blocked": "Vos dernières modifications n'ont pas pu être enregistrées, l'app n'a donc pas été verrouillée. Vérifiez l'élément ouvert et réessayez.",
+    "notes_title": "Bon à savoir",
+    "note_session": "Le verrouillage ne vous déconnecte pas. Votre session sur cet appareil reste active jusqu'à la déconnexion.",
+    "note_metadata": "Le verrouillage protège les titres et le contenu. Quelques informations sans texte, comme les dates et les étoiles, restent lisibles sur cet appareil.",
+    "note_reminders": "Les rappels envoyés en arrière-plan affichent un message général à la place du titre de la tâche."
+  },
   "whats_new": {
     "title": "Nouveautés",
     "settings_row": "Nouveautés",
@@ -52,6 +88,26 @@
     }
   },
   "auth": {
+    "unlock": {
+      "title": "Déverrouiller",
+      "description": "Entrez le mot de passe de votre compte pour ouvrir vos données chiffrées sur cet appareil.",
+      "username_label": "Nom d'utilisateur",
+      "password_label": "Mot de passe",
+      "password_placeholder": "Entrez votre mot de passe",
+      "show_password": "Afficher le mot de passe",
+      "hide_password": "Masquer le mot de passe",
+      "submit": "Déverrouiller",
+      "unlocking": "Déverrouillage...",
+      "sign_out": "Se déconnecter",
+      "e2e_note": "Vos données sont chiffrées de bout en bout. Nous ne voyons jamais votre mot de passe ni vos données non chiffrées.",
+      "error_wrong_password": "Mot de passe incorrect.",
+      "error_wrong_password_offline": "Mot de passe incorrect. Si vous l'avez modifié sur un autre appareil, connectez-vous à Internet et réessayez.",
+      "error_throttled": "Trop de tentatives. Réessayez dans {time}.",
+      "error_unknown": "Le déverrouillage a échoué. Veuillez réessayer.",
+      "logout_title": "Se déconnecter ?",
+      "logout_desc": "La déconnexion supprime vos données de cet appareil. Les modifications qui n'ont pas encore été synchronisées seront perdues. Vous aurez besoin de votre nom d'utilisateur et de votre mot de passe pour vous reconnecter.",
+      "logout_confirm": "Se déconnecter"
+    },
     "use_without_account": "Utiliser sans compte",
     "login": {
       "title": "Connexion",

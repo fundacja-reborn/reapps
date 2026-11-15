@@ -15,6 +15,42 @@
       "recommended_description": "Hay una versión más reciente de la aplicación disponible en la tienda."
     }
   },
+  "web_lock": {
+    "title": "Bloqueo de la app",
+    "settings_item_desc": "Pedir la contraseña al abrir la app y tras un periodo de inactividad",
+    "intro": "Con el bloqueo de la app activado, su clave de cifrado se mantiene solo en memoria y nunca se guarda en este navegador. Introducirá la contraseña de su cuenta al abrir la app y tras el tiempo de inactividad indicado abajo. Mientras una pestaña esté desbloqueada, las demás pestañas de la app se abren sin preguntar.",
+    "status_on": "El bloqueo de la app está activado",
+    "status_on_desc": "Se necesita la contraseña de su cuenta para abrir la app en este dispositivo.",
+    "status_off": "El bloqueo de la app está desactivado",
+    "status_off_desc": "Su clave de cifrado está guardada en este navegador, por lo que la app se abre sin pedir la contraseña.",
+    "enable_cta": "Activar el bloqueo de la app",
+    "disable_cta": "Desactivar",
+    "confirm_enable_title": "Activar el bloqueo de la app",
+    "confirm_enable_desc": "Introduzca la contraseña de su cuenta. A partir de ahora será necesaria para abrir la app en este dispositivo.",
+    "confirm_disable_title": "Desactivar el bloqueo de la app",
+    "confirm_disable_desc": "Introduzca la contraseña de su cuenta. Su clave de cifrado volverá a guardarse en este navegador.",
+    "wrong_password": "Contraseña incorrecta.",
+    "failed": "No se pudo cambiar el bloqueo de la app. Inténtelo de nuevo.",
+    "success_enabled": "Bloqueo de la app activado",
+    "success_disabled": "Bloqueo de la app desactivado",
+    "timeout_title": "Volver a bloquear tras",
+    "timeout_desc": "Cuánto tiempo puede estar la app sin usarse antes de bloquearse. Cuenta la actividad en cualquier pestaña abierta.",
+    "timeout": {
+      "min1": "Tras 1 minuto",
+      "min5": "Tras 5 minutos",
+      "min15": "Tras 15 minutos",
+      "min60": "Tras 1 hora",
+      "never": "Solo cuando la bloquee o la cierre"
+    },
+    "lock_now_title": "Bloquear ahora",
+    "lock_now_desc": "Bloquear la app en todas las pestañas abiertas.",
+    "lock_now_cta": "Bloquear ahora",
+    "lock_blocked": "No se pudieron guardar sus últimos cambios, por lo que la app no se bloqueó. Revise el elemento abierto e inténtelo de nuevo.",
+    "notes_title": "Conviene saber",
+    "note_session": "El bloqueo no cierra la sesión. Su sesión en este dispositivo sigue activa hasta que la cierre.",
+    "note_metadata": "El bloqueo protege los títulos y el contenido. Algunos datos sin texto, como fechas y marcas de estrella, siguen siendo legibles en este dispositivo.",
+    "note_reminders": "Los recordatorios entregados en segundo plano muestran un mensaje general en lugar del título de la tarea."
+  },
   "whats_new": {
     "title": "Novedades",
     "settings_row": "Novedades",
@@ -52,6 +88,26 @@
     }
   },
   "auth": {
+    "unlock": {
+      "title": "Desbloquear",
+      "description": "Introduzca la contraseña de su cuenta para abrir sus datos cifrados en este dispositivo.",
+      "username_label": "Nombre de usuario",
+      "password_label": "Contraseña",
+      "password_placeholder": "Introduzca su contraseña",
+      "show_password": "Mostrar contraseña",
+      "hide_password": "Ocultar contraseña",
+      "submit": "Desbloquear",
+      "unlocking": "Desbloqueando...",
+      "sign_out": "Cerrar sesión",
+      "e2e_note": "Sus datos están cifrados de extremo a extremo. Nunca vemos su contraseña ni sus datos sin cifrar.",
+      "error_wrong_password": "Contraseña incorrecta.",
+      "error_wrong_password_offline": "Contraseña incorrecta. Si la ha cambiado en otro dispositivo, conéctese a Internet e inténtelo de nuevo.",
+      "error_throttled": "Demasiados intentos. Inténtelo de nuevo en {time}.",
+      "error_unknown": "No se pudo desbloquear. Inténtelo de nuevo.",
+      "logout_title": "¿Cerrar sesión?",
+      "logout_desc": "Al cerrar sesión se eliminan sus datos de este dispositivo. Los cambios que aún no se hayan sincronizado se perderán. Necesitará su nombre de usuario y contraseña para volver a iniciar sesión.",
+      "logout_confirm": "Cerrar sesión"
+    },
     "use_without_account": "Usar sin cuenta",
     "login": {
       "title": "Iniciar sesión",

@@ -370,8 +370,10 @@ export {
   SettingsSection,
   SettingsLayout,
   ThemePicker,
-  DateTimeFormatCard
+  DateTimeFormatCard,
+  WebLockSettings
 } from './components/settings';
+export type { WebLockChangeResult } from './components/settings';
 
 // What's new (release notes) dialog
 export { WhatsNewDialog } from './components/whats-new';

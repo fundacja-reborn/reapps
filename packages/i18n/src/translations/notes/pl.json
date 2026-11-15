@@ -1268,17 +1268,6 @@
       "username_required": "Nazwa użytkownika jest wymagana",
       "password_required": "Hasło jest wymagane"
     },
-    "unlock": {
-      "title": "Odblokuj notatki",
-      "signed_in_as": "Zalogowano jako",
-      "password_label": "Hasło",
-      "password_placeholder": "Wprowadź hasło",
-      "submit": "Odblokuj",
-      "unlocking": "Odblokowywanie…",
-      "error_attempts": "Nieprawidłowe hasło. Pozostało prób: {count}.",
-      "info": "Twoje notatki są szyfrowane end-to-end. Wprowadź hasło konta Reborn, aby je odszyfrować.",
-      "different_account": "Zaloguj się na inne konto"
-    },
     "two_factor": {
       "title": "Uwierzytelnianie dwuskładnikowe",
       "totp_desc": "Wprowadź 6-cyfrowy kod z aplikacji uwierzytelniającej",

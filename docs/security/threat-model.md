@@ -55,7 +55,7 @@ A list of everything that can be a target of attack - ordered from the most to t
 
 | Asset | Location | Consequence of compromise |
 |---|---|---|
-| The user's `master_key` (256-bit AES-GCM) | Only in browser memory + the `reborn_crypto_keys` IndexedDB (encrypted with a session key in the browser) | Full access to all of the user's plaintext data (all notes/tasks/metadata) |
+| The user's `master_key` (256-bit AES-GCM) | In browser memory + the `reborn_crypto_keys` IndexedDB, stored as a `CryptoKey` with no additional encryption (browser storage isolation only). With the optional web App Lock on: in browser memory only | Full access to all of the user's plaintext data (all notes/tasks/metadata) |
 | The user's password (plaintext, transiently in memory during login/registration) | Only in memory for the duration of the operation | Derivation of the master key (PBKDF2 wrap), full account access |
 | `share_cek` per-share content encryption key (256-bit AES-GCM) | Snapshot: in the URL fragment (`#k=...`). Collaborative: wrapped per-recipient in `payload_encrypted` | Plaintext of one specific shared resource |
 
@@ -116,7 +116,7 @@ Out-of-band channel (Signal/email/in-person):
 | Boundary | Status | Assumptions |
 |---|---|---|
 | **Owner's browser memory** (after decryption) | Trusted | The user entered the password on their own device; the key in memory is legitimately there |
-| **Owner's `reborn_crypto_keys` IndexedDB** (session-encrypted master key) | Trusted | Local disk, browser sandbox isolation. Compromise = full account compromise (out of scope: malware on the device) |
+| **Owner's `reborn_crypto_keys` IndexedDB** (master key at rest; empty while the optional web App Lock is on) | Trusted | Local disk, browser sandbox isolation. Compromise = full account compromise (out of scope: malware on the device) |
 | **Network between owner and server** | Untrusted | TLS 1.3 mandatory, HSTS, but the model assumes TLS can fall (active MITM, compromised CA) |
 | **Server (`apps/reborn-{task,notes}/src/routes/api/`, PostgreSQL DB)** | **Untrusted (honest-but-curious + adversarial)** | It can be taken over, the operator can be compelled by a legal request, the code can be modified. The entire security model assumes the server has no plaintext and cannot obtain it |
 | **Network between server and recipient B** | Untrusted | As above |

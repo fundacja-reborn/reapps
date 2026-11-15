@@ -52,7 +52,7 @@ describe('computeReminderFireAt', () => {
 
 	describe('has_time === false (date-only)', () => {
 		it('fires at allDayTime in local time on the calendar day stored in due_date', () => {
-			// due_date is UTC midnight — its UTC date components (Y/M/D) define the calendar day.
+			// due_date is UTC midnight - its UTC date components (Y/M/D) define the calendar day.
 			const due = '2026-05-10T00:00:00.000Z';
 			const result = computeReminderFireAt(
 				{ due_date: due, has_time: false },
@@ -97,11 +97,11 @@ describe('computeReminderFireAt', () => {
 			expect(result).toBe(expected);
 		});
 
-		it('uses UTC date components — does not shift calendar day across midnight TZ boundary', () => {
+		it('uses UTC date components - does not shift calendar day across midnight TZ boundary', () => {
 			// In TZ ahead of UTC (e.g. Warsaw +1/+2), `new Date('2026-05-10T00:00:00.000Z')`
 			// would render as May 10 01:00–02:00 local. Using getDate() instead of
 			// getUTCDate() would still return 10 here, so this test is defensive: ensure
-			// we read UTC components — a regression that switched to local would still
+			// we read UTC components - a regression that switched to local would still
 			// land on the same day in this case but would break for users in negative
 			// offsets (e.g. America/Los_Angeles where the same instant is May 9 17:00).
 			const due = '2026-05-10T00:00:00.000Z';
@@ -131,7 +131,7 @@ describe('computeReminderFireAt', () => {
 	describe('regression: pre-fix behaviour', () => {
 		// Before the fix, all tasks (including date-only) used `dueMs - 60min`.
 		// For a date-only task in PL summer (UTC+2), midnight UTC = 02:00 local;
-		// fireAt = 01:00 local — i.e. 1 AM in the night BEFORE the user expected.
+		// fireAt = 01:00 local - i.e. 1 AM in the night BEFORE the user expected.
 		// After the fix, date-only tasks fire at 09:00 local (default).
 		it('date-only task fires in the morning, not at 01:00 local', () => {
 			const due = '2026-05-10T00:00:00.000Z';
@@ -155,3 +155,49 @@ describe('default constants', () => {
 	});
 });
 
+
+/**
+ * A locked app has an empty decrypted task store. Syncing that as "no tasks"
+ * would cancel every reminder, locally and on the server, on each lock.
+ */
+describe('syncScheduledNotifications without the master key', () => {
+	async function setup(keyLoaded: boolean) {
+		const { vi } = await import('vitest');
+		const { pushNotificationService } = await import('./push-notification.service');
+		const { cryptoManager } = await import('@reborn/crypto');
+
+		const postMessage = vi.fn();
+		const fetchSpy = vi.fn(async () => new Response('{}', { status: 200 }));
+		vi.stubGlobal('fetch', fetchSpy);
+		vi.stubGlobal('Notification', { permission: 'granted' });
+		Object.defineProperty(navigator, 'serviceWorker', {
+			configurable: true,
+			value: { ready: Promise.resolve({ active: { postMessage } }) }
+		});
+		vi.spyOn(pushNotificationService, 'isSupported').mockReturnValue(true);
+		vi.spyOn(cryptoManager, 'isInitialized').mockReturnValue(keyLoaded);
+
+		return { pushNotificationService, postMessage, fetchSpy, vi };
+	}
+
+	it('leaves the schedule untouched while locked', async () => {
+		const { pushNotificationService, postMessage, fetchSpy, vi } = await setup(false);
+
+		await pushNotificationService.syncScheduledNotifications([]);
+
+		expect(postMessage).not.toHaveBeenCalled();
+		expect(fetchSpy).not.toHaveBeenCalled();
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('still syncs an empty task list when unlocked', async () => {
+		const { pushNotificationService, postMessage, vi } = await setup(true);
+
+		await pushNotificationService.syncScheduledNotifications([]);
+
+		expect(postMessage).toHaveBeenCalledWith({ type: 'CANCEL_ALL_NOTIFICATIONS' });
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+});

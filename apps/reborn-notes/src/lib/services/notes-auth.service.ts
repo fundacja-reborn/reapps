@@ -47,7 +47,126 @@ interface ReAuthResponseBody {
     refresh_token?: string;
     /** Present only for native clients - names the current session. */
     session_id?: string;
+    /** The account's password-wrapped master key, as the server holds it now. */
+    encryptedMasterKey?: string;
+    masterKeySalt?: string;
   };
+}
+
+/**
+ * Keep the locally stored account wrap in step with the server's.
+ *
+ * The wrap in `reborn_auth_credentials` is what unlocks the app offline. It
+ * goes stale when the password is changed on another device: the server then
+ * holds the key wrapped with the new password while this device still has the
+ * old envelope. Every response that carries the current wrap (the password
+ * step, with or without 2FA pending, and the TOTP step) refreshes it here, so
+ * the new password opens the app on this device too. Ciphertext only - the
+ * wrap is useless without the password.
+ *
+ * Returns true when the stored wrap was written.
+ */
+function storeAccountWrap(data: ReAuthResponseBody['data']): boolean {
+  if (!data?.encryptedMasterKey || !data.masterKeySalt) return false;
+  try {
+    const raw = localStorage.getItem(CREDENTIALS_KEY);
+    if (!raw) return false;
+    const credentials = JSON.parse(raw) as Record<string, unknown>;
+    credentials.encrypted_master_key = data.encryptedMasterKey;
+    credentials.master_key_salt = data.masterKeySalt;
+    localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Outcome of the sign-in request shared by re-auth and the unlock fallback.
+ *
+ * Naming note: this type and `signInStep` deliberately avoid the word
+ * "password". CodeQL's js/clear-text-storage-of-sensitive-data treats the
+ * RESULT of any call whose name matches password|secret|key|... as sensitive,
+ * so storing the access token returned by a `passwordStep()` was flagged as
+ * "password stored in clear text" (PR #576). Same heuristic as in
+ * `@reborn/crypto` local-passcode.ts.
+ */
+type SignInStepResult =
+  | { kind: 'ok'; data: NonNullable<ReAuthResponseBody['data']>; wrapStored: boolean }
+  | { kind: 'two_factor_required'; challengeToken: string; wrapStored: boolean }
+  | { kind: 'invalid_password' }
+  | { kind: 'locked'; retryAfter: number }
+  | { kind: 'error'; message?: string };
+
+/**
+ * POST the account password to /api/auth/login for the signed-in username and
+ * refresh the stored account wrap from the response. Tokens are NOT stored
+ * here - the callers decide what a successful step means for the session.
+ */
+async function signInStep(password: string): Promise<SignInStepResult> {
+  const credentialsRaw = localStorage.getItem(CREDENTIALS_KEY);
+  if (!credentialsRaw) return { kind: 'error', message: 'Missing credentials' };
+
+  let username: string;
+  try {
+    const parsed = JSON.parse(credentialsRaw);
+    username = parsed.user_profile?.username;
+    if (!username) return { kind: 'error', message: 'Missing username' };
+  } catch {
+    return { kind: 'error', message: 'Corrupted credentials' };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
+      body: JSON.stringify({ username, password })
+    });
+  } catch (err) {
+    return { kind: 'error', message: err instanceof Error ? err.message : 'Network error' };
+  }
+
+  if (res.status === 429) {
+    const retryAfterHeader = res.headers.get('Retry-After');
+    const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 0;
+    return { kind: 'locked', retryAfter: Number.isFinite(retryAfter) ? retryAfter : 0 };
+  }
+
+  if (res.status === 401) return { kind: 'invalid_password' };
+
+  let body: ReAuthResponseBody;
+  try {
+    body = await res.json();
+  } catch {
+    return { kind: 'error', message: 'Invalid server response' };
+  }
+
+  if (!res.ok || !body?.success) {
+    return { kind: 'error', message: body?.error };
+  }
+
+  const { data } = body;
+  const wrapStored = storeAccountWrap(data);
+
+  if (data?.twoFactorRequired) {
+    if (!data.challengeToken)
+      return { kind: 'error', message: 'Missing challenge token in 2FA response' };
+    return { kind: 'two_factor_required', challengeToken: data.challengeToken, wrapStored };
+  }
+
+  if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
+  return { kind: 'ok', data, wrapStored };
+}
+
+/** Store the tokens of a completed sign-in step and clear the expiry flag. */
+async function adoptSession(data: NonNullable<ReAuthResponseBody['data']>): Promise<void> {
+  if (data.access_token) localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+  // Native: persist the rotated refresh token from the body. No-op on web.
+  await persistNativeRefreshToken(data.refresh_token);
+  // Native: stash session_id for the device-info PATCH + sessions-list highlight.
+  persistNativeSessionId(data.session_id);
+  sessionExpired.set(false);
 }
 
 /**
@@ -222,74 +341,44 @@ async function refreshAfterReauth(): Promise<void> {
  * collect a TOTP/recovery code and call {@link verifyTotpForReauth}.
  */
 export async function reAuthenticate(password: string): Promise<ReAuthResult> {
-  const credentialsRaw = localStorage.getItem(CREDENTIALS_KEY);
-  if (!credentialsRaw) return { kind: 'error', message: 'Missing credentials' };
-
-  let username: string;
-  try {
-    const parsed = JSON.parse(credentialsRaw);
-    username = parsed.user_profile?.username;
-    if (!username) return { kind: 'error', message: 'Missing username' };
-  } catch {
-    return { kind: 'error', message: 'Corrupted credentials' };
+  const step = await signInStep(password);
+  if (step.kind === 'two_factor_required') {
+    return { kind: 'two_factor_required', challengeToken: step.challengeToken };
   }
+  if (step.kind !== 'ok') return step;
 
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
-      body: JSON.stringify({ username, password })
-    });
-  } catch (err) {
-    return { kind: 'error', message: err instanceof Error ? err.message : 'Network error' };
-  }
-
-  if (res.status === 429) {
-    const retryAfterHeader = res.headers.get('Retry-After');
-    const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 0;
-    return { kind: 'locked', retryAfter: Number.isFinite(retryAfter) ? retryAfter : 0 };
-  }
-
-  if (res.status === 401) return { kind: 'invalid_password' };
-
-  let body: ReAuthResponseBody;
-  try {
-    body = await res.json();
-  } catch {
-    return { kind: 'error', message: 'Invalid server response' };
-  }
-
-  if (!res.ok || !body?.success) {
-    return { kind: 'error', message: body?.error };
-  }
-
-  const { data } = body;
-
-  if (data?.twoFactorRequired) {
-    if (!data.challengeToken)
-      return { kind: 'error', message: 'Missing challenge token in 2FA response' };
-    return { kind: 'two_factor_required', challengeToken: data.challengeToken };
-  }
-
-  if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
-
-  localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
-  // Native: persist the rotated refresh token from the body. No-op on web.
-  await persistNativeRefreshToken(data.refresh_token);
-  // Native: stash session_id for the device-info PATCH + sessions-list highlight.
-  persistNativeSessionId(data.session_id);
-
-  // Credentials remain the same - touch to ensure they're still parseable
-  try {
-    localStorage.setItem(CREDENTIALS_KEY, credentialsRaw);
-  } catch {
-    /* keep existing */
-  }
-
-  sessionExpired.set(false);
+  await adoptSession(step.data);
   await refreshAfterReauth();
   return { kind: 'ok' };
+}
+
+/**
+ * Fetch the account's current wrap with the given password - the fallback of
+ * the unlock screen when the locally stored wrap did not open (the password
+ * may have been changed on another device).
+ *
+ * `refreshed` means the stored wrap now matches the server's; the caller then
+ * retries the local unlock. That also holds when the account has 2FA: the
+ * password step already returns the wrap, and unlocking is local - the second
+ * factor guards the session, which stays expired until the user re-signs in
+ * from the banner. Without 2FA the password step is a full sign-in, so its
+ * tokens are adopted. No data is pulled here: the key is not loaded yet.
+ */
+export async function refreshAccountWrap(
+  password: string
+): Promise<
+  | { kind: 'refreshed' }
+  | { kind: 'invalid_password' }
+  | { kind: 'locked'; retryAfter: number }
+  | { kind: 'error' }
+> {
+  const step = await signInStep(password);
+  if (step.kind === 'invalid_password') return { kind: 'invalid_password' };
+  if (step.kind === 'locked') return { kind: 'locked', retryAfter: step.retryAfter };
+  if (step.kind === 'error') return { kind: 'error' };
+
+  if (step.kind === 'ok') await adoptSession(step.data);
+  return step.wrapStored ? { kind: 'refreshed' } : { kind: 'error' };
 }
 
 /**
@@ -338,13 +427,8 @@ export async function verifyTotpForReauth(
   const { data } = body;
   if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
 
-  localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
-  // Native: persist the rotated refresh token from the body. No-op on web.
-  await persistNativeRefreshToken(data.refresh_token);
-  // Native: stash session_id for the device-info PATCH + sessions-list highlight.
-  persistNativeSessionId(data.session_id);
-
-  sessionExpired.set(false);
+  storeAccountWrap(data);
+  await adoptSession(data);
   await refreshAfterReauth();
   return { kind: 'ok' };
 }

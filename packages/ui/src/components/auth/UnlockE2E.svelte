@@ -1,20 +1,24 @@
 <!-- UnlockE2E.svelte -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { t } from '@reborn/i18n';
+  import { formatUnlockCountdown, type UnlockFailure } from './unlock-types';
 
   let {
     username = '',
     loading = false,
-    error = null,
-    attemptsRemaining,
+    failure = null,
+    retryAt = 0,
     extra,
     onUnlock,
     onLogout
   } = $props<{
     username?: string;
     loading?: boolean;
-    error?: string | null;
-    attemptsRemaining?: number;
+    /** Why the last attempt failed, or null. */
+    failure?: UnlockFailure | null;
+    /** Epoch ms before which another attempt is refused (0 = no delay running). */
+    retryAt?: number;
     extra?: Snippet;
     onUnlock?: (password: string) => void;
     onLogout?: () => void;
@@ -22,11 +26,50 @@
 
   let password = $state('');
   let showPassword = $state(false);
+  /** Milliseconds left of the retry delay; drives the countdown. */
+  let waitMs = $state(0);
+
+  // Count the retry delay down. Wrong passwords no longer sign the user out -
+  // they open a growing delay instead, and the form stays disabled meanwhile.
+  $effect(() => {
+    const until = retryAt;
+    // `waitMs` is only written here, never read: reading it would make the
+    // effect depend on its own output and restart the interval on every tick.
+    const remaining = () => Math.max(0, until - Date.now());
+    const initial = remaining();
+    waitMs = initial;
+    if (initial === 0) return;
+    const handle = setInterval(() => {
+      const left = remaining();
+      waitMs = left;
+      if (left === 0) clearInterval(handle);
+    }, 500);
+    return () => clearInterval(handle);
+  });
+
+  const waiting = $derived(waitMs > 0);
+
+  const errorText = $derived.by(() => {
+    if (!failure) return null;
+    switch (failure.kind) {
+      case 'invalid_password':
+        return failure.offline
+          ? $t('auth.unlock.error_wrong_password_offline')
+          : $t('auth.unlock.error_wrong_password');
+      case 'server_locked':
+        return $t('auth.session.error_locked', { values: { seconds: failure.retryAfter } });
+      case 'throttled':
+        // The countdown below says everything there is to say.
+        return null;
+      default:
+        return $t('auth.unlock.error_unknown');
+    }
+  });
 
   function handleSubmit(event: Event) {
     event.preventDefault();
 
-    if (!password) {
+    if (!password || waiting) {
       return;
     }
 
@@ -44,21 +87,28 @@
 
 <div class="space-y-6">
   <div class="text-center">
-    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Unlock Your Data</h2>
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+      {$t('auth.unlock.title')}
+    </h2>
     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-      Your session is active but your encrypted data needs to be unlocked
+      {$t('auth.unlock.description')}
     </p>
   </div>
 
   <form onsubmit={handleSubmit} class="space-y-6">
-    {#if error}
+    {#if errorText || waiting}
       <div
+        role="alert"
         class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded relative"
       >
-        <p>{error}</p>
-        {#if attemptsRemaining !== undefined && attemptsRemaining > 0}
-          <p class="mt-1 text-sm">
-            {attemptsRemaining} attempt{attemptsRemaining !== 1 ? 's' : ''} remaining
+        {#if errorText}
+          <p>{errorText}</p>
+        {/if}
+        {#if waiting}
+          <p class={errorText ? 'mt-1 text-sm' : ''}>
+            {$t('auth.unlock.error_throttled', {
+              values: { time: formatUnlockCountdown(waitMs) }
+            })}
           </p>
         {/if}
       </div>
@@ -69,12 +119,14 @@
         for="unlock-username"
         class="block text-sm font-medium text-gray-700 dark:text-gray-300"
       >
-        Username
+        {$t('auth.unlock.username_label')}
       </label>
       <div class="mt-1">
         <input
           id="unlock-username"
+          name="username"
           type="text"
+          autocomplete="username"
           value={username}
           readonly
           disabled
@@ -88,7 +140,7 @@
         for="unlock-password"
         class="block text-sm font-medium text-gray-700 dark:text-gray-300"
       >
-        Password
+        {$t('auth.unlock.password_label')}
       </label>
       <div class="mt-1 relative">
         <input
@@ -99,13 +151,16 @@
           required
           bind:value={password}
           disabled={loading}
-          placeholder="Enter your password to unlock"
+          placeholder={$t('auth.unlock.password_placeholder')}
           class="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-ring focus:border-ring dark:bg-gray-800 dark:text-gray-100 sm:text-sm"
         />
         <button
           type="button"
           class="absolute inset-y-0 inset-e-0 pe-3 flex items-center text-sm leading-5"
           onclick={togglePasswordVisibility}
+          aria-label={showPassword
+            ? $t('auth.unlock.hide_password')
+            : $t('auth.unlock.show_password')}
         >
           {#if showPassword}
             <svg
@@ -149,7 +204,7 @@
     <div class="space-y-3">
       <button
         type="submit"
-        disabled={loading || !password}
+        disabled={loading || !password || waiting}
         class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {#if loading}
@@ -167,9 +222,9 @@
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             ></path>
           </svg>
-          Unlocking...
+          {$t('auth.unlock.unlocking')}
         {:else}
-          Unlock
+          {$t('auth.unlock.submit')}
         {/if}
       </button>
 
@@ -179,7 +234,7 @@
         disabled={loading}
         class="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        Sign Out
+        {$t('auth.unlock.sign_out')}
       </button>
     </div>
   </form>
@@ -192,7 +247,7 @@
 
   <div class="text-center">
     <p class="text-xs text-gray-500 dark:text-gray-400">
-      Your data is encrypted end-to-end. We never see your password or unencrypted data.
+      {$t('auth.unlock.e2e_note')}
     </p>
   </div>
 </div>

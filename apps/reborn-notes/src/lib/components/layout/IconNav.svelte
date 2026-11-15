@@ -46,6 +46,7 @@
   import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@reborn/ui';
   import { authStore, getUserInitial } from '$lib/stores/auth.store';
   import { cryptoManager } from '@reborn/crypto';
+  import { isWebLockEnabled, lockWebNow } from '$lib/services/web-lock.service';
   import { goto } from '$lib/utils/navigation';
   import { base } from '$app/paths';
   import { t, locale as i18nLocale } from '$lib/stores/i18n.store';
@@ -133,6 +134,12 @@
   function handleLockNow() {
     authStore.lockLocalNow();
     goto('/auth/lock');
+  }
+
+  // Web App Lock (account session): flush, drop the key in every tab and
+  // reload into the password unlock screen.
+  function handleWebLockNow() {
+    void lockWebNow();
   }
 
   const PERIODIC_BUTTONS = $derived(
@@ -686,6 +693,12 @@
                   {$t('local_mode.passcode.lock_now_cta')}
                 </DropdownMenu.Item>
               {/if}
+              {#if $authStore.isAuthenticated && isWebLockEnabled()}
+                <DropdownMenu.Item onclick={handleWebLockNow}>
+                  <Lock class="h-4 w-4" />
+                  {$t('web_lock.lock_now_cta')}
+                </DropdownMenu.Item>
+              {/if}
             </DropdownMenu.Group>
             {#if $authStore.isAuthenticated}
               <DropdownMenu.Separator />
@@ -774,6 +787,19 @@
         >
           <Lock class="me-2 h-5 w-5" />
           {$t('local_mode.passcode.lock_now_cta')}
+        </Button>
+      {/if}
+      {#if $authStore.isAuthenticated && isWebLockEnabled()}
+        <Button
+          variant="ghost"
+          class="w-full justify-start min-h-11"
+          onclick={() => {
+            userSheetOpen = false;
+            handleWebLockNow();
+          }}
+        >
+          <Lock class="me-2 h-5 w-5" />
+          {$t('web_lock.lock_now_cta')}
         </Button>
       {/if}
       {#if $authStore.isAuthenticated}

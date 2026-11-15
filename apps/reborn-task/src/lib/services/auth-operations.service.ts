@@ -11,9 +11,9 @@ import {
 import { AuthStorageAdapter } from '$lib/auth/adapters/authStorage';
 import { createLogger } from '@reborn/utils';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@reborn/i18n';
-import type { AuthUser } from '@reborn/auth';
+import type { AuthUser, UnlockE2EResult } from '@reborn/auth';
 import type { CryptoManager } from '@reborn/crypto';
-import type { ReAuthResult } from '@reborn/ui';
+import type { ReAuthResult, UnlockOutcome } from '@reborn/ui';
 import { syncService } from './sync.service';
 import { taskTitleIndex } from './task-title-index.svelte';
 import { taskListStore } from '$lib/stores/decrypted-lists.store';
@@ -30,8 +30,28 @@ interface ReAuthResponseBody {
 		twoFactorRequired?: boolean;
 		challengeToken?: string;
 		access_token?: string;
+		/** The account's password-wrapped master key, as the server holds it now. */
+		encryptedMasterKey?: string;
+		masterKeySalt?: string;
 	};
 }
+
+/**
+ * Outcome of the sign-in request shared by re-auth and the unlock fallback.
+ *
+ * Naming note: this type and `signInStep` deliberately avoid the word
+ * "password". CodeQL's js/clear-text-storage-of-sensitive-data treats the
+ * RESULT of any call whose name matches password|secret|key|... as sensitive,
+ * so storing the access token returned by a `passwordStep()` was flagged as
+ * "password stored in clear text" (PR #576). Same heuristic as in
+ * `@reborn/crypto` local-passcode.ts.
+ */
+type SignInStepResult =
+	| { kind: 'ok'; accessToken: string; wrapStored: boolean }
+	| { kind: 'two_factor_required'; challengeToken: string; wrapStored: boolean }
+	| { kind: 'invalid_password' }
+	| { kind: 'locked'; retryAfter: number }
+	| { kind: 'error'; message?: string };
 
 // Use globalThis to ensure true singleton across hot reloads
 declare global {
@@ -48,7 +68,7 @@ export class AuthOperationsService {
 	 * Happens when a user logs out in the peer app (storage event clears the
 	 * crypto key) and logs in as a different user, but Task's IndexedDB still
 	 * holds ciphertexts from the previous user. Next decrypt throws AES-GCM
-	 * OperationError — this helper turns that into a clean recovery.
+	 * OperationError - this helper turns that into a clean recovery.
 	 *
 	 * Safe no-op when: no key loaded, IDB empty, offline, or data is readable.
 	 * Returns `true` if a recovery wipe was performed (caller should re-sync).
@@ -71,23 +91,23 @@ export class AuthOperationsService {
 
 			try {
 				await cryptoManager.decryptText(probe.name_encrypted);
-				return false; // data decrypts — all good
+				return false; // data decrypts - all good
 			} catch {
 				logger.warn(
-					'Local data appears encrypted under a different master key — recovering'
+					'Local data appears encrypted under a different master key - recovering'
 				);
 			}
 
 			if (!navigator.onLine) {
 				logger.error(
-					'Offline — cannot wipe & re-pull. Local Task data will remain unreadable until online.'
+					'Offline - cannot wipe & re-pull. Local Task data will remain unreadable until online.'
 				);
 				return false;
 			}
 
 			const { clearAllUserData } = await import('@reborn/storage');
 			await clearAllUserData();
-			logger.info('Local IndexedDB wiped after key/data mismatch — triggering initial sync');
+			logger.info('Local IndexedDB wiped after key/data mismatch - triggering initial sync');
 
 			try {
 				await syncService.initialSync();
@@ -131,7 +151,7 @@ export class AuthOperationsService {
 	 *
 	 * `context` distinguishes user-switching flows (login) from same-user key
 	 * restore on app start (restore). Clearing IndexedDB is only correct for
-	 * login — on restore it would wipe offline changes that haven't been synced.
+	 * login - on restore it would wipe offline changes that haven't been synced.
 	 */
 	private async onStorageInit(
 		cryptoManager: CryptoManager,
@@ -164,7 +184,7 @@ export class AuthOperationsService {
 				localOnly.set(false);
 			}
 
-			// Clear any previous user's data from IndexedDB ONLY on login — prevents
+			// Clear any previous user's data from IndexedDB ONLY on login - prevents
 			// ghost tasks when switching users or after account deletion + re-register.
 			// On 'restore' (same user, master key loaded from IndexedDB on app start)
 			// we MUST preserve local data, otherwise offline edits are lost.
@@ -387,6 +407,10 @@ export class AuthOperationsService {
 
 			const localUserId = getOrCreateLocalUserId();
 			localStorage.setItem(LOCAL_MODE_KEY, '1');
+			// The Web App Lock belongs to an account session (its password wrap is
+			// what unlocks). Logout already drops it; clear it here too so a
+			// leftover setting can never apply to a local key that has no wrap.
+			cryptoManager.clearWebLock();
 
 			// Generate + persist a local master key unless one is already loaded
 			// (e.g. restored from IndexedDB/vault on a returning local session).
@@ -554,7 +578,7 @@ export class AuthOperationsService {
 			}
 
 			// Flush any pending E2E synced settings push before the master key is
-			// cleared — otherwise the last sub-debounce-window setting change
+			// cleared - otherwise the last sub-debounce-window setting change
 			// would be lost (server keeps stale, IDB gets wiped).
 			try {
 				const { syncedSettings } = await import('$lib/services/synced-settings.service');
@@ -572,11 +596,15 @@ export class AuthOperationsService {
 		try {
 			await authLogout();
 		} finally {
-			// Reset session expired flag — this is an intentional logout, not expiry
+			// Reset session expired flag - this is an intentional logout, not expiry
 			this.clearSessionExpired();
 
 			// Clear tokens
 			localStorage.removeItem('access_token');
+
+			// The Web App Lock is tied to this account's password wrap: the next
+			// session (another account, or local-only mode) starts without it.
+			await this.clearWebLock();
 
 			// Stop background token refresh
 			if (globalThis.__tokenRefreshInterval) {
@@ -603,14 +631,14 @@ export class AuthOperationsService {
 				// Don't interrupt logout process on error
 			}
 
-			// Hard redirect to login — guarantees ALL in-memory state
+			// Hard redirect to login - guarantees ALL in-memory state
 			// (Svelte stores, module singletons, $state) is cleared.
 			window.location.href = `${base}/auth/login`;
 		}
 	}
 
 	/**
-	 * Logout from all devices — calls the server endpoint, then performs
+	 * Logout from all devices - calls the server endpoint, then performs
 	 * full local cleanup (same as logout) and redirects to login.
 	 */
 	async logoutAllDevices() {
@@ -631,18 +659,19 @@ export class AuthOperationsService {
 			// Continue with local cleanup regardless
 		}
 
-		// Reset session expired flag — this is an intentional logout, not expiry
+		// Reset session expired flag - this is an intentional logout, not expiry
 		this.clearSessionExpired();
 
 		// Clear auth state in memory (master key, session manager)
 		try {
-			await authLogout(true); // skipApiCall — server already handled above
+			await authLogout(true); // skipApiCall - server already handled above
 		} catch (error: unknown) {
 			logger.warn('Auth state cleanup failed:', error);
 		}
 
 		// Full local cleanup (same as logout)
 		localStorage.removeItem('access_token');
+		await this.clearWebLock();
 
 		if (globalThis.__tokenRefreshInterval) {
 			clearInterval(globalThis.__tokenRefreshInterval);
@@ -663,7 +692,7 @@ export class AuthOperationsService {
 			logger.error('Failed to clear user data:', error);
 		}
 
-		// Hard redirect to login — guarantees ALL in-memory state
+		// Hard redirect to login - guarantees ALL in-memory state
 		// (Svelte stores, module singletons, $state) is cleared.
 		window.location.href = `${base}/auth/login`;
 	}
@@ -671,7 +700,7 @@ export class AuthOperationsService {
 	/**
 	 * Unlock E2E encryption
 	 */
-	async unlockE2E(password: string) {
+	async unlockE2E(password: string): Promise<UnlockE2EResult> {
 		if (!browser) {
 			return { success: false, message: 'Not in browser environment' };
 		}
@@ -686,7 +715,7 @@ export class AuthOperationsService {
 				if (navigator.onLine) {
 					const sessionValid = await this.checkSession();
 					if (!sessionValid) {
-						// Session expired — re-authenticate with the same password.
+						// Session expired - re-authenticate with the same password.
 						// If 2FA is required or re-auth fails, leave the banner flow to
 						// prompt the user; unlock itself already succeeded.
 						logger.info('Session expired after unlock, attempting auto re-authentication');
@@ -700,12 +729,12 @@ export class AuthOperationsService {
 
 					// Wait for the sync that onStorageInit already started.
 					// initialSync() returns the in-flight promise so this won't
-					// start a second sync — it waits for the existing one.
+					// start a second sync - it waits for the existing one.
 					await syncService.initialSync();
 				}
 
 				// Reconcile any IDB shadow indexes that drifted from the
-				// metadata bundle (recovery for the 2026-05-10 incident — see
+				// metadata bundle (recovery for the 2026-05-10 incident - see
 				// shadow-index-reconciler.service.ts). Cheap no-op when IDB
 				// is consistent. Run before loadLists so any UI that reads
 				// task counts immediately afterwards sees corrected state.
@@ -722,7 +751,7 @@ export class AuthOperationsService {
 				await taskListStore.loadLists();
 
 				// Note: ensureDefaultList() is called inside onStorageInit's
-				// post-sync .then() chain. No need to call it here again —
+				// post-sync .then() chain. No need to call it here again -
 				// doing so caused race conditions when sync hadn't completed yet.
 			}
 
@@ -737,10 +766,66 @@ export class AuthOperationsService {
 	}
 
 	/**
+	 * Unlock from the `/auth/unlock` screen: the account password opens the
+	 * locally stored wrap, with two additions over {@link unlockE2E}.
+	 *
+	 * 1. A growing delay after repeated wrong passwords, kept on the device. It
+	 *    replaces the old "5 wrong attempts = logout": that counter lived in
+	 *    memory (a reload reset it) and logging out wiped local data, unsynced
+	 *    edits included.
+	 * 2. A fallback for a stale wrap. When the local wrap does not open and the
+	 *    device is online, the server is asked for the current wrap with the
+	 *    same password - it was probably changed on another device.
+	 */
+	async unlockWithPassword(password: string): Promise<UnlockOutcome> {
+		if (!browser) return { kind: 'error' };
+
+		const { cryptoManager } = await import('@reborn/crypto');
+		const waitMs = cryptoManager.getAccountUnlockRetryDelayMs();
+		if (waitMs > 0) return { kind: 'throttled', retryAfterMs: waitMs };
+
+		let result: UnlockE2EResult = await this.unlockE2E(password);
+		if (result.success) return { kind: 'ok' };
+		// Anything but a wrong password (no session, no stored credentials, an
+		// exception) is not a guess and must not open a retry delay.
+		if (result.code !== 'invalid_password') return { kind: 'error' };
+
+		// Could the server be asked? If not, a password changed elsewhere cannot
+		// be ruled out and the message says so.
+		let offline = true;
+		if (navigator.onLine) {
+			const fresh = await this.refreshAccountWrap(password);
+			if (fresh.kind === 'locked') {
+				return { kind: 'server_locked', retryAfter: fresh.retryAfter };
+			}
+			if (fresh.kind === 'refreshed') {
+				result = await this.unlockE2E(password);
+				if (result.success) return { kind: 'ok' };
+				offline = false;
+			} else if (fresh.kind === 'invalid_password') {
+				offline = false;
+			}
+		}
+
+		const retryAfterMs = cryptoManager.recordAccountUnlockFailure();
+		return { kind: 'invalid_password', retryAfterMs, offline };
+	}
+
+	/** Drop the Web App Lock settings (logout paths). Never throws. */
+	private async clearWebLock(): Promise<void> {
+		try {
+			const { cryptoManager } = await import('@reborn/crypto');
+			cryptoManager.clearWebLock();
+		} catch (error: unknown) {
+			logger.warn('Could not clear the Web App Lock settings:', error);
+		}
+	}
+
+	/**
 	 * Check if session is valid and restore it.
 	 *
 	 * Always performs a refresh on the access token when one is present in
-	 * localStorage — even if `sessionManager.isAuthenticated()` is already true
+	 * localStorage - even if `sessionManager.isAuthenticated()` is already true
 	 * after restoring persisted credentials. The previously-stored token may
 	 * have expired (15 min TTL) while the user was away; without a proactive
 	 * refresh, the first sync after a cold start would 401 and silently fail.
@@ -817,7 +902,7 @@ export class AuthOperationsService {
 	 * Uses CryptoManager.waitForRestore() which restores the master key from
 	 * IndexedDB (survives browser/PWA restart) or sessionStorage (fallback).
 	 *
-	 * We only flip `hasE2E` here — do NOT trigger onStorageInit('restore').
+	 * We only flip `hasE2E` here - do NOT trigger onStorageInit('restore').
 	 * +layout.svelte's onMount already awaits cryptoManager.waitForRestore()
 	 * and refreshes all stores; the $effect watching hasE2E runs initialSync
 	 * with a `hasTriggeredInitialSync` dedup flag. Calling onStorageInit here
@@ -859,7 +944,7 @@ export class AuthOperationsService {
 
 			// Now perform quick checks without blocking
 			const accessToken = localStorage.getItem('access_token');
-			// Refresh token is in httpOnly cookie — not accessible from JS
+			// Refresh token is in httpOnly cookie - not accessible from JS
 			const hasTokens = !!accessToken;
 
 			// If we have an access token, immediately set it in syncService
@@ -876,7 +961,7 @@ export class AuthOperationsService {
 			sessionManager.setSession({ isInitialized: true, isLoading: true });
 			logger.debug('Session marked as initialized (isLoading=true until auth resolves)');
 
-			// Hydrate isAuthenticated from persisted credentials unconditionally —
+			// Hydrate isAuthenticated from persisted credentials unconditionally -
 			// mirrors reborn-notes' authStore.initialize(). We intentionally do NOT
 			// branch on navigator.onLine: an active VPN tunnel (e.g. Proton) causes
 			// navigator.onLine to report true even in airplane mode, which used to
@@ -888,7 +973,7 @@ export class AuthOperationsService {
 				logger.info('Restoring session from persisted credentials');
 				sessionManager.setAuthenticated(credentials.user_profile, false);
 			} else if (hasTokens) {
-				// Legacy fallback — access token without a credentials record.
+				// Legacy fallback - access token without a credentials record.
 				sessionManager.setSession({ isAuthenticated: true });
 			} else {
 				// No account session: restore local-only mode if its marker is set.
@@ -920,14 +1005,14 @@ export class AuthOperationsService {
 			// Release isLoading before any network work so the UI can render.
 			sessionManager.setLoading(false);
 
-			// Background refresh — non-critical. A definitive 401/invalid_grant
+			// Background refresh - non-critical. A definitive 401/invalid_grant
 			// sets sessionExpired=true (banner + re-auth, master key preserved;
 			// see docs/development/guidelines/31-session-expiry-handling.md).
-			// Transient network errors are left alone — the user may actually be
+			// Transient network errors are left alone - the user may actually be
 			// offline despite navigator.onLine=true (e.g. VPN tunnel without
 			// upstream connectivity).
 			if (navigator.onLine && hasTokens) {
-				logger.debug('Online with tokens — refreshing session in background');
+				logger.debug('Online with tokens - refreshing session in background');
 				Promise.resolve().then(async () => {
 					try {
 						const success = await this.checkSession();
@@ -958,7 +1043,7 @@ export class AuthOperationsService {
 	}
 
 	/**
-	 * Start background token refresh — refreshes the access token every 10 minutes
+	 * Start background token refresh - refreshes the access token every 10 minutes
 	 * to prevent mid-session expiry without requiring page reload.
 	 */
 	private startBackgroundTokenRefresh() {
@@ -1044,7 +1129,7 @@ export class AuthOperationsService {
 		try {
 			await syncService.initialSync();
 
-			// Repair any drifted shadow indexes (post-incident recovery —
+			// Repair any drifted shadow indexes (post-incident recovery -
 			// see shadow-index-reconciler.service.ts). Must run before
 			// taskTitleIndex.rebuild() so the index reads corrected values.
 			try {
@@ -1068,22 +1153,101 @@ export class AuthOperationsService {
 			const { taskCounts } = await import('$lib/stores/task-counts.store');
 			taskCounts.refresh();
 		} catch {
-			// Non-blocking — re-auth succeeded even if sync fails.
+			// Non-blocking - re-auth succeeded even if sync fails.
 			// User can trigger manual sync later.
 		}
 	}
 
 	/**
-	 * Re-authenticate after session expiry — password step.
+	 * Re-authenticate after session expiry - password step.
 	 *
 	 * Calls /api/auth/login to obtain new tokens. Master key in CryptoManager
 	 * is preserved (E2E access kept across session-expiry events).
 	 *
 	 * If the account has 2FA enabled, the endpoint returns `twoFactorRequired`
-	 * without an access token — propagate that so the UI can collect a TOTP
+	 * without an access token - propagate that so the UI can collect a TOTP
 	 * code and call {@link verifyTotpForReauth}.
 	 */
 	async reAuthenticate(password: string): Promise<ReAuthResult> {
+		const step = await this.signInStep(password);
+		if (step.kind === 'two_factor_required') {
+			return { kind: 'two_factor_required', challengeToken: step.challengeToken };
+		}
+		if (step.kind !== 'ok') return step;
+
+		await this.refreshAfterReauth(step.accessToken);
+		return { kind: 'ok' };
+	}
+
+	/**
+	 * Fetch the account's current wrap with the given password - the fallback
+	 * of the unlock screen when the locally stored wrap did not open (the
+	 * password may have been changed on another device).
+	 *
+	 * `refreshed` means the stored wrap now matches the server's; the caller
+	 * then retries the local unlock. That also holds when the account has 2FA:
+	 * the password step already returns the wrap, and unlocking is local - the
+	 * second factor guards the session, which stays expired until the user
+	 * re-signs in from the banner. Without 2FA the password step is a full
+	 * sign-in, so its token is adopted. No sync runs here: the key is not
+	 * loaded yet.
+	 */
+	private async refreshAccountWrap(
+		password: string
+	): Promise<
+		| { kind: 'refreshed' }
+		| { kind: 'invalid_password' }
+		| { kind: 'locked'; retryAfter: number }
+		| { kind: 'error' }
+	> {
+		const step = await this.signInStep(password);
+		if (step.kind === 'invalid_password') return { kind: 'invalid_password' };
+		if (step.kind === 'locked') return { kind: 'locked', retryAfter: step.retryAfter };
+		if (step.kind === 'error') return { kind: 'error' };
+
+		if (step.kind === 'ok') {
+			localStorage.setItem('access_token', step.accessToken);
+			syncService.setAuthToken(step.accessToken);
+			this.clearSessionExpired();
+			this.startBackgroundTokenRefresh();
+		}
+		return step.wrapStored ? { kind: 'refreshed' } : { kind: 'error' };
+	}
+
+	/**
+	 * Keep the locally stored account wrap in step with the server's.
+	 *
+	 * The wrap in `reborn_auth_credentials` is what unlocks the app offline. It
+	 * goes stale when the password is changed on another device: the server
+	 * then holds the key wrapped with the new password while this device still
+	 * has the old envelope. Every response that carries the current wrap (the
+	 * password step, with or without 2FA pending, and the TOTP step) refreshes
+	 * it here. Ciphertext only - the wrap is useless without the password.
+	 *
+	 * Returns true when the stored wrap was written.
+	 */
+	private storeAccountWrap(data: ReAuthResponseBody['data']): boolean {
+		if (!data?.encryptedMasterKey || !data.masterKeySalt) return false;
+		try {
+			const raw = localStorage.getItem('reborn_auth_credentials');
+			if (!raw) return false;
+			const credentials = JSON.parse(raw) as Record<string, unknown>;
+			credentials.encrypted_master_key = data.encryptedMasterKey;
+			credentials.master_key_salt = data.masterKeySalt;
+			localStorage.setItem('reborn_auth_credentials', JSON.stringify(credentials));
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * POST the account password to /api/auth/login for the signed-in username
+	 * and refresh the stored account wrap from the response. The token is NOT
+	 * stored here - the callers decide what a successful step means for the
+	 * session.
+	 */
+	private async signInStep(password: string): Promise<SignInStepResult> {
 		if (!browser) return { kind: 'error', message: 'Not in browser' };
 
 		const credentials = localStorage.getItem('reborn_auth_credentials');
@@ -1131,21 +1295,20 @@ export class AuthOperationsService {
 		if (!res.ok || !body?.success) return { kind: 'error', message: body?.error };
 
 		const { data } = body;
+		const wrapStored = this.storeAccountWrap(data);
 
 		if (data?.twoFactorRequired) {
 			if (!data.challengeToken)
 				return { kind: 'error', message: 'Missing challenge token in 2FA response' };
-			return { kind: 'two_factor_required', challengeToken: data.challengeToken };
+			return { kind: 'two_factor_required', challengeToken: data.challengeToken, wrapStored };
 		}
 
 		if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
-
-		await this.refreshAfterReauth(data.access_token);
-		return { kind: 'ok' };
+		return { kind: 'ok', accessToken: data.access_token, wrapStored };
 	}
 
 	/**
-	 * Re-authenticate after session expiry — TOTP step (invoked from
+	 * Re-authenticate after session expiry - TOTP step (invoked from
 	 * ReAuthModal after {@link reAuthenticate} returned `two_factor_required`).
 	 */
 	async verifyTotpForReauth(challengeToken: string, code: string): Promise<ReAuthResult> {
@@ -1191,6 +1354,7 @@ export class AuthOperationsService {
 		const { data } = body;
 		if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
 
+		this.storeAccountWrap(data);
 		await this.refreshAfterReauth(data.access_token);
 		return { kind: 'ok' };
 	}

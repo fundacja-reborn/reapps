@@ -1268,17 +1268,6 @@
       "username_required": "Username is required",
       "password_required": "Password is required"
     },
-    "unlock": {
-      "title": "Unlock your notes",
-      "signed_in_as": "Signed in as",
-      "password_label": "Password",
-      "password_placeholder": "Enter your password",
-      "submit": "Unlock",
-      "unlocking": "Unlocking…",
-      "error_attempts": "Incorrect password. {count} attempt(s) remaining.",
-      "info": "Your notes are end-to-end encrypted. Enter your Reborn account password to decrypt them.",
-      "different_account": "Sign in with a different account"
-    },
     "two_factor": {
       "title": "Two-factor authentication",
       "totp_desc": "Enter the 6-digit code from your authenticator app",

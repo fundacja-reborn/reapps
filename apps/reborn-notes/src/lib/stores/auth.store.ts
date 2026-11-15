@@ -1,5 +1,5 @@
 /**
- * Auth store for Reborn Notes — SSO via shared localStorage.
+ * Auth store for Reborn Notes - SSO via shared localStorage.
  *
  * Both reborn-task and reborn-notes use the same localStorage keys
  * (`reborn_auth_credentials`, `access_token`). When served from the same origin
@@ -29,6 +29,7 @@ import { cryptoManager } from '@reborn/crypto';
 import { sessionExpired, localOnly } from '$lib/stores/sync-status.store';
 import { forgetRememberedPlace } from '$lib/stores/start-place';
 import { createLogger } from '@reborn/utils';
+import type { UnlockOutcome } from '@reborn/ui';
 
 const logger = createLogger('Notes-AuthStore');
 
@@ -155,7 +156,7 @@ function createAuthStore() {
   }
 
   /**
-   * Mark E2E as unlocked when the master key was loaded by another path —
+   * Mark E2E as unlocked when the master key was loaded by another path -
    * cross-app SSO (peer Task/Notes already unlocked the shared origin IDB
    * key) or fast-path on `/auth/unlock`. Re-reads the auth credentials from
    * localStorage so other fields stay in sync.
@@ -172,7 +173,7 @@ function createAuthStore() {
     const initial = readFromStorage();
     commit(initial);
     // Detect login / logout in other tabs on the same origin.
-    // The `storage` event fires ONLY in other tabs/windows — never in the tab
+    // The `storage` event fires ONLY in other tabs/windows - never in the tab
     // that changed localStorage. This means:
     //  - Own logout → handled by logout() below (controlled flow)
     //  - Cross-app logout (e.g. Task logs out) → storage event → hard redirect
@@ -182,14 +183,15 @@ function createAuthStore() {
 
       const newState = readFromStorage();
       if (!newState.isAuthenticated) {
-        // Cross-app logout detected — hard redirect avoids reactive cascades
+        // Cross-app logout detected - hard redirect avoids reactive cascades
         // (empty stores, "?" avatar, effect_update_depth_exceeded).
         // Clear Notes IndexedDB BEFORE redirect so a subsequent login with
         // a different account can't reach decrypt with stale ciphertexts
         // encrypted under the previous user's master key (OperationError).
-        logger.info('Cross-app logout detected via storage event — redirecting to login');
+        logger.info('Cross-app logout detected via storage event - redirecting to login');
         sessionExpired.set(false);
         cryptoManager.clearMasterKey();
+        cryptoManager.clearWebLock();
         import('@reborn/storage')
           .then(({ clearAllUserData }) => clearAllUserData())
           .catch((err) => logger.error('Failed to clear IndexedDB on cross-app logout:', err))
@@ -203,20 +205,20 @@ function createAuthStore() {
       // The master key lives only in the other app's memory, so the user must
       // enter their password here to decrypt it → redirect to E2E unlock.
       if (e.key === CREDENTIALS_KEY && e.oldValue === null) {
-        logger.info('Cross-app login detected via storage event — redirecting to unlock');
+        logger.info('Cross-app login detected via storage event - redirecting to unlock');
         window.location.href = `${base}/auth/unlock`;
         return;
       }
 
-      // Token refresh or other update — update store reactively
+      // Token refresh or other update - update store reactively
       commit(newState);
     });
 
-    // Cross-app E2E unlock — peer app (Task) just unlocked the master key in
+    // Cross-app E2E unlock - peer app (Task) just unlocked the master key in
     // the shared origin IDB. Flip hasE2E and, if we're stuck on /auth/unlock,
     // hard-redirect home so the layout's $effect picks up sync. The matching
     // `cleared` event is a defense-in-depth backstop for `clearMasterKey()`
-    // being called without touching credentials — the normal logout path
+    // being called without touching credentials - the normal logout path
     // still goes through the storage listener above.
     cryptoManager.subscribeToKeyEvents((event) => {
       if (event === 'locked') {
@@ -235,7 +237,7 @@ function createAuthStore() {
         markE2EUnlocked();
         const path = window.location.pathname;
         if (path.includes('/auth/unlock')) {
-          logger.info('Cross-app E2E unlock detected — redirecting from /auth/unlock to home');
+          logger.info('Cross-app E2E unlock detected - redirecting from /auth/unlock to home');
           window.location.href = `${base}/`;
         }
         return;
@@ -243,7 +245,7 @@ function createAuthStore() {
       // event === 'cleared'
       const stillAuthenticated = !!localStorage.getItem(CREDENTIALS_KEY);
       if (stillAuthenticated && !cryptoManager.isInitialized()) {
-        logger.info('Cross-app key cleared without logout — flipping hasE2E to false');
+        logger.info('Cross-app key cleared without logout - flipping hasE2E to false');
         commit({ ...readFromStorage(), hasE2E: false });
       }
     });
@@ -265,6 +267,10 @@ function createAuthStore() {
     try {
       const localUserId = getOrCreateLocalUserId();
       localStorage.setItem(LOCAL_MODE_KEY, '1');
+      // The Web App Lock belongs to an account session (its password wrap is
+      // what unlocks). Logout already drops it; clear it here too so a
+      // leftover setting can never apply to a local key that has no wrap.
+      cryptoManager.clearWebLock();
 
       // Generate + persist a local master key unless one is already loaded
       // (e.g. restored from IndexedDB/vault on a returning local session).
@@ -325,7 +331,7 @@ function createAuthStore() {
         password
       );
       if (success) {
-        // Re-read full state from localStorage — credentials may have been saved
+        // Re-read full state from localStorage - credentials may have been saved
         // before this call (e.g. 2FA page saves credentials, then calls unlockE2E).
         // Using readFromStorage() ensures isAuthenticated, username, userId etc.
         // are up-to-date, not stale from initial module import.
@@ -340,6 +346,50 @@ function createAuthStore() {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Unlock from the `/auth/unlock` screen: the account password opens the
+   * locally stored wrap, with two additions over {@link unlockE2E}.
+   *
+   * 1. A growing delay after repeated wrong passwords, kept on the device.
+   *    It replaces the old "5 wrong attempts = logout": that counter lived in
+   *    memory (a reload reset it) and logging out wiped local data, unsynced
+   *    edits included.
+   * 2. A fallback for a stale wrap. When the local wrap does not open and the
+   *    device is online, the server is asked for the current wrap with the
+   *    same password - it was probably changed on another device.
+   */
+  async function unlockWithPassword(password: string): Promise<UnlockOutcome> {
+    if (!browser) return { kind: 'error' };
+    const waitMs = cryptoManager.getAccountUnlockRetryDelayMs();
+    if (waitMs > 0) return { kind: 'throttled', retryAfterMs: waitMs };
+
+    if (await unlockE2E(password)) return { kind: 'ok' };
+
+    // Could the server be asked? If not, a password changed elsewhere cannot
+    // be ruled out and the message says so.
+    let offline = true;
+    if (navigator.onLine) {
+      try {
+        const { refreshAccountWrap } = await import('$lib/services/notes-auth.service');
+        const fresh = await refreshAccountWrap(password);
+        if (fresh.kind === 'locked') {
+          return { kind: 'server_locked', retryAfter: fresh.retryAfter };
+        }
+        if (fresh.kind === 'refreshed') {
+          if (await unlockE2E(password)) return { kind: 'ok' };
+          offline = false;
+        } else if (fresh.kind === 'invalid_password') {
+          offline = false;
+        }
+      } catch (err) {
+        logger.warn('Could not ask the server for the current key wrap:', err);
+      }
+    }
+
+    const retryAfterMs = cryptoManager.recordAccountUnlockFailure();
+    return { kind: 'invalid_password', retryAfterMs, offline };
   }
 
   /**
@@ -385,7 +435,7 @@ function createAuthStore() {
    */
   async function logout(): Promise<void> {
     if (!browser) return;
-    // Reset session expired flag — this is an intentional logout, not expiry
+    // Reset session expired flag - this is an intentional logout, not expiry
     sessionExpired.set(false);
     localOnly.set(false);
 
@@ -400,7 +450,7 @@ function createAuthStore() {
     });
 
     // Flush any pending E2E synced settings push before the master key is
-    // cleared. Fire-and-forget — the hard redirect below races with this, but
+    // cleared. Fire-and-forget - the hard redirect below races with this, but
     // the most common case (no pending push) returns immediately.
     if (navigator.onLine) {
       import('$lib/services/synced-settings.service')
@@ -413,6 +463,10 @@ function createAuthStore() {
     // gate armed would strand the next account on a biometric lock screen with
     // no key to unlock. Re-enable is a one-tap opt-in after the next login.
     cryptoManager.setAppLockEnabled(false);
+    // Same for the Web App Lock: it is tied to this account's password wrap,
+    // and the next session (another account, or local-only mode) must start
+    // with the key persisted as usual.
+    cryptoManager.clearWebLock();
 
     // Wipe this user's auto-backup config + recovery phrase BEFORE the session
     // keys are removed (the entries are keyed by the current user id). Left in
@@ -434,7 +488,7 @@ function createAuthStore() {
     forgetRememberedPlace();
 
     // Await the data-clearing steps BEFORE the hard redirect. window.location.href
-    // reloads the page/WebView, which aborts any in-flight IndexedDB transaction —
+    // reloads the page/WebView, which aborts any in-flight IndexedDB transaction -
     // a fire-and-forget clear here would race the reload and leave orphan notes
     // (seen on native when the next session points at a different backend). The
     // critical synchronous logout state (cleared localStorage + in-memory master
@@ -455,7 +509,7 @@ function createAuthStore() {
     await clearNativeRefreshToken();
     clearNativeSessionId();
 
-    // Hard redirect — avoids reactive cascades from setting store to empty state.
+    // Hard redirect - avoids reactive cascades from setting store to empty state.
     // Clearing localStorage above will also fire a storage event in reborn-task
     // (other tab), triggering its own hard redirect to login.
     window.location.href = `${base}/auth/login`;
@@ -465,6 +519,7 @@ function createAuthStore() {
     subscribe,
     initialize,
     unlockE2E,
+    unlockWithPassword,
     unlockLocalPasscode,
     lockLocalNow,
     lockAppNow,

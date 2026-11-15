@@ -44,6 +44,7 @@
   import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
   import { hideNativeSplash } from '$lib/utils/native-splash';
   import { initAppLock, shouldLockOnResume } from '$lib/services/app-lock.service';
+  import { initWebLock } from '$lib/services/web-lock.service';
   import { createLogger } from '@reborn/utils';
   import { applyDocumentLocale, readDirectionOverride, type ReleasePlatform } from '@reborn/i18n';
   import { whatsNew } from '$lib/stores/whats-new.svelte';
@@ -292,6 +293,13 @@
     const timeoutId = setTimeout(() => {
       initTimeout = true;
     }, 2000);
+
+    // Web App Lock (opt-in, off by default): idle timer + cross-tab lock.
+    // The controller installs nothing while the lock is off. Skipped on the
+    // public share view, which never holds a key. No-op on native.
+    if (!window.location.pathname.startsWith(`${base || ''}/s/`)) {
+      initWebLock();
+    }
 
     // Media query listener for system color scheme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
