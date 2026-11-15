@@ -18,7 +18,7 @@
   "web_lock": {
     "title": "Bloqueo de la app",
     "settings_item_desc": "Pedir la contraseña al abrir la app y tras un periodo de inactividad",
-    "intro": "Con el bloqueo de la app activado, su clave de cifrado se mantiene solo en memoria y nunca se guarda en este navegador. Introducirá la contraseña de su cuenta cada vez que abra o recargue la app, en cada pestaña nueva y tras el tiempo de inactividad indicado abajo.",
+    "intro": "Con el bloqueo de la app activado, su clave de cifrado se mantiene solo en memoria y nunca se guarda en este navegador. Introducirá la contraseña de su cuenta al abrir la app y tras el tiempo de inactividad indicado abajo. Mientras una pestaña esté desbloqueada, las demás pestañas de la app se abren sin preguntar.",
     "status_on": "El bloqueo de la app está activado",
     "status_on_desc": "Se necesita la contraseña de su cuenta para abrir la app en este dispositivo.",
     "status_off": "El bloqueo de la app está desactivado",

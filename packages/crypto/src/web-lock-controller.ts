@@ -16,7 +16,7 @@
  * tests; apps call `createWebLockController()` with the defaults.
  */
 
-import { cryptoManager } from './cryptoManager';
+import { cryptoManager, type WebLockHandoffSignal } from './cryptoManager';
 import {
   WEB_LOCK_ACTIVITY_KEY,
   WEB_LOCK_CONFIG_KEY,
@@ -40,6 +40,12 @@ export interface WebLockKeyHolder {
   getKeyLoadedAt(): number;
   lockWeb(opts?: { announce?: boolean }): void;
   dropSessionKeyExport(): void;
+  /** Ask the other tabs for the key; true when it is now in this tab's memory. */
+  requestKeyFromPeer(): Promise<boolean>;
+  /** Answer another tab's key request. */
+  offerKeyToPeer(requestId: string): void;
+  /** Listen for key requests / "key available" announcements from other tabs. */
+  subscribeToHandoff(handler: (signal: WebLockHandoffSignal) => void): () => void;
 }
 
 type Listener = (event: unknown) => void;
@@ -79,6 +85,13 @@ export interface WebLockControllerOptions {
    * stores, editor buffers, undo history) is destroyed with it.
    */
   onLocked: (reason: WebLockReason) => void;
+  /**
+   * Called when this locked tab received the key from another, unlocked tab.
+   * The key is already in memory; the app marks the session unlocked and
+   * leaves the unlock screen with an in-app navigation (a page load would
+   * drop the key again).
+   */
+  onUnlockedByPeer?: () => void;
   /** Key holder - defaults to the `cryptoManager` singleton. */
   keyHolder?: WebLockKeyHolder;
   /** Browser environment - defaults to the real `window` / `document`. */
@@ -138,6 +151,8 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
   let started = false;
   let armed = false;
   let locking = false;
+  let requestingKey = false;
+  let unsubscribeHandoff: (() => void) | null = null;
   let tickHandle: unknown = null;
   /** Last activity seen in THIS tab (epoch ms). */
   let lastLocalActivity = 0;
@@ -198,23 +213,57 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
     }
   }
 
-  /** Decide whether this tab must lock right now. */
-  function check(): void {
-    if (locking) return;
-    if (!keyHolder.isWebLockEnabled() || !keyHolder.isInitialized()) return;
+  /** Why this tab must lock right now, or null when it may stay unlocked. */
+  function dueLock(): WebLockReason | null {
+    if (!keyHolder.isWebLockEnabled() || !keyHolder.isInitialized()) return null;
 
     const keyLoadedAt = keyHolder.getKeyLoadedAt();
     // Another tab locked after this tab got its key: follow.
-    if (readStored(WEB_LOCK_EPOCH_KEY) > keyLoadedAt) {
-      void lock('remote');
-      return;
-    }
+    if (readStored(WEB_LOCK_EPOCH_KEY) > keyLoadedAt) return 'remote';
 
     const lastActivity = Math.max(lastLocalActivity, readStored(WEB_LOCK_ACTIVITY_KEY), keyLoadedAt);
     if (isWebLockIdleExpired(env.now(), lastActivity, keyHolder.getWebLockTimeoutMs())) {
-      void lock('idle');
+      return 'idle';
+    }
+    return null;
+  }
+
+  /** Lock this tab if it is due. */
+  function check(): void {
+    if (locking) return;
+    const reason = dueLock();
+    if (reason) void lock(reason);
+  }
+
+  /** This tab is locked: ask the other tabs of the origin for the key. */
+  async function requestKey(): Promise<void> {
+    if (requestingKey || !keyHolder.isWebLockLocked()) return;
+    requestingKey = true;
+    try {
+      if (await keyHolder.requestKeyFromPeer()) options.onUnlockedByPeer?.();
+    } catch (error) {
+      logger.warn('Key request to other tabs failed:', error);
+    } finally {
+      requestingKey = false;
     }
   }
+
+  const onHandoff = (signal: WebLockHandoffSignal): void => {
+    if (signal.t === 'available') {
+      // Another tab just unlocked with the password.
+      void requestKey();
+      return;
+    }
+    // A locked tab asks for the key. Answer only while this tab is entitled
+    // to it: a tab woken from a freeze may still hold a key it should have
+    // dropped (locked elsewhere, or idle for too long) - then it locks instead.
+    if (locking || !keyHolder.isWebLockEnabled() || !keyHolder.isInitialized()) return;
+    if (dueLock()) {
+      check();
+      return;
+    }
+    keyHolder.offerKeyToPeer(signal.id);
+  };
 
   const onActivity: Listener = () => noteActivity();
 
@@ -224,6 +273,9 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
     // event never arrived - re-read it before deciding.
     refresh();
     check();
+    // Locked (missed the "key available" announcement, or the tab was asleep
+    // when another one unlocked): see whether a tab can hand the key over.
+    void requestKey();
   };
 
   const onPageShow: Listener = (event) => {
@@ -285,6 +337,7 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
       env.win.addEventListener('pageshow', onPageShow);
       env.win.addEventListener('focus', onReturn);
       env.doc.addEventListener('visibilitychange', onReturn);
+      unsubscribeHandoff = keyHolder.subscribeToHandoff(onHandoff);
       refresh();
     },
     stop(): void {
@@ -294,6 +347,8 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
       env.win.removeEventListener('pageshow', onPageShow);
       env.win.removeEventListener('focus', onReturn);
       env.doc.removeEventListener('visibilitychange', onReturn);
+      unsubscribeHandoff?.();
+      unsubscribeHandoff = null;
       disarm();
     },
     refresh,

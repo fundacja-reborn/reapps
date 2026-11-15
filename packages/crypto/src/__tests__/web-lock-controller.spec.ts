@@ -80,8 +80,14 @@ function makeTab(shared: Map<string, string>, opts: { timeoutMs?: number } = {})
     hasKey: true,
     keyLoadedAt: START,
     timeoutMs: opts.timeoutMs ?? 5 * MINUTE,
-    sessionExportDropped: 0
+    sessionExportDropped: 0,
+    /** What a key request to the other tabs resolves to. */
+    peerHasKey: false,
+    keyRequests: 0,
+    offers: [] as string[]
   };
+  let handoffHandler: ((signal: { t: 'request'; id: string } | { t: 'available' }) => void) | null =
+    null;
   const keyHolder: WebLockKeyHolder = {
     isWebLockEnabled: () => state.enabled,
     isWebLockLocked: () => state.enabled && !state.hasKey,
@@ -94,18 +100,36 @@ function makeTab(shared: Map<string, string>, opts: { timeoutMs?: number } = {})
     },
     dropSessionKeyExport: () => {
       state.sessionExportDropped++;
+    },
+    requestKeyFromPeer: async () => {
+      state.keyRequests++;
+      if (!state.peerHasKey) return false;
+      state.hasKey = true;
+      state.keyLoadedAt = now;
+      return true;
+    },
+    offerKeyToPeer: (id) => {
+      state.offers.push(id);
+    },
+    subscribeToHandoff: (handler) => {
+      handoffHandler = handler;
+      return () => {
+        handoffHandler = null;
+      };
     }
   };
 
   const locked: WebLockReason[] = [];
   const beforeLock = vi.fn<(reason: WebLockReason) => Promise<void> | void>();
+  const unlockedByPeer = vi.fn();
   const controller = createWebLockController({
     env,
     keyHolder,
     onBeforeLock: beforeLock,
     onLocked: (reason) => {
       locked.push(reason);
-    }
+    },
+    onUnlockedByPeer: unlockedByPeer
   });
 
   return {
@@ -115,6 +139,12 @@ function makeTab(shared: Map<string, string>, opts: { timeoutMs?: number } = {})
     doc,
     locked,
     beforeLock,
+    unlockedByPeer,
+    /** Deliver a handoff signal from another tab. */
+    handoff(signal: { t: 'request'; id: string } | { t: 'available' }) {
+      handoffHandler?.(signal);
+    },
+    subscribed: () => handoffHandler !== null,
     /** Move the clock and run the interval ticks + due timeouts once. */
     async advance(ms: number) {
       now += ms;
@@ -388,6 +418,96 @@ describe('web-lock controller', () => {
     expect(tab.locked).toEqual(['idle']);
   });
 
+  describe('key handoff between tabs', () => {
+    it('an unlocked tab answers a key request', () => {
+      const tab = makeTab(new Map());
+      tab.controller.start();
+
+      tab.handoff({ t: 'request', id: 'r1' });
+      expect(tab.state.offers).toEqual(['r1']);
+    });
+
+    it('a locked tab, or one with the lock off, does not answer', () => {
+      const locked = makeTab(new Map());
+      locked.state.hasKey = false;
+      locked.controller.start();
+      locked.handoff({ t: 'request', id: 'r1' });
+      expect(locked.state.offers).toEqual([]);
+
+      const off = makeTab(new Map());
+      off.state.enabled = false;
+      off.controller.start();
+      off.handoff({ t: 'request', id: 'r2' });
+      expect(off.state.offers).toEqual([]);
+    });
+
+    it('a tab that is itself due to lock locks instead of handing its key over', async () => {
+      // Woken from a freeze: it still holds a key, but the app was locked
+      // elsewhere in the meantime.
+      const shared = new Map<string, string>([[EPOCH_KEY, String(START + 10_000)]]);
+      const stale = makeTab(shared);
+      stale.controller.start();
+      await flush();
+      stale.locked.length = 0;
+      stale.state.hasKey = true; // as if the first check had not run yet
+
+      stale.handoff({ t: 'request', id: 'r1' });
+      await flush();
+      expect(stale.state.offers).toEqual([]);
+      expect(stale.locked).toEqual(['remote']);
+
+      // Same for a tab that sat idle past the timeout.
+      const idle = makeTab(new Map());
+      idle.controller.start();
+      await idle.advance(0);
+      idle.state.keyLoadedAt = START - 10 * MINUTE;
+      idle.handoff({ t: 'request', id: 'r2' });
+      await flush();
+      expect(idle.state.offers).toEqual([]);
+      expect(idle.locked).toEqual(['idle']);
+    });
+
+    it('a locked tab takes the key when another tab unlocks with the password', async () => {
+      const tab = makeTab(new Map());
+      tab.state.hasKey = false;
+      tab.state.peerHasKey = true;
+      tab.controller.start();
+
+      tab.handoff({ t: 'available' });
+      await flush();
+
+      expect(tab.state.hasKey).toBe(true);
+      expect(tab.unlockedByPeer).toHaveBeenCalledTimes(1);
+      expect(tab.locked).toEqual([]);
+    });
+
+    it('a locked tab asks again when the user returns to it', async () => {
+      const tab = makeTab(new Map());
+      tab.state.hasKey = false;
+      tab.controller.start();
+
+      // Nobody is unlocked: the request comes back empty, the tab stays locked.
+      tab.doc.emit('visibilitychange');
+      await flush();
+      expect(tab.state.keyRequests).toBe(1);
+      expect(tab.unlockedByPeer).not.toHaveBeenCalled();
+
+      tab.state.peerHasKey = true;
+      tab.win.emit('focus');
+      await flush();
+      expect(tab.unlockedByPeer).toHaveBeenCalledTimes(1);
+    });
+
+    it('an unlocked tab never asks for a key', async () => {
+      const tab = makeTab(new Map());
+      tab.controller.start();
+      tab.handoff({ t: 'available' });
+      tab.doc.emit('visibilitychange');
+      await flush();
+      expect(tab.state.keyRequests).toBe(0);
+    });
+  });
+
   it('stop() removes every listener and timer', () => {
     const tab = makeTab(new Map());
     tab.controller.start();
@@ -399,5 +519,6 @@ describe('web-lock controller', () => {
     expect(tab.win.count('focus')).toBe(0);
     expect(tab.doc.count('keydown')).toBe(0);
     expect(tab.doc.count('visibilitychange')).toBe(0);
+    expect(tab.subscribed()).toBe(false);
   });
 });

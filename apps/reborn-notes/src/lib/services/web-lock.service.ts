@@ -3,8 +3,9 @@
  *
  * Opt-in and off by default. While the lock is on, the master key lives in
  * tab memory only (see `@reborn/crypto`, "Web App Lock"): nothing unwrapped is
- * stored in the browser, so the account password is needed on every start,
- * after a reload, in each new tab, and after the idle time the user picked.
+ * stored in the browser, so the account password is needed when the app is
+ * opened and after the idle time the user picked. While one tab is unlocked
+ * it hands the key to the others in memory, so they do not ask again.
  *
  * This module is the app-side glue around the shared controller:
  *  - what to flush before the key disappears (the open note, pending settings)
@@ -27,7 +28,8 @@ import { createLogger } from '@reborn/utils';
 import { toast, type WebLockChangeResult } from '@reborn/ui';
 import { get } from 'svelte/store';
 import { t } from '$lib/stores/i18n.store';
-import { CREDENTIALS_KEY } from '$lib/stores/auth.store';
+import { authStore, CREDENTIALS_KEY } from '$lib/stores/auth.store';
+import { goto } from '$lib/utils/navigation';
 
 const logger = createLogger('WebLock');
 
@@ -82,12 +84,26 @@ function leaveForUnlock(): void {
   window.location.replace(`${base}/auth/unlock`);
 }
 
+/**
+ * Another tab handed this locked tab the key (it is already in memory). Mark
+ * the session unlocked - the root layout then re-hydrates the stores - and
+ * leave the unlock screen with an in-app navigation: a page load would drop
+ * the memory-only key again.
+ */
+function adoptPeerUnlock(): void {
+  authStore.markE2EUnlocked();
+  if (window.location.pathname.startsWith(`${base}/auth/unlock`)) {
+    void goto('/');
+  }
+}
+
 /** Start the lock controller. Called once from the root layout on web. */
 export function initWebLock(): void {
   if (__REBORN_NATIVE__ || controller) return;
   controller = createWebLockController({
     onBeforeLock: flushBeforeLock,
-    onLocked: leaveForUnlock
+    onLocked: leaveForUnlock,
+    onUnlockedByPeer: adoptPeerUnlock
   });
   controller.start();
 }

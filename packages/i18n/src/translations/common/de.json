@@ -18,7 +18,7 @@
   "web_lock": {
     "title": "App-Sperre",
     "settings_item_desc": "Beim Öffnen der App und nach Inaktivität nach dem Passwort fragen",
-    "intro": "Bei aktivierter App-Sperre bleibt Ihr Verschlüsselungsschlüssel nur im Arbeitsspeicher und wird nie in diesem Browser gespeichert. Sie geben Ihr Kontopasswort bei jedem Öffnen und Neuladen der App ein, in jedem neuen Tab und nach der unten eingestellten Zeit ohne Aktivität.",
+    "intro": "Bei aktivierter App-Sperre bleibt Ihr Verschlüsselungsschlüssel nur im Arbeitsspeicher und wird nie in diesem Browser gespeichert. Sie geben Ihr Kontopasswort beim Öffnen der App und nach der unten eingestellten Zeit ohne Aktivität ein. Solange ein Tab entsperrt ist, öffnen sich weitere Tabs der App ohne Nachfrage.",
     "status_on": "App-Sperre ist aktiviert",
     "status_on_desc": "Zum Öffnen der App auf diesem Gerät wird Ihr Kontopasswort benötigt.",
     "status_off": "App-Sperre ist deaktiviert",

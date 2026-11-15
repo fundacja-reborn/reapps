@@ -3,10 +3,12 @@
  * behind the opt-in lock for account sessions in the browser / PWA.
  *
  * Model (see cryptoManager "Web App Lock" section): while the lock is enabled
- * the master key lives in tab memory only. Nothing unwrapped is kept in
- * IndexedDB or sessionStorage, so the only at-rest form is the account's
- * password-wrapped key (the same envelope the server stores). Locking clears
- * the in-memory key; unlocking re-derives it from the account password.
+ * the master key lives in the memory of open tabs only. Nothing unwrapped is
+ * kept in IndexedDB or sessionStorage, so the only at-rest form is the
+ * account's password-wrapped key (the same envelope the server stores).
+ * Locking clears the in-memory key in every tab; unlocking re-derives it from
+ * the account password in one tab, which then hands it to the other open tabs
+ * of the origin in memory (never through storage).
  *
  * Everything here is device-local and never synced. The lock is off by
  * default: with no config record the app behaves exactly as before (the key is
@@ -38,6 +40,20 @@ export const WEB_LOCK_EPOCH_KEY = 'reborn_web_lock_epoch';
  * otherwise the restore gate would refuse a key that nothing can re-derive.
  */
 export const WEB_LOCK_ACCOUNT_MARKER_KEY = 'reborn_auth_credentials';
+
+/**
+ * BroadcastChannel over which an unlocked tab hands the key to a locked tab
+ * of the same origin. In-memory, same-origin delivery only - nothing is
+ * written to disk, so "closed browser = locked" still holds.
+ */
+export const WEB_LOCK_HANDOFF_CHANNEL = 'reborn_web_lock_handoff';
+
+/**
+ * How long a tab waits for another tab to answer a key request. A reply takes
+ * a few milliseconds; the wait only shows as a short delay before the unlock
+ * form when no other tab is unlocked.
+ */
+export const WEB_LOCK_HANDOFF_TIMEOUT_MS = 300;
 
 /** localStorage: failed account-unlock attempts, `{ count, lockedUntil }`. */
 export const ACCOUNT_UNLOCK_ATTEMPTS_KEY = 'reborn_unlock_attempts';

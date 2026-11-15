@@ -30,7 +30,10 @@ import {
   WEB_LOCK_CONFIG_VERSION,
   WEB_LOCK_DEFAULT_TIMEOUT_MS,
   WEB_LOCK_EPOCH_KEY,
-  normalizeWebLockTimeout
+  WEB_LOCK_HANDOFF_CHANNEL,
+  WEB_LOCK_HANDOFF_TIMEOUT_MS,
+  normalizeWebLockTimeout,
+  parseStoredTimestamp
 } from './web-lock';
 import { createLogger } from '@reborn/utils';
 
@@ -53,6 +56,31 @@ const KEY_EVENT_CHANNEL = 'reborn_e2e';
 export type CryptoKeyEvent = 'unlocked' | 'cleared' | 'locked';
 
 export type KeyEventHandler = (event: CryptoKeyEvent) => void;
+
+/**
+ * Messages of the Web App Lock key handoff that a tab's lock controller acts
+ * on: a locked tab asking for the key, and a tab announcing that it just got
+ * the key from the password. (The reply carrying the key is consumed inside
+ * CryptoManager and never handed to subscribers.)
+ */
+export type WebLockHandoffSignal = { t: 'request'; id: string } | { t: 'available' };
+
+export type WebLockHandoffHandler = (signal: WebLockHandoffSignal) => void;
+
+/** The reply to a key request. */
+interface WebLockKeyOffer {
+  t: 'offer';
+  id: string;
+  key: CryptoKey;
+  /** Epoch ms at which the sender, still entitled to the key, sent it. */
+  sentAt: number;
+}
+
+/** The slice of BroadcastChannel the handoff uses. */
+interface HandoffChannel {
+  postMessage(message: unknown): void;
+  onmessage: ((event: { data: unknown }) => void) | null;
+}
 
 /**
  * Pluggable at-rest persistence for the master key (raw bytes, Base64).
@@ -137,6 +165,13 @@ export class CryptoManager {
   private channelInitialized = false;
   private keyEventHandlers: Set<KeyEventHandler> = new Set();
 
+  // Web App Lock key handoff (tab to tab, in memory).
+  private handoffChannel: HandoffChannel | null = null;
+  private handoffChannelInitialized = false;
+  private handoffHandlers: Set<WebLockHandoffHandler> = new Set();
+  private pendingHandoff: { id: string; resolve: (offer: WebLockKeyOffer) => void } | null = null;
+  private handoffRequest: Promise<boolean> | null = null;
+
   // Private constructor for singleton pattern
   private constructor() {
     // Restoration is started lazily on the first ensureRestoreStarted() call
@@ -217,6 +252,14 @@ export class CryptoManager {
         this.restoreKeyAttempted = true;
         await this.clearKeyFromIDB();
         this.dropSessionKeyExport();
+        // Another tab of this origin may be unlocked: it can hand the key over
+        // in memory, so a new tab or a reload does not ask for the password
+        // again. With no unlocked tab around this falls through to the unlock
+        // screen after a short wait.
+        if (await this.requestKeyFromPeer()) {
+          logger.info('Web App Lock enabled - key received from an unlocked tab');
+          return true;
+        }
         logger.info('Web App Lock enabled - key locked, awaiting password unlock');
         return false;
       }
@@ -827,6 +870,9 @@ export class CryptoManager {
       } catch (error) {
         logger.error('Encryption verification after unlock failed:', error);
       }
+      // Tell locked tabs of this origin that a key is available: they ask for
+      // it and unlock without a second password prompt.
+      this.postHandoff({ t: 'available' });
       logger.debug('Master key set (memory only - Web App Lock)');
       return;
     }
@@ -1556,9 +1602,10 @@ export class CryptoManager {
   // enabled the master key is never persisted unwrapped: no CryptoKey in
   // IndexedDB, no raw export in sessionStorage. The only at-rest form is the
   // account's password-wrapped key in the credentials record - the same
-  // envelope the server stores - so a cold start, a reload and every new tab
-  // ask for the account password, and "Lock now" / the idle timeout simply
-  // drop the in-memory key. Unlike the native App Lock (a UX gate on reading
+  // envelope the server stores - so opening the app asks for the account
+  // password, and "Lock now" / the idle timeout simply drop the in-memory
+  // key. Tabs open at the same time share the key in memory (see "key handoff
+  // between tabs" below), so only the first one asks. Unlike the native App Lock (a UX gate on reading
   // the vault) this is a cryptographic lock: its strength is the strength of
   // the account password. See web-lock.ts for the policy and
   // web-lock-controller.ts for the idle / cross-tab part.
@@ -1756,6 +1803,191 @@ export class CryptoManager {
       }
     }
     logger.debug('Master key dropped from memory (Web App Lock)');
+  }
+
+  // ── Web App Lock: key handoff between tabs ───────────────────
+  //
+  // With the lock on, each tab holds the key in its own memory, so a tab that
+  // was locked (or just opened / reloaded) has nothing to read. Instead of
+  // asking for the password in every tab, an unlocked tab hands the key over:
+  //
+  //   locked tab   -> { t: 'request', id }
+  //   unlocked tab -> { t: 'offer', id, key, sentAt }
+  //   a tab that just unlocked with the password -> { t: 'available' }
+  //
+  // The channel is a BroadcastChannel: same-origin, same browser profile, in
+  // memory. Nothing reaches disk, so the at-rest promise is untouched and a
+  // closed browser is still a locked one. What changes is isolation between
+  // tabs: script running in another tab of this origin can now ask for the
+  // key, which is the level the app has with the lock off. Decided
+  // 2026-11-15 (planning/web-app-lock-plan.md, section 13).
+  //
+  // CryptoManager owns the channel, the request and the adoption of an offer.
+  // WHEN to answer a request is the lock controller's call (it knows whether
+  // this tab is itself due to lock), so requests are forwarded to subscribers.
+
+  /** Lazily open the handoff channel; null where BroadcastChannel is missing. */
+  private ensureHandoffChannel(): HandoffChannel | null {
+    if (this.handoffChannelInitialized) return this.handoffChannel;
+    this.handoffChannelInitialized = true;
+    const Channel =
+      typeof window !== 'undefined'
+        ? (window as unknown as { BroadcastChannel?: new (name: string) => HandoffChannel })
+            .BroadcastChannel
+        : undefined;
+    if (!Channel) return null;
+    try {
+      const channel = new Channel(WEB_LOCK_HANDOFF_CHANNEL);
+      channel.onmessage = (event) => this.onHandoffMessage(event.data);
+      this.handoffChannel = channel;
+    } catch (error) {
+      logger.warn('BroadcastChannel unavailable - tabs unlock separately:', error);
+      this.handoffChannel = null;
+    }
+    return this.handoffChannel;
+  }
+
+  private postHandoff(message: WebLockHandoffSignal | WebLockKeyOffer): void {
+    const channel = this.ensureHandoffChannel();
+    if (!channel) return;
+    try {
+      channel.postMessage(message);
+    } catch (error) {
+      logger.warn(`Failed to post handoff message "${message.t}":`, error);
+    }
+  }
+
+  private onHandoffMessage(data: unknown): void {
+    if (!data || typeof data !== 'object') return;
+    const message = data as Partial<WebLockKeyOffer> & { t?: string };
+    if (message.t === 'offer') {
+      if (this.pendingHandoff && message.id === this.pendingHandoff.id) {
+        this.pendingHandoff.resolve(message as WebLockKeyOffer);
+      }
+      return;
+    }
+    let signal: WebLockHandoffSignal;
+    if (message.t === 'request' && typeof message.id === 'string') {
+      signal = { t: 'request', id: message.id };
+    } else if (message.t === 'available') {
+      signal = { t: 'available' };
+    } else {
+      return;
+    }
+    for (const handler of this.handoffHandlers) {
+      try {
+        handler(signal);
+      } catch (error) {
+        logger.error('Handoff handler threw:', error);
+      }
+    }
+  }
+
+  /**
+   * Listen for handoff requests and "key available" announcements from other
+   * tabs. Used by the lock controller; returns an unsubscriber.
+   */
+  public subscribeToHandoff(handler: WebLockHandoffHandler): () => void {
+    this.ensureHandoffChannel();
+    this.handoffHandlers.add(handler);
+    return () => {
+      this.handoffHandlers.delete(handler);
+    };
+  }
+
+  /**
+   * Answer a key request from another tab. Only with the lock on and a key in
+   * memory; the caller (the lock controller) has already made sure this tab
+   * is not itself due to lock.
+   */
+  public offerKeyToPeer(requestId: string): void {
+    if (!this.readWebLockConfig() || !this.isInitialized() || !this.masterKey) return;
+    this.postHandoff({ t: 'offer', id: requestId, key: this.masterKey, sentAt: Date.now() });
+  }
+
+  /**
+   * Ask the other tabs of this origin for the key. Resolves true when an
+   * unlocked tab handed it over and it is now in this tab's memory; false
+   * when the lock is off, this tab already has a key, or nobody answered in
+   * time. Concurrent callers share one request.
+   */
+  public requestKeyFromPeer(timeoutMs: number = WEB_LOCK_HANDOFF_TIMEOUT_MS): Promise<boolean> {
+    if (!this.handoffRequest) {
+      this.handoffRequest = this.runHandoffRequest(timeoutMs).finally(() => {
+        this.handoffRequest = null;
+      });
+    }
+    return this.handoffRequest;
+  }
+
+  private async runHandoffRequest(timeoutMs: number): Promise<boolean> {
+    if (!this.readWebLockConfig() || this.isInitialized()) return false;
+    const channel = this.ensureHandoffChannel();
+    if (!channel) return false;
+
+    const id = arrayBufferToBase64(crypto.getRandomValues(new Uint8Array(12)));
+    const offer = await new Promise<WebLockKeyOffer | null>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingHandoff = null;
+        resolve(null);
+      }, timeoutMs);
+      this.pendingHandoff = {
+        id,
+        resolve: (received) => {
+          clearTimeout(timer);
+          this.pendingHandoff = null;
+          resolve(received);
+        }
+      };
+      try {
+        channel.postMessage({ t: 'request', id });
+      } catch {
+        clearTimeout(timer);
+        this.pendingHandoff = null;
+        resolve(null);
+      }
+    });
+    if (!offer) return false;
+    return this.adoptOfferedKey(offer);
+  }
+
+  /** Take a key handed over by another tab into memory - never to storage. */
+  private async adoptOfferedKey(offer: WebLockKeyOffer): Promise<boolean> {
+    // The lock was switched off or the password was typed while waiting.
+    if (!this.readWebLockConfig() || this.isInitialized()) return false;
+
+    const { key, sentAt } = offer;
+    const usable =
+      !!key &&
+      typeof key === 'object' &&
+      key.type === 'secret' &&
+      key.algorithm?.name === 'AES-GCM' &&
+      Array.isArray(key.usages) &&
+      key.usages.includes('encrypt') &&
+      key.usages.includes('decrypt');
+    if (!usable || typeof sentAt !== 'number' || !Number.isFinite(sentAt)) return false;
+
+    // A lock performed after the offer was sent wins: the sender was entitled
+    // to the key at `sentAt`, not necessarily any more.
+    const lockedAt = parseStoredTimestamp(window.localStorage.getItem(WEB_LOCK_EPOCH_KEY));
+    if (lockedAt > sentAt) return false;
+
+    this.masterKey = key;
+    this.initialized = true;
+    // Date the key from the moment it was sent, not received, so a lock that
+    // lands in between still locks this tab (the controller compares the lock
+    // timestamp with this value).
+    this.keyLoadedAt = Math.min(sentAt, Date.now());
+    try {
+      await this.verifyEncryption();
+    } catch (error) {
+      logger.error('Key received from another tab failed verification:', error);
+      this.masterKey = null;
+      this.initialized = false;
+      this.keyLoadedAt = 0;
+      return false;
+    }
+    return true;
   }
 
   // Expose utility methods from encryption module

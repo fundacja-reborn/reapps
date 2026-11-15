@@ -3,8 +3,9 @@
  *
  * Opt-in and off by default. While the lock is on, the master key lives in
  * tab memory only (see `@reborn/crypto`, "Web App Lock"): nothing unwrapped is
- * stored in the browser, so the account password is needed on every start,
- * after a reload, in each new tab, and after the idle time the user picked.
+ * stored in the browser, so the account password is needed when the app is
+ * opened and after the idle time the user picked. While one tab is unlocked
+ * it hands the key to the others in memory, so they do not ask again.
  *
  * This module is the app-side glue around the shared controller:
  *  - what to flush before the key disappears (the open task, pending settings)
@@ -23,6 +24,7 @@ import {
 } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import { toast, type WebLockChangeResult } from '@reborn/ui';
+import { authOperationsService } from '$lib/services/auth-operations.service';
 import { get } from 'svelte/store';
 import { t } from '$lib/stores/i18n.store';
 
@@ -104,12 +106,23 @@ function leaveForUnlock(): void {
 	window.location.replace(target);
 }
 
+/**
+ * Another tab handed this locked tab the key (it is already in memory). Mark
+ * the session unlocked: the unlock page reacts to `hasE2E` and navigates to
+ * its `returnTo` inside the app (a page load would drop the memory-only key
+ * again), and the layouts load the data as after any unlock.
+ */
+function adoptPeerUnlock(): void {
+	authOperationsService.getSessionManager().setSession({ hasE2E: true });
+}
+
 /** Start the lock controller. Called once on client start. */
 export function initWebLock(): void {
 	if (controller) return;
 	controller = createWebLockController({
 		onBeforeLock: flushBeforeLock,
-		onLocked: leaveForUnlock
+		onLocked: leaveForUnlock,
+		onUnlockedByPeer: adoptPeerUnlock
 	});
 	controller.start();
 }

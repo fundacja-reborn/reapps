@@ -30,7 +30,8 @@
     // unlocked it, or cold start landed here before the layout's restore
     // settled). waitForRestore() resolves with a 5s fail-soft timeout, so the
     // password form still appears if IDB is genuinely empty/slow. With the Web
-    // App Lock on there is never a key at rest, so this falls through.
+    // App Lock on there is never a key at rest; the restore then succeeds only
+    // when another unlocked tab handed the key over in memory.
     await cryptoManager.waitForRestore();
     if (cryptoManager.isInitialized()) {
       logger.info('Master key found in shared IDB - skipping password prompt');

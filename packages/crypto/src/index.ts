@@ -7,7 +7,13 @@
 
 // CryptoManager - main crypto operations class
 export { CryptoManager, cryptoManager } from './cryptoManager';
-export type { CryptoKeyEvent, KeyEventHandler, MasterKeyVault } from './cryptoManager';
+export type {
+  CryptoKeyEvent,
+  KeyEventHandler,
+  MasterKeyVault,
+  WebLockHandoffHandler,
+  WebLockHandoffSignal
+} from './cryptoManager';
 
 // Encryption utilities
 export {

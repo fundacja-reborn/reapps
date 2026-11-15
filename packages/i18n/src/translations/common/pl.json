@@ -18,7 +18,7 @@
   "web_lock": {
     "title": "Blokada aplikacji",
     "settings_item_desc": "Pytaj o hasło przy otwarciu aplikacji i po czasie bezczynności",
-    "intro": "Przy włączonej blokadzie klucz szyfrowania jest trzymany tylko w pamięci i nigdy nie jest zapisywany w tej przeglądarce. Hasło konta podajesz przy każdym otwarciu i przeładowaniu aplikacji, w każdej nowej karcie oraz po czasie bezczynności ustawionym niżej.",
+    "intro": "Przy włączonej blokadzie klucz szyfrowania jest trzymany tylko w pamięci i nigdy nie jest zapisywany w tej przeglądarce. Hasło konta podajesz po otwarciu aplikacji oraz po czasie bezczynności ustawionym niżej. Dopóki jedna karta jest odblokowana, pozostałe karty aplikacji otwierają się bez pytania.",
     "status_on": "Blokada aplikacji jest włączona",
     "status_on_desc": "Do otwarcia aplikacji na tym urządzeniu potrzebne jest hasło konta.",
     "status_off": "Blokada aplikacji jest wyłączona",

@@ -18,7 +18,7 @@
   "web_lock": {
     "title": "App Lock",
     "settings_item_desc": "Ask for your password when the app is opened and after a period of inactivity",
-    "intro": "With App Lock on, your encryption key is kept in memory only and is never stored in this browser. You enter your account password every time you open or reload the app, in each new tab, and after the idle time set below.",
+    "intro": "With App Lock on, your encryption key is kept in memory only and is never stored in this browser. You enter your account password when you open the app and after the idle time set below. While one tab is unlocked, other tabs of the app open without asking.",
     "status_on": "App Lock is on",
     "status_on_desc": "Your account password is needed to open the app on this device.",
     "status_off": "App Lock is off",
