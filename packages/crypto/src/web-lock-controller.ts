@@ -7,8 +7,10 @@
  * lock sequence: let the app flush unsaved work, drop the key, hand over to
  * the app for the (hard) navigation to the unlock screen.
  *
- * Nothing happens while the lock is off or the tab holds no key - the
- * listeners and the tick are only installed while the lock is enabled.
+ * Nothing happens while the lock is off or the tab holds no key. The activity
+ * listeners and the tick are only installed while the lock is enabled; a few
+ * rare events (storage, return to the tab) are always watched, so a tab also
+ * notices the lock being switched on elsewhere.
  *
  * The browser environment is injected so the logic runs under plain Node in
  * tests; apps call `createWebLockController()` with the defaults.
@@ -218,6 +220,9 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
 
   const onReturn: Listener = () => {
     if (env.doc.visibilityState !== undefined && env.doc.visibilityState !== 'visible') return;
+    // The setting may have changed while this tab was frozen and its storage
+    // event never arrived - re-read it before deciding.
+    refresh();
     check();
   };
 
@@ -228,6 +233,7 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
       options.onLocked('remote');
       return;
     }
+    refresh();
     check();
   };
 
@@ -236,9 +242,7 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
     if (key === WEB_LOCK_EPOCH_KEY) {
       check();
     } else if (key === WEB_LOCK_CONFIG_KEY) {
-      // The lock was switched in another tab. When it was turned on, this
-      // tab's own raw key export must go too (sessionStorage is per tab).
-      if (keyHolder.isWebLockEnabled()) keyHolder.dropSessionKeyExport();
+      // The lock was switched on or off in another tab.
       refresh();
     }
   };
@@ -249,11 +253,13 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
     const enabled = keyHolder.isWebLockEnabled();
     if (enabled && !armed) {
       armed = true;
+      // The lock is on, so nothing unwrapped may stay at rest. sessionStorage
+      // is per tab: when the lock was turned on in another tab, this tab's own
+      // raw key export is still there and only this tab can remove it.
+      keyHolder.dropSessionKeyExport();
       for (const type of ACTIVITY_EVENTS) {
         env.doc.addEventListener(type, onActivity, LISTENER_OPTIONS);
       }
-      env.doc.addEventListener('visibilitychange', onReturn);
-      env.win.addEventListener('focus', onReturn);
       tickHandle = env.setInterval(check, TICK_MS);
       check();
     } else if (!enabled && armed) {
@@ -267,8 +273,6 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
     for (const type of ACTIVITY_EVENTS) {
       env.doc.removeEventListener(type, onActivity, LISTENER_OPTIONS);
     }
-    env.doc.removeEventListener('visibilitychange', onReturn);
-    env.win.removeEventListener('focus', onReturn);
     if (tickHandle !== null) env.clearInterval(tickHandle);
     tickHandle = null;
   }
@@ -279,6 +283,8 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
       started = true;
       env.win.addEventListener('storage', onStorage);
       env.win.addEventListener('pageshow', onPageShow);
+      env.win.addEventListener('focus', onReturn);
+      env.doc.addEventListener('visibilitychange', onReturn);
       refresh();
     },
     stop(): void {
@@ -286,6 +292,8 @@ export function createWebLockController(options: WebLockControllerOptions): WebL
       started = false;
       env.win.removeEventListener('storage', onStorage);
       env.win.removeEventListener('pageshow', onPageShow);
+      env.win.removeEventListener('focus', onReturn);
+      env.doc.removeEventListener('visibilitychange', onReturn);
       disarm();
     },
     refresh,

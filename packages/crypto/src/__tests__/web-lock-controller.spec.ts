@@ -371,6 +371,23 @@ describe('web-lock controller', () => {
     expect(tab.doc.count('pointerdown')).toBe(0);
   });
 
+  it('a tab that missed the "lock turned on" event arms when the user returns to it', async () => {
+    const tab = makeTab(new Map());
+    tab.state.enabled = false;
+    tab.controller.start();
+
+    // Turned on in another tab while this one was frozen: no storage event.
+    tab.state.enabled = true;
+    expect(tab.ticking()).toBe(0);
+
+    tab.doc.emit('visibilitychange');
+    expect(tab.ticking()).toBe(1);
+    expect(tab.state.sessionExportDropped).toBe(1);
+
+    await tab.advance(5 * MINUTE);
+    expect(tab.locked).toEqual(['idle']);
+  });
+
   it('stop() removes every listener and timer', () => {
     const tab = makeTab(new Map());
     tab.controller.start();
@@ -379,6 +396,7 @@ describe('web-lock controller', () => {
     expect(tab.ticking()).toBe(0);
     expect(tab.win.count('storage')).toBe(0);
     expect(tab.win.count('pageshow')).toBe(0);
+    expect(tab.win.count('focus')).toBe(0);
     expect(tab.doc.count('keydown')).toBe(0);
     expect(tab.doc.count('visibilitychange')).toBe(0);
   });
