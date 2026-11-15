@@ -67,6 +67,23 @@ export {
   LocalPasscodeThrottledError
 } from './local-passcode';
 
+// Web App Lock (opt-in lock for account sessions in the browser / PWA)
+export {
+  WEB_LOCK_TIMEOUT_PRESETS_MS,
+  WEB_LOCK_DEFAULT_TIMEOUT_MS,
+  WEB_LOCK_TIMEOUT_NEVER,
+  normalizeWebLockTimeout,
+  isWebLockIdleExpired
+} from './web-lock';
+export { createWebLockController, BEFORE_LOCK_TIMEOUT_MS } from './web-lock-controller';
+export type {
+  WebLockController,
+  WebLockControllerOptions,
+  WebLockEnv,
+  WebLockKeyHolder,
+  WebLockReason
+} from './web-lock-controller';
+
 // Backup recovery phrase (user-held secret that encrypts automated backups)
 export {
   generateRecoveryPhrase,
