@@ -113,6 +113,27 @@ Since no email is stored, account recovery relies on:
    4. All data is decrypted locally
    ```
 
+## The Key on the Device
+
+The master key never leaves the device, but it has to be kept somewhere between visits. What is stored depends on the platform and on one optional setting:
+
+| Mode | At rest on the device | When the password is asked |
+|---|---|---|
+| Web / PWA (default) | The master key as a `CryptoKey` in IndexedDB - browser storage, no hardware protection | At sign-in only |
+| Web / PWA with **App Lock** on | Only the password-wrapped key, the same envelope the server stores | On every start, after a reload, in each new tab, and after the chosen idle time |
+| Native apps | The key wrapped by the platform key store (Android Keystore / iOS Keychain) | At sign-in only |
+| No-account mode with a passcode | Only the passcode-wrapped key | On every start |
+
+**App Lock on the web** is opt-in and off by default. While it is on, the unwrapped key exists only in the memory of an open tab: it is never written to IndexedDB or session storage. Locking - manually, after the idle time, or simply by closing the app - drops the key. Unlocking re-derives it locally from the account password (PBKDF2 600K + AES-GCM), so it also works offline, and its strength is the strength of that password. Nothing new is sent to the server and the server visibility model above is unchanged.
+
+What App Lock does not do:
+
+- It does not sign the user out. The session stays valid, so someone with access to the browser profile could still call the API - and would get ciphertext.
+- It does not protect a tab that is currently unlocked.
+- It protects titles and content. A few local index fields that contain no text (completed / starred / pinned flags, due dates, tag IDs) stay unencrypted in IndexedDB while locked. They exist only on the device and are never sent to the server.
+
+Wrong passwords on the unlock screen neither sign the user out nor delete local data: they add a growing delay that is kept on the device.
+
 ## Encryption Guard
 
 To enforce the Zero Knowledge contract at the code level, all data leaving the client passes through a **3-layer encryption validation** pipeline:
