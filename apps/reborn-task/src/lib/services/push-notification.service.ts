@@ -308,6 +308,13 @@ class PushNotificationService {
 	): Promise<void> {
 		if (!this.isSupported() || Notification.permission !== 'granted') return;
 
+		// Locked is not "no tasks". Without the master key the decrypted task
+		// store is empty, and syncing that would cancel every reminder - in the
+		// service worker and on the server - each time the app locks (Web App
+		// Lock) or waits on the unlock screen. Leave the schedule as it is; the
+		// first sync after unlock brings it up to date.
+		if (!cryptoManager.isInitialized()) return;
+
 		const sw = await navigator.serviceWorker.ready;
 		const now = Date.now();
 		const window24h = 24 * 60 * 60 * 1000;
