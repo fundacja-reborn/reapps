@@ -2,7 +2,7 @@
 	import { base } from '$app/paths';
 	import { goto } from '$lib/utils/navigation';
 	import { page } from '$app/stores';
-	import { UnlockPage } from '@reborn/ui';
+	import { UnlockPage, type UnlockFailure } from '@reborn/ui';
 	import { session } from '$lib/stores/auth.store';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { browser } from '$app/environment';
@@ -12,8 +12,9 @@
 	const logger = createLogger('UnlockRoute');
 
 	let loading = $state(false);
-	let error = $state<string | null>(null);
-	let attemptsRemaining = $state<number | undefined>(undefined);
+	let failure = $state<UnlockFailure | null>(null);
+	/** Epoch ms before which another attempt is refused (0 = none running). */
+	let retryAt = $state(0);
 	let username = $state('');
 	let isRedirecting = false;
 	// Guard: prevent $effect from racing with handleUnlock().
@@ -44,7 +45,7 @@
 		// Wait until the session store has finished bootstrapping. Without this
 		// guard the first reactive pass sees {isInitialized:false, isAuthenticated:false}
 		// and bounces to /auth/login before initializeAuth() has even populated
-		// the store — producing the offline redirect loop.
+		// the store - producing the offline redirect loop.
 		if (!currentSession.isInitialized || currentSession.isLoading) {
 			return;
 		}
@@ -66,7 +67,7 @@
 		if (!currentSession.hasE2E) {
 			await cryptoManager.waitForRestore();
 			if (cryptoManager.isInitialized()) {
-				logger.info('Master key found in shared IDB — skipping password prompt');
+				logger.info('Master key found in shared IDB - skipping password prompt');
 				authOperationsService.getSessionManager().setSession({ hasE2E: true });
 				isRedirecting = true;
 				await goto(returnTo);
@@ -86,30 +87,40 @@
 		if (currentSession.user?.username) {
 			username = currentSession.user.username;
 		}
+
+		// A retry delay from earlier wrong passwords survives a reload - resume
+		// the countdown instead of offering a form that would be refused.
+		const waitMs = cryptoManager.getAccountUnlockRetryDelayMs();
+		if (waitMs > 0 && retryAt === 0) retryAt = Date.now() + waitMs;
 	}
 
 	async function handleUnlock(password: string) {
 		loading = true;
-		error = null;
+		failure = null;
 		isUnlocking = true;
 
 		try {
-			const result = await authOperationsService.unlockE2E(password);
+			const outcome = await authOperationsService.unlockWithPassword(password);
 
-			if (result.success) {
+			if (outcome.kind === 'ok') {
 				logger.info('E2E unlocked successfully');
 				// Set flag to prevent double redirect
 				isRedirecting = true;
 				// Redirect to the intended destination
 				await goto(returnTo);
-			} else {
-				error = result.message || 'Failed to unlock';
-				attemptsRemaining = result.attemptsRemaining;
-				isUnlocking = false;
+				return;
 			}
+
+			// Wrong passwords no longer sign the user out (that wiped local data,
+			// unsynced edits included): they open a growing delay instead.
+			failure = outcome;
+			if (outcome.kind === 'invalid_password' || outcome.kind === 'throttled') {
+				retryAt = outcome.retryAfterMs > 0 ? Date.now() + outcome.retryAfterMs : 0;
+			}
+			isUnlocking = false;
 		} catch (err: unknown) {
 			logger.error('Unlock error:', err);
-			error = err instanceof Error ? err.message : 'Failed to unlock';
+			failure = { kind: 'error' };
 			isUnlocking = false;
 		} finally {
 			loading = false;
@@ -124,7 +135,7 @@
 			// Navigation is handled by logout function
 		} catch (err: unknown) {
 			logger.error('Logout error:', err);
-			error = err instanceof Error ? err.message : 'Failed to logout';
+			failure = { kind: 'error' };
 			loading = false;
 		}
 	}
@@ -142,21 +153,9 @@
 <UnlockPage
 	{username}
 	{loading}
-	{error}
-	{attemptsRemaining}
+	{failure}
+	{retryAt}
 	header={logoHeader}
 	onUnlock={handleUnlock}
 	onLogout={handleLogout}
->
-	{#snippet footer()}
-		<p class="text-sm text-gray-600 dark:text-gray-400">
-			Having trouble? You can also
-			<button
-				onclick={handleLogout}
-				class="font-medium text-primary hover:text-primary/80 underline"
-			>
-				sign out and log in again
-			</button>
-		</p>
-	{/snippet}
-</UnlockPage>
+/>

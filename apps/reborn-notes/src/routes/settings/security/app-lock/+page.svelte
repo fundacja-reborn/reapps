@@ -10,8 +10,17 @@
     Button,
     Alert,
     AlertDescription,
+    WebLockSettings,
     toast
   } from '@reborn/ui';
+  import { cryptoManager, WEB_LOCK_TIMEOUT_PRESETS_MS } from '@reborn/crypto';
+  import {
+    enableWebLock,
+    disableWebLock,
+    isWebLockEnabled,
+    lockWebNow,
+    setWebLockTimeout
+  } from '$lib/services/web-lock.service';
   import { Fingerprint, ScanFace, Lock, ShieldAlert } from '@lucide/svelte';
   import { t } from '$lib/stores/i18n.store';
   import { goto } from '$lib/utils/navigation';
@@ -38,6 +47,34 @@
   let timeoutMs = $state(getTimeoutMs());
   let busy = $state(false);
 
+  // Web variant (browser / PWA): a different mechanism under the same name.
+  // Native gates reading the device vault behind biometrics; on the web the
+  // key is kept in memory only and the account password unlocks.
+  let webEnabled = $state(false);
+  let webTimeoutMs = $state(cryptoManager.getWebLockTimeoutMs());
+
+  function refreshWebState() {
+    webEnabled = isWebLockEnabled();
+    webTimeoutMs = cryptoManager.getWebLockTimeoutMs();
+  }
+
+  async function handleWebEnable(password: string) {
+    const result = await enableWebLock(password);
+    refreshWebState();
+    return result;
+  }
+
+  async function handleWebDisable(password: string) {
+    const result = await disableWebLock(password);
+    refreshWebState();
+    return result;
+  }
+
+  function handleWebTimeout(ms: number) {
+    setWebLockTimeout(ms);
+    refreshWebState();
+  }
+
   const biometryLabel = $derived(
     biometryKind === 'none'
       ? $t('app_lock.biometry.generic')
@@ -52,11 +89,16 @@
   };
 
   onMount(() => {
-    // App Lock is a native, account-mode feature: the master key has to live in
-    // the device vault for the biometric gate to read it back. Local-only mode
-    // uses its passcode lock instead.
-    if (!__REBORN_NATIVE__ || !get(authStore).isAuthenticated) {
+    // App Lock is an account-mode feature on both platforms: native needs the
+    // master key in the device vault for the biometric gate, the web needs the
+    // account's password wrap to unlock with. Local-only mode uses its
+    // passcode lock instead.
+    if (!get(authStore).isAuthenticated) {
       goto('/settings');
+      return;
+    }
+    if (!__REBORN_NATIVE__) {
+      refreshWebState();
       return;
     }
     enabled = isAppLockEnabled();
@@ -112,6 +154,20 @@
   }
 </script>
 
+{#if !__REBORN_NATIVE__}
+  <SettingsLayout title={$t('web_lock.title')} backHref="/settings">
+    <WebLockSettings
+      enabled={webEnabled}
+      timeoutMs={webTimeoutMs}
+      timeoutPresets={WEB_LOCK_TIMEOUT_PRESETS_MS}
+      username={$authStore.username ?? ''}
+      onEnable={handleWebEnable}
+      onDisable={handleWebDisable}
+      onTimeoutChange={handleWebTimeout}
+      onLockNow={() => void lockWebNow()}
+    />
+  </SettingsLayout>
+{:else}
 <SettingsLayout title={$t('app_lock.settings_item_title')} backHref="/settings">
   <div class="space-y-6">
     <Alert>
@@ -203,3 +259,4 @@
     {/if}
   </div>
 </SettingsLayout>
+{/if}

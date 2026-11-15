@@ -40,6 +40,7 @@
 	import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@reborn/ui';
 	import { session } from '$lib/stores/auth.store';
 	import { cryptoManager } from '@reborn/crypto';
+	import { isWebLockEnabled, lockWebNow } from '$lib/services/web-lock.service';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { goto } from '$lib/utils/navigation';
 	import { t, locale as i18nLocale } from '$lib/stores/i18n.store';
@@ -111,6 +112,12 @@
 		cryptoManager.lockLocal();
 		authOperationsService.getSessionManager().setSession({ hasE2E: false });
 		goto('/auth/lock');
+	}
+
+	// Web App Lock (account session): flush, drop the key in every tab and
+	// reload into the password unlock screen.
+	function handleWebLockNow() {
+		void lockWebNow();
 	}
 
 	const SECTIONS = $derived([
@@ -529,7 +536,7 @@
 									<span class="truncate font-medium"
 										>{$session.isLocalOnly
 											? $t('local_mode.menu_title')
-											: ($session.user?.username ?? '—')}</span
+											: ($session.user?.username ?? '-')}</span
 									>
 									<span class="truncate text-xs text-muted-foreground"
 										>{$session.isLocalOnly
@@ -549,6 +556,12 @@
 								<DropdownMenu.Item onclick={handleLockNow}>
 									<Lock class="h-4 w-4" />
 									{$t('local_mode.passcode.lock_now_cta')}
+								</DropdownMenu.Item>
+							{/if}
+							{#if $session.isAuthenticated && isWebLockEnabled()}
+								<DropdownMenu.Item onclick={handleWebLockNow}>
+									<Lock class="h-4 w-4" />
+									{$t('web_lock.lock_now_cta')}
 								</DropdownMenu.Item>
 							{/if}
 						</DropdownMenu.Group>
@@ -598,7 +611,7 @@
 						<span class="truncate font-medium"
 							>{$session.isLocalOnly
 								? $t('local_mode.menu_title')
-								: ($session.user?.username ?? '—')}</span
+								: ($session.user?.username ?? '-')}</span
 						>
 						<span class="truncate text-xs font-normal text-muted-foreground"
 							>{$session.isLocalOnly
@@ -632,6 +645,19 @@
 				>
 					<Lock class="me-2 h-4 w-4" />
 					{$t('local_mode.passcode.lock_now_cta')}
+				</Button>
+			{/if}
+			{#if $session.isAuthenticated && isWebLockEnabled()}
+				<Button
+					variant="ghost"
+					class="w-full justify-start"
+					onclick={() => {
+						userSheetOpen = false;
+						handleWebLockNow();
+					}}
+				>
+					<Lock class="me-2 h-4 w-4" />
+					{$t('web_lock.lock_now_cta')}
 				</Button>
 			{/if}
 			{#if $session.isLocalOnly}

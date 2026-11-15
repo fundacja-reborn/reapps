@@ -44,9 +44,6 @@ export type { LoginResult, RegisterResult, TwoFactorVerificationResult } from '.
  * Handles user authentication, registration, and session management
  */
 export class AuthService implements IAuthService {
-  private unlockAttempts = 0;
-  private readonly MAX_UNLOCK_ATTEMPTS = 5;
-
   constructor(
     private cryptoManager: CryptoManager,
     private sessionManager: SessionManager,
@@ -112,9 +109,6 @@ export class AuthService implements IAuthService {
       if (!loginCompleted) {
         throw new Error('Failed to complete login');
       }
-
-      // Reset unlock attempts on successful login
-      this.unlockAttempts = 0;
 
       return loginResult;
     } catch (error) {
@@ -189,10 +183,7 @@ export class AuthService implements IAuthService {
       
       // Clear session
       this.sessionManager.clearSession();
-      
-      // Reset unlock attempts
-      this.unlockAttempts = 0;
-      
+
       logger.info('Logout completed successfully');
     } catch (error) {
       logger.error('Logout failed:', error);
@@ -518,15 +509,12 @@ export class AuthService implements IAuthService {
     this.sessionManager.setError(null);
 
     try {
-      // Check if too many attempts
-      if (this.unlockAttempts >= this.MAX_UNLOCK_ATTEMPTS) {
-        logger.warn('Too many unlock attempts, forcing logout');
-        await this.logout(true);
-        return {
-          success: false,
-          message: 'Too many failed attempts. Please login again.'
-        };
-      }
+      // Wrong passwords are NOT counted here. The old in-memory counter forced
+      // a logout after 5 failures - a reload reset it, and the logout wiped
+      // local data together with unsynced edits. The apps' unlock flows keep a
+      // persistent growing delay instead (CryptoManager account-unlock
+      // throttle) and may still turn this failure into a success by fetching a
+      // fresh key wrap (password changed on another device).
 
       // Check if user is authenticated (has valid session)
       if (!this.sessionManager.isAuthenticated()) {
@@ -555,24 +543,17 @@ export class AuthService implements IAuthService {
       );
 
       if (!keyLoaded || !this.cryptoManager.isInitialized()) {
-        logger.error('Failed to unlock E2E with provided password');
-        
-        // Increment failed attempts counter
-        this.unlockAttempts++;
-        const attemptsRemaining = this.MAX_UNLOCK_ATTEMPTS - this.unlockAttempts;
-        
+        logger.warn('Failed to unlock E2E with provided password');
+
         return {
           success: false,
           username: credentials.user_profile.username,
-          message: `Invalid password. ${attemptsRemaining} attempt${attemptsRemaining === 1 ? '' : 's'} remaining.`,
-          attemptsRemaining
+          message: 'Invalid password',
+          code: 'invalid_password'
         };
       }
 
       logger.debug('E2E unlocked successfully');
-
-      // Reset unlock attempts on success
-      this.unlockAttempts = 0;
 
       // Update session to reflect E2E is now available
       this.sessionManager.setSession({

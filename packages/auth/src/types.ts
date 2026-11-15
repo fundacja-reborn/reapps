@@ -109,7 +109,12 @@ export interface UnlockE2EResult {
   success: boolean;
   username?: string;
   message?: string;
-  attemptsRemaining?: number;
+  /**
+   * Set when the stored key wrap did not open with the given password - the
+   * one failure the caller may recover from (fresh wrap from the server) and
+   * the one that counts towards the unlock retry delay.
+   */
+  code?: 'invalid_password';
 }
 
 // Auth service interface

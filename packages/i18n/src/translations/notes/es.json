@@ -1268,17 +1268,6 @@
       "username_required": "El nombre de usuario es obligatorio",
       "password_required": "La contraseña es obligatoria"
     },
-    "unlock": {
-      "title": "Desbloquee sus notas",
-      "signed_in_as": "Sesión iniciada como",
-      "password_label": "Contraseña",
-      "password_placeholder": "Introduzca su contraseña",
-      "submit": "Desbloquear",
-      "unlocking": "Desbloqueando…",
-      "error_attempts": "Contraseña incorrecta. {count} intento(s) restante(s).",
-      "info": "Sus notas están cifradas de extremo a extremo. Introduzca la contraseña de su cuenta Reborn para descifrarlas.",
-      "different_account": "Iniciar sesión con otra cuenta"
-    },
     "two_factor": {
       "title": "Autenticación de dos factores",
       "totp_desc": "Introduzca el código de 6 dígitos de su aplicación de autenticación",

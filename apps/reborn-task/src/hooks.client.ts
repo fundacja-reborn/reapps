@@ -15,6 +15,7 @@ import { recurrenceService } from '$lib/services/recurrence.service';
 import { pushNotificationService } from '$lib/services/push-notification.service';
 import { startSwUpdateWatcher } from '$lib/services/sw-update.service';
 import { startPwaInstallPrompt } from '$lib/services/pwa-install.service';
+import { initWebLock } from '$lib/services/web-lock.service';
 
 const logger = createLogger('hooks.client');
 
@@ -44,6 +45,10 @@ if (!isPublicShareRoute) {
 	// #12) - the call here puts us back at the pre-share-snapshot timing
 	// for normal routes.
 	void cryptoManager.waitForRestore().catch(() => {});
+
+	// Web App Lock (opt-in, off by default): idle timer + cross-tab lock. The
+	// controller installs nothing while the lock is off.
+	initWebLock();
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +89,7 @@ if (!isPublicShareRoute) {
 // ---------------------------------------------------------------------------
 // Cross-app SSO logout detection
 // ---------------------------------------------------------------------------
-// The `storage` event fires ONLY in other tabs/windows on the same origin —
+// The `storage` event fires ONLY in other tabs/windows on the same origin -
 // never in the tab that changed localStorage. When the user logs out in
 // reborn-notes (or another Task tab), this listener detects the removal of
 // `reborn_auth_credentials` and immediately hard-redirects to /auth/login.
@@ -104,6 +109,7 @@ if (!isPublicShareRoute) {
 			logger.info('Cross-app logout detected via storage event - redirecting to login');
 			sessionExpired.set(false);
 			cryptoManager.clearMasterKey();
+			cryptoManager.clearWebLock();
 			// Fire-and-forget - the hard redirect below completes the logout even
 			// if the IDB clear is still in flight.
 			import('@reborn/storage')

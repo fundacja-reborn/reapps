@@ -414,6 +414,22 @@
                 </div>
                 <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
               </a>
+            {:else}
+              <!-- App Lock on the web: opt-in, off by default. While on, the
+                   encryption key is kept in memory only and the account
+                   password is needed to open the app. Same place and name as
+                   the native entry, different mechanism (guideline 82). -->
+              <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+              <a href={resolveHref('/settings/security/app-lock')} class={itemClasses}>
+                <Lock class="h-5 w-5 text-muted-foreground shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium">{$t('web_lock.title')}</div>
+                  <div class="text-sm text-muted-foreground">
+                    {$t('web_lock.settings_item_desc')}
+                  </div>
+                </div>
+                <ChevronRight class="h-5 w-5 text-muted-foreground shrink-0" />
+              </a>
             {/if}
 
             {#each securityItems as item}

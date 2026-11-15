@@ -15,6 +15,42 @@
       "recommended_description": "A newer version of the app is available in the store."
     }
   },
+  "web_lock": {
+    "title": "App Lock",
+    "settings_item_desc": "Ask for your password when the app is opened and after a period of inactivity",
+    "intro": "With App Lock on, your encryption key is kept in memory only and is never stored in this browser. You enter your account password every time you open or reload the app, in each new tab, and after the idle time set below.",
+    "status_on": "App Lock is on",
+    "status_on_desc": "Your account password is needed to open the app on this device.",
+    "status_off": "App Lock is off",
+    "status_off_desc": "Your encryption key is stored in this browser, so the app opens without asking for your password.",
+    "enable_cta": "Turn on App Lock",
+    "disable_cta": "Turn off",
+    "confirm_enable_title": "Turn on App Lock",
+    "confirm_enable_desc": "Enter your account password. From now on it will be needed to open the app on this device.",
+    "confirm_disable_title": "Turn off App Lock",
+    "confirm_disable_desc": "Enter your account password. Your encryption key will be stored in this browser again.",
+    "wrong_password": "Incorrect password.",
+    "failed": "Couldn't change App Lock. Please try again.",
+    "success_enabled": "App Lock turned on",
+    "success_disabled": "App Lock turned off",
+    "timeout_title": "Re-lock after",
+    "timeout_desc": "How long the app can stay unused before it locks. Activity in any open tab counts.",
+    "timeout": {
+      "min1": "After 1 minute",
+      "min5": "After 5 minutes",
+      "min15": "After 15 minutes",
+      "min60": "After 1 hour",
+      "never": "Only when I lock it or close the app"
+    },
+    "lock_now_title": "Lock now",
+    "lock_now_desc": "Lock the app in every open tab.",
+    "lock_now_cta": "Lock now",
+    "lock_blocked": "Your latest changes couldn't be saved, so the app was not locked. Check the open item and try again.",
+    "notes_title": "Good to know",
+    "note_session": "Locking does not sign you out. Your session on this device stays active until you sign out.",
+    "note_metadata": "The lock protects titles and content. A few details that contain no text, such as dates and starred marks, stay readable on this device.",
+    "note_reminders": "Reminders delivered in the background show a general message instead of the task title."
+  },
   "whats_new": {
     "title": "What's new",
     "settings_row": "What's new",
@@ -52,6 +88,26 @@
     }
   },
   "auth": {
+    "unlock": {
+      "title": "Unlock",
+      "description": "Enter your account password to open your encrypted data on this device.",
+      "username_label": "Username",
+      "password_label": "Password",
+      "password_placeholder": "Enter your password",
+      "show_password": "Show password",
+      "hide_password": "Hide password",
+      "submit": "Unlock",
+      "unlocking": "Unlocking...",
+      "sign_out": "Sign out",
+      "e2e_note": "Your data is end-to-end encrypted. We never see your password or your unencrypted data.",
+      "error_wrong_password": "Incorrect password.",
+      "error_wrong_password_offline": "Incorrect password. If you changed it on another device, connect to the internet and try again.",
+      "error_throttled": "Too many attempts. Try again in {time}.",
+      "error_unknown": "Couldn't unlock. Please try again.",
+      "logout_title": "Sign out?",
+      "logout_desc": "Signing out removes your data from this device. Changes that haven't synced yet will be lost. You'll need your username and password to sign in again.",
+      "logout_confirm": "Sign out"
+    },
     "use_without_account": "Use without an account",
     "login": {
       "title": "Sign In",

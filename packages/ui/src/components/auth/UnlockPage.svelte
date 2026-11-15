@@ -3,6 +3,8 @@
   import AuthLayout from './AuthLayout.svelte';
   import UnlockE2E from './UnlockE2E.svelte';
   import type { Snippet } from 'svelte';
+  import { t } from '@reborn/i18n';
+  import type { UnlockFailure } from './unlock-types';
   import { Button } from '../button';
   import {
     Dialog,
@@ -16,8 +18,8 @@
   let {
     username = '',
     loading = false,
-    error = null,
-    attemptsRemaining,
+    failure = null,
+    retryAt = 0,
     onUnlock,
     onLogout,
     header,
@@ -25,8 +27,10 @@
   } = $props<{
     username?: string;
     loading?: boolean;
-    error?: string | null;
-    attemptsRemaining?: number;
+    /** Why the last attempt failed, or null. */
+    failure?: UnlockFailure | null;
+    /** Epoch ms before which another attempt is refused (0 = no delay running). */
+    retryAt?: number;
     onUnlock?: (password: string) => void;
     onLogout?: () => void;
     header?: Snippet;
@@ -49,8 +53,8 @@
   <UnlockE2E
     {username}
     {loading}
-    {error}
-    {attemptsRemaining}
+    {failure}
+    {retryAt}
     {onUnlock}
     onLogout={handleLogoutRequest}
   />
@@ -59,10 +63,9 @@
 <Dialog bind:open={logoutDialogOpen}>
   <DialogContent>
     <DialogHeader>
-      <DialogTitle>Sign out</DialogTitle>
+      <DialogTitle>{$t('auth.unlock.logout_title')}</DialogTitle>
       <DialogDescription>
-        Are you sure you want to log out? You will need to enter your username and password to log
-        back in.
+        {$t('auth.unlock.logout_desc')}
       </DialogDescription>
     </DialogHeader>
     <DialogFooter>
@@ -70,9 +73,11 @@
         variant="outline"
         onclick={() => {
           logoutDialogOpen = false;
-        }}>Cancel</Button
+        }}>{$t('common.cancel')}</Button
       >
-      <Button variant="destructive" onclick={confirmLogout}>Sign out</Button>
+      <Button variant="destructive" onclick={confirmLogout}
+        >{$t('auth.unlock.logout_confirm')}</Button
+      >
     </DialogFooter>
   </DialogContent>
 </Dialog>

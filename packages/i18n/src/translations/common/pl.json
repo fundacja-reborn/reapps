@@ -15,6 +15,42 @@
       "recommended_description": "Nowsza wersja aplikacji jest dostępna w sklepie."
     }
   },
+  "web_lock": {
+    "title": "Blokada aplikacji",
+    "settings_item_desc": "Pytaj o hasło przy otwarciu aplikacji i po czasie bezczynności",
+    "intro": "Przy włączonej blokadzie klucz szyfrowania jest trzymany tylko w pamięci i nigdy nie jest zapisywany w tej przeglądarce. Hasło konta podajesz przy każdym otwarciu i przeładowaniu aplikacji, w każdej nowej karcie oraz po czasie bezczynności ustawionym niżej.",
+    "status_on": "Blokada aplikacji jest włączona",
+    "status_on_desc": "Do otwarcia aplikacji na tym urządzeniu potrzebne jest hasło konta.",
+    "status_off": "Blokada aplikacji jest wyłączona",
+    "status_off_desc": "Klucz szyfrowania jest zapisany w tej przeglądarce, więc aplikacja otwiera się bez pytania o hasło.",
+    "enable_cta": "Włącz blokadę aplikacji",
+    "disable_cta": "Wyłącz",
+    "confirm_enable_title": "Włącz blokadę aplikacji",
+    "confirm_enable_desc": "Wprowadź hasło konta. Od teraz będzie potrzebne do otwarcia aplikacji na tym urządzeniu.",
+    "confirm_disable_title": "Wyłącz blokadę aplikacji",
+    "confirm_disable_desc": "Wprowadź hasło konta. Klucz szyfrowania zostanie ponownie zapisany w tej przeglądarce.",
+    "wrong_password": "Nieprawidłowe hasło.",
+    "failed": "Nie udało się zmienić blokady aplikacji. Spróbuj ponownie.",
+    "success_enabled": "Blokada aplikacji włączona",
+    "success_disabled": "Blokada aplikacji wyłączona",
+    "timeout_title": "Ponowna blokada po",
+    "timeout_desc": "Jak długo aplikacja może pozostać nieużywana, zanim się zablokuje. Liczy się aktywność w dowolnej otwartej karcie.",
+    "timeout": {
+      "min1": "Po 1 minucie",
+      "min5": "Po 5 minutach",
+      "min15": "Po 15 minutach",
+      "min60": "Po 1 godzinie",
+      "never": "Tylko gdy ją zablokuję lub zamknę"
+    },
+    "lock_now_title": "Zablokuj teraz",
+    "lock_now_desc": "Zablokuj aplikację we wszystkich otwartych kartach.",
+    "lock_now_cta": "Zablokuj teraz",
+    "lock_blocked": "Nie udało się zapisać ostatnich zmian, więc aplikacja nie została zablokowana. Sprawdź otwarty element i spróbuj ponownie.",
+    "notes_title": "Warto wiedzieć",
+    "note_session": "Blokada nie wylogowuje. Sesja na tym urządzeniu pozostaje aktywna do wylogowania.",
+    "note_metadata": "Blokada chroni tytuły i treść. Kilka informacji bez tekstu, na przykład daty i oznaczenia gwiazdką, pozostaje czytelnych na tym urządzeniu.",
+    "note_reminders": "Przypomnienia dostarczane w tle pokazują ogólny komunikat zamiast tytułu zadania."
+  },
   "whats_new": {
     "title": "Co nowego",
     "settings_row": "Co nowego",
@@ -52,6 +88,26 @@
     }
   },
   "auth": {
+    "unlock": {
+      "title": "Odblokuj",
+      "description": "Wprowadź hasło konta, aby otworzyć zaszyfrowane dane na tym urządzeniu.",
+      "username_label": "Nazwa użytkownika",
+      "password_label": "Hasło",
+      "password_placeholder": "Wprowadź hasło",
+      "show_password": "Pokaż hasło",
+      "hide_password": "Ukryj hasło",
+      "submit": "Odblokuj",
+      "unlocking": "Odblokowywanie...",
+      "sign_out": "Wyloguj się",
+      "e2e_note": "Twoje dane są szyfrowane end-to-end. Nigdy nie widzimy Twojego hasła ani niezaszyfrowanych danych.",
+      "error_wrong_password": "Nieprawidłowe hasło.",
+      "error_wrong_password_offline": "Nieprawidłowe hasło. Jeśli zmieniono je na innym urządzeniu, połącz się z internetem i spróbuj ponownie.",
+      "error_throttled": "Zbyt wiele prób. Spróbuj ponownie za {time}.",
+      "error_unknown": "Nie udało się odblokować. Spróbuj ponownie.",
+      "logout_title": "Wylogować się?",
+      "logout_desc": "Wylogowanie usuwa Twoje dane z tego urządzenia. Zmiany, które nie zdążyły się zsynchronizować, przepadną. Do ponownego zalogowania potrzebna będzie nazwa użytkownika i hasło.",
+      "logout_confirm": "Wyloguj się"
+    },
     "use_without_account": "Użyj bez konta",
     "login": {
       "title": "Logowanie",

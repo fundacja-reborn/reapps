@@ -15,6 +15,42 @@
       "recommended_description": "Im Store ist eine neuere Version der App verfügbar."
     }
   },
+  "web_lock": {
+    "title": "App-Sperre",
+    "settings_item_desc": "Beim Öffnen der App und nach Inaktivität nach dem Passwort fragen",
+    "intro": "Bei aktivierter App-Sperre bleibt Ihr Verschlüsselungsschlüssel nur im Arbeitsspeicher und wird nie in diesem Browser gespeichert. Sie geben Ihr Kontopasswort bei jedem Öffnen und Neuladen der App ein, in jedem neuen Tab und nach der unten eingestellten Zeit ohne Aktivität.",
+    "status_on": "App-Sperre ist aktiviert",
+    "status_on_desc": "Zum Öffnen der App auf diesem Gerät wird Ihr Kontopasswort benötigt.",
+    "status_off": "App-Sperre ist deaktiviert",
+    "status_off_desc": "Ihr Verschlüsselungsschlüssel ist in diesem Browser gespeichert, daher öffnet sich die App ohne Passwortabfrage.",
+    "enable_cta": "App-Sperre aktivieren",
+    "disable_cta": "Deaktivieren",
+    "confirm_enable_title": "App-Sperre aktivieren",
+    "confirm_enable_desc": "Geben Sie Ihr Kontopasswort ein. Ab jetzt wird es zum Öffnen der App auf diesem Gerät benötigt.",
+    "confirm_disable_title": "App-Sperre deaktivieren",
+    "confirm_disable_desc": "Geben Sie Ihr Kontopasswort ein. Ihr Verschlüsselungsschlüssel wird wieder in diesem Browser gespeichert.",
+    "wrong_password": "Falsches Passwort.",
+    "failed": "Die App-Sperre konnte nicht geändert werden. Bitte versuchen Sie es erneut.",
+    "success_enabled": "App-Sperre aktiviert",
+    "success_disabled": "App-Sperre deaktiviert",
+    "timeout_title": "Erneut sperren nach",
+    "timeout_desc": "Wie lange die App unbenutzt bleiben darf, bevor sie gesperrt wird. Aktivität in jedem geöffneten Tab zählt.",
+    "timeout": {
+      "min1": "Nach 1 Minute",
+      "min5": "Nach 5 Minuten",
+      "min15": "Nach 15 Minuten",
+      "min60": "Nach 1 Stunde",
+      "never": "Nur wenn ich sie sperre oder schließe"
+    },
+    "lock_now_title": "Jetzt sperren",
+    "lock_now_desc": "Die App in allen geöffneten Tabs sperren.",
+    "lock_now_cta": "Jetzt sperren",
+    "lock_blocked": "Ihre letzten Änderungen konnten nicht gespeichert werden, daher wurde die App nicht gesperrt. Prüfen Sie das geöffnete Element und versuchen Sie es erneut.",
+    "notes_title": "Gut zu wissen",
+    "note_session": "Das Sperren meldet Sie nicht ab. Ihre Sitzung auf diesem Gerät bleibt aktiv, bis Sie sich abmelden.",
+    "note_metadata": "Die Sperre schützt Titel und Inhalte. Einige Angaben ohne Text, etwa Daten und Sternmarkierungen, bleiben auf diesem Gerät lesbar.",
+    "note_reminders": "Im Hintergrund zugestellte Erinnerungen zeigen eine allgemeine Meldung statt des Aufgabentitels."
+  },
   "whats_new": {
     "title": "Neuigkeiten",
     "settings_row": "Neuigkeiten",
@@ -52,6 +88,26 @@
     }
   },
   "auth": {
+    "unlock": {
+      "title": "Entsperren",
+      "description": "Geben Sie Ihr Kontopasswort ein, um Ihre verschlüsselten Daten auf diesem Gerät zu öffnen.",
+      "username_label": "Benutzername",
+      "password_label": "Passwort",
+      "password_placeholder": "Geben Sie Ihr Passwort ein",
+      "show_password": "Passwort anzeigen",
+      "hide_password": "Passwort verbergen",
+      "submit": "Entsperren",
+      "unlocking": "Wird entsperrt...",
+      "sign_out": "Abmelden",
+      "e2e_note": "Ihre Daten sind Ende-zu-Ende-verschlüsselt. Wir sehen weder Ihr Passwort noch Ihre unverschlüsselten Daten.",
+      "error_wrong_password": "Falsches Passwort.",
+      "error_wrong_password_offline": "Falsches Passwort. Falls Sie es auf einem anderen Gerät geändert haben, stellen Sie eine Internetverbindung her und versuchen Sie es erneut.",
+      "error_throttled": "Zu viele Versuche. Versuchen Sie es in {time} erneut.",
+      "error_unknown": "Entsperren fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      "logout_title": "Abmelden?",
+      "logout_desc": "Beim Abmelden werden Ihre Daten von diesem Gerät entfernt. Änderungen, die noch nicht synchronisiert wurden, gehen verloren. Für die erneute Anmeldung benötigen Sie Benutzername und Passwort.",
+      "logout_confirm": "Abmelden"
+    },
     "use_without_account": "Ohne Konto verwenden",
     "login": {
       "title": "Anmelden",

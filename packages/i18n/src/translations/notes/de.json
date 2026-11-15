@@ -1268,17 +1268,6 @@
       "username_required": "Benutzername ist erforderlich",
       "password_required": "Passwort ist erforderlich"
     },
-    "unlock": {
-      "title": "Ihre Notizen entsperren",
-      "signed_in_as": "Angemeldet als",
-      "password_label": "Passwort",
-      "password_placeholder": "Geben Sie Ihr Passwort ein",
-      "submit": "Entsperren",
-      "unlocking": "Entsperrung…",
-      "error_attempts": "Falsches Passwort. Noch {count} Versuch(e) übrig.",
-      "info": "Ihre Notizen sind Ende-zu-Ende-verschlüsselt. Geben Sie Ihr Reborn-Kontopasswort ein, um sie zu entschlüsseln.",
-      "different_account": "Mit einem anderen Konto anmelden"
-    },
     "two_factor": {
       "title": "Zwei-Faktor-Authentifizierung",
       "totp_desc": "Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein",
