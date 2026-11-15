@@ -1,3 +1,12 @@
+## 0.53.1 (2026-11-15)
+
+### 🩹 Fixes
+
+- **deps:** update @sveltejs/kit to 2.70.4 and adapter-static to 3.0.11 ([#574](https://github.com/fundacja-reborn/reapps/pull/574), [#572](https://github.com/fundacja-reborn/reapps/issues/572), [#573](https://github.com/fundacja-reborn/reapps/issues/573))
+- **i18n:** apply the translator's review of Arabic batch 8 ([#570](https://github.com/fundacja-reborn/reapps/pull/570), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **notes:** paint selection on a Latin word at an Arabic row edge ([#569](https://github.com/fundacja-reborn/reapps/pull/569), [#539](https://github.com/fundacja-reborn/reapps/issues/539))
+- **notes:** keep vocalized Arabic lines apart in PDF export ([#571](https://github.com/fundacja-reborn/reapps/pull/571), [#566](https://github.com/fundacja-reborn/reapps/issues/566), [#546](https://github.com/fundacja-reborn/reapps/issues/546))
+
 ## 0.53.0 (2026-11-13)
 
 ### 🚀 Features
