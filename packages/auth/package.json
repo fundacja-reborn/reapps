@@ -24,8 +24,8 @@
     "@reborn/crypto": "workspace:*",
     "@reborn/types": "workspace:*",
     "@reborn/utils": "workspace:*",
-    "jose": "6.2.3",
-    "uuid": "14.0.0"
+    "jose": "6.2.17",
+    "uuid": "14.0.3"
   },
   "devDependencies": {
     "tsup": "8.5.1",
