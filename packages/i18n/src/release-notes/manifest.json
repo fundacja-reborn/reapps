@@ -1,5 +1,56 @@
 [
   {
+    "version": "0.54.0",
+    "date": "2026-11-17",
+    "items": [
+      {
+        "id": "0.54.0-web-app-lock",
+        "category": "new",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": [
+          "web"
+        ]
+      },
+      {
+        "id": "0.54.0-unlock-attempts",
+        "category": "improved",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.54.0-task-reminders-locked",
+        "category": "fixed",
+        "apps": [
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.54.0-task-list-name",
+        "category": "fixed",
+        "apps": [
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.54.0-unlock-translated",
+        "category": "fixed",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.53.1",
     "date": "2026-11-15",
     "items": [
