@@ -1,3 +1,13 @@
+## 0.54.0 (2026-11-17)
+
+### 🚀 Features
+
+- **notes,task:** add an opt-in app lock for the web and PWA ([#576](https://github.com/fundacja-reborn/reapps/pull/576), [#547](https://github.com/fundacja-reborn/reapps/issues/547))
+
+### 🩹 Fixes
+
+- **deps:** patch wave, node 24.22.3 and audit gate unblock ([#579](https://github.com/fundacja-reborn/reapps/pull/579), [#577](https://github.com/fundacja-reborn/reapps/issues/577), [#578](https://github.com/fundacja-reborn/reapps/issues/578), [#3](https://github.com/fundacja-reborn/reapps/issues/3))
+
 ## 0.53.1 (2026-11-15)
 
 ### 🩹 Fixes
