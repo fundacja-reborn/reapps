@@ -78,7 +78,8 @@
   const formattedUpdatedAt = $derived(formatDate(updatedAt));
   const formattedCreatedAt = $derived(formatDate(createdAt));
 
-  // Hijri date next to the Gregorian one, when the user turned it on (#583).
+  // Hijri date before the Gregorian one, when the user turned it on (#583).
+  // Same order as on the note cards: Hijri date, Gregorian date, time.
   const hijriUpdatedAt = $derived(
     updatedAt ? formatHijriDate(updatedAt, $locale, $hijriDatePreference) : null
   );
@@ -161,9 +162,9 @@
         <Calendar class="h-3.5 w-3.5 shrink-0" />
         <span class="text-xs">
           {$t('metadata.created')}
-          {formattedCreatedAt}{#if hijriCreatedAt}<span aria-hidden="true" class="mx-1">·</span><bdi
-              >{hijriCreatedAt}</bdi
-            >{/if}
+          {#if hijriCreatedAt}<bdi>{hijriCreatedAt}</bdi><span aria-hidden="true" class="mx-1"
+              >·</span
+            >{/if}{formattedCreatedAt}
         </span>
       </div>
     {/if}
@@ -173,9 +174,9 @@
         <Calendar class="h-3.5 w-3.5 shrink-0" />
         <span class="text-xs">
           {$t('metadata.edited')}
-          {formattedUpdatedAt}{#if hijriUpdatedAt}<span aria-hidden="true" class="mx-1">·</span><bdi
-              >{hijriUpdatedAt}</bdi
-            >{/if}
+          {#if hijriUpdatedAt}<bdi>{hijriUpdatedAt}</bdi><span aria-hidden="true" class="mx-1"
+              >·</span
+            >{/if}{formattedUpdatedAt}
         </span>
       </div>
     {/if}

@@ -129,6 +129,22 @@ describe('formatHijriDate', () => {
     expect(formatHijriDate('not a date', 'en', 0)).toBeNull();
   });
 
+  // The note list formats one date per card with a formatter kept per language.
+  it('gives the same answers when called again, in any order of languages', () => {
+    const calls = [
+      ['en', 'Jumada II 7, 1448 AH'],
+      ['ar', formatHijriDate(day, 'ar', 0)],
+      ['en', 'Jumada II 7, 1448 AH'],
+      ['de', formatHijriDate(day, 'de', 0)],
+      ['ar', formatHijriDate(day, 'ar', 0)]
+    ] as const;
+    for (const [language, expected] of calls) {
+      expect(formatHijriDate(day, language, 0)).toBe(expected);
+    }
+    expect(formatHijriDate(day, 'ar', 0)).not.toBe(formatHijriDate(day, 'en', 0));
+    expect(formatHijriDate(day, 'en', 1)).toBe('Jumada II 8, 1448 AH');
+  });
+
   it('knows exactly the offered preferences', () => {
     expect([...HIJRI_DATE_PREFERENCES]).toEqual(['off', 0, -1, 1, -2, 2]);
     expect(HIJRI_DATE_PREFERENCES.every(isHijriDatePreference)).toBe(true);
