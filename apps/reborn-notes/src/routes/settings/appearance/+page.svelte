@@ -23,13 +23,17 @@
     dateFormat,
     timeFormat,
     imageLoadMode as imageLoadModeStore,
-    weekStartPreference
+    weekStartPreference,
+    hijriDatePreference
   } from '$lib/stores/app-settings.store';
   import type { ImageLoadMode } from '@reborn/storage';
   import { t } from '$lib/stores/i18n.store';
   import {
     SUPPORTED_LOCALES,
     WEEK_START_PREFERENCES,
+    HIJRI_DATE_PREFERENCES,
+    formatHijriDate,
+    isHijriDatePreference,
     isWeekStartPreference,
     localeLabel,
     resolveWeekStart,
@@ -53,6 +57,7 @@
   let timeFormatValue = $state('24h');
   let imageLoadModeValue = $state<ImageLoadMode>('ask');
   let weekStartValue = $state('auto');
+  let hijriDateValue = $state('off');
 
   const languageOptions = SUPPORTED_LOCALES.map((value) => ({ value, label: localeLabel(value) }));
 
@@ -81,6 +86,31 @@
           : $t(WEEK_START_LABEL_KEYS[value])
     }))
   );
+
+  const HIJRI_LABEL_KEYS = {
+    0: 'appearance.hijri_on',
+    [-1]: 'appearance.hijri_minus_1',
+    1: 'appearance.hijri_plus_1',
+    [-2]: 'appearance.hijri_minus_2',
+    2: 'appearance.hijri_plus_2'
+  } as const;
+
+  // Every option shows today's Hijri date with that adjustment (#583), so the
+  // user can pick the one that matches the date announced where they live.
+  // A browser without the Islamic calendar gets no row at all.
+  let hijriDateOptions = $derived.by(() => {
+    const today = new Date();
+    if (formatHijriDate(today, language, 0) === null) return undefined;
+    return HIJRI_DATE_PREFERENCES.map((value) => ({
+      value: String(value),
+      label:
+        value === 'off'
+          ? $t('appearance.hijri_off')
+          : $t(HIJRI_LABEL_KEYS[value], {
+              values: { date: formatHijriDate(today, language, value) ?? '' }
+            })
+    }));
+  });
 
   async function updateTheme(value: 'light' | 'dark' | 'system') {
     try {
@@ -172,6 +202,22 @@
     }
   }
 
+  async function updateHijriDate(value: string) {
+    const preference: unknown = value === 'off' ? 'off' : Number(value);
+    if (!isHijriDatePreference(preference)) return;
+    try {
+      isLoading = true;
+      error = null;
+      await appSettings.update('hijriDate', preference);
+      hijriDateValue = value;
+      toast.success($t('appearance.hijri_date_updated'));
+    } catch (err: unknown) {
+      logger.error('Failed to update the Hijri date setting', err);
+    } finally {
+      isLoading = false;
+    }
+  }
+
   async function handleReset() {
     try {
       isLoading = true;
@@ -187,6 +233,7 @@
       timeFormatValue = '24h';
       imageLoadModeValue = 'ask';
       weekStartValue = 'auto';
+      hijriDateValue = 'off';
       toast.success($t('settings_page.appearance.reset_done'));
     } catch (err: unknown) {
       logger.error('Failed to reset settings', err);
@@ -202,7 +249,8 @@
       dateFormat.subscribe((value) => (dateFormatValue = value)),
       timeFormat.subscribe((value) => (timeFormatValue = value)),
       imageLoadModeStore.subscribe((value) => (imageLoadModeValue = value)),
-      weekStartPreference.subscribe((value) => (weekStartValue = String(value)))
+      weekStartPreference.subscribe((value) => (weekStartValue = String(value))),
+      hijriDatePreference.subscribe((value) => (hijriDateValue = String(value)))
     ];
     return () => unsubscribes.forEach((fn) => fn());
   });
@@ -284,6 +332,9 @@
       weekStart={weekStartValue}
       {weekStartOptions}
       onWeekStartChange={updateWeekStart}
+      hijriDate={hijriDateValue}
+      {hijriDateOptions}
+      onHijriDateChange={updateHijriDate}
       disabled={isLoading}
       labels={{
         title: $t('settings_page.appearance.date_time'),
@@ -293,7 +344,10 @@
         datePlaceholder: $t('appearance.select_date_format'),
         timePlaceholder: $t('appearance.select_time_format'),
         weekStartLabel: $t('appearance.week_start'),
-        weekStartPlaceholder: $t('appearance.select_week_start')
+        weekStartPlaceholder: $t('appearance.select_week_start'),
+        hijriDateLabel: $t('appearance.hijri_date'),
+        hijriDateHint: $t('appearance.hijri_date_hint'),
+        hijriDatePlaceholder: $t('appearance.select_hijri_date')
       }}
     />
 

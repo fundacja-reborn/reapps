@@ -183,6 +183,63 @@ export function formatTimeOfDay(
   return formatDateTime(date, locale, timeFormat, { timeStyle: 'short' });
 }
 
+// ── Hijri date next to the Gregorian one (issue #583) ──────────────────
+//
+// Display only: the apps store, sort and pick dates in the Gregorian calendar.
+// The preference rides the shared settings bundle as `hijriDate`: 'off', or
+// the number of days to move the calculated date by. The Islamic month starts
+// with the sighting of the new moon, so the date announced in a country can
+// be a day (rarely two) away from any calculated calendar; the adjustment
+// lets the user match the local announcement. The base is Umm al-Qura, the
+// calendar most devices and services show.
+
+/** Days the calculated Hijri date is moved by. */
+export type HijriAdjustment = -2 | -1 | 0 | 1 | 2;
+
+/** The stored preference: not shown, or shown with this adjustment. */
+export type HijriDatePreference = 'off' | HijriAdjustment;
+
+/** Order of the options in the settings picker. */
+export const HIJRI_DATE_PREFERENCES: readonly HijriDatePreference[] = ['off', 0, -1, 1, -2, 2];
+
+/**
+ * Runtime guard for a stored preference (IndexedDB, synced settings bundle).
+ * Anything else - missing, or a value a newer client wrote - means `'off'`.
+ */
+export function isHijriDatePreference(value: unknown): value is HijriDatePreference {
+  return (
+    value === 'off' || value === -2 || value === -1 || value === 0 || value === 1 || value === 2
+  );
+}
+
+/**
+ * The Hijri (Umm al-Qura) date of `date` in the app language, moved by the
+ * user's adjustment: "Jumada II 7, 1448 AH" / "7 Dżumada II 1448 AH". Null when
+ * the preference is off or unknown, or the browser has no Islamic calendar.
+ */
+export function formatHijriDate(
+  date: Date | string | number,
+  locale: unknown,
+  preference: unknown
+): string | null {
+  if (!isHijriDatePreference(preference) || preference === 'off') return null;
+  const day = new Date(date);
+  if (Number.isNaN(day.getTime())) return null;
+  // Whole local days, so the time of day (and a DST change) cannot move it.
+  day.setDate(day.getDate() + preference);
+  try {
+    const format = new Intl.DateTimeFormat(intlLocale(locale), {
+      calendar: 'islamic-umalqura',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    return format.resolvedOptions().calendar.startsWith('islamic') ? format.format(day) : null;
+  } catch {
+    return null;
+  }
+}
+
 export const LOCALE_NAMES: Record<SupportedLocale, string> = {
   en: 'English',
   pl: 'Polski',

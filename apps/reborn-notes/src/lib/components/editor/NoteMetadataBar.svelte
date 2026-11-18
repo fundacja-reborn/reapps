@@ -3,8 +3,8 @@
   import { Folder, Tag, Calendar } from '@lucide/svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { formatDateTime } from '@reborn/i18n';
-  import { timeFormat } from '$lib/stores/app-settings.store';
+  import { formatDateTime, formatHijriDate } from '@reborn/i18n';
+  import { hijriDatePreference, timeFormat } from '$lib/stores/app-settings.store';
   import { APPEARANCE_SWATCH_CLASS, isAppearanceColor } from '$lib/utils/appearance-colors';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -77,6 +77,14 @@
 
   const formattedUpdatedAt = $derived(formatDate(updatedAt));
   const formattedCreatedAt = $derived(formatDate(createdAt));
+
+  // Hijri date next to the Gregorian one, when the user turned it on (#583).
+  const hijriUpdatedAt = $derived(
+    updatedAt ? formatHijriDate(updatedAt, $locale, $hijriDatePreference) : null
+  );
+  const hijriCreatedAt = $derived(
+    createdAt ? formatHijriDate(createdAt, $locale, $hijriDatePreference) : null
+  );
 </script>
 
 <div
@@ -151,14 +159,24 @@
     {#if formattedCreatedAt}
       <div class="flex items-center gap-2">
         <Calendar class="h-3.5 w-3.5 shrink-0" />
-        <span class="text-xs">{$t('metadata.created')} {formattedCreatedAt}</span>
+        <span class="text-xs">
+          {$t('metadata.created')}
+          {formattedCreatedAt}{#if hijriCreatedAt}<span aria-hidden="true" class="mx-1">·</span><bdi
+              >{hijriCreatedAt}</bdi
+            >{/if}
+        </span>
       </div>
     {/if}
 
     {#if formattedUpdatedAt}
       <div class="flex items-center gap-2">
         <Calendar class="h-3.5 w-3.5 shrink-0" />
-        <span class="text-xs">{$t('metadata.edited')} {formattedUpdatedAt}</span>
+        <span class="text-xs">
+          {$t('metadata.edited')}
+          {formattedUpdatedAt}{#if hijriUpdatedAt}<span aria-hidden="true" class="mx-1">·</span><bdi
+              >{hijriUpdatedAt}</bdi
+            >{/if}
+        </span>
       </div>
     {/if}
   </div>

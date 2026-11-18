@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { AppSettings } from '@reborn/storage';
-import type { SupportedLocale, WeekStartPreference } from '@reborn/i18n';
+import type { HijriDatePreference, SupportedLocale, WeekStartPreference } from '@reborn/i18n';
 
 /**
  * Single locale list (Arabic plan, Phase 2 prep, 2026-11-04): @reborn/storage
@@ -20,6 +20,12 @@ const weekStartMatchesPreference: Equal<
   WeekStartPreference
 > = true;
 
+/** And for the Hijri date preference (#583). */
+const hijriDateMatchesPreference: Equal<
+  NonNullable<AppSettings['hijriDate']>,
+  HijriDatePreference
+> = true;
+
 describe('supported locales - storage type', () => {
   it("AppSettings['language'] is exactly SupportedLocale (checked by svelte-check)", () => {
     expect(languageMatchesSupportedLocales).toBe(true);
@@ -27,5 +33,9 @@ describe('supported locales - storage type', () => {
 
   it("AppSettings['weekStart'] is exactly WeekStartPreference (checked by svelte-check)", () => {
     expect(weekStartMatchesPreference).toBe(true);
+  });
+
+  it("AppSettings['hijriDate'] is exactly HijriDatePreference (checked by svelte-check)", () => {
+    expect(hijriDateMatchesPreference).toBe(true);
   });
 });

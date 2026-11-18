@@ -45,6 +45,11 @@ export interface SharedSettingsBundle {
    * back to 'auto'.
    */
   weekStart?: AppSettings['weekStart'];
+  /**
+   * Hijri date next to the Gregorian one (#583). Absent until the user picks
+   * an option; same merge rule as `weekStart`.
+   */
+  hijriDate?: AppSettings['hijriDate'];
 }
 
 /**
@@ -95,6 +100,9 @@ export function extractSharedBundle(s: AppSettings): SharedSettingsBundle {
   // overwrite the day picked on another one.
   if (s.weekStart !== undefined) {
     bundle.weekStart = s.weekStart;
+  }
+  if (s.hijriDate !== undefined) {
+    bundle.hijriDate = s.hijriDate;
   }
   return bundle;
 }
@@ -150,6 +158,7 @@ export function applyBundlesToSettings(
     if (shared.timeFormat !== undefined) merged.timeFormat = shared.timeFormat;
     if (shared.firstDayOfWeek !== undefined) merged.firstDayOfWeek = shared.firstDayOfWeek;
     if (shared.weekStart !== undefined) merged.weekStart = shared.weekStart;
+    if (shared.hijriDate !== undefined) merged.hijriDate = shared.hijriDate;
   }
   if (app) {
     if (app.theme !== undefined) merged.theme = app.theme;
@@ -202,13 +211,21 @@ export function migrateSharedBundle(raw: unknown): SharedSettingsBundle {
     ...(typeof obj.firstDayOfWeek === 'number' ? { firstDayOfWeek: obj.firstDayOfWeek } : {}),
     // Only the values this build offers; anything else (a day a newer client
     // added) is dropped, which keeps the local value instead of breaking it.
-    ...(isWeekStart(obj.weekStart) ? { weekStart: obj.weekStart } : {})
+    ...(isWeekStart(obj.weekStart) ? { weekStart: obj.weekStart } : {}),
+    ...(isHijriDate(obj.hijriDate) ? { hijriDate: obj.hijriDate } : {})
   };
 }
 
 /** Mirrors `isWeekStartPreference` in @reborn/i18n (no dependency from here). */
 function isWeekStart(value: unknown): value is NonNullable<AppSettings['weekStart']> {
   return value === 'auto' || value === 0 || value === 1 || value === 6;
+}
+
+/** Mirrors `isHijriDatePreference` in @reborn/i18n (no dependency from here). */
+function isHijriDate(value: unknown): value is NonNullable<AppSettings['hijriDate']> {
+  return (
+    value === 'off' || value === -2 || value === -1 || value === 0 || value === 1 || value === 2
+  );
 }
 
 /** Same forward-compat reader for the per-app bundle. */

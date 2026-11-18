@@ -45,10 +45,16 @@ export {
   hourCycleFor,
   formatDateTime,
   formatTimeOfDay,
+  // Hijri date next to the Gregorian one (issue #583)
+  HIJRI_DATE_PREFERENCES,
+  isHijriDatePreference,
+  formatHijriDate,
   type SupportedLocale,
   type TranslationModule,
   type WeekStartDay,
-  type WeekStartPreference
+  type WeekStartPreference,
+  type HijriAdjustment,
+  type HijriDatePreference
 } from './config';
 
 // Text direction (LTR / RTL). The pure mapping is also published as the

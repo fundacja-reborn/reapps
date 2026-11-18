@@ -69,6 +69,12 @@ describe('settings-bundle: extract', () => {
     expect(extractSharedBundle({ ...NOTES_FIXTURE, weekStart: 'auto' }).weekStart).toBe('auto');
   });
 
+  it('extractSharedBundle carries hijriDate only once the user picked it (#583)', () => {
+    expect('hijriDate' in extractSharedBundle(NOTES_FIXTURE)).toBe(false);
+    expect(extractSharedBundle({ ...NOTES_FIXTURE, hijriDate: -1 }).hijriDate).toBe(-1);
+    expect(extractSharedBundle({ ...NOTES_FIXTURE, hijriDate: 'off' }).hijriDate).toBe('off');
+  });
+
   it('extractSharedBundle does NOT include theme (D1: theme is per-app)', () => {
     const shared = extractSharedBundle(NOTES_FIXTURE) as Record<string, unknown>;
     expect('theme' in shared).toBe(false);
@@ -276,6 +282,23 @@ describe('settings-bundle: migrate (decrypt → unknown JSON → typed bundle)',
     }
     for (const value of [5, '1', 'monday', null, 1.5]) {
       expect('weekStart' in migrateSharedBundle({ schema_version: 1, weekStart: value })).toBe(false);
+    }
+  });
+
+  it('applies a synced hijriDate; a bundle without it keeps the local choice', () => {
+    const picked = applyBundlesToSettings(NOTES_FIXTURE, { schema_version: 1, hijriDate: 1 }, null);
+    expect(picked.hijriDate).toBe(1);
+    const local: AppSettings = { ...NOTES_FIXTURE, hijriDate: -2 };
+    const fromOldClient = applyBundlesToSettings(local, { schema_version: 1, language: 'ar' }, null);
+    expect(fromOldClient.hijriDate).toBe(-2);
+  });
+
+  it('migrateSharedBundle reads hijriDate and drops values this build does not offer', () => {
+    for (const value of ['off', -2, -1, 0, 1, 2] as const) {
+      expect(migrateSharedBundle({ schema_version: 1, hijriDate: value }).hijriDate).toBe(value);
+    }
+    for (const value of [3, -3, '1', 'on', true, null, 0.5]) {
+      expect('hijriDate' in migrateSharedBundle({ schema_version: 1, hijriDate: value })).toBe(false);
     }
   });
 

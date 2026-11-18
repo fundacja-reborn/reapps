@@ -3,7 +3,7 @@
   import { Label } from '../label';
   import { Select, SelectContent, SelectItem, SelectTrigger } from '../select';
   import { Separator } from '../separator';
-  import { Calendar, CalendarRange, Clock } from '@lucide/svelte';
+  import { Calendar, CalendarRange, Clock, MoonStar } from '@lucide/svelte';
 
   interface FormatOption {
     value: string;
@@ -20,6 +20,9 @@
     weekStart,
     weekStartOptions,
     onWeekStartChange,
+    hijriDate,
+    hijriDateOptions,
+    onHijriDateChange,
     disabled = false,
     labels = {
       title: 'Date & Time',
@@ -43,6 +46,14 @@
     weekStart?: string;
     weekStartOptions?: FormatOption[];
     onWeekStartChange?: (value: string) => void;
+    /**
+     * Hijri date next to the Gregorian one (#583). The row renders only when
+     * `hijriDateOptions` and `onHijriDateChange` are given; values are strings
+     * ('off', '0', '-1', '1', '-2', '2').
+     */
+    hijriDate?: string;
+    hijriDateOptions?: FormatOption[];
+    onHijriDateChange?: (value: string) => void;
     disabled?: boolean;
     labels?: {
       title: string;
@@ -53,6 +64,9 @@
       timePlaceholder: string;
       weekStartLabel?: string;
       weekStartPlaceholder?: string;
+      hijriDateLabel?: string;
+      hijriDateHint?: string;
+      hijriDatePlaceholder?: string;
     };
   }>();
 </script>
@@ -142,6 +156,39 @@
             {/each}
           </SelectContent>
         </Select>
+      </div>
+    {/if}
+
+    {#if hijriDateOptions && onHijriDateChange}
+      <Separator />
+
+      <div class="space-y-2">
+        <Label for="hijri-date" class="flex items-center gap-2">
+          <MoonStar class="h-4 w-4 text-muted-foreground" />
+          {labels.hijriDateLabel ?? 'Hijri date'}
+        </Label>
+        <Select
+          value={hijriDate}
+          type="single"
+          onValueChange={(value) => {
+            if (value) onHijriDateChange(value);
+          }}
+          {disabled}
+        >
+          <SelectTrigger id="hijri-date" class="w-full">
+            {hijriDateOptions.find((o: FormatOption) => o.value === hijriDate)?.label ??
+              labels.hijriDatePlaceholder ??
+              'Select Hijri date display'}
+          </SelectTrigger>
+          <SelectContent>
+            {#each hijriDateOptions as option (option.value)}
+              <SelectItem value={option.value}>{option.label}</SelectItem>
+            {/each}
+          </SelectContent>
+        </Select>
+        {#if labels.hijriDateHint}
+          <p class="text-xs text-muted-foreground">{labels.hijriDateHint}</p>
+        {/if}
       </div>
     {/if}
   </CardContent>
