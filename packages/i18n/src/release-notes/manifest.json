@@ -1,5 +1,36 @@
 [
   {
+    "version": "0.55.0",
+    "date": "2026-11-18",
+    "items": [
+      {
+        "id": "0.55.0-collapsible-sections",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.55.0-hijri-date",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.55.0-time-format-everywhere",
+        "category": "fixed",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.54.0",
     "date": "2026-11-17",
     "items": [
