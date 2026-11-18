@@ -70,6 +70,24 @@ describe('UI source guards (apps/reborn-notes/src)', () => {
     expect(hits).toEqual([]);
   });
 
+  it('gives an isolated numeric date the UI direction (<bdi dir={$textDirection}>, #542)', () => {
+    // A date from the user's date format is digits and punctuation only. A bare
+    // <bdi> finds no letter to take a direction from and falls back to LTR, so
+    // in an Arabic UI "2026-11-13, 14:32" keeps the time on the right, where a
+    // right-to-left reader starts: time first, date second - the reverse of the
+    // same text outside <bdi> (note cards, version history).
+    const BARE_BDI_DATE =
+      /<bdi(?![^>]*\sdir=)[^>]*>\s*\{format(NoteDate|DateWithSetting|SyncTimestamp)\(/;
+    const hits = listSourceFiles([ROOT])
+      .filter((file) => file.endsWith('.svelte'))
+      .flatMap((file) =>
+        readFileSync(file, 'utf-8')
+          .split('\n')
+          .flatMap((line, i) => (BARE_BDI_DATE.test(line) ? [`${repoRelative(file)}:${i + 1}`] : []))
+      );
+    expect(hits).toEqual([]);
+  });
+
   it('formats a time of day on the clock the user chose (12h/24h setting, #581)', () => {
     // `Intl` takes the clock from the language: English and Arabic print
     // "5:13 PM" to a user who chose 24h. Use formatDateTime / formatTimeOfDay

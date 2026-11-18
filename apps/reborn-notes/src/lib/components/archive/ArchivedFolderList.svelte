@@ -108,7 +108,10 @@
                 {$t('notes.notes_count', { values: { count } })}
                 <span aria-hidden="true">·</span>
                 {$t('archive.archived_label')}
-                <bdi>{formatNoteDate(root.at, $dateFormat, $timeFormat)}</bdi>
+                <!-- Isolated from the Arabic label, in the UI direction: the
+                     date has digits only, so a bare <bdi> would fall back to
+                     LTR and show the time before the date in RTL (#542). -->
+                <bdi dir={$textDirection}>{formatNoteDate(root.at, $dateFormat, $timeFormat)}</bdi>
               </p>
             </div>
             <button

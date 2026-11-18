@@ -450,7 +450,10 @@
                  Each part stays in one piece, so a narrow card breaks the line
                  between the two dates, not inside one. The Hijri date is in
                  <bdi>: its Arabic month name must not pull the digits of the
-                 date after it into its own direction. -->
+                 date after it into its own direction. The archive date is in
+                 <bdi> too, after the Arabic label, and names the UI direction:
+                 it has digits only, and a bare <bdi> would fall back to LTR and
+                 put the time where a right-to-left reader starts (#542). -->
             <p class="mt-0.5 text-[0.8125rem] md:text-xs text-muted-foreground line-clamp-2">
               {#if isArchive && note.archive}
                 {$t('archive.archived_label')}
@@ -460,7 +463,7 @@
                 <span aria-hidden="true">·</span>
               {/if}
               {#if isArchive && note.archive}
-                <bdi class="whitespace-nowrap">{formatNoteDate(shownDate, $dateFormat, $timeFormat)}</bdi>
+                <bdi dir={$textDirection} class="whitespace-nowrap">{formatNoteDate(shownDate, $dateFormat, $timeFormat)}</bdi>
               {:else if hijriDate}
                 <span class="whitespace-nowrap">{formatNoteDate(shownDate, $dateFormat, $timeFormat)}</span>
               {:else}
