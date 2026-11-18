@@ -25,6 +25,15 @@
   import { scrollToHeading } from '$lib/utils/heading-scroll';
   import { hasToc, tocInnerMarkdown, toEditableTocBlock } from '$lib/utils/toc';
   import { markExtraBlankLines } from '$lib/utils/blank-lines';
+  import {
+    applyHeadingFolds,
+    foldsHiding,
+    FOLD_CONTROL_SELECTOR,
+    FOLD_REVEAL_EVENT
+  } from '$lib/utils/preview-heading-fold';
+
+  /** Stable "nothing folded" default, so the fold effect does not re-run on it. */
+  const NO_FOLDS: readonly string[] = [];
 
   // Toolbar icons for the owner's in-note table of contents (refresh + remove).
   // Static, self-contained Lucide-style SVGs (16px, `stroke="currentColor"` so
@@ -78,7 +87,9 @@
     tocStale = false,
     onrender,
     onHeadingLinkCopy,
-    headingLinkLabel
+    headingLinkLabel,
+    foldedHeadings = NO_FOLDS,
+    onHeadingFoldsChange
   }: {
     content: string;
     class?: string;
@@ -160,6 +171,18 @@
     onHeadingLinkCopy?: (slug: string, text: string) => void;
     /** aria-label / tooltip for the per-heading copy-link button. */
     headingLinkLabel?: string;
+    /**
+     * Collapsible sections (#582): slugs (heading ids) of the folded ones. The
+     * owner holds the list, so the editor and the preview fold together.
+     */
+    foldedHeadings?: readonly string[];
+    /**
+     * Owner's note view only. When provided, every heading with something under
+     * it gets a chevron that folds its section, and this is called with the new
+     * list after a click or when a jump into a folded section opens it. Other
+     * viewers (shared snapshot, history) leave it unset: no chevrons there.
+     */
+    onHeadingFoldsChange?: (slugs: string[]) => void;
   } = $props();
 
   let containerEl: HTMLElement;
@@ -173,10 +196,15 @@
   onMount(() => {
     scrollEl = containerEl;
     contentEl = containerEl;
+    // Collapsible sections: `revealFolded` asks through this event to open the
+    // section that hides an element it is about to scroll to.
+    const el = containerEl;
+    el.addEventListener(FOLD_REVEAL_EVENT, handleFoldReveal);
     // Clear bindings on unmount so the parent's preview adapter detaches -
     // otherwise a toggle to edit-only would leave a stale (detached)
     // adapter live, eating editor scroll events via `syncing`.
     return () => {
+      el.removeEventListener(FOLD_REVEAL_EVENT, handleFoldReveal);
       scrollEl = null;
       contentEl = null;
     };
@@ -360,6 +388,55 @@
     return () => images.forEach((img) => img.removeEventListener('load', onLoad));
   });
 
+  // Collapsible sections (#582). Declared after the effect above, so on a new
+  // render the headings already carry their ids. Runs again when the folded
+  // list or the labels change; the function only touches what differs.
+  const foldLabels = $derived({
+    fold: $t('editor.fold_section'),
+    unfold: $t('editor.unfold_section')
+  });
+
+  $effect(() => {
+    void html;
+    const folded = foldedHeadings;
+    const labels = foldLabels;
+    if (!containerEl || !onHeadingFoldsChange) return;
+    // A section got hidden or shown: whoever measured the preview (scroll-sync
+    // anchors, the outline scroll-spy) has to measure again. Untracked for the
+    // same reason as above.
+    if (applyHeadingFolds(containerEl, new Set(folded), labels)) untrack(() => onrender?.());
+  });
+
+  /** Chevron or "…" mark clicked: fold or open the section of its heading. */
+  function toggleHeadingFold(slug: string) {
+    if (!slug || !onHeadingFoldsChange) return;
+    onHeadingFoldsChange(
+      foldedHeadings.includes(slug)
+        ? foldedHeadings.filter((s) => s !== slug)
+        : [...foldedHeadings, slug]
+    );
+  }
+
+  // Something is about to scroll to an element inside a folded section (an
+  // outline or table-of-contents jump, a search match - see `revealFolded`).
+  // Open the sections that hide it right now, in the DOM, so the caller can
+  // scroll on the next line; the owner gets the new list and the effect above
+  // then finds nothing left to do.
+  function handleFoldReveal(e: Event) {
+    const target = e.target;
+    if (!(target instanceof Element) || !onHeadingFoldsChange) return;
+    const hiding = new Set(foldsHiding(containerEl, target, new Set(foldedHeadings)));
+    if (hiding.size === 0) return;
+    const next = foldedHeadings.filter((slug) => !hiding.has(slug));
+    applyHeadingFolds(containerEl, new Set(next), foldLabels);
+    onHeadingFoldsChange(next);
+    // Not in the middle of the caller's scroll: the render callback may itself
+    // scroll (pending anchor) and would re-enter it.
+    queueMicrotask(() => {
+      if (containerEl) onrender?.();
+    });
+  }
+
   function loadImage(placeholder: HTMLElement) {
     const src = placeholder.dataset.src!;
     const alt = placeholder.dataset.alt || '';
@@ -441,6 +518,15 @@
       e.preventDefault();
       const slug = (headBtn as HTMLElement).dataset.headingSlug ?? '';
       if (slug) onHeadingLinkCopy?.(slug, (headBtn as HTMLElement).dataset.headingText ?? '');
+      return;
+    }
+
+    // Collapsible sections: the chevron at the end of a heading, or the "…"
+    // mark of a folded one. The heading's id is the slug the owner keeps.
+    const foldBtn = target.closest(FOLD_CONTROL_SELECTOR);
+    if (foldBtn) {
+      e.preventDefault();
+      toggleHeadingFold(foldBtn.closest('h1, h2, h3, h4, h5, h6')?.id ?? '');
       return;
     }
 
@@ -907,6 +993,87 @@
     .preview :global(.md-head-anchor) {
       opacity: 0.55;
     }
+  }
+
+  /* Collapsible sections (#582, utils/preview-heading-fold.ts): what a folded
+     section hides, the chevron at the end of a heading and the "…" mark of a
+     folded one. Same look as the editor's `.cm-hfold-*` (NoteEditor.svelte);
+     change the two together. `!important`: several blocks set their own
+     `display` (code blocks, tables, the table of contents). */
+  .preview :global([data-fold-hidden]) {
+    display: none !important;
+  }
+  .preview :global(.md-head-fold) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-inline-start: 0.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    /* Touch screens have no hover: the chevron is always there, faint. */
+    opacity: 0.55;
+    transition: opacity 0.15s ease;
+  }
+  .preview :global(.md-head-fold svg) {
+    transition: transform 0.15s ease;
+  }
+  .preview :global(.md-head-fold.is-folded svg) {
+    transform: rotate(-90deg);
+  }
+  .preview :global(.md-head-fold.is-folded.is-rtl svg) {
+    transform: rotate(90deg);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    /* With a mouse: shown on the hovered heading and on every folded one. */
+    .preview :global(.md-head-fold) {
+      opacity: 0;
+    }
+    .preview :global(:is(h1, h2, h3, h4, h5, h6):hover .md-head-fold) {
+      opacity: 0.55;
+    }
+  }
+  .preview :global(.md-head-fold.is-folded) {
+    opacity: 0.8;
+  }
+  .preview :global(.md-head-fold:hover),
+  .preview :global(.md-head-fold:focus-visible) {
+    opacity: 1;
+    color: var(--foreground);
+    background: var(--accent);
+  }
+  .preview :global(.md-head-fold-mark) {
+    display: inline-block;
+    vertical-align: middle;
+    margin-inline-start: 0.25rem;
+    padding: 0 0.4rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background: var(--muted);
+    color: var(--muted-foreground);
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.25rem;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* Drawn here, not as text in the heading: search in the note reads text nodes. */
+  .preview :global(.md-head-fold-mark::before) {
+    content: '…';
+  }
+  .preview :global(.md-head-fold-mark:hover),
+  .preview :global(.md-head-fold-mark:focus-visible) {
+    color: var(--foreground);
   }
 
   /* In-note table of contents (owner-editable preview only). `.note-toc` is the

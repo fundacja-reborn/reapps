@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, untrack } from 'svelte';
   import { EditorView, keymap, placeholder as placeholderExt } from '@codemirror/view';
   import { EditorState, Compartment, Prec } from '@codemirror/state';
   import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
@@ -16,7 +16,14 @@
   import { ownSelection } from '$lib/editor/own-selection';
   import { directionMarkAtomicRanges, toggleLineDirection } from '$lib/editor/direction-mark';
   import { listIndent, listOutdent } from '$lib/editor/list-keymap';
-  import { foldAllHeadings, headingFold, unfoldAllHeadings } from '$lib/editor/heading-fold';
+  import {
+    foldAllHeadings,
+    headingFold,
+    syncHeadingFolds,
+    unfoldAllHeadings
+  } from '$lib/editor/heading-fold';
+  import { foldedSlugsFor, headingFolds } from '$lib/stores/heading-folds.store';
+  import { extractHeadings } from '$lib/utils/heading-outline';
   import {
     BULLET_ANCHOR,
     shouldInsertBulletAnchor,
@@ -233,6 +240,38 @@
     if (!view) return;
     if (hasFoldedSections) unfoldAllHeadings(view);
     else foldAllHeadings(view);
+  }
+
+  // Folded sections are shared with the rendered preview and with the editor of
+  // the next view mode (`heading-folds.store.ts`), named by heading slug. The
+  // editor works in lines, so both directions go through the note's outline.
+  // A fold the outline does not know (an underlined heading, a heading inside a
+  // quote) has no slug: it stays in this editor only.
+
+  /** Editor -> store: the folded lines changed. */
+  function publishFoldedLines(lines: number[]) {
+    if (!view || currentNoteId == null) return;
+    const slugByLine = new Map(
+      extractHeadings(view.state.doc.toString()).map((heading) => [heading.line, heading.slug])
+    );
+    const slugs: string[] = [];
+    for (const line of lines) {
+      const slug = slugByLine.get(line);
+      if (slug) slugs.push(slug);
+    }
+    headingFolds.set(currentNoteId, slugs);
+  }
+
+  /** Store -> editor: fold what the store has folded, open what it has not. */
+  function applyFoldedSlugs(slugs: readonly string[]) {
+    if (!view) return;
+    const folded = new Set(slugs);
+    const wanted = new Map(
+      extractHeadings(view.state.doc.toString()).map(
+        (heading) => [heading.line, folded.has(heading.slug)] as const
+      )
+    );
+    syncHeadingFolds(view, wanted);
   }
 
   function wrapSelection(marker: string): boolean {
@@ -576,7 +615,8 @@
             fold: $t('editor.fold_section'),
             unfold: $t('editor.unfold_section')
           }),
-          onFoldedChange: (anyFolded) => (hasFoldedSections = anyFolded)
+          onFoldedChange: (anyFolded) => (hasFoldedSections = anyFolded),
+          onFoldedLinesChange: publishFoldedLines
         }),
         // Highest precedence so the search mark becomes the INNERMOST span (CM6
         // nests higher-precedence decorations deeper) and its background paints
@@ -757,6 +797,16 @@
       });
       isExternalUpdate = false;
     }
+  });
+
+  // Follow folds made outside this editor: a click in the preview pane of split
+  // view, or what the previous view mode left folded (this also restores them
+  // on mount - every view mode mounts its own editor). Depends on the store
+  // only; a fold made here comes back as the list the editor already has, and
+  // `syncHeadingFolds` then finds nothing to do.
+  $effect(() => {
+    const slugs = foldedSlugsFor($headingFolds, currentNoteId);
+    untrack(() => applyFoldedSlugs(slugs));
   });
 
   // Sync readonly prop

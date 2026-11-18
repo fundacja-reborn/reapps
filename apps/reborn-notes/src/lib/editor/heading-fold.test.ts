@@ -8,9 +8,11 @@ import {
   foldAllHeadings,
   foldHeadingAtCursor,
   foldOnLine,
+  foldedHeadingLines,
   hasFoldedSections,
   headingFold,
   headingFoldRange,
+  syncHeadingFolds,
   toggleHeadingFoldAt,
   unfoldAllHeadings,
   unfoldHeadingAtCursor
@@ -305,5 +307,99 @@ describe('headingFold', () => {
     expect(onFoldedChange.mock.calls).toEqual([[true]]);
     unfoldAllHeadings(v);
     expect(onFoldedChange.mock.calls).toEqual([[true], [false]]);
+  });
+
+  describe('folds shared with the preview', () => {
+    function openShared(onFoldedLinesChange: (lines: number[]) => void): EditorView {
+      view = new EditorView({
+        doc: DOC,
+        extensions: [
+          markdown({ base: markdownLanguage }),
+          headingFold({ labels, onFoldedLinesChange })
+        ],
+        parent: document.body
+      });
+      return view;
+    }
+
+    it('lists the folded heading lines in document order', () => {
+      const v = open();
+      expect(foldedHeadingLines(v.state)).toEqual([]);
+      toggleHeadingFoldAt(v, lineOf(v, 9).from);
+      toggleHeadingFoldAt(v, lineOf(v, 3).from);
+      expect(foldedHeadingLines(v.state)).toEqual([4, 10]);
+    });
+
+    it('reports the lines on a fold and an unfold, not on other transactions', () => {
+      const onLines = vi.fn();
+      const v = openShared(onLines);
+      v.dispatch({ selection: EditorSelection.cursor(2) });
+      v.dispatch({ changes: { from: 0, insert: 'x' } });
+      expect(onLines).not.toHaveBeenCalled();
+      toggleHeadingFoldAt(v, lineOf(v, 3).from);
+      expect(onLines.mock.calls).toEqual([[[4]]]);
+      toggleHeadingFoldAt(v, lineOf(v, 3).from);
+      expect(onLines.mock.calls).toEqual([[[4]], [[]]]);
+    });
+
+    it('reports again when an edit moves a folded heading', () => {
+      const onLines = vi.fn();
+      const v = openShared(onLines);
+      toggleHeadingFoldAt(v, lineOf(v, 9).from);
+      v.dispatch({ changes: { from: 0, insert: 'new first line\n' } });
+      expect(onLines.mock.calls).toEqual([[[10]], [[11]]]);
+    });
+
+    it('reports an empty list when the whole note is replaced', () => {
+      const onLines = vi.fn();
+      const v = openShared(onLines);
+      toggleHeadingFoldAt(v, lineOf(v, 3).from);
+      v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: '# Other\ntext' } });
+      expect(onLines.mock.calls.at(-1)).toEqual([[]]);
+    });
+
+    it('syncHeadingFolds folds and opens the listed lines only', () => {
+      const v = open();
+      toggleHeadingFoldAt(v, lineOf(v, 9).from); // ## Second
+      toggleHeadingFoldAt(v, lineOf(v, 14).from); // underlined, not listed below
+      expect(
+        syncHeadingFolds(
+          v,
+          new Map([
+            [4, true], // ## First: fold
+            [10, false], // ## Second: open
+            [7, false] // ### Detail: already open
+          ])
+        )
+      ).toBe(true);
+      expect(folds(v)).toEqual(['## First > detail body', 'Underlined > second line']);
+    });
+
+    it('syncHeadingFolds does nothing when the editor is already there', () => {
+      const v = open();
+      toggleHeadingFoldAt(v, lineOf(v, 3).from);
+      const before = v.state;
+      expect(
+        syncHeadingFolds(
+          v,
+          new Map([
+            [4, true],
+            [10, false],
+            [13, true], // ## Empty: nothing to fold
+            [2, true], // not a heading
+            [99, true] // past the end
+          ])
+        )
+      ).toBe(false);
+      expect(v.state).toBe(before);
+    });
+
+    it('syncHeadingFolds moves the caret out of text it hides', () => {
+      const v = open();
+      v.dispatch({ selection: EditorSelection.cursor(lineOf(v, 4).from + 2) });
+      syncHeadingFolds(v, new Map([[4, true]]));
+      expect(folds(v)).toEqual(['## First > detail body']);
+      expect(v.state.selection.main.head).toBe(lineOf(v, 3).to);
+    });
   });
 });
