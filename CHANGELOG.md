@@ -1,3 +1,15 @@
+## 0.55.0 (2026-11-18)
+
+### 🚀 Features
+
+- **notes:** add collapsible sections under headings ([#587](https://github.com/fundacja-reborn/reapps/pull/587), [#582](https://github.com/fundacja-reborn/reapps/issues/582))
+- **notes:** show the Hijri date next to the date inside a note ([#588](https://github.com/fundacja-reborn/reapps/pull/588), [#583](https://github.com/fundacja-reborn/reapps/issues/583))
+
+### 🩹 Fixes
+
+- **i18n:** apply the Arabic review of the v0.53.1 release notes ([#586](https://github.com/fundacja-reborn/reapps/pull/586), [#578](https://github.com/fundacja-reborn/reapps/issues/578), [#579](https://github.com/fundacja-reborn/reapps/issues/579), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+- **notes,task:** apply the 12h/24h setting to every shown time ([#585](https://github.com/fundacja-reborn/reapps/pull/585), [#578](https://github.com/fundacja-reborn/reapps/issues/578), [#579](https://github.com/fundacja-reborn/reapps/issues/579), [#376](https://github.com/fundacja-reborn/reapps/issues/376), [#581](https://github.com/fundacja-reborn/reapps/issues/581))
+
 ## 0.54.0 (2026-11-17)
 
 ### 🚀 Features
