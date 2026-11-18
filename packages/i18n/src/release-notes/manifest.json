@@ -10,6 +10,22 @@
           "notes"
         ],
         "platforms": "all"
+      },
+      {
+        "id": "0.56.0-hijri-date-cards",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.56.0-arabic-review",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
       }
     ]
   },
