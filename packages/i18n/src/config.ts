@@ -132,6 +132,57 @@ export function weekdayName(
   return new Intl.DateTimeFormat(intlLocale(locale), { weekday: width }).format(date);
 }
 
+// ── Time of day: the user's 12h/24h setting (issues #376, #581) ────────
+//
+// Without `hourCycle` an `Intl` formatter takes the clock from the language:
+// `en` and `ar` print "5:13 PM" / "5:13 م" to a user who chose 24h in
+// Settings, and `pl` prints "17:13" to one who chose 12h. Every time of day
+// the apps show goes through the helpers below, so the setting decides and
+// the language only supplies the wording (date order, AM/PM marker).
+// `ui-source-guards` in both apps fails on a time formatted any other way.
+
+/**
+ * `hourCycle` for the stored `timeFormat` setting. `'12h'` gives a 1-12 clock
+ * with an AM/PM marker; anything else (`'24h'`, missing, a value a newer
+ * client wrote) gives 00-23, the setting's default. `h23`, not `hour12:
+ * false`: the latter lets some engines print midnight as "24:05".
+ */
+export function hourCycleFor(timeFormat: unknown): 'h12' | 'h23' {
+  return timeFormat === '12h' ? 'h12' : 'h23';
+}
+
+/**
+ * Date with time of day in the app language, the clock following the user's
+ * `timeFormat` setting: "Nov 17, 2026, 17:13" / "17 lis 2026, 5:13 PM".
+ *
+ * `options` takes `dateStyle` / `timeStyle` or single fields; without a time
+ * part in it `Intl` prints only the date, so keep one when overriding.
+ */
+export function formatDateTime(
+  date: Date | string | number,
+  locale: unknown,
+  timeFormat: unknown,
+  options: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }
+): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    ...options,
+    hourCycle: hourCycleFor(timeFormat)
+  }).format(new Date(date));
+}
+
+/**
+ * Time of day alone, in the app language and the user's clock: "17:13" /
+ * "5:13 PM". `timeStyle: 'short'` keeps each language's own digits-per-hour
+ * convention ("09:05" in Polish, "9:05" in Spanish).
+ */
+export function formatTimeOfDay(
+  date: Date | string | number,
+  locale: unknown,
+  timeFormat: unknown
+): string {
+  return formatDateTime(date, locale, timeFormat, { timeStyle: 'short' });
+}
+
 export const LOCALE_NAMES: Record<SupportedLocale, string> = {
   en: 'English',
   pl: 'Polski',

@@ -7,7 +7,7 @@ import { build, files, version } from '$service-worker';
 // Type-only (erased): no @reborn/i18n code runs in the SW, but the string
 // tables below are typed against the single locale list, so a new locale
 // without SW strings fails svelte-check.
-import { intlLocale, type SupportedLocale } from '@reborn/i18n/config';
+import { formatTimeOfDay, intlLocale, type SupportedLocale } from '@reborn/i18n/config';
 import { getTextDirection } from '@reborn/i18n/direction';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
@@ -701,6 +701,7 @@ async function decryptIvCiphertext(value: string, key: CryptoKey): Promise<strin
 interface AppSettingsRecord {
 	app_name?: string;
 	language?: SupportedLocale;
+	timeFormat?: string;
 }
 
 interface TaskRecord {
@@ -714,18 +715,26 @@ interface TaskMetadata {
 	has_time?: boolean;
 }
 
-async function readReborTaskLocale(db: IDBDatabase): Promise<SupportedLocale> {
+async function readReborTaskSettings(db: IDBDatabase): Promise<AppSettingsRecord | undefined> {
 	const all = await idbGetAll<AppSettingsRecord>(db, APP_SETTINGS_STORE_NAME);
-	const taskSettings = all.find((s) => s.app_name === 'reborn-task');
-	const lang = taskSettings?.language;
+	return all.find((s) => s.app_name === 'reborn-task');
+}
+
+function reminderLocale(settings: AppSettingsRecord | undefined): SupportedLocale {
+	const lang = settings?.language;
 	if (lang && lang in REMINDER_STRINGS) return lang;
 	return 'en';
+}
+
+async function readReborTaskLocale(db: IDBDatabase): Promise<SupportedLocale> {
+	return reminderLocale(await readReborTaskSettings(db));
 }
 
 function formatBody(
 	strings: TaskReminderStrings,
 	metadata: TaskMetadata | null,
-	locale: SupportedLocale
+	locale: SupportedLocale,
+	timeFormat: string | undefined
 ): string {
 	if (!metadata?.due_date) return strings.bodyUnknown;
 	const due = new Date(metadata.due_date);
@@ -734,8 +743,8 @@ function formatBody(
 	const localeTag = intlLocale(locale);
 
 	if (metadata.has_time) {
-		const time = due.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' });
-		return strings.bodyTime(time);
+		// The user's 12h/24h setting, as in the app (issue #581); 24h when unknown.
+		return strings.bodyTime(formatTimeOfDay(due, locale, timeFormat));
 	}
 
 	const today = new Date();
@@ -768,13 +777,16 @@ async function handleTaskReminderPush(payload: { task_id?: string }): Promise<vo
 	// in the project's source-of-truth language.
 	let locale: SupportedLocale = 'en';
 	let strings = REMINDER_STRINGS[locale];
+	let timeFormat: string | undefined;
 
 	try {
 		const taskDb = await openIDBForRead(TASK_DB_NAME);
 		if (taskDb) {
 			try {
-				locale = await readReborTaskLocale(taskDb);
+				const settings = await readReborTaskSettings(taskDb);
+				locale = reminderLocale(settings);
 				strings = REMINDER_STRINGS[locale];
+				timeFormat = settings?.timeFormat;
 			} catch {
 				/* keep default locale */
 			}
@@ -800,7 +812,7 @@ async function handleTaskReminderPush(payload: { task_id?: string }): Promise<vo
 					if (json) {
 						try {
 							const meta = JSON.parse(json) as TaskMetadata;
-							body = formatBody(strings, meta, locale);
+							body = formatBody(strings, meta, locale, timeFormat);
 						} catch {
 							/* keep bodyUnknown */
 						}

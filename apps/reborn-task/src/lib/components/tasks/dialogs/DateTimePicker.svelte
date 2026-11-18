@@ -15,6 +15,7 @@
 	import { CalendarIcon, Clock, X } from '@lucide/svelte';
 	import { createLogger } from '@reborn/utils';
 	import { t } from '$lib/stores/i18n.store';
+	import { hourCycleFor } from '@reborn/i18n';
 	import { timeFormat, currentLanguage, weekStartsOn } from '$lib/stores/app-settings.store';
 	import { 
 		type DateValue, 
@@ -85,7 +86,8 @@
 
 	let dateTimeFormatter = $derived(new DateFormatter(locale, {
 		dateStyle: 'medium',
-		timeStyle: 'short'
+		timeStyle: 'short',
+		hourCycle: hourCycleFor($timeFormat)
 	}));
 
 	// Track previous value to avoid reactive loops

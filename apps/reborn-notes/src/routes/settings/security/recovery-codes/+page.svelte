@@ -27,7 +27,8 @@
   import { toast } from '@reborn/ui';
   import { createLogger } from '@reborn/utils';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { intlLocale } from '@reborn/i18n';
+  import { formatDateTime } from '@reborn/i18n';
+  import { timeFormat } from '$lib/stores/app-settings.store';
 
   const logger = createLogger('RecoveryCodesPage');
 
@@ -96,7 +97,7 @@
     if (!newCodes.length) return;
     const content = [
       $t('security.recovery_codes.file_header'),
-      `${$t('security.recovery_codes.file_generated')} ${new Date().toLocaleString(intlLocale($locale))}`,
+      `${$t('security.recovery_codes.file_generated')} ${formatDateTime(new Date(), $locale, $timeFormat)}`,
       '',
       $t('security.recovery_codes.file_warning'),
       '',

@@ -5,7 +5,8 @@
   import { nativeSessionHeader } from '$lib/utils/native-session';
   import { Monitor, LogOut, RefreshCw, AlertTriangle, X } from '@lucide/svelte';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { intlLocale } from '@reborn/i18n';
+  import { formatDateTime } from '@reborn/i18n';
+  import { timeFormat } from '$lib/stores/app-settings.store';
   import { authStore } from '$lib/stores/auth.store';
   import { sessionExpired } from '$lib/stores/sync-status.store';
   import { SettingsLayout, Button, Alert, AlertDescription, Card, CardContent } from '@reborn/ui';
@@ -36,10 +37,7 @@
   const otherSessions = $derived(sessions.filter((s) => s.id !== currentSessionId));
 
   function formatDate(iso: string) {
-    return new Date(iso).toLocaleString(intlLocale($locale), {
-      dateStyle: 'medium',
-      timeStyle: 'short'
-    });
+    return formatDateTime(iso, $locale, $timeFormat);
   }
 
   function getDeviceName(sessionId: string): string {

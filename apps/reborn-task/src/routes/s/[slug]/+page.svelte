@@ -21,6 +21,7 @@
   } from '@lucide/svelte';
   import { get } from 'svelte/store';
   import { t, locale } from '$lib/stores/i18n.store';
+  import { intlLocale } from '@reborn/i18n';
   import TaskSnapshotView from '$lib/components/tasks/TaskSnapshotView.svelte';
   import ShareGate from '$lib/components/share/ShareGate.svelte';
   import {
@@ -248,7 +249,8 @@
   function formatDate(iso: string | null | undefined): string {
     if (!iso) return '';
     try {
-      return new Date(iso).toLocaleString(get(locale) ?? undefined);
+      // time-format-ignore: public share page - the visitor has no account settings, so the clock follows the language
+      return new Date(iso).toLocaleString(intlLocale(get(locale)));
     } catch {
       return iso;
     }

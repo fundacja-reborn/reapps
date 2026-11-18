@@ -41,6 +41,10 @@ export {
   isWeekStartPreference,
   resolveWeekStart,
   weekdayName,
+  // Time of day following the 12h/24h setting (issues #376, #581)
+  hourCycleFor,
+  formatDateTime,
+  formatTimeOfDay,
   type SupportedLocale,
   type TranslationModule,
   type WeekStartDay,
