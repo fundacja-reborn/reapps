@@ -1,3 +1,14 @@
+## 0.56.0 (2026-11-18)
+
+### 🚀 Features
+
+- **notes:** fold sections in the note preview too ([#590](https://github.com/fundacja-reborn/reapps/pull/590), [#587](https://github.com/fundacja-reborn/reapps/issues/587), [#582](https://github.com/fundacja-reborn/reapps/issues/582))
+- **notes:** show the Hijri date on note cards ([#593](https://github.com/fundacja-reborn/reapps/pull/593), [#583](https://github.com/fundacja-reborn/reapps/issues/583))
+
+### 🩹 Fixes
+
+- **i18n:** apply the Arabic review of the v0.54.0 and v0.55.0 release notes ([#592](https://github.com/fundacja-reborn/reapps/pull/592), [#482](https://github.com/fundacja-reborn/reapps/issues/482))
+
 ## 0.55.0 (2026-11-18)
 
 ### 🚀 Features
