@@ -16,6 +16,7 @@
   import { ownSelection } from '$lib/editor/own-selection';
   import { directionMarkAtomicRanges, toggleLineDirection } from '$lib/editor/direction-mark';
   import { listIndent, listOutdent } from '$lib/editor/list-keymap';
+  import { foldAllHeadings, headingFold, unfoldAllHeadings } from '$lib/editor/heading-fold';
   import {
     BULLET_ANCHOR,
     shouldInsertBulletAnchor,
@@ -38,6 +39,8 @@
   import {
     ArrowLeftRight,
     Bold,
+    ChevronsDownUp,
+    ChevronsUpDown,
     Italic,
     Strikethrough,
     Code,
@@ -133,6 +136,8 @@
   // out of the toolbar for everyone else.
   const showDirectionToggle = $derived($textDirection === 'rtl' || containsRtlText(content));
   let view: EditorView | undefined;
+  /** True while a section of the note is folded - flips the toolbar button. */
+  let hasFoldedSections = $state(false);
   let isExternalUpdate = false;
   const themeCompartment = new Compartment();
   const readonlyCompartment = new Compartment();
@@ -221,6 +226,13 @@
         node.removeEventListener('mousedown', handler);
       }
     };
+  }
+
+  /** Toolbar: open every folded section, or fold them all when none is folded. */
+  function toggleAllSections() {
+    if (!view) return;
+    if (hasFoldedSections) unfoldAllHeadings(view);
+    else foldAllHeadings(view);
   }
 
   function wrapSelection(marker: string): boolean {
@@ -557,6 +569,15 @@
             : []
         ),
         noteLinkDecoration,
+        // Collapsible sections under headings (#582). Editor state only:
+        // nothing is written to the note.
+        headingFold({
+          labels: () => ({
+            fold: $t('editor.fold_section'),
+            unfold: $t('editor.unfold_section')
+          }),
+          onFoldedChange: (anyFolded) => (hasFoldedSections = anyFolded)
+        }),
         // Highest precedence so the search mark becomes the INNERMOST span (CM6
         // nests higher-precedence decorations deeper) and its background paints
         // ON TOP of Live Preview's own inline marks - e.g. `cm-lp-code`, whose
@@ -994,6 +1015,24 @@
         <ImageIcon class="h-4 w-4" />
       </button>
 
+      <div class="mx-1 h-5 w-px bg-border" role="separator"></div>
+
+      <!-- Collapse / expand every section under a heading -->
+      <button
+        type="button"
+        use:keepEditorFocus
+        onclick={toggleAllSections}
+        title={$t(hasFoldedSections ? 'editor.unfold_all' : 'editor.fold_all')}
+        class="toolbar-btn"
+        aria-label={$t(hasFoldedSections ? 'editor.unfold_all' : 'editor.fold_all')}
+      >
+        {#if hasFoldedSections}
+          <ChevronsUpDown class="h-4 w-4" />
+        {:else}
+          <ChevronsDownUp class="h-4 w-4" />
+        {/if}
+      </button>
+
       {#if showDirectionToggle}
         <div class="mx-1 h-5 w-px bg-border" role="separator"></div>
 
@@ -1218,6 +1257,75 @@
   /* Light mode */
   :global(.cm-host .cm-editor:not(.cm-dark-theme) .cm-content) {
     caret-color: currentColor;
+  }
+
+  /* Collapsible sections (editor/heading-fold.ts, #582): the chevron at the end
+     of a heading line and the "…" mark that stands for the hidden text. Sizes
+     in rem, so a large heading does not blow the button up. */
+  :global(.cm-host .cm-hfold-toggle) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-inline-start: 0.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    /* Touch screens have no hover: the chevron is always there, faint. */
+    opacity: 0.55;
+    transition: opacity 0.15s ease;
+  }
+  :global(.cm-host .cm-hfold-toggle svg) {
+    transition: transform 0.15s ease;
+  }
+  :global(.cm-host .cm-hfold-toggle.cm-hfold-folded svg) {
+    transform: rotate(-90deg);
+  }
+  :global(.cm-host .cm-hfold-toggle.cm-hfold-folded.cm-hfold-rtl svg) {
+    transform: rotate(90deg);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    /* With a mouse: shown on the hovered heading, on the one the caret is in
+       and on every folded one, so the page stays calm while reading. */
+    :global(.cm-host .cm-hfold-toggle) {
+      opacity: 0;
+    }
+    :global(.cm-host .cm-hfold-line:hover .cm-hfold-toggle),
+    :global(.cm-host .cm-hfold-active .cm-hfold-toggle),
+    :global(.cm-host .cm-hfold-toggle.cm-hfold-folded) {
+      opacity: 0.55;
+    }
+  }
+  :global(.cm-host .cm-hfold-toggle.cm-hfold-folded) {
+    opacity: 0.8;
+  }
+  :global(.cm-host .cm-hfold-toggle:hover),
+  :global(.cm-host .cm-hfold-toggle:focus-visible) {
+    opacity: 1;
+    color: var(--foreground);
+    background: var(--accent);
+  }
+  :global(.cm-host .cm-hfold-placeholder) {
+    display: inline-block;
+    vertical-align: middle;
+    margin-inline-start: 0.25rem;
+    padding: 0 0.4rem;
+    border-radius: 0.375rem;
+    background: var(--muted);
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.25rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  :global(.cm-host .cm-hfold-placeholder:hover) {
+    color: var(--foreground);
   }
 
   /* Live Preview - code block token colors in dark mode.
