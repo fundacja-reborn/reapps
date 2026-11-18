@@ -220,6 +220,7 @@
   function formatRelative(iso: string | null): string {
     if (!iso) return '';
     try {
+      // time-format-ignore: public share page - the visitor has no account settings, so the clock follows the language
       return new Date(iso).toLocaleString(intlLocale(get(locale)));
     } catch {
       return iso;

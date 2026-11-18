@@ -1,4 +1,4 @@
-import { intlLocale } from '@reborn/i18n/config';
+import { formatTimeOfDay } from '@reborn/i18n/config';
 import { formatDateWithSetting } from '@reborn/utils';
 
 export interface DueDateFormatResult {
@@ -44,11 +44,9 @@ export function getDaysFromToday(date: Date): number {
 	return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
-export function getTimeString(date: Date, locale: string): string {
-	return date.toLocaleTimeString(intlLocale(locale), {
-		hour: 'numeric',
-		minute: '2-digit'
-	});
+/** Time of day in the app language, on the user's 12h/24h clock (`timeFormat` setting). */
+export function getTimeString(date: Date, locale: string, timeFormat: string = '24h'): string {
+	return formatTimeOfDay(date, locale, timeFormat);
 }
 
 /**
@@ -59,13 +57,15 @@ export function getTimeString(date: Date, locale: string): string {
  * @param locale - current locale code (e.g. 'en', 'pl')
  * @param t - translation function
  * @param dateFormat - user's preferred date format from settings (e.g. 'YYYY-MM-DD')
+ * @param timeFormat - user's 12h/24h setting; decides the clock of the time part
  */
 export function formatDueDate(
 	dateString: string | null | undefined,
 	hasTime: boolean | undefined,
 	locale: string,
 	t: (key: string, options?: { values?: Record<string, unknown> }) => string,
-	dateFormat: string = 'YYYY-MM-DD'
+	dateFormat: string = 'YYYY-MM-DD',
+	timeFormat: string = '24h'
 ): DueDateFormatResult | null {
 	if (!dateString) return null;
 
@@ -94,20 +94,20 @@ export function formatDueDate(
 
 	if (isToday(date)) {
 		relativeText = t('tasks.date.today');
-		if (hasTime) text = getTimeString(date, locale);
+		if (hasTime) text = getTimeString(date, locale, timeFormat);
 	} else if (isTomorrow(date)) {
 		relativeText = t('tasks.date.tomorrow');
-		if (hasTime) text = getTimeString(date, locale);
+		if (hasTime) text = getTimeString(date, locale, timeFormat);
 	} else if (isYesterday(date)) {
 		relativeText = t('tasks.date.yesterday');
-		if (hasTime) text = getTimeString(date, locale);
+		if (hasTime) text = getTimeString(date, locale, timeFormat);
 	} else if (daysFromToday > 0 && daysFromToday <= 3) {
 		relativeText = t('tasks.date.in_n_days', { values: { count: daysFromToday } });
-		if (hasTime) text = getTimeString(date, locale);
+		if (hasTime) text = getTimeString(date, locale, timeFormat);
 	} else {
 		// For dates further away or in the past - use user's preferred format
 		text = formatDateWithSetting(date, dateFormat);
-		if (hasTime) text += ', ' + getTimeString(date, locale);
+		if (hasTime) text += ', ' + getTimeString(date, locale, timeFormat);
 	}
 
 	return { text, relativeText, status, isTimeOverdue };

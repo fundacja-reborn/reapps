@@ -69,4 +69,28 @@ describe('UI source guards (apps/reborn-notes/src)', () => {
       );
     expect(hits).toEqual([]);
   });
+
+  it('formats a time of day on the clock the user chose (12h/24h setting, #581)', () => {
+    // `Intl` takes the clock from the language: English and Arabic print
+    // "5:13 PM" to a user who chose 24h. Use formatDateTime / formatTimeOfDay
+    // from @reborn/i18n with the `timeFormat` store (or pass `hourCycle:
+    // hourCycleFor(...)` to a formatter). `toLocaleString()` is flagged too: on
+    // a date it prints the time, and numbers have formatNumber. Deliberately on
+    // the language's clock: `time-format-ignore: <reason>` on the line above.
+    const NEEDS_CLOCK = /timeStyle|\bhour:\s*['"]/;
+    const hits = listSourceFiles([ROOT])
+      .filter((file) => /\.(svelte|ts)$/.test(file) && !/\.(spec|test)\.ts$/.test(file))
+      .flatMap((file) => {
+        const lines = readFileSync(file, 'utf-8').split('\n');
+        return lines.flatMap((line, i) => {
+          const near = lines.slice(Math.max(0, i - 4), i + 5).join('\n');
+          const bad =
+            /\.toLocale(Time)?String\(/.test(line) ||
+            (NEEDS_CLOCK.test(line) && !/formatDateTime\(|hourCycle/.test(near));
+          const ignored = /time-format-ignore: \S/.test(lines[i - 1] ?? '');
+          return bad && !ignored ? [`${repoRelative(file)}:${i + 1}`] : [];
+        });
+      });
+    expect(hits).toEqual([]);
+  });
 });

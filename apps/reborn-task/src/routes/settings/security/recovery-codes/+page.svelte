@@ -23,7 +23,8 @@
 		AlertTriangle
 	} from '@lucide/svelte';
 	import { t, locale } from '$lib/stores/i18n.store';
-	import { intlLocale } from '@reborn/i18n';
+	import { formatDateTime } from '@reborn/i18n';
+	import { timeFormat } from '$lib/stores/app-settings.store';
 	import { toast } from '@reborn/ui';
 	import { createLogger } from '@reborn/utils';
 
@@ -102,7 +103,7 @@
 		if (!newCodes.length) return;
 		const content = [
 			're/task - Backup Codes',
-			`Generated: ${new Date().toLocaleString(intlLocale($locale))}`,
+			`Generated: ${formatDateTime(new Date(), $locale, $timeFormat)}`,
 			'',
 			'Keep these codes in a safe place. Each code can only be used once.',
 			'',
