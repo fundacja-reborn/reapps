@@ -511,6 +511,10 @@
     "code_copy": "Copy code",
     "code_copied": "Copied",
     "copy_heading_link": "Copy link to heading",
+    "fold_section": "Collapse section",
+    "unfold_section": "Expand section",
+    "fold_all": "Collapse all sections",
+    "unfold_all": "Expand all sections",
     "formatting": {
       "bold": "Bold",
       "italic": "Italic",

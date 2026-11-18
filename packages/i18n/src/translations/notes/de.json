@@ -511,6 +511,10 @@
     "code_copy": "Code kopieren",
     "code_copied": "Kopiert",
     "copy_heading_link": "Link zur Überschrift kopieren",
+    "fold_section": "Abschnitt einklappen",
+    "unfold_section": "Abschnitt ausklappen",
+    "fold_all": "Alle Abschnitte einklappen",
+    "unfold_all": "Alle Abschnitte ausklappen",
     "formatting": {
       "bold": "Fett",
       "italic": "Kursiv",

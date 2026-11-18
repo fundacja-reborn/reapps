@@ -511,6 +511,10 @@
     "code_copy": "Copier le code",
     "code_copied": "Copié",
     "copy_heading_link": "Copier le lien vers le titre",
+    "fold_section": "Réduire la section",
+    "unfold_section": "Développer la section",
+    "fold_all": "Réduire toutes les sections",
+    "unfold_all": "Développer toutes les sections",
     "formatting": {
       "bold": "Gras",
       "italic": "Italique",
