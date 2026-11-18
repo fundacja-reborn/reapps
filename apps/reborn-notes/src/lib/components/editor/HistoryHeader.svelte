@@ -2,7 +2,8 @@
   import { Eye, Clock, ArrowLeft, X, RotateCcw, FileDiff, ChevronRight } from '@lucide/svelte';
   import { SidebarTrigger } from '@reborn/ui/sidebar';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { intlLocale } from '@reborn/i18n';
+  import { formatDateTime } from '@reborn/i18n';
+  import { timeFormat } from '$lib/stores/app-settings.store';
 
   type HistoryViewMode = 'preview' | 'diff';
 
@@ -96,13 +97,7 @@
   <span class="text-xs text-muted-foreground">
     {$t('history.version_date', {
       values: {
-        date: new Date(selectedVersion.created_at).toLocaleDateString(intlLocale($locale), {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })
+        date: formatDateTime(selectedVersion.created_at, $locale, $timeFormat)
       }
     })}
     {#if isLatestVersion}

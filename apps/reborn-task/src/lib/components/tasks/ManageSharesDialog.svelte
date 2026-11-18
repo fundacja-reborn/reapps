@@ -13,7 +13,8 @@
   } from '@lucide/svelte';
   import { SvelteSet } from 'svelte/reactivity';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { intlLocale } from '@reborn/i18n';
+  import { formatDateTime } from '@reborn/i18n';
+  import { timeFormat } from '$lib/stores/app-settings.store';
   import {
     Dialog,
     DialogContent,
@@ -75,7 +76,7 @@
   function formatDate(iso: string | null) {
     if (!iso) return '-';
     try {
-      return new Date(iso).toLocaleString(intlLocale($locale), { dateStyle: 'medium', timeStyle: 'short' });
+      return formatDateTime(iso, $locale, $timeFormat);
     } catch {
       return iso;
     }

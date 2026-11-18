@@ -4,7 +4,7 @@
 	import type { TaskListItem } from '$lib/services/task-title-index.svelte';
 	import { createLogger } from '@reborn/utils';
 	import { t, locale } from '$lib/stores/i18n.store';
-	import { dateFormat } from '$lib/stores/app-settings.store';
+	import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
 	import { formatDueDate, truncateListName } from '$lib/services/task-formatting.service';
 	import { syncErrorMap } from '$lib/stores/sync-errors.store';
 
@@ -59,7 +59,7 @@
 	}
 
 	const dueDate = $derived(
-		formatDueDate(task.due_date, task.has_time, $locale || 'en', $t, $dateFormat)
+		formatDueDate(task.due_date, task.has_time, $locale || 'en', $t, $dateFormat, $timeFormat)
 	);
 
 	// Per-task hard-rejection state (sync_status: 'sync_error'). Read from the
@@ -223,7 +223,8 @@
 						true,
 						$locale || 'en',
 						$t,
-						$dateFormat
+						$dateFormat,
+						$timeFormat
 					)}
 					{#if completedDate}
 						<div class="flex items-center gap-1 text-muted-foreground">

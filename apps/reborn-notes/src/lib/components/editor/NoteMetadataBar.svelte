@@ -3,7 +3,8 @@
   import { Folder, Tag, Calendar } from '@lucide/svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { intlLocale } from '@reborn/i18n';
+  import { formatDateTime } from '@reborn/i18n';
+  import { timeFormat } from '$lib/stores/app-settings.store';
   import { APPEARANCE_SWATCH_CLASS, isAppearanceColor } from '$lib/utils/appearance-colors';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -68,12 +69,7 @@
   function formatDate(iso: string | null): string | null {
     if (!iso) return null;
     try {
-      const date = new Date(iso);
-      const currentLocale = intlLocale($locale);
-      return new Intl.DateTimeFormat(currentLocale, {
-        dateStyle: 'medium',
-        timeStyle: 'short'
-      }).format(date);
+      return formatDateTime(iso, $locale, $timeFormat);
     } catch {
       return null;
     }

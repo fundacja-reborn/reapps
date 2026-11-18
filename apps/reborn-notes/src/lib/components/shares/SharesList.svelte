@@ -8,7 +8,8 @@
     DropdownMenuTrigger
   } from '@reborn/ui';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { intlLocale } from '@reborn/i18n';
+  import { formatDateTime, intlLocale } from '@reborn/i18n';
+  import { timeFormat } from '$lib/stores/app-settings.store';
   import { activeShares, activeShareId, sharesBySourceId, sharesStore } from '$lib/stores/shares.store';
   import { formatExpiryRelative } from '$lib/utils/expiry-format';
   import type { OwnShareListItem } from '@reborn/types';
@@ -79,10 +80,10 @@
 
   // Full date + time - matches ShareDetailPanel's "Created" field. Used as the
   // row tooltip so the compact date-only label still exposes the exact moment.
-  function formatDateTime(iso: string | null): string {
+  function formatCreatedAt(iso: string | null): string {
     if (!iso) return '-';
     try {
-      return new Date(iso).toLocaleString(intlLocale($locale), { dateStyle: 'medium', timeStyle: 'short' });
+      return formatDateTime(iso, $locale, $timeFormat);
     } catch {
       return iso;
     }
@@ -273,7 +274,7 @@
                       <Clock class="h-3 w-3" />{$t('share.list.expiring_soon')}
                     </span>
                   {/if}
-                  <span title={formatDateTime(share.created_at)}
+                  <span title={formatCreatedAt(share.created_at)}
                     >{$t('share.list.column.created')}: {formatDate(share.created_at)}</span
                   >
                   <span aria-hidden="true">·</span>

@@ -8,7 +8,7 @@
  * - Sync with current task list
  */
 
-import { intlLocale } from '@reborn/i18n/config';
+import { formatTimeOfDay, intlLocale } from '@reborn/i18n/config';
 import { browser } from '$app/environment';
 import { PUBLIC_BASE_PATH } from '$env/static/public';
 import { createLogger, parseUserAgent } from '@reborn/utils';
@@ -100,13 +100,18 @@ function parseAllDayTime(value: string): [number, number] {
 
 /**
  * Build the notification body text using translated strings.
- * - has_time: "scheduled for HH:MM" with the time formatted in user's locale.
+ * - has_time: "scheduled for HH:MM" in the user's language, on their 12h/24h clock.
  * - date-only with calendar day == today: "scheduled for today".
  * - date-only otherwise: "scheduled for {locale-formatted date}".
  */
 type TranslateFn = (key: string, options?: { values?: Record<string, string | number> }) => string;
 
-function formatReminderBody(task: ReminderTask, translate: TranslateFn, locale: string): string {
+function formatReminderBody(
+	task: ReminderTask,
+	translate: TranslateFn,
+	locale: string,
+	timeFormat: string
+): string {
 	if (!task.due_date) return translate('notifications.task_due.body_unknown');
 
 	const due = new Date(task.due_date);
@@ -117,7 +122,7 @@ function formatReminderBody(task: ReminderTask, translate: TranslateFn, locale: 
 	const localeTag = intlLocale(locale);
 
 	if (task.has_time) {
-		const time = due.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' });
+		const time = formatTimeOfDay(due, locale, timeFormat);
 		return translate('notifications.task_due.body_time', { values: { time } });
 	}
 
@@ -321,13 +326,14 @@ class PushNotificationService {
 		const window7d = 7 * 24 * 60 * 60 * 1000;
 
 		// Lazy import to avoid pulling i18n into worker contexts.
-		const [{ get }, { t }, { currentLanguage }] = await Promise.all([
+		const [{ get }, { t }, { currentLanguage, timeFormat }] = await Promise.all([
 			import('svelte/store'),
 			import('$lib/stores/i18n.store'),
 			import('$lib/stores/app-settings.store')
 		]);
 		const translate = get(t) as TranslateFn;
 		const locale = get(currentLanguage);
+		const clock = get(timeFormat);
 
 		// Cancel all existing scheduled reminders first
 		sw.active?.postMessage({ type: 'CANCEL_ALL_NOTIFICATIONS' });
@@ -346,7 +352,7 @@ class PushNotificationService {
 
 			// Local SW path - 24h window matches what the SW's polling can realistically cover.
 			if (fireAt <= now + window24h) {
-				const body = formatReminderBody(task, translate, locale);
+				const body = formatReminderBody(task, translate, locale, clock);
 				sw.active?.postMessage({
 					type: 'SCHEDULE_NOTIFICATION',
 					notification: {

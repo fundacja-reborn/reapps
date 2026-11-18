@@ -1,7 +1,8 @@
 <script lang="ts">
   import { get } from 'svelte/store';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { intlLocale } from '@reborn/i18n';
+  import { formatDateTime } from '@reborn/i18n';
+  import { timeFormat } from '$lib/stores/app-settings.store';
   import MarkdownPreview from '$lib/components/MarkdownPreview.svelte';
   import type { SharedSnapshotNotePayload } from '@reborn/types';
 
@@ -10,7 +11,7 @@
   function formatRelative(iso: string | null): string {
     if (!iso) return '';
     try {
-      return new Date(iso).toLocaleString(intlLocale(get(locale)));
+      return formatDateTime(iso, get(locale), get(timeFormat));
     } catch {
       return iso;
     }

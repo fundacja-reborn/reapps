@@ -12,7 +12,8 @@
 	} from '@reborn/ui';
 	import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
 	import { t, locale } from '$lib/stores/i18n.store';
-	import { intlLocale } from '@reborn/i18n';
+	import { formatDateTime } from '@reborn/i18n';
+	import { timeFormat } from '$lib/stores/app-settings.store';
 	import { goto } from '$lib/utils/navigation';
 	import { decryptedTrashTasks, getDaysInTrash } from '$lib/stores/decrypted-trash.store';
 	import { trashManagementService } from '$lib/services/trash-management.service';
@@ -69,13 +70,9 @@
 
 	// Format date
 	function formatDate(dateString: string): string {
-		const date = new Date(dateString);
-		return date.toLocaleDateString(intlLocale($locale), {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
+		return formatDateTime(dateString, $locale, $timeFormat, {
+			dateStyle: 'long',
+			timeStyle: 'short'
 		});
 	}
 

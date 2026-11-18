@@ -40,7 +40,8 @@ import {
 import { notesStore } from '$lib/stores/notes.store';
 import { getSetting } from '$lib/utils/app-settings';
 import { t as i18nT, locale as i18nLocale } from '$lib/stores/i18n.store';
-import { intlLocale } from '@reborn/i18n/config';
+import { formatDateTime } from '@reborn/i18n/config';
+import { timeFormat } from '$lib/stores/app-settings.store';
 import {
   type DedupCandidate,
   type DedupGroup,
@@ -58,11 +59,11 @@ function tr(key: string, values?: Record<string, unknown>): string {
 }
 
 function formatCreatedAt(iso: string): string {
-  const loc = intlLocale(get(i18nLocale));
   try {
-    return new Intl.DateTimeFormat(loc, { dateStyle: 'short', timeStyle: 'short' }).format(
-      new Date(iso)
-    );
+    return formatDateTime(iso, get(i18nLocale), get(timeFormat), {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    });
   } catch {
     return iso;
   }
