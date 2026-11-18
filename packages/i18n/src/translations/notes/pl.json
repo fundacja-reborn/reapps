@@ -511,6 +511,10 @@
     "code_copy": "Skopiuj kod",
     "code_copied": "Skopiowano",
     "copy_heading_link": "Kopiuj link do nagłówka",
+    "fold_section": "Zwiń sekcję",
+    "unfold_section": "Rozwiń sekcję",
+    "fold_all": "Zwiń wszystkie sekcje",
+    "unfold_all": "Rozwiń wszystkie sekcje",
     "formatting": {
       "bold": "Pogrubienie",
       "italic": "Kursywa",

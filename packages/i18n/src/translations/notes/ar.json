@@ -534,6 +534,10 @@
     "code_copy": "نسخ الشيفرة",
     "code_copied": "تم النسخ",
     "copy_heading_link": "نسخ رابط العنوان",
+    "fold_section": "طي القسم",
+    "unfold_section": "توسيع القسم",
+    "fold_all": "طي كل الأقسام",
+    "unfold_all": "توسيع كل الأقسام",
     "formatting": {
       "bold": "غامق",
       "italic": "مائل",
