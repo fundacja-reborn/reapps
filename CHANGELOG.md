@@ -1,3 +1,9 @@
+## 0.56.0 (2026-11-18)
+
+### 🚀 Features
+
+- **notes:** fold sections in the note preview too ([#590](https://github.com/fundacja-reborn/reapps/pull/590), [#587](https://github.com/fundacja-reborn/reapps/issues/587), [#582](https://github.com/fundacja-reborn/reapps/issues/582))
+
 ## 0.55.0 (2026-11-18)
 
 ### 🚀 Features
