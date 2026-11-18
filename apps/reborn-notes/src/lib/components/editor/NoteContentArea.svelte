@@ -6,6 +6,7 @@
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import { t } from '$lib/stores/i18n.store';
   import { preserveBlankLines } from '$lib/stores/app-settings.store';
+  import { foldedSlugsFor, headingFolds } from '$lib/stores/heading-folds.store';
   import { applyToc, removeToc, isTocStale } from '$lib/utils/toc';
   import { copyText } from '$lib/utils/clipboard';
   import { buildHeadingLink } from '$lib/services/note-link-utils';
@@ -136,6 +137,14 @@
   }
   const tocStale = $derived(isTocStale(noteDetailService.content, { title: $t('toc.title') }));
 
+  // Collapsible sections (#582): the folded sections of this note, shared with
+  // the editor through the store. The preview reports a click (or a jump that
+  // had to open a section) as the new list.
+  const foldedHeadings = $derived(foldedSlugsFor($headingFolds, noteId));
+  function handleHeadingFoldsChange(slugs: string[]): void {
+    headingFolds.set(noteId, slugs);
+  }
+
   /**
    * Copy an internal link to a heading from the rendered Preview's hover button.
    * Built by the shared {@link buildHeadingLink} so it is byte-identical to the
@@ -237,6 +246,8 @@
               onTocDelete={handleTocDelete}
               onHeadingLinkCopy={handleHeadingLinkCopy}
               headingLinkLabel={$t('editor.copy_heading_link')}
+              {foldedHeadings}
+              onHeadingFoldsChange={handleHeadingFoldsChange}
               {tocStale}
               {imageLoadMode}
               preserveBlankLines={$preserveBlankLines}
@@ -260,6 +271,8 @@
             onTocDelete={handleTocDelete}
             onHeadingLinkCopy={handleHeadingLinkCopy}
             headingLinkLabel={$t('editor.copy_heading_link')}
+            {foldedHeadings}
+            onHeadingFoldsChange={handleHeadingFoldsChange}
             {tocStale}
             {imageLoadMode}
             preserveBlankLines={$preserveBlankLines}

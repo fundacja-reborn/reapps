@@ -121,6 +121,8 @@
   import { goto } from '$lib/utils/navigation';
   import { createScrollSync } from '$lib/utils/scroll-sync';
   import { scrollToHeading } from '$lib/utils/heading-scroll';
+  import { isFoldHidden, revealFolded } from '$lib/utils/preview-heading-fold';
+  import { headingFolds } from '$lib/stores/heading-folds.store';
   import { extractHeadings, type DocHeading } from '$lib/utils/heading-outline';
   import { applyToc, removeToc, hasToc, isTocStale, tocHiddenSpans } from '$lib/utils/toc';
   import { createEditorAdapter, createPreviewAdapter } from '$lib/utils/line-adapter';
@@ -1781,6 +1783,9 @@
   $effect(() => {
     const navId = $activeNoteId;
     untrack(() => {
+      // Folded sections (#582) belong to the note that was open: another note,
+      // or the same one opened again, starts unfolded.
+      headingFolds.reset();
       scrollSync.setAnchor(1);
       // When this navigation targets a heading anchor (cross-note `note:UUID#slug`),
       // do NOT zero the scroll - `handlePreviewRender` is about to scroll the new
@@ -1867,7 +1872,12 @@
     const container = previewContentEl;
     const root = previewSyncScrollEl;
     if (!container) return;
-    const headings = [...container.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')];
+    // Headings inside a folded section (#582) are not on screen: leaving them
+    // in would let the "reached the end" rule mark one the reader cannot see.
+    // A fold or an unfold re-renders (the tick above), so the list stays right.
+    const headings = [
+      ...container.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')
+    ].filter((heading) => !isFoldHidden(heading));
     if (headings.length === 0) return;
 
     const visible = new SvelteSet<string>();
@@ -2090,7 +2100,11 @@
     if (!pendingSearchScroll) return;
     if (active < 0 || active >= matches.length) return;
     if (mode === 'preview') {
-      scrollDomRangeIntoView(previewSyncScrollEl, matches[active] as Range);
+      const range = matches[active] as Range;
+      // A match inside a folded section (#582): open the section first, the
+      // preview does it at once, so the match has a box to scroll to.
+      revealFolded(range.startContainer.parentElement);
+      scrollDomRangeIntoView(previewSyncScrollEl, range);
     } else if (editorView) {
       scrollCmMatchIntoView(editorView, matches[active] as SearchMatch);
     }

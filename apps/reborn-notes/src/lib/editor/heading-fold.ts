@@ -51,6 +51,7 @@ import {
 } from '@codemirror/view';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { detectTextDirection } from '@reborn/i18n/direction';
+import { FOLD_CHEVRON_ICON } from '../utils/preview-heading-fold';
 
 export interface FoldRange {
   from: number;
@@ -69,6 +70,12 @@ export interface HeadingFoldOptions {
   labels: () => HeadingFoldLabels;
   /** Called when the note goes from "no folded section" to "some" or back. */
   onFoldedChange?: (anyFolded: boolean) => void;
+  /**
+   * Called with the 1-based lines of the folded headings whenever that list
+   * may have changed (a fold, an unfold, an edit while something is folded).
+   * The owner shares it with the rendered preview.
+   */
+  onFoldedLinesChange?: (lines: number[]) => void;
 }
 
 /** Level 1-6 of a heading node (`# ...` or underlined), else null. */
@@ -132,6 +139,16 @@ export function foldOnLine(state: EditorState, lineFrom: number, lineTo: number)
 /** True while at least one section of the note is folded. */
 export function hasFoldedSections(state: EditorState): boolean {
   return foldedRanges(state).size > 0;
+}
+
+/** 1-based numbers of the lines whose section is folded, in document order. */
+export function foldedHeadingLines(state: EditorState): number[] {
+  const lines: number[] = [];
+  foldedRanges(state).between(0, state.doc.length, (from) => {
+    const line = state.doc.lineAt(from);
+    if (from === line.to && lines[lines.length - 1] !== line.number) lines.push(line.number);
+  });
+  return lines;
 }
 
 /** The whole tree where it can be had quickly, else what is parsed so far. */
@@ -253,15 +270,45 @@ export function unfoldAllHeadings(view: EditorView): boolean {
   return true;
 }
 
+/**
+ * Bring the headings on the given lines to the wanted state: `true` folds the
+ * section of the heading on that 1-based line, `false` opens it. Lines that
+ * are not listed are left alone, and so is a line that is already as wanted,
+ * which makes this safe to call with a state that came from the editor itself.
+ *
+ * Used to follow folds made outside the editor: in the rendered preview, or in
+ * the editor of the previous view mode.
+ */
+export function syncHeadingFolds(view: EditorView, wanted: ReadonlyMap<number, boolean>): boolean {
+  const { state } = view;
+  let tree: Tree | null = null;
+  const toFold: FoldRange[] = [];
+  const effects: StateEffect<unknown>[] = [];
+  for (const [number, fold] of wanted) {
+    if (number < 1 || number > state.doc.lines) continue;
+    const line = state.doc.line(number);
+    const folded = foldOnLine(state, line.from, line.to);
+    if (fold && !folded) {
+      tree ??= fullTree(state);
+      const range = headingFoldRange(state, line.from, line.to, tree);
+      if (range) toFold.push(range);
+    } else if (!fold && folded) {
+      effects.push(unfoldEffect.of(folded));
+    }
+  }
+  if (toFold.length === 0 && effects.length === 0) return false;
+  const fold = foldTransaction(state, toFold);
+  view.dispatch({ ...fold, effects: [...fold.effects, ...effects] });
+  return true;
+}
+
 // ── Button ─────────────────────────────────────────────────────────
 
-// Lucide "chevron-down" (16px, follows the text colour). Static markup, never
-// user input. A folded section turns it sideways in CSS, towards the end of
-// the line: right in a left-to-right heading, left in a right-to-left one.
-// Lines carry `dir="auto"`, which CSS cannot read, so the direction of the
-// heading text is worked out here (first strong character, the same rule).
-const CHEVRON_ICON =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+// The chevron (`FOLD_CHEVRON_ICON`, shared with the rendered preview) points
+// down. A folded section turns it sideways in CSS, towards the end of the
+// line: right in a left-to-right heading, left in a right-to-left one. Lines
+// carry `dir="auto"`, which CSS cannot read, so the direction of the heading
+// text is worked out here (first strong character, the same rule).
 
 class FoldToggleWidget extends WidgetType {
   constructor(
@@ -289,7 +336,7 @@ class FoldToggleWidget extends WidgetType {
     btn.title = this.label;
     btn.setAttribute('aria-label', this.label);
     btn.setAttribute('aria-expanded', this.folded ? 'false' : 'true');
-    btn.innerHTML = CHEVRON_ICON;
+    btn.innerHTML = FOLD_CHEVRON_ICON;
     // Keep the press from moving the caret into the heading (in Live Preview
     // that would swap the rendered line for raw Markdown before the click) and
     // from opening the on-screen keyboard.
@@ -453,10 +500,17 @@ export function headingFold(options: HeadingFoldOptions): Extension {
       }
     }),
     EditorView.updateListener.of((update) => {
-      if (!options.onFoldedChange) return;
       const before = hasFoldedSections(update.startState);
       const after = hasFoldedSections(update.state);
-      if (before !== after) options.onFoldedChange(after);
+      if (before !== after) options.onFoldedChange?.(after);
+      if (!options.onFoldedLinesChange) return;
+      // A fold or an unfold, or an edit that may have moved a folded heading
+      // to another line (or renamed it, which the owner cares about).
+      const foldsChanged =
+        update.startState.field(foldState, false) !== update.state.field(foldState, false);
+      if (foldsChanged || (update.docChanged && (before || after))) {
+        options.onFoldedLinesChange(foldedHeadingLines(update.state));
+      }
     })
   ];
 }

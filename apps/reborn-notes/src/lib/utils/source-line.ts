@@ -15,6 +15,7 @@
  */
 import type { Token } from 'marked';
 import { extraBlankLines } from './blank-lines';
+import { FOLD_HIDDEN_ATTR } from './preview-heading-fold';
 
 // Marked's `Token` is a discriminated union - `interface extends` can't
 // widen it without losing the narrowing, so we use an intersection.
@@ -117,6 +118,10 @@ export function collectPreviewAnchors(container: HTMLElement): PreviewAnchor[] {
     const el = nodes[i];
     const startLine = Number(el.getAttribute('data-source-line'));
     if (!Number.isFinite(startLine)) continue;
+    // Hidden by a folded section (preview-heading-fold.ts): no box, so its
+    // rect would be all zeros and break the top-ordered list. Its lines fall
+    // into the gap between the heading and the next visible block.
+    if (el.hasAttribute(FOLD_HIDDEN_ATTR)) continue;
     const endAttr = el.getAttribute('data-source-line-end');
     const endLine = endAttr != null && Number.isFinite(Number(endAttr))
       ? Number(endAttr)

@@ -1,3 +1,5 @@
+import { revealFolded } from './preview-heading-fold';
+
 /**
  * Scroll a rendered heading into view by its anchor id.
  *
@@ -11,6 +13,9 @@
  * avoid having to CSS-escape slugs that contain Unicode letters - Polish /
  * German / French / Spanish headings produce ids like `bezpieczeństwo`.
  *
+ * A heading inside a folded section (collapsible sections, #582) has no box to
+ * scroll to, so the preview is asked to open that section first.
+ *
  * @returns true when a matching heading was found and scrolled.
  */
 export function scrollToHeading(container: HTMLElement | null, slug: string): boolean {
@@ -18,6 +23,7 @@ export function scrollToHeading(container: HTMLElement | null, slug: string): bo
   const headings = container.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6');
   for (const heading of headings) {
     if (heading.id === slug) {
+      revealFolded(heading);
       heading.scrollIntoView({ block: 'start', behavior: 'smooth' });
       return true;
     }
