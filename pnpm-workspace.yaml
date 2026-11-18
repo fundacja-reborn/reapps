@@ -46,6 +46,13 @@ auditConfig:
     # `*.remote.ts` module or `$app/server` import in the repo. Remove with the SvelteKit 3 migration.
     - GHSA-3r8g-jcqq-3p5j # DoS while parsing form data from a remote functions `form` (high)
     - GHSA-6cf5-gc4q-fm3x # private `query.batch` functions can share a batch (moderate)
+    # picomatch <=4.0.7: no patched release exists (the advisory names 4.0.8, the registry ends at
+    # 4.0.7), so there is nothing to bump or override. The ReDoS needs an attacker-chosen glob
+    # pattern. Every dependent is a build or dev tool (vite, rollup plugins, tinyglobby/fdir,
+    # unplugin, vitest, knip, nx) that reads patterns from files in this repo; no first-party code
+    # imports a glob matcher and the adapter-node server bundle does not contain picomatch. Remove
+    # once a fixed picomatch is published and the lockfile resolves to it.
+    - GHSA-fc5q-39xc-vjpf # ReDoS through single-branch repeated extglobs (high)
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
