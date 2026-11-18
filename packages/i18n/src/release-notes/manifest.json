@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.56.0",
+    "date": "2026-11-18",
+    "items": [
+      {
+        "id": "0.56.0-collapsible-sections-preview",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.55.0",
     "date": "2026-11-18",
     "items": [
