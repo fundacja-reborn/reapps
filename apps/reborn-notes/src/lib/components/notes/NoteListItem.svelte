@@ -34,10 +34,10 @@
     DropdownMenuTrigger
   } from '@reborn/ui';
   import type { RowAction } from '$lib/utils/row-action';
-  import { t } from '$lib/stores/i18n.store';
-  import { textDirection } from '@reborn/i18n';
+  import { t, locale } from '$lib/stores/i18n.store';
+  import { formatHijriDate, textDirection } from '@reborn/i18n';
   import { tagsStore } from '$lib/stores/tags.store';
-  import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
+  import { dateFormat, hijriDatePreference, timeFormat } from '$lib/stores/app-settings.store';
   import { activeNoteId, notesStore, type NoteListItem } from '$lib/stores/notes.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
   import { formatNoteDate } from '$lib/utils/date-format';
@@ -123,6 +123,12 @@
   // Display the date matching the active sort key so the visible value matches the sort.
   // For 'title' sort fall back to updated_at (most recent activity).
   const displayDate = $derived($sortByStore === 'created_at' ? note.created_at : note.updated_at);
+  // The date this card shows: when the note was archived (Archive view), else
+  // the one above.
+  const shownDate = $derived(isArchive && note.archive ? note.archive.at : displayDate);
+  // Its Hijri date, for those who turned it on (#583); shown before the
+  // Gregorian one, as in the note itself.
+  const hijriDate = $derived(formatHijriDate(shownDate, $locale, $hijriDatePreference));
 
   // Archive: a note archived on its own can be restored right here. One that an
   // archived folder holds comes back with the folder (or by moving it out), so
@@ -440,12 +446,25 @@
                 {/each}
               </div>
             {/if}
+            <!-- Hijri date first, then the Gregorian date and the time (#583).
+                 Each part stays in one piece, so a narrow card breaks the line
+                 between the two dates, not inside one. The Hijri date is in
+                 <bdi>: its Arabic month name must not pull the digits of the
+                 date after it into its own direction. -->
             <p class="mt-0.5 text-[0.8125rem] md:text-xs text-muted-foreground line-clamp-2">
               {#if isArchive && note.archive}
                 {$t('archive.archived_label')}
-                <bdi>{formatNoteDate(note.archive.at, $dateFormat, $timeFormat)}</bdi>
+              {/if}
+              {#if hijriDate}
+                <bdi class="whitespace-nowrap">{hijriDate}</bdi>
+                <span aria-hidden="true">·</span>
+              {/if}
+              {#if isArchive && note.archive}
+                <bdi class="whitespace-nowrap">{formatNoteDate(shownDate, $dateFormat, $timeFormat)}</bdi>
+              {:else if hijriDate}
+                <span class="whitespace-nowrap">{formatNoteDate(shownDate, $dateFormat, $timeFormat)}</span>
               {:else}
-                {formatNoteDate(displayDate, $dateFormat, $timeFormat)}
+                {formatNoteDate(shownDate, $dateFormat, $timeFormat)}
               {/if}
             </p>
             <!-- Visible per-note rejection reason - not just the badge/hover tooltip,

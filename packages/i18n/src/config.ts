@@ -213,6 +213,33 @@ export function isHijriDatePreference(value: unknown): value is HijriDatePrefere
 }
 
 /**
+ * One Hijri formatter per language, or null where the browser has no Islamic
+ * calendar. Building an `Intl.DateTimeFormat` is the expensive part, and the
+ * note list formats one date per card.
+ */
+const hijriFormats = new Map<string, Intl.DateTimeFormat | null>();
+
+function hijriFormat(locale: unknown): Intl.DateTimeFormat | null {
+  const tag = intlLocale(locale);
+  let format = hijriFormats.get(tag);
+  if (format === undefined) {
+    try {
+      const candidate = new Intl.DateTimeFormat(tag, {
+        calendar: 'islamic-umalqura',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      format = candidate.resolvedOptions().calendar.startsWith('islamic') ? candidate : null;
+    } catch {
+      format = null;
+    }
+    hijriFormats.set(tag, format);
+  }
+  return format;
+}
+
+/**
  * The Hijri (Umm al-Qura) date of `date` in the app language, moved by the
  * user's adjustment: "Jumada II 7, 1448 AH" / "7 Dżumada II 1448 AH". Null when
  * the preference is off or unknown, or the browser has no Islamic calendar.
@@ -227,17 +254,7 @@ export function formatHijriDate(
   if (Number.isNaN(day.getTime())) return null;
   // Whole local days, so the time of day (and a DST change) cannot move it.
   day.setDate(day.getDate() + preference);
-  try {
-    const format = new Intl.DateTimeFormat(intlLocale(locale), {
-      calendar: 'islamic-umalqura',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-    return format.resolvedOptions().calendar.startsWith('islamic') ? format.format(day) : null;
-  } catch {
-    return null;
-  }
+  return hijriFormat(locale)?.format(day) ?? null;
 }
 
 export const LOCALE_NAMES: Record<SupportedLocale, string> = {
