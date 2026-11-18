@@ -71,6 +71,16 @@ export interface AppSettings {
    * enforced at compile time by apps/reborn-notes/src/lib/supported-locales.regression.spec.ts.
    */
   weekStart?: 'auto' | 0 | 1 | 6;
+  /**
+   * Hijri date shown next to the Gregorian one (issue #583): `'off'`, or the
+   * number of days the calculated (Umm al-Qura) date is moved by to match the
+   * local moon sighting. Display only. Shared across both apps through the
+   * shared settings bundle. Absent means `'off'` and stays absent until the
+   * user picks an option, so only a real choice travels between devices.
+   * Must equal HijriDatePreference from @reborn/i18n (no dependency from here):
+   * enforced at compile time by apps/reborn-notes/src/lib/supported-locales.regression.spec.ts.
+   */
+  hijriDate?: 'off' | -2 | -1 | 0 | 1 | 2;
   notifications_enabled: boolean;
   /** Minutes before due_date to fire a reminder (only for tasks with has_time === true). */
   notification_lead_minutes: number;
@@ -336,6 +346,7 @@ export const settingsOperations = {
     // other devices: write 'auto' instead of leaving the key absent (absent
     // stays out of the shared bundle and would keep their pinned day).
     await settingsOperations.setSetting(appName, 'weekStart', 'auto');
+    await settingsOperations.setSetting(appName, 'hijriDate', 'off');
   },
 
   /**

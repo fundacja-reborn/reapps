@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
+  HIJRI_DATE_PREFERENCES,
   SUPPORTED_LOCALES,
   formatDateTime,
+  formatHijriDate,
   formatTimeOfDay,
   hourCycleFor,
-  intlLocale
+  intlLocale,
+  isHijriDatePreference
 } from '../config';
 
 /**
@@ -81,5 +84,54 @@ describe('time of day follows the timeFormat setting', () => {
         hourCycle: 'h23'
       }).format(afternoon)
     );
+  });
+});
+
+/** Hijri date next to the Gregorian one (issue #583). */
+describe('formatHijriDate', () => {
+  // 2026-11-17 is 7 Jumada II 1448 in the Umm al-Qura calendar.
+  const day = new Date(2026, 10, 17, 12);
+
+  it('returns nothing when the preference is off or unknown', () => {
+    for (const preference of ['off', undefined, null, 3, '1', 'on']) {
+      expect(formatHijriDate(day, 'en', preference)).toBeNull();
+    }
+  });
+
+  it('formats the Umm al-Qura date in the app language', () => {
+    expect(formatHijriDate(day, 'en', 0)).toBe('Jumada II 7, 1448 AH');
+    expect(formatHijriDate(day, 'pl', 0)).toMatch(/^7 .+ 1448 AH$/);
+  });
+
+  it('moves the date by the adjustment, in whole days', () => {
+    expect(formatHijriDate(day, 'en', -1)).toBe('Jumada II 6, 1448 AH');
+    expect(formatHijriDate(day, 'en', 1)).toBe('Jumada II 8, 1448 AH');
+    expect(formatHijriDate(day, 'en', -2)).toBe('Jumada II 5, 1448 AH');
+    expect(formatHijriDate(day, 'en', 2)).toBe('Jumada II 9, 1448 AH');
+    // Late in the evening the adjustment still moves by one calendar day.
+    expect(formatHijriDate(new Date(2026, 10, 17, 23, 30), 'en', 1)).toBe('Jumada II 8, 1448 AH');
+  });
+
+  it('crosses a month boundary', () => {
+    const first = formatHijriDate(day, 'en', 0) ?? '';
+    const weeksLater = formatHijriDate(new Date(2026, 11, 15, 12), 'en', 0) ?? '';
+    expect(first.startsWith('Jumada II')).toBe(true);
+    expect(weeksLater.startsWith('Rajab')).toBe(true);
+  });
+
+  it('keeps Western digits for Arabic and accepts an ISO string', () => {
+    const arabic = formatHijriDate(day.toISOString(), 'ar', 0) ?? '';
+    expect(arabic).toMatch(/^7 .+ 1448 /);
+    expect(arabic).not.toMatch(/[\u{0660}-\u{0669}]/u);
+  });
+
+  it('returns nothing for an invalid date', () => {
+    expect(formatHijriDate('not a date', 'en', 0)).toBeNull();
+  });
+
+  it('knows exactly the offered preferences', () => {
+    expect([...HIJRI_DATE_PREFERENCES]).toEqual(['off', 0, -1, 1, -2, 2]);
+    expect(HIJRI_DATE_PREFERENCES.every(isHijriDatePreference)).toBe(true);
+    expect(isHijriDatePreference(3)).toBe(false);
   });
 });

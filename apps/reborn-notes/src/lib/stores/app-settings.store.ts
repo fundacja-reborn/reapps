@@ -14,6 +14,7 @@ import {
   locale,
   resolveLocale,
   resolveWeekStart,
+  type HijriDatePreference,
   type WeekStartPreference
 } from '@reborn/i18n';
 import { createLogger } from '@reborn/utils';
@@ -251,6 +252,12 @@ export const weekStartPreference = derived(
  */
 export const weekStartsOn = derived([appSettings, currentLanguage], ([$settings, $language]) =>
   resolveWeekStart($settings?.weekStart, $language)
+);
+
+/** Hijri date next to the Gregorian one (#583): 'off' or the day adjustment. */
+export const hijriDatePreference = derived(
+  appSettings,
+  ($settings): HijriDatePreference => $settings?.hijriDate ?? 'off'
 );
 
 export const imageLoadMode = derived(appSettings, ($settings) => $settings?.imageLoadMode ?? 'ask');
