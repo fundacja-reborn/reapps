@@ -142,7 +142,8 @@ function loadLabels(locale) {
 
 // -------------------------------------------------------------------- shots
 
-const PHONE = { width: 390, height: 844 };
+// A 390 x 844 phone, less the 44 px status bar that composing draws on top.
+const PHONE = { width: 390, height: 800 };
 const DESKTOP = { width: 1428, height: 1068 };
 
 /**
@@ -447,36 +448,72 @@ function dataUrl(path) {
   return `data:image/png;base64,${readFileSync(path).toString('base64')}`;
 }
 
+/**
+ * Brand color of the status bar on a phone, per app: the `theme-color` of
+ * each app (app.html). The installed web app and the native shell paint the
+ * system status bar with it in the light and in the dark theme alike.
+ */
+const STATUS_BAR_COLOR = { notes: '#FFD43B', task: '#43a047' };
+
+/** Signal, Wi-Fi and battery, drawn dark as the apps ask the system to. */
+const STATUS_ICONS = `<svg width="69" height="13" viewBox="0 0 69 13" fill="currentColor">
+  <rect x="0" y="8.4" width="3.1" height="4.6" rx="0.9"/>
+  <rect x="4.8" y="5.8" width="3.1" height="7.2" rx="0.9"/>
+  <rect x="9.6" y="3" width="3.1" height="10" rx="0.9"/>
+  <rect x="14.4" y="0.2" width="3.1" height="12.8" rx="0.9"/>
+  <path d="M30.6 2.3c2.7 0 5.2 1 7.1 2.8.2.2.4.2.6 0l.9-.9c.2-.2.2-.5 0-.7C36.9 1.3 33.9.1 30.6.1s-6.3 1.2-8.6 3.4c-.2.2-.2.5 0 .7l.9.9c.2.2.4.2.6 0 1.9-1.8 4.4-2.8 7.1-2.8z"/>
+  <path d="M30.6 6.4c1.6 0 3.1.6 4.2 1.6.2.2.5.2.6 0l.9-.9c.2-.2.2-.5 0-.7-1.5-1.4-3.5-2.2-5.7-2.2s-4.2.8-5.7 2.2c-.2.2-.2.5 0 .7l.9.9c.2.2.5.2.6 0 1.1-1 2.6-1.6 4.2-1.6z"/>
+  <path d="M33.5 9.9c.2-.2.2-.5 0-.7-.8-.7-1.8-1.1-2.9-1.1s-2.1.4-2.9 1.1c-.2.2-.2.5 0 .7l2.5 2.5c.2.2.6.2.8 0l2.5-2.5z"/>
+  <rect x="44" y="0.7" width="21.6" height="11.6" rx="3.4" fill="none" stroke="currentColor" stroke-opacity="0.4"/>
+  <rect x="45.6" y="2.3" width="18.4" height="8.4" rx="2"/>
+  <path d="M66.9 4.5v4c.8-.3 1.4-1.1 1.4-2s-.6-1.7-1.4-2z" fill-opacity="0.45"/>
+</svg>`;
+
 const FRAME_CSS = `
   html, body { margin: 0; background: #fff; }
   body { position: relative; overflow: hidden; }
-  img {
-    position: absolute; display: block;
+  .frame {
+    position: absolute; overflow: hidden;
     border-radius: 14px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  .frame img { display: block; width: 100%; }
+  .bar {
+    box-sizing: border-box; height: 41px; padding: 0 30px 0 31px;
+    display: flex; align-items: center; justify-content: space-between;
+    color: #111;
+    font: 600 16px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    letter-spacing: -0.2px;
   }
 `;
 
 /**
  * Canvas sizes match the images the site already ships, so the carousels
  * keep their proportions. Phone pair: 1764 x 1696 px, drawn at device pixel
- * ratio 2. Desktop: 1500 x 1373 px at ratio 1.
+ * ratio 2; each phone is the status bar in the color of its app (drawn here:
+ * a browser screen has none) over the raw screen. Desktop: 1500 x 1373 px at
+ * ratio 1, no bar.
  */
+function phoneHtml(phone, left) {
+  return `<div class="frame" style="left: ${left}px; top: 21px; width: 360px">
+    <div class="bar" style="background: ${phone.barColor}"><span>9:41</span>${STATUS_ICONS}</div>
+    <img src="${phone.src}">
+  </div>`;
+}
+
 function pairHtml(left, right) {
   return `<!doctype html><style>${FRAME_CSS}
     body { width: 882px; height: 848px; }
-    img { width: 360px; top: 21px; }
   </style>
-  <img style="left: 35px" src="${left}">
-  <img style="left: 487px" src="${right}">`;
+  ${phoneHtml(left, 35)}
+  ${phoneHtml(right, 487)}`;
 }
 
 function singleHtml(src) {
   return `<!doctype html><style>${FRAME_CSS}
     body { width: 1500px; height: 1373px; }
-    img { width: 1428px; left: 36px; top: 138px; }
   </style>
-  <img src="${src}">`;
+  <div class="frame" style="left: 36px; top: 138px; width: 1428px"><img src="${src}"></div>`;
 }
 
 async function compose(browser, sharp, rawDir, image, target) {
@@ -486,7 +523,10 @@ async function compose(browser, sharp, rawDir, image, target) {
     console.warn(`  skipped ${image.path}: missing ${missing.join(', ')}`);
     return false;
   }
-  const urls = sources.map((id) => dataUrl(join(rawDir, `${id}.png`)));
+  const screens = sources.map((id) => ({
+    src: dataUrl(join(rawDir, `${id}.png`)),
+    barColor: STATUS_BAR_COLOR[SHOTS.find((shot) => shot.id === id)?.app] ?? '#000'
+  }));
   const pair = Boolean(image.pair);
   const context = await browser.newContext({
     viewport: pair ? { width: 882, height: 848 } : { width: 1500, height: 1373 },
@@ -494,7 +534,7 @@ async function compose(browser, sharp, rawDir, image, target) {
   });
   try {
     const page = await context.newPage();
-    await page.setContent(pair ? pairHtml(urls[0], urls[1]) : singleHtml(urls[0]));
+    await page.setContent(pair ? pairHtml(screens[0], screens[1]) : singleHtml(screens[0].src));
     // This function runs inside the page, so it cannot use helpers from this
     // file. A picture that fails to decode shows up in the result anyway.
     await page.evaluate(() =>
