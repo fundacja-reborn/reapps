@@ -138,6 +138,24 @@
   }
 }
 
+/* "Select all" scope (issue #603). While the user works in the rendered note,
+ * `selectAllScope` (lib/utils/select-all-scope.ts) flags <html> and the note
+ * element, and everything else stops being selectable - so Ctrl/Cmd+A and the
+ * "Select all" item of the mobile selection menu take the note, not the whole
+ * app, the way they already do in the editor. The flags go away on the next
+ * press or focus outside the note. Bits inside it that opt out on their own
+ * (copy buttons, fold chevrons) stay out. */
+@layer base {
+  html[data-select-scope] body {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  html[data-select-scope] [data-select-scope-root] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
 /* Dark mode scrollbar */
 @layer base {
   .dark * {
