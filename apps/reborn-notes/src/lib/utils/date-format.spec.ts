@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { foldSearchText } from '@reborn/utils';
-import { defaultNoteTitle } from './date-format';
+import { formatTimeOfDay } from '@reborn/i18n/config';
+import { defaultNoteTitle, formatNoteDate } from './date-format';
 
 /** Stands in for `$t`: shows which key was asked for and with which date. */
 const translate = (key: string, options: { values: { date: string } }) =>
@@ -73,6 +74,58 @@ describe('defaultNoteTitle', () => {
     it('still finds the note when the search has no mark', () => {
       const title = defaultNoteTitle(arabic, 'YYYY-MM-DD', day);
       expect(foldSearchText(title)).toContain(foldSearchText('ملاحظة 2026-11-06'));
+    });
+  });
+});
+
+describe('formatNoteDate', () => {
+  // Local time, written without a zone: the same wall clock on every machine.
+  const afternoon = '2026-11-06T17:13:00';
+  const morning = '2026-11-06T09:05:00';
+
+  it.each([
+    ['DD/MM/YYYY', '06/11/2026'],
+    ['DD.MM.YYYY', '06.11.2026'],
+    ['MM/DD/YYYY', '11/06/2026'],
+    ['YYYY-MM-DD', '2026-11-06'],
+    ['YYYY/MM/DD', '2026/11/06'],
+    ['YYYY.MM.DD', '2026.11.06']
+  ])('puts the date in the %s format before the time', (format, expected) => {
+    expect(formatNoteDate(afternoon, format, '24h')).toBe(`${expected}, 17:13`);
+    expect(formatNoteDate(afternoon, format, '24h', 'en')).toBe(`${expected}, 17:13`);
+  });
+
+  it('keeps "AM" / "PM" when no language is given (note cards)', () => {
+    expect(formatNoteDate(afternoon, 'YYYY-MM-DD', '12h')).toBe('2026-11-06, 5:13 PM');
+    expect(formatNoteDate(morning, 'YYYY-MM-DD', '12h')).toBe('2026-11-06, 9:05 AM');
+    expect(formatNoteDate(morning, 'YYYY-MM-DD')).toBe('2026-11-06, 09:05');
+  });
+
+  describe('with the app language (inside the note, #595)', () => {
+    it.each(['en', 'pl', 'de', 'fr', 'es', 'ar'])(
+      'takes the date from the setting, never from %s',
+      (locale) => {
+        for (const clock of ['24h', '12h']) {
+          const shown = formatNoteDate(afternoon, 'YYYY-MM-DD', clock, locale);
+          expect(shown).toBe(`2026-11-06, ${formatTimeOfDay(afternoon, locale, clock)}`);
+        }
+      }
+    );
+
+    it('words the AM/PM marker in that language, on the clock from the setting', () => {
+      const arabic = formatNoteDate(afternoon, 'YYYY/MM/DD', '12h', 'ar');
+      expect(arabic.startsWith('2026/11/06, 5:13')).toBe(true);
+      expect(arabic).toContain('م');
+      expect(arabic).not.toContain('PM');
+      expect(formatNoteDate(afternoon, 'YYYY/MM/DD', '24h', 'ar')).toBe('2026/11/06, 17:13');
+    });
+
+    it('prints digits 0-9 in Arabic', () => {
+      expect(formatNoteDate(afternoon, 'DD/MM/YYYY', '12h', 'ar')).not.toMatch(/[٠-٩]/);
+    });
+
+    it('falls back to "AM" / "PM" while the language is not loaded yet', () => {
+      expect(formatNoteDate(afternoon, 'YYYY-MM-DD', '12h', null)).toBe('2026-11-06, 5:13 PM');
     });
   });
 });

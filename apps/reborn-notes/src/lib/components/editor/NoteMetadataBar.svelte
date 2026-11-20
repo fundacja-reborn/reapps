@@ -3,8 +3,9 @@
   import { Folder, Tag, Calendar } from '@lucide/svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { formatDateTime, formatHijriDate } from '@reborn/i18n';
-  import { hijriDatePreference, timeFormat } from '$lib/stores/app-settings.store';
+  import { formatHijriDate, textDirection } from '@reborn/i18n';
+  import { dateFormat, hijriDatePreference, timeFormat } from '$lib/stores/app-settings.store';
+  import { formatNoteDate } from '$lib/utils/date-format';
   import { APPEARANCE_SWATCH_CLASS, isAppearanceColor } from '$lib/utils/appearance-colors';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -66,10 +67,12 @@
     }
   });
 
+  // The date in the format from Settings > Appearance, as on the note cards
+  // (#595); the time of day in the wording of the app language.
   function formatDate(iso: string | null): string | null {
-    if (!iso) return null;
+    if (!iso || Number.isNaN(new Date(iso).getTime())) return null;
     try {
-      return formatDateTime(iso, $locale, $timeFormat);
+      return formatNoteDate(iso, $dateFormat, $timeFormat, $locale);
     } catch {
       return null;
     }
@@ -80,6 +83,9 @@
 
   // Hijri date before the Gregorian one, when the user turned it on (#583).
   // Same order as on the note cards: Hijri date, Gregorian date, time.
+  // The Gregorian date is in <bdi> in the UI direction: after an Arabic label
+  // its digits would otherwise be laid out part by part ("13-11-2026" for
+  // 2026-11-13), and a bare <bdi> would put the time before the date (#542).
   const hijriUpdatedAt = $derived(
     updatedAt ? formatHijriDate(updatedAt, $locale, $hijriDatePreference) : null
   );
@@ -164,7 +170,7 @@
           {$t('metadata.created')}
           {#if hijriCreatedAt}<bdi>{hijriCreatedAt}</bdi><span aria-hidden="true" class="mx-1"
               >·</span
-            >{/if}{formattedCreatedAt}
+            >{/if}<bdi dir={$textDirection}>{formattedCreatedAt}</bdi>
         </span>
       </div>
     {/if}
@@ -176,7 +182,7 @@
           {$t('metadata.edited')}
           {#if hijriUpdatedAt}<bdi>{hijriUpdatedAt}</bdi><span aria-hidden="true" class="mx-1"
               >·</span
-            >{/if}{formattedUpdatedAt}
+            >{/if}<bdi dir={$textDirection}>{formattedUpdatedAt}</bdi>
         </span>
       </div>
     {/if}
