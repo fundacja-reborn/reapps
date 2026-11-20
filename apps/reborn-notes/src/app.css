@@ -39,6 +39,13 @@
      the palette (--primary is a grey here). */
   --rn-editor-selection: color-mix(in srgb, var(--primary) 22%, transparent);
   --rn-editor-selection-blur: color-mix(in srgb, var(--primary) 12%, transparent);
+  /* Floating "New note" button (NewNoteFab): the brand yellow of the status
+     bar (`theme-color` in app.html, #FFD43B) with a dark icon, the same in
+     both themes - the two are on a phone screen together. Its own tokens:
+     --primary drives every other button, and inverted in the dark theme it
+     made this one a light grey disc that read as disabled. */
+  --rn-fab: #ffd43b;
+  --rn-fab-foreground: #111111;
 }
 .dark {
   --accent: oklch(0.371 0 0);
@@ -96,6 +103,8 @@
   --font-sans:
     'Roboto', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
     'Segoe UI Symbol', 'Noto Color Emoji';
+  --color-rn-fab: var(--rn-fab);
+  --color-rn-fab-foreground: var(--rn-fab-foreground);
 }
 
 /* Tailwind v4 content sources */

@@ -8,6 +8,10 @@
    * already keeps clear of the bottom safe area. The corner follows the text
    * direction (end side). Scroll areas under it reserve room with
    * `--rn-fab-clearance` so the last row can scroll out from behind it.
+   *
+   * Brand yellow with a dark icon in both themes (`--rn-fab` in app.css). On
+   * the light list background the yellow has little edge contrast, so the
+   * shadow and a faint ring draw the outline; the dark "+" carries the meaning.
    */
   let { onclick }: { onclick: () => void } = $props();
 </script>
@@ -18,9 +22,10 @@
   aria-label={$t('nav.new_note')}
   title={$t('nav.new_note')}
   class="absolute bottom-4 inset-e-4 z-10 flex h-14 w-14 items-center justify-center rounded-full
-         bg-primary text-primary-foreground shadow-lg transition-transform
-         active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
-         focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+         bg-rn-fab text-rn-fab-foreground shadow-lg ring-1 ring-black/5 transition
+         hover:brightness-95 active:scale-95 focus-visible:outline-none focus-visible:ring-2
+         focus-visible:ring-foreground focus-visible:ring-offset-2
+         focus-visible:ring-offset-background"
 >
   <Plus class="h-6 w-6" />
 </button>
