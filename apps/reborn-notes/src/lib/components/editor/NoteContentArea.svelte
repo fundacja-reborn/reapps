@@ -180,6 +180,7 @@
         class="flex-1 px-5"
         {imageLoadMode}
         preserveBlankLines={$preserveBlankLines}
+        selectAllTarget
       />
     {/if}
   {:else}
@@ -254,6 +255,7 @@
               {loadAllImagesHint}
               {settingsLinkLabel}
               {settingsLinkHref}
+              selectAllTarget
             />
           </div>
         </div>
@@ -279,6 +281,7 @@
             {loadAllImagesHint}
             {settingsLinkLabel}
             {settingsLinkHref}
+            selectAllTarget
           />
           </div>
         </div>

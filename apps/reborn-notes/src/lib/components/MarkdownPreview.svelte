@@ -31,6 +31,7 @@
     FOLD_CONTROL_SELECTOR,
     FOLD_REVEAL_EVENT
   } from '$lib/utils/preview-heading-fold';
+  import { selectAllScope } from '$lib/utils/select-all-scope';
 
   /** Stable "nothing folded" default, so the fold effect does not re-run on it. */
   const NO_FOLDS: readonly string[] = [];
@@ -89,7 +90,8 @@
     onHeadingLinkCopy,
     headingLinkLabel,
     foldedHeadings = NO_FOLDS,
-    onHeadingFoldsChange
+    onHeadingFoldsChange,
+    selectAllTarget = false
   }: {
     content: string;
     class?: string;
@@ -183,6 +185,12 @@
      * viewers (shared snapshot, history) leave it unset: no chevrons there.
      */
     onHeadingFoldsChange?: (slugs: string[]) => void;
+    /**
+     * "Select all" stays inside every preview the user has pressed in (issue
+     * #603). Set this on the preview the screen is about (the open note), and
+     * Ctrl/Cmd+A outside a text field selects it without that press first.
+     */
+    selectAllTarget?: boolean;
   } = $props();
 
   let containerEl: HTMLElement;
@@ -639,6 +647,7 @@
      but not used" warnings. -->
 <div
   bind:this={containerEl}
+  use:selectAllScope={{ primary: selectAllTarget }}
   class="preview overflow-auto bg-background pt-4 pb-5 text-foreground {className}"
   aria-label={$t('editor.markdown_preview')}
   onclick={handleClick}
