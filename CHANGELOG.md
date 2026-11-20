@@ -1,3 +1,12 @@
+## 0.56.2 (2026-11-20)
+
+### 🩹 Fixes
+
+- **i18n:** use the same Polish sync status wording in both apps ([#609](https://github.com/fundacja-reborn/reapps/pull/609))
+- **notes:** keep "Select all" inside the note in preview ([#604](https://github.com/fundacja-reborn/reapps/pull/604), [#603](https://github.com/fundacja-reborn/reapps/issues/603))
+- **notes:** make the floating new note button brand yellow ([#607](https://github.com/fundacja-reborn/reapps/pull/607))
+- **task:** run the initial pull when the key is restored on a fast load ([#608](https://github.com/fundacja-reborn/reapps/pull/608))
+
 ## 0.56.1 (2026-11-20)
 
 ### 🩹 Fixes
