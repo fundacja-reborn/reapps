@@ -42,6 +42,15 @@ export interface FolderData {
   key: string;
   name: Record<Lang, string>;
   orderIndex: number;
+  /**
+   * Appearance keys from the re/notes closed sets: a palette color
+   * (`APPEARANCE_COLORS` in `apps/reborn-notes/src/lib/utils/appearance-colors.ts`)
+   * and a folder icon (`FOLDER_ICONS` in `.../utils/folder-icons.ts`). The app
+   * renders the default for a key it does not know, so a typo here shows as a
+   * plain folder, not as an error.
+   */
+  color?: string;
+  icon?: string;
 }
 
 export interface TagData {
@@ -58,6 +67,8 @@ export interface NoteData {
   isStarred: boolean;
   orderIndex: number;
   tagKeys?: string[];
+  /** Color mark: a key from the same palette as FolderData.color. */
+  color?: string;
   /** How many days ago the note was "created" (0 = today) */
   createdDaysAgo: number;
 }
@@ -212,11 +223,41 @@ export const TASKS: TaskData[] = [
 // ==================== FOLDERS ====================
 
 export const FOLDERS: FolderData[] = [
-  { key: 'personal', name: { pl: 'Osobiste', en: 'Personal' }, orderIndex: 0 },
-  { key: 'work', name: { pl: 'Praca', en: 'Work' }, orderIndex: 1 },
-  { key: 'learning', name: { pl: 'Nauka', en: 'Learning' }, orderIndex: 2 },
-  { key: 'projects', name: { pl: 'Projekty', en: 'Projects' }, orderIndex: 3 },
-  { key: 'articles', name: { pl: 'Artykuły', en: 'Articles' }, orderIndex: 4 }
+  {
+    key: 'personal',
+    name: { pl: 'Osobiste', en: 'Personal' },
+    orderIndex: 0,
+    color: 'blue',
+    icon: 'house'
+  },
+  {
+    key: 'work',
+    name: { pl: 'Praca', en: 'Work' },
+    orderIndex: 1,
+    color: 'orange',
+    icon: 'briefcase'
+  },
+  {
+    key: 'learning',
+    name: { pl: 'Nauka', en: 'Learning' },
+    orderIndex: 2,
+    color: 'green',
+    icon: 'graduation-cap'
+  },
+  {
+    key: 'projects',
+    name: { pl: 'Projekty', en: 'Projects' },
+    orderIndex: 3,
+    color: 'violet',
+    icon: 'code'
+  },
+  {
+    key: 'articles',
+    name: { pl: 'Artykuły', en: 'Articles' },
+    orderIndex: 4,
+    color: 'yellow',
+    icon: 'book-open'
+  }
 ];
 
 // ==================== TAGS ====================
@@ -340,6 +381,7 @@ Bookings: [booking.com](https://www.booking.com)`
     isStarred: true,
     orderIndex: 1,
     tagKeys: ['travel', 'important'],
+    color: 'blue',
     createdDaysAgo: 7
   },
   {
@@ -437,6 +479,7 @@ Next meeting: **June 27 at 10:00**`
     isPinned: true,
     isStarred: false,
     orderIndex: 0,
+    color: 'orange',
     createdDaysAgo: 5
   },
   {
@@ -550,6 +593,7 @@ function handle(r: Result) {
     isStarred: true,
     orderIndex: 0,
     tagKeys: ['growth', 'dev'],
+    color: 'green',
     createdDaysAgo: 18
   },
   {
@@ -681,6 +725,7 @@ services:
     isStarred: false,
     orderIndex: 0,
     tagKeys: ['dev', 'important'],
+    color: 'red',
     createdDaysAgo: 6
   },
   // --- Articles (from blog) ---

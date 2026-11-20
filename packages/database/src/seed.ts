@@ -4,7 +4,8 @@ import { CryptoManager, hashPassword, loadUserMasterKey } from '@reborn/crypto';
 import type {
   TaskSensitiveMetadata,
   SubtaskSensitiveMetadata,
-  NoteSensitiveMetadata
+  NoteSensitiveMetadata,
+  FolderSensitiveMetadata
 } from '@reborn/types';
 import {
   DEMO_USER,
@@ -226,10 +227,25 @@ async function main(): Promise<void> {
 
   for (const folder of FOLDERS) {
     const nameEncrypted = await crypto.encryptString(folder.name[lang]);
+
+    // Appearance bundle (color + icon keys). The app pads this JSON to a fixed
+    // block before encrypting, so the ciphertext length does not reveal which
+    // key is set (apps/reborn-notes/src/lib/services/folder-metadata.ts). The
+    // seed writes it unpadded: this database is a local demo, the app reads an
+    // unpadded bundle the same way, and its first write to the folder pads it.
+    const folderMetadata: FolderSensitiveMetadata = {};
+    if (folder.color) folderMetadata.color = folder.color;
+    if (folder.icon) folderMetadata.icon = folder.icon;
+    const folderMetadataEncrypted =
+      Object.keys(folderMetadata).length > 0
+        ? await crypto.encryptString(JSON.stringify(folderMetadata))
+        : null;
+
     const created = await prisma.folder.create({
       data: {
         user_id: user.id,
         name_encrypted: nameEncrypted,
+        metadata_encrypted: folderMetadataEncrypted,
         order_index: folder.orderIndex
       }
     });
@@ -287,7 +303,8 @@ async function main(): Promise<void> {
     const metadata: NoteSensitiveMetadata = {
       is_starred: note.isStarred || undefined,
       is_pinned: note.isPinned || undefined,
-      tags: resolvedTagIds.length > 0 ? resolvedTagIds : undefined
+      tags: resolvedTagIds.length > 0 ? resolvedTagIds : undefined,
+      color: note.color
     };
 
     const metadataEncrypted = await crypto.encryptObject(metadata);
@@ -296,7 +313,7 @@ async function main(): Promise<void> {
     const createdAt = new Date();
     createdAt.setDate(createdAt.getDate() - note.createdDaysAgo);
 
-    const createdNote = await prisma.note.create({
+    await prisma.note.create({
       data: {
         user_id: user.id,
         folder_id: folderId,
