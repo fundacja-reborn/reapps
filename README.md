@@ -39,16 +39,21 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 
 - **Markdown editor** - headings, lists, task checkboxes, tables, code blocks, images, and more
 - **Live preview** - formatting renders inline as you type (Obsidian-style), with editable tables and syntax-highlighted code blocks; a side-by-side split view is also available
-- **Folders & tags** - flexible organization system
+- **Folders & tags** - nested folders and tags; folders sort alphabetically or in your own order (drag and drop, also on touch screens)
+- **Colors & icons** - a color and an icon for each folder and a color mark for notes, encrypted and synced like the names
 - **Outline & table of contents** - a document outline panel of the open note's headings, plus an in-note table of contents you can insert; headings carry anchors, so links jump straight to a section (preserved in shared notes and PDF/Markdown exports)
+- **Collapsible sections** - fold the text under any heading, or collapse a long note into a list of its headings with one button; works in the editor, Preview, and split view, and adds nothing to the note itself
 - **Internal links & backlinks** - link between notes with `[[` autocomplete to build a knowledge base; a linked-notes panel gathers backlinks and outgoing links, flags mutual links, and marks broken ones
 - **Periodic notes** - one-click Daily, Weekly, and Monthly notes (Obsidian-style); date-based titles with configurable formats, lazy-created folders, Daily on by default ([blog post](https://reapps.eu/blog/periodic-notes-daily-weekly-monthly))
-- **Multi-select & bulk actions** - pin, star, move to folder, or delete many notes at once (long-press on touch, header toggle on desktop)
+- **Multi-select & bulk actions** - pin, star, color, move to folder, archive, or delete many notes at once (long-press on touch, header toggle on desktop); Select all takes the whole list, not only the notes on screen
 - **Version history** - up to 10 saved versions per note; delete a single version, clear one note's history, or clear all history at once to free storage
-- **Full-text search** with operators - `tag:work`, `folder:projects/active`, `created:<7d`, `has:link`, `-tag:archived`, … ([reference](docs/search-operators.md))
+- **Full-text search** with operators - `tag:work`, `folder:projects/active`, `created:<7d`, `has:link`, `-tag:archived`, … ([reference](docs/search-operators.md)); find-in-note with Ctrl/Cmd+F in the editor, split view, and Preview
 - **Saved searches & smart folders** - save any query as a live, named view and pin it into the folder tree as a smart folder
 - **Encryption X-Ray** - see exactly what the server sees (encrypted blobs)
 - **Trash & recovery** - safely delete and restore notes
+- **Archive** - put notes and whole folders away without deleting them; they leave the folder tree, lists, and search, stay editable, and Restore brings them back where they were. The archive marker lives in the encrypted metadata, so the server cannot tell which notes are archived
+- **Text size, line spacing & note fonts** - separate sizes for the interface and for note text, five steps of line spacing, and an optional serif font for notes (with Arabic typefaces for Arabic script); fonts are served from our own server and work offline once selected
+- **Workspace settings** - list or grid view of notes on desktop, a start page of your choice, a default folder for new notes, and a collapsible note list for focused writing
 - **Import & export** - Markdown, JSON, PDF, or a portable password-encrypted backup that restores on any account (decrypted and re-encrypted entirely in your browser); import single `.md` files or entire folders with subfolders (e.g., an Obsidian vault) preserving directory structure, optionally rewriting links between imported notes (relative Markdown links and `[[wikilinks]]`) so they navigate in-app
 - **Local folder sync** - link a folder of Markdown files on your disk and changed files are re-imported (and encrypted) automatically; one-way disk → app, never deletes notes (Chromium-based browsers)
 - **Read-only share links** - publish a frozen snapshot of a note via an encrypted public URL; the snapshot key lives in the URL fragment so the server never sees it. Optional password, expiry, and view-count limit; revoke anytime ([blog post](https://reapps.eu/blog/sharing-notes-tasks-zero-knowledge-snapshots/)).
@@ -77,10 +82,12 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 - 💾 **Local-only mode** - try either app with no account at all; data stays on your device and can be upgraded to a synced, encrypted account anytime without losing anything (optional local passcode)
 - 🔄 **Cross-device sync** - access from any device; your notes, tasks, and app settings sync automatically
 - 🛡️ **Two-factor authentication** - TOTP (2FA) with one-time recovery codes
+- 🔒 **App Lock** - optionally ask for the account password when the app opens, after a reload, and after a chosen idle time; the encryption key is then kept in memory only and never stored in the browser
 - 👤 **One account, no email** - just a username and password, shared across both apps (SSO)
 - 🌍 **Installable** - add to home screen as a native-like app
 - 🌙 **Dark mode** - full dark theme support
-- 🌐 **Multilingual** - English 🇬🇧, French 🇫🇷, German 🇩🇪, Polish 🇵🇱, Spanish 🇪🇸
+- 🌐 **Multilingual** - English 🇬🇧, French 🇫🇷, German 🇩🇪, Polish 🇵🇱, Spanish 🇪🇸, and Arabic (beta) with a full right-to-left layout; text in right-to-left languages follows its own direction whatever the interface language
+- 📅 **Date & time your way** - date format, 12- or 24-hour clock, first day of the week, and in re/notes an optional Hijri date
 
 ## Security & privacy
 
@@ -289,7 +296,7 @@ packages/
 ├── @reborn/storage      # Encrypted IndexedDB stores
 ├── @reborn/types        # Shared TypeScript types
 ├── @reborn/ui           # UI components (shadcn-svelte)
-├── @reborn/i18n         # Internationalization (PL/EN)
+├── @reborn/i18n         # Internationalization (EN/PL/DE/FR/ES/AR)
 ├── @reborn/utils        # Shared utilities
 └── @reborn/api-client   # HTTP client for API
 docs/
