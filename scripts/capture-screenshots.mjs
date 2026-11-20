@@ -30,6 +30,8 @@
  *
  * Output:
  *   <out>/<lang>/raw/<shot>.png        one screen each, device pixel ratio 2
+ *   <out>/<lang>/raw/<shot>.FAILED.*   for a shot that failed: the screen as it
+ *                                      was (.png) and what the page logged (.txt)
  *   <out>/www/<site path>.webp         composed images for reapps-www
  *   <out>/readme/<name>.webp           the two README images (--lang=en only)
  *
@@ -46,7 +48,7 @@
  * Guideline: reapps-docs/guidelines/84-screenshots.md
  */
 
-import { existsSync, mkdirSync, readFileSync, copyFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -119,13 +121,15 @@ function readJson(path) {
 function loadLabels(locale) {
   const notes = readJson(`packages/i18n/src/translations/notes/${locale}.json`);
   const taskSync = readJson(`packages/i18n/src/translations/tasks/${locale}/sync.json`);
+  const task = readJson(`packages/i18n/src/translations/tasks/${locale}/task.json`);
   const labels = {
     allNotes: notes.nav?.all_notes,
     folders: notes.nav?.folders,
     tags: notes.nav?.tags,
     split: notes.view_mode?.split,
     notesSynced: notes.sync_status?.synced,
-    taskSynced: taskSync.indicator?.synced
+    taskSynced: taskSync.indicator?.synced,
+    taskDescription: task.fields?.description
   };
   for (const [name, value] of Object.entries(labels)) {
     if (typeof value !== 'string' || value.length === 0) {
@@ -237,8 +241,14 @@ function byButton(page, name) {
   return page.getByRole('button', { name, exact: true }).filter({ visible: true }).first();
 }
 
-/** Let fonts, images and the last layout pass finish before the screen is taken. */
+/**
+ * Let fonts, images and the last layout pass finish before the screen is
+ * taken. The pointer is parked in a corner first: left where the last click
+ * was, it keeps a tooltip open over the content and a list row highlighted.
+ */
 async function settle(page) {
+  const viewport = page.viewportSize();
+  if (viewport) await page.mouse.move(viewport.width - 1, 1).catch(ignore);
   await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(ignore);
   await page.evaluate(() => document.fonts.ready).catch(ignore);
   await page.waitForTimeout(700);
@@ -334,7 +344,14 @@ async function taskDetail(page, ctx) {
   await taskList(page, ctx);
   await byText(page, TITLES.task[lang]).click();
   await page.waitForURL(/\/tasks\//, { timeout: 15_000 }).catch(ignore);
-  await page.waitForTimeout(800);
+  // The "Description" heading is only there once the task is loaded and
+  // decrypted. Without this wait the screen can be the "Task not found" state.
+  try {
+    await byText(page, ctx.labels.taskDescription).waitFor({ state: 'visible', timeout: 20_000 });
+  } catch {
+    throw new Error(`the task detail did not load (${page.url()})`);
+  }
+  await page.waitForTimeout(500);
 }
 
 // ---------------------------------------------------------------- composing
@@ -391,8 +408,10 @@ async function compose(browser, sharp, rawDir, image, target) {
   try {
     const page = await context.newPage();
     await page.setContent(pair ? pairHtml(urls[0], urls[1]) : singleHtml(urls[0]));
+    // This function runs inside the page, so it cannot use helpers from this
+    // file. A picture that fails to decode shows up in the result anyway.
     await page.evaluate(() =>
-      Promise.all(Array.from(document.images, (img) => img.decode().catch(ignore)))
+      Promise.all(Array.from(document.images, (img) => img.decode().catch(() => undefined)))
     );
     const png = await page.screenshot({ type: 'png' });
     mkdirSync(dirname(target), { recursive: true });
@@ -465,10 +484,32 @@ async function main() {
   }, lang);
 
   const page = await context.newPage();
+  // What the page reported while a shot was being set up. Written next to the
+  // picture when the shot fails: the reason is usually in there.
+  let pageLog = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') {
+      pageLog.push(`[console ${message.type()}] ${message.text()}`);
+    }
+  });
+  page.on('pageerror', (error) => pageLog.push(`[page error] ${error.message}`));
+  page.on('requestfailed', (request) =>
+    pageLog.push(
+      `[request failed] ${request.method()} ${request.url()} ${request.failure()?.errorText ?? ''}`
+    )
+  );
+  page.on('response', (response) => {
+    if (response.status() >= 400) {
+      pageLog.push(`[http ${response.status()}] ${response.request().method()} ${response.url()}`);
+    }
+  });
   try {
     for (const shot of shots) {
       const file = join(rawDir, `${shot.id}.png`);
       process.stdout.write(`  ${shot.id} ... `);
+      pageLog = [];
+      rmSync(join(rawDir, `${shot.id}.FAILED.png`), { force: true });
+      rmSync(join(rawDir, `${shot.id}.FAILED.txt`), { force: true });
       try {
         await page.setViewportSize(shot.view === 'desktop' ? DESKTOP : PHONE);
         await page.emulateMedia({ colorScheme: shot.theme });
@@ -484,6 +525,12 @@ async function main() {
         await page
           .screenshot({ path: join(rawDir, `${shot.id}.FAILED.png`), type: 'png' })
           .catch(ignore);
+        writeFileSync(
+          join(rawDir, `${shot.id}.FAILED.txt`),
+          `${[`error: ${message}`, `url: ${page.url()}`, '', ...pageLog].join('\n')}\n`
+        );
+        // The picture of an earlier good run would be composed as if current.
+        rmSync(file, { force: true });
       }
     }
   } finally {
@@ -530,7 +577,7 @@ async function main() {
   );
   if (wwwDir && !only) console.log(`Copied into ${join(wwwDir, 'public', 'screenshots')}`);
   if (failed.length > 0) {
-    console.error(`Failed: ${failed.join(', ')} (see the *.FAILED.png files)`);
+    console.error(`Failed: ${failed.join(', ')} (see the *.FAILED.png and *.FAILED.txt files)`);
     process.exit(1);
   }
 }
