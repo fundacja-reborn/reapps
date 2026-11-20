@@ -328,7 +328,7 @@ export const NOTES: NoteData[] = [
     folderKey: 'personal',
     title: { pl: 'Plan podróży - Lizbona', en: 'Lisbon trip plan' },
     content: {
-      pl: `# Plan podróży - Lizbona 🇵🇹
+      pl: `# Plan podróży - Lizbona
 
 Pięć dni w maju. Lot z Krakowa, nocleg w dzielnicy Alfama.
 
@@ -352,7 +352,7 @@ Pięć dni w maju. Lot z Krakowa, nocleg w dzielnicy Alfama.
 > Wskazówka: bilet Lisboa Card obejmuje komunikację miejską i wstęp do większości muzeów.
 
 Rezerwacje: [booking.com](https://www.booking.com)`,
-      en: `# Lisbon trip plan 🇵🇹
+      en: `# Lisbon trip plan
 
 Five days in May. Flight from Krakow, staying in the Alfama district.
 
