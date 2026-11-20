@@ -2,7 +2,7 @@
 
 ### 🚀 Features
 
-- **task:** add a floating new task button on phones ([#612](https://github.com/fundacja-reborn/reapps/pull/612), [#43](https://github.com/fundacja-reborn/reapps/issues/43))
+- **task:** add a floating new task button on phones ([#612](https://github.com/fundacja-reborn/reapps/pull/612))
 
 ## 0.56.2 (2026-11-20)
 
