@@ -129,7 +129,8 @@ function loadLabels(locale) {
     split: notes.view_mode?.split,
     notesSynced: notes.sync_status?.synced,
     taskSynced: taskSync.indicator?.synced,
-    taskDescription: task.fields?.description
+    taskDescription: task.fields?.description,
+    taskNotFound: task.errors?.not_found
   };
   for (const [name, value] of Object.entries(labels)) {
     if (typeof value !== 'string' || value.length === 0) {
@@ -340,16 +341,93 @@ async function taskList(page, ctx) {
     .catch(ignore);
 }
 
+/**
+ * What the task detail showed in the first moments after the click, as a list
+ * of changes ("120 ms: loading"). Runs inside the page, so it starts counting
+ * before the next step of the script can look.
+ */
+function watchTaskDetail(page, labels, duration) {
+  return page.evaluate(
+    async ({ loadedText, missingText, duration: total }) => {
+      const read = () => {
+        const text = document.body.innerText;
+        if (text.includes(loadedText)) return 'loaded';
+        if (text.includes(missingText)) return 'not found';
+        if (document.querySelector('[data-slot="skeleton"], .animate-pulse')) return 'loading';
+        return 'other';
+      };
+      const seen = [];
+      const started = performance.now();
+      let last = null;
+      while (performance.now() - started < total) {
+        const now = read();
+        if (now !== last) {
+          seen.push(`${Math.round(performance.now() - started)} ms: ${now}`);
+          last = now;
+        }
+        await new Promise((done) => setTimeout(done, 40));
+      }
+      return seen;
+    },
+    { loadedText: labels.taskDescription, missingText: labels.taskNotFound, duration }
+  );
+}
+
+/** Which IndexedDB stores hold a record with this key ("database/store"). */
+function findInIndexedDb(page, id) {
+  return page.evaluate(async (key) => {
+    const found = [];
+    for (const { name } of await indexedDB.databases()) {
+      if (!name) continue;
+      const db = await new Promise((done, failed) => {
+        const request = indexedDB.open(name);
+        request.onsuccess = () => done(request.result);
+        request.onerror = () => failed(request.error);
+      });
+      for (const store of db.objectStoreNames) {
+        const has = await new Promise((done) => {
+          try {
+            const request = db.transaction(store).objectStore(store).get(key);
+            request.onsuccess = () => done(request.result !== undefined);
+            request.onerror = () => done(false);
+          } catch {
+            done(false);
+          }
+        });
+        if (has) found.push(`${name}/${store}`);
+      }
+      db.close();
+    }
+    return found;
+  }, id);
+}
+
 async function taskDetail(page, ctx) {
   await taskList(page, ctx);
   await byText(page, TITLES.task[lang]).click();
+  const timeline = await watchTaskDetail(page, ctx.labels, 3000).catch(() => []);
   await page.waitForURL(/\/tasks\//, { timeout: 15_000 }).catch(ignore);
   // The "Description" heading is only there once the task is loaded and
   // decrypted. Without this wait the screen can be the "Task not found" state.
+  const loaded = byText(page, ctx.labels.taskDescription);
   try {
-    await byText(page, ctx.labels.taskDescription).waitFor({ state: 'visible', timeout: 20_000 });
+    await loaded.waitFor({ state: 'visible', timeout: 12_000 });
   } catch {
-    throw new Error(`the task detail did not load (${page.url()})`);
+    // Opened from the list, the task did not show. Keep what is known for the
+    // report, then open the same address directly: the picture is the same.
+    const id = new URL(page.url()).pathname.split('/').pop() ?? '';
+    const stores = await findInIndexedDb(page, id).catch(() => ['(could not read IndexedDB)']);
+    ctx.note(`task detail after the click: ${timeline.join(', ') || '(nothing recorded)'}`);
+    ctx.note(`task ${id} in IndexedDB: ${stores.join(', ') || 'not in any store'}`);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    try {
+      await loaded.waitFor({ state: 'visible', timeout: 30_000 });
+    } catch {
+      throw new Error(`the task detail did not load, also not after a reload (${page.url()})`);
+    }
+    ctx.warn(
+      `opened from the list the task showed "${ctx.labels.taskNotFound}"; it loaded after a reload (${timeline.join(', ')}; in IndexedDB: ${stores.join(', ') || 'no'})`
+    );
   }
   await page.waitForTimeout(500);
 }
@@ -462,6 +540,7 @@ async function main() {
 
   const shots = only ? SHOTS.filter((shot) => only.includes(shot.id)) : SHOTS;
   const failed = [];
+  const warnings = [];
 
   // One context for all raw shots: one sign-in, and the key the app keeps in
   // IndexedDB carries over between shots. Service workers are blocked so a
@@ -493,6 +572,11 @@ async function main() {
     }
   });
   page.on('pageerror', (error) => pageLog.push(`[page error] ${error.message}`));
+  // For the steps of a shot: a line for the failure report, and a warning for
+  // a shot that was taken but not the straight way.
+  let shotWarnings = [];
+  ctx.note = (line) => pageLog.push(`[note] ${line}`);
+  ctx.warn = (line) => shotWarnings.push(line);
   page.on('requestfailed', (request) =>
     pageLog.push(
       `[request failed] ${request.method()} ${request.url()} ${request.failure()?.errorText ?? ''}`
@@ -508,6 +592,7 @@ async function main() {
       const file = join(rawDir, `${shot.id}.png`);
       process.stdout.write(`  ${shot.id} ... `);
       pageLog = [];
+      shotWarnings = [];
       rmSync(join(rawDir, `${shot.id}.FAILED.png`), { force: true });
       rmSync(join(rawDir, `${shot.id}.FAILED.txt`), { force: true });
       try {
@@ -516,7 +601,11 @@ async function main() {
         await shot.go(page, ctx);
         await settle(page);
         await page.screenshot({ path: file, type: 'png' });
-        console.log('ok');
+        console.log(shotWarnings.length > 0 ? 'ok, with a warning' : 'ok');
+        for (const line of shotWarnings) {
+          console.log(`    warning: ${line}`);
+          warnings.push({ shot: shot.id, warning: line });
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message.split('\n')[0] : String(error);
         console.log(`FAILED: ${message}`);
@@ -569,7 +658,7 @@ async function main() {
 
   writeFileSync(
     join(outDir, lang, 'run.json'),
-    `${JSON.stringify({ lang, notesUrl, taskUrl, shots: shots.map((s) => s.id), failed }, null, 2)}\n`
+    `${JSON.stringify({ lang, notesUrl, taskUrl, shots: shots.map((s) => s.id), failed, warnings }, null, 2)}\n`
   );
 
   console.log(
