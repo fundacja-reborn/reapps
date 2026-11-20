@@ -596,7 +596,7 @@ const STATUS_ICONS = `<svg width="69" height="13" viewBox="0 0 69 13" fill="curr
 </svg>`;
 
 const FRAME_CSS = `
-  html, body { margin: 0; background: #fff; }
+  html, body { margin: 0; background: transparent; }
   body { position: relative; overflow: hidden; }
   .frame {
     position: absolute; overflow: hidden;
@@ -619,6 +619,10 @@ const FRAME_CSS = `
  * ratio 2; each phone is the status bar in the color of its app (drawn here:
  * a browser screen has none) over the raw screen. Desktop: 1500 x 1373 px at
  * ratio 1, no bar.
+ *
+ * The canvas around the frames is transparent: the site shows the images on
+ * a white and on a grey section, in a light and in a dark theme, and the
+ * README is read on GitHub in both themes too.
  */
 function phoneHtml(phone, left) {
   return `<div class="frame" style="left: ${left}px; top: 21px; width: 360px">
@@ -666,9 +670,15 @@ async function compose(browser, sharp, rawDir, image, target) {
     await page.evaluate(() =>
       Promise.all(Array.from(document.images, (img) => img.decode().catch(() => undefined)))
     );
-    const png = await page.screenshot({ type: 'png' });
+    // Without `omitBackground` the browser paints white under a transparent
+    // page, and the image shows as a white box on a grey section of the site.
+    const png = await page.screenshot({ type: 'png', omitBackground: true });
     mkdirSync(dirname(target), { recursive: true });
     await sharp(png).webp({ quality: 88 }).toFile(target);
+    const { isOpaque } = await sharp(target).stats();
+    if (isOpaque) {
+      throw new Error(`${image.path}.webp has no transparent background - the canvas was painted`);
+    }
     return true;
   } finally {
     await context.close();
