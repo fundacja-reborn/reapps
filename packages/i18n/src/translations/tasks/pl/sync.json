@@ -48,7 +48,7 @@
   "indicator": {
     "synced": "Zsynchronizowano",
     "syncing": "Synchronizacja...",
-    "offline": "Tryb offline",
+    "offline": "Offline",
     "error": "Błąd synchronizacji",
     "pending": "Oczekuje na synchronizację ({count})",
     "tap_to_sync": "Dotknij, aby zsynchronizować",
