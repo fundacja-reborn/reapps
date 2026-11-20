@@ -1,5 +1,28 @@
 [
   {
+    "version": "0.56.1",
+    "date": "2026-11-20",
+    "items": [
+      {
+        "id": "0.56.1-date-format-everywhere",
+        "category": "fixed",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.56.1-archive-date-order-arabic",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.56.0",
     "date": "2026-11-18",
     "items": [
