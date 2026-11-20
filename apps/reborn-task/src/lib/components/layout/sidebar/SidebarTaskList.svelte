@@ -371,9 +371,11 @@
 	{/if}
 
 	<!-- Task list (single rendering path — store decides what's visible) -->
+	<!-- The bottom padding is the room the phone layout's floating "New task"
+	     button asks for (--rt-fab-clearance, unset anywhere else). -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
-		class="flex-1 overflow-y-auto px-3"
+		class="flex-1 overflow-y-auto px-3 pb-[var(--rt-fab-clearance,0px)]"
 		bind:this={listContainer}
 		onkeydown={handleListKeyDown}
 		role="list"

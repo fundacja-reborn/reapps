@@ -259,6 +259,12 @@
     "date_format_updated": "Format daty został zaktualizowany",
     "time_format": "Format czasu",
     "time_format_updated": "Format czasu został zaktualizowany",
+    "new_task_fab": "Pływający przycisk nowego zadania",
+    "new_task_fab_desc": "Pokazuj przycisk w dolnym rogu listy zadań na telefonie, w zasięgu kciuka.",
+    "new_task_fab_on": "Przycisk widoczny",
+    "new_task_fab_off": "Przycisk ukryty",
+    "new_task_fab_updated": "Zaktualizowano ustawienie pływającego przycisku",
+    "device_only_hint": "Dotyczy tylko tego urządzenia",
     "reset": "Przywróć domyślne",
     "reset_done": "Przywrócono domyślne ustawienia",
     "error_update": "Nie udało się zaktualizować ustawienia"
