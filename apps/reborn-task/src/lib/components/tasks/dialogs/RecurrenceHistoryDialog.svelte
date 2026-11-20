@@ -6,8 +6,9 @@
 		DialogTitle,
 		Button
 	} from '@reborn/ui';
-	import { t, locale } from '$lib/stores/i18n.store';
-	import { intlLocale } from '@reborn/i18n';
+	import { t } from '$lib/stores/i18n.store';
+	import { formatDateWithSetting } from '@reborn/utils';
+	import { dateFormat } from '$lib/stores/app-settings.store';
 	import { goto } from '$lib/utils/navigation';
 	import { CheckCircle2, Circle, Clock } from '@lucide/svelte';
 	import { recurrenceService } from '$lib/services/recurrence.service';
@@ -52,11 +53,7 @@
 
 	function formatDate(dateString: string | null | undefined): string {
 		if (!dateString) return '-';
-		return new Date(dateString).toLocaleDateString(intlLocale($locale), {
-			day: 'numeric',
-			month: 'short',
-			year: 'numeric'
-		});
+		return formatDateWithSetting(new Date(dateString), $dateFormat);
 	}
 
 	async function handleNavigate(id: string) {

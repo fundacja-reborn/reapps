@@ -89,3 +89,26 @@ export function detectTextDirection(text: string): TextDirection | null {
 export function containsRtlText(text: string): boolean {
   return RTL_SCRIPT_LETTER.test(text);
 }
+
+/** Unicode isolate controls: the plain-text counterpart of `<bdi dir="...">`. */
+const RIGHT_TO_LEFT_ISOLATE = String.fromCodePoint(0x2067);
+const POP_DIRECTIONAL_ISOLATE = String.fromCodePoint(0x2069);
+
+/**
+ * Wraps a text in Unicode isolates so it is laid out on its own, in the given
+ * direction, wherever it is inserted: `<bdi dir={dir}>` for a place that takes
+ * no markup, such as a value passed into a translated sentence.
+ *
+ * Made for a date in the user's date format ("2026-11-13, 14:32"): digits and
+ * punctuation only. After an Arabic word the bidi algorithm would lay out the
+ * parts of the date one by one ("13-11-2026"), and an isolate without a
+ * direction would fall back to left-to-right and put the time where a
+ * right-to-left reader starts. Pass the UI direction (`$textDirection`).
+ *
+ * A left-to-right UI needs none of this, so the text comes back unchanged and
+ * stays free of invisible characters there.
+ */
+export function isolateInDirection(text: string, dir: TextDirection): string {
+  if (dir !== 'rtl' || text === '') return text;
+  return RIGHT_TO_LEFT_ISOLATE + text + POP_DIRECTIONAL_ISOLATE;
+}

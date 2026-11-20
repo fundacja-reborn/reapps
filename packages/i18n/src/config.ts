@@ -152,6 +152,14 @@ export function hourCycleFor(timeFormat: unknown): 'h12' | 'h23' {
 }
 
 /**
+ * One formatter per language, clock and set of options. Building an
+ * `Intl.DateTimeFormat` is the expensive part, and a list formats one time per
+ * row (note cards, tasks). The apps use a handful of combinations, so the map
+ * stays small.
+ */
+const dateTimeFormats = new Map<string, Intl.DateTimeFormat>();
+
+/**
  * Date with time of day in the app language, the clock following the user's
  * `timeFormat` setting: "Nov 17, 2026, 17:13" / "17 lis 2026, 5:13 PM".
  *
@@ -164,10 +172,15 @@ export function formatDateTime(
   timeFormat: unknown,
   options: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }
 ): string {
-  return new Intl.DateTimeFormat(intlLocale(locale), {
-    ...options,
-    hourCycle: hourCycleFor(timeFormat)
-  }).format(new Date(date));
+  const tag = intlLocale(locale);
+  const hourCycle = hourCycleFor(timeFormat);
+  const key = `${tag}|${hourCycle}|${JSON.stringify(options)}`;
+  let format = dateTimeFormats.get(key);
+  if (!format) {
+    format = new Intl.DateTimeFormat(tag, { ...options, hourCycle });
+    dateTimeFormats.set(key, format);
+  }
+  return format.format(new Date(date));
 }
 
 /**

@@ -11,6 +11,7 @@
   function formatRelative(iso: string | null): string {
     if (!iso) return '';
     try {
+      // date-format-ignore: preview of what the recipient sees, and a visitor has no settings
       return formatDateTime(iso, get(locale), get(timeFormat));
     } catch {
       return iso;

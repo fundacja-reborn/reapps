@@ -17,8 +17,9 @@
     FileX2
   } from '@lucide/svelte';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { formatDateTime } from '@reborn/i18n';
-  import { timeFormat } from '$lib/stores/app-settings.store';
+  import { textDirection } from '@reborn/i18n';
+  import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
+  import { formatSettingsDateTime } from '$lib/utils/date-format';
   import { shareLink } from '$lib/utils/native-share';
   import { copyText } from '$lib/utils/clipboard';
   import {
@@ -135,7 +136,7 @@
   function formatDate(iso: string | null): string {
     if (!iso) return '-';
     try {
-      return formatDateTime(iso, $locale, $timeFormat);
+      return formatSettingsDateTime(iso, $dateFormat, $timeFormat, $locale);
     } catch {
       return iso;
     }
@@ -385,7 +386,7 @@
             <dd class="mt-0.5 font-medium">
               {#if share.expires_at}
                 {@const rel = formatExpiryRelative(share.expires_at, $locale ?? 'en')}
-                {formatDate(share.expires_at)}
+                <bdi dir={$textDirection}>{formatDate(share.expires_at)}</bdi>
                 {#if rel?.expired}
                   <span class="font-normal text-destructive">({$t('share.list.expired')})</span>
                 {:else if rel}

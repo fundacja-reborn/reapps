@@ -24,11 +24,11 @@
 	import { Calendar as CalendarIcon } from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { intlLocale } from '@reborn/i18n';
-	import { currentLanguage, weekStartsOn } from '$lib/stores/app-settings.store';
+	import { currentLanguage, dateFormat, weekStartsOn } from '$lib/stores/app-settings.store';
 	import { weekdaysFrom, weeklyWkst } from '$lib/utils/recurrence-weekdays';
 	import { cn } from '@reborn/ui';
 	import { getLocalTimeZone, type DateValue, parseDate } from '@internationalized/date';
-	import { createLogger } from '@reborn/utils';
+	import { createLogger, formatDateWithSetting } from '@reborn/utils';
 
 	const logger = createLogger('RecurrenceDialog');
 
@@ -63,7 +63,7 @@
 	function formatDate(date: DateValue | undefined): string {
 		if (!date) return $t('task.select_date');
 		const localDate = date.toDate(getLocalTimeZone());
-		return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(localDate);
+		return formatDateWithSetting(localDate, $dateFormat);
 	}
 
 	function generateRRule(): string {

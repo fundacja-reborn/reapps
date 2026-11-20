@@ -9,10 +9,10 @@
    * opens the regular delete-folder dialog.
    */
   import { ChevronRight, RotateCcw, Trash2 } from '@lucide/svelte';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale } from '$lib/stores/i18n.store';
   import { textDirection } from '@reborn/i18n';
   import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
-  import { formatNoteDate } from '$lib/utils/date-format';
+  import { formatSettingsDateTime } from '$lib/utils/date-format';
   import FolderGlyph from '$lib/components/folders/FolderGlyph.svelte';
   import DeleteFolderDialog from '$lib/components/sidebar/DeleteFolderDialog.svelte';
   import { foldersStore } from '$lib/stores/folders.store';
@@ -111,7 +111,7 @@
                 <!-- Isolated from the Arabic label, in the UI direction: the
                      date has digits only, so a bare <bdi> would fall back to
                      LTR and show the time before the date in RTL (#542). -->
-                <bdi dir={$textDirection}>{formatNoteDate(root.at, $dateFormat, $timeFormat)}</bdi>
+                <bdi dir={$textDirection}>{formatSettingsDateTime(root.at, $dateFormat, $timeFormat, $locale)}</bdi>
               </p>
             </div>
             <button

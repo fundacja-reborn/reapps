@@ -761,6 +761,7 @@ function formatBody(
 		due.getUTCMonth(),
 		due.getUTCDate()
 	);
+	// date-format-ignore: a sentence in a system notification ("... scheduled for November 17, 2026"), outside the app's layout
 	const date = taskLocalDay.toLocaleDateString(localeTag, {
 		year: 'numeric',
 		month: 'long',

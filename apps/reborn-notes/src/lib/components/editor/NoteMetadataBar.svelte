@@ -5,7 +5,7 @@
   import { t, locale } from '$lib/stores/i18n.store';
   import { formatHijriDate, textDirection } from '@reborn/i18n';
   import { dateFormat, hijriDatePreference, timeFormat } from '$lib/stores/app-settings.store';
-  import { formatNoteDate } from '$lib/utils/date-format';
+  import { formatSettingsDateTime } from '$lib/utils/date-format';
   import { APPEARANCE_SWATCH_CLASS, isAppearanceColor } from '$lib/utils/appearance-colors';
 
   type ViewMode = 'edit' | 'split' | 'preview';
@@ -67,12 +67,11 @@
     }
   });
 
-  // The date in the format from Settings > Appearance, as on the note cards
-  // (#595); the time of day in the wording of the app language.
+  // The date in the format from Settings > Appearance, as on the note cards (#595).
   function formatDate(iso: string | null): string | null {
     if (!iso || Number.isNaN(new Date(iso).getTime())) return null;
     try {
-      return formatNoteDate(iso, $dateFormat, $timeFormat, $locale);
+      return formatSettingsDateTime(iso, $dateFormat, $timeFormat, $locale);
     } catch {
       return null;
     }

@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
-import { containsRtlText, detectTextDirection, getTextDirection, inlineSide, isTextDirection } from '../direction';
+import {
+  containsRtlText,
+  detectTextDirection,
+  getTextDirection,
+  inlineSide,
+  isolateInDirection,
+  isTextDirection
+} from '../direction';
 import {
   applyDocumentLocale,
   readDirectionOverride,
@@ -98,6 +105,29 @@ describe('readDirectionOverride', () => {
   it('ignores a corrupted stored value', () => {
     localStorage.setItem(DIRECTION_OVERRIDE_STORAGE_KEY, 'sideways');
     expect(readDirectionOverride('')).toBeNull();
+  });
+});
+
+describe('isolateInDirection', () => {
+  const RLI = String.fromCodePoint(0x2067);
+  const PDI = String.fromCodePoint(0x2069);
+
+  it('wraps the text in a right-to-left isolate for an RTL UI', () => {
+    expect(isolateInDirection('2026-11-13, 14:32', 'rtl')).toBe(`${RLI}2026-11-13, 14:32${PDI}`);
+  });
+
+  it('returns the text unchanged for an LTR UI, with no invisible characters', () => {
+    expect(isolateInDirection('2026-11-13, 14:32', 'ltr')).toBe('2026-11-13, 14:32');
+  });
+
+  it('leaves an empty text empty', () => {
+    expect(isolateInDirection('', 'rtl')).toBe('');
+  });
+
+  it('does not change the direction the text itself would be detected as', () => {
+    // The isolate controls are not strong characters: a caller that inspects
+    // the text afterwards still sees digits and punctuation only.
+    expect(detectTextDirection(isolateInDirection('2026-11-13', 'rtl'))).toBeNull();
   });
 });
 

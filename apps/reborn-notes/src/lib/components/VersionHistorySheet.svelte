@@ -6,9 +6,9 @@
   import { noteDetailService } from '$lib/services/note-detail.service.svelte';
   import { Button, Sheet, SheetContent, SheetHeader, SheetTitle, toastStore } from '@reborn/ui';
   import ConfirmDialog from '$lib/components/shared/ConfirmDialog.svelte';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale } from '$lib/stores/i18n.store';
   import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
-  import { formatNoteDate } from '$lib/utils/date-format';
+  import { formatSettingsDateTime } from '$lib/utils/date-format';
 
   let {
     noteId,
@@ -152,7 +152,7 @@
   }
 
   function formatDate(iso: string): string {
-    return formatNoteDate(iso, $dateFormat, $timeFormat);
+    return formatSettingsDateTime(iso, $dateFormat, $timeFormat, $locale);
   }
 
   function handleOpenChange(isOpen: boolean) {

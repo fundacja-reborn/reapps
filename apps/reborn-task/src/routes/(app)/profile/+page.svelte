@@ -2,8 +2,9 @@
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@reborn/ui';
 	import { User, Calendar, Shield } from '@lucide/svelte';
 	import { goto } from '$lib/utils/navigation';
-	import { t, locale } from '$lib/stores/i18n.store';
-	import { intlLocale } from '@reborn/i18n';
+	import { t } from '$lib/stores/i18n.store';
+	import { formatDateWithSetting } from '@reborn/utils';
+	import { dateFormat } from '$lib/stores/app-settings.store';
 	import { user } from '$lib/stores/auth.store';
 </script>
 
@@ -36,7 +37,7 @@
 					<div>
 						<p class="text-sm font-medium">{$t('profile.member_since')}</p>
 						<p class="text-sm text-muted-foreground">
-							{$user?.created_at ? new Date($user.created_at).toLocaleDateString(intlLocale($locale)) : '-'}
+							{$user?.created_at ? formatDateWithSetting(new Date($user.created_at), $dateFormat) : '-'}
 						</p>
 					</div>
 				</div>

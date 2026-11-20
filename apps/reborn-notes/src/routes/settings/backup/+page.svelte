@@ -10,8 +10,9 @@
   } from '@reborn/ui';
   import { KeyRound, FolderOpen, AlertTriangle, Copy, Check, ShieldCheck } from '@lucide/svelte';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { formatDateTime } from '@reborn/i18n';
-  import { timeFormat } from '$lib/stores/app-settings.store';
+  import { isolateInDirection, textDirection } from '@reborn/i18n';
+  import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
+  import { formatSettingsDateTime } from '$lib/utils/date-format';
   import { localOnly } from '$lib/stores/sync-status.store';
   import { IS_NATIVE } from '$lib/utils/native-client';
   import { copyText } from '$lib/utils/clipboard';
@@ -350,7 +351,12 @@
               {#if bstate.lastBackupAt}
                 <p class="text-xs text-muted-foreground">
                   {$t('settings_page.backup.status_last', {
-                    values: { time: formatDateTime(bstate.lastBackupAt, $locale, $timeFormat) }
+                    values: {
+                      time: isolateInDirection(
+                        formatSettingsDateTime(bstate.lastBackupAt, $dateFormat, $timeFormat, $locale),
+                        $textDirection
+                      )
+                    }
                   })}
                 </p>
               {:else}

@@ -12,8 +12,9 @@
 	} from '@reborn/ui';
 	import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
 	import { t, locale } from '$lib/stores/i18n.store';
-	import { formatDateTime } from '@reborn/i18n';
-	import { timeFormat } from '$lib/stores/app-settings.store';
+	import { textDirection } from '@reborn/i18n';
+	import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
+	import { formatSettingsDateTime } from '$lib/services/task-formatting.service';
 	import { goto } from '$lib/utils/navigation';
 	import { decryptedTrashTasks, getDaysInTrash } from '$lib/stores/decrypted-trash.store';
 	import { trashManagementService } from '$lib/services/trash-management.service';
@@ -68,12 +69,9 @@
 		return list?.name || $t('task.trash.unknown_list');
 	}
 
-	// Format date
+	// Date and time in the formats from Settings > Appearance.
 	function formatDate(dateString: string): string {
-		return formatDateTime(dateString, $locale, $timeFormat, {
-			dateStyle: 'long',
-			timeStyle: 'short'
-		});
+		return formatSettingsDateTime(dateString, $dateFormat, $timeFormat, $locale);
 	}
 
 	// Navigate to task detail (read-only preview)
@@ -211,7 +209,7 @@
 							</div>
 							<span class="text-muted-foreground">•</span>
 							<div class="flex items-center gap-1 text-muted-foreground">
-								<span>{$t('task.trash.deleted_on')}: {formatDate(task.deleted_at!)}</span>
+								<span>{$t('task.trash.deleted_on')}: <bdi dir={$textDirection}>{formatDate(task.deleted_at!)}</bdi></span>
 							</div>
 							{#if willAutoDelete}
 								<span class="text-muted-foreground">•</span>

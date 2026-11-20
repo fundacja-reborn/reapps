@@ -13,13 +13,12 @@
 		MobileTimePicker
 	} from '@reborn/ui';
 	import { CalendarIcon, Clock, X } from '@lucide/svelte';
-	import { createLogger } from '@reborn/utils';
+	import { createLogger, formatDateWithSetting } from '@reborn/utils';
 	import { t } from '$lib/stores/i18n.store';
-	import { hourCycleFor } from '@reborn/i18n';
-	import { timeFormat, currentLanguage, weekStartsOn } from '$lib/stores/app-settings.store';
+	import { dateFormat, timeFormat, currentLanguage, weekStartsOn } from '$lib/stores/app-settings.store';
+	import { formatSettingsDateTime } from '$lib/services/task-formatting.service';
 	import { 
 		type DateValue, 
-		DateFormatter, 
 		getLocalTimeZone,
 		parseDate,
 		CalendarDate,
@@ -78,17 +77,6 @@
 
 	// Prevent parent blur when interacting with popover
 	let containerRef = $state<HTMLDivElement>();
-
-	// Date formatters reactive to user's locale
-	let dateFormatter = $derived(new DateFormatter(locale, {
-		dateStyle: 'medium'
-	}));
-
-	let dateTimeFormatter = $derived(new DateFormatter(locale, {
-		dateStyle: 'medium',
-		timeStyle: 'short',
-		hourCycle: hourCycleFor($timeFormat)
-	}));
 
 	// Track previous value to avoid reactive loops
 	let previousValue = $state<string | undefined>();
@@ -213,10 +201,10 @@
 			
 			if (hasTime && timeValue) {
 				jsDate.setHours(timeValue.hour, timeValue.minute);
-				return dateTimeFormatter.format(jsDate);
+				return formatSettingsDateTime(jsDate, $dateFormat, $timeFormat, locale);
 			}
 			
-			return dateFormatter.format(jsDate);
+			return formatDateWithSetting(jsDate, $dateFormat);
 		} catch {
 			return calendarValue.toString();
 		}

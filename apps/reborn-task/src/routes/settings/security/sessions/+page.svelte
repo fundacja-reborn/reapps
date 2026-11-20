@@ -3,8 +3,9 @@
 	import { onMount } from 'svelte';
 	import { Monitor, LogOut, RefreshCw, AlertTriangle, X } from '@lucide/svelte';
 	import { t, locale } from '$lib/stores/i18n.store';
-	import { formatDateTime } from '@reborn/i18n';
-	import { timeFormat } from '$lib/stores/app-settings.store';
+	import { textDirection } from '@reborn/i18n';
+	import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
+	import { formatSettingsDateTime } from '$lib/services/task-formatting.service';
 	import { SettingsLayout, Button, Alert, AlertDescription } from '@reborn/ui';
 	import { toast } from '@reborn/ui';
 	import { createLogger } from '@reborn/utils';
@@ -34,7 +35,7 @@
 	const otherSessions = $derived(sessions.filter((s) => s.id !== currentSessionId));
 
 	function formatDate(iso: string): string {
-		return formatDateTime(iso, $locale, $timeFormat);
+		return formatSettingsDateTime(iso, $dateFormat, $timeFormat, $locale);
 	}
 
 	function getDeviceName(sessionId: string): string {
@@ -198,10 +199,10 @@
 								</span>
 							</div>
 							<p class="text-xs text-muted-foreground">
-								{$t('settings.security.sessions.logged_in')}: {formatDate(currentSession.login_at)}
+								{$t('settings.security.sessions.logged_in')}: <bdi dir={$textDirection}>{formatDate(currentSession.login_at)}</bdi>
 							</p>
 							<p class="text-xs text-muted-foreground">
-								{$t('settings.security.sessions.expires')}: {formatDate(currentSession.expires_at)}
+								{$t('settings.security.sessions.expires')}: <bdi dir={$textDirection}>{formatDate(currentSession.expires_at)}</bdi>
 							</p>
 						</div>
 					</div>
@@ -239,10 +240,10 @@
 									{getDeviceName(session.id)}
 								</p>
 								<p class="text-xs text-muted-foreground">
-									{$t('settings.security.sessions.logged_in')}: {formatDate(session.login_at)}
+									{$t('settings.security.sessions.logged_in')}: <bdi dir={$textDirection}>{formatDate(session.login_at)}</bdi>
 								</p>
 								<p class="text-xs text-muted-foreground">
-									{$t('settings.security.sessions.expires')}: {formatDate(session.expires_at)}
+									{$t('settings.security.sessions.expires')}: <bdi dir={$textDirection}>{formatDate(session.expires_at)}</bdi>
 								</p>
 							</div>
 							<button

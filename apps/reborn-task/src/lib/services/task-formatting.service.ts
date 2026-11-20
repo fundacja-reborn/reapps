@@ -44,6 +44,27 @@ export function getDaysFromToday(date: Date): number {
 	return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
+/**
+ * Date and time of a moment, as the apps show it to the signed-in user: the
+ * date in the format from Settings > Appearance, the time of day on the 12h /
+ * 24h clock from the same card ("2026-04-05, 14:32"; on the 12h clock the
+ * language words the AM/PM marker). The same formatter as in re/notes
+ * (`formatSettingsDateTime` there), for shares, sessions and the trash.
+ *
+ * The result is digits and punctuation, at most with a marker at the end.
+ * After a label render it in `<bdi dir={$textDirection}>`; inside a sentence
+ * built in code pass it through `isolateInDirection` (guideline 74).
+ */
+export function formatSettingsDateTime(
+	date: Date | string | number,
+	dateFormat: string,
+	timeFormat: string,
+	locale: string | null | undefined
+): string {
+	const d = new Date(date);
+	return `${formatDateWithSetting(d, dateFormat)}, ${formatTimeOfDay(d, locale, timeFormat)}`;
+}
+
 /** Time of day in the app language, on the user's 12h/24h clock (`timeFormat` setting). */
 export function getTimeString(date: Date, locale: string, timeFormat: string = '24h'): string {
 	return formatTimeOfDay(date, locale, timeFormat);

@@ -201,6 +201,7 @@
     if (!recoveryCodes.length) return;
     const content = [
       $t('security.recovery_codes.file_header'),
+      // date-format-ignore: text written into a file the user keeps, read outside the app
       `${$t('security.recovery_codes.file_generated')} ${formatDateTime(new Date(), $locale, $timeFormat)}`,
       '',
       $t('security.recovery_codes.file_warning'),

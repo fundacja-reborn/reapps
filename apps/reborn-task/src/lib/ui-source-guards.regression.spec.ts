@@ -51,6 +51,23 @@ describe('UI source guards (apps/reborn-task/src)', () => {
     expect(hits).toEqual([]);
   });
 
+  it('gives an isolated numeric date the UI direction (<bdi dir={$textDirection}>, #542)', () => {
+    // A date from the user's date format is digits and punctuation only. A bare
+    // <bdi> finds no letter to take a direction from and falls back to LTR, so
+    // in an Arabic UI "2026-11-13, 14:32" keeps the time on the right, where a
+    // right-to-left reader starts: time first, date second.
+    const BARE_BDI_DATE =
+      /<bdi(?![^>]*\sdir=)[^>]*>\s*\{format(SettingsDateTime|DateWithSetting|Date)\(/;
+    const hits = listSourceFiles([ROOT])
+      .filter((file) => file.endsWith('.svelte'))
+      .flatMap((file) =>
+        readFileSync(file, 'utf-8')
+          .split('\n')
+          .flatMap((line, i) => (BARE_BDI_DATE.test(line) ? [`${repoRelative(file)}:${i + 1}`] : []))
+      );
+    expect(hits).toEqual([]);
+  });
+
   it('formats a time of day on the clock the user chose (12h/24h setting, #581)', () => {
     // `Intl` takes the clock from the language: English and Arabic print
     // "5:13 PM" to a user who chose 24h. Use formatDateTime / formatTimeOfDay
@@ -70,6 +87,29 @@ describe('UI source guards (apps/reborn-task/src)', () => {
             (NEEDS_CLOCK.test(line) && !/formatDateTime\(|hourCycle/.test(near));
           const ignored = /time-format-ignore: \S/.test(lines[i - 1] ?? '');
           return bad && !ignored ? [`${repoRelative(file)}:${i + 1}`] : [];
+        });
+      });
+    expect(hits).toEqual([]);
+  });
+
+  it('shows a date in the format the user chose (date format setting, #595)', () => {
+    // `Intl` takes the shape of a date from the language ("Nov 17, 2026",
+    // "17.11.2026"), not from Settings > Appearance > Date format. A date or a
+    // timestamp shown to the signed-in user goes through formatSettingsDateTime
+    // (date + time) or formatDateWithSetting from @reborn/utils (date alone);
+    // formatTimeOfDay is fine for a time alone. Deliberately in the style of
+    // the language (a page for visitors without settings, a sentence in a
+    // notification, text written into a file or a note):
+    // `date-format-ignore: <reason>` within the five lines above.
+    const LANGUAGE_DATE = /\.toLocaleDateString\(|dateStyle|\bformatDateTime\(|\b(year|month):\s*['"]/;
+    const hits = listSourceFiles([ROOT])
+      .filter((file) => /\.(svelte|ts)$/.test(file) && !/\.(spec|test)\.ts$/.test(file))
+      .flatMap((file) => {
+        const lines = readFileSync(file, 'utf-8').split('\n');
+        return lines.flatMap((line, i) => {
+          const above = lines.slice(Math.max(0, i - 5), i).join('\n');
+          const ignored = /date-format-ignore: \S/.test(above);
+          return LANGUAGE_DATE.test(line) && !ignored ? [`${repoRelative(file)}:${i + 1}`] : [];
         });
       });
     expect(hits).toEqual([]);

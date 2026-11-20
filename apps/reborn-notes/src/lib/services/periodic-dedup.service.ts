@@ -60,6 +60,7 @@ function tr(key: string, values?: Record<string, unknown>): string {
 
 function formatCreatedAt(iso: string): string {
   try {
+    // date-format-ignore: separator written into the note's own text, read in any app or export
     return formatDateTime(iso, get(i18nLocale), get(timeFormat), {
       dateStyle: 'short',
       timeStyle: 'short'
