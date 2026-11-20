@@ -1,3 +1,12 @@
+## 0.56.1 (2026-11-20)
+
+### 🩹 Fixes
+
+- **deps:** pin effect past the Schema.TemplateLiteral ReDoS ([#596](https://github.com/fundacja-reborn/reapps/pull/596))
+- **notes:** show the archive date before the time in Arabic ([#594](https://github.com/fundacja-reborn/reapps/pull/594), [#542](https://github.com/fundacja-reborn/reapps/issues/542))
+- **notes:** follow the date format setting inside the note ([#598](https://github.com/fundacja-reborn/reapps/pull/598), [#542](https://github.com/fundacja-reborn/reapps/issues/542), [#595](https://github.com/fundacja-reborn/reapps/issues/595))
+- **notes,task:** apply the date format setting to every shown date ([#599](https://github.com/fundacja-reborn/reapps/pull/599), [#598](https://github.com/fundacja-reborn/reapps/issues/598), [#595](https://github.com/fundacja-reborn/reapps/issues/595))
+
 ## 0.56.0 (2026-11-18)
 
 ### 🚀 Features
