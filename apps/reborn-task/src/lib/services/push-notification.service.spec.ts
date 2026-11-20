@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import {
 	computeReminderFireAt,
 	DEFAULT_NOTIFICATION_LEAD_MINUTES,
@@ -161,6 +161,20 @@ describe('default constants', () => {
  * would cancel every reminder, locally and on the server, on each lock.
  */
 describe('syncScheduledNotifications without the master key', () => {
+	// The unlocked path imports the i18n and settings stores lazily. The first
+	// import transforms a large module graph, which on a busy CI runner took
+	// longer than the 5 s budget of the test itself (timed out on PR #609).
+	// Warm the modules here, under a budget of their own.
+	beforeAll(async () => {
+		await Promise.all([
+			import('svelte/store'),
+			import('$lib/stores/i18n.store'),
+			import('$lib/stores/app-settings.store'),
+			import('@reborn/crypto'),
+			import('./push-notification.service')
+		]);
+	}, 60_000);
+
 	async function setup(keyLoaded: boolean) {
 		const { vi } = await import('vitest');
 		const { pushNotificationService } = await import('./push-notification.service');
