@@ -6,6 +6,7 @@
   "labels": ["dependencies"],
   "rangeStrategy": "pin",
   "postUpdateOptions": ["pnpmDedupe"],
+  "minimumReleaseAge": "3 days",
   "packageRules": [
     {
       "description": "Group patch updates",
@@ -20,7 +21,7 @@
       "automerge": false
     },
     {
-      "description": "Major updates — separate PRs, require manual review",
+      "description": "Major updates - separate PRs, require manual review",
       "matchUpdateTypes": ["major"],
       "automerge": false,
       "labels": ["dependencies", "major"]
@@ -32,7 +33,7 @@
       "automerge": false
     },
     {
-      "description": "Group CodeMirror + Lezer ecosystem updates — bumping @codemirror/view alone causes transitive duplicate (TS errors on EditorView's private dispatchTransactions). Cohesive bump avoids it.",
+      "description": "Group CodeMirror + Lezer ecosystem updates - bumping @codemirror/view alone causes transitive duplicate (TS errors on EditorView's private dispatchTransactions). Cohesive bump avoids it.",
       "matchPackageNames": ["/^@codemirror\\//", "/^@lezer\\//"],
       "groupName": "codemirror",
       "automerge": false
@@ -62,10 +63,15 @@
       "labels": ["dependencies", "ci"]
     },
     {
-      "description": "Postgres major bumps break the storage layout (v18+ require new mount path + pg_upgrade) — disable to prevent accidental merge. Re-enable temporarily and plan dump/restore across local/staging/prod when ready to upgrade.",
+      "description": "Postgres major bumps break the storage layout (v18+ require new mount path + pg_upgrade) - disable to prevent accidental merge. Re-enable temporarily and plan dump/restore across local/staging/prod when ready to upgrade.",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["postgres"],
       "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Override values in pnpm-workspace.yaml only lift a vulnerable transitive dependency out of its advisory range. They are raised by hand when an advisory hits the forced version (pnpm audit gate in CI), not because a newer release exists: a bump puts a version its dependents never declared under them.",
+      "matchDepTypes": ["pnpm-workspace.overrides"],
       "enabled": false
     }
   ],
