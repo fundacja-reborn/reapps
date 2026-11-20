@@ -1,5 +1,35 @@
 [
   {
+    "version": "0.56.2",
+    "date": "2026-11-20",
+    "items": [
+      {
+        "id": "0.56.2-new-note-button-yellow",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.56.2-task-initial-sync",
+        "category": "fixed",
+        "apps": [
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.56.2-select-all-preview",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.56.1",
     "date": "2026-11-20",
     "items": [
