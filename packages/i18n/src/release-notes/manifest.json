@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.57.0",
+    "date": "2026-11-20",
+    "items": [
+      {
+        "id": "0.57.0-new-task-button",
+        "category": "new",
+        "apps": [
+          "task"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.56.2",
     "date": "2026-11-20",
     "items": [
