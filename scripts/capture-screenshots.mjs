@@ -402,34 +402,43 @@ function findInIndexedDb(page, id) {
   }, id);
 }
 
+/**
+ * Open the seeded task from the list. The first try waits a moment before the
+ * click, as a person would; a second try waits longer. A click that comes
+ * right after the app starts can leave the detail on "Task not found" for
+ * good, with nothing in the console.
+ */
 async function taskDetail(page, ctx) {
-  await taskList(page, ctx);
-  await byText(page, TITLES.task[lang]).click();
-  const timeline = await watchTaskDetail(page, ctx.labels, 3000).catch(() => []);
-  await page.waitForURL(/\/tasks\//, { timeout: 15_000 }).catch(ignore);
-  // The "Description" heading is only there once the task is loaded and
-  // decrypted. Without this wait the screen can be the "Task not found" state.
   const loaded = byText(page, ctx.labels.taskDescription);
-  try {
-    await loaded.waitFor({ state: 'visible', timeout: 12_000 });
-  } catch {
-    // Opened from the list, the task did not show. Keep what is known for the
-    // report, then open the same address directly: the picture is the same.
+  const pauses = [1500, 5000];
+  for (const [attempt, pause] of pauses.entries()) {
+    await taskList(page, ctx);
+    await page.waitForTimeout(pause);
+    await byText(page, TITLES.task[lang]).click();
+    const timeline = await watchTaskDetail(page, ctx.labels, 3000).catch(() => []);
+    const seen = timeline.join(', ') || '(nothing recorded)';
+    // The "Description" heading is only there once the task is loaded and
+    // decrypted.
+    const ok = await loaded
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (ok) {
+      if (attempt > 0) {
+        ctx.warn(
+          `the task opened only on try ${attempt + 1} (${pause} ms after the list was ready)`
+        );
+      }
+      await page.waitForTimeout(500);
+      return;
+    }
     const id = new URL(page.url()).pathname.split('/').pop() ?? '';
     const stores = await findInIndexedDb(page, id).catch(() => ['(could not read IndexedDB)']);
-    ctx.note(`task detail after the click: ${timeline.join(', ') || '(nothing recorded)'}`);
-    ctx.note(`task ${id} in IndexedDB: ${stores.join(', ') || 'not in any store'}`);
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    try {
-      await loaded.waitFor({ state: 'visible', timeout: 30_000 });
-    } catch {
-      throw new Error(`the task detail did not load, also not after a reload (${page.url()})`);
-    }
-    ctx.warn(
-      `opened from the list the task showed "${ctx.labels.taskNotFound}"; it loaded after a reload (${timeline.join(', ')}; in IndexedDB: ${stores.join(', ') || 'no'})`
-    );
+    ctx.note(`try ${attempt + 1}, click ${pause} ms after the list was ready: ${seen}`);
+    ctx.note(`  address ${page.url()}`);
+    ctx.note(`  task in IndexedDB: ${stores.join(', ') || 'not in any store'}`);
   }
-  await page.waitForTimeout(500);
+  throw new Error(`the task detail did not load in ${pauses.length} tries (${page.url()})`);
 }
 
 // ---------------------------------------------------------------- composing
