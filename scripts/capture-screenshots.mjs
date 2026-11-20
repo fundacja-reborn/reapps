@@ -31,7 +31,9 @@
  * Output:
  *   <out>/<lang>/raw/<shot>.png        one screen each, device pixel ratio 2
  *   <out>/<lang>/raw/<shot>.FAILED.*   for a shot that failed: the screen as it
- *                                      was (.png) and what the page logged (.txt)
+ *                                      was (.png) and a report (.txt): what the
+ *                                      page logged, record counts in IndexedDB,
+ *                                      and each API answer with its item counts
  *   <out>/www/<site path>.webp         composed images for reapps-www
  *   <out>/readme/<name>.webp           the two README images (--lang=en only)
  *
@@ -256,14 +258,20 @@ async function settle(page) {
   await page.waitForTimeout(700);
 }
 
-async function signInIfAsked(page, readyText) {
+/**
+ * Sign in when the app asks for it. `readyText` is seeded content and
+ * `syncedText` the "Synced" label of the app: either one on screen means the
+ * app is past the sign-in form, with or without data.
+ */
+async function signInIfAsked(page, readyText, syncedText) {
   const form = page.locator('#username');
-  const ready = byText(page, readyText);
   // Whichever shows first decides. Each wait swallows its own timeout: the
-  // loser of the race keeps waiting in the background and must not reject.
+  // losers of the race keep waiting in the background and must not reject.
+  const shows = (locator) => locator.waitFor({ state: 'visible', timeout: 30_000 }).catch(ignore);
   await Promise.race([
-    form.waitFor({ state: 'visible', timeout: 60_000 }).catch(ignore),
-    ready.waitFor({ state: 'visible', timeout: 60_000 }).catch(ignore)
+    shows(form),
+    shows(byText(page, readyText)),
+    shows(byText(page, syncedText))
   ]);
   if (!(await form.isVisible().catch(() => false))) return;
   await form.fill(username);
@@ -272,33 +280,129 @@ async function signInIfAsked(page, readyText) {
 }
 
 /**
- * Wait for seeded content. When it does not come, say why if the reason is
- * the usual one: the database was seeded in the other language.
+ * The app is up, but the seeded content is not on screen. The other shots of
+ * the same app would wait for the same thing, so the run skips them.
  */
-async function waitForSeed(page, key) {
+class SeedMissingError extends Error {}
+
+/** How long the seeded content may take to show, from the page load on. */
+const SEED_TIMEOUT = 45_000;
+/** ...and once the app says "Synced": by then the data is on screen or is not coming. */
+const SEED_TIMEOUT_SYNCED = 10_000;
+
+/**
+ * Wait for seeded content. It gives up early when the app reports "Synced"
+ * and still shows nothing. When the content does not come, say why if the
+ * reason is the usual one: the database was seeded in the other language.
+ */
+async function waitForSeed(page, key, syncedText) {
   const expected = TITLES[key][lang];
-  try {
-    await byText(page, expected).waitFor({ state: 'visible', timeout: 90_000 });
-  } catch {
-    const other = LANGS.find((l) => l !== lang);
-    const otherVisible = await byText(page, TITLES[key][other])
-      .isVisible()
-      .catch(() => false);
-    if (otherVisible) {
-      throw new Error(
-        `the database is seeded in "${other}", not "${lang}" - run: pnpm db:seed -- --lang ${lang}`
-      );
+  const title = byText(page, expected);
+  const synced = byText(page, syncedText);
+  const started = Date.now();
+  let syncedAt = null;
+  while (Date.now() - started < SEED_TIMEOUT) {
+    if (await title.isVisible().catch(() => false)) return;
+    if (await synced.isVisible().catch(() => false)) {
+      syncedAt ??= Date.now();
+      if (Date.now() - syncedAt > SEED_TIMEOUT_SYNCED) break;
+    } else {
+      syncedAt = null;
     }
-    throw new Error(`"${expected}" did not appear - is the stack running and seeded?`);
+    await page.waitForTimeout(250);
   }
+  const other = LANGS.find((l) => l !== lang);
+  const otherVisible = await byText(page, TITLES[key][other])
+    .isVisible()
+    .catch(() => false);
+  if (otherVisible) {
+    throw new SeedMissingError(
+      `the database is seeded in "${other}", not "${lang}" - run: pnpm db:seed -- --lang ${lang}`
+    );
+  }
+  if (
+    await page
+      .locator('#username')
+      .isVisible()
+      .catch(() => false)
+  ) {
+    throw new SeedMissingError(
+      `still on the sign-in form - wrong account or password, or the account is locked`
+    );
+  }
+  throw new SeedMissingError(
+    syncedAt === null
+      ? `"${expected}" did not appear - is the stack running and seeded?`
+      : `the app is signed in and says "${syncedText}", but "${expected}" is not there - see the .FAILED.txt for what the server sent`
+  );
+}
+
+/**
+ * For the failure report: how many records each IndexedDB store holds, and
+ * the names (never the values) of what the page keeps in web storage.
+ */
+function describeBrowserData(page) {
+  return page.evaluate(async () => {
+    const lines = [];
+    for (const { name } of await indexedDB.databases()) {
+      if (!name) continue;
+      const db = await new Promise((done, failed) => {
+        const request = indexedDB.open(name);
+        request.onsuccess = () => done(request.result);
+        request.onerror = () => failed(request.error);
+      });
+      const counts = [];
+      for (const store of db.objectStoreNames) {
+        const count = await new Promise((done) => {
+          try {
+            const request = db.transaction(store).objectStore(store).count();
+            request.onsuccess = () => done(request.result);
+            request.onerror = () => done('?');
+          } catch {
+            done('?');
+          }
+        });
+        counts.push(`${store} ${count}`);
+      }
+      db.close();
+      lines.push(`IndexedDB ${name}: ${counts.join(', ') || '(no stores)'}`);
+    }
+    lines.push(`localStorage keys: ${Object.keys(localStorage).sort().join(', ') || '(none)'}`);
+    lines.push(`sessionStorage keys: ${Object.keys(sessionStorage).sort().join(', ') || '(none)'}`);
+    return lines;
+  });
+}
+
+/**
+ * One line per API answer, for the failure report: status, address, size and
+ * how many items each list in the answer holds. Counts only, no content.
+ */
+async function describeApiResponse(response) {
+  const request = response.request();
+  const url = new URL(response.url());
+  let shape = '';
+  try {
+    const body = await response.body();
+    shape = `${body.length} bytes`;
+    const data = JSON.parse(body.toString('utf8'));
+    const lists = Array.isArray(data)
+      ? [`${data.length} items`]
+      : Object.entries(data ?? {})
+          .filter(([, value]) => Array.isArray(value))
+          .map(([name, value]) => `${name}: ${value.length}`);
+    if (lists.length > 0) shape += `, ${lists.join(', ')}`;
+  } catch {
+    /* no body, or not JSON: the size (if any) is all there is to say */
+  }
+  return `[api ${response.status()}] ${request.method()} ${url.pathname}${url.search} ${shape}`.trimEnd();
 }
 
 // ------------------------------------------------------------------ states
 
 async function notesList(page, ctx) {
   await page.goto(ctx.notesUrl, { waitUntil: 'domcontentloaded' });
-  await signInIfAsked(page, TITLES.noteTrip[lang]);
-  await waitForSeed(page, 'noteTrip');
+  await signInIfAsked(page, TITLES.noteTrip[lang], ctx.labels.notesSynced);
+  await waitForSeed(page, 'noteTrip', ctx.labels.notesSynced);
   await byText(page, ctx.labels.notesSynced)
     .waitFor({ state: 'visible', timeout: 30_000 })
     .catch(ignore);
@@ -335,8 +439,8 @@ async function notesDesktop(page, ctx) {
 
 async function taskList(page, ctx) {
   await page.goto(`${ctx.taskUrl}/all`, { waitUntil: 'domcontentloaded' });
-  await signInIfAsked(page, TITLES.task[lang]);
-  await waitForSeed(page, 'task');
+  await signInIfAsked(page, TITLES.task[lang], ctx.labels.taskSynced);
+  await waitForSeed(page, 'task', ctx.labels.taskSynced);
   await byText(page, ctx.labels.taskSynced)
     .waitFor({ state: 'visible', timeout: 30_000 })
     .catch(ignore);
@@ -631,19 +735,32 @@ async function main() {
       `[request failed] ${request.method()} ${request.url()} ${request.failure()?.errorText ?? ''}`
     )
   );
+  // Every API answer of the shot, summarized. Reading a body takes a moment,
+  // so the lines are promises, awaited when a report is written.
+  let apiLog = [];
   page.on('response', (response) => {
     if (response.status() >= 400) {
       pageLog.push(`[http ${response.status()}] ${response.request().method()} ${response.url()}`);
     }
+    if (response.url().includes('/api/')) apiLog.push(describeApiResponse(response));
   });
+  // App whose seeded content did not show, and the shot that found out.
+  const noSeed = new Map();
   try {
     for (const shot of shots) {
       const file = join(rawDir, `${shot.id}.png`);
       process.stdout.write(`  ${shot.id} ... `);
       pageLog = [];
       shotWarnings = [];
+      apiLog = [];
       rmSync(join(rawDir, `${shot.id}.FAILED.png`), { force: true });
       rmSync(join(rawDir, `${shot.id}.FAILED.txt`), { force: true });
+      if (noSeed.has(shot.app)) {
+        console.log(`skipped: re/${shot.app} had no seeded content in ${noSeed.get(shot.app)}`);
+        failed.push(shot.id);
+        rmSync(file, { force: true });
+        continue;
+      }
       try {
         await page.setViewportSize(shot.view === 'desktop' ? DESKTOP : PHONE);
         await page.emulateMedia({ colorScheme: shot.theme });
@@ -659,13 +776,34 @@ async function main() {
         const message = error instanceof Error ? error.message.split('\n')[0] : String(error);
         console.log(`FAILED: ${message}`);
         failed.push(shot.id);
+        if (error instanceof SeedMissingError) noSeed.set(shot.app, shot.id);
         // What the browser showed when it went wrong, for the fix.
         await page
           .screenshot({ path: join(rawDir, `${shot.id}.FAILED.png`), type: 'png' })
           .catch(ignore);
+        const browserData = await describeBrowserData(page).catch(() => [
+          '(could not read the browser storage)'
+        ]);
+        // An answer that is still streaming never finishes: do not wait for it.
+        const late = new Promise((done) => setTimeout(done, 3000, '[api] (answer still open)'));
+        const apiLines = await Promise.all(
+          apiLog.map((line) =>
+            Promise.race([line.catch(() => '[api] (answer could not be read)'), late])
+          )
+        );
         writeFileSync(
           join(rawDir, `${shot.id}.FAILED.txt`),
-          `${[`error: ${message}`, `url: ${page.url()}`, '', ...pageLog].join('\n')}\n`
+          `${[
+            `error: ${message}`,
+            `url: ${page.url()}`,
+            '',
+            ...pageLog,
+            '',
+            ...browserData,
+            '',
+            `API answers during this shot (${apiLines.length}):`,
+            ...apiLines
+          ].join('\n')}\n`
         );
         // The picture of an earlier good run would be composed as if current.
         rmSync(file, { force: true });
