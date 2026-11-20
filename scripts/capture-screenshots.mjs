@@ -294,18 +294,40 @@ const SEED_TIMEOUT_SYNCED = 10_000;
  * Wait for seeded content. It gives up early when the app reports "Synced"
  * and still shows nothing. When the content does not come, say why if the
  * reason is the usual one: the database was seeded in the other language.
+ *
+ * Before giving up on a synced but empty app it taps the "Synced" label once,
+ * which is the app's manual sync. re/task, opened after a sign-in made in
+ * re/notes, at times never pulls its data on its own (seen 2026-11-20: no
+ * request for lists or tasks at all). When the tap brings the data, the page
+ * is loaded again so the shot starts from a normal state, and the shot gets
+ * a warning.
  */
-async function waitForSeed(page, key, syncedText) {
+async function waitForSeed(page, key, syncedText, ctx) {
   const expected = TITLES[key][lang];
   const title = byText(page, expected);
   const synced = byText(page, syncedText);
   const started = Date.now();
   let syncedAt = null;
+  let tapped = false;
   while (Date.now() - started < SEED_TIMEOUT) {
-    if (await title.isVisible().catch(() => false)) return;
+    if (await title.isVisible().catch(() => false)) {
+      if (!tapped) return;
+      ctx.warn(
+        `the app said "${syncedText}" with no data and pulled it only after a tap on "${syncedText}"`
+      );
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await title.waitFor({ state: 'visible', timeout: 20_000 }).catch(ignore);
+      if (await title.isVisible().catch(() => false)) return;
+      break;
+    }
     if (await synced.isVisible().catch(() => false)) {
       syncedAt ??= Date.now();
-      if (Date.now() - syncedAt > SEED_TIMEOUT_SYNCED) break;
+      if (Date.now() - syncedAt > SEED_TIMEOUT_SYNCED) {
+        if (tapped) break;
+        tapped = true;
+        syncedAt = null;
+        await synced.click({ timeout: 5000 }).catch(ignore);
+      }
     } else {
       syncedAt = null;
     }
@@ -331,9 +353,9 @@ async function waitForSeed(page, key, syncedText) {
     );
   }
   throw new SeedMissingError(
-    syncedAt === null
-      ? `"${expected}" did not appear - is the stack running and seeded?`
-      : `the app is signed in and says "${syncedText}", but "${expected}" is not there - see the .FAILED.txt for what the server sent`
+    tapped
+      ? `the app is signed in and says "${syncedText}", but "${expected}" is not there, also not after a manual sync - see the .FAILED.txt for what the server sent`
+      : `"${expected}" did not appear - is the stack running and seeded?`
   );
 }
 
@@ -402,7 +424,7 @@ async function describeApiResponse(response) {
 async function notesList(page, ctx) {
   await page.goto(ctx.notesUrl, { waitUntil: 'domcontentloaded' });
   await signInIfAsked(page, TITLES.noteTrip[lang], ctx.labels.notesSynced);
-  await waitForSeed(page, 'noteTrip', ctx.labels.notesSynced);
+  await waitForSeed(page, 'noteTrip', ctx.labels.notesSynced, ctx);
   await byText(page, ctx.labels.notesSynced)
     .waitFor({ state: 'visible', timeout: 30_000 })
     .catch(ignore);
@@ -440,7 +462,7 @@ async function notesDesktop(page, ctx) {
 async function taskList(page, ctx) {
   await page.goto(`${ctx.taskUrl}/all`, { waitUntil: 'domcontentloaded' });
   await signInIfAsked(page, TITLES.task[lang], ctx.labels.taskSynced);
-  await waitForSeed(page, 'task', ctx.labels.taskSynced);
+  await waitForSeed(page, 'task', ctx.labels.taskSynced, ctx);
   await byText(page, ctx.labels.taskSynced)
     .waitFor({ state: 'visible', timeout: 30_000 })
     .catch(ignore);
