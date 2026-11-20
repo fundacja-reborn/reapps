@@ -189,6 +189,12 @@
     "date_format_updated": "El formato de fecha ha sido actualizado",
     "time_format": "Formato de hora",
     "time_format_updated": "El formato de hora ha sido actualizado",
+    "new_task_fab": "Botón flotante de tarea nueva",
+    "new_task_fab_desc": "Mostrar un botón en la esquina inferior de la lista de tareas en el teléfono, al alcance del pulgar.",
+    "new_task_fab_on": "Botón visible",
+    "new_task_fab_off": "Botón oculto",
+    "new_task_fab_updated": "Ajuste del botón flotante actualizado",
+    "device_only_hint": "Se aplica solo a este dispositivo",
     "reset": "Restablecer valores predeterminados",
     "reset_done": "Ajustes predeterminados restaurados",
     "error_update": "Error al actualizar el ajuste"

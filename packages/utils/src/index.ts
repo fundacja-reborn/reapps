@@ -19,6 +19,9 @@ export * from './search-query';
 // Text matching shared by every search surface
 export * from './search-text';
 
+// DOM helpers (browser only)
+export * from './dom';
+
 // Re-export commonly used functions for convenience
 export { createLogger, LoggerGlobal, LOG_LEVELS } from './logger';
 export {

@@ -13,9 +13,10 @@
 		SelectContent,
 		SelectItem,
 		SelectTrigger,
+		Switch,
 		Button
 	} from '@reborn/ui';
-	import { Globe } from '@lucide/svelte';
+	import { CirclePlus, Globe } from '@lucide/svelte';
 	import {
 		appSettings,
 		currentTheme,
@@ -24,6 +25,8 @@
 		timeFormat,
 		weekStartPreference
 	} from '$lib/stores/app-settings.store';
+	import { devicePrefs, newTaskFab } from '$lib/stores/device-prefs.store';
+	import { useMediaQuery } from '$lib/utils/mediaQuery.svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import {
 		SUPPORTED_LOCALES,
@@ -38,6 +41,10 @@
 	import { toast } from '@reborn/ui';
 
 	const logger = createLogger('appearance-settings');
+
+	// The exact breakpoint of the phone layout in routes/(app)/+layout.svelte:
+	// the floating "New task" button exists only there, so its switch does too.
+	const isPhoneLayout = useMediaQuery('(max-width: 767px)');
 
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
@@ -160,11 +167,18 @@
 		}
 	}
 
+	// Floating "New task" button of the phone layout (per device, not synced).
+	function updateNewTaskFab(value: boolean) {
+		devicePrefs.setNewTaskFab(value);
+		toast.success($t('settings.appearance.new_task_fab_updated'));
+	}
+
 	async function resetToDefaults() {
 		try {
 			isLoading = true;
 			error = null;
 			await appSettings.reset();
+			devicePrefs.reset();
 			theme = $currentTheme;
 			language = $currentLanguage;
 			dateFormatValue = $dateFormat;
@@ -270,6 +284,37 @@
 				weekStartPlaceholder: $t('appearance.select_week_start')
 			}}
 		/>
+
+		<!-- Floating "New task" button (per-device, localStorage - not synced;
+		     phone layout only) -->
+		{#if isPhoneLayout.value}
+			<Card>
+				<CardHeader>
+					<CardTitle class="text-base flex items-center gap-2">
+						<CirclePlus class="h-4 w-4 text-muted-foreground" />
+						{$t('settings.appearance.new_task_fab')}
+					</CardTitle>
+					<CardDescription>{$t('settings.appearance.new_task_fab_desc')}</CardDescription>
+				</CardHeader>
+				<CardContent class="space-y-3">
+					<div class="flex items-center justify-between gap-4">
+						<span class="text-sm text-muted-foreground">
+							{$newTaskFab
+								? $t('settings.appearance.new_task_fab_on')
+								: $t('settings.appearance.new_task_fab_off')}
+						</span>
+						<Switch
+							checked={$newTaskFab}
+							onCheckedChange={(v: boolean) => updateNewTaskFab(v)}
+							disabled={isLoading}
+						/>
+					</div>
+					<p class="text-xs text-muted-foreground">
+						{$t('settings.appearance.device_only_hint')}
+					</p>
+				</CardContent>
+			</Card>
+		{/if}
 
 		<div class="pt-2">
 			<Button

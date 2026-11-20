@@ -189,6 +189,12 @@
     "date_format_updated": "Date format has been updated",
     "time_format": "Time format",
     "time_format_updated": "Time format has been updated",
+    "new_task_fab": "Floating new task button",
+    "new_task_fab_desc": "Show a button in the bottom corner of the task list on phones, within easy reach of your thumb.",
+    "new_task_fab_on": "Button shown",
+    "new_task_fab_off": "Button hidden",
+    "new_task_fab_updated": "Floating button setting updated",
+    "device_only_hint": "Applies to this device only",
     "reset": "Reset to defaults",
     "reset_done": "Default settings restored",
     "error_update": "Failed to update setting"

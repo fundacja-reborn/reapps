@@ -28,16 +28,3 @@ export function showNewNoteFab(state: {
   if (!state.enabled || state.selectionActive || state.typing) return false;
   return (NEW_NOTE_FAB_SECTIONS as readonly string[]).includes(state.section);
 }
-
-/** True for an element the on-screen keyboard opens for. */
-export function isTextEntryTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target instanceof HTMLTextAreaElement) return true;
-  if (target instanceof HTMLInputElement) {
-    return !['button', 'checkbox', 'color', 'file', 'radio', 'range', 'reset', 'submit'].includes(
-      target.type
-    );
-  }
-  // `=== true`: jsdom leaves the property undefined.
-  return target.isContentEditable === true;
-}

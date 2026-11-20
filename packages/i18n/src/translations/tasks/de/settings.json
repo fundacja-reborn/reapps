@@ -189,6 +189,12 @@
     "date_format_updated": "Datumsformat wurde aktualisiert",
     "time_format": "Zeitformat",
     "time_format_updated": "Zeitformat wurde aktualisiert",
+    "new_task_fab": "Schwebende Schaltfläche für neue Aufgaben",
+    "new_task_fab_desc": "Auf dem Smartphone eine Schaltfläche in der unteren Ecke der Aufgabenliste anzeigen, gut mit dem Daumen erreichbar.",
+    "new_task_fab_on": "Schaltfläche sichtbar",
+    "new_task_fab_off": "Schaltfläche ausgeblendet",
+    "new_task_fab_updated": "Einstellung für die schwebende Schaltfläche aktualisiert",
+    "device_only_hint": "Gilt nur für dieses Gerät",
     "reset": "Auf Standardwerte zur\u00fccksetzen",
     "reset_done": "Standardeinstellungen wiederhergestellt",
     "error_update": "Einstellung konnte nicht aktualisiert werden"

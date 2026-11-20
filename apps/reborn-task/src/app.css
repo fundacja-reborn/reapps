@@ -9,6 +9,22 @@
 
 @import '../../../packages/ui/src/styles/global.css';
 
+:root {
+	/* Floating "New task" button (NewTaskFab): the green of the status bar
+	   (`theme-color` in app.html, #43A047), the same in both themes - the two
+	   are on a phone screen together. Its own tokens: --primary drives every
+	   other button and is a neutral grey. The "+" has its own token so its
+	   colour is a one-line change (white is about 3.3:1 on the green, which
+	   passes the 3:1 asked of icons; #111111 would be about 5.7:1). */
+	--rt-fab: #43a047;
+	--rt-fab-foreground: #ffffff;
+}
+
+@theme inline {
+	--color-rt-fab: var(--rt-fab);
+	--color-rt-fab-foreground: var(--rt-fab-foreground);
+}
+
 /* Additional app-specific styles */
 @layer base {
 	/* App-specific overrides can go here */

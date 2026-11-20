@@ -25,6 +25,7 @@
 	import SidebarTaskList from '$lib/components/layout/sidebar/SidebarTaskList.svelte';
 	import TaskListsPanel from '$lib/components/layout/sidebar/TaskListsPanel.svelte';
 	import SyncStatusFooter from '$lib/components/sync/SyncStatusFooter.svelte';
+	import NewTaskFab from '$lib/components/layout/NewTaskFab.svelte';
 	import {
 		AppHeader,
 		DefaultHeader,
@@ -64,10 +65,12 @@
 	import { syncConflict } from '$lib/services/sync.service';
 	import { layoutStore } from '$lib/stores/layout.store';
 	import { taskListView } from '$lib/stores/task-list-view.store';
+	import { newTaskFab } from '$lib/stores/device-prefs.store';
+	import { showNewTaskFab } from '$lib/utils/new-task-fab';
 	import { onDestroy } from 'svelte';
 	import type { ListDecrypted, TaskDecrypted } from '@reborn/types';
 	import type { TaskFilters } from '$lib/services/task-filtering.service';
-	import { createLogger } from '@reborn/utils';
+	import { createLogger, isTextEntryTarget } from '@reborn/utils';
 
 	const logger = createLogger('task:app-layout');
 
@@ -528,6 +531,34 @@
 			selectedListId !== 'trash'
 			? $activeLists.find((l) => l.id === selectedListId) || null
 			: null
+	);
+
+	// ── Mobile: floating "New task" button ───────────────────────
+	// A third trigger of handleNewTask(), next to the rail's "+" and the list
+	// header's. Where it shows: showNewTaskFab (lib/utils/new-task-fab.ts).
+	const listSearchQuery = taskListView.searchQuery;
+	let mobilePanelEl = $state<HTMLElement | undefined>(undefined);
+	let mobilePanelTyping = $state(false);
+
+	// A focused field that leaves the DOM with its view (back to the list
+	// catalog, another section) does not fire focusout in every browser, which
+	// would keep the button hidden. Re-read the focus after such a change.
+	$effect(() => {
+		void mobileView;
+		void activeSection;
+		void selectedListId;
+		const focused = document.activeElement;
+		mobilePanelTyping = !!mobilePanelEl?.contains(focused) && isTextEntryTarget(focused);
+	});
+
+	const newTaskFabVisible = $derived(
+		showNewTaskFab({
+			enabled: $newTaskFab,
+			section: activeSection,
+			listOpen: mobileView === 'tasks' && mobileSelectedList !== null,
+			searching: $listSearchQuery !== '',
+			typing: mobilePanelTyping
+		})
 	);
 
 	function handleBackToLists() {
@@ -1030,7 +1061,17 @@
 						alwaysVisible
 					/>
 
-					<div class="flex flex-1 flex-col min-w-0 overflow-hidden">
+					<!-- --rt-fab-clearance is the room the scroll areas below reserve so
+					     their last row is not stuck behind the floating "New task"
+					     button; the focus handlers hide the button while a field in
+					     this panel is being typed in. -->
+					<div
+						bind:this={mobilePanelEl}
+						class="flex flex-1 flex-col min-w-0 overflow-hidden"
+						style:--rt-fab-clearance={newTaskFabVisible ? '5rem' : null}
+						onfocusin={(e) => (mobilePanelTyping = isTextEntryTarget(e.target))}
+						onfocusout={() => (mobilePanelTyping = false)}
+					>
 						{#if mobileView === 'tasks' && activeSection === 'lists' && mobileSelectedList}
 							<!-- ── Mobile Panel 1: Task list view ──────────────── -->
 							<div
@@ -1085,10 +1126,22 @@
 								</div>
 							</div>
 
-							<div class="flex-1 overflow-y-auto p-4">
-								{#key mobileSelectedList.id}
-									<TaskList bind:this={mobileTaskListRef} listId={mobileSelectedList.id} filters={mobileTaskFilters} />
-								{/key}
+							<!-- `relative` anchors the floating button above the sync footer. -->
+							<div class="relative flex-1 overflow-hidden">
+								<div
+									class="h-full overflow-y-auto p-4 pb-[calc(1rem+var(--rt-fab-clearance,0px))]"
+								>
+									{#key mobileSelectedList.id}
+										<TaskList
+											bind:this={mobileTaskListRef}
+											listId={mobileSelectedList.id}
+											filters={mobileTaskFilters}
+										/>
+									{/key}
+								</div>
+								{#if newTaskFabVisible}
+									<NewTaskFab onclick={handleNewTask} />
+								{/if}
 							</div>
 
 							<SyncStatusFooter />
@@ -1129,8 +1182,9 @@
 								/>
 							</div>
 
-							<!-- Content area -->
-							<div class="flex-1 overflow-hidden">
+							<!-- Content area (`relative` anchors the floating button above
+							     the sync footer) -->
+							<div class="relative flex-1 overflow-hidden">
 								{#if activeSection === 'lists'}
 									<TaskListsPanel
 										lists={$activeLists}
@@ -1149,6 +1203,9 @@
 										autoFocusSearch={activeSection === 'all' && searchFocusRequested}
 										onTaskSelect={handleTaskSelect}
 									/>
+								{/if}
+								{#if newTaskFabVisible}
+									<NewTaskFab onclick={handleNewTask} />
 								{/if}
 							</div>
 
