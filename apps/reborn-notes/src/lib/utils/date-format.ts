@@ -1,5 +1,6 @@
 /**
- * Date formatting utilities for the notes list view.
+ * Date formatting for re/notes: timestamps in the user's date and time format,
+ * and the title a new note starts with.
  */
 
 import { formatTimeOfDay } from '@reborn/i18n/config';
@@ -10,47 +11,29 @@ import { formatDateWithSetting } from '@reborn/utils';
 const LEFT_TO_RIGHT_MARK = String.fromCodePoint(0x200e);
 
 /**
- * Format the time-of-day of a Date, honoring the user's 12h/24h preference.
- * Mirrors the manual formatting in VersionHistorySheet so a 24h user never
- * sees a locale-driven "01:05 PM" (issue #376). Examples: "13:05" / "1:05 PM".
- */
-export function formatTimeWithSetting(d: Date, timeFormatSetting: string): string {
-  if (timeFormatSetting === '12h') {
-    const hours12 = d.getHours() % 12 || 12;
-    const ampm = d.getHours() >= 12 ? 'PM' : 'AM';
-    return `${hours12}:${String(d.getMinutes()).padStart(2, '0')} ${ampm}`;
-  }
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-/**
- * Format an ISO date string as date + time using the user's preferred formats.
- * Example: "2026-04-05, 14:32" (24h) or "2026-04-05, 2:32 PM" (12h).
+ * Date and time of a moment, as the apps show it to the signed-in user: the
+ * date in the format from Settings > Appearance, the time of day on the 12h /
+ * 24h clock from the same card. Example: "2026-04-05, 14:32" or, on the 12h
+ * clock, "2026-04-05, 2:32 PM" ("2:32 م" in Arabic: the language words the
+ * AM/PM marker, the settings decide everything else).
  *
- * Time is always shown so that notes created/modified on the same day are
- * visibly distinguishable in the list (sort uses full-timestamp precision).
- *
- * With `locale` the time of day is worded in the app language ("5:13 م" in
- * Arabic, "5:13 p. m." in Spanish); the clock still follows the setting. The
- * note itself passes it (metadata rows, version header, #595): those places
- * showed the language's AM/PM marker before they took the date format setting.
- * Without it the marker is always "AM" / "PM", as on the note cards.
+ * One formatter for every timestamp in re/notes: note cards and the note
+ * itself, version history, the Archive, shares, sessions, backup and folder
+ * sync (#595). Time is always shown, so notes created or modified on the same
+ * day are distinguishable in the list (sort uses full-timestamp precision).
  *
  * The result is digits and punctuation, at most with a marker at the end.
- * After a label, render it in `<bdi dir={$textDirection}>` (guideline 74).
+ * After a label render it in `<bdi dir={$textDirection}>`; inside a translated
+ * sentence pass it through `isolateInDirection` (guideline 74).
  */
-export function formatNoteDate(
-  iso: string,
+export function formatSettingsDateTime(
+  date: Date | string | number,
   dateFormatSetting: string,
-  timeFormatSetting = '24h',
-  locale?: string | null
+  timeFormatSetting: string,
+  locale: string | null | undefined
 ): string {
-  const d = new Date(iso);
-  const dateStr = formatDateWithSetting(d, dateFormatSetting);
-  const time = locale
-    ? formatTimeOfDay(d, locale, timeFormatSetting)
-    : formatTimeWithSetting(d, timeFormatSetting);
-  return `${dateStr}, ${time}`;
+  const d = new Date(date);
+  return `${formatDateWithSetting(d, dateFormatSetting)}, ${formatTimeOfDay(d, locale, timeFormatSetting)}`;
 }
 
 /**
@@ -91,7 +74,8 @@ export function defaultNoteTitle(
 export function formatSyncTimestamp(
   iso: string,
   dateFormatSetting: string,
-  timeFormatSetting: string
+  timeFormatSetting: string,
+  locale: string | null | undefined
 ): string {
   const d = new Date(iso);
   const now = new Date();
@@ -99,6 +83,6 @@ export function formatSyncTimestamp(
     d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate();
-  const time = formatTimeWithSetting(d, timeFormatSetting);
+  const time = formatTimeOfDay(d, locale, timeFormatSetting);
   return sameDay ? time : `${formatDateWithSetting(d, dateFormatSetting)} ${time}`;
 }

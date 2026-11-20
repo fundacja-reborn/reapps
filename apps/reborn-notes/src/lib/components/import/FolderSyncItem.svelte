@@ -2,8 +2,9 @@
   import { LoadingSpinner, Progress } from '@reborn/ui';
   import { FolderSync, RefreshCw, Unlink, AlertTriangle, Pencil } from '@lucide/svelte';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { formatDateTime } from '@reborn/i18n';
-  import { timeFormat } from '$lib/stores/app-settings.store';
+  import { isolateInDirection, textDirection } from '@reborn/i18n';
+  import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
+  import { formatSettingsDateTime } from '$lib/utils/date-format';
   import {
     runFolderSync,
     unlinkFolder,
@@ -117,9 +118,13 @@
     }
   }
 
+  // Goes into a translated sentence ("Last sync: {time}"), hence the isolate.
   function formatTime(iso: string): string {
     try {
-      return formatDateTime(iso, $locale, $timeFormat);
+      return isolateInDirection(
+        formatSettingsDateTime(iso, $dateFormat, $timeFormat, $locale),
+        $textDirection
+      );
     } catch {
       return iso;
     }

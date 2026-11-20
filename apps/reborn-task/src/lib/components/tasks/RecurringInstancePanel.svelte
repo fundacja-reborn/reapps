@@ -10,8 +10,10 @@
 	} from '@reborn/ui';
 	import * as DropdownMenu from '@reborn/ui/components/dropdown-menu';
 	import { RotateCw, History, SkipForward, StopCircle, MoreVertical, Pencil } from '@lucide/svelte';
-	import { t, locale } from '$lib/stores/i18n.store';
-	import { intlLocale } from '@reborn/i18n';
+	import { t } from '$lib/stores/i18n.store';
+	import { isolateInDirection, textDirection } from '@reborn/i18n';
+	import { formatDateWithSetting } from '@reborn/utils';
+	import { dateFormat } from '$lib/stores/app-settings.store';
 	import {
 		RecurrenceDialog,
 		RecurrenceHistoryDialog,
@@ -66,7 +68,9 @@
 				const m = rule.UNTIL.substring(4, 6);
 				const d = rule.UNTIL.substring(6, 8);
 				const date = new Date(`${y}-${m}-${d}`);
-				text += ` · ${$t('task.recurrence.until')} ${date.toLocaleDateString(intlLocale($locale))}`;
+				// The end date goes into a sentence built here, so it is isolated in the UI direction.
+				const until = isolateInDirection(formatDateWithSetting(date, $dateFormat), $textDirection);
+				text += ` · ${$t('task.recurrence.until')} ${until}`;
 			}
 			return text;
 		} catch {

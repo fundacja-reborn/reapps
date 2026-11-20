@@ -13,8 +13,9 @@
     AlertTriangle
   } from '@lucide/svelte';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { formatDateTime } from '@reborn/i18n';
-  import { timeFormat } from '$lib/stores/app-settings.store';
+  import { textDirection } from '@reborn/i18n';
+  import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
+  import { formatSettingsDateTime } from '$lib/services/task-formatting.service';
   import {
     SettingsLayout,
     Button,
@@ -51,7 +52,7 @@
   function formatDate(iso: string | null) {
     if (!iso) return '-';
     try {
-      return formatDateTime(iso, $locale, $timeFormat);
+      return formatSettingsDateTime(iso, $dateFormat, $timeFormat, $locale);
     } catch {
       return iso;
     }
@@ -245,15 +246,15 @@
             {/if}
 
             <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span>{$t('share.list.column.created')}: {formatDate(share.created_at)}</span>
+              <span>{$t('share.list.column.created')}: <bdi dir={$textDirection}>{formatDate(share.created_at)}</bdi></span>
               <span>
                 {$t('share.list.column.expires')}:
-                {share.expires_at ? formatDate(share.expires_at) : $t('share.create.expires.never')}
+                {#if share.expires_at}<bdi dir={$textDirection}>{formatDate(share.expires_at)}</bdi>{:else}{$t('share.create.expires.never')}{/if}
               </span>
               <span>{$t('share.list.column.access_count')}: {formatOpens(share)}</span>
               {#if share.last_accessed_at}
                 <span>
-                  {$t('share.list.column.last_accessed')}: {formatDate(share.last_accessed_at)}
+                  {$t('share.list.column.last_accessed')}: <bdi dir={$textDirection}>{formatDate(share.last_accessed_at)}</bdi>
                 </span>
               {/if}
             </div>

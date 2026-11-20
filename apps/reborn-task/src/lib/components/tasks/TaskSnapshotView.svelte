@@ -16,6 +16,7 @@
   function formatDate(iso: string | null | undefined): string {
     if (!iso) return '';
     try {
+      // date-format-ignore: also rendered on the public share page, where a visitor has no settings
       return formatDateTime(iso, get(locale), get(timeFormat));
     } catch {
       return iso;

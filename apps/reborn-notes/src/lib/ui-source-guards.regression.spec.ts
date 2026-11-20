@@ -74,10 +74,9 @@ describe('UI source guards (apps/reborn-notes/src)', () => {
     // A date from the user's date format is digits and punctuation only. A bare
     // <bdi> finds no letter to take a direction from and falls back to LTR, so
     // in an Arabic UI "2026-11-13, 14:32" keeps the time on the right, where a
-    // right-to-left reader starts: time first, date second - the reverse of the
-    // same text outside <bdi> (note cards, version history).
+    // right-to-left reader starts: time first, date second.
     const BARE_BDI_DATE =
-      /<bdi(?![^>]*\sdir=)[^>]*>\s*\{format(NoteDate|DateWithSetting|SyncTimestamp)\(/;
+      /<bdi(?![^>]*\sdir=)[^>]*>\s*\{format(SettingsDateTime|DateWithSetting|Date)\(/;
     const hits = listSourceFiles([ROOT])
       .filter((file) => file.endsWith('.svelte'))
       .flatMap((file) =>
@@ -107,6 +106,33 @@ describe('UI source guards (apps/reborn-notes/src)', () => {
             (NEEDS_CLOCK.test(line) && !/formatDateTime\(|hourCycle/.test(near));
           const ignored = /time-format-ignore: \S/.test(lines[i - 1] ?? '');
           return bad && !ignored ? [`${repoRelative(file)}:${i + 1}`] : [];
+        });
+      });
+    expect(hits).toEqual([]);
+  });
+
+  it('shows a date in the format the user chose (date format setting, #595)', () => {
+    // `Intl` takes the shape of a date from the language ("Nov 17, 2026",
+    // "17.11.2026"), not from Settings > Appearance > Date format. A date or a
+    // timestamp shown to the signed-in user goes through formatSettingsDateTime
+    // (date + time) or formatDateWithSetting from @reborn/utils (date alone);
+    // formatTimeOfDay is fine for a time alone. Deliberately in the style of
+    // the language (a page for visitors without settings, a sentence in a
+    // notification, text written into a file or a note):
+    // `date-format-ignore: <reason>` within the five lines above.
+    // Exempt: the formatter of periodic note titles, which has its own format
+    // setting with month names (Settings > Periodic notes).
+    const EXEMPT = ['/lib/services/periodic-notes-format.ts'];
+    const LANGUAGE_DATE = /\.toLocaleDateString\(|dateStyle|\bformatDateTime\(|\b(year|month):\s*['"]/;
+    const hits = listSourceFiles([ROOT])
+      .filter((file) => /\.(svelte|ts)$/.test(file) && !/\.(spec|test)\.ts$/.test(file))
+      .filter((file) => !EXEMPT.some((suffix) => file.endsWith(suffix)))
+      .flatMap((file) => {
+        const lines = readFileSync(file, 'utf-8').split('\n');
+        return lines.flatMap((line, i) => {
+          const above = lines.slice(Math.max(0, i - 5), i).join('\n');
+          const ignored = /date-format-ignore: \S/.test(above);
+          return LANGUAGE_DATE.test(line) && !ignored ? [`${repoRelative(file)}:${i + 1}`] : [];
         });
       });
     expect(hits).toEqual([]);

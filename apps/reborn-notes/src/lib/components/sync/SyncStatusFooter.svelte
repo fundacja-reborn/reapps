@@ -21,7 +21,7 @@
     refreshStoresAfterPull,
     requestFullReconcileNextPull
   } from '$lib/services/notes-sync.service';
-  import { t } from '$lib/stores/i18n.store';
+  import { t, locale } from '$lib/stores/i18n.store';
   import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
   import { formatSyncTimestamp } from '$lib/utils/date-format';
 
@@ -143,7 +143,7 @@
   // just the time, earlier ones add the date (issue #376).
   let timeStr = $derived(
     $syncStatus.lastSyncedAt
-      ? formatSyncTimestamp($syncStatus.lastSyncedAt, $dateFormat, $timeFormat)
+      ? formatSyncTimestamp($syncStatus.lastSyncedAt, $dateFormat, $timeFormat, $locale)
       : null
   );
 </script>

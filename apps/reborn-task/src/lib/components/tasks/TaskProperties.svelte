@@ -9,10 +9,11 @@
 		DialogFooter
 	} from '@reborn/ui';
 	import { X, RotateCw } from '@lucide/svelte';
-	import { t, locale } from '$lib/stores/i18n.store';
-	import { intlLocale } from '@reborn/i18n';
+	import { t } from '$lib/stores/i18n.store';
+	import { isolateInDirection, textDirection } from '@reborn/i18n';
+	import { dateFormat } from '$lib/stores/app-settings.store';
 	import { DateTimePicker, RecurrenceDialog, TaskPropertyItem } from '$lib/components/tasks';
-	import { createLogger } from '@reborn/utils';
+	import { createLogger, formatDateWithSetting } from '@reborn/utils';
 
 	const logger = createLogger('TaskProperties');
 
@@ -80,7 +81,9 @@
 				const month = rule.UNTIL.substring(4, 6);
 				const day = rule.UNTIL.substring(6, 8);
 				const date = new Date(`${year}-${month}-${day}`);
-				text += ` · ${$t('task.recurrence.until')} ${date.toLocaleDateString(intlLocale($locale))}`;
+				// The end date goes into a sentence built here, so it is isolated in the UI direction.
+				const until = isolateInDirection(formatDateWithSetting(date, $dateFormat), $textDirection);
+				text += ` · ${$t('task.recurrence.until')} ${until}`;
 			}
 
 			return text;

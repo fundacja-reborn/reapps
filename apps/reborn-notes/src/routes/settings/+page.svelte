@@ -41,7 +41,9 @@
   } from '$lib/utils/native-version-info';
   import { t } from '$lib/stores/i18n.store';
   import { locale } from '$lib/stores/i18n.store';
-  import { intlLocale } from '@reborn/i18n';
+  import { textDirection } from '@reborn/i18n';
+  import { formatDateWithSetting } from '@reborn/utils';
+  import { dateFormat } from '$lib/stores/app-settings.store';
   import { cn, GithubMark, scrollMemory, toastStore } from '@reborn/ui';
   import { authStore } from '$lib/stores/auth.store';
   import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
@@ -260,10 +262,9 @@
               <div class="text-sm text-muted-foreground">
                 {#if $authStore.createdAt}
                   {$t('settings_page.account.member_since')}
-                  {new Date($authStore.createdAt).toLocaleDateString(
-                    intlLocale($locale),
-                    { year: 'numeric', month: 'long', day: 'numeric' }
-                  )}
+                  <bdi dir={$textDirection}
+                    >{formatDateWithSetting(new Date($authStore.createdAt), $dateFormat)}</bdi
+                  >
                 {/if}
               </div>
             </div>

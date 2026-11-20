@@ -8,8 +8,10 @@
     DropdownMenuTrigger
   } from '@reborn/ui';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { formatDateTime, intlLocale } from '@reborn/i18n';
-  import { timeFormat } from '$lib/stores/app-settings.store';
+  import { textDirection } from '@reborn/i18n';
+  import { formatDateWithSetting } from '@reborn/utils';
+  import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
+  import { formatSettingsDateTime } from '$lib/utils/date-format';
   import { activeShares, activeShareId, sharesBySourceId, sharesStore } from '$lib/stores/shares.store';
   import { formatExpiryRelative } from '$lib/utils/expiry-format';
   import type { OwnShareListItem } from '@reborn/types';
@@ -69,13 +71,11 @@
     return list;
   });
 
+  // Compact date-only label, in the format from Settings > Appearance.
   function formatDate(iso: string | null): string {
     if (!iso) return '-';
-    try {
-      return new Date(iso).toLocaleDateString(intlLocale($locale), { dateStyle: 'medium' });
-    } catch {
-      return iso;
-    }
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? iso : formatDateWithSetting(date, $dateFormat);
   }
 
   // Full date + time - matches ShareDetailPanel's "Created" field. Used as the
@@ -83,7 +83,7 @@
   function formatCreatedAt(iso: string | null): string {
     if (!iso) return '-';
     try {
-      return formatDateTime(iso, $locale, $timeFormat);
+      return formatSettingsDateTime(iso, $dateFormat, $timeFormat, $locale);
     } catch {
       return iso;
     }
@@ -275,13 +275,13 @@
                     </span>
                   {/if}
                   <span title={formatCreatedAt(share.created_at)}
-                    >{$t('share.list.column.created')}: {formatDate(share.created_at)}</span
+                    >{$t('share.list.column.created')}: <bdi dir={$textDirection}>{formatDate(share.created_at)}</bdi></span
                   >
                   <span aria-hidden="true">·</span>
                   <span
-                    >{$t('share.list.column.expires')}: {share.expires_at
-                      ? formatDate(share.expires_at)
-                      : $t('share.create.expires.never')}{#if expRel && !expRel.expired} ({expRel.text}){/if}</span
+                    >{$t('share.list.column.expires')}: {#if share.expires_at}<bdi dir={$textDirection}
+                        >{formatDate(share.expires_at)}</bdi
+                      >{:else}{$t('share.create.expires.never')}{/if}{#if expRel && !expRel.expired} ({expRel.text}){/if}</span
                   >
                   <span aria-hidden="true">·</span>
                   <span>{$t('share.list.column.access_count')}: {formatOpens(share)}</span>

@@ -30,14 +30,15 @@
 	} from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { locale } from '$lib/stores/i18n.store';
-	import { intlLocale } from '@reborn/i18n';
+	import { textDirection } from '@reborn/i18n';
+	import { dateFormat } from '$lib/stores/app-settings.store';
 	import { cn, SettingsLayout, GithubMark } from '@reborn/ui';
 	import { user, isAuthenticated, isLocalOnly } from '$lib/stores/auth.store';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import AccountRequiredDialog from '$lib/components/shared/AccountRequiredDialog.svelte';
 	import { openWhatsNew } from '$lib/stores/whats-new.svelte';
 	import { resolve } from '$app/paths';
-	import { createLogger } from '@reborn/utils';
+	import { createLogger, formatDateWithSetting } from '@reborn/utils';
 
 	const logger = createLogger('SettingsPage');
 
@@ -254,10 +255,9 @@
 							<div class="text-sm text-muted-foreground">
 								{#if $user?.created_at}
 									{$t('profile.member_since')}
-									{new Date($user.created_at).toLocaleDateString(
-										intlLocale($locale),
-										{ year: 'numeric', month: 'long', day: 'numeric' }
-									)}
+									<bdi dir={$textDirection}
+										>{formatDateWithSetting(new Date($user.created_at), $dateFormat)}</bdi
+									>
 								{/if}
 							</div>
 						</div>

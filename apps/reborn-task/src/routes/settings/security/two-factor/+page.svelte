@@ -234,6 +234,7 @@
 		if (!recoveryCodes.length) return;
 		const content = [
 			're/task - Backup Codes',
+			// date-format-ignore: text written into a file the user keeps, read outside the app
 			`Generated: ${formatDateTime(new Date(), $locale, $timeFormat)}`,
 			'',
 			'Keep these codes in a safe place. Each code can only be used once.',

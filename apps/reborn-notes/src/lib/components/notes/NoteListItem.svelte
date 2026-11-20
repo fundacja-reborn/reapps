@@ -40,7 +40,7 @@
   import { dateFormat, hijriDatePreference, timeFormat } from '$lib/stores/app-settings.store';
   import { activeNoteId, notesStore, type NoteListItem } from '$lib/stores/notes.store';
   import { useIsMobile } from '$lib/utils/mediaQuery.svelte';
-  import { formatNoteDate } from '$lib/utils/date-format';
+  import { formatSettingsDateTime } from '$lib/utils/date-format';
   import { longPress } from '$lib/utils/longPress.svelte';
   import { APPEARANCE_SWATCH_CLASS, isAppearanceColor } from '$lib/utils/appearance-colors';
   import TagChip from '../TagChip.svelte';
@@ -463,11 +463,11 @@
                 <span aria-hidden="true">·</span>
               {/if}
               {#if isArchive && note.archive}
-                <bdi dir={$textDirection} class="whitespace-nowrap">{formatNoteDate(shownDate, $dateFormat, $timeFormat)}</bdi>
+                <bdi dir={$textDirection} class="whitespace-nowrap">{formatSettingsDateTime(shownDate, $dateFormat, $timeFormat, $locale)}</bdi>
               {:else if hijriDate}
-                <span class="whitespace-nowrap">{formatNoteDate(shownDate, $dateFormat, $timeFormat)}</span>
+                <span class="whitespace-nowrap">{formatSettingsDateTime(shownDate, $dateFormat, $timeFormat, $locale)}</span>
               {:else}
-                {formatNoteDate(shownDate, $dateFormat, $timeFormat)}
+                {formatSettingsDateTime(shownDate, $dateFormat, $timeFormat, $locale)}
               {/if}
             </p>
             <!-- Visible per-note rejection reason - not just the badge/hover tooltip,
