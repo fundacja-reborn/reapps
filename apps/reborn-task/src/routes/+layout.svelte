@@ -37,7 +37,11 @@
 
 	// Track initialization timeout
 	let initTimeout = $state(false);
-	// Prevent duplicate initial sync (onMount vs $effect)
+	// One-shot guard of the hasE2E effect below, which is the ONLY place that
+	// starts the initial pull on a cold start. Only that effect may set it:
+	// onMount's init() used to set it too ("E2E already active on mount") without
+	// starting a sync, so whenever init() finished before the effect first saw
+	// hasE2E, the pull was skipped until the 5-minute periodic sync.
 	let hasTriggeredInitialSync = $state(false);
 
 	// Public read-only share view (/s/[slug]) - no auth, no IndexedDB, no sync.
@@ -69,8 +73,13 @@
 	});
 
 	// Re-decrypt stores and pull from server when E2E key becomes available.
-	// Covers cross-app login (storage event → /auth/unlock → E2E unlocked) and
-	// any other path where hasE2E flips to true after layout already mounted.
+	// Covers the cold start with a restored key, cross-app login (storage event
+	// → /auth/unlock → E2E unlocked) and any other path where hasE2E flips to
+	// true after layout already mounted.
+	// `$session` can trail the SessionManager: auth.store.ts attaches to it on a
+	// 100 ms retry timer, and +layout.ts stops waiting for the auth bootstrap
+	// after 3 s. On a fast load this effect therefore first sees hasE2E only
+	// after onMount's init() has finished - it must still run then.
 	// syncService.initialSync() reuses in-flight promises, so concurrent calls
 	// from onStorageInit or unlockE2E safely deduplicate.
 	$effect(() => {
@@ -227,8 +236,6 @@
 
 					// Build task index cache (blocking - stores read from index)
 					await taskTitleIndex.build();
-					// E2E already active on mount → prevent $effect from duplicating sync
-					if (cryptoManager.isInitialized()) hasTriggeredInitialSync = true;
 				} catch (error: unknown) {
 					logger.error('Failed to initialize database:', error);
 				}
@@ -259,8 +266,6 @@
 
 				// Build task index cache (blocking - stores read from index)
 				await taskTitleIndex.build();
-				// E2E already active on mount → prevent $effect from duplicating sync
-				if (cryptoManager.isInitialized()) hasTriggeredInitialSync = true;
 			}
 
 			// Pull E2E synced settings BEFORE applying theme/locale - so the
