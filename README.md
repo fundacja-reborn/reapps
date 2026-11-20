@@ -34,7 +34,7 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 ### re/notes - Encrypted notes & documents
 
 <p align="center">
-  <img src="docs/assets/renotes-screenshot.webp" alt="re/notes - note list and Markdown editor" width="700">
+  <img src="docs/assets/renotes-screenshot.webp" alt="re/notes - note list and an open note" width="700">
 </p>
 
 - **Markdown editor** - headings, lists, task checkboxes, tables, code blocks, images, and more
