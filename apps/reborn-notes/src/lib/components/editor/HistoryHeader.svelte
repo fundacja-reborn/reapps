@@ -2,8 +2,9 @@
   import { Eye, Clock, ArrowLeft, X, RotateCcw, FileDiff, ChevronRight } from '@lucide/svelte';
   import { SidebarTrigger } from '@reborn/ui/sidebar';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { formatDateTime } from '@reborn/i18n';
-  import { timeFormat } from '$lib/stores/app-settings.store';
+  import { textDirection } from '@reborn/i18n';
+  import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
+  import { formatNoteDate } from '$lib/utils/date-format';
 
   type HistoryViewMode = 'preview' | 'diff';
 
@@ -28,6 +29,18 @@
     onrestore: () => void;
     onshowlist: () => void;
   } = $props();
+
+  // "Version: {date}" split around the date, so the date can be its own
+  // element. It is in the format from Settings > Appearance, like the list of
+  // versions (#595), and such a date needs <bdi> in the UI direction after an
+  // Arabic label (see NoteMetadataBar).
+  const DATE_SLOT = '{date}';
+  const versionDateLabel = $derived(
+    $t('history.version_date', { values: { date: DATE_SLOT } }).split(DATE_SLOT)
+  );
+  const versionDate = $derived(
+    formatNoteDate(selectedVersion.created_at, $dateFormat, $timeFormat, $locale)
+  );
 </script>
 
 <!-- Row 1: back/title + toggle -->
@@ -95,11 +108,7 @@
 >
   <Clock class="h-3.5 w-3.5 text-muted-foreground" />
   <span class="text-xs text-muted-foreground">
-    {$t('history.version_date', {
-      values: {
-        date: formatDateTime(selectedVersion.created_at, $locale, $timeFormat)
-      }
-    })}
+    {versionDateLabel[0]}<bdi dir={$textDirection}>{versionDate}</bdi>{versionDateLabel[1] ?? ''}
     {#if isLatestVersion}
       - {$t('history.current_version')}
     {/if}

@@ -2,6 +2,7 @@
  * Date formatting utilities for the notes list view.
  */
 
+import { formatTimeOfDay } from '@reborn/i18n/config';
 import { containsRtlText } from '@reborn/i18n/direction';
 import { formatDateWithSetting } from '@reborn/utils';
 
@@ -28,15 +29,28 @@ export function formatTimeWithSetting(d: Date, timeFormatSetting: string): strin
  *
  * Time is always shown so that notes created/modified on the same day are
  * visibly distinguishable in the list (sort uses full-timestamp precision).
+ *
+ * With `locale` the time of day is worded in the app language ("5:13 م" in
+ * Arabic, "5:13 p. m." in Spanish); the clock still follows the setting. The
+ * note itself passes it (metadata rows, version header, #595): those places
+ * showed the language's AM/PM marker before they took the date format setting.
+ * Without it the marker is always "AM" / "PM", as on the note cards.
+ *
+ * The result is digits and punctuation, at most with a marker at the end.
+ * After a label, render it in `<bdi dir={$textDirection}>` (guideline 74).
  */
 export function formatNoteDate(
   iso: string,
   dateFormatSetting: string,
-  timeFormatSetting = '24h'
+  timeFormatSetting = '24h',
+  locale?: string | null
 ): string {
   const d = new Date(iso);
   const dateStr = formatDateWithSetting(d, dateFormatSetting);
-  return `${dateStr}, ${formatTimeWithSetting(d, timeFormatSetting)}`;
+  const time = locale
+    ? formatTimeOfDay(d, locale, timeFormatSetting)
+    : formatTimeWithSetting(d, timeFormatSetting);
+  return `${dateStr}, ${time}`;
 }
 
 /**
