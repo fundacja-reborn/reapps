@@ -89,6 +89,8 @@ scripts/*
 !scripts/i18n-review.mjs
 !scripts/i18n-review.d.mts
 !scripts/dependabot-alerts.mjs
+!scripts/capture-screenshots.mjs
+!scripts/capture-native-screenshots.mjs
 !scripts/project.json
 tmp/
 patches/
