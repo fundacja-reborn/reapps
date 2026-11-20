@@ -19,7 +19,7 @@
  * registered as `primary` (the open note) is also scoped by Ctrl/Cmd+A pressed
  * outside a text field, without a press inside it first.
  */
-import { isTextEntryTarget } from './new-note-fab';
+import { isTextEntryTarget } from '@reborn/utils';
 
 export const SELECT_SCOPE_ATTR = 'data-select-scope';
 export const SELECT_SCOPE_ROOT_ATTR = 'data-select-scope-root';

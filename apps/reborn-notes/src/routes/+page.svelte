@@ -12,7 +12,8 @@
   import SidebarAutoClose from '$lib/components/layout/SidebarAutoClose.svelte';
   import SyncStatusFooter from '$lib/components/sync/SyncStatusFooter.svelte';
   import NewNoteFab from '$lib/components/layout/NewNoteFab.svelte';
-  import { isTextEntryTarget, showNewNoteFab } from '$lib/utils/new-note-fab';
+  import { showNewNoteFab } from '$lib/utils/new-note-fab';
+  import { isTextEntryTarget } from '@reborn/utils';
   import InitialSyncState from '$lib/components/sync/InitialSyncState.svelte';
   import { isInitialSync } from '$lib/stores/sync-status.store';
   import { platform } from '$lib/platform';
