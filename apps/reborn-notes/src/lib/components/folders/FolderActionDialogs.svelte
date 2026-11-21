@@ -12,6 +12,7 @@
   } from '$lib/services/folder.service';
   import DeleteFolderDialog from '$lib/components/sidebar/DeleteFolderDialog.svelte';
   import ImportMarkdownToFolderDialog from '$lib/components/import/ImportMarkdownToFolderDialog.svelte';
+  import { MARKDOWN_FILE_ACCEPT } from '$lib/services/markdown-import-utils';
   import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
   import FolderAppearanceDialog from './FolderAppearanceDialog.svelte';
 
@@ -182,7 +183,7 @@
 <input
   bind:this={importFileInputEl}
   type="file"
-  accept=".md,text/markdown"
+  accept={MARKDOWN_FILE_ACCEPT}
   multiple
   class="hidden"
   onchange={handleImportFilesSelected}

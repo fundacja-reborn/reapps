@@ -59,7 +59,9 @@ import {
   parseMarkdownFile,
   extractFolderSegments,
   containsHiddenSegment,
-  pickImportTimestamps
+  partitionFlatMarkdownImport,
+  pickImportTimestamps,
+  stripMarkdownImportExtension
 } from './markdown-import-utils';
 import {
   computeRenamedTitle,
@@ -1506,6 +1508,13 @@ async function buildTitleLookupFromIndex(): Promise<TitleLookup> {
 
 export type ImportMarkdownResult = {
   imported: number;
+  /**
+   * Picked files without a Markdown/text extension (see
+   * `MARKDOWN_FILE_EXTENSIONS`) - not read at all.
+   */
+  skippedNonMarkdown: number;
+  /** Picked files larger than {@link MAX_NOTE_CONTENT_BYTES} - not read at all. */
+  skippedTooLarge: number;
   duplicatesSkipped: number;
   duplicatesOverwritten: number;
   duplicatesRenamed: number;
@@ -1538,6 +1547,11 @@ export type ImportProgressCallback = (p: ImportProgress) => void;
 /**
  * Import notes from an array of .md File objects.
  *
+ * Files without a Markdown/text extension and files above
+ * {@link MAX_NOTE_CONTENT_BYTES} are skipped up-front and counted in the
+ * result (same filters as {@link importFolder}); the picker's `accept` is
+ * only a hint and the desktop shell's native panel ignores it.
+ *
  * `duplicateStrategy` controls behavior when a note with the same title
  * already exists in `folderId` (case-insensitive):
  *   - `skip`      - leave the existing note untouched
@@ -1551,7 +1565,17 @@ export async function importMarkdownFiles(
   duplicateStrategy: DuplicateStrategy = 'rename',
   onProgress?: ImportProgressCallback
 ): Promise<ImportMarkdownResult> {
-  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+  // Type and per-note size filters BEFORE the total cap, in importFolder's
+  // order. Without them a backup .zip picked in the desktop shell (whose
+  // native panel ignores `accept`) landed as a multi-MB "note" that the
+  // server rejects as too_large, so it stayed unsynced for good.
+  const {
+    accepted: importable,
+    skippedNonMarkdown,
+    skippedTooLarge
+  } = partitionFlatMarkdownImport(files, MAX_NOTE_CONTENT_BYTES);
+
+  const totalSize = importable.reduce((sum, f) => sum + f.size, 0);
   if (totalSize > MAX_IMPORT_FILE_SIZE) {
     throw new Error(
       await tImportError('import_folder_too_large', {
@@ -1563,6 +1587,8 @@ export async function importMarkdownFiles(
 
   const result: ImportMarkdownResult = {
     imported: 0,
+    skippedNonMarkdown,
+    skippedTooLarge,
     duplicatesSkipped: 0,
     duplicatesOverwritten: 0,
     duplicatesRenamed: 0,
@@ -1571,23 +1597,25 @@ export async function importMarkdownFiles(
     strippedCount: 0
   };
 
+  if (importable.length === 0) return result;
+
   const lookup = await buildTitleLookupFromIndex();
 
-  const total = files.length;
+  const total = importable.length;
   onProgress?.({ phase: 'reading', current: 0, total });
   // Throttle progress events to one per ~50ms so a 1000-file import doesn't
   // flood the renderer; always report the final count regardless.
   let lastEmit = 0;
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
+  for (let i = 0; i < importable.length; i++) {
+    const file = importable[i];
     try {
       const raw = await file.text();
       const parsed = parseMarkdownFile(raw);
       const { title, content } = parsed;
       const { sanitized, stripped } = sanitizeMarkdownContent(content);
       result.strippedCount += stripped.length;
-      const baseTitle = title ?? (file.name.replace(/\.md$/i, '') || 'Untitled');
+      const baseTitle = title ?? (stripMarkdownImportExtension(file.name) || 'Untitled');
       const { createdAt, modifiedAt } = pickImportTimestamps(parsed, file.lastModified);
       // tagIds: undefined - the flat .md import does not manage tags (no
       // frontmatter tag resolution), so overwrite must leave the existing

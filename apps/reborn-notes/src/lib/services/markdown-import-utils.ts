@@ -135,6 +135,91 @@ export function countImportableMarkdownFiles(files: ImportFileLike[]): number {
 }
 
 /**
+ * File extensions the flat Markdown import accepts (Settings -> "Import .md"
+ * and a folder's "Import .md here"). The pickers' `accept` attribute is built
+ * from the same list ({@link MARKDOWN_FILE_ACCEPT}), but `accept` is only a
+ * hint: the web picker can switch to "All files", and the desktop shell's
+ * native open panel (wry) ignores it entirely. The importer therefore checks
+ * the name itself - see {@link partitionFlatMarkdownImport}.
+ *
+ * Folder (vault) import stays on `.md` only, see
+ * {@link countImportableMarkdownFiles}.
+ */
+export const MARKDOWN_FILE_EXTENSIONS = ['.md', '.markdown', '.txt'] as const;
+
+/** `accept` value for the flat Markdown file pickers. */
+export const MARKDOWN_FILE_ACCEPT = [...MARKDOWN_FILE_EXTENSIONS, 'text/markdown', 'text/plain'].join(
+  ','
+);
+
+/** True when `name` ends with one of {@link MARKDOWN_FILE_EXTENSIONS} (case-insensitive). */
+export function isMarkdownImportFileName(name: string): boolean {
+  const lower = name.toLowerCase();
+  return MARKDOWN_FILE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+/**
+ * File name without its accepted Markdown extension - the title fallback for
+ * a file without a frontmatter title (`notes.txt` -> `notes`). Names without
+ * an accepted extension come back unchanged.
+ */
+export function stripMarkdownImportExtension(name: string): string {
+  const lower = name.toLowerCase();
+  const ext = MARKDOWN_FILE_EXTENSIONS.find((e) => lower.endsWith(e));
+  return ext ? name.slice(0, -ext.length) : name;
+}
+
+/**
+ * Number of files the flat Markdown import will read, for the "X files found"
+ * preview before the user picks a duplicate strategy. Like
+ * {@link countImportableMarkdownFiles}, the per-file size cap is not mirrored
+ * here - the importer reports `skippedTooLarge` in its result.
+ */
+export function countImportableFlatMarkdownFiles(files: ImportFileLike[]): number {
+  return files.filter((f) => isMarkdownImportFileName(f.name)).length;
+}
+
+export type FlatMarkdownImportPartition<T> = {
+  /** Files to import: an accepted extension and at most `maxBytes`. */
+  accepted: T[];
+  /** Files without an accepted extension (a `.zip`, an image, ...). */
+  skippedNonMarkdown: number;
+  /** Accepted extension, but larger than `maxBytes`. */
+  skippedTooLarge: number;
+};
+
+/**
+ * Split the files picked for a flat Markdown import into the ones to import
+ * and per-reason skip counters - the same two filters folder import applies
+ * (`skippedNonMarkdown`, then `skippedTooLarge`). Without them a backup
+ * `.zip` picked in the desktop shell was imported as a multi-MB "note" that
+ * the server rejects as `too_large`, so it stayed unsynced for good.
+ *
+ * `maxBytes` is the per-note plaintext cap (`MAX_NOTE_CONTENT_BYTES`), passed
+ * in to keep this module free of package imports.
+ */
+export function partitionFlatMarkdownImport<T extends { name: string; size: number }>(
+  files: T[],
+  maxBytes: number
+): FlatMarkdownImportPartition<T> {
+  const result: FlatMarkdownImportPartition<T> = {
+    accepted: [],
+    skippedNonMarkdown: 0,
+    skippedTooLarge: 0
+  };
+  for (const file of files) {
+    if (!isMarkdownImportFileName(file.name)) {
+      result.skippedNonMarkdown++;
+    } else if (file.size > maxBytes) {
+      result.skippedTooLarge++;
+    } else {
+      result.accepted.push(file);
+    }
+  }
+  return result;
+}
+
+/**
  * Returns true if the path (after the root vault directory) contains any
  * segment starting with `.` — used to skip Obsidian/plugin dirs like
  * `.obsidian/`, `.trash/`, or any intentionally-hidden subfolder.

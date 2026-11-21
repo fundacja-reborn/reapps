@@ -41,8 +41,10 @@
   } from '$lib/services/export-import.service';
   import type { DuplicateStrategy } from '$lib/services/import-dedup-utils';
   import {
+    countImportableFlatMarkdownFiles,
     countImportableMarkdownFiles,
-    getRootFolderName
+    getRootFolderName,
+    MARKDOWN_FILE_ACCEPT
   } from '$lib/services/markdown-import-utils';
   import { notesStore } from '$lib/stores/notes.store';
   import MarkdownImportStrategyPicker from '$lib/components/import/MarkdownImportStrategyPicker.svelte';
@@ -76,6 +78,11 @@
   // picker with file count, then runs the import with the chosen strategy.
   let pendingMdFiles = $state<File[] | null>(null);
   let pendingMdStrategy = $state<DuplicateStrategy>('rename');
+  // Files the importer will actually read (Markdown/text extension); the
+  // picker's `accept` is only a hint, so a .zip can still end up here.
+  const pendingMdCount = $derived(
+    pendingMdFiles ? countImportableFlatMarkdownFiles(pendingMdFiles) : 0
+  );
   // Live progress reported by the importer service. Mirrors `pendingMdFiles`
   // lifecycle: set when the import starts, cleared when it finishes.
   let mdProgress = $state<ImportProgress | null>(null);
@@ -205,6 +212,8 @@
     } catch (err: unknown) {
       importResult = {
         imported: 0,
+        skippedNonMarkdown: 0,
+        skippedTooLarge: 0,
         duplicatesSkipped: 0,
         duplicatesOverwritten: 0,
         duplicatesRenamed: 0,
@@ -611,7 +620,7 @@
           {#if pendingMdFiles}
             <div class="mt-3 space-y-3 rounded-md border border-primary/40 bg-background p-3">
               <MarkdownImportStrategyPicker
-                count={pendingMdFiles.length}
+                count={pendingMdCount}
                 bind:strategy={pendingMdStrategy}
                 promptVariant="root"
                 radioGroupName="md-strategy"
@@ -620,7 +629,7 @@
                 <button
                   type="button"
                   onclick={runMdImport}
-                  disabled={importing}
+                  disabled={importing || pendingMdCount === 0}
                   class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   <Upload class="h-3.5 w-3.5" />
@@ -955,7 +964,7 @@
     <input
       bind:this={importInputEl}
       type="file"
-      accept=".md,text/markdown,text/plain"
+      accept={MARKDOWN_FILE_ACCEPT}
       multiple
       class="hidden"
       onchange={handleImportFilesSelected}
