@@ -7,6 +7,7 @@ import {
   FOLD_REVEAL_EVENT,
   foldsHiding,
   headingSection,
+  headingTail,
   isFoldHidden,
   revealFolded
 } from './preview-heading-fold';
@@ -179,6 +180,52 @@ describe('applyHeadingFolds', () => {
     const controls = [...byId(root, 'first').querySelectorAll(FOLD_CONTROL_SELECTOR)];
     expect(controls).toEqual([toggleOf(root, 'first'), markOf(root, 'first')]);
     expect(controls.every((el) => el.closest('h1, h2, h3, h4, h5, h6')?.id === 'first')).toBe(true);
+  });
+
+  // The holder is what CSS glues to the last word of the heading, so buttons
+  // never wrap to a line of their own. Buttons outside it would wrap again.
+  it('keeps the controls of a heading in one holder at its end', () => {
+    const root = mount();
+    applyHeadingFolds(root, new Set(['first']), labels);
+    applyHeadingFolds(root, new Set(['first']), labels);
+    const heading = byId(root, 'first');
+    const tails = heading.querySelectorAll('.md-head-tail');
+    expect(tails).toHaveLength(1);
+    expect(heading.lastElementChild).toBe(tails[0]);
+    expect([...tails[0].children]).toEqual([toggleOf(root, 'first'), markOf(root, 'first')]);
+    expect(heading.textContent).toBe('First');
+  });
+
+  it('shares the holder with a button that is already in it', () => {
+    const root = mount();
+    const heading = byId(root, 'first');
+    const link = document.createElement('button');
+    link.className = 'md-head-anchor';
+    headingTail(heading).appendChild(link);
+    applyHeadingFolds(root, new Set(), labels);
+    expect(heading.querySelectorAll('.md-head-tail')).toHaveLength(1);
+    expect([...headingTail(heading).children]).toEqual([link, toggleOf(root, 'first')]);
+  });
+
+  it('drops the holder of a heading that lost its section, unless a button is left', () => {
+    const root = mount();
+    applyHeadingFolds(root, new Set(), labels);
+    const last = byId(root, 'last');
+    const first = byId(root, 'first');
+    const link = document.createElement('button');
+    link.className = 'md-head-anchor';
+    headingTail(first).prepend(link);
+    byId(root, 'last-body').remove();
+    for (const el of headingSection(first)) el.remove();
+    applyHeadingFolds(root, new Set(), labels);
+    expect(last.querySelector('.md-head-tail')).toBeNull();
+    expect([...headingTail(first).children]).toEqual([link]);
+  });
+
+  it('gives a heading with no section no holder', () => {
+    const root = mount();
+    applyHeadingFolds(root, new Set(), labels);
+    expect(byId(root, 'empty').querySelector('.md-head-tail')).toBeNull();
   });
 });
 
