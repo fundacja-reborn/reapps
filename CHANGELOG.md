@@ -1,3 +1,10 @@
+## 0.57.1 (2026-11-21)
+
+### 🩹 Fixes
+
+- **notes:** keep heading buttons on the line of the last word ([#616](https://github.com/fundacja-reborn/reapps/pull/616))
+- **notes:** keep heading buttons in the editor on the heading's line ([#617](https://github.com/fundacja-reborn/reapps/pull/617))
+
 ## 0.57.0 (2026-11-20)
 
 ### 🚀 Features
