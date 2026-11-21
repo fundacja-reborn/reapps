@@ -107,6 +107,9 @@ export const livePreviewTheme = EditorView.theme({
   // The box size is in `rem` (the SVG is a fixed 16px) so it stays consistent
   // across levels instead of scaling with the heading font. It keeps its box
   // while hidden (opacity, not display), so revealing it never reflows the text.
+  // The gap to the text is in `rem` too: NoteEditor.svelte adds the button's
+  // width and this gap up to keep it from wrapping to a line of its own (the
+  // block after `.cm-hfold-placeholder`) - change the two together.
   '.cm-lp-head-anchor': {
     display: 'inline-flex',
     verticalAlign: 'middle',
@@ -114,7 +117,7 @@ export const livePreviewTheme = EditorView.theme({
     justifyContent: 'center',
     width: '1.5rem',
     height: '1.5rem',
-    marginInlineStart: '0.4em',
+    marginInlineStart: '0.5rem',
     padding: '0',
     border: '1px solid var(--border)',
     borderRadius: '0.375rem',
