@@ -33,8 +33,8 @@
    * select). A choice applies right away - no Save step, like the tag color -
    * and the tree behind updates live.
    *
-   * Writes are debounced: arrowing through 25 icons must not run 25
-   * encrypt + sync cycles. Only the field the user actually changed is sent,
+   * Writes are debounced: arrowing through the icon grid must not run one
+   * encrypt + sync cycle per icon. Only the field the user actually changed is sent,
    * so a color/icon key this build does not know (set by a newer app version)
    * is never overwritten by merely opening the dialog. Closing flushes.
    */
@@ -49,7 +49,9 @@
   const isMobileQuery = useIsMobile();
 
   const SAVE_DEBOUNCE_MS = 300;
-  const ICON_COLUMNS = 5;
+  // Icon grid: 8 columns in the desktop dialog, 6 in the mobile sheet (the
+  // tiles are larger there). Arrow-key navigation follows the same number.
+  const iconColumns = $derived(isMobileQuery.value ? 6 : 8);
 
   // Icon options: `undefined` = the plain folder icon.
   const iconOptions: (string | undefined)[] = [undefined, ...FOLDER_ICONS];
@@ -136,7 +138,7 @@
 
   function handleIconKeydown(e: KeyboardEvent) {
     const next = radioGridTarget(e.key, iconIndex, iconOptions.length, {
-      columns: ICON_COLUMNS,
+      columns: iconColumns,
       rtl: $textDirection === 'rtl'
     });
     if (next === null) return;
@@ -151,8 +153,12 @@
 
   let iconGroupEl = $state<HTMLElement | null>(null);
 
-  // Larger targets on touch screens (44 px), compact on desktop.
-  const tileSize = $derived(isMobileQuery.value ? 'h-11 w-11' : 'h-9 w-9');
+  // Larger targets on touch screens (44 px, shrinking with the sheet on very
+  // narrow phones), compact on desktop.
+  const tileSize = $derived(isMobileQuery.value ? 'aspect-square w-full' : 'h-9 w-9');
+  const iconGridClass = $derived(
+    isMobileQuery.value ? 'w-full max-w-[18.375rem] grid-cols-6' : 'w-fit grid-cols-8'
+  );
   const iconColorClass = $derived(appearanceTextClass(color) ?? 'text-muted-foreground');
 </script>
 
@@ -186,7 +192,7 @@
         role="radiogroup"
         aria-labelledby="folder-appearance-icon"
         tabindex="-1"
-        class="grid w-fit grid-cols-5 gap-1.5"
+        class="grid {iconGridClass} gap-1.5"
         onkeydown={handleIconKeydown}
       >
         {#each iconOptions as option, i (option ?? 'default')}
