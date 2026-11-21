@@ -36,7 +36,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
@@ -48,16 +48,22 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * results. Titles are the English seed titles (packages/database/src/seed-data.ts).
  */
 const SCREENS = [
-  { id: 'note-list', say: 'Note list: All Notes, scrolled to the top' },
-  { id: 'note', say: 'Open "Lisbon trip plan": the table and the checkboxes on screen' },
+  { id: 'note-list', say: 'Note list: tap the book icon (All Notes), scroll to the top' },
+  {
+    id: 'note',
+    say: 'Open "Lisbon trip plan" from the list, in Preview: the table and the checkboxes on screen'
+  },
   {
     id: 'xray',
-    say: 'Encryption X-Ray: open a note, the "..." menu in its header, "Encryption X-Ray"'
+    say: 'Encryption X-Ray: in the open note tap the "..." menu in its header, then "Encryption X-Ray"'
   },
-  { id: 'code', say: 'Open "TypeScript course - notes": a highlighted code block on screen' },
-  { id: 'folders', say: 'Folders: the folder list with colors and icons' },
-  { id: 'search', say: 'Search: a word typed, results on screen' },
-  { id: 'history', say: 'Version history of a note (optional)' }
+  {
+    id: 'code',
+    say: 'Go back, open "TypeScript course - notes", scroll to a highlighted code block'
+  },
+  { id: 'folders', say: 'Folders: tap the folder icon, the folder list with colors and icons' },
+  { id: 'search', say: 'Search: tap the magnifier icon, type a word (for example "plan")' },
+  { id: 'history', say: 'Version history of a note (optional, s to skip)' }
 ];
 
 // ---------------------------------------------------------------- arguments
@@ -164,7 +170,12 @@ function android(serial) {
       demo('-e', 'command', 'enter');
       demo('-e', 'command', 'clock', '-e', 'hhmm', '0941');
       demo('-e', 'command', 'battery', '-e', 'level', '100', '-e', 'plugged', 'false');
-      demo('-e', 'command', 'network', '-e', 'wifi', 'show', '-e', 'level', '4');
+      // `fully true` = a validated connection; without it Wi-Fi is drawn with
+      // a "!" mark (seen on the API 36.1 emulator). The mobile icon stays as
+      // the emulator draws it there ("3G", white) whatever datatype is sent,
+      // and notification icons stay too - the store graphics are retouched
+      // when the shots are placed on their canvas.
+      demo('-e', 'command', 'network', '-e', 'wifi', 'show', '-e', 'level', '4', '-e', 'fully', 'true');
       demo(
         '-e',
         'command',
@@ -174,11 +185,15 @@ function android(serial) {
         'show',
         '-e',
         'datatype',
-        'none',
+        'lte',
         '-e',
         'level',
-        '4'
+        '4',
+        '-e',
+        'fully',
+        'true'
       );
+      // Android 16 ignores this one, hence the reminder printed by main().
       demo('-e', 'command', 'notifications', '-e', 'visible', 'false');
     },
     restoreStatusBar() {
@@ -274,9 +289,22 @@ async function main() {
   console.log(`Device: ${device.name}`);
   console.log(`Output: ${outDir}\n`);
 
+  console.log('This script does not tap for you. For each screen it names:');
+  console.log('  1. open that screen in the app on the device,');
+  console.log('  2. come back here and press Enter.');
+  if (platform === 'android') {
+    console.log('Before the first shot: swipe down on the device and clear the notifications,');
+    console.log('so no notification icons are left next to the clock.');
+  }
+  console.log('');
+
   const prompt = createInterface({ input: process.stdin, output: process.stdout });
   const saved = [];
   let quit = false;
+  // Bytes of the last shot taken. The demo status bar has a fixed clock, so an
+  // unchanged screen gives the very same file - the sign that Enter was
+  // pressed before the next screen was opened.
+  let previous = null;
 
   if (!args['no-status-bar']) device.cleanStatusBar();
   try {
@@ -286,32 +314,55 @@ async function main() {
       console.log(`--- ${theme} theme (the app follows the system when its theme is "System") ---`);
       for (const [index, screen] of SCREENS.entries()) {
         const name = `${String(index + 1).padStart(2, '0')}-${screen.id}-${theme}.png`;
-        const answer = (
-          await prompt.question(`${screen.say}\n  Enter = take ${name}, s = skip, q = quit: `)
-        )
-          .trim()
-          .toLowerCase();
-        if (answer === 'q') {
-          quit = true;
+        let duplicate = false;
+        for (;;) {
+          const keys = duplicate
+            ? `Enter = take ${name} again, k = keep it as it is, s = skip, q = quit`
+            : `Enter = take ${name}, s = skip, q = quit`;
+          const answer = (await prompt.question(`${duplicate ? '' : `${screen.say}\n`}  ${keys}: `))
+            .trim()
+            .toLowerCase();
+          if (answer === 'q') {
+            quit = true;
+            break;
+          }
+          if (answer === 's') {
+            if (duplicate) rmSync(join(outDir, name), { force: true });
+            break;
+          }
+          if (duplicate && answer === 'k') {
+            saved.push(name);
+            console.log('  kept\n');
+            break;
+          }
+          try {
+            const png = device.screenshot(join(outDir, name));
+            if (previous && png.equals(previous)) {
+              duplicate = true;
+              console.log(
+                '  This is the same picture as the previous shot: the screen on the device has not changed.\n' +
+                  '  Open the screen named above on the device first.'
+              );
+              continue;
+            }
+            previous = png;
+            const { width, height } = pngSize(png);
+            saved.push(name);
+            const ratio = Math.max(width, height) / Math.min(width, height);
+            // Google Play: the long side may be at most twice the short side.
+            const note =
+              platform === 'android' && ratio > 2
+                ? ' - longer than 2:1: for Google Play it has to be placed on a 9:16 canvas'
+                : '';
+            console.log(`  saved ${width}x${height}${note}\n`);
+          } catch (error) {
+            console.error(
+              `  FAILED: ${error instanceof Error ? error.message.split('\n')[0] : error}\n`
+            );
+          }
           break;
         }
-        if (answer === 's') continue;
-        try {
-          const png = device.screenshot(join(outDir, name));
-          const { width, height } = pngSize(png);
-          saved.push(name);
-          const ratio = Math.max(width, height) / Math.min(width, height);
-          // Google Play: the long side may be at most twice the short side.
-          const note =
-            platform === 'android' && ratio > 2
-              ? ' - longer than 2:1, Play Console may refuse it (crop it or use a 1080x1920 device)'
-              : '';
-          console.log(`  saved ${width}x${height}${note}\n`);
-        } catch (error) {
-          console.error(
-            `  FAILED: ${error instanceof Error ? error.message.split('\n')[0] : error}\n`
-          );
-        }
+        if (quit) break;
       }
     }
   } finally {
