@@ -42,8 +42,18 @@ export async function exportFileNative(blob: Blob, filename: string): Promise<vo
     throw new Error('native file export is native-only');
   }
 
-  const { Filesystem, Directory } = await import('@capacitor/filesystem');
   const data = await blobToBase64(blob);
+
+  // Desktop (Tauri) shell: a desktop has no share sheet and the Capacitor
+  // plugins below do not exist there - the system "Save as..." dialog is the
+  // export UX (see desktop-file-export.ts).
+  if (__REBORN_DESKTOP__) {
+    const { saveFileDesktop } = await import('./desktop-file-export');
+    await saveFileDesktop(filename, data);
+    return;
+  }
+
+  const { Filesystem, Directory } = await import('@capacitor/filesystem');
   // No `encoding` option: the Filesystem plugin treats the payload as base64
   // and writes the decoded bytes. Cache directory: OS-managed and reclaimable,
   // never backed up - the file only needs to outlive the share sheet.

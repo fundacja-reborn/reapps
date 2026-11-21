@@ -19,6 +19,7 @@
  */
 
 import { registerPlugin } from '@capacitor/core';
+import { getDesktopFolderFs } from './desktop-folder-fs';
 
 /** One file found by a native directory walk (metadata only; bytes read lazily). */
 export interface NativeFsEntry {
@@ -110,6 +111,12 @@ let plugin: FolderFsPlugin | null = null;
 /** The FolderFs plugin proxy. Throws on web builds (native-only capability). */
 export function getFolderFs(): FolderFsPlugin {
   if (!__REBORN_NATIVE__) throw new Error('FolderFs is native-only');
+  // Desktop (Tauri) shell: no Capacitor bridge exists there. The same contract
+  // is served by the shell's own commands (see desktop-folder-fs.ts).
+  if (__REBORN_DESKTOP__) {
+    plugin ??= getDesktopFolderFs();
+    return plugin;
+  }
   plugin ??= registerPlugin<FolderFsPlugin>('FolderFs');
   return plugin;
 }
