@@ -46,6 +46,7 @@
  */
 
 import { registerPlugin } from '@capacitor/core';
+import { getDesktopSecureStorage } from './desktop-secure-storage';
 
 /** Key prefix the plugin's JS layer applies; baked into existing entries. */
 const KEY_PREFIX = 'capacitor-storage_';
@@ -110,6 +111,12 @@ let rawPlugin: RawSecureStoragePlugin | null = null;
 export async function getSecureStorage(): Promise<NativeSecureStorage> {
   if (!__REBORN_NATIVE__) {
     throw new Error('secure storage is native-only');
+  }
+  // Desktop (Tauri) shell: no Capacitor bridge exists there, so the raw plugin
+  // proxy below would reject every call. The OS credential store is reached
+  // through the shell's own commands instead (same contract).
+  if (__REBORN_DESKTOP__) {
+    return getDesktopSecureStorage();
   }
   // registerPlugin is synchronous (it builds a proxy over the already-injected
   // native bridge) - no async init step is left that a boot race could wedge.

@@ -12,7 +12,15 @@ export default defineConfig({
     // Build-time native flag. Statically `false` on the web build, so every
     // `if (__REBORN_NATIVE__)` branch (and the secure-storage plugin behind it)
     // is dead-code-eliminated - keeping the web bundle byte-identical.
-    __REBORN_NATIVE__: JSON.stringify(process.env.BUILD_TARGET === 'native')
+    __REBORN_NATIVE__: JSON.stringify(process.env.BUILD_TARGET === 'native'),
+    // Build-time desktop (Tauri) flag: a native build whose shell is Tauri
+    // instead of Capacitor (`build-desktop*` targets set NATIVE_SHELL=tauri).
+    // `__REBORN_NATIVE__` stays true there - the desktop shell is a native
+    // shell (static SPA, token auth, no Service Worker); this flag only picks
+    // the desktop implementations where Capacitor plugins do not exist.
+    __REBORN_DESKTOP__: JSON.stringify(
+      process.env.BUILD_TARGET === 'native' && process.env.NATIVE_SHELL === 'tauri'
+    )
   },
   plugins: [tailwindcss(), sveltekit()],
   // Load .env from monorepo root. Consequence for store builds: every PUBLIC_*
