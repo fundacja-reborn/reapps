@@ -816,6 +816,9 @@ importers:
       '@reborn/i18n':
         specifier: workspace:*
         version: link:../i18n
+      '@reborn/types':
+        specifier: workspace:*
+        version: link:../types
       bits-ui:
         specifier: 2.18.1
         version: 2.18.1(@internationalized/date@3.12.4)(@sveltejs/kit@2.70.4(@sveltejs/vite-plugin-svelte@7.1.2(svelte@5.56.3(@typescript-eslint/types@8.59.3))(vite@8.1.6(@types/node@24.12.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)))(svelte@5.56.3(@typescript-eslint/types@8.59.3))(typescript@6.0.3)(vite@8.1.6(@types/node@24.12.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)))(svelte@5.56.3(@typescript-eslint/types@8.59.3))
@@ -838,9 +841,6 @@ importers:
         specifier: 3.6.0
         version: 3.6.0
     devDependencies:
-      '@reborn/types':
-        specifier: workspace:*
-        version: link:../types
       '@storybook/addon-essentials':
         specifier: 8.6.14
         version: 8.6.14(@types/react@19.2.14)(storybook@10.6.7(@types/react@19.2.14)(prettier@3.8.4)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))

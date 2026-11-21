@@ -315,7 +315,20 @@
     },
     "required": "Passwort ist erforderlich",
     "incorrect": "Falsches Passwort",
-    "verification_failed": "Passwortüberprüfung fehlgeschlagen"
+    "verification_failed": "Passwortüberprüfung fehlgeschlagen",
+    "strength": {
+      "very_weak": "Sehr schwach",
+      "weak": "Schwach",
+      "fair": "Mittel",
+      "good": "Gut",
+      "strong": "Stark",
+      "requirements_left": "{count, plural, one {Noch # Anforderung offen} other {Noch # Anforderungen offen}}",
+      "all_met": "Das Passwort erfüllt alle Anforderungen",
+      "req_length": "Mindestens 8 Zeichen",
+      "req_mixed_case": "Groß- und Kleinbuchstaben",
+      "req_number": "Mindestens eine Zahl",
+      "req_special": "Mindestens ein Sonderzeichen"
+    }
   },
   "theme": {
     "title": "Erscheinungsbild",

@@ -42,6 +42,9 @@ export type DeepPartial<T> = {
 // Validation helpers
 export * from './validation';
 
+// Username rule shared by the sign-up form and the registration schema
+export * from './username';
+
 // Export all schemas
 export * as schemas from './schemas';
 

@@ -315,7 +315,20 @@
     },
     "required": "Le mot de passe est requis",
     "incorrect": "Mot de passe incorrect",
-    "verification_failed": "Échec de la vérification du mot de passe"
+    "verification_failed": "Échec de la vérification du mot de passe",
+    "strength": {
+      "very_weak": "Très faible",
+      "weak": "Faible",
+      "fair": "Moyen",
+      "good": "Bon",
+      "strong": "Fort",
+      "requirements_left": "{count, plural, one {# exigence restante} other {# exigences restantes}}",
+      "all_met": "Le mot de passe remplit toutes les exigences",
+      "req_length": "Au moins 8 caractères",
+      "req_mixed_case": "Majuscules et minuscules",
+      "req_number": "Au moins un chiffre",
+      "req_special": "Au moins un caractère spécial"
+    }
   },
   "theme": {
     "title": "Apparence",
