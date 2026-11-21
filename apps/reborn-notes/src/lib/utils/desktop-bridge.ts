@@ -1,11 +1,14 @@
 /**
- * Typed access to the Tauri bridge of the desktop shell (D0 spike).
+ * Typed access to the Tauri bridge of the desktop shell.
  *
  * The shell injects its JS API as `window.__TAURI__` before any page script
  * runs (`app.withGlobalTauri` in `src-tauri/tauri.conf.json`), and each plugin
  * hangs its own API off that object (`__TAURI__.http` for the HTTP plugin). The
- * spike reads the global instead of importing `@tauri-apps/api`, so it adds no
- * npm dependency; only the members used here are typed.
+ * app reads the global instead of importing `@tauri-apps/api` (decision of
+ * 2026-11-21, D1): no npm dependency whose version would have to follow the
+ * Rust `tauri` crate, and the shell's permissions are enforced in Rust either
+ * way. Only the members used here are typed; the global has the same shape as
+ * the npm package, so moving to it later is mechanical.
  *
  * Desktop-only: every caller sits behind `__REBORN_DESKTOP__`, so this module
  * is dead-code-eliminated from the web and Capacitor bundles.
@@ -19,6 +22,11 @@ export interface DesktopBridge {
   /** Present when the shell registered `tauri-plugin-http`. */
   http?: {
     fetch: typeof fetch;
+  };
+  /** Events from the Rust side (the app menu). */
+  event?: {
+    /** Resolves to the function that stops listening. */
+    listen<T>(event: string, handler: (event: { payload: T }) => void): Promise<() => void>;
   };
 }
 

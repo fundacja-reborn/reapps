@@ -1678,5 +1678,28 @@
     "violet": "Violett",
     "pink": "Rosa",
     "gray": "Grau"
+  },
+  "desktop": {
+    "menu": {
+      "about": "Über re/notes",
+      "settings": "Einstellungen …",
+      "services": "Dienste",
+      "hide": "re/notes ausblenden",
+      "hide_others": "Andere ausblenden",
+      "show_all": "Alle einblenden",
+      "quit": "re/notes beenden",
+      "edit": "Bearbeiten",
+      "undo": "Widerrufen",
+      "redo": "Wiederholen",
+      "cut": "Ausschneiden",
+      "copy": "Kopieren",
+      "paste": "Einsetzen",
+      "select_all": "Alles auswählen",
+      "view": "Darstellung",
+      "window": "Fenster",
+      "minimize": "Minimieren",
+      "zoom": "Zoomen",
+      "close_window": "Fenster schließen"
+    }
   }
 }

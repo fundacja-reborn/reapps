@@ -9,9 +9,12 @@ import { parseBackendVersion } from '$lib/utils/app-version';
 // from the web build entirely.
 
 export interface NativeVersionInfo {
-  /** Native shell marketing version, e.g. "1.0.0" (App.getInfo().version). */
+  /**
+   * Native shell marketing version, e.g. "1.0.0" (App.getInfo().version; on
+   * desktop the shell's `app_info`).
+   */
   appVersion: string;
-  /** Native build number, e.g. "1" (App.getInfo().build). */
+  /** Native build number, e.g. "1" (App.getInfo().build; desktop: `app_info`). */
   appBuild: string;
   /**
    * Live backend monorepo version from /api/app-config, or null when the
@@ -46,6 +49,13 @@ async function fetchBackendVersion(): Promise<string | null> {
  */
 export async function getNativeVersionInfo(): Promise<NativeVersionInfo | null> {
   if (!__REBORN_NATIVE__) return null;
+  // One branch per build: a constant ternary is what the bundler folds, so
+  // the desktop bundle drops @capacitor/app and the Capacitor one the shell.
+  return __REBORN_DESKTOP__ ? getDesktopVersionInfo() : getCapacitorVersionInfo();
+}
+
+/** Capacitor shells: the App plugin's version and build. */
+async function getCapacitorVersionInfo(): Promise<NativeVersionInfo | null> {
   try {
     const { App } = await import('@capacitor/app');
     const info = await App.getInfo();
@@ -58,4 +68,19 @@ export async function getNativeVersionInfo(): Promise<NativeVersionInfo | null> 
     createLogger('notes:version-info').debug('native version info failed (fail-soft)', err);
     return null;
   }
+}
+
+/**
+ * Desktop shell: no Capacitor App plugin there; its own `app_info` command
+ * reports the same pair (tauri.conf.json version + build).
+ */
+async function getDesktopVersionInfo(): Promise<NativeVersionInfo | null> {
+  const { getDesktopAppInfo } = await import('./desktop-app-info');
+  const info = await getDesktopAppInfo();
+  if (!info) return null;
+  return {
+    appVersion: info.version,
+    appBuild: info.build,
+    backendVersion: await fetchBackendVersion()
+  };
 }
