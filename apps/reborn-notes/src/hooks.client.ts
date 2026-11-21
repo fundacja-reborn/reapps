@@ -12,6 +12,16 @@ import { startSwUpdateWatcher } from '$lib/services/sw-update.service';
 import { startPwaInstallPrompt } from '$lib/services/pwa-install.service';
 import { createNativeMasterKeyVault } from '$lib/utils/native-master-key-vault';
 import { applyNativeStatusBarStyle } from '$lib/utils/native-system-bars';
+import { installDesktopFetch } from '$lib/utils/desktop-fetch';
+
+// Desktop (Tauri) shell: route API requests through the shell's HTTP layer.
+// Kept above every other side effect of the client entry on purpose - nothing
+// below (storage init, master-key restore, the layout) may issue a request
+// before the transport is in place. CapacitorHttp does the same job on mobile,
+// patched in by the native bridge.
+if (__REBORN_DESKTOP__) {
+  installDesktopFetch();
+}
 
 // Public read-only share view (/s/<slug>) runs before the layout's onMount
 // bypass, so we have to short-circuit storage init here too. Without this
@@ -56,12 +66,13 @@ if (__REBORN_NATIVE__) {
   void navigator.storage?.persist?.()?.catch(() => {});
 
   // Status-bar icons: dark over the brand band the root layout paints behind
-  // the transparent system bar (PWA parity). Cosmetic fire-and-forget.
-  void applyNativeStatusBarStyle();
+  // the transparent system bar (PWA parity). Cosmetic fire-and-forget. The
+  // desktop shell has no system status bar (its title bar is native chrome).
+  if (!__REBORN_DESKTOP__) void applyNativeStatusBarStyle();
 }
 
 // ---------------------------------------------------------------------------
-// Client-side error handler — detect offline chunk-loading failures
+// Client-side error handler - detect offline chunk-loading failures
 // ---------------------------------------------------------------------------
 export const handleError: HandleClientError = ({ error }) => {
   const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
@@ -73,7 +84,7 @@ export const handleError: HandleClientError = ({ error }) => {
 
   if (isDynamicImportFailure && isOffline) {
     return {
-      message: 'Jesteś offline — ta strona nie jest jeszcze dostępna.',
+      message: 'Jesteś offline - ta strona nie jest jeszcze dostępna.',
       isOffline: true
     };
   }
@@ -83,14 +94,14 @@ export const handleError: HandleClientError = ({ error }) => {
   };
 };
 
-// Start watching for service worker updates — shows a toast when a new
+// Start watching for service worker updates - shows a toast when a new
 // version is deployed so the user can reload to pick up fresh code.
-// Skipped on /s/<slug> — service worker is bypassed there per rule #9.
+// Skipped on /s/<slug> - service worker is bypassed there per rule #9.
 if (!isPublicShareRoute) {
   // Kick off lazy master-key restoration as early as possible so the layout's
   // awaited waitForRestore() resolves immediately on cold start instead of
   // racing the 5s i18n timeout in +layout.ts. Restoration is now lazy on
-  // @reborn/crypto import (guideline 59 rule #12) — the call here puts us
+  // @reborn/crypto import (guideline 59 rule #12) - the call here puts us
   // back at the pre-share-snapshot timing for normal routes.
   void cryptoManager.waitForRestore().catch(() => {});
 

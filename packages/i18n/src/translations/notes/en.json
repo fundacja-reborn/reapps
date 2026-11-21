@@ -27,6 +27,7 @@
     "enable_failed": "Couldn't enable App Lock. Please try again.",
     "locked_title": "App locked",
     "locked_desc": "Unlock with {biometry} to continue.",
+    "locked_desc_device_credential": "Unlock with your device password to continue.",
     "unlock_cta": "Unlock",
     "unlocking": "Unlocking...",
     "use_password": "Use password instead",
@@ -34,7 +35,8 @@
       "reason": "Unlock re/notes",
       "cancel": "Cancel",
       "android_title": "Unlock re/notes",
-      "android_subtitle": "Confirm it's you to continue"
+      "android_subtitle": "Confirm it's you to continue",
+      "macos_reason": "unlock your notes"
     },
     "error": {
       "lockout": "Too many attempts. Wait a moment, or use your password.",

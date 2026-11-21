@@ -116,7 +116,8 @@
         cancelTitle: $t('app_lock.prompt.cancel'),
         androidTitle: $t('app_lock.prompt.android_title'),
         androidSubtitle: $t('app_lock.prompt.android_subtitle'),
-        iosFallbackTitle: ''
+        iosFallbackTitle: '',
+        macosReason: $t('app_lock.prompt.macos_reason')
       });
       if (result.ok) {
         enabled = true;

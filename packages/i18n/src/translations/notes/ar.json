@@ -27,6 +27,7 @@
     "enable_failed": "تعذّر تفعيل قفل التطبيق. يُرجى المحاولة مرة أخرى.",
     "locked_title": "التطبيق مقفل",
     "locked_desc": "استخدم {biometry} لإلغاء القفل والمتابعة.",
+    "locked_desc_device_credential": "استخدم كلمة مرور الجهاز لإلغاء القفل والمتابعة.",
     "unlock_cta": "إلغاء القفل",
     "unlocking": "جارٍ إلغاء القفل...",
     "use_password": "استخدام كلمة المرور بدلًا من ذلك",
@@ -34,7 +35,8 @@
       "reason": "إلغاء قفل re/notes",
       "cancel": "إلغاء",
       "android_title": "إلغاء قفل re/notes",
-      "android_subtitle": "أكّد هويتك للمتابعة"
+      "android_subtitle": "أكّد هويتك للمتابعة",
+      "macos_reason": "إلغاء قفل ملاحظاتك"
     },
     "error": {
       "lockout": "محاولات خاطئة عديدة. انتظر قليلًا، أو استخدم كلمة المرور.",

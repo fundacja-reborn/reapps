@@ -27,6 +27,7 @@
     "enable_failed": "Impossible d'activer le verrouillage. Veuillez réessayer.",
     "locked_title": "Application verrouillée",
     "locked_desc": "Déverrouillez avec {biometry} pour continuer.",
+    "locked_desc_device_credential": "Déverrouillez avec le mot de passe de l'appareil pour continuer.",
     "unlock_cta": "Déverrouiller",
     "unlocking": "Déverrouillage...",
     "use_password": "Utiliser le mot de passe à la place",
@@ -34,7 +35,8 @@
       "reason": "Déverrouiller re/notes",
       "cancel": "Annuler",
       "android_title": "Déverrouiller re/notes",
-      "android_subtitle": "Confirmez votre identité pour continuer"
+      "android_subtitle": "Confirmez votre identité pour continuer",
+      "macos_reason": "déverrouiller vos notes"
     },
     "error": {
       "lockout": "Trop de tentatives. Patientez un instant ou utilisez votre mot de passe.",

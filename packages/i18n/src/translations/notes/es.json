@@ -27,6 +27,7 @@
     "enable_failed": "No se pudo activar el bloqueo. Inténtalo de nuevo.",
     "locked_title": "Aplicación bloqueada",
     "locked_desc": "Desbloquea con {biometry} para continuar.",
+    "locked_desc_device_credential": "Desbloquea con la contraseña del dispositivo para continuar.",
     "unlock_cta": "Desbloquear",
     "unlocking": "Desbloqueando...",
     "use_password": "Usar la contraseña en su lugar",
@@ -34,7 +35,8 @@
       "reason": "Desbloquear re/notes",
       "cancel": "Cancelar",
       "android_title": "Desbloquear re/notes",
-      "android_subtitle": "Confirma que eres tú para continuar"
+      "android_subtitle": "Confirma que eres tú para continuar",
+      "macos_reason": "desbloquear tus notas"
     },
     "error": {
       "lockout": "Demasiados intentos. Espera un momento o usa tu contraseña.",

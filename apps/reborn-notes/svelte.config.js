@@ -12,6 +12,14 @@ const isProduction = process.env.NODE_ENV === 'production';
 // targets (adapter-node / adapter-auto) are left byte-identical when unset.
 const isNative = process.env.BUILD_TARGET === 'native';
 
+// Desktop (Tauri) shell: the same native static SPA, bundled by
+// `src-tauri/` instead of Capacitor. Selected via NATIVE_SHELL=tauri on top of
+// BUILD_TARGET=native (the `build-desktop*` targets). Emitted to its own
+// directory so a desktop build never lands in a Capacitor `cap sync` (and the
+// other way round): the two bundles carry different API origins and shell code.
+const isDesktop = isNative && process.env.NATIVE_SHELL === 'tauri';
+const nativeOutDir = isDesktop ? 'build-desktop' : 'build-native';
+
 // Native CSP connect-src needs the remote API origin, derived from the build's
 // PUBLIC_API_BASE_URL (e.g. https://reapps.eu/notes/api -> https://reapps.eu).
 // CapacitorHttp routes fetch through the native layer and bypasses CSP, but this
@@ -36,8 +44,8 @@ function selectAdapter() {
     // web adapter-node output in build/ - otherwise `cap sync` could copy a
     // Node server build into the native shell. Capacitor's webDir points here.
     return adapterStatic({
-      pages: 'build-native',
-      assets: 'build-native',
+      pages: nativeOutDir,
+      assets: nativeOutDir,
       fallback: 'index.html',
       strict: false
     });
@@ -123,8 +131,15 @@ const config = {
         ...(isNative ? { 'style-src-attr': ['unsafe-inline'] } : {}),
         'img-src': ['self', 'data:', 'blob:', 'https:'],
         'font-src': ['self', 'data:'],
+        // Desktop adds Tauri's IPC endpoints (`ipc://localhost` on macOS,
+        // `http://ipc.localhost` on Windows). Without them the webview blocks
+        // the IPC fetch and Tauri drops to its slower postMessage fallback.
         'connect-src': isNative
-          ? ['self', ...(nativeApiOrigin ? [nativeApiOrigin] : [])]
+          ? [
+              'self',
+              ...(nativeApiOrigin ? [nativeApiOrigin] : []),
+              ...(isDesktop ? ['ipc:', 'http://ipc.localhost'] : [])
+            ]
           : isProduction
             ? ['self']
             : ['self', 'ws:', 'http://localhost:*', 'ws://localhost:*'],

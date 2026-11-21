@@ -1,0 +1,61 @@
+[package]
+name = "reborn-notes-desktop"
+version = "0.0.1"
+description = "re/notes desktop shell (Tauri 2) - D0 spike"
+license = "AGPL-3.0-only"
+edition = "2021"
+rust-version = "1.90"
+publish = false
+
+[lib]
+name = "reborn_notes_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+# HTTP transport for the remote API (the webview is cross-origin to it and the
+# server sends no CORS headers - same role as CapacitorHttp on mobile).
+# Default features are off on purpose: the default `cookies` feature keeps a
+# cookie jar and writes it to a plaintext `.cookies` file in the app cache
+# directory. Native auth is token-based, so no cookie may be stored at all.
+tauri-plugin-http = { version = "2", default-features = false, features = [
+  "rustls-tls",
+  "http2",
+  "charset",
+  "system-proxy",
+] }
+# OS credential store (macOS Keychain, Windows Credential Manager) for the
+# refresh token and the master key. Pinned to 3.x: 4.x moved to a different
+# crate layout.
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
+# System folder dialog for linking a folder (folder sync, automated backup).
+# Only its Rust API is used; the webview gets no dialog permission.
+tauri-plugin-dialog = "2"
+# Folder grants: the token -> folder registry kept on the Rust side.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+getrandom = "0.3"
+# Export payloads arrive from the webview as base64.
+base64 = "0.22"
+
+# App Lock on macOS: LocalAuthentication (Touch ID, account password). The
+# objc2 crates are the bindings Tauri itself already builds on, so only the
+# LocalAuthentication one is new to the lockfile.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-local-authentication = { version = "0.3", default-features = false, features = [
+  "std",
+  "block2",
+  "LABiometryType",
+  "LAContext",
+  "LAError",
+] }
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSError",
+  "NSString",
+] }
+block2 = "0.6"

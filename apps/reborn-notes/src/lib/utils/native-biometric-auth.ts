@@ -20,6 +20,10 @@
  * `__REBORN_NATIVE__` branch, so the whole module - plugin included - is
  * tree-shaken from the web bundle.
  *
+ * The desktop (Tauri) shell has no Capacitor bridge: on `__REBORN_DESKTOP__`
+ * builds both entry points hand over to `desktop-app-lock.ts`, which speaks the
+ * same status shape and error codes through the shell's own commands.
+ *
  * The native method surface is `checkBiometry` + `internalAuthenticate` (the
  * `internal*` name is the plugin's native method; the package's public
  * `authenticate()` just re-wraps its rejection as a typed `BiometryError`,
@@ -27,6 +31,7 @@
  */
 
 import { registerPlugin } from '@capacitor/core';
+import { getDesktopBiometryStatus, promptDesktopAuth } from './desktop-app-lock';
 
 /**
  * Biometry type, mirroring the plugin's `BiometryType` enum (duplicated as
@@ -68,6 +73,12 @@ export interface BiometricPromptOptions {
   androidTitle?: string;
   androidSubtitle?: string;
   androidConfirmationRequired?: boolean;
+  /**
+   * Desktop shell on macOS only (not a plugin option): the system prints the
+   * reason inside its own sentence, "<app> is trying to <reason>.", so it needs
+   * a lower-case verb phrase instead of the stand-alone `reason`.
+   */
+  macosReason?: string;
 }
 
 /** The plugin's native method surface (see its ios/android sources). */
@@ -122,6 +133,8 @@ export async function getBiometryStatus(): Promise<BiometryStatus> {
   if (!__REBORN_NATIVE__) {
     return { isAvailable: false, deviceIsSecure: false, kind: 'none' };
   }
+  // Desktop shell: no Capacitor bridge, the shell's own command answers.
+  if (__REBORN_DESKTOP__) return getDesktopBiometryStatus();
   try {
     const result = await getPlugin().checkBiometry();
     return {
@@ -147,6 +160,7 @@ export async function promptBiometric(
   if (!__REBORN_NATIVE__) {
     return { ok: false, code: 'biometryNotAvailable' };
   }
+  if (__REBORN_DESKTOP__) return promptDesktopAuth(options);
   try {
     await getPlugin().internalAuthenticate(options);
     return { ok: true };

@@ -10,6 +10,9 @@ export default [
     ignores: [
       '**/build/**',
       '**/build-native/**',
+      '**/build-desktop/**',
+      '**/src-tauri/target/**',
+      '**/src-tauri/gen/**',
       '**/android/**',
       '**/ios/**',
       '**/.svelte-kit/**',

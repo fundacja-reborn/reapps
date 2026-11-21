@@ -550,7 +550,12 @@
         }
         // Min-version gate re-check (throttled internally, fail-open).
         void checkNativeUpdateGate();
-        if ($authStore.isAuthenticated && $authStore.hasE2E) {
+        if (__REBORN_DESKTOP__) {
+          // Desktop resumes each time the window gets the focus back, which
+          // can be dozens of times an hour, so the sync takes the shared 30s
+          // cooldown of activitySync instead of pulling on every app switch.
+          activitySync();
+        } else if ($authStore.isAuthenticated && $authStore.hasE2E) {
           pushPendingItems().catch(() => {});
           pullFromServer()
             .then(async (synced) => {
