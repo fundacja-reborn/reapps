@@ -4,8 +4,9 @@
  * `$lib/components/folders/folder-icon-components.ts` so this module stays
  * free of Svelte imports (the metadata codec and its tests use it).
  *
- * Order = order in the picker grid. None of these is directional, so none
- * needs the RTL mirror rule in packages/ui global.css.
+ * Order = order in the picker grid; new keys go at the end, so the icons
+ * people already know stay where they were. None of these is directional, so
+ * none needs the RTL mirror rule in packages/ui global.css.
  *
  * Adding a key is safe; REMOVING one is not - folders that use it would fall
  * back to the default icon on this build (unknown keys render as the plain
@@ -35,7 +36,30 @@ export const FOLDER_ICONS = [
   'dumbbell',
   'wallet',
   'lock',
-  'leaf'
+  'leaf',
+  'store',
+  'warehouse',
+  'landmark',
+  'package',
+  'gift',
+  'gem',
+  'id-card',
+  'key-square',
+  'shield',
+  'shield-check',
+  'stamp',
+  'scroll-text',
+  'notebook-pen',
+  'pencil-ruler',
+  'toolbox',
+  'stethoscope',
+  'chef-hat',
+  'hamburger',
+  'film',
+  'moon',
+  'tree-palm',
+  'paw-print',
+  'circle-star'
 ] as const;
 
 export type FolderIconKey = (typeof FOLDER_ICONS)[number];
