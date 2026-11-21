@@ -9,7 +9,7 @@
  * only suggests a file name and hands over the bytes, it never names a path.
  */
 
-import { invokeDesktop } from './desktop-bridge';
+import { invokeDesktopDialog } from './desktop-bridge';
 
 /**
  * Offer `base64` (the file content) for saving under the suggested `filename`.
@@ -19,7 +19,7 @@ import { invokeDesktop } from './desktop-bridge';
  */
 export async function saveFileDesktop(filename: string, base64: string): Promise<boolean> {
   try {
-    const { saved } = await invokeDesktop<{ saved: boolean }>('file_export_save', {
+    const { saved } = await invokeDesktopDialog<{ saved: boolean }>('file_export_save', {
       name: filename,
       data: base64
     });

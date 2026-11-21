@@ -10,11 +10,14 @@
 //!   store;
 //! - `folder_fs_*`: access to folders the user linked through the system
 //!   dialog (folder sync, automated backup);
-//! - `file_export_save`: "Save as..." for exports.
+//! - `file_export_save`: "Save as..." for exports;
+//! - `app_lock_*`: the system unlock prompt for App Lock (Touch ID or the
+//!   account password on macOS).
 //!
 //! Window chrome (brand-yellow title bar) is pure configuration, see
 //! `tauri.conf.json`.
 
+mod app_lock;
 mod file_export;
 mod folder_fs;
 mod secure_storage;
@@ -40,7 +43,9 @@ pub fn run() {
             folder_fs::folder_fs_write_file,
             folder_fs::folder_fs_delete_file,
             folder_fs::folder_fs_release_directory,
-            file_export::file_export_save
+            file_export::file_export_save,
+            app_lock::app_lock_status,
+            app_lock::app_lock_authenticate
         ])
         .run(tauri::generate_context!())
         .expect("error while running the re/notes desktop shell");

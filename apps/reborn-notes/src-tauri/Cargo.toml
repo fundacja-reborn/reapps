@@ -40,3 +40,22 @@ serde_json = "1"
 getrandom = "0.3"
 # Export payloads arrive from the webview as base64.
 base64 = "0.22"
+
+# App Lock on macOS: LocalAuthentication (Touch ID, account password). The
+# objc2 crates are the bindings Tauri itself already builds on, so only the
+# LocalAuthentication one is new to the lockfile.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-local-authentication = { version = "0.3", default-features = false, features = [
+  "std",
+  "block2",
+  "LABiometryType",
+  "LAContext",
+  "LAError",
+] }
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSError",
+  "NSString",
+] }
+block2 = "0.6"

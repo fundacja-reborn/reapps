@@ -12,12 +12,19 @@
 import { base } from '$app/paths';
 import { getConnectivity } from '@reborn/api-client';
 import { createWebPlatform, type Platform } from '@reborn/platform';
+import { createDesktopPlatform } from './desktop';
 import { createNativePlatform } from './native';
 
 // Web connectivity: the same active HTTP probe as before, bound to this app's
-// same-origin `/api/health`. On native this is replaced by device network state
-// (see ./native), so the probe endpoint is web-only.
+// same-origin `/api/health`. On Capacitor this is replaced by device network
+// state (see ./native); the desktop shell probes the remote API (./desktop).
 const webPlatform = (): Platform =>
   createWebPlatform({ network: getConnectivity({ endpoint: `${base}/api/health` }) });
 
-export const platform: Platform = __REBORN_NATIVE__ ? createNativePlatform() : webPlatform();
+// The desktop (Tauri) shell is a native build without the Capacitor bridge, so
+// it is checked first; each build keeps exactly one implementation.
+export const platform: Platform = __REBORN_DESKTOP__
+  ? createDesktopPlatform()
+  : __REBORN_NATIVE__
+    ? createNativePlatform()
+    : webPlatform();

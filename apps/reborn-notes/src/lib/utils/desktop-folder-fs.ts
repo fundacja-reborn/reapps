@@ -15,7 +15,7 @@
  * returned.
  */
 
-import { invokeDesktop } from './desktop-bridge';
+import { invokeDesktop, invokeDesktopDialog } from './desktop-bridge';
 import type { FolderFsPlugin, NativeFsEntry } from './native-folder-fs';
 
 /** Error payload of a rejected `folder_fs_*` command. */
@@ -42,9 +42,13 @@ export function toFolderError(rejection: unknown): Error {
   return Object.assign(new Error(message), { code });
 }
 
-async function call<T>(command: string, args: Record<string, unknown>): Promise<T> {
+async function call<T>(
+  command: string,
+  args: Record<string, unknown>,
+  invoke: typeof invokeDesktop = invokeDesktop
+): Promise<T> {
   try {
-    return await invokeDesktop<T>(command, args);
+    return await invoke<T>(command, args);
   } catch (rejection) {
     throw toFolderError(rejection);
   }
@@ -53,9 +57,11 @@ async function call<T>(command: string, args: Record<string, unknown>): Promise<
 export function getDesktopFolderFs(): FolderFsPlugin {
   return {
     pickDirectory(options) {
+      // The folder picker is a system dialog (see invokeDesktopDialog).
       return call<{ bookmark?: string; name?: string; cancelled?: boolean }>(
         'folder_fs_pick_directory',
-        { write: options?.write === true }
+        { write: options?.write === true },
+        invokeDesktopDialog
       );
     },
 

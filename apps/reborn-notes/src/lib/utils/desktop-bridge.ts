@@ -34,3 +34,43 @@ export function invokeDesktop<T>(command: string, args?: Record<string, unknown>
   if (!bridge) return Promise.reject(new Error('desktop bridge unavailable'));
   return bridge.core.invoke<T>(command, args);
 }
+
+/** System dialogs the shell has open right now (Touch ID, open / save panel). */
+let openDialogs = 0;
+const dialogClosedListeners = new Set<() => void>();
+
+/**
+ * Call a shell command that shows a system dialog: the unlock prompt, the
+ * folder picker, "Save as...".
+ *
+ * Such a dialog takes the focus from the app window, so to the page it looks
+ * exactly like the user switching to another app. The desktop lifecycle
+ * (`$lib/platform/desktop.ts`) reads {@link isShellDialogOpen} to tell the two
+ * apart; otherwise every Touch ID prompt would count as "left the app" for
+ * App Lock and every export would trigger a sync on return.
+ */
+export async function invokeDesktopDialog<T>(
+  command: string,
+  args?: Record<string, unknown>
+): Promise<T> {
+  openDialogs += 1;
+  try {
+    return await invokeDesktop<T>(command, args);
+  } finally {
+    openDialogs -= 1;
+    for (const listener of [...dialogClosedListeners]) listener();
+  }
+}
+
+/** True while a dialog started by {@link invokeDesktopDialog} is open. */
+export function isShellDialogOpen(): boolean {
+  return openDialogs > 0;
+}
+
+/** Called each time such a dialog closes. Returns an unsubscribe. */
+export function onShellDialogClosed(listener: () => void): () => void {
+  dialogClosedListeners.add(listener);
+  return () => {
+    dialogClosedListeners.delete(listener);
+  };
+}

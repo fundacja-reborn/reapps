@@ -27,6 +27,7 @@
     "enable_failed": "App-Sperre konnte nicht aktiviert werden. Bitte erneut versuchen.",
     "locked_title": "App gesperrt",
     "locked_desc": "Zum Fortfahren mit {biometry} entsperren.",
+    "locked_desc_device_credential": "Zum Fortfahren mit dem Gerätepasswort entsperren.",
     "unlock_cta": "Entsperren",
     "unlocking": "Wird entsperrt...",
     "use_password": "Stattdessen Passwort verwenden",
@@ -34,7 +35,8 @@
       "reason": "re/notes entsperren",
       "cancel": "Abbrechen",
       "android_title": "re/notes entsperren",
-      "android_subtitle": "Bestätige, dass du es bist, um fortzufahren"
+      "android_subtitle": "Bestätige, dass du es bist, um fortzufahren",
+      "macos_reason": "deine Notizen entsperren"
     },
     "error": {
       "lockout": "Zu viele Versuche. Warte einen Moment oder verwende dein Passwort.",

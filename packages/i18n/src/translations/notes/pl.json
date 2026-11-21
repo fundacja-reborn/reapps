@@ -27,6 +27,7 @@
     "enable_failed": "Nie udało się włączyć blokady aplikacji. Spróbuj ponownie.",
     "locked_title": "Aplikacja zablokowana",
     "locked_desc": "Odblokuj za pomocą {biometry}, aby kontynuować.",
+    "locked_desc_device_credential": "Odblokuj hasłem urządzenia, aby kontynuować.",
     "unlock_cta": "Odblokuj",
     "unlocking": "Odblokowywanie...",
     "use_password": "Użyj zamiast tego hasła",
@@ -34,7 +35,8 @@
       "reason": "Odblokuj re/notes",
       "cancel": "Anuluj",
       "android_title": "Odblokuj re/notes",
-      "android_subtitle": "Potwierdź swoją tożsamość, aby kontynuować"
+      "android_subtitle": "Potwierdź swoją tożsamość, aby kontynuować",
+      "macos_reason": "odblokować notatki"
     },
     "error": {
       "lockout": "Zbyt wiele prób. Poczekaj chwilę lub użyj hasła.",

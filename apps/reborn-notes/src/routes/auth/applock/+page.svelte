@@ -17,6 +17,9 @@
   let loading = $state(false);
   let error = $state<string | null>(null);
   let biometryKind = $state<BiometryKind>('none');
+  // Until the device answers, `none` only means "not known yet" - the
+  // device-password wording must not flash before "Face ID" replaces it.
+  let biometryKnown = $state(false);
   let isRedirecting = false;
 
   const returnTo = $derived.by(() => $page.url.searchParams.get('returnTo') || '/');
@@ -39,7 +42,10 @@
       void goto(returnTo);
       return;
     }
-    void getAppLockAvailability().then((status) => (biometryKind = status.kind));
+    void getAppLockAvailability().then((status) => {
+      biometryKind = status.kind;
+      biometryKnown = true;
+    });
     // Auto-prompt on first paint - this runs after boot (the raw-bridge plugin
     // has no nested dynamic import, so it is safe from the cold-start wedge).
     void runUnlock();
@@ -76,7 +82,8 @@
         cancelTitle: $t('app_lock.prompt.cancel'),
         androidTitle: $t('app_lock.prompt.android_title'),
         androidSubtitle: $t('app_lock.prompt.android_subtitle'),
-        iosFallbackTitle: ''
+        iosFallbackTitle: '',
+        macosReason: $t('app_lock.prompt.macos_reason')
       });
       if (result.ok) {
         isRedirecting = true;
@@ -123,7 +130,13 @@
       </div>
       <h2 class="text-lg font-semibold text-foreground">{$t('app_lock.locked_title')}</h2>
       <p class="mt-1 text-sm text-muted-foreground">
-        {$t('app_lock.locked_desc', { values: { biometry: biometryLabel } })}
+        {#if biometryKnown && biometryKind === 'none'}
+          <!-- No biometry (a Mac without Touch ID, a phone with only a PIN):
+               the system prompt asks for the device password. -->
+          {$t('app_lock.locked_desc_device_credential')}
+        {:else}
+          {$t('app_lock.locked_desc', { values: { biometry: biometryLabel } })}
+        {/if}
       </p>
     </div>
 
