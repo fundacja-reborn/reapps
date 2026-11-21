@@ -315,7 +315,20 @@
     },
     "required": "La contraseña es obligatoria",
     "incorrect": "Contraseña incorrecta",
-    "verification_failed": "No se pudo verificar la contraseña"
+    "verification_failed": "No se pudo verificar la contraseña",
+    "strength": {
+      "very_weak": "Muy débil",
+      "weak": "Débil",
+      "fair": "Aceptable",
+      "good": "Buena",
+      "strong": "Fuerte",
+      "requirements_left": "{count, plural, one {Falta # requisito} other {Faltan # requisitos}}",
+      "all_met": "La contraseña cumple todos los requisitos",
+      "req_length": "Al menos 8 caracteres",
+      "req_mixed_case": "Mayúsculas y minúsculas",
+      "req_number": "Al menos un número",
+      "req_special": "Al menos un carácter especial"
+    }
   },
   "theme": {
     "title": "Apariencia",

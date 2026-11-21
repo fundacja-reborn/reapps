@@ -315,7 +315,20 @@
     },
     "required": "Password is required",
     "incorrect": "Incorrect password",
-    "verification_failed": "Failed to verify password"
+    "verification_failed": "Failed to verify password",
+    "strength": {
+      "very_weak": "Very weak",
+      "weak": "Weak",
+      "fair": "Fair",
+      "good": "Good",
+      "strong": "Strong",
+      "requirements_left": "{count, plural, one {# requirement left} other {# requirements left}}",
+      "all_met": "Password meets all requirements",
+      "req_length": "At least 8 characters",
+      "req_mixed_case": "Upper and lowercase letters",
+      "req_number": "At least one number",
+      "req_special": "At least one special character"
+    }
   },
   "theme": {
     "title": "Appearance",

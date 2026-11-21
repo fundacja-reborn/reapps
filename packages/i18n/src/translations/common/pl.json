@@ -315,7 +315,20 @@
     },
     "required": "Hasło jest wymagane",
     "incorrect": "Nieprawidłowe hasło",
-    "verification_failed": "Nie udało się zweryfikować hasła"
+    "verification_failed": "Nie udało się zweryfikować hasła",
+    "strength": {
+      "very_weak": "Bardzo słabe",
+      "weak": "Słabe",
+      "fair": "Średnie",
+      "good": "Dobre",
+      "strong": "Silne",
+      "requirements_left": "{count, plural, one {Zostało # wymaganie} few {Zostały # wymagania} many {Zostało # wymagań} other {Zostało # wymagania}}",
+      "all_met": "Hasło spełnia wszystkie wymagania",
+      "req_length": "Co najmniej 8 znaków",
+      "req_mixed_case": "Wielkie i małe litery",
+      "req_number": "Co najmniej jedna cyfra",
+      "req_special": "Co najmniej jeden znak specjalny"
+    }
   },
   "theme": {
     "title": "Wygląd",
