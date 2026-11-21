@@ -1,5 +1,37 @@
 [
   {
+    "version": "0.58.0",
+    "date": "2026-11-21",
+    "items": [
+      {
+        "id": "0.58.0-username-dots",
+        "category": "new",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.58.0-folder-icons",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.58.0-password-strength",
+        "category": "fixed",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.57.1",
     "date": "2026-11-21",
     "items": [

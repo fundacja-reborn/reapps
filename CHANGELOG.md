@@ -1,3 +1,10 @@
+## 0.58.0 (2026-11-21)
+
+### 🚀 Features
+
+- **auth:** allow dots in usernames ([#619](https://github.com/fundacja-reborn/reapps/pull/619))
+- **notes:** add 23 folder icons ([#620](https://github.com/fundacja-reborn/reapps/pull/620), [#614](https://github.com/fundacja-reborn/reapps/issues/614))
+
 ## 0.57.1 (2026-11-21)
 
 ### 🩹 Fixes
