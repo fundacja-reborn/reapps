@@ -61,33 +61,6 @@ export function validateEmail(email: string): boolean {
 }
 
 /**
- * Validates username format
- */
-export function validateUsername(username: string): {
-  isValid: boolean;
-  error?: string;
-} {
-  if (!username || username.trim().length === 0) {
-    return { isValid: false, error: 'username.errors.required' };
-  }
-
-  if (username.length < 3) {
-    return { isValid: false, error: 'username.errors.too_short' };
-  }
-
-  if (username.length > 50) {
-    return { isValid: false, error: 'username.errors.too_long' };
-  }
-
-  // Allow alphanumeric, underscore, hyphen, and dot
-  if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
-    return { isValid: false, error: 'username.errors.invalid_characters' };
-  }
-
-  return { isValid: true };
-}
-
-/**
  * Sanitizes input to prevent XSS
  */
 export function sanitizeInput(input: string): string {

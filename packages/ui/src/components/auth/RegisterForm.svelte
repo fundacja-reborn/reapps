@@ -2,6 +2,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { t } from 'svelte-i18n';
+  import { checkUsername } from '@reborn/types';
   import PasswordStrength from './PasswordStrength.svelte';
 
   let {
@@ -42,15 +43,26 @@
   let solving = $state(false);
   const formLoadedAt = Date.now();
 
-  const USERNAME_REGEX = /^[a-zA-Z0-9_-]+$/;
+  // One rule for the form and the server: `checkUsername` (@reborn/types) is
+  // also what the registration schema enforces.
+  const usernameIssue = $derived(checkUsername(username.trim()));
 
   const usernameError = $derived.by((): string | null => {
     if (!touched.username && !submitAttempted) return null;
-    if (!username.trim()) return $t('auth.register.username_required');
-    if (username.trim().length < 3) return $t('auth.register.username_min_length');
-    if (username.trim().length > 50) return $t('auth.register.username_max_length');
-    if (!USERNAME_REGEX.test(username.trim())) return $t('auth.register.username_invalid_chars');
-    return null;
+    switch (usernameIssue) {
+      case 'required':
+        return $t('auth.register.username_required');
+      case 'too_short':
+        return $t('auth.register.username_min_length');
+      case 'too_long':
+        return $t('auth.register.username_max_length');
+      case 'invalid_chars':
+        return $t('auth.register.username_invalid_chars');
+      case 'invalid_dot':
+        return $t('auth.register.username_invalid_dot');
+      default:
+        return null;
+    }
   });
 
   const passwordError = $derived.by((): string | null => {
@@ -69,9 +81,7 @@
 
   const passwordsMatch = $derived(password === confirmPassword);
   const canSubmit = $derived(
-    username.trim().length >= 3 &&
-      username.trim().length <= 50 &&
-      USERNAME_REGEX.test(username.trim()) &&
+    usernameIssue === null &&
       password.length >= 8 &&
       confirmPassword.length > 0 &&
       passwordsMatch

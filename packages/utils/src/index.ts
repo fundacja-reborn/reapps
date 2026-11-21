@@ -39,7 +39,6 @@ export {
 export {
   validatePassword,
   validateEmail,
-  validateUsername,
   sanitizeInput,
   PASSWORD_REQUIREMENTS
 } from './validation';

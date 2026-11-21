@@ -1,4 +1,16 @@
 import { z } from 'zod';
+import { USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH, USERNAME_PATTERN } from '../../username';
+
+/**
+ * Username of an account being CREATED. Sign-in keeps the length-only check
+ * (`LoginRequestSchema`), so accounts that predate this rule still sign in.
+ * The rule itself lives in `username.ts`, shared with the sign-up form.
+ */
+export const NewUsernameSchema = z
+  .string()
+  .min(USERNAME_MIN_LENGTH)
+  .max(USERNAME_MAX_LENGTH)
+  .regex(USERNAME_PATTERN);
 
 /**
  * Generic API request schema
@@ -45,7 +57,7 @@ export const LoginRequestSchema = z.object({
  * Register request schema
  */
 export const RegisterRequestSchema = z.object({
-  username: z.string().min(3).max(50),
+  username: NewUsernameSchema,
   password: z.string().min(8),
   device_name: z.string().optional(),
   preferred_language: z.string().optional()
@@ -73,7 +85,7 @@ export const TwoFactorVerifyRequestSchema = z.object({
  * For Zero Knowledge architecture where password is hashed client-side
  */
 export const E2ERegisterRequestSchema = z.object({
-  username: z.string().min(3).max(50),
+  username: NewUsernameSchema,
   passwordHash: z.string(), // Pre-hashed on client side
   encryptedMasterKey: z.string(),
   masterKeySalt: z.string(),
