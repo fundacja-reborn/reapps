@@ -1378,6 +1378,79 @@
     color: var(--foreground);
   }
 
+  /* The controls at the end of a heading line (the copy-link button of Live
+     Preview, the fold chevron, the "…" mark of a folded section) must not wrap
+     to a line of their own: with a mouse they are hidden until hover, so that
+     left an empty line under a heading that filled its line, and a lone
+     chevron on touch.
+
+     They cannot be glued to the last word as in the rendered preview
+     (`.md-head-tail` in MarkdownPreview.svelte): CodeMirror puts a zero-width
+     `img.cm-widgetBuffer` in front of the first widget, the browser may break
+     the line before it, and a mark on the last word does not wrap the widgets.
+     So each control takes no room in the line (a negative end margin as wide
+     as the control and its start margin), which means it never needs a line
+     of its own, and the line keeps that room free at its end. The heading
+     text wraps a little earlier instead: its last word goes down where the
+     buttons used to go down alone.
+
+     Widths: copy link 0.5rem + 1.5rem = 2rem, chevron 0.25rem + 1.5rem =
+     1.75rem, "…" mark 0.25rem + 1.75rem = 2rem. A control that follows
+     another one starts after it (the start margins below). All in rem: an
+     `em` would mean something else on the mark, which has its own font
+     size. `~` and not `+`: CodeMirror puts another buffer between the
+     chevron and the mark. Either order of copy link and chevron works.
+
+     Measured on the CodeMirror playground with line wrapping and
+     `drawSelection`, over widths 200-620 px and headings in Latin and Arabic
+     script: no control on a line of its own, none outside the line, none on
+     top of another, and the caret at the end of the heading where it was.
+
+     Without `:has()` the line cannot tell what it holds, so nothing here
+     applies and the controls wrap as before. */
+  @supports selector(:has(*)) {
+    :global(.cm-host .cm-line .cm-lp-head-anchor) {
+      margin-inline-end: -2rem;
+    }
+    :global(.cm-host .cm-line .cm-hfold-toggle) {
+      margin-inline-end: -1.75rem;
+    }
+    :global(.cm-host .cm-line .cm-lp-head-anchor ~ .cm-hfold-toggle),
+    :global(.cm-host .cm-line .cm-hfold-toggle ~ .cm-lp-head-anchor) {
+      margin-inline-start: 2.25rem;
+      margin-inline-end: -3.75rem;
+    }
+    /* A fixed box, so the line knows how much room the mark needs. */
+    :global(.cm-host .cm-line .cm-hfold-placeholder) {
+      box-sizing: border-box;
+      width: 1.75rem;
+      padding: 0;
+      text-align: center;
+      margin-inline-start: 2rem;
+      margin-inline-end: -3.75rem;
+    }
+    :global(.cm-host .cm-line .cm-lp-head-anchor ~ .cm-hfold-placeholder) {
+      margin-inline-start: 4rem;
+      margin-inline-end: -5.75rem;
+    }
+
+    /* Room at the end of the line for what it holds. 2px is the end padding
+       CodeMirror gives every line. */
+    :global(.cm-host .cm-line.cm-hfold-line) {
+      padding-inline-end: calc(2px + 1.75rem);
+    }
+    :global(.cm-host .cm-line:has(.cm-lp-head-anchor)) {
+      padding-inline-end: calc(2px + 2rem);
+    }
+    :global(.cm-host .cm-line.cm-hfold-line:has(.cm-lp-head-anchor)),
+    :global(.cm-host .cm-line.cm-hfold-line:has(.cm-hfold-folded)) {
+      padding-inline-end: calc(2px + 3.75rem);
+    }
+    :global(.cm-host .cm-line.cm-hfold-line:has(.cm-hfold-folded):has(.cm-lp-head-anchor)) {
+      padding-inline-end: calc(2px + 5.75rem);
+    }
+  }
+
   /* Live Preview - code block token colors in dark mode.
      Light-mode palette ships in editor/live-preview/theme.ts; CM6 themes
      can't reach .dark on <html>, so dark overrides go here. */

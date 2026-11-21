@@ -991,7 +991,7 @@
     justify-content: center;
     width: 1.5rem;
     height: 1.5rem;
-    margin-inline-start: 0.4em;
+    margin-inline-start: 0.5rem;
     padding: 0;
     border: 1px solid var(--border);
     border-radius: 0.375em;
