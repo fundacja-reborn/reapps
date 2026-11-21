@@ -258,8 +258,10 @@ function ios(udid) {
         'active',
         '--cellularBars',
         '4',
+        // 'discharging', not 'charged': on iOS 26 'charged' paints a green
+        // battery with a bolt, and a store shot wants the plain full one.
         '--batteryState',
-        'charged',
+        'discharging',
         '--batteryLevel',
         '100'
       ]);
