@@ -41,12 +41,11 @@ const TITLE_BAR_COLOR: Color = Color(0xFF, 0xD4, 0x3B, 0xFF);
 /// transparent title bar shows it.
 ///
 /// Not through `backgroundColor` in `tauri.conf.json`: that one goes to the
-/// webview too, where wry turns off the WKWebView's own background
-/// (`drawsBackground`). WebKit then left stale paint on screen in the editor:
-/// after a table column was added, the old and the new layout showed on top of
-/// each other until the next full repaint (2026-11-21; Safari, with its
-/// background on, did not do it). The webview keeps its default opaque
-/// background and the page paints its own.
+/// webview too, where wry turns off the WKWebView's own background through
+/// `drawsBackground`, a private WebKit key (a risk for Mac App Store review,
+/// D4). The webview keeps its default opaque background, the page paints its
+/// own, and WebKit gets the simpler opaque case. (Stale paint in the editor is
+/// a separate WebKit issue, see `src/lib/editor/desktop-repaint.ts`.)
 fn paint_title_bar<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
         return;
