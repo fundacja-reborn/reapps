@@ -14,6 +14,7 @@
   import { noteSearchExtension } from '$lib/editor/note-search';
   import { bidiLines } from '$lib/editor/bidi';
   import { ownSelection } from '$lib/editor/own-selection';
+  import { desktopRepaintLayer } from '$lib/editor/desktop-repaint';
   import { directionMarkAtomicRanges, toggleLineDirection } from '$lib/editor/direction-mark';
   import { listIndent, listOutdent } from '$lib/editor/list-keymap';
   import {
@@ -588,6 +589,9 @@
         // so the cursor shows on the right side of a number or Latin word in
         // an Arabic line (#539). Touch screens keep the native ones.
         ownSelection(),
+        // Desktop shell: own layer for the content, or WKWebView leaves stale
+        // paint behind after Live Preview reveals markers.
+        __REBORN_DESKTOP__ ? desktopRepaintLayer : [],
         // Keep every scroll-into-view (heading-anchor clicks, outline jumps, the
         // caret while typing near the top) clear of the sticky formatting toolbar
         // that overlays the scroll container in the mobile + single-pane layouts.

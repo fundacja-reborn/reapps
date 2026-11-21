@@ -33,7 +33,7 @@
   import { cleanupNullFkFields } from '$lib/services/idb-cleanup.service';
   import { refreshPendingCount, isOnline, sessionExpired, localOnly } from '$lib/stores/sync-status.store';
   import { platform } from '$lib/platform';
-  import { initI18n, setLocale, locale } from '$lib/stores/i18n.store';
+  import { initI18n, setLocale, locale, t } from '$lib/stores/i18n.store';
   import { reAuthenticate, verifyTotpForReauth } from '$lib/services/notes-auth.service';
   import { SessionExpiredBanner, RequireSessionModal } from '@reborn/ui';
   import InitialSyncBanner from '$lib/components/sync/InitialSyncBanner.svelte';
@@ -42,6 +42,11 @@
   import LocalModeWelcome from '$lib/components/LocalModeWelcome.svelte';
   import UpdateRequiredGate from '$lib/components/layout/UpdateRequiredGate.svelte';
   import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
+  import {
+    canOpenSettingsFrom,
+    localizeDesktopMenu,
+    onDesktopMenuSettings
+  } from '$lib/utils/desktop-menu';
   import { hideNativeSplash } from '$lib/utils/native-splash';
   import { initAppLock, shouldLockOnResume } from '$lib/services/app-lock.service';
   import { initWebLock } from '$lib/services/web-lock.service';
@@ -533,6 +538,7 @@
     // whole block is dead-code-eliminated from the web bundle.
     let offResume: (() => void) | undefined;
     let offDeepLink: (() => void) | undefined;
+    let offMenuSettings: (() => void) | undefined;
     let updateGateTimer: ReturnType<typeof setTimeout> | undefined;
     if (__REBORN_NATIVE__) {
       // App Lock: start tracking background time so a resume after the idle
@@ -582,6 +588,15 @@
         if (route) void goto(route);
       });
 
+      // Desktop app menu: "Settings..." (Cmd+,) opens the settings, except on
+      // the sign-in and lock screens, where it does nothing.
+      if (__REBORN_DESKTOP__) {
+        offMenuSettings = onDesktopMenuSettings(() => {
+          if (!appReady || !canOpenSettingsFrom(get(page).url.pathname, base || '')) return;
+          void goto('/settings');
+        });
+      }
+
       // Min-version gate (Faza 5, plan D5): the first check is deferred a few
       // seconds so it never competes with the boot path (guideline 61 rule);
       // later checks ride the resume handler above.
@@ -598,6 +613,7 @@
       cleanupFolderSync();
       offResume?.();
       offDeepLink?.();
+      offMenuSettings?.();
       mediaQuery.removeEventListener('change', handleSchemeChange);
     };
   });
@@ -612,6 +628,14 @@
     if (browser && $locale) {
       applyDocumentLocale($locale, dirOverride);
     }
+  });
+
+  // Desktop app menu (macOS) in the app's language: sent once the translations
+  // are loaded and again on every language change ($t follows the locale).
+  $effect(() => {
+    if (!__REBORN_DESKTOP__) return;
+    if (!appReady || !$locale) return;
+    void localizeDesktopMenu($t);
   });
 
   // Text size (this device only, issue #511): interface scale as `font-size: N%`

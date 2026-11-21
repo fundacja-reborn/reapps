@@ -37,6 +37,11 @@ let recommendedToastShown = false;
  */
 export async function checkNativeUpdateGate(): Promise<void> {
   if (!__REBORN_NATIVE__) return;
+  // Desktop has no distribution channel yet, so there is nothing to update
+  // to: the gate stays off until the release phase (D4) adds a `macos` entry
+  // to /api/app-config and the store link. Returning here also keeps the
+  // Capacitor plugins below out of the desktop bundle.
+  if (__REBORN_DESKTOP__) return;
   const now = Date.now();
   if (now - lastCheckAt < CHECK_MIN_INTERVAL_MS) return;
   lastCheckAt = now;
