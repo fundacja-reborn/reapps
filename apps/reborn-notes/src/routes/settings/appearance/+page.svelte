@@ -286,12 +286,10 @@
       </CardContent>
     </Card>
 
-    <!-- Text size (this device only) -->
-    <TextSizeCard />
-
-    <!-- Note font (this device only) -->
-    <NoteFontCard />
-
+    <!-- Language and Date & Time right under the theme: short cards, visible
+         without scrolling (a new account starts in Polish, so a user who does
+         not read it must find the language fast) and the same order as in
+         re/task. The longer cards with a live preview follow. -->
     <!-- Language -->
     <Card>
       <CardHeader>
@@ -313,7 +311,7 @@
               $t('appearance.select_language')}
           </SelectTrigger>
           <SelectContent>
-            {#each languageOptions as option}
+            {#each languageOptions as option (option.value)}
               <SelectItem value={option.value}>{option.label}</SelectItem>
             {/each}
           </SelectContent>
@@ -350,6 +348,12 @@
         hijriDatePlaceholder: $t('appearance.select_hijri_date')
       }}
     />
+
+    <!-- Text size (this device only) -->
+    <TextSizeCard />
+
+    <!-- Note font (this device only) -->
+    <NoteFontCard />
 
     <!-- Image Loading -->
     <Card>
