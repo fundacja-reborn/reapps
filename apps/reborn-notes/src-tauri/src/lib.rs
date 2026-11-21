@@ -16,9 +16,9 @@
 //! - `app_info`: version and build of the app for Settings;
 //! - `desktop_menu_localize`: the app menu in the app's language (macOS).
 //!
-//! Window chrome (brand-yellow title bar) is pure configuration, see
-//! `tauri.conf.json`. Window size and position persist through
-//! `tauri-plugin-window-state` (Rust side only).
+//! Window chrome: a transparent title bar (`tauri.conf.json`) over the
+//! brand-yellow window background (`paint_title_bar`). Window size and
+//! position persist through `tauri-plugin-window-state` (Rust side only).
 
 mod app_info;
 mod app_lock;
@@ -27,8 +27,34 @@ mod file_export;
 mod folder_fs;
 mod secure_storage;
 
-use tauri::Manager;
+use tauri::window::Color;
+use tauri::{AppHandle, Manager, Runtime, Webview};
 use tauri_plugin_window_state::StateFlags;
+
+/// Label of the only window, from `tauri.conf.json`.
+const MAIN_WINDOW: &str = "main";
+
+/// Brand yellow (#FFD43B), seen through the transparent title bar.
+const TITLE_BAR_COLOR: Color = Color(0xFF, 0xD4, 0x3B, 0xFF);
+
+/// Paints the native window (not the webview) brand yellow, so the
+/// transparent title bar shows it.
+///
+/// Not through `backgroundColor` in `tauri.conf.json`: that one goes to the
+/// webview too, where wry turns off the WKWebView's own background
+/// (`drawsBackground`). WebKit then left stale paint on screen in the editor:
+/// after a table column was added, the old and the new layout showed on top of
+/// each other until the next full repaint (2026-11-21; Safari, with its
+/// background on, did not do it). The webview keeps its default opaque
+/// background and the page paints its own.
+fn paint_title_bar<R: Runtime>(app: &AppHandle<R>) {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
+        return;
+    };
+    let webview: &Webview<R> = window.as_ref();
+    // Best effort: a failure leaves the system title bar color, nothing else.
+    let _ = webview.window().set_background_color(Some(TITLE_BAR_COLOR));
+}
 
 /// What the window remembers between launches. Not the full screen state: a
 /// window restored straight into full screen opens in its own Space, which is
@@ -68,6 +94,7 @@ pub fn run() {
     builder
         .setup(|app| {
             app.manage(folder_fs::FolderGrants::load(app.handle()));
+            paint_title_bar(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
