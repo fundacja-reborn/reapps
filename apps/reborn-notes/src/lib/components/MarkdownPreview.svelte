@@ -29,7 +29,8 @@
     applyHeadingFolds,
     foldsHiding,
     FOLD_CONTROL_SELECTOR,
-    FOLD_REVEAL_EVENT
+    FOLD_REVEAL_EVENT,
+    headingTail
   } from '$lib/utils/preview-heading-fold';
   import { selectAllScope } from '$lib/utils/select-all-scope';
 
@@ -492,7 +493,7 @@
         btn.dataset.headingSlug = ids[i];
         btn.dataset.headingText = text;
         btn.innerHTML = HEADING_LINK_ICON;
-        el.appendChild(btn);
+        headingTail(el).appendChild(btn);
       }
     });
   }
@@ -963,8 +964,23 @@
     border-color: #16a34a;
   }
 
+  /* The buttons at the end of a heading (copy link, fold) sit in one holder
+     (`headingTail` in utils/preview-heading-fold.ts). The holder never wraps
+     inside, and the word joiner in front of it (U+2060, no width, no break on
+     either side) glues it to the last word of the heading. A heading that
+     fills its line then moves that word down with the buttons. Without this
+     the buttons dropped to a line of their own: an empty line under the
+     heading with a mouse (they are hidden until hover), a lone chevron on
+     touch. Generated content, so the heading's text is unchanged. */
+  .preview :global(.md-head-tail) {
+    white-space: nowrap;
+  }
+  .preview :global(.md-head-tail::before) {
+    content: '\2060';
+  }
+
   /* Per-heading "copy link" button (owner-editable preview). `assignHeadingIds`
-     appends it inline at the end of each heading, so it sits right after the
+     appends it at the end of each heading, so it sits right after the
      text - mirrors the Live Preview `.cm-lp-head-anchor` affordance. Hidden
      until the heading is hovered / the button focused (desktop); on coarse
      pointers (touch, no hover) it stays faintly visible so it is discoverable. */

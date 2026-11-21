@@ -36,6 +36,14 @@ const MARK_CLASS = 'md-head-fold-mark';
 /** Clicks on either of these toggle the section of the heading they sit in. */
 export const FOLD_CONTROL_SELECTOR = `.${TOGGLE_CLASS}, .${MARK_CLASS}`;
 
+/**
+ * Holds the buttons at the end of a heading: the copy-link button of the
+ * owner's preview and the fold controls. CSS keeps it on one line and glues it
+ * to the last word of the heading, so a heading that fills its line takes that
+ * word down with the buttons instead of leaving them on a line of their own.
+ */
+const TAIL_CLASS = 'md-head-tail';
+
 const HEADING_SELECTOR = 'h1, h2, h3, h4, h5, h6';
 /** Spacer block for extra blank lines kept in the rendered note (blank-lines.ts). */
 const BLANK_LINES_CLASS = 'md-blank-lines';
@@ -72,8 +80,31 @@ export function headingSection(heading: Element): HTMLElement[] {
   return section;
 }
 
-function childControl(heading: Element, className: string): HTMLButtonElement | null {
+function existingTail(heading: Element): HTMLElement | null {
   for (const child of heading.children) {
+    if (child.classList.contains(TAIL_CLASS)) return child as HTMLElement;
+  }
+  return null;
+}
+
+/**
+ * The element at the end of `heading` that its buttons go into, created on
+ * first use. It carries no text, so the heading's text stays the heading's.
+ */
+export function headingTail(heading: HTMLElement): HTMLElement {
+  let tail = existingTail(heading);
+  if (!tail) {
+    tail = document.createElement('span');
+    tail.className = TAIL_CLASS;
+    heading.appendChild(tail);
+  }
+  return tail;
+}
+
+function childControl(heading: Element, className: string): HTMLButtonElement | null {
+  const tail = existingTail(heading);
+  if (!tail) return null;
+  for (const child of tail.children) {
     if (child.classList.contains(className)) return child as HTMLButtonElement;
   }
   return null;
@@ -105,6 +136,9 @@ export function applyHeadingFolds(
     if (section.length === 0) {
       toggle?.remove();
       mark?.remove();
+      // Nothing left in it (no copy-link button either): drop the holder too.
+      const tail = existingTail(heading);
+      if (tail && tail.childElementCount === 0) tail.remove();
       continue;
     }
 
@@ -119,7 +153,7 @@ export function applyHeadingFolds(
       // (`dir="auto"` on the heading: first strong character). Read before the
       // controls are in, although they carry no text.
       toggle.classList.toggle('is-rtl', detectTextDirection(heading.textContent ?? '') === 'rtl');
-      heading.appendChild(toggle);
+      headingTail(heading).appendChild(toggle);
     }
     toggle.classList.toggle('is-folded', isFolded);
     toggle.setAttribute('aria-expanded', isFolded ? 'false' : 'true');
@@ -132,7 +166,7 @@ export function applyHeadingFolds(
         mark = document.createElement('button');
         mark.type = 'button';
         mark.className = MARK_CLASS;
-        heading.appendChild(mark);
+        headingTail(heading).appendChild(mark);
       }
       setLabel(mark, labels.unfold);
       for (const el of section) hide.add(el);
