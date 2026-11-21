@@ -6,6 +6,12 @@
 //! `version` and `bundle > macOS > bundleVersion` in `tauri.conf.json`, which
 //! the bundler also writes to `CFBundleShortVersionString` / `CFBundleVersion`.
 //! The page shows both, the same way as on mobile (guideline 38).
+//!
+//! The build number is read back from Info.plist, not from `app.config()`:
+//! the config Tauri compiles into the binary drops the `bundle > macOS`
+//! section (tauri-utils sets it to the default), so `bundleVersion` is always
+//! empty there. Info.plist holds it both in the `.app` bundle and in a bare
+//! binary (tauri-codegen embeds the plist).
 
 use serde::Serialize;
 use tauri::{AppHandle, Runtime};
@@ -32,10 +38,10 @@ fn build_number(version: &str, configured: Option<&str>) -> String {
     }
 }
 
-/// The app's version and build, from the config compiled into the binary.
+/// The app's version (compiled-in config) and build (Info.plist).
 pub fn read<R: Runtime>(app: &AppHandle<R>) -> AppInfo {
     let version = app.package_info().version.to_string();
-    let configured = configured_build(app);
+    let configured = configured_build();
     AppInfo {
         build: build_number(&version, configured.as_deref()),
         version,
@@ -43,20 +49,24 @@ pub fn read<R: Runtime>(app: &AppHandle<R>) -> AppInfo {
     }
 }
 
+/// `CFBundleVersion` of the running app.
 #[cfg(target_os = "macos")]
-fn configured_build<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
-    app.config().bundle.macos.bundle_version.clone()
+fn configured_build() -> Option<String> {
+    use objc2_foundation::{ns_string, NSBundle, NSString};
+    let value = NSBundle::mainBundle().objectForInfoDictionaryKey(ns_string!("CFBundleVersion"))?;
+    let text = value.downcast::<NSString>().ok()?;
+    Some(text.to_string())
 }
 
-/// Windows and Linux have no separate build number in the config (D5 decides
-/// the Windows one), so the version stands in for it.
+/// Windows and Linux have no separate build number yet (D5 decides the
+/// Windows one), so the version stands in for it.
 #[cfg(not(target_os = "macos"))]
-fn configured_build<R: Runtime>(_app: &AppHandle<R>) -> Option<String> {
+fn configured_build() -> Option<String> {
     None
 }
 
-/// Version info for the page. Never fails: everything comes from the config
-/// compiled into the binary.
+/// Version info for the page. Never fails: everything comes from the binary
+/// itself (its config and Info.plist).
 #[tauri::command]
 pub fn app_info(app: AppHandle) -> AppInfo {
     read(&app)
