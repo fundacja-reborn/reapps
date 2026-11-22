@@ -1,10 +1,26 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Main window of the D0 spike: core APIs plus HTTP to the local dev stack only. A store build must list its own API origin here and nothing else.",
+  "description": "The page in the main window: the shell's own commands it calls, event listening for the app menu, and HTTP to the API origin only. Nothing else from core (no menu, window, webview, app or path API). A store build must list its own API origin here and nothing else. Kept in step with build.rs and lib.rs by src/lib/utils/desktop-capabilities.spec.ts.",
   "windows": ["main"],
   "permissions": [
-    "core:default",
+    "allow-secure-storage-get",
+    "allow-secure-storage-set",
+    "allow-secure-storage-remove",
+    "allow-folder-fs-pick-directory",
+    "allow-folder-fs-list-files",
+    "allow-folder-fs-read-file",
+    "allow-folder-fs-is-same-directory",
+    "allow-folder-fs-write-file",
+    "allow-folder-fs-delete-file",
+    "allow-folder-fs-release-directory",
+    "allow-file-export-save",
+    "allow-app-lock-status",
+    "allow-app-lock-authenticate",
+    "allow-app-info",
+    "allow-desktop-menu-localize",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
     {
       "identifier": "http:default",
       "allow": [{ "url": "http://localhost/*" }]

@@ -53,6 +53,17 @@ export default [
     }
   },
   {
+    // No native alert / confirm / prompt. In the desktop shell
+    // tauri-plugin-dialog replaces window.alert and window.confirm with IPC
+    // calls the page has no permission for (src-tauri/capabilities): alert
+    // shows nothing, and confirm returns a Promise, which is always truthy, so
+    // `if (confirm(...))` would go ahead without asking. Use the app's own
+    // dialogs.
+    rules: {
+      'no-alert': 'error'
+    }
+  },
+  {
     // Destructuring a prop solely to omit it from a `...rest` spread is a
     // deliberate pattern (e.g. stripping refreshToken from a response body so
     // it's never serialized), not dead code. Excludes *.svelte.ts, where
