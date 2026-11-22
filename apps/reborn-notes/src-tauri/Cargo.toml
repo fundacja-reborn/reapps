@@ -14,6 +14,11 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[dev-dependencies]
+# Mock runtime for the IPC permission tests (src/capability_tests.rs). Dev
+# dependency features apply to test builds only; no new crate in the lockfile.
+tauri = { version = "2", features = ["test"] }
+
 [dependencies]
 tauri = { version = "2", features = [] }
 # HTTP transport for the remote API (the webview is cross-origin to it and the

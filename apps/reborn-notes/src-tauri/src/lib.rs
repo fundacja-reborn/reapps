@@ -16,6 +16,12 @@
 //! - `app_info`: version and build of the app for Settings;
 //! - `desktop_menu_localize`: the app menu in the app's language (macOS).
 //!
+//! What the page may call is listed in `capabilities/default.json`: each of
+//! the commands above by its own `allow-*` permission (`build.rs` declares
+//! them to the ACL, so an unlisted command is refused), event listening for
+//! the app menu, and HTTP to the API origin. Nothing else from Tauri's core:
+//! the page cannot rebuild the menu, move or close the window, or read paths.
+//!
 //! Window chrome: a transparent title bar (`tauri.conf.json`) over the
 //! brand-yellow window background (`paint_title_bar`). Window size and
 //! position persist through `tauri-plugin-window-state` (Rust side only).
@@ -27,6 +33,8 @@ mod app_info;
 mod app_lock;
 mod app_menu;
 mod backup_exclusion;
+#[cfg(test)]
+mod capability_tests;
 mod file_export;
 mod folder_fs;
 mod secure_storage;
@@ -67,6 +75,27 @@ fn window_state_flags() -> StateFlags {
     StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED
 }
 
+/// Debug builds only: lets Cmd+Option+I open the Web Inspector.
+///
+/// Tauri injects that shortcut into debug builds, and it goes through the IPC
+/// command `plugin:webview|internal_toggle_devtools`, which `core:default`
+/// used to grant. The page's capability no longer includes it, so the debug
+/// build adds it at runtime. Release builds compile neither the shortcut nor
+/// the command (no `devtools` feature), and their capability stays exactly as
+/// written in `capabilities/default.json`.
+#[cfg(debug_assertions)]
+fn allow_devtools_shortcut<R: Runtime>(app: &AppHandle<R>) {
+    use tauri::ipc::CapabilityBuilder;
+    let capability = CapabilityBuilder::new("debug-devtools-shortcut")
+        .window(MAIN_WINDOW)
+        .permission("core:webview:allow-internal-toggle-devtools");
+    // A failure only costs the shortcut; the Inspector stays reachable from
+    // the context menu and from Safari's Develop menu.
+    if let Err(error) = app.add_capability(capability) {
+        eprintln!("[desktop] devtools shortcut unavailable: {error}");
+    }
+}
+
 pub fn run() {
     let context = tauri::generate_context!();
     // Before the window (and with it WebKit) exists, so on a fresh install the
@@ -103,8 +132,12 @@ pub fn run() {
         .setup(|app| {
             app.manage(folder_fs::FolderGrants::load(app.handle()));
             paint_title_bar(app.handle());
+            #[cfg(debug_assertions)]
+            allow_devtools_shortcut(app.handle());
             Ok(())
         })
+        // Each command also needs its name in `build.rs` and its `allow-*`
+        // permission in `capabilities/default.json`, or the page is refused.
         .invoke_handler(tauri::generate_handler![
             secure_storage::secure_storage_get,
             secure_storage::secure_storage_set,
