@@ -180,9 +180,27 @@ function apiBase(target: string): string {
   return /\bPUBLIC_API_BASE_URL=(\S+)/.exec(command)?.[1] ?? '';
 }
 
+/**
+ * The XML without its comments, in one pass from each `<!--` to the next
+ * `-->` (an unterminated comment drops the rest). Not a regex replace: what a
+ * single replace leaves behind can join into a new `<!--`.
+ */
+function withoutComments(xml: string): string {
+  let text = '';
+  let at = 0;
+  for (;;) {
+    const start = xml.indexOf('<!--', at);
+    if (start === -1) return text + xml.slice(at);
+    text += xml.slice(at, start);
+    const end = xml.indexOf('-->', start + 4);
+    if (end === -1) return text;
+    at = end + 3;
+  }
+}
+
 /** Top-level string and array values of an entitlements plist. */
 function entitlements(path: string): Record<string, string | string[] | true> {
-  const xml = readShellFile(path).replace(/<!--[\s\S]*?-->/g, '');
+  const xml = withoutComments(readShellFile(path));
   const entries: Record<string, string | string[] | true> = {};
   for (const match of xml.matchAll(
     /<key>([^<]+)<\/key>\s*(<true\/>|<string>([^<]*)<\/string>|<array>([\s\S]*?)<\/array>)/g
