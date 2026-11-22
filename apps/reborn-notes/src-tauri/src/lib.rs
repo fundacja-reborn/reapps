@@ -19,10 +19,14 @@
 //! Window chrome: a transparent title bar (`tauri.conf.json`) over the
 //! brand-yellow window background (`paint_title_bar`). Window size and
 //! position persist through `tauri-plugin-window-state` (Rust side only).
+//!
+//! The webview's data (IndexedDB with decrypted shadow indexes) is kept out
+//! of Time Machine at every launch (`backup_exclusion`).
 
 mod app_info;
 mod app_lock;
 mod app_menu;
+mod backup_exclusion;
 mod file_export;
 mod folder_fs;
 mod secure_storage;
@@ -64,6 +68,11 @@ fn window_state_flags() -> StateFlags {
 }
 
 pub fn run() {
+    let context = tauri::generate_context!();
+    // Before the window (and with it WebKit) exists, so on a fresh install the
+    // flag is set before the first write to the webview's store.
+    backup_exclusion::exclude_web_data(&context.config().identifier);
+
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
@@ -113,6 +122,6 @@ pub fn run() {
             app_info::app_info,
             app_menu::desktop_menu_localize
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running the re/notes desktop shell");
 }

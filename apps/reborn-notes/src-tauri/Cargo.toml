@@ -56,10 +56,17 @@ objc2-local-authentication = { version = "0.3", default-features = false, featur
   "LAError",
 ] }
 objc2 = "0.6"
+# NSBundle: build number (app_info). NSFileManager, NSURL and NSValue: the
+# Time Machine exclusion of the webview's data (backup_exclusion).
 objc2-foundation = { version = "0.3", default-features = false, features = [
   "std",
+  "NSArray",
   "NSBundle",
   "NSError",
+  "NSFileManager",
+  "NSPathUtilities",
   "NSString",
+  "NSURL",
+  "NSValue",
 ] }
 block2 = "0.6"
