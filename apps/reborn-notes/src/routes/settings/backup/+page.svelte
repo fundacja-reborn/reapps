@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import {
     SettingsLayout,
     Card,
@@ -54,6 +54,17 @@
 
   const canEnable = $derived(phraseSet && !!cfg.folderBookmark);
   const words = $derived(shownPhrase ? shownPhrase.split(' ') : []);
+
+  // The toggle stays clickable even before steps 1 and 2 are done: a disabled
+  // checkbox ignored clicks without a word, which read as a bug. A click with a
+  // step missing leaves it off and shows, right under it, which steps are left,
+  // with their buttons, and focus moves to the first one (guideline 02: react
+  // where the user clicked).
+  let enableAttempted = $state(false);
+  let phraseSection = $state<HTMLElement | null>(null);
+  let confirmCheckbox = $state<HTMLInputElement | null>(null);
+  let missingPhraseButton = $state<HTMLButtonElement | null>(null);
+  let missingFolderButton = $state<HTMLButtonElement | null>(null);
 
   onMount(async () => {
     if (!supported) return;
@@ -126,6 +137,25 @@
     saveAutoBackupConfig(cfg);
   }
 
+  async function onToggleChange(e: Event & { currentTarget: HTMLInputElement }) {
+    if (!cfg.enabled && !canEnable) {
+      e.currentTarget.checked = false;
+      enableAttempted = true;
+      await tick();
+      (missingPhraseButton ?? missingFolderButton)?.focus();
+      return;
+    }
+    await toggleEnabled();
+  }
+
+  /** "Recovery phrase" in the missing-steps list: start or finish step 1. */
+  async function finishPhraseStep() {
+    if (!shownPhrase) generate();
+    await tick();
+    phraseSection?.scrollIntoView({ block: 'start' });
+    confirmCheckbox?.focus({ preventScroll: true });
+  }
+
   async function toggleEnabled() {
     if (!cfg.enabled && !canEnable) return;
     cfg.enabled = !cfg.enabled;
@@ -161,6 +191,22 @@
   <title>{$t('settings_page.backup.title')} - re/notes</title>
 </svelte:head>
 
+{#snippet stepBadge(n: number, done: boolean)}
+  {#if done}
+    <span
+      class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+    >
+      <Check class="h-3.5 w-3.5" aria-hidden="true" />
+      <span class="sr-only">{$t('settings_page.backup.step_done')}</span>
+    </span>
+  {:else}
+    <span
+      class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[0.6875rem] font-medium text-muted-foreground"
+      >{n}</span
+    >
+  {/if}
+{/snippet}
+
 <SettingsLayout title={$t('settings_page.backup.title')} backHref="/settings">
   <div class="space-y-6 px-4 sm:px-0">
     <Card>
@@ -175,9 +221,9 @@
           </p>
         {:else}
           <!-- Recovery phrase -->
-          <section class="space-y-3">
+          <section class="space-y-3 scroll-mt-4" bind:this={phraseSection}>
             <div class="flex items-center gap-2">
-              <KeyRound class="h-4 w-4 text-muted-foreground" />
+              {@render stepBadge(1, phraseSet)}
               <h3 class="text-sm font-medium">{$t('settings_page.backup.phrase_heading')}</h3>
             </div>
             <p class="text-xs text-muted-foreground">{$t('settings_page.backup.phrase_intro')}</p>
@@ -239,7 +285,12 @@
                 </div>
                 {#if phraseIsNew}
                   <label class="flex items-start gap-2 text-xs cursor-pointer">
-                    <input type="checkbox" bind:checked={confirmChecked} class="mt-0.5" />
+                    <input
+                      type="checkbox"
+                      bind:checked={confirmChecked}
+                      bind:this={confirmCheckbox}
+                      class="mt-0.5"
+                    />
                     <span>{$t('settings_page.backup.phrase_confirm_label')}</span>
                   </label>
                   <button
@@ -286,7 +337,7 @@
           <!-- Backup folder -->
           <section class="space-y-3 border-t pt-5">
             <div class="flex items-center gap-2">
-              <FolderOpen class="h-4 w-4 text-muted-foreground" />
+              {@render stepBadge(2, !!cfg.folderBookmark)}
               <h3 class="text-sm font-medium">{$t('settings_page.backup.folder_heading')}</h3>
             </div>
             <p class="text-xs text-muted-foreground">{$t('settings_page.backup.folder_intro')}</p>
@@ -316,32 +367,86 @@
           </section>
 
           <!-- Enable -->
-          <section class="space-y-2 border-t pt-5">
-            <label class="flex items-start gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={cfg.enabled}
-                disabled={!cfg.enabled && !canEnable}
-                onchange={toggleEnabled}
-                class="mt-0.5"
-              />
-              <span>
-                <span class="font-medium">{$t('settings_page.backup.enable_label')}</span>
-                <span class="block text-xs text-muted-foreground">
-                  {$t('settings_page.backup.enable_desc')}
+          <section class="flex items-start gap-2 border-t pt-5">
+            {@render stepBadge(3, cfg.enabled)}
+            <div class="min-w-0 flex-1 space-y-2">
+              <label class="flex items-start gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={cfg.enabled}
+                  onchange={onToggleChange}
+                  aria-describedby={!canEnable ? 'auto-backup-requires' : undefined}
+                  class="mt-0.5"
+                />
+                <span>
+                  <span class="font-medium">{$t('settings_page.backup.enable_label')}</span>
+                  <span class="block text-xs text-muted-foreground">
+                    {$t('settings_page.backup.enable_desc')}
+                  </span>
                 </span>
-              </span>
-            </label>
-            {#if !canEnable}
-              <p class="text-xs text-muted-foreground/80 ps-6">
-                {$t('settings_page.backup.enable_requires')}
-              </p>
-            {/if}
-            {#if cfg.enabled}
-              <p class="text-xs text-muted-foreground/80 ps-6">
-                {$t('settings_page.backup.reminder_hint')}
-              </p>
-            {/if}
+              </label>
+              {#if !canEnable}
+                {#if enableAttempted}
+                  <div
+                    id="auto-backup-requires"
+                    role="alert"
+                    class="ms-6 space-y-2 rounded-md border border-amber-400/50 bg-amber-500/10 px-3 py-2.5"
+                  >
+                    <p class="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
+                      <AlertTriangle class="h-4 w-4 shrink-0" />
+                      {$t('settings_page.backup.enable_missing_title')}
+                    </p>
+                    <ul class="space-y-2">
+                      {#if !phraseSet}
+                        <li class="flex flex-wrap items-center gap-2 text-xs">
+                          {@render stepBadge(1, false)}
+                          <span class="font-medium"
+                            >{$t('settings_page.backup.phrase_heading')}</span
+                          >
+                          <button
+                            type="button"
+                            bind:this={missingPhraseButton}
+                            onclick={finishPhraseStep}
+                            class="flex items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-xs transition-colors hover:bg-accent"
+                          >
+                            <KeyRound class="h-3.5 w-3.5" />
+                            {shownPhrase
+                              ? $t('settings_page.backup.enable_missing_phrase_finish')
+                              : $t('settings_page.backup.phrase_generate_btn')}
+                          </button>
+                        </li>
+                      {/if}
+                      {#if !cfg.folderBookmark}
+                        <li class="flex flex-wrap items-center gap-2 text-xs">
+                          {@render stepBadge(2, false)}
+                          <span class="font-medium"
+                            >{$t('settings_page.backup.folder_heading')}</span
+                          >
+                          <button
+                            type="button"
+                            bind:this={missingFolderButton}
+                            onclick={pickFolder}
+                            class="flex items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-xs transition-colors hover:bg-accent"
+                          >
+                            <FolderOpen class="h-3.5 w-3.5" />
+                            {$t('settings_page.backup.folder_pick_btn')}
+                          </button>
+                        </li>
+                      {/if}
+                    </ul>
+                  </div>
+                {:else}
+                  <p id="auto-backup-requires" class="text-xs text-muted-foreground/80 ps-6">
+                    {$t('settings_page.backup.enable_requires')}
+                  </p>
+                {/if}
+              {/if}
+              {#if cfg.enabled}
+                <p class="text-xs text-muted-foreground/80 ps-6">
+                  {$t('settings_page.backup.reminder_hint')}
+                </p>
+              {/if}
+            </div>
           </section>
 
           <!-- Status -->
