@@ -49,12 +49,13 @@
   import { t } from '$lib/stores/i18n.store';
   import { createLogger } from '@reborn/utils';
   import { useIsMobile, useMediaQuery } from '$lib/utils/mediaQuery.svelte';
+  import { PHONE_LAYOUT_QUERY } from '$lib/utils/phone-layout';
 
   const logger = createLogger('behavior-settings');
   const isMobile = useIsMobile();
-  // The exact breakpoint of the phone layout in routes/+page.svelte: the
-  // floating "New note" button exists only there, so its switch does too.
-  const isPhoneLayout = useMediaQuery('(max-width: 767px)');
+  // The phone layout of routes/+page.svelte: the floating "New note" button
+  // exists only there, so its switch does too.
+  const isPhoneLayout = useMediaQuery(PHONE_LAYOUT_QUERY);
 
   let startPageValue = $state<StartPage>('all');
   let openModeValue = $state<NoteOpenMode>('preview');

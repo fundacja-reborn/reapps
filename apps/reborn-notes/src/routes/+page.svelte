@@ -18,6 +18,7 @@
   import SyncStatusFooter from '$lib/components/sync/SyncStatusFooter.svelte';
   import NewNoteFab from '$lib/components/layout/NewNoteFab.svelte';
   import { showNewNoteFab } from '$lib/utils/new-note-fab';
+  import { PHONE_LAYOUT_QUERY } from '$lib/utils/phone-layout';
   import { isTextEntryTarget } from '@reborn/utils';
   import InitialSyncState from '$lib/components/sync/InitialSyncState.svelte';
   import { isInitialSync } from '$lib/stores/sync-status.store';
@@ -51,6 +52,7 @@
   import NoteMetadataBar from '$lib/components/editor/NoteMetadataBar.svelte';
   import NoteActionSheet from '$lib/components/notes/NoteActionSheet.svelte';
   import NoteColorDialog from '$lib/components/notes/NoteColorDialog.svelte';
+  import NoteWelcome from '$lib/components/notes/NoteWelcome.svelte';
   import { openNoteColorDialog } from '$lib/stores/note-color-dialog.svelte';
   import ShareNoteDialog from '$lib/components/notes/ShareNoteDialog.svelte';
   import MoveToFolderMenu from '$lib/components/notes/MoveToFolderMenu.svelte';
@@ -2304,7 +2306,7 @@
 
   // ── Mobile + beforeunload + visibilitychange ──────────────────
   onMount(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
+    const mq = window.matchMedia(PHONE_LAYOUT_QUERY);
     isMobile = mq.matches;
     mq.addEventListener('change', (e) => {
       isMobile = e.matches;
@@ -2352,7 +2354,7 @@
     let mounted = true;
 
     function handlePopstate(e: PopStateEvent) {
-      if (!window.matchMedia('(max-width: 767px)').matches) return;
+      if (!window.matchMedia(PHONE_LAYOUT_QUERY).matches) return;
 
       // When component is NOT mounted (e.g., on /settings) and we land
       // on a custom history entry, SvelteKit won't handle it because the
@@ -3370,13 +3372,10 @@
         </header>
         {#if $isInitialSync}
           <InitialSyncState />
-        {:else}
-          <div class="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
-            <div class="flex flex-col items-center gap-1 text-center">
-              <p class="text-sm">{$t('notes.select_or_create')}</p>
-              <p class="text-xs opacity-60">{$t('notes.e2e_info')}</p>
-            </div>
-          </div>
+        {:else if placeTracking}
+          <!-- Only once the start place is open: until then the remembered note
+               may still be on its way, and the welcome would flash before it. -->
+          <NoteWelcome oncreate={handleNewNote} onsearch={() => (activeSection = 'search')} />
         {/if}
       {/if}
     </main>

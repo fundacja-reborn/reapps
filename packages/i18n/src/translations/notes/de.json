@@ -199,6 +199,8 @@
     "perm_delete_confirm": "Endgültig löschen",
     "select_or_create": "Notiz auswählen oder erstellen",
     "e2e_info": "Ihre Notizen sind Ende-zu-Ende-verschlüsselt",
+    "no_note_open": "Keine Notiz geöffnet",
+    "no_note_open_hint": "Öffnen Sie eine Notiz aus der Liste oder beginnen Sie eine neue.",
     "note_title_label": "Notiztitel",
     "yesterday": "Gestern",
     "sort": {
@@ -974,7 +976,7 @@
       "hub_desc": "Startseite, Ordner für neue Notizen, wie Notizen geöffnet werden, Bearbeitungsmodus, Löschbestätigung",
       "start_page": "Startseite",
       "start_page_desc": "Ansicht, die re/notes beim Öffnen zeigt.",
-      "start_page_last": "Letzte Ansicht",
+      "start_page_last": "Letzte Notizansicht",
       "start_page_last_hint": "Öffnet den Ordner oder Tag und die Notiz, die zuletzt geöffnet waren.",
       "start_page_updated": "Startseite aktualisiert",
       "new_note_folder": "Ordner für neue Notizen",

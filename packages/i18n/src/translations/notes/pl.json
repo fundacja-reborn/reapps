@@ -199,6 +199,8 @@
     "perm_delete_confirm": "Usuń trwale",
     "select_or_create": "Wybierz lub utwórz notatkę",
     "e2e_info": "Twoje notatki są szyfrowane end-to-end",
+    "no_note_open": "Żadna notatka nie jest otwarta",
+    "no_note_open_hint": "Otwórz notatkę z listy albo zacznij nową.",
     "note_title_label": "Tytuł notatki",
     "yesterday": "Wczoraj",
     "sort": {
@@ -974,7 +976,7 @@
       "hub_desc": "Strona startowa, folder dla nowych notatek, sposób otwierania notatek, tryb edycji, potwierdzanie usuwania",
       "start_page": "Strona startowa",
       "start_page_desc": "Widok, który re/notes pokazuje po otwarciu.",
-      "start_page_last": "Ostatni widok",
+      "start_page_last": "Ostatni widok notatek",
       "start_page_last_hint": "Otwiera folder lub tag i notatkę, które były otwarte ostatnim razem.",
       "start_page_updated": "Zaktualizowano stronę startową",
       "new_note_folder": "Folder dla nowych notatek",

@@ -199,6 +199,8 @@
     "perm_delete_confirm": "Eliminar permanentemente",
     "select_or_create": "Seleccione o cree una nota",
     "e2e_info": "Sus notas están cifradas de extremo a extremo",
+    "no_note_open": "Ninguna nota abierta",
+    "no_note_open_hint": "Abra una nota de la lista o empiece una nueva.",
     "note_title_label": "Título de la nota",
     "yesterday": "Ayer",
     "sort": {
@@ -974,7 +976,7 @@
       "hub_desc": "Página de inicio, carpeta para notas nuevas, cómo se abren las notas, modo de edición, confirmación de eliminación",
       "start_page": "Página de inicio",
       "start_page_desc": "Vista que se muestra al abrir re/notes.",
-      "start_page_last": "Donde lo dejó",
+      "start_page_last": "Donde lo dejó en sus notas",
       "start_page_last_hint": "Vuelve a abrir la carpeta o etiqueta y la nota que estaban abiertas la última vez.",
       "start_page_updated": "Página de inicio actualizada",
       "new_note_folder": "Carpeta para notas nuevas",

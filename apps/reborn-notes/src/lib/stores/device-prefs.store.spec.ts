@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
+import { PHONE_LAYOUT_QUERY } from '$lib/utils/phone-layout';
 
 /**
  * Per-device prefs (localStorage, never synced, validated on load): text size
@@ -24,6 +25,8 @@ function stored(): Record<string, unknown> {
 beforeEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute('style');
+  // jsdom has no matchMedia; tests that need a layout stub it (mockLayout).
+  Reflect.deleteProperty(window, 'matchMedia');
 });
 
 describe('device prefs: text size', () => {
@@ -193,13 +196,92 @@ describe('noteLeading / applyNoteLeading (#546)', () => {
   });
 });
 
-describe('device prefs: start page (#511)', () => {
-  const PLACE_KEY = 'reborn-notes-last-place';
+/** Stand in for a window that is (or is not) in the phone layout. */
+function mockLayout(phone: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn((query: string) => ({
+      matches: query === PHONE_LAYOUT_QUERY ? phone : false,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    }))
+  });
+}
 
-  it('opens All notes by default', async () => {
+describe('layoutStartPage', () => {
+  it('reopens where you left off in a wide layout, All notes on a phone', async () => {
+    const { layoutStartPage } = await loadStore();
+    expect(layoutStartPage({ desktopShell: false, phoneLayout: false })).toBe('last');
+    expect(layoutStartPage({ desktopShell: false, phoneLayout: true })).toBe('all');
+  });
+
+  it('counts the desktop shell as wide whatever its window size', async () => {
+    const { layoutStartPage } = await loadStore();
+    expect(layoutStartPage({ desktopShell: true, phoneLayout: true })).toBe('last');
+    expect(layoutStartPage({ desktopShell: true, phoneLayout: null })).toBe('last');
+  });
+
+  it('keeps All notes when the layout cannot be told', async () => {
+    const { layoutStartPage } = await loadStore();
+    expect(layoutStartPage({ desktopShell: false, phoneLayout: null })).toBe('all');
+  });
+});
+
+describe('device prefs: first start page by layout', () => {
+  it('a wide first start opens where you left off and saves only that', async () => {
+    mockLayout(false);
+    const { startPage, devicePrefs } = await loadStore();
+    expect(get(startPage)).toBe('last');
+    // Only the start page is written: the other prefs keep following their defaults.
+    expect(stored()).toEqual({ startPage: 'last' });
+    expect(get(devicePrefs).noteOpenMode).toBe('preview');
+  });
+
+  it('a phone first start opens All notes and saves it', async () => {
+    mockLayout(true);
+    const { startPage } = await loadStore();
+    expect(get(startPage)).toBe('all');
+    expect(stored()).toEqual({ startPage: 'all' });
+  });
+
+  it('is picked once: a later start in the other layout keeps it', async () => {
+    mockLayout(false);
+    await loadStore();
+    mockLayout(true);
+    const { startPage } = await loadStore();
+    expect(get(startPage)).toBe('last');
+  });
+
+  it('gives prefs saved before the start page existed one, keeping the rest', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ noteOpenMode: 'edit', tocPinned: true }));
+    mockLayout(false);
+    const { devicePrefs } = await loadStore();
+    expect(get(devicePrefs)).toMatchObject({
+      startPage: 'last',
+      noteOpenMode: 'edit',
+      tocPinned: true
+    });
+    expect(stored()).toEqual({ noteOpenMode: 'edit', tocPinned: true, startPage: 'last' });
+  });
+
+  it('leaves a saved All notes alone on a wide screen (no silent switch)', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ startPage: 'all', uiScale: 125 }));
+    mockLayout(false);
+    const { startPage } = await loadStore();
+    expect(get(startPage)).toBe('all');
+    expect(stored()).toEqual({ startPage: 'all', uiScale: 125 });
+  });
+
+  it('opens All notes when the layout cannot be told (no matchMedia)', async () => {
     const { startPage } = await loadStore();
     expect(get(startPage)).toBe('all');
   });
+});
+
+describe('device prefs: start page (#511)', () => {
+  const PLACE_KEY = 'reborn-notes-last-place';
 
   it('offers the rail sections plus "where you left off", nothing else', async () => {
     const { START_PAGES } = await loadStore();
@@ -219,10 +301,12 @@ describe('device prefs: start page (#511)', () => {
     ['a folder id', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'],
     ['a number', 1],
     ['null', null]
-  ])('falls back to All notes for a stored %s', async (_label, value) => {
+  ])('replaces a stored %s with the start page of the layout', async (_label, value) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ startPage: value, tocPinned: true }));
+    mockLayout(true);
     const { devicePrefs } = await loadStore();
     expect(get(devicePrefs).startPage).toBe('all');
+    expect(stored()).toMatchObject({ startPage: 'all' });
     // A bad start page does not cost the other prefs.
     expect(get(devicePrefs).tocPinned).toBe(true);
   });

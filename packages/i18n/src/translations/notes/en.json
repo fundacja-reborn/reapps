@@ -199,6 +199,8 @@
     "perm_delete_confirm": "Delete permanently",
     "select_or_create": "Select or create a note",
     "e2e_info": "Your notes are end-to-end encrypted",
+    "no_note_open": "No note open",
+    "no_note_open_hint": "Open a note from the list or start a new one.",
     "note_title_label": "Note title",
     "yesterday": "Yesterday",
     "sort": {
@@ -974,7 +976,7 @@
       "hub_desc": "Start page, folder for new notes, how notes open, editor mode, delete confirmation",
       "start_page": "Start page",
       "start_page_desc": "What re/notes shows when you open it.",
-      "start_page_last": "Where you left off",
+      "start_page_last": "Where you left off in your notes",
       "start_page_last_hint": "Reopens the folder or tag and the note that were open last time.",
       "start_page_updated": "Start page updated",
       "new_note_folder": "Folder for new notes",
