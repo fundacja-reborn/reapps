@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "re-notes-spike",
-  "version": "0.1.0",
-  "identifier": "eu.reapps.notes.spike",
+  "productName": "re-notes-dev",
+  "version": "1.0.0",
+  "identifier": "eu.reapps.notes.dev",
   "build": {
     "frontendDist": "../build-desktop"
   },
@@ -11,6 +11,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "re/notes",
         "width": 1280,
         "height": 832,
@@ -21,7 +22,8 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": ["default", "http-local"]
     }
   },
   "bundle": {
@@ -35,8 +37,9 @@
       "icons/icon.ico"
     ],
     "category": "Productivity",
+    "copyright": "Copyright © 2025-2026 Fundacja Reborn",
     "macOS": {
-      "minimumSystemVersion": "12.0",
+      "minimumSystemVersion": "14.0",
       "bundleVersion": "1"
     }
   }

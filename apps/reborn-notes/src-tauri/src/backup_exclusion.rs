@@ -31,20 +31,21 @@
 //!
 //! Left in backups on purpose: `Application Support/<bundle id>` (the linked
 //! folder registry and the window geometry - folder paths and sizes, no note
-//! content). The login keychain (master key and refresh token) is backed up
-//! by the system, encrypted with the account password; keeping those items
-//! on this Mac only, like the iOS Keychain class `ThisDeviceOnly`, is a
-//! separate item.
+//! content). The master key and the refresh token are not files of the app:
+//! they live in the data protection keychain as items of this Mac only
+//! (`secure_storage`), which Time Machine does not carry to another Mac.
 //!
 //! Restoring loses nothing that matters: the local store is a copy of the
 //! server's ciphertext and is synced again after a restore; the sanctioned
 //! local backup is the app's phrase-encrypted backup.
 //!
-//! Mac App Store (D4): in the sandbox `~/Library` is the app container's; where
-//! WebKit keeps the store there is to be checked with `tmutil isexcluded` on
-//! that build. Windows (D5): WebView2 keeps its data under `%LOCALAPPDATA%`,
-//! which neither roams nor is in File History's default set; nothing is
-//! flagged there, to be confirmed in D5.
+//! In the App Sandbox (Mac App Store) `~/Library` is the app container's
+//! (`~/Library/Containers/<bundle id>/Data/Library`), so `WebKit` and
+//! `Caches` there hold nothing but this app's data. They are flagged whole as
+//! well, whatever name WebKit gives the store inside them. Windows (D5):
+//! WebView2 keeps its data under `%LOCALAPPDATA%`, which neither roams nor is
+//! in File History's default set; nothing is flagged there, to be confirmed in
+//! D5.
 
 use std::path::{Component, Path, PathBuf};
 
@@ -73,6 +74,15 @@ fn excluded_dirs(library: &Path, bundle_id: &str) -> Vec<PathBuf> {
         .iter()
         .map(|dir| library.join(dir).join(bundle_id))
         .collect()
+}
+
+/// In the App Sandbox: the container's own `WebKit` and `Caches` directories,
+/// flagged whole. Outside it they are shared with every other app, so none.
+fn container_dirs(library: &Path, sandboxed: bool) -> Vec<PathBuf> {
+    if !sandboxed {
+        return Vec::new();
+    }
+    LIBRARY_DIRS.iter().map(|dir| library.join(dir)).collect()
 }
 
 /// The names WebKit may store this app's data under: the bundle identifier,
@@ -106,7 +116,7 @@ pub fn exclude_web_data(bundle_id: &str) {
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use super::excluded_dirs;
+    use super::{container_dirs, excluded_dirs};
     use objc2_foundation::{
         NSFileManager, NSNumber, NSSearchPathDirectory, NSSearchPathDomainMask, NSString,
         NSURLIsExcludedFromBackupKey, NSURL,
@@ -196,6 +206,9 @@ mod macos {
             .as_deref()
             .and_then(Path::file_name)
             .and_then(|name| name.to_str());
+        // The system sets this for every process in the App Sandbox.
+        let sandboxed = std::env::var_os("APP_SANDBOX_CONTAINER_ID").is_some();
+        flag_dirs(container_dirs(&library, sandboxed));
         for name in super::data_dir_names(bundle_id, in_app_bundle(), executable) {
             exclude_in(&library, name);
         }
@@ -203,7 +216,12 @@ mod macos {
 
     /// Creates the app's directories under `library` if needed and flags them.
     pub(super) fn exclude_in(library: &Path, bundle_id: &str) {
-        for dir in excluded_dirs(library, bundle_id) {
+        flag_dirs(excluded_dirs(library, bundle_id));
+    }
+
+    /// Creates each directory if needed and flags it.
+    fn flag_dirs(dirs: Vec<PathBuf>) {
+        for dir in dirs {
             if let Err(error) = std::fs::create_dir_all(&dir) {
                 eprintln!(
                     "re/notes: could not create {} for backup exclusion: {error}",
@@ -235,6 +253,16 @@ mod tests {
                 PathBuf::from("/Users/someone/Library/Caches/eu.reapps.notes"),
             ]
         );
+    }
+
+    #[test]
+    fn the_sandbox_container_is_flagged_whole() {
+        let library = Path::new("/Users/someone/Library/Containers/eu.reapps.notes/Data/Library");
+        assert_eq!(
+            container_dirs(library, true),
+            [library.join("WebKit"), library.join("Caches")]
+        );
+        assert!(container_dirs(Path::new("/Users/someone/Library"), false).is_empty());
     }
 
     #[test]

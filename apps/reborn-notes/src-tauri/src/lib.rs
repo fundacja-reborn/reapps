@@ -30,6 +30,10 @@
 //!
 //! The webview's data (IndexedDB with decrypted shadow indexes) is kept out
 //! of Time Machine at every launch (`backup_exclusion`).
+//!
+//! The main window is created here, not from the config (`create: false`), to
+//! hand it the link policy of `external_links`: web pages and mail open in the
+//! default app, the window itself never leaves the bundled app.
 
 mod app_info;
 mod app_lock;
@@ -38,16 +42,39 @@ mod backup_exclusion;
 mod backup_reminder;
 #[cfg(test)]
 mod capability_tests;
+mod external_links;
 mod file_export;
 mod folder_fs;
 mod secure_storage;
 
+use tauri::webview::NewWindowResponse;
 use tauri::window::Color;
-use tauri::{AppHandle, Manager, Runtime, Webview};
+use tauri::{AppHandle, Manager, Runtime, Webview, WebviewWindowBuilder};
 use tauri_plugin_window_state::StateFlags;
 
 /// Label of the only window, from `tauri.conf.json`.
 const MAIN_WINDOW: &str = "main";
+
+/// Creates the main window from its entry in `tauri.conf.json`, with the link
+/// policy of `external_links`.
+fn create_main_window<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|window| window.label == MAIN_WINDOW)
+        .cloned()
+        .ok_or_else(|| tauri::Error::WindowNotFound)?;
+    WebviewWindowBuilder::from_config(app, &config)?
+        .on_navigation(external_links::on_navigation)
+        .on_new_window(|url, _features| {
+            external_links::on_new_window(&url);
+            NewWindowResponse::Deny
+        })
+        .build()?;
+    Ok(())
+}
 
 /// Brand yellow (#FFD43B), seen through the transparent title bar.
 const TITLE_BAR_COLOR: Color = Color(0xFF, 0xD4, 0x3B, 0xFF);
@@ -134,6 +161,7 @@ pub fn run() {
     builder
         .setup(|app| {
             app.manage(folder_fs::FolderGrants::load(app.handle()));
+            create_main_window(app.handle())?;
             paint_title_bar(app.handle());
             #[cfg(debug_assertions)]
             allow_devtools_shortcut(app.handle());
