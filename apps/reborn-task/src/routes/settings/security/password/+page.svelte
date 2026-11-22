@@ -20,13 +20,13 @@
 
 	const currentPasswordError = $derived.by(() => {
 		if (!submitAttempted) return null;
-		if (!currentPassword) return $t('auth.validation.required') || 'Required';
+		if (!currentPassword) return $t('auth.validation.required');
 		return null;
 	});
 
 	const newPasswordError = $derived.by(() => {
 		if (!submitAttempted) return null;
-		if (!newPassword) return $t('auth.validation.required') || 'Required';
+		if (!newPassword) return $t('auth.validation.required');
 		if (newPassword.length < 8) return $t('settings.security.password.error_password_too_short');
 		if (newPassword === currentPassword) return $t('settings.security.password.error_same_password');
 		return null;
@@ -34,7 +34,7 @@
 
 	const confirmPasswordError = $derived.by(() => {
 		if (!submitAttempted) return null;
-		if (!confirmPassword) return $t('auth.validation.required') || 'Required';
+		if (!confirmPassword) return $t('auth.validation.required');
 		if (confirmPassword !== newPassword) return $t('settings.security.password.error_passwords_mismatch');
 		return null;
 	});

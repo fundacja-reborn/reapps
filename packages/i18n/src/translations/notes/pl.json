@@ -1132,6 +1132,7 @@
       "export_encrypted_warning": "Zapomnienie hasła = utrata danych z tej kopii.",
       "export_btn": "Eksportuj",
       "password_placeholder": "Hasło do zaszyfrowania kopii",
+      "password_too_short": "Hasło musi mieć co najmniej 8 znaków.",
       "encrypting": "Szyfrowanie…",
       "export_encrypted_btn": "Eksportuj zaszyfrowaną",
       "cancel": "Anuluj",

@@ -88,6 +88,9 @@
     }
   },
   "auth": {
+    "validation": {
+      "required": "Obligatoire"
+    },
     "unlock": {
       "title": "Déverrouiller",
       "description": "Entrez le mot de passe de votre compte pour ouvrir vos données chiffrées sur cet appareil.",

@@ -61,7 +61,7 @@
 
   const newError = $derived.by(() => {
     if (!submitAttempted) return null;
-    if (!newPasscode) return $t('auth.validation.required') || 'Required';
+    if (!newPasscode) return $t('auth.validation.required');
     if (newPasscode.length < MIN_LENGTH)
       return $t('local_mode.passcode.min_length', { values: { min: MIN_LENGTH } });
     return null;

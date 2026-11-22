@@ -1132,6 +1132,7 @@
       "export_encrypted_warning": "Das Vergessen des Passworts bedeutet den Verlust der Daten aus dieser Sicherung.",
       "export_btn": "Exportieren",
       "password_placeholder": "Passwort zum Verschlüsseln der Sicherung",
+      "password_too_short": "Das Passwort muss mindestens 8 Zeichen lang sein.",
       "encrypting": "Verschlüsseln…",
       "export_encrypted_btn": "Verschlüsselt exportieren",
       "cancel": "Abbrechen",

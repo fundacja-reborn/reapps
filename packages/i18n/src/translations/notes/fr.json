@@ -1132,6 +1132,7 @@
       "export_encrypted_warning": "Oublier le mot de passe signifie perdre les données de cette sauvegarde.",
       "export_btn": "Exporter",
       "password_placeholder": "Mot de passe pour chiffrer la sauvegarde",
+      "password_too_short": "Le mot de passe doit comporter au moins 8 caractères.",
       "encrypting": "Chiffrement…",
       "export_encrypted_btn": "Exporter chiffrée",
       "cancel": "Annuler",

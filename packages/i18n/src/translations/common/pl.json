@@ -88,6 +88,9 @@
     }
   },
   "auth": {
+    "validation": {
+      "required": "Wymagane"
+    },
     "unlock": {
       "title": "Odblokuj",
       "description": "Wprowadź hasło konta, aby otworzyć zaszyfrowane dane na tym urządzeniu.",

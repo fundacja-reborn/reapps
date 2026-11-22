@@ -6,6 +6,7 @@ import {
   repoRelative,
   scanPaths
 } from '../../../../scripts/check-rtl-direction.mjs';
+import { appRuntimeKeys, missingKeyRefs } from '../../../../scripts/i18n-messages.mjs';
 
 /**
  * Source guards for RTL readiness (reapps-docs planning/arabic-rtl-plan.md,
@@ -35,6 +36,18 @@ describe('UI source guards (apps/reborn-notes/src)', () => {
           )
       );
     expect(hits).toEqual([]);
+  });
+
+  it('asks only for translation keys that exist ($t("...") in common + notes)', () => {
+    // A missing key renders as the key itself: the export form showed
+    // "settings_page.export_import.password_too_short" (2026-11-22). Locale
+    // parity can't see it, the key is missing in all six files alike. Fix: add
+    // the key to every locale (or use an existing one).
+    const sources = listSourceFiles([ROOT])
+      .filter((file) => /\.(svelte|ts)$/.test(file) && !/\.(spec|test)\.ts$/.test(file))
+      .map((file) => ({ path: repoRelative(file), text: readFileSync(file, 'utf-8') }));
+    // The catalogs this app loads (i18n.store: apps ['common', 'notes']).
+    expect(missingKeyRefs(sources, appRuntimeKeys(['common', 'notes']))).toEqual([]);
   });
 
   it('sizes text in rem, not fixed px (text size setting, #511)', () => {

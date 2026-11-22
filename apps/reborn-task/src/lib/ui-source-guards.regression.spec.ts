@@ -6,6 +6,7 @@ import {
   repoRelative,
   scanPaths
 } from '../../../../scripts/check-rtl-direction.mjs';
+import { appRuntimeKeys, missingKeyRefs } from '../../../../scripts/i18n-messages.mjs';
 
 /**
  * Source guards for RTL readiness (reapps-docs planning/arabic-rtl-plan.md,
@@ -35,6 +36,18 @@ describe('UI source guards (apps/reborn-task/src)', () => {
           )
       );
     expect(hits).toEqual([]);
+  });
+
+  it('asks only for translation keys that exist ($t("...") in common + tasks)', () => {
+    // A missing key renders as the key itself: an empty field in the security
+    // settings asked for "auth.validation.required", which no locale had
+    // (found 2026-11-22). Locale parity can't see it, the key is missing in all
+    // six files alike. Fix: add the key to every locale (or use an existing one).
+    const sources = listSourceFiles([ROOT])
+      .filter((file) => /\.(svelte|ts)$/.test(file) && !/\.(spec|test)\.ts$/.test(file))
+      .map((file) => ({ path: repoRelative(file), text: readFileSync(file, 'utf-8') }));
+    // The catalogs this app loads (i18n.store: apps ['common', 'tasks']).
+    expect(missingKeyRefs(sources, appRuntimeKeys(['common', 'tasks/']))).toEqual([]);
   });
 
   it('leaves text fields to the global bidi rule, without dir="auto"', () => {

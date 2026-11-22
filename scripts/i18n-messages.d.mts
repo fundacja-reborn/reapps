@@ -48,6 +48,11 @@ export const REPO_PATHS: { REPO_ROOT: string; I18N_SRC: string; TRANSLATIONS_DIR
 export function listCatalogs(): Catalog[];
 export function flattenMessages(obj: object, prefix?: string, out?: Messages): Messages;
 export function readCatalog(catalog: Catalog, locale: string): Messages | null;
+export function appRuntimeKeys(ids: string[]): Set<string>;
+export function missingKeyRefs(
+  sources: Iterable<{ path: string; text: string }>,
+  keys: Set<string>
+): string[];
 export function serializeCatalog(messages: Messages, order: Messages): string;
 export function locateLeaves(text: string): Map<string, { start: number; end: number }>;
 export function patchCatalogText(text: string, changes: Map<string, Message>): string | null;
