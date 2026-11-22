@@ -7,7 +7,7 @@
   class ShareUiError extends Error {}
   import { API_BASE } from '$lib/utils/api-base';
   import { getShareBase } from '$lib/utils/share-base';
-  import { shareLink } from '$lib/utils/native-share';
+  import { hasNativeShare, shareLink } from '$lib/utils/native-share';
   import { copyText } from '$lib/utils/clipboard';
   import {
     Dialog,
@@ -197,9 +197,10 @@
     }
   }
 
-  // Native build only: open the OS share sheet. Web keeps clipboard-only (the
-  // `{#if isNative}` branch and `shareLink` are dead-code-eliminated on web).
-  const isNative = __REBORN_NATIVE__;
+  // Native build only: open the OS share sheet (desktop: only where WebKit has
+  // one). Web keeps clipboard-only (the `{#if isNative}` branch and
+  // `shareLink` are dead-code-eliminated on web).
+  const isNative = __REBORN_NATIVE__ && hasNativeShare();
 
   async function handleShare() {
     const ok = await shareLink({

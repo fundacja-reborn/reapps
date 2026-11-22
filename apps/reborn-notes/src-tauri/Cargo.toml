@@ -75,3 +75,15 @@ objc2-foundation = { version = "0.3", default-features = false, features = [
   "NSValue",
 ] }
 block2 = "0.6"
+# Overdue-backup reminder (backup_reminder): UNUserNotificationCenter. Same
+# objc2 family; the crate was already in the lockfile (objc2-ui-kit, iOS).
+objc2-user-notifications = { version = "0.3", default-features = false, features = [
+  "std",
+  "block2",
+  "bitflags",
+  "UNUserNotificationCenter",
+  "UNNotificationSettings",
+  "UNNotificationContent",
+  "UNNotificationRequest",
+  "UNNotificationTrigger",
+] }

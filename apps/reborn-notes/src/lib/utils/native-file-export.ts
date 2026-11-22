@@ -36,7 +36,10 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-/** Write `blob` to the cache dir and open the system share sheet for it. */
+/**
+ * Export `blob` as `filename`: the system share sheet on the phones, "Save
+ * as..." in the desktop shell.
+ */
 export async function exportFileNative(blob: Blob, filename: string): Promise<void> {
   if (!__REBORN_NATIVE__) {
     throw new Error('native file export is native-only');
@@ -45,14 +48,19 @@ export async function exportFileNative(blob: Blob, filename: string): Promise<vo
   const data = await blobToBase64(blob);
 
   // Desktop (Tauri) shell: a desktop has no share sheet and the Capacitor
-  // plugins below do not exist there - the system "Save as..." dialog is the
-  // export UX (see desktop-file-export.ts).
-  if (__REBORN_DESKTOP__) {
-    const { saveFileDesktop } = await import('./desktop-file-export');
-    await saveFileDesktop(filename, data);
-    return;
-  }
+  // plugins do not exist there - the system "Save as..." dialog is the export
+  // UX (see desktop-file-export.ts). One branch per build (a constant ternary
+  // is what the bundler folds; a block with a return keeps the code after it).
+  await (__REBORN_DESKTOP__ ? saveDesktop(filename, data) : shareFromCache(filename, data));
+}
 
+async function saveDesktop(filename: string, data: string): Promise<void> {
+  const { saveFileDesktop } = await import('./desktop-file-export');
+  await saveFileDesktop(filename, data);
+}
+
+/** Capacitor: write to the cache dir, then open the system share sheet. */
+async function shareFromCache(filename: string, data: string): Promise<void> {
   const { Filesystem, Directory } = await import('@capacitor/filesystem');
   // No `encoding` option: the Filesystem plugin treats the payload as base64
   // and writes the decoded bytes. Cache directory: OS-managed and reclaimable,

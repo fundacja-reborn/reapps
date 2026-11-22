@@ -25,7 +25,8 @@
  * branch and the plugin - boot-wedge lesson, guideline 61.
  */
 export async function hideNativeSplash(): Promise<void> {
-  if (__REBORN_NATIVE__) {
+  // The desktop shell shows no splash: its window opens on the page itself.
+  if (__REBORN_NATIVE__ && !__REBORN_DESKTOP__) {
     try {
       const { SplashScreen } = await import('@capacitor/splash-screen');
       await SplashScreen.hide();

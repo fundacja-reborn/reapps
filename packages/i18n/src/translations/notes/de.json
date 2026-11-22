@@ -1696,6 +1696,8 @@
       "hide_others": "Andere ausblenden",
       "show_all": "Alle einblenden",
       "quit": "re/notes beenden",
+      "file": "Ablage",
+      "new_note": "Neue Notiz",
       "edit": "Bearbeiten",
       "undo": "Widerrufen",
       "redo": "Wiederholen",

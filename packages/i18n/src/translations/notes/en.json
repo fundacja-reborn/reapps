@@ -1696,6 +1696,8 @@
       "hide_others": "Hide Others",
       "show_all": "Show All",
       "quit": "Quit re/notes",
+      "file": "File",
+      "new_note": "New Note",
       "edit": "Edit",
       "undo": "Undo",
       "redo": "Redo",

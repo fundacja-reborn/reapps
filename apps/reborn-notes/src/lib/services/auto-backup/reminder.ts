@@ -19,6 +19,12 @@
  * Zero-Knowledge: the notification carries only static localized copy -
  * never note data, filenames or timestamps derived from content.
  *
+ * Shells: the phones plan through `@capacitor/local-notifications`, the
+ * desktop shell through its own commands (macOS `UNUserNotificationCenter`,
+ * `$lib/utils/desktop-backup-reminder.ts`). Both are delivered by the system
+ * while the app is closed. A desktop build without a notification center
+ * reports `unsupported`, and settings then drop the promise of a reminder.
+ *
  * Best-effort by design: requires OS notification permission (requested from
  * the settings page when enabling); on Android 12+ exact alarms are NOT
  * requested - the plugin transparently falls back to inexact scheduling,
@@ -82,6 +88,69 @@ export function planBackupReminders(args: {
   ];
 }
 
+/** The OS notification permission, `unsupported` where no scheduler exists. */
+type ReminderPermission = 'granted' | 'denied' | 'prompt' | 'unsupported';
+
+/**
+ * What a shell offers to plan the reminders: the Capacitor plugin on the
+ * phones, the shell's own commands on desktop
+ * (`$lib/utils/desktop-backup-reminder.ts`).
+ */
+interface ReminderScheduler {
+  permission(): Promise<ReminderPermission>;
+  requestPermission(): Promise<ReminderPermission>;
+  cancel(): Promise<void>;
+  schedule(plan: BackupReminderPlan[], title: string, body: string): Promise<void>;
+}
+
+/** The scheduler of this build (a constant ternary, so each build keeps one). */
+function loadScheduler(): Promise<ReminderScheduler> {
+  return __REBORN_DESKTOP__ ? loadDesktopScheduler() : loadCapacitorScheduler();
+}
+
+async function loadCapacitorScheduler(): Promise<ReminderScheduler> {
+  const { LocalNotifications } = await import('@capacitor/local-notifications');
+  // `prompt-with-rationale` (Android) is still "not decided yet".
+  const toPermission = (display: string): ReminderPermission =>
+    display === 'granted' || display === 'denied' ? display : 'prompt';
+  return {
+    permission: async () => toPermission((await LocalNotifications.checkPermissions()).display),
+    requestPermission: async () =>
+      toPermission((await LocalNotifications.requestPermissions()).display),
+    cancel: async () => {
+      await LocalNotifications.cancel({
+        notifications: BACKUP_REMINDER_IDS.map((id) => ({ id }))
+      });
+    },
+    schedule: async (plan, title, body) => {
+      await LocalNotifications.schedule({
+        notifications: plan.map((p) => ({
+          id: p.id,
+          title,
+          body,
+          schedule: { at: new Date(p.at), allowWhileIdle: true }
+        }))
+      });
+    }
+  };
+}
+
+async function loadDesktopScheduler(): Promise<ReminderScheduler> {
+  const shell = await import('$lib/utils/desktop-backup-reminder');
+  return {
+    permission: shell.getDesktopReminderPermission,
+    requestPermission: shell.requestDesktopReminderPermission,
+    cancel: shell.cancelDesktopReminders,
+    // The shell owns the identifiers; it only needs the times, in plan order.
+    schedule: (plan, title, body) =>
+      shell.scheduleDesktopReminders(
+        plan.map((p) => p.at),
+        title,
+        body
+      )
+  };
+}
+
 /**
  * Re-plan the pending reminders from the current config/state. Cancel-then-
  * schedule with fixed ids keeps this idempotent - safe to fire after every
@@ -104,14 +173,10 @@ export async function syncBackupReminders(): Promise<void> {
       now: Date.now()
     });
 
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
-    await LocalNotifications.cancel({
-      notifications: BACKUP_REMINDER_IDS.map((id) => ({ id }))
-    });
+    const scheduler = await loadScheduler();
+    await scheduler.cancel();
     if (plan.length === 0) return;
-
-    const { display } = await LocalNotifications.checkPermissions();
-    if (display !== 'granted') return;
+    if ((await scheduler.permission()) !== 'granted') return;
 
     // Static localized copy resolved at schedule time (post-unlock, locale
     // loaded) - the export-import.service pattern for i18n outside components.
@@ -120,14 +185,11 @@ export async function syncBackupReminders(): Promise<void> {
       import('svelte/store')
     ]);
     const tFn = get(t);
-    await LocalNotifications.schedule({
-      notifications: plan.map((p) => ({
-        id: p.id,
-        title: tFn('settings_page.backup.reminder_title'),
-        body: tFn('settings_page.backup.reminder_body'),
-        schedule: { at: new Date(p.at), allowWhileIdle: true }
-      }))
-    });
+    await scheduler.schedule(
+      plan,
+      tFn('settings_page.backup.reminder_title'),
+      tFn('settings_page.backup.reminder_body')
+    );
   } catch (err) {
     logger.warn('Failed to (re)schedule backup reminders:', err);
   }
@@ -137,10 +199,7 @@ export async function syncBackupReminders(): Promise<void> {
 export async function cancelBackupReminders(): Promise<void> {
   if (!__REBORN_NATIVE__) return;
   try {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
-    await LocalNotifications.cancel({
-      notifications: BACKUP_REMINDER_IDS.map((id) => ({ id }))
-    });
+    await (await loadScheduler()).cancel();
   } catch (err) {
     logger.warn('Failed to cancel backup reminders:', err);
   }
@@ -155,14 +214,26 @@ export async function cancelBackupReminders(): Promise<void> {
 export async function ensureReminderPermission(): Promise<boolean> {
   if (!__REBORN_NATIVE__) return false;
   try {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
-    const current = await LocalNotifications.checkPermissions();
-    if (current.display === 'granted') return true;
-    if (current.display === 'denied') return false;
-    const requested = await LocalNotifications.requestPermissions();
-    return requested.display === 'granted';
+    const scheduler = await loadScheduler();
+    const current = await scheduler.permission();
+    if (current !== 'prompt') return current === 'granted';
+    return (await scheduler.requestPermission()) === 'granted';
   } catch (err) {
     logger.warn('Notification permission check failed:', err);
+    return false;
+  }
+}
+
+/**
+ * Whether this build can remind at all, so settings only promise a reminder
+ * that can come. False on web and in a desktop shell without a notification
+ * center (the bare dev binary; Windows until its phase). Never throws.
+ */
+export async function areBackupRemindersSupported(): Promise<boolean> {
+  if (!__REBORN_NATIVE__) return false;
+  try {
+    return (await (await loadScheduler()).permission()) !== 'unsupported';
+  } catch {
     return false;
   }
 }

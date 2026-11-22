@@ -14,6 +14,8 @@
 //! - `app_lock_*`: the system unlock prompt for App Lock (Touch ID or the
 //!   account password on macOS);
 //! - `app_info`: version and build of the app for Settings;
+//! - `backup_reminder_*`: the system notification that reminds the user to
+//!   open the app when the automated backup is overdue (macOS);
 //! - `desktop_menu_localize`: the app menu in the app's language (macOS).
 //!
 //! What the page may call is listed in `capabilities/default.json`: each of
@@ -33,6 +35,7 @@ mod app_info;
 mod app_lock;
 mod app_menu;
 mod backup_exclusion;
+mod backup_reminder;
 #[cfg(test)]
 mod capability_tests;
 mod file_export;
@@ -121,10 +124,10 @@ pub fn run() {
         })
         .on_menu_event(|app, event| {
             use tauri::Emitter;
-            if event.id().as_ref() == app_menu::SETTINGS_ITEM_ID {
+            if let Some(name) = app_menu::event_for_item(event.id().as_ref()) {
                 // Best effort: without a listener (page still loading) the
                 // click simply does nothing.
-                let _ = app.emit(app_menu::OPEN_SETTINGS_EVENT, ());
+                let _ = app.emit(name, ());
             }
         });
 
@@ -153,7 +156,11 @@ pub fn run() {
             app_lock::app_lock_status,
             app_lock::app_lock_authenticate,
             app_info::app_info,
-            app_menu::desktop_menu_localize
+            app_menu::desktop_menu_localize,
+            backup_reminder::backup_reminder_status,
+            backup_reminder::backup_reminder_request_permission,
+            backup_reminder::backup_reminder_schedule,
+            backup_reminder::backup_reminder_cancel
         ])
         .run(context)
         .expect("error while running the re/notes desktop shell");

@@ -48,6 +48,10 @@
   let confirmChecked = $state(false);
   let copied = $state(false);
 
+  // The hint promising an overdue reminder shows only where one can come: a
+  // desktop shell without a notification center (dev binary) has none.
+  let remindersSupported = $state(true);
+
   let busyNow = $state(false);
   let nowResult = $state<'done' | 'nothing' | 'error' | null>(null);
   let nowError = $state('');
@@ -78,6 +82,8 @@
     const { loadRecoveryPhrase } = await import('$lib/services/auto-backup/recovery-phrase-vault');
     phraseSet = Boolean(await loadRecoveryPhrase());
     phraseChanged = hasPhraseChangedNotice();
+    const { areBackupRemindersSupported } = await import('$lib/services/auto-backup/reminder');
+    remindersSupported = await areBackupRemindersSupported();
   });
 
   function generate() {
@@ -441,7 +447,7 @@
                   </p>
                 {/if}
               {/if}
-              {#if cfg.enabled}
+              {#if cfg.enabled && remindersSupported}
                 <p class="text-xs text-muted-foreground/80 ps-6">
                   {$t('settings_page.backup.reminder_hint')}
                 </p>

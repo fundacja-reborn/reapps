@@ -45,7 +45,10 @@
   import {
     canOpenSettingsFrom,
     localizeDesktopMenu,
-    onDesktopMenuSettings
+    onDesktopMenuSettings,
+    onDesktopMenuNewNote,
+    isNotesView,
+    setNewNotePending
   } from '$lib/utils/desktop-menu';
   import { hideNativeSplash } from '$lib/utils/native-splash';
   import { initAppLock, shouldLockOnResume } from '$lib/services/app-lock.service';
@@ -539,6 +542,7 @@
     let offResume: (() => void) | undefined;
     let offDeepLink: (() => void) | undefined;
     let offMenuSettings: (() => void) | undefined;
+    let offMenuNewNote: (() => void) | undefined;
     let updateGateTimer: ReturnType<typeof setTimeout> | undefined;
     if (__REBORN_NATIVE__) {
       // App Lock: start tracking background time so a resume after the idle
@@ -595,6 +599,16 @@
           if (!appReady || !canOpenSettingsFrom(get(page).url.pathname, base || '')) return;
           void goto('/settings');
         });
+        // "New Note" (Cmd+N): the notes view creates it itself when it is open
+        // (+page.svelte). From another screen (Settings) open the notes view
+        // and leave it a flag; not from the sign-in, lock or share screens.
+        offMenuNewNote = onDesktopMenuNewNote(() => {
+          const pathname = get(page).url.pathname;
+          if (!appReady || !canOpenSettingsFrom(pathname, base || '')) return;
+          if (isNotesView(pathname, base || '')) return;
+          setNewNotePending();
+          void goto('/');
+        });
       }
 
       // Min-version gate (Faza 5, plan D5): the first check is deferred a few
@@ -614,6 +628,7 @@
       offResume?.();
       offDeepLink?.();
       offMenuSettings?.();
+      offMenuNewNote?.();
       mediaQuery.removeEventListener('change', handleSchemeChange);
     };
   });

@@ -6,9 +6,14 @@
 //!
 //! - re/notes: About, Settings... (Cmd+,), Services, Hide, Hide Others,
 //!   Show All, Quit;
+//! - File: New Note (Cmd+N), Close Window (Cmd+W);
 //! - Edit: Undo, Redo, Cut, Copy, Paste, Select All;
 //! - View: full screen;
-//! - Window: Minimize, Zoom, Close Window.
+//! - Window: Minimize, Zoom.
+//!
+//! "Settings..." and "New Note" only send an event to the page
+//! ([`OPEN_SETTINGS_EVENT`], [`NEW_NOTE_EVENT`]); the page decides what they do
+//! on the screen it shows.
 //!
 //! The texts follow the app's language, not the system's: the page sends them
 //! at startup and on every language change (`desktop_menu_localize`, keys
@@ -35,6 +40,22 @@ pub const SETTINGS_ITEM_ID: &str = "settings";
 /// Event the page listens to; the menu emits it for "Settings...".
 pub const OPEN_SETTINGS_EVENT: &str = "desktop-menu:settings";
 
+/// Menu id of "New Note".
+pub const NEW_NOTE_ITEM_ID: &str = "new-note";
+
+/// Event the page listens to; the menu emits it for "New Note".
+pub const NEW_NOTE_EVENT: &str = "desktop-menu:new-note";
+
+/// The event a click on a menu item of ours sends to the page, if any.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub fn event_for_item(id: &str) -> Option<&'static str> {
+    match id {
+        SETTINGS_ITEM_ID => Some(OPEN_SETTINGS_EVENT),
+        NEW_NOTE_ITEM_ID => Some(NEW_NOTE_EVENT),
+        _ => None,
+    }
+}
+
 /// The app's name as users see it (the bundle name cannot contain the slash).
 const APP_NAME: &str = "re/notes";
 
@@ -52,6 +73,8 @@ const DEFAULT_TEXTS: &[(&str, &str)] = &[
     ("hide_others", "Hide Others"),
     ("show_all", "Show All"),
     ("quit", "Quit re/notes"),
+    ("file", "File"),
+    ("new_note", "New Note"),
     ("edit", "Edit"),
     ("undo", "Undo"),
     ("redo", "Redo"),
@@ -172,6 +195,32 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, MenuText
         texts.track(key, item);
     }
 
+    let new_note = MenuItem::with_id(
+        app,
+        NEW_NOTE_ITEM_ID,
+        default_text("new_note"),
+        true,
+        Some("CmdOrCtrl+N"),
+    )?;
+    let close_window = PredefinedMenuItem::close_window(app, Some(default_text("close_window")))?;
+    let file_menu = Submenu::with_items(
+        app,
+        default_text("file"),
+        true,
+        &[
+            &new_note,
+            &PredefinedMenuItem::separator(app)?,
+            &close_window,
+        ],
+    )?;
+    for (key, item) in [
+        ("file", &file_menu as &dyn IsMenuItem<R>),
+        ("new_note", &new_note),
+        ("close_window", &close_window),
+    ] {
+        texts.track(key, item);
+    }
+
     let undo = PredefinedMenuItem::undo(app, Some(default_text("undo")))?;
     let redo = PredefinedMenuItem::redo(app, Some(default_text("redo")))?;
     let cut = PredefinedMenuItem::cut(app, Some(default_text("cut")))?;
@@ -216,30 +265,22 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, MenuText
 
     let minimize = PredefinedMenuItem::minimize(app, Some(default_text("minimize")))?;
     let zoom = PredefinedMenuItem::maximize(app, Some(default_text("zoom")))?;
-    let close_window = PredefinedMenuItem::close_window(app, Some(default_text("close_window")))?;
-    let window_menu = Submenu::with_items(
-        app,
-        default_text("window"),
-        true,
-        &[
-            &minimize,
-            &zoom,
-            &PredefinedMenuItem::separator(app)?,
-            &close_window,
-        ],
-    )?;
+    // "Close Window" sits in File, as in Apple's apps (Notes, TextEdit).
+    let window_menu = Submenu::with_items(app, default_text("window"), true, &[&minimize, &zoom])?;
     // macOS appends the window list and "Bring All to Front" to this menu.
     window_menu.set_as_windows_menu_for_nsapp()?;
     for (key, item) in [
         ("window", &window_menu as &dyn IsMenuItem<R>),
         ("minimize", &minimize),
         ("zoom", &zoom),
-        ("close_window", &close_window),
     ] {
         texts.track(key, item);
     }
 
-    let menu = Menu::with_items(app, &[&app_menu, &edit_menu, &view_menu, &window_menu])?;
+    let menu = Menu::with_items(
+        app,
+        &[&app_menu, &file_menu, &edit_menu, &view_menu, &window_menu],
+    )?;
     Ok((menu, texts))
 }
 
@@ -277,6 +318,13 @@ mod tests {
     fn unknown_key_has_no_default() {
         assert_eq!(default_text("settings"), "Settings…");
         assert_eq!(default_text("no_such_item"), "");
+    }
+
+    #[test]
+    fn only_our_items_send_events() {
+        assert_eq!(event_for_item("settings"), Some("desktop-menu:settings"));
+        assert_eq!(event_for_item("new-note"), Some("desktop-menu:new-note"));
+        assert_eq!(event_for_item("quit"), None);
     }
 
     #[test]

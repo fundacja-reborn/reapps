@@ -1696,6 +1696,8 @@
       "hide_others": "Ocultar otros",
       "show_all": "Mostrar todo",
       "quit": "Salir de re/notes",
+      "file": "Archivo",
+      "new_note": "Nueva nota",
       "edit": "Edición",
       "undo": "Deshacer",
       "redo": "Rehacer",
