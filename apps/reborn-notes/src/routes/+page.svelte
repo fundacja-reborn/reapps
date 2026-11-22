@@ -2198,23 +2198,6 @@
   // Set once the start place is open - from then on the current place is
   // remembered (session RAM; localStorage too while the start page is `last`).
   let placeTracking = $state(false);
-  // Phone panels slide when the user opens or closes a note, but not for the
-  // start place: a restored note shows up in place instead of sliding in over
-  // a list it was never opened from. The slide switches on two frames after
-  // the start place is open, once its position has been painted.
-  const PANEL_SLIDE = 'transition-transform duration-300 ease-in-out';
-  let panelsAnimate = $state(false);
-  $effect(() => {
-    if (!placeTracking || panelsAnimate) return;
-    let second = 0;
-    const first = requestAnimationFrame(() => {
-      second = requestAnimationFrame(() => (panelsAnimate = true));
-    });
-    return () => {
-      cancelAnimationFrame(first);
-      cancelAnimationFrame(second);
-    };
-  });
   const viewUnlocked = $derived(
     $authStore.hasE2E && ($authStore.isAuthenticated || $authStore.isLocalOnly)
   );
@@ -2536,7 +2519,7 @@
     >
       <!-- ── Panel 1: Icon Rail + List ──────────────────────────────── -->
       <div
-        class="absolute inset-0 flex {panelsAnimate ? PANEL_SLIDE : ''}"
+        class="absolute inset-0 flex transition-transform duration-300 ease-in-out"
         class:-translate-x-full={mobileDetailOpen}
         class:rtl:translate-x-full={mobileDetailOpen}
       >
@@ -2768,7 +2751,7 @@
 
       <!-- ── Panel 2: Note Editor ───────────────────────────────────── -->
       <div
-        class="absolute inset-0 flex flex-col bg-background {panelsAnimate ? PANEL_SLIDE : ''}"
+        class="absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-in-out"
         class:translate-x-full={!mobileDetailOpen}
         class:rtl:-translate-x-full={!mobileDetailOpen}
         ontouchstart={handleSwipeStart}
