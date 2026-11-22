@@ -20,9 +20,17 @@
 //!
 //! What the page may call is listed in `capabilities/default.json`: each of
 //! the commands above by its own `allow-*` permission (`build.rs` declares
-//! them to the ACL, so an unlisted command is refused), event listening for
-//! the app menu, and HTTP to the API origin. Nothing else from Tauri's core:
-//! the page cannot rebuild the menu, move or close the window, or read paths.
+//! them to the ACL, so an unlisted command is refused) and event listening
+//! for the app menu. HTTP to the API origin is one more capability per build
+//! (`http-local` for development, `http-production` for the Mac App Store),
+//! chosen in `app > security > capabilities` of the build's config. Nothing
+//! else from Tauri's core: the page cannot rebuild the menu, move or close
+//! the window, or read paths.
+//!
+//! Build variants: `tauri.conf.json` (development, `eu.reapps.notes.dev`),
+//! merged with `tauri.appstore.conf.json` for the Mac App Store or
+//! `tauri.dev-sandbox.conf.json` for a sandboxed development build
+//! (`scripts/build-desktop-mas.mjs`).
 //!
 //! Window chrome: a transparent title bar (`tauri.conf.json`) over the
 //! brand-yellow window background (`paint_title_bar`). Window size and
@@ -111,8 +119,8 @@ fn window_state_flags() -> StateFlags {
 /// command `plugin:webview|internal_toggle_devtools`, which `core:default`
 /// used to grant. The page's capability no longer includes it, so the debug
 /// build adds it at runtime. Release builds compile neither the shortcut nor
-/// the command (no `devtools` feature), and their capability stays exactly as
-/// written in `capabilities/default.json`.
+/// the command (no `devtools` feature), and their capabilities stay exactly
+/// as written in `capabilities/`.
 #[cfg(debug_assertions)]
 fn allow_devtools_shortcut<R: Runtime>(app: &AppHandle<R>) {
     use tauri::ipc::CapabilityBuilder;
