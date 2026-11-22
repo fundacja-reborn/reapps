@@ -8,6 +8,7 @@
 	import { authOperationsService } from '$lib/services/auth-operations.service';
 	import { syncService } from '$lib/services/sync.service';
 	import { createLogger } from '@reborn/utils';
+	import { authErrorKey } from '@reborn/auth';
 	import {
 		Card,
 		CardContent,
@@ -57,12 +58,12 @@
 		error = null;
 
 		if (!codeToVerify) {
-			error = $t('settings.profile.verification_code_required') || 'Verification code is required';
+			error = $t('settings.profile.verification_code_required');
 			return;
 		}
 
 		if (!showRecoveryInput && codeToVerify.length !== 6) {
-			error = $t('settings.profile.verification_code_invalid') || 'Code must be 6 digits';
+			error = $t('settings.profile.verification_code_invalid');
 			return;
 		}
 
@@ -85,10 +86,11 @@
 					sessionStorage.removeItem('2fa_challenge_token');
 					error = $t('auth.2fa.errors.challenge_expired');
 				} else {
+					// The server's `error` is English text for logs: map it, never show it.
 					error =
 						data.error === 'Invalid verification code'
-							? $t('settings.profile.verification_code_invalid') || 'Invalid verification code'
-							: data.error || '2FA verification failed';
+							? $t('settings.profile.verification_code_invalid')
+							: $t(authErrorKey(data.error, 'auth.2fa.errors.verification_failed'));
 				}
 				isLoading = false;
 				return;
@@ -140,7 +142,12 @@
 			await goto(returnTo);
 		} catch (err: unknown) {
 			logger.error('2FA verification error:', err);
-			error = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+			// fetch() rejects with a TypeError when the server can't be reached.
+			error = $t(
+				err instanceof TypeError
+					? 'auth.login.errors.network_error'
+					: 'auth.2fa.errors.verification_failed'
+			);
 			isLoading = false;
 		}
 	}
@@ -154,20 +161,12 @@
 				<Shield class="h-7 w-7 text-primary" />
 			</div>
 			<h1 class="text-2xl font-bold tracking-tight">
-				{$t('settings.profile.two_factor_auth', { default: 'Weryfikacja dwuetapowa' })}
+				{$t('settings.profile.two_factor_auth')}
 			</h1>
 			<p class="text-sm text-muted-foreground">
-				{$t('settings.profile.two_factor_auth_step3', {
-					default: 'Wprowadź kod weryfikacyjny z aplikacji uwierzytelniającej'
-				})}
+				{$t('settings.profile.two_factor_auth_step3')}
 			</p>
 		</div>
-
-		{#if error}
-			<Alert variant="destructive">
-				<AlertDescription>{error}</AlertDescription>
-			</Alert>
-		{/if}
 
 		<Card>
 			<CardContent class="pt-6">
@@ -181,17 +180,17 @@
 						class="space-y-4"
 					>
 						<div class="space-y-2">
-							<Label for="totp-code"
-								>{$t('settings.profile.verification_code', {
-									default: 'Kod weryfikacyjny'
-								})}</Label
-							>
+							<Label for="totp-code">{$t('settings.profile.verification_code')}</Label>
 							<Input
 								id="totp-code"
 								type="text"
 								inputmode="numeric"
 								autocomplete="one-time-code"
-								oninput={(e) => { const next = e.currentTarget.value.replace(/\D/g, '').slice(0, 6); if (e.currentTarget.value !== next) e.currentTarget.value = next; code = next; }}
+								oninput={(e) => {
+									const next = e.currentTarget.value.replace(/\D/g, '').slice(0, 6);
+									if (e.currentTarget.value !== next) e.currentTarget.value = next;
+									code = next;
+								}}
 								pattern="[0-9]*"
 								placeholder="000000"
 								bind:value={code}
@@ -200,12 +199,18 @@
 							/>
 						</div>
 
+						{#if error}
+							<Alert variant="destructive">
+								<AlertDescription>{error}</AlertDescription>
+							</Alert>
+						{/if}
+
 						<Button type="submit" disabled={isLoading} class="w-full h-11">
 							{#if isLoading}
 								<RefreshCw class="h-4 w-4 me-2 animate-spin" />
-								{$t('common.loading') || 'Weryfikowanie...'}
+								{$t('common.loading')}
 							{:else}
-								{$t('settings.profile.verify_and_enable', { default: 'Zweryfikuj' })}
+								{$t('settings.profile.verify_and_enable')}
 							{/if}
 						</Button>
 					</form>
@@ -219,7 +224,7 @@
 							class="text-sm text-muted-foreground hover:text-foreground underline transition-colors"
 						>
 							<KeyRound class="h-3.5 w-3.5 inline me-1" />
-							{$t('settings.profile.recovery_codes', { default: 'Użyj kodu zapasowego' })}
+							{$t('settings.profile.recovery_codes')}
 						</button>
 					</div>
 				{:else}
@@ -232,11 +237,7 @@
 						class="space-y-4"
 					>
 						<div class="space-y-2">
-							<Label for="recovery-code"
-								>{$t('settings.profile.recovery_codes', {
-									default: 'Kod zapasowy'
-								})}</Label
-							>
+							<Label for="recovery-code">{$t('settings.profile.recovery_codes')}</Label>
 							<Input
 								id="recovery-code"
 								type="text"
@@ -246,19 +247,22 @@
 								class="font-mono text-center text-lg tracking-wider h-12"
 							/>
 							<p class="text-xs text-muted-foreground">
-								{$t('settings.profile.recovery_codes_description', {
-									default:
-										'Wprowadź jeden z kodów odzyskiwania wygenerowanych w ustawieniach bezpieczeństwa'
-								})}
+								{$t('settings.profile.recovery_codes_description')}
 							</p>
 						</div>
+
+						{#if error}
+							<Alert variant="destructive">
+								<AlertDescription>{error}</AlertDescription>
+							</Alert>
+						{/if}
 
 						<Button type="submit" disabled={isLoading} class="w-full h-11">
 							{#if isLoading}
 								<RefreshCw class="h-4 w-4 me-2 animate-spin" />
-								{$t('common.loading') || 'Weryfikowanie...'}
+								{$t('common.loading')}
 							{:else}
-								{$t('settings.profile.verify_and_enable', { default: 'Zweryfikuj' })}
+								{$t('settings.profile.verify_and_enable')}
 							{/if}
 						</Button>
 					</form>
@@ -272,9 +276,7 @@
 							class="text-sm text-muted-foreground hover:text-foreground underline transition-colors"
 						>
 							<Shield class="h-3.5 w-3.5 inline me-1" />
-							{$t('settings.profile.two_factor_auth_step3', {
-								default: 'Użyj kodu z aplikacji'
-							})}
+							{$t('settings.profile.two_factor_auth_step3')}
 						</button>
 					</div>
 				{/if}
@@ -287,7 +289,7 @@
 				href={resolve('/auth/login')}
 				class="text-sm text-muted-foreground hover:text-foreground underline transition-colors"
 			>
-				{$t('auth.back_to_login', { default: 'Wróć do logowania' })}
+				{$t('auth.back_to_login')}
 			</a>
 		</div>
 	</div>

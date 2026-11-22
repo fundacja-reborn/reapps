@@ -6,6 +6,7 @@
   import { page } from '$app/stores';
   import { LoginPage } from '@reborn/ui';
   import { cryptoManager } from '@reborn/crypto';
+  import { authErrorKey } from '@reborn/auth';
   import { authStore } from '$lib/stores/auth.store';
   import { sessionExpired } from '$lib/stores/sync-status.store';
   import { loginInNotes } from '$lib/services/notes-auth.service';
@@ -84,7 +85,8 @@
       return;
     }
 
-    error = result.message ?? $t('auth.login.errors.invalid_credentials');
+    // The message is the server's English text: map it, never show it.
+    error = $t(authErrorKey(result.message, 'auth.login.errors.server_error'));
     loading = false;
   }
 

@@ -1,4 +1,10 @@
 <script lang="ts">
+  import { createLogger } from '@reborn/utils';
+
+  const logger = createLogger('ShareTaskDialog');
+
+  /** A failure whose message is already a translated text for the user. */
+  class ShareUiError extends Error {}
   import { base } from '$app/paths';
   import {
     Dialog,
@@ -100,7 +106,7 @@
 
   async function handleCreate() {
     if (!task) {
-      errorMessage = 'No task';
+      errorMessage = $t('share.create.failed');
       stage = 'error';
       return;
     }
@@ -169,8 +175,10 @@
         })
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `HTTP ${res.status}`);
+        // The server's `error` is English text for logs: map the status, never show it.
+        throw new ShareUiError(
+          $t(res.status === 429 ? 'share.create.rate_limited' : 'share.create.failed')
+        );
       }
       const json = (await res.json()) as { success: boolean; data: CreateShareResponse };
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -183,7 +191,10 @@
       void sharesStore.refresh();
       stage = 'success';
     } catch (err: unknown) {
-      errorMessage = err instanceof Error ? err.message : String(err);
+      // Only our own translated texts reach the user; anything else (crypto,
+      // network) is logged and gets the generic one.
+      if (!(err instanceof ShareUiError)) logger.error('Share creation failed:', err);
+      errorMessage = err instanceof ShareUiError ? err.message : $t('share.create.failed');
       stage = 'error';
     }
   }

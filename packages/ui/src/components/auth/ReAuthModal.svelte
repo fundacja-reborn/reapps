@@ -99,7 +99,9 @@
       case 'two_factor_required':
         return null;
       case 'error':
-        return result.message ?? $t('auth.session.error_unknown');
+        // `message` is the app's / server's English text for logs (missing
+        // credentials, a bad response, ...): never shown as is.
+        return $t('auth.session.error_unknown');
       default:
         return $t('auth.session.error_unknown');
     }

@@ -12,6 +12,7 @@
 	import { isLocalOnly } from '$lib/stores/auth.store';
 	import { RegisterPage } from '@reborn/ui';
 	import { hashPassword, generateMasterKeyForUser, cryptoManager } from '@reborn/crypto';
+	import { authErrorKey } from '@reborn/auth';
 	import { createLogger } from '@reborn/utils';
 
 	const logger = createLogger('task:register');
@@ -142,7 +143,8 @@
 			const data = await response.json();
 
 			if (!response.ok || !data.success) {
-				error = data.error || 'Registration failed';
+				// The server's `error` is English text for logs: map it, never show it.
+				error = $t(authErrorKey(data.error, 'auth.register.errors.server_error'));
 				return;
 			}
 
@@ -163,7 +165,12 @@
 				await goto(returnTo);
 			}
 		} catch (err: unknown) {
-			error = 'An error occurred. Please try again.';
+			// fetch() rejects with a TypeError when the server can't be reached.
+			error = $t(
+				err instanceof TypeError
+					? 'auth.register.errors.network_error'
+					: 'auth.register.errors.server_error'
+			);
 			logger.error('Registration error:', err);
 		} finally {
 			loading = false;

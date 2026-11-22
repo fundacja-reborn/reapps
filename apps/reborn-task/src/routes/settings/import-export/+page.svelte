@@ -112,7 +112,12 @@
 
 		const MAX_SIZE = 50 * 1024 * 1024;
 		if (importFile.size > MAX_SIZE) {
-			importError = `Plik (${Math.round(importFile.size / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_SIZE / 1024 / 1024)} MB.`;
+			importError = $t('settings.import_export.import_file_too_large', {
+				values: {
+					size: Math.round(importFile.size / 1024 / 1024),
+					limit: Math.round(MAX_SIZE / 1024 / 1024)
+				}
+			});
 			return;
 		}
 

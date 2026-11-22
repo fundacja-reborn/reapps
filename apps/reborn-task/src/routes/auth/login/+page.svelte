@@ -10,6 +10,7 @@
 	import { sessionExpired } from '$lib/stores/session-expired.store';
 	import { isLocalOnly } from '$lib/stores/auth.store';
 	import { cryptoManager } from '@reborn/crypto';
+	import { authErrorKey } from '@reborn/auth';
 	import { LoginPage } from '@reborn/ui';
 	import ConfirmDialog from '$lib/components/shared/dialogs/ConfirmDialog.svelte';
 	import { createLogger } from '@reborn/utils';
@@ -68,7 +69,8 @@
 
 			if (!result || !result.success) {
 				loading = false;
-				error = result?.message || 'Login failed';
+				// The message is the server's English text: map it, never show it.
+				error = $t(authErrorKey(result?.message, 'auth.login.errors.server_error'));
 				return;
 			}
 
@@ -77,7 +79,7 @@
 				logger.info('2FA required, redirecting...');
 				loading = false;
 				if (!result.challengeToken) {
-					error = 'Login failed';
+					error = $t('auth.login.errors.server_error');
 					return;
 				}
 				// Save password temporarily for E2E decryption after 2FA verification
@@ -106,7 +108,17 @@
 			await goto(returnTo, { replaceState: true });
 		} catch (err: unknown) {
 			logger.error('Login error:', err);
-			error = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+			// AuthService throws the server's text ("Invalid credentials", the
+			// lockout, ...): map it. fetch() rejects with a TypeError when the
+			// server can't be reached.
+			error = $t(
+				err instanceof TypeError
+					? 'auth.login.errors.network_error'
+					: authErrorKey(
+							err instanceof Error ? err.message : undefined,
+							'auth.login.errors.server_error'
+						)
+			);
 			loading = false;
 		}
 	}

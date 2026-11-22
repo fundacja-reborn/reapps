@@ -1532,6 +1532,8 @@
       "share_sheet_title": "Notiz teilen",
       "close_cta": "Schließen",
       "offline_warning": "Zum Teilen wird eine Internetverbindung benötigt",
+      "failed": "Der Link konnte nicht erstellt werden. Versuche es erneut.",
+      "rate_limited": "Zu viele Links erstellt. Versuche es später erneut.",
       "quota_exceeded": "Speicherlimit erreicht. Widerrufe ungenutzte Freigaben oder lösche Notizen, um Platz freizugeben."
     },
     "note": {

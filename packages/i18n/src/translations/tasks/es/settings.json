@@ -328,6 +328,7 @@
     "import_errors_title": "Errores de importación ({count}):",
     "import_errors_more": "...y {count} más",
     "import_error": "Error al importar los datos",
+    "import_file_too_large": "El archivo de copia de seguridad ({size} MB) supera el límite de {limit} MB.",
     "import_cross_account_error": "Esta copia de seguridad cifrada se creó en otra cuenta, por lo que no se puede leer aquí. Para mover datos entre cuentas, usa la opción «Copia cifrada portátil» (protegida con contraseña).",
     "import_notes_title": "Notas importantes",
     "import_note_1": "Los nuevos elementos se añadirán; los existentes se actualizarán solo si la versión importada es más reciente.",

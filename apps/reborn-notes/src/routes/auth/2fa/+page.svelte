@@ -8,6 +8,7 @@
 	import { goto } from '$lib/utils/navigation';
 	import { page } from '$app/stores';
 	import { t } from '$lib/stores/i18n.store';
+	import { authErrorKey } from '@reborn/auth';
 	import { authStore, CREDENTIALS_KEY, ACCESS_TOKEN_KEY } from '$lib/stores/auth.store';
 	import { sessionExpired } from '$lib/stores/sync-status.store';
 	import { startAccountSessionSync } from '$lib/services/notes-auth.service';
@@ -83,10 +84,11 @@
 					sessionStorage.removeItem('2fa_challenge_token');
 					error = $t('auth.two_factor.challenge_expired');
 				} else {
+					// The server's `error` is English text for logs: map it, never show it.
 					error =
 						body.error === 'Invalid verification code'
 							? $t('auth.two_factor.invalid_code')
-							: (body.error ?? $t('auth.two_factor.failed'));
+							: $t(authErrorKey(body.error, 'auth.two_factor.failed'));
 				}
 				isLoading = false;
 				return;
@@ -141,7 +143,10 @@
 
 			await goto(returnTo);
 		} catch (err: unknown) {
-			error = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+			// fetch() rejects with a TypeError when the server can't be reached.
+			error = $t(
+				err instanceof TypeError ? 'auth.login.errors.network_error' : 'auth.two_factor.failed'
+			);
 			isLoading = false;
 		}
 	}
@@ -170,12 +175,6 @@
 			</p>
 		</div>
 
-		{#if error}
-			<Alert variant="destructive">
-				<AlertDescription>{error}</AlertDescription>
-			</Alert>
-		{/if}
-
 		<Card>
 			<CardContent class="pt-6">
 				{#if !showRecoveryInput}
@@ -202,6 +201,12 @@
 								class="font-mono text-center text-2xl tracking-[0.5em] h-14"
 							/>
 						</div>
+
+						{#if error}
+							<Alert variant="destructive">
+								<AlertDescription>{error}</AlertDescription>
+							</Alert>
+						{/if}
 
 						<Button type="submit" disabled={isLoading} class="w-full h-11">
 							{#if isLoading}
@@ -248,6 +253,12 @@
 								{$t('auth.two_factor.recovery_note')}
 							</p>
 						</div>
+
+						{#if error}
+							<Alert variant="destructive">
+								<AlertDescription>{error}</AlertDescription>
+							</Alert>
+						{/if}
 
 						<Button type="submit" disabled={isLoading} class="w-full h-11">
 							{#if isLoading}

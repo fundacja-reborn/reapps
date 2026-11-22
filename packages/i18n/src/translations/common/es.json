@@ -123,6 +123,8 @@
       "errors": {
         "username_password_required": "El nombre de usuario y la contraseña son obligatorios",
         "invalid_credentials": "Nombre de usuario o contraseña no válidos",
+        "account_locked": "Cuenta bloqueada temporalmente tras demasiados intentos fallidos. Por favor, inténtelo más tarde.",
+        "too_many_requests": "Demasiados intentos. Espere un momento e inténtelo de nuevo.",
         "network_error": "Error de red. Por favor, inténtelo de nuevo",
         "server_error": "Error del servidor. Por favor, inténtelo más tarde",
         "invalid_request": "Formato de solicitud no válido",

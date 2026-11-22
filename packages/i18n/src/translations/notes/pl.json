@@ -1532,6 +1532,8 @@
       "share_sheet_title": "Udostępnij notatkę",
       "close_cta": "Zamknij",
       "offline_warning": "Udostępnianie wymaga połączenia z internetem",
+      "failed": "Nie udało się utworzyć linku. Spróbuj ponownie.",
+      "rate_limited": "Utworzono zbyt wiele linków. Spróbuj ponownie później.",
       "quota_exceeded": "Osiągnięto limit storage. Wycofaj nieużywane udostępnienia lub usuń notatki, aby zwolnić miejsce."
     },
     "note": {
