@@ -2,6 +2,7 @@ import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { createLogger } from '@reborn/utils';
 import { clearSessionPlace, forgetRememberedPlace } from './start-place';
+import { matchesPhoneLayout } from '$lib/utils/phone-layout';
 import {
   DEFAULT_NOTE_FONT,
   isNoteArabicFont,
@@ -42,6 +43,25 @@ export type NoteListLayout = (typeof NOTE_LIST_LAYOUTS)[number];
  */
 export const START_PAGES = ['all', 'starred', 'folders', 'tags', 'last'] as const;
 export type StartPage = (typeof START_PAGES)[number];
+
+/**
+ * The start page of a device where none was chosen yet. Where you left off in
+ * a wide layout (desktop shell, browser on a computer, tablet): the editor
+ * pane beside the list would otherwise open empty. All notes in the phone
+ * layout, which opens for a moment to jot something down or find a note;
+ * starting inside a note there would mean backing out to the list first. The
+ * criterion is the layout, not the shell, because a laptop browser has the same
+ * empty pane; the desktop shell counts as wide whatever its window size.
+ * `phoneLayout` null (cannot tell) keeps All notes, the start page before this
+ * choice existed.
+ */
+export function layoutStartPage(layout: {
+  desktopShell: boolean;
+  phoneLayout: boolean | null;
+}): StartPage {
+  if (layout.desktopShell) return 'last';
+  return layout.phoneLayout === false ? 'last' : 'all';
+}
 
 /**
  * Interface scale steps, in percent of the browser's default font size.
@@ -122,7 +142,9 @@ export interface DevicePrefs {
   /**
    * What the app opens on, on this device (issue #511). A habit tied to the
    * screen (a phone you browse folders on vs a desktop you write on), so it
-   * stays per device rather than in the synced settings bundle.
+   * stays per device rather than in the synced settings bundle. Until one is
+   * chosen it follows the layout of the device's first start
+   * ({@link layoutStartPage}), saved right away so it never changes on its own.
    */
   startPage: StartPage;
   /**
@@ -150,6 +172,8 @@ const DEFAULTS: DevicePrefs = {
   noteLineSpacing: DEFAULT_TEXT_SCALE,
   noteFont: DEFAULT_NOTE_FONT,
   noteArabicFont: DEFAULT_NOTE_FONT,
+  // Outside a browser and for unreadable prefs; a device where no start page
+  // was saved yet gets one from its layout in load().
   startPage: 'all',
   noteListLayout: 'list',
   newNoteFab: true
@@ -246,12 +270,40 @@ export function applyNoteLeading(
   }
 }
 
+/**
+ * The start page for a device that has none saved: picked from the layout
+ * once (see {@link layoutStartPage}) and written next to whatever is stored,
+ * so the next start reads it back instead of measuring the window again
+ * (resizing the window later does not change it). Only this field is added:
+ * the other prefs stay unsaved and keep following their defaults.
+ */
+function seedStartPage(stored: Record<string, unknown>): StartPage {
+  const page = layoutStartPage({
+    desktopShell: __REBORN_DESKTOP__,
+    phoneLayout: matchesPhoneLayout()
+  });
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...stored, startPage: page }));
+  } catch (err) {
+    // Quota / private mode: the next start picks again, from the same layout.
+    logger.warn('Failed to persist the first start page', err);
+  }
+  return page;
+}
+
 function load(): DevicePrefs {
   if (!browser) return { ...DEFAULTS };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULTS };
+    if (!raw) return { ...DEFAULTS, startPage: seedStartPage({}) };
     const parsed = JSON.parse(raw) as Partial<DevicePrefs>;
+    // Saved = chosen in Settings, or seeded on an earlier start. Prefs saved
+    // before the start page existed (#511) never had one: they get it now.
+    // Prefs that hold the old default `all` keep it - an `all` written along
+    // with another setting cannot be told from a chosen one.
+    const startPage = isStartPage(parsed.startPage)
+      ? parsed.startPage
+      : seedStartPage(parsed as Record<string, unknown>);
     return {
       noteOpenMode: NOTE_OPEN_MODES.includes(parsed.noteOpenMode as NoteOpenMode)
         ? (parsed.noteOpenMode as NoteOpenMode)
@@ -273,7 +325,7 @@ function load(): DevicePrefs {
       noteArabicFont: isNoteArabicFont(parsed.noteArabicFont)
         ? parsed.noteArabicFont
         : DEFAULTS.noteArabicFont,
-      startPage: isStartPage(parsed.startPage) ? parsed.startPage : DEFAULTS.startPage,
+      startPage,
       noteListLayout: isNoteListLayout(parsed.noteListLayout)
         ? parsed.noteListLayout
         : DEFAULTS.noteListLayout,

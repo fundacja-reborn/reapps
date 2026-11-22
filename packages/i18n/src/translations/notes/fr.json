@@ -199,6 +199,8 @@
     "perm_delete_confirm": "Supprimer définitivement",
     "select_or_create": "Sélectionnez ou créez une note",
     "e2e_info": "Vos notes sont chiffrées de bout en bout",
+    "no_note_open": "Aucune note ouverte",
+    "no_note_open_hint": "Ouvrez une note de la liste ou commencez-en une nouvelle.",
     "note_title_label": "Titre de la note",
     "yesterday": "Hier",
     "sort": {
@@ -974,7 +976,7 @@
       "hub_desc": "Page d'accueil, dossier des nouvelles notes, mode d'ouverture des notes, mode d'édition, confirmation de suppression",
       "start_page": "Page d'accueil",
       "start_page_desc": "Vue affichée à l'ouverture de re/notes.",
-      "start_page_last": "Là où vous en étiez",
+      "start_page_last": "Là où vous en étiez dans vos notes",
       "start_page_last_hint": "Rouvre le dossier ou le tag et la note ouverts la dernière fois.",
       "start_page_updated": "Page d'accueil mise à jour",
       "new_note_folder": "Dossier des nouvelles notes",

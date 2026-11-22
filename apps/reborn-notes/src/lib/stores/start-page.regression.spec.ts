@@ -125,3 +125,22 @@ describe('#511 start page - reopening a note', () => {
     expect(logout).toMatch(/forgetRememberedPlace\(\)/);
   });
 });
+
+describe('first start page by layout - wiring', () => {
+  it('the phone layout and the start page share one breakpoint', () => {
+    // The start page of a new device is picked from the same layout the notes
+    // view switches on; a second copy of the query could drift from it.
+    const settings = readSource('../../routes/settings/behavior/+page.svelte');
+    for (const src of [page(), settings, readSource('./device-prefs.store.ts')]) {
+      expect(src).not.toMatch(/max-width: 767px/);
+    }
+    expect(page()).toMatch(/const mq = window\.matchMedia\(PHONE_LAYOUT_QUERY\);\s*isMobile = mq\.matches;/);
+  });
+
+  it('the wide-layout pane without a note offers a new note and search', () => {
+    // With "where you left off" as the wide default, the empty pane shows on a
+    // first start and when the last note is gone - never a blank panel.
+    const pane = between(page(), '{#if $isInitialSync}\n          <InitialSyncState />', '{/if}');
+    expect(pane).toMatch(/<NoteWelcome oncreate=\{handleNewNote\} onsearch=\{\(\) => \(activeSection = 'search'\)\}/);
+  });
+});
