@@ -2,7 +2,7 @@
 	import { PUBLIC_BASE_PATH } from '$env/static/public';
 	import { tick } from 'svelte';
 	import { SettingsLayout, Card, CardContent, CardHeader, CardTitle, CardDescription, Label, Input, Button, Alert, AlertDescription } from '@reborn/ui';
-	import { Lock, AlertTriangle } from '@lucide/svelte';
+	import { Lock, AlertTriangle, Eye, EyeOff } from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { goto } from '$lib/utils/navigation';
 	import { toast } from '@reborn/ui';
@@ -15,6 +15,8 @@
 	let currentPassword = $state('');
 	let newPassword = $state('');
 	let confirmPassword = $state('');
+	// One eye button per field, all showing / hiding the three together.
+	let showPassword = $state(false);
 	let isLoading = $state(false);
 	let submitAttempted = $state(false);
 	// Errors sit next to what the user acted on (guideline 02): a field's error
@@ -137,6 +139,18 @@
 	}
 </script>
 
+{#snippet revealToggle()}
+	<button
+		type="button"
+		class="absolute inset-y-0 inset-e-0 flex items-center pe-3 text-muted-foreground hover:text-foreground"
+		onclick={() => (showPassword = !showPassword)}
+		aria-label={showPassword ? $t('auth.unlock.hide_password') : $t('auth.unlock.show_password')}
+		aria-pressed={showPassword}
+	>
+		{#if showPassword}<EyeOff class="h-4 w-4" />{:else}<Eye class="h-4 w-4" />{/if}
+	</button>
+{/snippet}
+
 <SettingsLayout title={$t('settings.security.password.change_title')} backHref="/settings">
 	<div class="space-y-6">
 		<!-- Warning about other devices -->
@@ -166,18 +180,21 @@
 					<!-- Current password -->
 					<div class="space-y-2">
 						<Label for="current-password">{$t('settings.security.password.current_password')}</Label>
-						<Input
-							id="current-password"
-							type="password"
-							bind:value={currentPassword}
-							bind:ref={currentPasswordInput}
-							oninput={() => (currentRejected = false)}
-							autocomplete="current-password"
-							disabled={isLoading}
-							aria-invalid={currentPasswordError ? 'true' : undefined}
-							aria-describedby={currentPasswordError ? 'current-password-error' : undefined}
-							class={currentPasswordError ? 'border-destructive' : ''}
-						/>
+						<div class="relative">
+							<Input
+								id="current-password"
+								type={showPassword ? 'text' : 'password'}
+								bind:value={currentPassword}
+								bind:ref={currentPasswordInput}
+								oninput={() => (currentRejected = false)}
+								autocomplete="current-password"
+								disabled={isLoading}
+								aria-invalid={currentPasswordError ? 'true' : undefined}
+								aria-describedby={currentPasswordError ? 'current-password-error' : undefined}
+								class="pe-10 {currentPasswordError ? 'border-destructive' : ''}"
+							/>
+							{@render revealToggle()}
+						</div>
 						{#if currentPasswordError}
 							<p id="current-password-error" class="text-sm text-destructive">
 								{currentPasswordError}
@@ -188,17 +205,20 @@
 					<!-- New password -->
 					<div class="space-y-2">
 						<Label for="new-password">{$t('settings.security.password.new_password')}</Label>
-						<Input
-							id="new-password"
-							type="password"
-							bind:value={newPassword}
-							bind:ref={newPasswordInput}
-							autocomplete="new-password"
-							disabled={isLoading}
-							aria-invalid={newPasswordError ? 'true' : undefined}
-							aria-describedby={newPasswordError ? 'new-password-error' : undefined}
-							class={newPasswordError ? 'border-destructive' : ''}
-						/>
+						<div class="relative">
+							<Input
+								id="new-password"
+								type={showPassword ? 'text' : 'password'}
+								bind:value={newPassword}
+								bind:ref={newPasswordInput}
+								autocomplete="new-password"
+								disabled={isLoading}
+								aria-invalid={newPasswordError ? 'true' : undefined}
+								aria-describedby={newPasswordError ? 'new-password-error' : undefined}
+								class="pe-10 {newPasswordError ? 'border-destructive' : ''}"
+							/>
+							{@render revealToggle()}
+						</div>
 						{#if newPasswordError}
 							<p id="new-password-error" class="text-sm text-destructive">{newPasswordError}</p>
 						{/if}
@@ -209,17 +229,20 @@
 						<Label for="confirm-password"
 							>{$t('settings.security.password.confirm_password')}</Label
 						>
-						<Input
-							id="confirm-password"
-							type="password"
-							bind:value={confirmPassword}
-							bind:ref={confirmPasswordInput}
-							autocomplete="new-password"
-							disabled={isLoading}
-							aria-invalid={confirmPasswordError ? 'true' : undefined}
-							aria-describedby={confirmPasswordError ? 'confirm-password-error' : undefined}
-							class={confirmPasswordError ? 'border-destructive' : ''}
-						/>
+						<div class="relative">
+							<Input
+								id="confirm-password"
+								type={showPassword ? 'text' : 'password'}
+								bind:value={confirmPassword}
+								bind:ref={confirmPasswordInput}
+								autocomplete="new-password"
+								disabled={isLoading}
+								aria-invalid={confirmPasswordError ? 'true' : undefined}
+								aria-describedby={confirmPasswordError ? 'confirm-password-error' : undefined}
+								class="pe-10 {confirmPasswordError ? 'border-destructive' : ''}"
+							/>
+							{@render revealToggle()}
+						</div>
 						{#if confirmPasswordError}
 							<p id="confirm-password-error" class="text-sm text-destructive">
 								{confirmPasswordError}

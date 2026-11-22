@@ -14,7 +14,7 @@
 		Alert,
 		AlertDescription
 	} from '@reborn/ui';
-	import { AlertTriangle, Trash2 } from '@lucide/svelte';
+	import { AlertTriangle, Trash2, Eye, EyeOff } from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { base } from '$app/paths';
 	import { createLogger } from '@reborn/utils';
@@ -23,6 +23,7 @@
 	const logger = createLogger('DeleteAccountPage');
 
 	let password = $state('');
+	let showPassword = $state(false);
 	let isLoading = $state(false);
 	let submitAttempted = $state(false);
 	// Errors sit next to what the user acted on (guideline 02): the password's
@@ -127,19 +128,32 @@
 				>
 					<div class="space-y-2">
 						<Label for="confirm-password">{$t('settings.delete_account.confirm_label')}</Label>
-						<Input
-							id="confirm-password"
-							type="password"
-							bind:value={password}
-							bind:ref={passwordInput}
-							oninput={() => (passwordRejected = false)}
-							placeholder={$t('settings.delete_account.password_placeholder')}
-							autocomplete="current-password"
-							disabled={isLoading}
-							aria-invalid={passwordError ? 'true' : undefined}
-							aria-describedby={passwordError ? 'confirm-password-error' : undefined}
-							class={passwordError ? 'border-destructive' : ''}
-						/>
+						<div class="relative">
+							<Input
+								id="confirm-password"
+								type={showPassword ? 'text' : 'password'}
+								bind:value={password}
+								bind:ref={passwordInput}
+								oninput={() => (passwordRejected = false)}
+								placeholder={$t('settings.delete_account.password_placeholder')}
+								autocomplete="current-password"
+								disabled={isLoading}
+								aria-invalid={passwordError ? 'true' : undefined}
+								aria-describedby={passwordError ? 'confirm-password-error' : undefined}
+								class="pe-10 {passwordError ? 'border-destructive' : ''}"
+							/>
+							<button
+								type="button"
+								class="absolute inset-y-0 inset-e-0 flex items-center pe-3 text-muted-foreground hover:text-foreground"
+								onclick={() => (showPassword = !showPassword)}
+								aria-label={showPassword
+									? $t('auth.unlock.hide_password')
+									: $t('auth.unlock.show_password')}
+								aria-pressed={showPassword}
+							>
+								{#if showPassword}<EyeOff class="h-4 w-4" />{:else}<Eye class="h-4 w-4" />{/if}
+							</button>
+						</div>
 						{#if passwordError}
 							<p id="confirm-password-error" class="text-sm text-destructive">{passwordError}</p>
 						{/if}

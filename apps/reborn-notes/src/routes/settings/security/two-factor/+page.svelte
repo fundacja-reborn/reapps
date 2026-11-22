@@ -11,7 +11,9 @@
     AlertTriangle,
     Copy,
     Check,
-    Download
+    Download,
+    Eye,
+    EyeOff
   } from '@lucide/svelte';
   import {
     SettingsLayout,
@@ -61,6 +63,7 @@
 
   // Disable state
   let disablePassword = $state('');
+  let showDisablePassword = $state(false);
   let disableAttempted = $state(false);
   let passwordRejected = $state(false);
   let disableError = $state<string | null>(null);
@@ -196,6 +199,7 @@
   function resetDisableForm() {
     showDisableConfirm = false;
     disablePassword = '';
+    showDisablePassword = false;
     disableAttempted = false;
     passwordRejected = false;
     disableError = null;
@@ -601,18 +605,33 @@
             >
               <div class="space-y-2">
                 <Label for="disable-password">{$t('security.two_factor.password')}</Label>
-                <Input
-                  id="disable-password"
-                  type="password"
-                  autocomplete="current-password"
-                  bind:value={disablePassword}
-                  bind:ref={disablePasswordInput}
-                  oninput={() => (passwordRejected = false)}
-                  disabled={isDisabling}
-                  aria-invalid={disablePasswordError ? 'true' : undefined}
-                  aria-describedby={disablePasswordError ? 'disable-password-error' : undefined}
-                  class={disablePasswordError ? 'border-destructive' : ''}
-                />
+                <div class="relative">
+                  <Input
+                    id="disable-password"
+                    type={showDisablePassword ? 'text' : 'password'}
+                    autocomplete="current-password"
+                    bind:value={disablePassword}
+                    bind:ref={disablePasswordInput}
+                    oninput={() => (passwordRejected = false)}
+                    disabled={isDisabling}
+                    aria-invalid={disablePasswordError ? 'true' : undefined}
+                    aria-describedby={disablePasswordError ? 'disable-password-error' : undefined}
+                    class="pe-10 {disablePasswordError ? 'border-destructive' : ''}"
+                  />
+                  <button
+                    type="button"
+                    class="absolute inset-y-0 inset-e-0 flex items-center pe-3 text-muted-foreground hover:text-foreground"
+                    onclick={() => (showDisablePassword = !showDisablePassword)}
+                    aria-label={showDisablePassword
+                      ? $t('auth.unlock.hide_password')
+                      : $t('auth.unlock.show_password')}
+                    aria-pressed={showDisablePassword}
+                  >
+                    {#if showDisablePassword}<EyeOff class="h-4 w-4" />{:else}<Eye
+                        class="h-4 w-4"
+                      />{/if}
+                  </button>
+                </div>
                 {#if disablePasswordError}
                   <p id="disable-password-error" class="text-sm text-destructive">
                     {disablePasswordError}

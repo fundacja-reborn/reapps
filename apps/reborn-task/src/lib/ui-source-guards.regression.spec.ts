@@ -64,6 +64,24 @@ describe('UI source guards (apps/reborn-task/src)', () => {
     expect(hits).toEqual([]);
   });
 
+  it('lets the user show every password field (no fixed type="password")', () => {
+    // A fixed type="password" has no eye button, so a typo stays hidden until
+    // the server rejects the password (2FA off, change password, delete account
+    // and the web app lock lacked it until 2026-11-22). Use
+    // type={showX ? 'text' : 'password'} with an Eye / EyeOff button labelled
+    // auth.unlock.show_password / hide_password and aria-pressed.
+    const hits = listSourceFiles([ROOT])
+      .filter((file) => file.endsWith('.svelte'))
+      .flatMap((file) =>
+        readFileSync(file, 'utf-8')
+          .split('\n')
+          .flatMap((line, i) =>
+            /\btype="password"/.test(line) ? [`${repoRelative(file)}:${i + 1}`] : []
+          )
+      );
+    expect(hits).toEqual([]);
+  });
+
   it('gives an isolated numeric date the UI direction (<bdi dir={$textDirection}>, #542)', () => {
     // A date from the user's date format is digits and punctuation only. A bare
     // <bdi> finds no letter to take a direction from and falls back to LTR, so
