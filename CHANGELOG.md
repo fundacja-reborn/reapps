@@ -1,3 +1,14 @@
+## 0.58.1 (2026-11-22)
+
+### 🩹 Fixes
+
+- **i18n:** add the missing backup password and required-field texts ([#631](https://github.com/fundacja-reborn/reapps/pull/631))
+- **notes:** put language and date settings right under the theme ([#627](https://github.com/fundacja-reborn/reapps/pull/627))
+- **notes:** skip non-Markdown and oversized files in the .md import ([#629](https://github.com/fundacja-reborn/reapps/pull/629))
+- **notes:** repaint the find highlights when the query changes ([#630](https://github.com/fundacja-reborn/reapps/pull/630))
+- **notes,task:** show form errors and blocked steps where users click ([#632](https://github.com/fundacja-reborn/reapps/pull/632), [#631](https://github.com/fundacja-reborn/reapps/issues/631))
+- **notes,task:** translate the remaining server and hardcoded error texts ([#633](https://github.com/fundacja-reborn/reapps/pull/633), [#632](https://github.com/fundacja-reborn/reapps/issues/632))
+
 ## 0.58.0 (2026-11-21)
 
 ### 🚀 Features
