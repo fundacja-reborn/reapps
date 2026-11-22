@@ -2,9 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "The page in the main window: the shell's own commands it calls and event listening for the app menu. Nothing else from core (no menu, window, webview, app or path API). HTTP to the API is a separate capability per build: http-local (development, tauri.conf.json) or http-production (Mac App Store, tauri.appstore.conf.json), selected in app > security > capabilities. Kept in step with build.rs and lib.rs by src/lib/utils/desktop-capabilities.spec.ts.",
-  "windows": [
-    "main"
-  ],
+  "windows": ["main"],
   "permissions": [
     "allow-secure-storage-get",
     "allow-secure-storage-set",

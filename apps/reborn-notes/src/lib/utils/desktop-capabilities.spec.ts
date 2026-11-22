@@ -171,7 +171,9 @@ function readConfig(name: string): ShellConfig {
 
 /** `PUBLIC_API_BASE_URL` of an nx target of this app. */
 function apiBase(target: string): string {
-  const project = JSON.parse(readFileSync(new URL('../../../project.json', import.meta.url), 'utf8')) as {
+  const project = JSON.parse(
+    readFileSync(new URL('../../../project.json', import.meta.url), 'utf8')
+  ) as {
     targets: Record<string, { options: { command: string } }>;
   };
   const command = project.targets[target]?.options.command ?? '';
