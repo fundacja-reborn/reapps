@@ -329,7 +329,12 @@
 
     const MAX_SIZE = 50 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      backupError = `Plik (${Math.round(file.size / 1024 / 1024)} MB) przekracza limit ${Math.round(MAX_SIZE / 1024 / 1024)} MB.`;
+      backupError = $t('settings_page.export_import.import_file_too_large', {
+        values: {
+          size: Math.round(file.size / 1024 / 1024),
+          limit: Math.round(MAX_SIZE / 1024 / 1024)
+        }
+      });
       if (backupImportInputEl) backupImportInputEl.value = '';
       return;
     }

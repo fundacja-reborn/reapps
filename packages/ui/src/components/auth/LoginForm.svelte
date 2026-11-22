@@ -66,12 +66,6 @@
 </script>
 
 <form onsubmit={handleSubmit} class="space-y-6">
-  {#if error}
-    <Alert variant="destructive">
-      {error}
-    </Alert>
-  {/if}
-
   <div class="space-y-1">
     <Label for="username">{$t('auth.login.username_label')}</Label>
     <Input
@@ -138,6 +132,14 @@
       {$t('auth.login.remember_me')}
     </Label>
   </div>
+
+  <!-- Right above the button, where the user just clicked (guideline 02):
+       at the top of the form it could be out of view on a phone. -->
+  {#if error}
+    <Alert variant="destructive">
+      {error}
+    </Alert>
+  {/if}
 
   <Button type="submit" disabled={loading || !username.trim() || !password} class="w-full">
     {#if loading}

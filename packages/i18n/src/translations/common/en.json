@@ -123,6 +123,8 @@
       "errors": {
         "username_password_required": "Username and password are required",
         "invalid_credentials": "Invalid username or password",
+        "account_locked": "Account temporarily locked after too many failed attempts. Try again later.",
+        "too_many_requests": "Too many attempts. Wait a moment and try again.",
         "network_error": "Network error. Please try again",
         "server_error": "Server error. Please try again later",
         "invalid_request": "Invalid request format",

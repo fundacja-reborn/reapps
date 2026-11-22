@@ -30,7 +30,9 @@
     "copied": "Skopiowano",
     "copy_failed": "Nie udało się skopiować",
     "close_cta": "Zamknij",
-    "offline_warning": "Udostępnianie wymaga połączenia z internetem"
+    "offline_warning": "Udostępnianie wymaga połączenia z internetem",
+    "failed": "Nie udało się utworzyć linku. Spróbuj ponownie.",
+    "rate_limited": "Utworzono zbyt wiele linków. Spróbuj ponownie później."
   },
   "task": {
     "menu_label": "Udostępnij tylko do odczytu",

@@ -30,7 +30,9 @@
     "copied": "Copied",
     "copy_failed": "Failed to copy",
     "close_cta": "Close",
-    "offline_warning": "Sharing requires an internet connection"
+    "offline_warning": "Sharing requires an internet connection",
+    "failed": "Couldn't create the link. Try again.",
+    "rate_limited": "Too many links created. Try again later."
   },
   "task": {
     "menu_label": "Share read-only",

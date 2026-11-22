@@ -123,6 +123,8 @@
       "errors": {
         "username_password_required": "Nazwa użytkownika i hasło są wymagane",
         "invalid_credentials": "Nieprawidłowa nazwa użytkownika lub hasło",
+        "account_locked": "Konto tymczasowo zablokowane po zbyt wielu nieudanych próbach. Spróbuj ponownie później.",
+        "too_many_requests": "Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.",
         "network_error": "Błąd sieci. Proszę spróbować ponownie",
         "server_error": "Błąd serwera. Proszę spróbować później",
         "invalid_request": "Nieprawidłowy format żądania",

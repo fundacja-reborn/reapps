@@ -123,6 +123,8 @@
       "errors": {
         "username_password_required": "Benutzername und Passwort sind erforderlich",
         "invalid_credentials": "Ungültiger Benutzername oder Passwort",
+        "account_locked": "Konto nach zu vielen Fehlversuchen vorübergehend gesperrt. Bitte versuchen Sie es später erneut.",
+        "too_many_requests": "Zu viele Versuche. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
         "network_error": "Netzwerkfehler. Bitte versuchen Sie es erneut",
         "server_error": "Serverfehler. Bitte versuchen Sie es später erneut",
         "invalid_request": "Ungültiges Anforderungsformat",

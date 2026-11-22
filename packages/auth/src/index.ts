@@ -38,6 +38,9 @@ export type { PowChallengeData } from './utils/pow-solver';
 // Cross-tab/cross-app refresh-token coordination
 export { withRefreshLock } from './utils/refresh-lock';
 
+// Auth API error -> translation key (the server text is never shown as is)
+export { authErrorKey } from './utils/auth-error-key';
+
 // Authenticated fetch wrapper with single-flight 401 refresh + retry
 export { createAuthFetch, TransientRefreshError } from './utils/auth-fetch';
 export type {

@@ -1,4 +1,10 @@
 <script lang="ts">
+  import { createLogger } from '@reborn/utils';
+
+  const logger = createLogger('ShareNoteDialog');
+
+  /** A failure whose message is already a translated text for the user. */
+  class ShareUiError extends Error {}
   import { API_BASE } from '$lib/utils/api-base';
   import { getShareBase } from '$lib/utils/share-base';
   import { shareLink } from '$lib/utils/native-share';
@@ -158,9 +164,12 @@
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         if (res.status === 413 && body.error === 'QUOTA_EXCEEDED') {
-          throw new Error($t('share.create.quota_exceeded'));
+          throw new ShareUiError($t('share.create.quota_exceeded'));
         }
-        throw new Error(body.error ?? `HTTP ${res.status}`);
+        // The server's `error` is English text for logs: map the status, never show it.
+        throw new ShareUiError(
+          $t(res.status === 429 ? 'share.create.rate_limited' : 'share.create.failed')
+        );
       }
       const json = (await res.json()) as { success: boolean; data: CreateShareResponse };
       resultUrl = buildShareUrl(
@@ -172,7 +181,10 @@
       void sharesStore.refresh();
       stage = 'success';
     } catch (err: unknown) {
-      errorMessage = err instanceof Error ? err.message : String(err);
+      // Only our own translated texts reach the user; anything else (crypto,
+      // network) is logged and gets the generic one.
+      if (!(err instanceof ShareUiError)) logger.error('Share creation failed:', err);
+      errorMessage = err instanceof ShareUiError ? err.message : $t('share.create.failed');
       stage = 'error';
     }
   }

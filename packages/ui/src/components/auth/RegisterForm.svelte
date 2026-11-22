@@ -152,15 +152,6 @@
 </script>
 
 <form onsubmit={handleSubmit} class="space-y-6">
-  {#if error}
-    <div
-      class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm"
-      role="alert"
-    >
-      {error}
-    </div>
-  {/if}
-
   <!-- Honeypot field — invisible to humans, filled by bots -->
   <div style="position: absolute; inset-inline-start: -9999px; top: -9999px;" aria-hidden="true">
     <label for="website">Website</label>
@@ -363,6 +354,17 @@
         </span>
       </div>
     </div>
+
+    <!-- Right above the button, where the user just clicked (guideline 02): at the
+         top of this long form it is out of view on a phone. -->
+    {#if error}
+      <div
+        class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-md text-sm"
+        role="alert"
+      >
+        {error}
+      </div>
+    {/if}
 
     <button
       type="submit"

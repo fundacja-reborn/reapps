@@ -5,6 +5,7 @@
   import { page } from '$app/stores';
   import { RegisterPage } from '@reborn/ui';
   import { hashPassword, generateMasterKeyForUser, cryptoManager } from '@reborn/crypto';
+  import { authErrorKey } from '@reborn/auth';
   import { get } from 'svelte/store';
   import { loginInNotes } from '$lib/services/notes-auth.service';
   import { nativeAuthHeaders } from '$lib/utils/native-client';
@@ -123,7 +124,8 @@
       const body = await res.json();
 
       if (!res.ok || !body.success) {
-        error = body.error || 'Registration failed';
+        // The server's `error` is English text for logs: map it, never show it.
+        error = $t(authErrorKey(body.error, 'auth.register.errors.server_error'));
         return;
       }
 
@@ -142,7 +144,12 @@
         }
       }
     } catch (err: unknown) {
-      error = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+      // fetch() rejects with a TypeError when the server can't be reached.
+      error = $t(
+        err instanceof TypeError
+          ? 'auth.register.errors.network_error'
+          : 'auth.register.errors.server_error'
+      );
       logger.error('Registration error:', err);
     } finally {
       loading = false;

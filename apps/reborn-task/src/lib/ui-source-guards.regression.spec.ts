@@ -64,6 +64,27 @@ describe('UI source guards (apps/reborn-task/src)', () => {
     expect(hits).toEqual([]);
   });
 
+  it('never shows server text or a hardcoded error text (guideline 02)', () => {
+    // The server's `error` / `message` is English text for logs: map it to a
+    // translation (authErrorKey from @reborn/auth for the auth routes, the
+    // action's own text otherwise). An error set to a literal (error = 'Login
+    // failed', a Polish template) reads the same in every language.
+    const RAW_SERVER_TEXT = /\b(?:data|body|result|res)\??\.(?:error|message)\s*(?:\|\||\?\?)/;
+    const LITERAL_ERROR = /\b\w*[eE]rror(?:Message)?\s*=\s*['"`][A-Z]/;
+    const hits = listSourceFiles([ROOT])
+      .filter((file) => file.endsWith('.svelte'))
+      .flatMap((file) =>
+        readFileSync(file, 'utf-8')
+          .split('\n')
+          .flatMap((line, i) =>
+            RAW_SERVER_TEXT.test(line) || LITERAL_ERROR.test(line)
+              ? [`${repoRelative(file)}:${i + 1}`]
+              : []
+          )
+      );
+    expect(hits).toEqual([]);
+  });
+
   it('lets the user show every password field (no fixed type="password")', () => {
     // A fixed type="password" has no eye button, so a typo stays hidden until
     // the server rejects the password (2FA off, change password, delete account

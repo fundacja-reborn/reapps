@@ -1532,6 +1532,8 @@
       "share_sheet_title": "Share note",
       "close_cta": "Close",
       "offline_warning": "Sharing requires an internet connection",
+      "failed": "Couldn't create the link. Try again.",
+      "rate_limited": "Too many links created. Try again later.",
       "quota_exceeded": "Storage quota reached. Revoke unused shares or delete notes to free up space."
     },
     "note": {

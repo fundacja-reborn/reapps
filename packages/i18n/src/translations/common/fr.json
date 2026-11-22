@@ -123,6 +123,8 @@
       "errors": {
         "username_password_required": "Le nom d'utilisateur et le mot de passe sont requis",
         "invalid_credentials": "Nom d'utilisateur ou mot de passe invalide",
+        "account_locked": "Compte temporairement verrouillé après trop de tentatives échouées. Veuillez réessayer plus tard.",
+        "too_many_requests": "Trop de tentatives. Veuillez patienter un instant et réessayer.",
         "network_error": "Erreur réseau. Veuillez réessayer",
         "server_error": "Erreur serveur. Veuillez réessayer plus tard",
         "invalid_request": "Format de requête invalide",

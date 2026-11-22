@@ -1532,6 +1532,8 @@
       "share_sheet_title": "Compartir nota",
       "close_cta": "Cerrar",
       "offline_warning": "Compartir requiere conexión a internet",
+      "failed": "No se pudo crear el enlace. Inténtalo de nuevo.",
+      "rate_limited": "Se han creado demasiados enlaces. Inténtalo más tarde.",
       "quota_exceeded": "Cuota de almacenamiento alcanzada. Revoca compartidos sin uso o elimina notas para liberar espacio."
     },
     "note": {
