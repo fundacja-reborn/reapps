@@ -191,7 +191,7 @@
 
 	async function disable2FA() {
 		if (!disablePassword) {
-			error = $t('auth.validation.required') || 'Password is required';
+			error = $t('password.required');
 			return;
 		}
 

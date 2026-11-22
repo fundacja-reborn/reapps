@@ -1155,6 +1155,7 @@
       "export_encrypted_warning": "نسيان كلمة المرور يعني فقدان بيانات هذه النسخة الاحتياطية.",
       "export_btn": "تصدير",
       "password_placeholder": "كلمة مرور لتشفير النسخة الاحتياطية",
+      "password_too_short": "يجب ألا تقل كلمة المرور عن 8 أحرف.",
       "encrypting": "جارٍ التشفير…",
       "export_encrypted_btn": "تصدير مشفّر",
       "cancel": "إلغاء",

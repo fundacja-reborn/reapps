@@ -28,7 +28,7 @@
 
 	const passwordError = $derived.by(() => {
 		if (!submitAttempted) return null;
-		if (!password) return $t('auth.validation.required') || 'Wymagane';
+		if (!password) return $t('auth.validation.required');
 		return null;
 	});
 

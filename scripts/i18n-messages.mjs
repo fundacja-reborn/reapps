@@ -95,6 +95,46 @@ export function readCatalog(catalog, locale) {
 }
 
 /**
+ * Every key an app can pass to `$t()`: the English keys of the catalogs it
+ * loads, as runtime keys. `ids` are catalog ids; one ending in `/` takes all
+ * catalogs under it, e.g. `['common', 'notes']` or `['common', 'tasks/']`
+ * (the `apps` list in each app's i18n.store).
+ */
+export function appRuntimeKeys(ids) {
+  const keys = new Set();
+  const wanted = (id) => ids.some((w) => (w.endsWith('/') ? id.startsWith(w) : id === w));
+  for (const catalog of listCatalogs()) {
+    if (!wanted(catalog.id)) continue;
+    for (const key of readCatalog(catalog, SOURCE_LOCALE)?.keys() ?? []) {
+      const runtime = catalog.runtimeKey(key);
+      if (runtime) keys.add(runtime);
+    }
+  }
+  return keys;
+}
+
+// `$t('a.b')`, `t('a.b')`, `get(t)('a.b')` with the key written out in full.
+const T_CALL = /\bt\)?\(\s*['"]([a-z]\w*(?:\.\w+)+)['"]/g;
+
+/**
+ * Keys written out in full in `$t()` calls that are missing from `keys`, as
+ * `path:line key`. A missing key renders as the key itself, and a
+ * `$t('...') || 'fallback'` never runs (svelte-i18n returns the key); locale
+ * parity can't see it, the key is missing in every locale alike. Keys built in
+ * code are not checked.
+ */
+export function missingKeyRefs(sources, keys) {
+  const missing = [];
+  for (const { path, text } of sources) {
+    for (const m of text.matchAll(T_CALL)) {
+      if (keys.has(m[1])) continue;
+      missing.push(`${path}:${text.slice(0, m.index).split('\n').length} ${m[1]}`);
+    }
+  }
+  return missing;
+}
+
+/**
  * Write `messages` as nested JSON in the key order of `order` (English), so a
  * re-import produces a minimal diff. Keys absent from `messages` are skipped.
  */

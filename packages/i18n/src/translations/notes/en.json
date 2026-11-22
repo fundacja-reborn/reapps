@@ -1132,6 +1132,7 @@
       "export_encrypted_warning": "Forgetting the password means losing data from this backup.",
       "export_btn": "Export",
       "password_placeholder": "Password to encrypt backup",
+      "password_too_short": "Password must be at least 8 characters.",
       "encrypting": "Encrypting…",
       "export_encrypted_btn": "Export encrypted",
       "cancel": "Cancel",

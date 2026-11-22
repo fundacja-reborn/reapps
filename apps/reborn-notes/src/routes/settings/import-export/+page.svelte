@@ -157,7 +157,7 @@
     e.preventDefault();
     if (!exportPassword) return;
     if (exportPassword.length < 8) {
-      exportError = $t('settings_page.export_import.password_too_short') || 'Hasło musi mieć minimum 8 znaków.';
+      exportError = $t('settings_page.export_import.password_too_short');
       return;
     }
     exportingKind = 'encrypted';

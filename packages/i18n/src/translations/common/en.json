@@ -88,6 +88,9 @@
     }
   },
   "auth": {
+    "validation": {
+      "required": "Required"
+    },
     "unlock": {
       "title": "Unlock",
       "description": "Enter your account password to open your encrypted data on this device.",

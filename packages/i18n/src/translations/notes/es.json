@@ -1132,6 +1132,7 @@
       "export_encrypted_warning": "Olvidar la contraseña significa perder los datos de esta copia de seguridad.",
       "export_btn": "Exportar",
       "password_placeholder": "Contraseña para cifrar la copia de seguridad",
+      "password_too_short": "La contraseña debe tener al menos 8 caracteres.",
       "encrypting": "Cifrando…",
       "export_encrypted_btn": "Exportar cifrada",
       "cancel": "Cancelar",

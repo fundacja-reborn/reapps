@@ -88,6 +88,9 @@
     }
   },
   "auth": {
+    "validation": {
+      "required": "Erforderlich"
+    },
     "unlock": {
       "title": "Entsperren",
       "description": "Geben Sie Ihr Kontopasswort ein, um Ihre verschlüsselten Daten auf diesem Gerät zu öffnen.",

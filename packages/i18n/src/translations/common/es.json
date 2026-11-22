@@ -88,6 +88,9 @@
     }
   },
   "auth": {
+    "validation": {
+      "required": "Obligatorio"
+    },
     "unlock": {
       "title": "Desbloquear",
       "description": "Introduzca la contraseña de su cuenta para abrir sus datos cifrados en este dispositivo.",
