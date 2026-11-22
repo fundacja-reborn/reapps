@@ -667,6 +667,8 @@ if (variant.distribution) {
 		console.log(`       git add ${relative(REPO_ROOT, BASE_CONFIG)}`);
 		console.log(`       git commit -m "chore(notes): bump the macOS build to ${version.to} for TestFlight"`);
 	}
+	console.log('  Note: build-desktop/ now holds the production web bundle. Before the next development');
+	console.log('  build (cargo tauri build --debug / cargo tauri dev) run: pnpm nx build-desktop-local reborn-notes');
 } else {
 	console.log(`  open "${appPath}"`);
 }
