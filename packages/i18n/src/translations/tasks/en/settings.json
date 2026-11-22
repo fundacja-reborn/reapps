@@ -221,7 +221,13 @@
     },
     "two_factor": {
       "title": "Two-Factor Authentication",
-      "description": "Add an extra layer of security"
+      "description": "Add an extra layer of security",
+      "fetch_error": "Failed to fetch 2FA status",
+      "setup_error": "Failed to start 2FA setup",
+      "verify_error": "Failed to verify the code",
+      "disable_error": "Failed to disable 2FA",
+      "connection_error": "Server connection error",
+      "too_many_attempts": "Too many attempts. Try again later."
     },
     "backup_codes": {
       "title": "Backup Codes",

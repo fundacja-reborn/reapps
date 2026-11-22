@@ -221,7 +221,13 @@
     },
     "two_factor": {
       "title": "Autenticación en dos pasos",
-      "description": "Añadir una capa adicional de seguridad"
+      "description": "Añadir una capa adicional de seguridad",
+      "fetch_error": "Error al obtener el estado de 2FA",
+      "setup_error": "Error al iniciar la configuración de 2FA",
+      "verify_error": "Error al verificar el código",
+      "disable_error": "Error al desactivar 2FA",
+      "connection_error": "Error de conexión con el servidor",
+      "too_many_attempts": "Demasiados intentos. Por favor, inténtelo de nuevo más tarde."
     },
     "backup_codes": {
       "title": "Códigos de respaldo",

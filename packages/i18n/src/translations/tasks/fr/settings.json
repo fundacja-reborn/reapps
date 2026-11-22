@@ -221,7 +221,13 @@
     },
     "two_factor": {
       "title": "Authentification \u00e0 deux facteurs",
-      "description": "Ajoutez une couche de s\u00e9curit\u00e9 suppl\u00e9mentaire"
+      "description": "Ajoutez une couche de s\u00e9curit\u00e9 suppl\u00e9mentaire",
+      "fetch_error": "Échec de la récupération du statut 2FA",
+      "setup_error": "Échec du démarrage de la configuration 2FA",
+      "verify_error": "Échec de la vérification du code",
+      "disable_error": "Échec de la désactivation 2FA",
+      "connection_error": "Erreur de connexion au serveur",
+      "too_many_attempts": "Trop de tentatives. Veuillez réessayer plus tard."
     },
     "backup_codes": {
       "title": "Codes de sauvegarde",

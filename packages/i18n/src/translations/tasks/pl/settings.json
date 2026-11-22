@@ -44,7 +44,13 @@
     },
     "two_factor": {
       "title": "Uwierzytelnianie dwuskładnikowe",
-      "description": "Dodaj dodatkową warstwę zabezpieczeń"
+      "description": "Dodaj dodatkową warstwę zabezpieczeń",
+      "fetch_error": "Nie udało się pobrać statusu 2FA",
+      "setup_error": "Nie udało się rozpocząć konfiguracji 2FA",
+      "verify_error": "Nie udało się zweryfikować kodu",
+      "disable_error": "Nie udało się wyłączyć 2FA",
+      "connection_error": "Błąd połączenia z serwerem",
+      "too_many_attempts": "Zbyt wiele prób. Spróbuj ponownie później."
     },
     "backup_codes": {
       "title": "Kody zapasowe",

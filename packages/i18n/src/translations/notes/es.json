@@ -1409,6 +1409,8 @@
       "disable_error": "Error al desactivar 2FA",
       "invalid_password": "Contraseña no válida",
       "connection_error": "Error de conexión con el servidor",
+      "verify_error": "Error al verificar el código",
+      "too_many_attempts": "Demasiados intentos. Inténtalo de nuevo más tarde.",
       "password_required": "La contraseña es obligatoria",
       "enabled_toast": "La autenticación de dos factores ha sido activada",
       "disabled_toast": "La autenticación de dos factores ha sido desactivada"

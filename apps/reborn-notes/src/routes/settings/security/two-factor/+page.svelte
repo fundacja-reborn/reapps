@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { authFetch } from '$lib/utils/auth-fetch';
   import { copyText } from '$lib/utils/clipboard';
   import { API_BASE } from '$lib/utils/api-base';
@@ -40,7 +40,13 @@
 
   let step = $state<Step>('loading');
   let isLoading = $state(false);
-  let error = $state<string | null>(null);
+
+  // Each error is shown next to what the user acted on, so it stays in view
+  // (on a phone the top of the page is often scrolled away): a field's error
+  // under the field, an action's error right above its buttons. Only a failed
+  // status load, where nothing was clicked, goes at the top of the page.
+  let statusError = $state<string | null>(null);
+  let setupError = $state<string | null>(null);
 
   // Setup state
   let secretBase32 = $state('');
@@ -49,11 +55,18 @@
   // Verify state
   let verificationCode = $state('');
   let submitAttempted = $state(false);
+  let codeRejected = $state(false);
+  let verifyError = $state<string | null>(null);
+  let codeInput = $state<HTMLElement | null>(null);
 
   // Disable state
   let disablePassword = $state('');
+  let disableAttempted = $state(false);
+  let passwordRejected = $state(false);
+  let disableError = $state<string | null>(null);
   let showDisableConfirm = $state(false);
   let isDisabling = $state(false);
+  let disablePasswordInput = $state<HTMLElement | null>(null);
 
   // Status
   let is2FAEnabled = $state(false);
@@ -65,6 +78,15 @@
   let recoveryCodes = $state<string[]>([]);
   let copiedIndex = $state<number | null>(null);
 
+  /**
+   * The text for a failed request. The server's own `error` is English and
+   * not for users, so it is never shown: a rate limit (429) gets its own
+   * text, anything else the action's.
+   */
+  function failureMessage(status: number, actionError: string): string {
+    return status === 429 ? $t('security.two_factor.too_many_attempts') : actionError;
+  }
+
   async function fetchStatus() {
     try {
       const response = await authFetch(`${API_BASE}/auth/2fa`);
@@ -73,19 +95,19 @@
         is2FAEnabled = data.data.isEnabled;
         step = is2FAEnabled ? 'enabled' : 'status';
       } else {
-        error = data.error || $t('security.two_factor.fetch_error');
+        statusError = failureMessage(response.status, $t('security.two_factor.fetch_error'));
         step = 'status';
       }
     } catch (err: unknown) {
       logger.error('Failed to fetch 2FA status:', err);
-      error = $t('security.two_factor.connection_error');
+      statusError = $t('security.two_factor.connection_error');
       step = 'status';
     }
   }
 
   async function startSetup() {
     isLoading = true;
-    error = null;
+    setupError = null;
     try {
       const response = await authFetch(`${API_BASE}/auth/2fa`, {
         method: 'POST'
@@ -100,11 +122,11 @@
         });
         step = 'setup';
       } else {
-        error = data.error || $t('security.two_factor.setup_error');
+        setupError = failureMessage(response.status, $t('security.two_factor.setup_error'));
       }
     } catch (err: unknown) {
       logger.error('Failed to start 2FA setup:', err);
-      error = $t('security.two_factor.connection_error');
+      setupError = $t('security.two_factor.connection_error');
     } finally {
       isLoading = false;
     }
@@ -112,8 +134,12 @@
 
   async function verifyAndEnable() {
     submitAttempted = true;
-    error = null;
-    if (!verificationCode || verificationCode.length !== 6) return;
+    codeRejected = false;
+    verifyError = null;
+    if (!verificationCode || verificationCode.length !== 6) {
+      codeInput?.focus();
+      return;
+    }
     isLoading = true;
     try {
       const response = await authFetch(`${API_BASE}/auth/2fa`, {
@@ -149,27 +175,41 @@
           toast.warning($t('security.recovery_codes.generate_failed_warning'));
           step = 'enabled';
         }
+      } else if (data.error === 'Invalid verification code') {
+        codeRejected = true;
       } else {
-        error =
-          data.error === 'Invalid verification code'
-            ? $t('security.two_factor.invalid_code')
-            : data.error || $t('security.two_factor.fetch_error');
+        verifyError = failureMessage(response.status, $t('security.two_factor.verify_error'));
       }
     } catch (err: unknown) {
       logger.error('Failed to verify 2FA:', err);
-      error = $t('security.two_factor.connection_error');
+      verifyError = $t('security.two_factor.connection_error');
     } finally {
       isLoading = false;
     }
+    // The field is disabled while the request runs; focus it once it is back.
+    if (codeRejected) {
+      await tick();
+      codeInput?.focus();
+    }
+  }
+
+  function resetDisableForm() {
+    showDisableConfirm = false;
+    disablePassword = '';
+    disableAttempted = false;
+    passwordRejected = false;
+    disableError = null;
   }
 
   async function disable2FA() {
+    disableAttempted = true;
+    passwordRejected = false;
+    disableError = null;
     if (!disablePassword) {
-      error = $t('security.two_factor.password_required');
+      disablePasswordInput?.focus();
       return;
     }
     isDisabling = true;
-    error = null;
     try {
       const response = await authFetch(`${API_BASE}/auth/2fa`, {
         method: 'DELETE',
@@ -181,19 +221,21 @@
         toast.success($t('security.two_factor.disabled_toast'));
         is2FAEnabled = false;
         step = 'status';
-        showDisableConfirm = false;
-        disablePassword = '';
+        resetDisableForm();
+      } else if (data.error === 'Invalid password') {
+        passwordRejected = true;
       } else {
-        error =
-          data.error === 'Invalid password'
-            ? $t('security.two_factor.invalid_password')
-            : data.error || $t('security.two_factor.disable_error');
+        disableError = failureMessage(response.status, $t('security.two_factor.disable_error'));
       }
     } catch (err: unknown) {
       logger.error('Failed to disable 2FA:', err);
-      error = $t('security.two_factor.connection_error');
+      disableError = $t('security.two_factor.connection_error');
     } finally {
       isDisabling = false;
+    }
+    if (passwordRejected) {
+      await tick();
+      disablePasswordInput?.focus();
     }
   }
 
@@ -241,6 +283,14 @@
     if (!submitAttempted) return null;
     if (!verificationCode) return $t('security.two_factor.code_required');
     if (verificationCode.length !== 6) return $t('security.two_factor.code_6_digits');
+    if (codeRejected) return $t('security.two_factor.invalid_code');
+    return null;
+  });
+
+  const disablePasswordError = $derived.by(() => {
+    if (!disableAttempted) return null;
+    if (!disablePassword) return $t('auth.validation.required');
+    if (passwordRejected) return $t('security.two_factor.invalid_password');
     return null;
   });
 
@@ -255,9 +305,9 @@
 
 <SettingsLayout title={$t('security.two_factor.title')} backHref="/settings">
   <div class="space-y-6">
-    {#if error}
+    {#if statusError}
       <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
+        <AlertDescription>{statusError}</AlertDescription>
       </Alert>
     {/if}
 
@@ -288,7 +338,12 @@
             {$t('security.two_factor.disabled_desc')}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent class="space-y-4">
+          {#if setupError}
+            <Alert variant="destructive">
+              <AlertDescription>{setupError}</AlertDescription>
+            </Alert>
+          {/if}
           <Button onclick={startSetup} disabled={isLoading} class="w-full sm:w-auto">
             {#if isLoading}
               <RefreshCw class="h-4 w-4 me-2 animate-spin" />
@@ -378,19 +433,33 @@
                   type="text"
                   inputmode="numeric"
                   autocomplete="one-time-code"
-                  oninput={(e) => { const next = e.currentTarget.value.replace(/\D/g, '').slice(0, 6); if (e.currentTarget.value !== next) e.currentTarget.value = next; verificationCode = next; }}
+                  oninput={(e) => {
+                    const next = e.currentTarget.value.replace(/\D/g, '').slice(0, 6);
+                    if (e.currentTarget.value !== next) e.currentTarget.value = next;
+                    verificationCode = next;
+                    codeRejected = false;
+                  }}
                   pattern="[0-9]*"
                   placeholder="000000"
                   bind:value={verificationCode}
+                  bind:ref={codeInput}
                   disabled={isLoading}
+                  aria-invalid={codeError ? 'true' : undefined}
+                  aria-describedby={codeError ? 'verification-code-error' : undefined}
                   class={codeError
                     ? 'border-destructive font-mono text-center text-lg tracking-widest'
                     : 'font-mono text-center text-lg tracking-widest'}
                 />
                 {#if codeError}
-                  <p class="text-sm text-destructive">{codeError}</p>
+                  <p id="verification-code-error" class="text-sm text-destructive">{codeError}</p>
                 {/if}
               </div>
+
+              {#if verifyError}
+                <Alert variant="destructive">
+                  <AlertDescription>{verifyError}</AlertDescription>
+                </Alert>
+              {/if}
 
               <div class="flex gap-2 flex-wrap">
                 <Button type="submit" disabled={isLoading}>
@@ -406,7 +475,8 @@
                   variant="outline"
                   onclick={() => {
                     step = 'status';
-                    error = null;
+                    verifyError = null;
+                    codeRejected = false;
                     verificationCode = '';
                     submitAttempted = false;
                   }}
@@ -532,9 +602,25 @@
                   type="password"
                   autocomplete="current-password"
                   bind:value={disablePassword}
+                  bind:ref={disablePasswordInput}
+                  oninput={() => (passwordRejected = false)}
                   disabled={isDisabling}
+                  aria-invalid={disablePasswordError ? 'true' : undefined}
+                  aria-describedby={disablePasswordError ? 'disable-password-error' : undefined}
+                  class={disablePasswordError ? 'border-destructive' : ''}
                 />
+                {#if disablePasswordError}
+                  <p id="disable-password-error" class="text-sm text-destructive">
+                    {disablePasswordError}
+                  </p>
+                {/if}
               </div>
+
+              {#if disableError}
+                <Alert variant="destructive">
+                  <AlertDescription>{disableError}</AlertDescription>
+                </Alert>
+              {/if}
 
               <div class="flex gap-2 flex-wrap">
                 <Button type="submit" variant="destructive" disabled={isDisabling}>
@@ -548,11 +634,7 @@
                 <Button
                   type="button"
                   variant="outline"
-                  onclick={() => {
-                    showDisableConfirm = false;
-                    disablePassword = '';
-                    error = null;
-                  }}
+                  onclick={resetDisableForm}
                   disabled={isDisabling}
                 >
                   {$t('security.two_factor.cancel')}

@@ -1409,6 +1409,8 @@
       "disable_error": "Failed to disable 2FA",
       "invalid_password": "Invalid password",
       "connection_error": "Server connection error",
+      "verify_error": "Failed to verify the code",
+      "too_many_attempts": "Too many attempts. Try again later.",
       "password_required": "Password is required",
       "enabled_toast": "Two-factor authentication has been enabled",
       "disabled_toast": "Two-factor authentication has been disabled"

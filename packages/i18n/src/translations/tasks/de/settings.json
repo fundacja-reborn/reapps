@@ -221,7 +221,13 @@
     },
     "two_factor": {
       "title": "Zwei-Faktor-Authentifizierung",
-      "description": "Zus\u00e4tzliche Sicherheitsebene hinzuf\u00fcgen"
+      "description": "Zus\u00e4tzliche Sicherheitsebene hinzuf\u00fcgen",
+      "fetch_error": "2FA-Status konnte nicht abgerufen werden",
+      "setup_error": "2FA-Einrichtung konnte nicht gestartet werden",
+      "verify_error": "Code konnte nicht überprüft werden",
+      "disable_error": "2FA konnte nicht deaktiviert werden",
+      "connection_error": "Serververbindungsfehler",
+      "too_many_attempts": "Zu viele Versuche. Bitte versuchen Sie es später erneut."
     },
     "backup_codes": {
       "title": "Sicherungscodes",
