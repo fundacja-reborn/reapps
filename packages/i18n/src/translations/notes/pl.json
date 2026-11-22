@@ -1116,7 +1116,8 @@
       "cadence_note": "Kopie tworzą się automatycznie przy otwarciu aplikacji, najwyżej raz dziennie.",
       "reminder_title": "Czas na automatyczną kopię notatek",
       "reminder_body": "Otwórz aplikację, aby utworzyć świeżą zaszyfrowaną kopię notatek.",
-      "reminder_hint": "Gdy kopia będzie zaległa, powiadomienie przypomni o otwarciu aplikacji."
+      "reminder_hint": "Gdy kopia będzie zaległa, powiadomienie przypomni o otwarciu aplikacji.",
+      "reminder_denied": "Powiadomienia re/notes są wyłączone w ustawieniach systemu, więc przypomnienie o zaległej kopii nie przyjdzie. Możesz je włączyć w ustawieniach powiadomień systemu."
     },
     "export_import": {
       "title": "Eksport i import",

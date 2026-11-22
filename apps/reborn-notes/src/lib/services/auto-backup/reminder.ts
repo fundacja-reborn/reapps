@@ -23,7 +23,8 @@
  * desktop shell through its own commands (macOS `UNUserNotificationCenter`,
  * `$lib/utils/desktop-backup-reminder.ts`). Both are delivered by the system
  * while the app is closed. A desktop build without a notification center
- * reports `unsupported`, and settings then drop the promise of a reminder.
+ * reports `unsupported`, and settings then drop the promise of a reminder;
+ * with notifications turned off in the system they say so instead.
  *
  * Best-effort by design: requires OS notification permission (requested from
  * the settings page when enabling); on Android 12+ exact alarms are NOT
@@ -89,7 +90,7 @@ export function planBackupReminders(args: {
 }
 
 /** The OS notification permission, `unsupported` where no scheduler exists. */
-type ReminderPermission = 'granted' | 'denied' | 'prompt' | 'unsupported';
+export type ReminderPermission = 'granted' | 'denied' | 'prompt' | 'unsupported';
 
 /**
  * What a shell offers to plan the reminders: the Capacitor plugin on the
@@ -225,15 +226,18 @@ export async function ensureReminderPermission(): Promise<boolean> {
 }
 
 /**
- * Whether this build can remind at all, so settings only promise a reminder
- * that can come. False on web and in a desktop shell without a notification
- * center (the bare dev binary; Windows until its phase). Never throws.
+ * The notification permission as settings should describe it: `granted` or
+ * `prompt` - a reminder will come (or the prompt comes when backup is
+ * enabled); `denied` - turned off in the system settings, so settings say so
+ * instead of promising a reminder; `unsupported` - web, or a desktop shell
+ * without a notification center (the bare dev binary; Windows until its
+ * phase). Never throws.
  */
-export async function areBackupRemindersSupported(): Promise<boolean> {
-  if (!__REBORN_NATIVE__) return false;
+export async function getBackupReminderPermission(): Promise<ReminderPermission> {
+  if (!__REBORN_NATIVE__) return 'unsupported';
   try {
-    return (await (await loadScheduler()).permission()) !== 'unsupported';
+    return await (await loadScheduler()).permission();
   } catch {
-    return false;
+    return 'unsupported';
   }
 }
