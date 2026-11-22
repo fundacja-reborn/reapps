@@ -316,7 +316,6 @@
       "require_number": "La contraseña debe contener al menos un número",
       "require_special": "La contraseña debe contener al menos un carácter especial"
     },
-    "required": "La contraseña es obligatoria",
     "incorrect": "Contraseña incorrecta",
     "verification_failed": "No se pudo verificar la contraseña",
     "strength": {

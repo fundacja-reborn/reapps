@@ -203,6 +203,7 @@
     "title": "Sicherheit",
     "description": "Verwalten Sie Ihre Sicherheitseinstellungen",
     "authentication": "Authentifizierung",
+    "session_expired": "Sitzung abgelaufen. Bitte melden Sie sich erneut an.",
     "password": {
       "title": "Passwort",
       "description": "Passwort Ihres Kontos \u00e4ndern",
@@ -217,6 +218,9 @@
       "error_passwords_mismatch": "Neue Passw\u00f6rter stimmen nicht \u00fcberein",
       "error_password_too_short": "Passwort muss mindestens 8 Zeichen lang sein",
       "error_same_password": "Neues Passwort muss sich vom aktuellen unterscheiden",
+      "error_key_unavailable": "Verschlüsselungsschlüssel nicht verfügbar. Laden Sie die Seite neu und versuchen Sie es erneut.",
+      "error_failed": "Das Passwort konnte nicht geändert werden. Bitte versuchen Sie es erneut.",
+      "error_unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
       "warning_relogin": "Nach der Passwort\u00e4nderung werden andere Ger\u00e4te abgemeldet"
     },
     "two_factor": {
@@ -227,7 +231,9 @@
       "verify_error": "Code konnte nicht überprüft werden",
       "disable_error": "2FA konnte nicht deaktiviert werden",
       "connection_error": "Serververbindungsfehler",
-      "too_many_attempts": "Zu viele Versuche. Bitte versuchen Sie es später erneut."
+      "too_many_attempts": "Zu viele Versuche. Bitte versuchen Sie es später erneut.",
+      "copy_secret": "Schlüssel kopieren",
+      "qr_alt": "QR-Code für die Authenticator-App"
     },
     "backup_codes": {
       "title": "Sicherungscodes",
@@ -250,7 +256,11 @@
       "setup_title": "Speichern Sie Ihre Wiederherstellungscodes",
       "setup_description": "Diese Codes helfen Ihnen, auf Ihr Konto zuzugreifen, wenn Sie Ihr Authenticator-Ger\u00e4t verlieren. Jeder Code kann nur einmal verwendet werden.",
       "saved_continue": "Ich habe meine Codes gespeichert, weiter",
-      "generate_failed_warning": "Wiederherstellungscodes konnten nicht automatisch generiert werden. Sie k\u00f6nnen sie sp\u00e4ter in den Sicherheitseinstellungen generieren."
+      "generate_failed_warning": "Wiederherstellungscodes konnten nicht automatisch generiert werden. Sie k\u00f6nnen sie sp\u00e4ter in den Sicherheitseinstellungen generieren.",
+      "copy_code": "Code kopieren",
+      "file_header": "re/task - Sicherungscodes",
+      "file_generated": "Generiert:",
+      "file_warning": "Bewahren Sie diese Codes an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden."
     },
     "sessions": {
       "title": "Aktive Sitzungen",

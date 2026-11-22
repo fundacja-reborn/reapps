@@ -1411,7 +1411,7 @@
       "connection_error": "Błąd połączenia z serwerem",
       "verify_error": "Nie udało się zweryfikować kodu",
       "too_many_attempts": "Zbyt wiele prób. Spróbuj ponownie później.",
-      "password_required": "Hasło jest wymagane",
+      "qr_alt": "Kod QR dla aplikacji uwierzytelniającej",
       "enabled_toast": "Uwierzytelnianie dwuskładnikowe zostało włączone",
       "disabled_toast": "Uwierzytelnianie dwuskładnikowe zostało wyłączone"
     },

@@ -1411,7 +1411,7 @@
       "connection_error": "Server connection error",
       "verify_error": "Failed to verify the code",
       "too_many_attempts": "Too many attempts. Try again later.",
-      "password_required": "Password is required",
+      "qr_alt": "QR code for your authenticator app",
       "enabled_toast": "Two-factor authentication has been enabled",
       "disabled_toast": "Two-factor authentication has been disabled"
     },

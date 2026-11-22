@@ -1411,7 +1411,7 @@
       "connection_error": "Serververbindungsfehler",
       "verify_error": "Code konnte nicht überprüft werden",
       "too_many_attempts": "Zu viele Versuche. Versuche es später erneut.",
-      "password_required": "Passwort ist erforderlich",
+      "qr_alt": "QR-Code für die Authenticator-App",
       "enabled_toast": "Zwei-Faktor-Authentifizierung wurde aktiviert",
       "disabled_toast": "Zwei-Faktor-Authentifizierung wurde deaktiviert"
     },

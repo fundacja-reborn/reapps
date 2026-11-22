@@ -382,7 +382,11 @@
             <div class="flex justify-center">
               {#if qrDataUrl}
                 <div class="rounded-lg border bg-white p-3">
-                  <img src={qrDataUrl} alt="TOTP QR Code" class="h-48 w-48 sm:h-56 sm:w-56" />
+                  <img
+                    src={qrDataUrl}
+                    alt={$t('security.two_factor.qr_alt')}
+                    class="h-48 w-48 sm:h-56 sm:w-56"
+                  />
                 </div>
               {/if}
             </div>

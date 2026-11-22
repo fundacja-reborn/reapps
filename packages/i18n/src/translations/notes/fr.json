@@ -1411,7 +1411,7 @@
       "connection_error": "Erreur de connexion au serveur",
       "verify_error": "Échec de la vérification du code",
       "too_many_attempts": "Trop de tentatives. Réessayez plus tard.",
-      "password_required": "Le mot de passe est obligatoire",
+      "qr_alt": "Code QR pour l'application d'authentification",
       "enabled_toast": "L'authentification à deux facteurs a été activée",
       "disabled_toast": "L'authentification à deux facteurs a été désactivée"
     },

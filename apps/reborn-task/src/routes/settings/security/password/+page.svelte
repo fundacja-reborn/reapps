@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { PUBLIC_BASE_PATH } from '$env/static/public';
+	import { tick } from 'svelte';
 	import { SettingsLayout, Card, CardContent, CardHeader, CardTitle, CardDescription, Label, Input, Button, Alert, AlertDescription } from '@reborn/ui';
 	import { Lock, AlertTriangle } from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
@@ -15,12 +16,19 @@
 	let newPassword = $state('');
 	let confirmPassword = $state('');
 	let isLoading = $state(false);
-	let error = $state<string | null>(null);
 	let submitAttempted = $state(false);
+	// Errors sit next to what the user acted on (guideline 02): a field's error
+	// under the field, any other failure right above the submit button.
+	let currentRejected = $state(false);
+	let submitError = $state<string | null>(null);
+	let currentPasswordInput = $state<HTMLElement | null>(null);
+	let newPasswordInput = $state<HTMLElement | null>(null);
+	let confirmPasswordInput = $state<HTMLElement | null>(null);
 
 	const currentPasswordError = $derived.by(() => {
 		if (!submitAttempted) return null;
 		if (!currentPassword) return $t('auth.validation.required');
+		if (currentRejected) return $t('settings.security.password.error_current_invalid');
 		return null;
 	});
 
@@ -43,11 +51,21 @@
 		!!(submitAttempted && (currentPasswordError || newPasswordError || confirmPasswordError))
 	);
 
+	function focusFirstInvalid() {
+		if (currentPasswordError) currentPasswordInput?.focus();
+		else if (newPasswordError) newPasswordInput?.focus();
+		else if (confirmPasswordError) confirmPasswordInput?.focus();
+	}
+
 	async function handleSubmit() {
 		submitAttempted = true;
-		error = null;
+		currentRejected = false;
+		submitError = null;
 
-		if (hasErrors || !currentPassword || !newPassword || !confirmPassword) return;
+		if (hasErrors || !currentPassword || !newPassword || !confirmPassword) {
+			focusFirstInvalid();
+			return;
+		}
 		if (newPassword !== confirmPassword) return;
 		if (newPassword.length < 8) return;
 
@@ -57,7 +75,7 @@
 			// Re-encrypt master key with new password (client-side)
 			const masterKey = cryptoManager.getCurrentKey();
 			if (!masterKey) {
-				error = 'Encryption key not available. Please reload and try again.';
+				submitError = $t('settings.security.password.error_key_unavailable');
 				return;
 			}
 
@@ -66,7 +84,7 @@
 
 			const accessToken = localStorage.getItem('access_token');
 			if (!accessToken) {
-				error = 'Session expired. Please log in again.';
+				submitError = $t('settings.security.session_expired');
 				return;
 			}
 
@@ -87,29 +105,34 @@
 			const data = await response.json();
 
 			if (!response.ok || !data.success) {
+				// The server's `error` is English text for logs, never shown as is.
 				if (response.status === 400 && data.error === 'Current password is incorrect') {
-					error = $t('settings.security.password.error_current_invalid');
+					currentRejected = true;
 				} else {
-					error = data.error || 'Failed to change password';
+					submitError = $t('settings.security.password.error_failed');
 				}
-				return;
+			} else {
+				// Save new access token (old one was blacklisted server-side)
+				if (data.data?.access_token) {
+					localStorage.setItem('access_token', data.data.access_token);
+				}
+
+				toast.success($t('settings.security.password.success'));
+
+				// Logout and redirect to login (all refresh tokens invalidated)
+				await authLogout(true);
+				await goto('/auth/login');
 			}
-
-			// Save new access token (old one was blacklisted server-side)
-			if (data.data?.access_token) {
-				localStorage.setItem('access_token', data.data.access_token);
-			}
-
-			toast.success($t('settings.security.password.success'));
-
-			// Logout and redirect to login (all refresh tokens invalidated)
-			await authLogout(true);
-			await goto('/auth/login');
 		} catch (err: unknown) {
 			logger.error('Failed to change password:', err);
-			error = 'An unexpected error occurred. Please try again.';
+			submitError = $t('settings.security.password.error_unexpected');
 		} finally {
 			isLoading = false;
+		}
+		// The fields are disabled while the request runs; focus once they are back.
+		if (currentRejected) {
+			await tick();
+			currentPasswordInput?.focus();
 		}
 	}
 </script>
@@ -123,12 +146,6 @@
 				{$t('settings.security.password.warning_relogin')}
 			</AlertDescription>
 		</Alert>
-
-		{#if error}
-			<Alert variant="destructive">
-				<AlertDescription>{error}</AlertDescription>
-			</Alert>
-		{/if}
 
 		<Card>
 			<CardHeader>
@@ -153,12 +170,18 @@
 							id="current-password"
 							type="password"
 							bind:value={currentPassword}
+							bind:ref={currentPasswordInput}
+							oninput={() => (currentRejected = false)}
 							autocomplete="current-password"
 							disabled={isLoading}
+							aria-invalid={currentPasswordError ? 'true' : undefined}
+							aria-describedby={currentPasswordError ? 'current-password-error' : undefined}
 							class={currentPasswordError ? 'border-destructive' : ''}
 						/>
 						{#if currentPasswordError}
-							<p class="text-sm text-destructive">{currentPasswordError}</p>
+							<p id="current-password-error" class="text-sm text-destructive">
+								{currentPasswordError}
+							</p>
 						{/if}
 					</div>
 
@@ -169,12 +192,15 @@
 							id="new-password"
 							type="password"
 							bind:value={newPassword}
+							bind:ref={newPasswordInput}
 							autocomplete="new-password"
 							disabled={isLoading}
+							aria-invalid={newPasswordError ? 'true' : undefined}
+							aria-describedby={newPasswordError ? 'new-password-error' : undefined}
 							class={newPasswordError ? 'border-destructive' : ''}
 						/>
 						{#if newPasswordError}
-							<p class="text-sm text-destructive">{newPasswordError}</p>
+							<p id="new-password-error" class="text-sm text-destructive">{newPasswordError}</p>
 						{/if}
 					</div>
 
@@ -187,18 +213,29 @@
 							id="confirm-password"
 							type="password"
 							bind:value={confirmPassword}
+							bind:ref={confirmPasswordInput}
 							autocomplete="new-password"
 							disabled={isLoading}
+							aria-invalid={confirmPasswordError ? 'true' : undefined}
+							aria-describedby={confirmPasswordError ? 'confirm-password-error' : undefined}
 							class={confirmPasswordError ? 'border-destructive' : ''}
 						/>
 						{#if confirmPasswordError}
-							<p class="text-sm text-destructive">{confirmPasswordError}</p>
+							<p id="confirm-password-error" class="text-sm text-destructive">
+								{confirmPasswordError}
+							</p>
 						{/if}
 					</div>
 
+					{#if submitError}
+						<Alert variant="destructive">
+							<AlertDescription>{submitError}</AlertDescription>
+						</Alert>
+					{/if}
+
 					<Button type="submit" disabled={isLoading} class="w-full sm:w-auto">
 						{#if isLoading}
-							{$t('common.loading') || 'Updating...'}
+							{$t('common.loading')}
 						{:else}
 							{$t('settings.security.password.update_button')}
 						{/if}

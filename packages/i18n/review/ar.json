@@ -1021,7 +1021,6 @@
     "notes:security.two_factor.disable_error": { "en": "cc20989526e9", "ar": "d6a9672ed63b" },
     "notes:security.two_factor.invalid_password": { "en": "e092ae939722", "ar": "5f2b03207466" },
     "notes:security.two_factor.connection_error": { "en": "5b1fda2f8d0b", "ar": "b8cd2fcc9fe0" },
-    "notes:security.two_factor.password_required": { "en": "be5692c4d81e", "ar": "1eb418e8e2bd" },
     "notes:security.two_factor.enabled_toast": { "en": "18b1f6162f46", "ar": "c33604cc060f" },
     "notes:security.two_factor.disabled_toast": { "en": "4caaccbcb1f1", "ar": "1002fc9e8b83" },
     "notes:security.sessions.title": { "en": "f7b12ad046ea", "ar": "19934d8e701d" },

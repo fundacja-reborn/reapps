@@ -203,6 +203,7 @@
     "title": "Seguridad",
     "description": "Gestione sus ajustes de seguridad",
     "authentication": "Autenticación",
+    "session_expired": "La sesión ha caducado. Inicie sesión de nuevo.",
     "password": {
       "title": "Contraseña",
       "description": "Cambiar la contraseña de su cuenta",
@@ -217,6 +218,9 @@
       "error_passwords_mismatch": "Las nuevas contraseñas no coinciden",
       "error_password_too_short": "La contraseña debe tener al menos 8 caracteres",
       "error_same_password": "La nueva contraseña debe ser diferente a la actual",
+      "error_key_unavailable": "Clave de cifrado no disponible. Recargue la página e inténtelo de nuevo.",
+      "error_failed": "No se pudo cambiar la contraseña. Por favor, inténtelo de nuevo.",
+      "error_unexpected": "Se produjo un error inesperado. Por favor, inténtelo de nuevo.",
       "warning_relogin": "Después de cambiar su contraseña, se cerrará la sesión en los demás dispositivos"
     },
     "two_factor": {
@@ -227,7 +231,9 @@
       "verify_error": "Error al verificar el código",
       "disable_error": "Error al desactivar 2FA",
       "connection_error": "Error de conexión con el servidor",
-      "too_many_attempts": "Demasiados intentos. Por favor, inténtelo de nuevo más tarde."
+      "too_many_attempts": "Demasiados intentos. Por favor, inténtelo de nuevo más tarde.",
+      "copy_secret": "Copiar secreto",
+      "qr_alt": "Código QR para la aplicación de autenticación"
     },
     "backup_codes": {
       "title": "Códigos de respaldo",
@@ -250,7 +256,11 @@
       "setup_title": "Guarde sus códigos de recuperación",
       "setup_description": "Estos códigos le ayudarán a acceder a su cuenta si pierde su dispositivo de autenticación. Cada código solo se puede usar una vez.",
       "saved_continue": "He guardado mis códigos, continuar",
-      "generate_failed_warning": "Los códigos de recuperación no pudieron generarse automáticamente. Puede generarlos más tarde en los ajustes de seguridad."
+      "generate_failed_warning": "Los códigos de recuperación no pudieron generarse automáticamente. Puede generarlos más tarde en los ajustes de seguridad.",
+      "copy_code": "Copiar código",
+      "file_header": "re/task - Códigos de respaldo",
+      "file_generated": "Generados:",
+      "file_warning": "Guarde estos códigos en un lugar seguro. Cada código solo puede usarse una vez."
     },
     "sessions": {
       "title": "Sesiones activas",

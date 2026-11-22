@@ -316,7 +316,6 @@
       "require_number": "Password must contain at least one number",
       "require_special": "Password must contain at least one special character"
     },
-    "required": "Password is required",
     "incorrect": "Incorrect password",
     "verification_failed": "Failed to verify password",
     "strength": {

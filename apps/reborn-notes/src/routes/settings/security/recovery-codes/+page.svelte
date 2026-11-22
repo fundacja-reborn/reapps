@@ -46,7 +46,10 @@
   let newCodes = $state<string[]>([]);
   let showConfirmRegenerate = $state(false);
   let copiedIndex = $state<number | null>(null);
-  let error = $state<string | null>(null);
+  // Errors sit next to what the user acted on (guideline 02): a failed load
+  // (nothing clicked) at the top, a failed generate right above its button.
+  let loadError = $state<string | null>(null);
+  let generateError = $state<string | null>(null);
 
   async function fetchStatus() {
     try {
@@ -54,12 +57,13 @@
       const data = await response.json();
       if (data.success) {
         status = data.data;
+        loadError = null;
       } else {
-        error = $t('security.recovery_codes.fetch_error');
+        loadError = $t('security.recovery_codes.fetch_error');
       }
     } catch (err: unknown) {
       logger.error('Failed to fetch recovery codes status:', err);
-      error = $t('security.recovery_codes.connection_error');
+      loadError = $t('security.recovery_codes.connection_error');
     } finally {
       isLoading = false;
     }
@@ -68,7 +72,7 @@
   async function generateCodes() {
     isGenerating = true;
     showConfirmRegenerate = false;
-    error = null;
+    generateError = null;
     try {
       const response = await authFetch(`${API_BASE}/auth/recovery-codes`, {
         method: 'POST'
@@ -83,11 +87,11 @@
           })
         );
       } else {
-        error = $t('security.recovery_codes.generate_error');
+        generateError = $t('security.recovery_codes.generate_error');
       }
     } catch (err: unknown) {
       logger.error('Failed to generate recovery codes:', err);
-      error = $t('security.recovery_codes.connection_error');
+      generateError = $t('security.recovery_codes.connection_error');
     } finally {
       isGenerating = false;
     }
@@ -146,9 +150,9 @@
       </AlertDescription>
     </Alert>
 
-    {#if error}
+    {#if loadError}
       <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
+        <AlertDescription>{loadError}</AlertDescription>
       </Alert>
     {/if}
 
@@ -185,6 +189,11 @@
           </CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
+          {#if generateError}
+            <Alert variant="destructive">
+              <AlertDescription>{generateError}</AlertDescription>
+            </Alert>
+          {/if}
           {#if !status?.hasCodesGenerated}
             <!-- No codes yet -->
             <Button onclick={generateCodes} disabled={isGenerating} class="w-full sm:w-auto">

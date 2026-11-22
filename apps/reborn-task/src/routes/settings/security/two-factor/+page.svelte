@@ -288,11 +288,11 @@
 	function downloadCodes() {
 		if (!recoveryCodes.length) return;
 		const content = [
-			're/task - Backup Codes',
+			$t('settings.security.backup_codes.file_header'),
 			// date-format-ignore: text written into a file the user keeps, read outside the app
-			`Generated: ${formatDateTime(new Date(), $locale, $timeFormat)}`,
+			`${$t('settings.security.backup_codes.file_generated')} ${formatDateTime(new Date(), $locale, $timeFormat)}`,
 			'',
-			'Keep these codes in a safe place. Each code can only be used once.',
+			$t('settings.security.backup_codes.file_warning'),
 			'',
 			...recoveryCodes.map((code, i) => `${i + 1}. ${code}`)
 		].join('\n');
@@ -440,7 +440,11 @@
 						<div class="flex justify-center">
 							{#if qrDataUrl}
 								<div class="rounded-lg border bg-white p-3">
-									<img src={qrDataUrl} alt="TOTP QR Code" class="h-48 w-48 sm:h-56 sm:w-56" />
+									<img
+										src={qrDataUrl}
+										alt={$t('settings.security.two_factor.qr_alt')}
+										class="h-48 w-48 sm:h-56 sm:w-56"
+									/>
 								</div>
 							{/if}
 						</div>
@@ -459,7 +463,7 @@
 								<button
 									onclick={copySecret}
 									class="text-muted-foreground hover:text-foreground transition-colors p-1"
-									aria-label="Copy secret"
+									aria-label={$t('settings.security.two_factor.copy_secret')}
 								>
 									{#if secretCopied}
 										<Check class="h-4 w-4 text-green-500" />
@@ -578,7 +582,7 @@
 								<button
 									onclick={() => copyCode(code, i)}
 									class="ms-2 text-muted-foreground hover:text-foreground transition-colors"
-									aria-label="Copy code"
+									aria-label={$t('settings.security.backup_codes.copy_code')}
 								>
 									{#if copiedIndex === i}
 										<Check class="h-4 w-4 text-green-500" />
