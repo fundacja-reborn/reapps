@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { PUBLIC_BASE_PATH } from '$env/static/public';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import {
 		SettingsLayout,
 		Card,
@@ -23,7 +23,9 @@
 		AlertTriangle,
 		Copy,
 		Check,
-		Download
+		Download,
+		Eye,
+		EyeOff
 	} from '@lucide/svelte';
 	import { t, locale } from '$lib/stores/i18n.store';
 	import { formatDateTime } from '@reborn/i18n';
@@ -38,7 +40,13 @@
 
 	let step = $state<Step>('loading');
 	let isLoading = $state(false);
-	let error = $state<string | null>(null);
+
+	// Each error is shown next to what the user acted on, so it stays in view
+	// (on a phone the top of the page is often scrolled away): a field's error
+	// under the field, an action's error right above its buttons. Only a failed
+	// status load, where nothing was clicked, goes at the top of the page.
+	let statusError = $state<string | null>(null);
+	let setupError = $state<string | null>(null);
 
 	// Setup state
 	let secretBase32 = $state('');
@@ -47,11 +55,19 @@
 	// Verify state
 	let verificationCode = $state('');
 	let submitAttempted = $state(false);
+	let codeRejected = $state(false);
+	let verifyError = $state<string | null>(null);
+	let codeInput = $state<HTMLElement | null>(null);
 
 	// Disable state
 	let disablePassword = $state('');
+	let showDisablePassword = $state(false);
+	let disableAttempted = $state(false);
+	let passwordRejected = $state(false);
+	let disableError = $state<string | null>(null);
 	let showDisableConfirm = $state(false);
 	let isDisabling = $state(false);
+	let disablePasswordInput = $state<HTMLElement | null>(null);
 
 	// Status
 	let is2FAEnabled = $state(false);
@@ -67,6 +83,15 @@
 		return localStorage.getItem('access_token');
 	}
 
+	/**
+	 * The text for a failed request. The server's own `error` is English and
+	 * not for users, so it is never shown: a rate limit (429) gets its own
+	 * text, anything else the action's.
+	 */
+	function failureMessage(status: number, actionError: string): string {
+		return status === 429 ? $t('settings.security.two_factor.too_many_attempts') : actionError;
+	}
+
 	async function fetchStatus() {
 		try {
 			const accessToken = getAccessToken();
@@ -79,19 +104,22 @@
 				is2FAEnabled = data.data.isEnabled;
 				step = is2FAEnabled ? 'enabled' : 'status';
 			} else {
-				error = data.error || 'Failed to load 2FA status';
+				statusError = failureMessage(
+					response.status,
+					$t('settings.security.two_factor.fetch_error')
+				);
 				step = 'status';
 			}
 		} catch (err: unknown) {
 			logger.error('Failed to fetch 2FA status:', err);
-			error = 'Failed to load 2FA status';
+			statusError = $t('settings.security.two_factor.connection_error');
 			step = 'status';
 		}
 	}
 
 	async function startSetup() {
 		isLoading = true;
-		error = null;
+		setupError = null;
 
 		try {
 			const accessToken = getAccessToken();
@@ -114,11 +142,14 @@
 
 				step = 'setup';
 			} else {
-				error = data.error || 'Failed to start 2FA setup';
+				setupError = failureMessage(
+					response.status,
+					$t('settings.security.two_factor.setup_error')
+				);
 			}
 		} catch (err: unknown) {
 			logger.error('Failed to start 2FA setup:', err);
-			error = 'Failed to start 2FA setup';
+			setupError = $t('settings.security.two_factor.connection_error');
 		} finally {
 			isLoading = false;
 		}
@@ -126,9 +157,13 @@
 
 	async function verifyAndEnable() {
 		submitAttempted = true;
-		error = null;
+		codeRejected = false;
+		verifyError = null;
 
-		if (!verificationCode || verificationCode.length !== 6) return;
+		if (!verificationCode || verificationCode.length !== 6) {
+			codeInput?.focus();
+			return;
+		}
 
 		isLoading = true;
 
@@ -175,28 +210,47 @@
 					toast.warning($t('settings.security.backup_codes.generate_failed_warning'));
 					step = 'enabled';
 				}
+			} else if (data.error === 'Invalid verification code') {
+				codeRejected = true;
 			} else {
-				error =
-					data.error === 'Invalid verification code'
-						? $t('settings.profile.verification_code_invalid') || 'Invalid verification code'
-						: data.error || 'Verification failed';
+				verifyError = failureMessage(
+					response.status,
+					$t('settings.security.two_factor.verify_error')
+				);
 			}
 		} catch (err: unknown) {
 			logger.error('Failed to verify 2FA:', err);
-			error = 'Verification failed';
+			verifyError = $t('settings.security.two_factor.connection_error');
 		} finally {
 			isLoading = false;
 		}
+		// The field is disabled while the request runs; focus it once it is back.
+		if (codeRejected) {
+			await tick();
+			codeInput?.focus();
+		}
+	}
+
+	function resetDisableForm() {
+		showDisableConfirm = false;
+		disablePassword = '';
+		showDisablePassword = false;
+		disableAttempted = false;
+		passwordRejected = false;
+		disableError = null;
 	}
 
 	async function disable2FA() {
+		disableAttempted = true;
+		passwordRejected = false;
+		disableError = null;
+
 		if (!disablePassword) {
-			error = $t('password.required');
+			disablePasswordInput?.focus();
 			return;
 		}
 
 		isDisabling = true;
-		error = null;
 
 		try {
 			const accessToken = getAccessToken();
@@ -214,30 +268,35 @@
 				toast.success($t('settings.profile.two_factor_auth_disabled'));
 				is2FAEnabled = false;
 				step = 'status';
-				showDisableConfirm = false;
-				disablePassword = '';
+				resetDisableForm();
+			} else if (data.error === 'Invalid password') {
+				passwordRejected = true;
 			} else {
-				error =
-					data.error === 'Invalid password'
-						? $t('settings.security.password.error_current_invalid') || 'Invalid password'
-						: data.error || 'Failed to disable 2FA';
+				disableError = failureMessage(
+					response.status,
+					$t('settings.security.two_factor.disable_error')
+				);
 			}
 		} catch (err: unknown) {
 			logger.error('Failed to disable 2FA:', err);
-			error = 'Failed to disable 2FA';
+			disableError = $t('settings.security.two_factor.connection_error');
 		} finally {
 			isDisabling = false;
+		}
+		if (passwordRejected) {
+			await tick();
+			disablePasswordInput?.focus();
 		}
 	}
 
 	function downloadCodes() {
 		if (!recoveryCodes.length) return;
 		const content = [
-			're/task - Backup Codes',
+			$t('settings.security.backup_codes.file_header'),
 			// date-format-ignore: text written into a file the user keeps, read outside the app
-			`Generated: ${formatDateTime(new Date(), $locale, $timeFormat)}`,
+			`${$t('settings.security.backup_codes.file_generated')} ${formatDateTime(new Date(), $locale, $timeFormat)}`,
 			'',
-			'Keep these codes in a safe place. Each code can only be used once.',
+			$t('settings.security.backup_codes.file_warning'),
 			'',
 			...recoveryCodes.map((code, i) => `${i + 1}. ${code}`)
 		].join('\n');
@@ -283,10 +342,16 @@
 
 	const codeError = $derived.by(() => {
 		if (!submitAttempted) return null;
-		if (!verificationCode)
-			return $t('settings.profile.verification_code_required') || 'Code is required';
-		if (verificationCode.length !== 6)
-			return $t('settings.profile.verification_code_invalid') || 'Code must be 6 digits';
+		if (!verificationCode) return $t('settings.profile.verification_code_required');
+		if (verificationCode.length !== 6 || codeRejected)
+			return $t('settings.profile.verification_code_invalid');
+		return null;
+	});
+
+	const disablePasswordError = $derived.by(() => {
+		if (!disableAttempted) return null;
+		if (!disablePassword) return $t('auth.validation.required');
+		if (passwordRejected) return $t('settings.security.password.error_current_invalid');
 		return null;
 	});
 
@@ -297,9 +362,9 @@
 
 <SettingsLayout title={$t('settings.security.two_factor.title')} backHref="/settings">
 	<div class="space-y-6">
-		{#if error}
+		{#if statusError}
 			<Alert variant="destructive">
-				<AlertDescription>{error}</AlertDescription>
+				<AlertDescription>{statusError}</AlertDescription>
 			</Alert>
 		{/if}
 
@@ -330,11 +395,16 @@
 						{$t('settings.profile.two_factor_auth_disabled_description')}
 					</CardDescription>
 				</CardHeader>
-				<CardContent>
+				<CardContent class="space-y-4">
+					{#if setupError}
+						<Alert variant="destructive">
+							<AlertDescription>{setupError}</AlertDescription>
+						</Alert>
+					{/if}
 					<Button onclick={startSetup} disabled={isLoading} class="w-full sm:w-auto">
 						{#if isLoading}
 							<RefreshCw class="h-4 w-4 me-2 animate-spin" />
-							{$t('common.loading') || 'Loading...'}
+							{$t('common.loading')}
 						{:else}
 							<Shield class="h-4 w-4 me-2" />
 							{$t('settings.profile.two_factor_auth_enable')}
@@ -374,7 +444,11 @@
 						<div class="flex justify-center">
 							{#if qrDataUrl}
 								<div class="rounded-lg border bg-white p-3">
-									<img src={qrDataUrl} alt="TOTP QR Code" class="h-48 w-48 sm:h-56 sm:w-56" />
+									<img
+										src={qrDataUrl}
+										alt={$t('settings.security.two_factor.qr_alt')}
+										class="h-48 w-48 sm:h-56 sm:w-56"
+									/>
 								</div>
 							{/if}
 						</div>
@@ -382,9 +456,7 @@
 						<!-- Manual secret -->
 						<div class="space-y-2">
 							<p class="text-xs text-muted-foreground text-center">
-								{$t('settings.profile.two_factor_auth_manual_entry', {
-									default: 'Lub wpisz ten kod ręcznie:'
-								})}
+								{$t('settings.profile.two_factor_auth_manual_entry')}
 							</p>
 							<div class="flex items-center justify-center gap-2">
 								<code
@@ -395,7 +467,7 @@
 								<button
 									onclick={copySecret}
 									class="text-muted-foreground hover:text-foreground transition-colors p-1"
-									aria-label="Copy secret"
+									aria-label={$t('settings.security.two_factor.copy_secret')}
 								>
 									{#if secretCopied}
 										<Check class="h-4 w-4 text-green-500" />
@@ -428,25 +500,39 @@
 									type="text"
 									inputmode="numeric"
 									autocomplete="one-time-code"
-									oninput={(e) => { const next = e.currentTarget.value.replace(/\D/g, '').slice(0, 6); if (e.currentTarget.value !== next) e.currentTarget.value = next; verificationCode = next; }}
+									oninput={(e) => {
+										const next = e.currentTarget.value.replace(/\D/g, '').slice(0, 6);
+										if (e.currentTarget.value !== next) e.currentTarget.value = next;
+										verificationCode = next;
+										codeRejected = false;
+									}}
 									pattern="[0-9]*"
 									placeholder="000000"
 									bind:value={verificationCode}
+									bind:ref={codeInput}
 									disabled={isLoading}
+									aria-invalid={codeError ? 'true' : undefined}
+									aria-describedby={codeError ? 'verification-code-error' : undefined}
 									class={codeError
 										? 'border-destructive font-mono text-center text-lg tracking-widest'
 										: 'font-mono text-center text-lg tracking-widest'}
 								/>
 								{#if codeError}
-									<p class="text-sm text-destructive">{codeError}</p>
+									<p id="verification-code-error" class="text-sm text-destructive">{codeError}</p>
 								{/if}
 							</div>
+
+							{#if verifyError}
+								<Alert variant="destructive">
+									<AlertDescription>{verifyError}</AlertDescription>
+								</Alert>
+							{/if}
 
 							<div class="flex gap-2 flex-wrap">
 								<Button type="submit" disabled={isLoading}>
 									{#if isLoading}
 										<RefreshCw class="h-4 w-4 me-2 animate-spin" />
-										{$t('common.loading') || 'Verifying...'}
+										{$t('common.loading')}
 									{:else}
 										{$t('settings.profile.verify_and_enable')}
 									{/if}
@@ -456,13 +542,14 @@
 									variant="outline"
 									onclick={() => {
 										step = 'status';
-										error = null;
+										verifyError = null;
+										codeRejected = false;
 										verificationCode = '';
 										submitAttempted = false;
 									}}
 									disabled={isLoading}
 								>
-									{$t('common.cancel') || 'Cancel'}
+									{$t('common.cancel')}
 								</Button>
 							</div>
 						</form>
@@ -499,7 +586,7 @@
 								<button
 									onclick={() => copyCode(code, i)}
 									class="ms-2 text-muted-foreground hover:text-foreground transition-colors"
-									aria-label="Copy code"
+									aria-label={$t('settings.security.backup_codes.copy_code')}
 								>
 									{#if copiedIndex === i}
 										<Check class="h-4 w-4 text-green-500" />
@@ -576,20 +663,51 @@
 						>
 							<div class="space-y-2">
 								<Label for="disable-password">{$t('settings.profile.password')}</Label>
-								<Input
-									id="disable-password"
-									type="password"
-									autocomplete="current-password"
-									bind:value={disablePassword}
-									disabled={isDisabling}
-								/>
+								<div class="relative">
+									<Input
+										id="disable-password"
+										type={showDisablePassword ? 'text' : 'password'}
+										autocomplete="current-password"
+										bind:value={disablePassword}
+										bind:ref={disablePasswordInput}
+										oninput={() => (passwordRejected = false)}
+										disabled={isDisabling}
+										aria-invalid={disablePasswordError ? 'true' : undefined}
+										aria-describedby={disablePasswordError ? 'disable-password-error' : undefined}
+										class="pe-10 {disablePasswordError ? 'border-destructive' : ''}"
+									/>
+									<button
+										type="button"
+										class="absolute inset-y-0 inset-e-0 flex items-center pe-3 text-muted-foreground hover:text-foreground"
+										onclick={() => (showDisablePassword = !showDisablePassword)}
+										aria-label={showDisablePassword
+											? $t('auth.unlock.hide_password')
+											: $t('auth.unlock.show_password')}
+										aria-pressed={showDisablePassword}
+									>
+										{#if showDisablePassword}<EyeOff class="h-4 w-4" />{:else}<Eye
+												class="h-4 w-4"
+											/>{/if}
+									</button>
+								</div>
+								{#if disablePasswordError}
+									<p id="disable-password-error" class="text-sm text-destructive">
+										{disablePasswordError}
+									</p>
+								{/if}
 							</div>
+
+							{#if disableError}
+								<Alert variant="destructive">
+									<AlertDescription>{disableError}</AlertDescription>
+								</Alert>
+							{/if}
 
 							<div class="flex gap-2 flex-wrap">
 								<Button type="submit" variant="destructive" disabled={isDisabling}>
 									{#if isDisabling}
 										<RefreshCw class="h-4 w-4 me-2 animate-spin" />
-										{$t('common.loading') || 'Disabling...'}
+										{$t('common.loading')}
 									{:else}
 										{$t('settings.profile.disable_2fa')}
 									{/if}
@@ -597,14 +715,10 @@
 								<Button
 									type="button"
 									variant="outline"
-									onclick={() => {
-										showDisableConfirm = false;
-										disablePassword = '';
-										error = null;
-									}}
+									onclick={resetDisableForm}
 									disabled={isDisabling}
 								>
-									{$t('common.cancel') || 'Cancel'}
+									{$t('common.cancel')}
 								</Button>
 							</div>
 						</form>

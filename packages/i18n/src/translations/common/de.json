@@ -316,7 +316,6 @@
       "require_number": "Das Passwort muss mindestens eine Zahl enthalten",
       "require_special": "Das Passwort muss mindestens ein Sonderzeichen enthalten"
     },
-    "required": "Passwort ist erforderlich",
     "incorrect": "Falsches Passwort",
     "verification_failed": "Passwortüberprüfung fehlgeschlagen",
     "strength": {

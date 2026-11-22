@@ -203,6 +203,7 @@
     "title": "S\u00e9curit\u00e9",
     "description": "G\u00e9rez vos param\u00e8tres de s\u00e9curit\u00e9",
     "authentication": "Authentification",
+    "session_expired": "Session expirée. Veuillez vous reconnecter.",
     "password": {
       "title": "Mot de passe",
       "description": "Changez le mot de passe de votre compte",
@@ -217,11 +218,22 @@
       "error_passwords_mismatch": "Les nouveaux mots de passe ne correspondent pas",
       "error_password_too_short": "Le mot de passe doit contenir au moins 8 caract\u00e8res",
       "error_same_password": "Le nouveau mot de passe doit \u00eatre diff\u00e9rent de l'actuel",
+      "error_key_unavailable": "Clé de chiffrement indisponible. Rechargez la page et réessayez.",
+      "error_failed": "Échec du changement de mot de passe. Veuillez réessayer.",
+      "error_unexpected": "Une erreur inattendue s'est produite. Veuillez réessayer.",
       "warning_relogin": "Apr\u00e8s avoir chang\u00e9 votre mot de passe, les autres appareils seront d\u00e9connect\u00e9s"
     },
     "two_factor": {
       "title": "Authentification \u00e0 deux facteurs",
-      "description": "Ajoutez une couche de s\u00e9curit\u00e9 suppl\u00e9mentaire"
+      "description": "Ajoutez une couche de s\u00e9curit\u00e9 suppl\u00e9mentaire",
+      "fetch_error": "Échec de la récupération du statut 2FA",
+      "setup_error": "Échec du démarrage de la configuration 2FA",
+      "verify_error": "Échec de la vérification du code",
+      "disable_error": "Échec de la désactivation 2FA",
+      "connection_error": "Erreur de connexion au serveur",
+      "too_many_attempts": "Trop de tentatives. Veuillez réessayer plus tard.",
+      "copy_secret": "Copier le secret",
+      "qr_alt": "Code QR pour l'application d'authentification"
     },
     "backup_codes": {
       "title": "Codes de sauvegarde",
@@ -244,7 +256,11 @@
       "setup_title": "Enregistrez vos codes de r\u00e9cup\u00e9ration",
       "setup_description": "Ces codes vous aideront \u00e0 acc\u00e9der \u00e0 votre compte si vous perdez votre appareil d'authentification. Chaque code ne peut \u00eatre utilis\u00e9 qu'une seule fois.",
       "saved_continue": "J'ai enregistr\u00e9 mes codes, continuer",
-      "generate_failed_warning": "Les codes de r\u00e9cup\u00e9ration n'ont pas pu \u00eatre g\u00e9n\u00e9r\u00e9s automatiquement. Vous pouvez les g\u00e9n\u00e9rer plus tard dans les param\u00e8tres de s\u00e9curit\u00e9."
+      "generate_failed_warning": "Les codes de r\u00e9cup\u00e9ration n'ont pas pu \u00eatre g\u00e9n\u00e9r\u00e9s automatiquement. Vous pouvez les g\u00e9n\u00e9rer plus tard dans les param\u00e8tres de s\u00e9curit\u00e9.",
+      "copy_code": "Copier le code",
+      "file_header": "re/task - Codes de sauvegarde",
+      "file_generated": "Générés :",
+      "file_warning": "Conservez ces codes dans un endroit sûr. Chaque code ne peut être utilisé qu'une seule fois."
     },
     "sessions": {
       "title": "Sessions actives",

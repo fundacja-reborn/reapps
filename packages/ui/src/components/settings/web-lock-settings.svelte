@@ -15,7 +15,7 @@
 -->
 <script lang="ts">
   import { t } from '@reborn/i18n';
-  import { Lock, LockOpen } from '@lucide/svelte';
+  import { Lock, LockOpen, Eye, EyeOff } from '@lucide/svelte';
   import { Alert, AlertDescription } from '../alert';
   import { Button } from '../button';
   import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../card';
@@ -68,6 +68,7 @@
   /** Which change the password dialog is confirming, or null when closed. */
   let pending = $state<'enable' | 'disable' | null>(null);
   let password = $state('');
+  let showPassword = $state(false);
   let busy = $state(false);
   let wrongPassword = $state(false);
 
@@ -75,6 +76,7 @@
 
   function ask(change: 'enable' | 'disable') {
     password = '';
+    showPassword = false;
     wrongPassword = false;
     pending = change;
   }
@@ -83,6 +85,7 @@
     if (busy) return;
     pending = null;
     password = '';
+    showPassword = false;
     wrongPassword = false;
   }
 
@@ -239,17 +242,30 @@
         <label for="web-lock-password" class="block text-sm font-medium">
           {$t('auth.unlock.password_label')}
         </label>
-        <input
-          id="web-lock-password"
-          name="password"
-          type="password"
-          autocomplete="current-password"
-          required
-          bind:value={password}
-          disabled={busy}
-          aria-invalid={wrongPassword}
-          class="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
+        <div class="relative">
+          <input
+            id="web-lock-password"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            autocomplete="current-password"
+            required
+            bind:value={password}
+            disabled={busy}
+            aria-invalid={wrongPassword}
+            class="block w-full rounded-md border border-input bg-background px-3 py-2 pe-10 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <button
+            type="button"
+            class="absolute inset-y-0 inset-e-0 flex items-center pe-3 text-muted-foreground hover:text-foreground"
+            onclick={() => (showPassword = !showPassword)}
+            aria-label={showPassword
+              ? $t('auth.unlock.hide_password')
+              : $t('auth.unlock.show_password')}
+            aria-pressed={showPassword}
+          >
+            {#if showPassword}<EyeOff class="h-4 w-4" />{:else}<Eye class="h-4 w-4" />{/if}
+          </button>
+        </div>
         {#if wrongPassword}
           <p role="alert" class="text-sm text-destructive">{$t('web_lock.wrong_password')}</p>
         {/if}

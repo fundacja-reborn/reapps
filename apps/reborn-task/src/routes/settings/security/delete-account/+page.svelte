@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { PUBLIC_BASE_PATH } from '$env/static/public';
+	import { tick } from 'svelte';
 	import {
 		SettingsLayout,
 		Card,
@@ -13,7 +14,7 @@
 		Alert,
 		AlertDescription
 	} from '@reborn/ui';
-	import { AlertTriangle, Trash2 } from '@lucide/svelte';
+	import { AlertTriangle, Trash2, Eye, EyeOff } from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { base } from '$app/paths';
 	import { createLogger } from '@reborn/utils';
@@ -22,27 +23,37 @@
 	const logger = createLogger('DeleteAccountPage');
 
 	let password = $state('');
+	let showPassword = $state(false);
 	let isLoading = $state(false);
-	let error = $state<string | null>(null);
 	let submitAttempted = $state(false);
+	// Errors sit next to what the user acted on (guideline 02): the password's
+	// error under the field, any other failure right above the delete button.
+	let passwordRejected = $state(false);
+	let submitError = $state<string | null>(null);
+	let passwordInput = $state<HTMLElement | null>(null);
 
 	const passwordError = $derived.by(() => {
 		if (!submitAttempted) return null;
 		if (!password) return $t('auth.validation.required');
+		if (passwordRejected) return $t('settings.delete_account.error_invalid_password');
 		return null;
 	});
 
 	async function handleDelete() {
 		submitAttempted = true;
-		error = null;
+		passwordRejected = false;
+		submitError = null;
 
-		if (!password) return;
+		if (!password) {
+			passwordInput?.focus();
+			return;
+		}
 
 		isLoading = true;
 		try {
 			const accessToken = localStorage.getItem('access_token');
 			if (!accessToken) {
-				error = 'Session expired. Please log in again.';
+				submitError = $t('settings.security.session_expired');
 				return;
 			}
 
@@ -59,27 +70,31 @@
 
 			if (!response.ok || !data.success) {
 				if (response.status === 400 && data.error === 'Invalid password') {
-					error = $t('settings.delete_account.error_invalid_password');
+					passwordRejected = true;
 				} else {
-					error = $t('settings.delete_account.error_generic');
+					submitError = $t('settings.delete_account.error_generic');
 				}
-				return;
+			} else {
+				// Clear local data: auth state + IndexedDB + hard redirect
+				await authLogout(true);
+				try {
+					const { clearAllUserData } = await import('@reborn/storage');
+					await clearAllUserData();
+				} catch {
+					// Best-effort - pre-login clear will catch any remnants
+				}
+				window.location.href = `${base}/auth/login`;
 			}
-
-			// Clear local data: auth state + IndexedDB + hard redirect
-			await authLogout(true);
-			try {
-				const { clearAllUserData } = await import('@reborn/storage');
-				await clearAllUserData();
-			} catch {
-				// Best-effort — pre-login clear will catch any remnants
-			}
-			window.location.href = `${base}/auth/login`;
 		} catch (err: unknown) {
 			logger.error('Failed to delete account:', err);
-			error = $t('settings.delete_account.error_generic');
+			submitError = $t('settings.delete_account.error_generic');
 		} finally {
 			isLoading = false;
+		}
+		// The field is disabled while the request runs; focus it once it is back.
+		if (passwordRejected) {
+			await tick();
+			passwordInput?.focus();
 		}
 	}
 </script>
@@ -94,12 +109,6 @@
 				<div>{$t('settings.delete_account.warning_description')}</div>
 			</AlertDescription>
 		</Alert>
-
-		{#if error}
-			<Alert variant="destructive">
-				<AlertDescription>{error}</AlertDescription>
-			</Alert>
-		{/if}
 
 		<Card class="border-destructive/40">
 			<CardHeader>
@@ -119,19 +128,42 @@
 				>
 					<div class="space-y-2">
 						<Label for="confirm-password">{$t('settings.delete_account.confirm_label')}</Label>
-						<Input
-							id="confirm-password"
-							type="password"
-							bind:value={password}
-							placeholder={$t('settings.delete_account.password_placeholder')}
-							autocomplete="current-password"
-							disabled={isLoading}
-							class={passwordError ? 'border-destructive' : ''}
-						/>
+						<div class="relative">
+							<Input
+								id="confirm-password"
+								type={showPassword ? 'text' : 'password'}
+								bind:value={password}
+								bind:ref={passwordInput}
+								oninput={() => (passwordRejected = false)}
+								placeholder={$t('settings.delete_account.password_placeholder')}
+								autocomplete="current-password"
+								disabled={isLoading}
+								aria-invalid={passwordError ? 'true' : undefined}
+								aria-describedby={passwordError ? 'confirm-password-error' : undefined}
+								class="pe-10 {passwordError ? 'border-destructive' : ''}"
+							/>
+							<button
+								type="button"
+								class="absolute inset-y-0 inset-e-0 flex items-center pe-3 text-muted-foreground hover:text-foreground"
+								onclick={() => (showPassword = !showPassword)}
+								aria-label={showPassword
+									? $t('auth.unlock.hide_password')
+									: $t('auth.unlock.show_password')}
+								aria-pressed={showPassword}
+							>
+								{#if showPassword}<EyeOff class="h-4 w-4" />{:else}<Eye class="h-4 w-4" />{/if}
+							</button>
+						</div>
 						{#if passwordError}
-							<p class="text-sm text-destructive">{passwordError}</p>
+							<p id="confirm-password-error" class="text-sm text-destructive">{passwordError}</p>
 						{/if}
 					</div>
+
+					{#if submitError}
+						<Alert variant="destructive">
+							<AlertDescription>{submitError}</AlertDescription>
+						</Alert>
+					{/if}
 
 					<Button type="submit" variant="destructive" disabled={isLoading} class="w-full sm:w-auto">
 						{#if isLoading}

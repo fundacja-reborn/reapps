@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { authFetch } from '$lib/utils/auth-fetch';
   import { API_BASE } from '$lib/utils/api-base';
   import { AlertTriangle, Trash2, Eye, EyeOff } from '@lucide/svelte';
@@ -24,19 +25,30 @@
   let password = $state('');
   let showPassword = $state(false);
   let isLoading = $state(false);
-  let error = $state<string | null>(null);
   let submitAttempted = $state(false);
+  // Errors sit next to what the user acted on (guideline 02): the password's
+  // error under the field, any other failure right above the delete button.
+  let passwordRejected = $state(false);
+  let submitError = $state<string | null>(null);
+  let passwordInput = $state<HTMLElement | null>(null);
 
-  const passwordError = $derived(
-    submitAttempted && !password ? $t('security.delete_account.required') : null
-  );
+  const passwordError = $derived.by(() => {
+    if (!submitAttempted) return null;
+    if (!password) return $t('security.delete_account.required');
+    if (passwordRejected) return $t('security.delete_account.invalid_password');
+    return null;
+  });
 
   async function handleDelete(e: Event) {
     e.preventDefault();
     submitAttempted = true;
-    error = null;
+    passwordRejected = false;
+    submitError = null;
 
-    if (!password) return;
+    if (!password) {
+      passwordInput?.focus();
+      return;
+    }
 
     isLoading = true;
     try {
@@ -49,20 +61,25 @@
       const data = await response.json();
 
       if (!response.ok || !data.success) {
+        // The server's `error` is English text for logs, never shown as is.
         if (response.status === 400 && data.error === 'Invalid password') {
-          error = $t('security.delete_account.invalid_password');
+          passwordRejected = true;
         } else {
-          error = data.error ?? $t('security.delete_account.failed');
+          submitError = $t('security.delete_account.failed');
         }
-        return;
+      } else {
+        authStore.logout();
       }
-
-      authStore.logout();
     } catch (err: unknown) {
       logger.error('Failed to delete account:', err);
-      error = $t('security.delete_account.unexpected_error');
+      submitError = $t('security.delete_account.unexpected_error');
     } finally {
       isLoading = false;
+    }
+    // The field is disabled while the request runs; focus it once it is back.
+    if (passwordRejected) {
+      await tick();
+      passwordInput?.focus();
     }
   }
 </script>
@@ -94,12 +111,6 @@
       </AlertDescription>
     </Alert>
 
-    {#if error}
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    {/if}
-
     <Card class="border-destructive/40">
       <CardHeader>
         <CardTitle class="text-base flex items-center gap-2 text-destructive">
@@ -117,17 +128,27 @@
                 id="confirm-password"
                 type={showPassword ? 'text' : 'password'}
                 bind:value={password}
+                bind:ref={passwordInput}
+                oninput={() => (passwordRejected = false)}
                 placeholder={$t('security.delete_account.password_placeholder')}
                 autocomplete="current-password"
                 disabled={isLoading}
+                aria-invalid={passwordError ? 'true' : undefined}
+                aria-describedby={passwordError ? 'confirm-password-error' : undefined}
                 class="pe-10 {passwordError ? 'border-destructive' : ''}"
               />
               {@render revealToggle()}
             </div>
             {#if passwordError}
-              <p class="text-sm text-destructive">{passwordError}</p>
+              <p id="confirm-password-error" class="text-sm text-destructive">{passwordError}</p>
             {/if}
           </div>
+
+          {#if submitError}
+            <Alert variant="destructive">
+              <AlertDescription>{submitError}</AlertDescription>
+            </Alert>
+          {/if}
 
           <Button variant="destructive" type="submit" disabled={isLoading}>
             {isLoading

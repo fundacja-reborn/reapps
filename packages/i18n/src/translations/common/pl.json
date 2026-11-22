@@ -316,7 +316,6 @@
       "require_number": "Hasło musi zawierać co najmniej jedną cyfrę",
       "require_special": "Hasło musi zawierać co najmniej jeden znak specjalny"
     },
-    "required": "Hasło jest wymagane",
     "incorrect": "Nieprawidłowe hasło",
     "verification_failed": "Nie udało się zweryfikować hasła",
     "strength": {

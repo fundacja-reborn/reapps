@@ -44,7 +44,10 @@
 	let newCodes = $state<string[]>([]);
 	let showConfirmRegenerate = $state(false);
 	let copiedIndex = $state<number | null>(null);
-	let error = $state<string | null>(null);
+	// Errors sit next to what the user acted on (guideline 02): a failed load
+	// (nothing clicked) at the top, a failed generate right above its button.
+	let loadError = $state<string | null>(null);
+	let generateError = $state<string | null>(null);
 
 	async function fetchStatus() {
 		try {
@@ -55,12 +58,13 @@
 			const data = await response.json();
 			if (data.success) {
 				status = data.data;
+				loadError = null;
 			} else {
-				error = $t('settings.security.backup_codes.error_load');
+				loadError = $t('settings.security.backup_codes.error_load');
 			}
 		} catch (err: unknown) {
 			logger.error('Failed to fetch recovery codes status:', err);
-			error = $t('settings.security.backup_codes.error_load');
+			loadError = $t('settings.security.backup_codes.error_load');
 		} finally {
 			isLoading = false;
 		}
@@ -69,7 +73,7 @@
 	async function generateCodes() {
 		isGenerating = true;
 		showConfirmRegenerate = false;
-		error = null;
+		generateError = null;
 
 		try {
 			const accessToken = localStorage.getItem('access_token');
@@ -89,11 +93,11 @@
 					)
 				);
 			} else {
-				error = $t('settings.security.backup_codes.error_generate');
+				generateError = $t('settings.security.backup_codes.error_generate');
 			}
 		} catch (err: unknown) {
 			logger.error('Failed to generate recovery codes:', err);
-			error = $t('settings.security.backup_codes.error_generate');
+			generateError = $t('settings.security.backup_codes.error_generate');
 		} finally {
 			isGenerating = false;
 		}
@@ -102,11 +106,11 @@
 	function downloadCodes() {
 		if (!newCodes.length) return;
 		const content = [
-			're/task - Backup Codes',
+			$t('settings.security.backup_codes.file_header'),
 			// date-format-ignore: text written into a file the user keeps, read outside the app
-			`Generated: ${formatDateTime(new Date(), $locale, $timeFormat)}`,
+			`${$t('settings.security.backup_codes.file_generated')} ${formatDateTime(new Date(), $locale, $timeFormat)}`,
 			'',
-			'Keep these codes in a safe place. Each code can only be used once.',
+			$t('settings.security.backup_codes.file_warning'),
 			'',
 			...newCodes.map((code, i) => `${i + 1}. ${code}`)
 		].join('\n');
@@ -155,9 +159,9 @@
 			</AlertDescription>
 		</Alert>
 
-		{#if error}
+		{#if loadError}
 			<Alert variant="destructive">
-				<AlertDescription>{error}</AlertDescription>
+				<AlertDescription>{loadError}</AlertDescription>
 			</Alert>
 		{/if}
 
@@ -194,11 +198,16 @@
 					</CardDescription>
 				</CardHeader>
 				<CardContent class="space-y-4">
+					{#if generateError}
+						<Alert variant="destructive">
+							<AlertDescription>{generateError}</AlertDescription>
+						</Alert>
+					{/if}
 					{#if !status?.hasCodesGenerated}
 						<!-- No codes yet -->
 						<Button onclick={generateCodes} disabled={isGenerating} class="w-full sm:w-auto">
 							{isGenerating
-								? $t('common.loading') || 'Generating...'
+								? $t('common.loading')
 								: $t('settings.security.backup_codes.generate_button')}
 						</Button>
 					{:else if !showConfirmRegenerate}
@@ -223,7 +232,7 @@
 						<div class="flex gap-2 flex-wrap">
 							<Button variant="destructive" onclick={generateCodes} disabled={isGenerating}>
 								{isGenerating
-									? $t('common.loading') || 'Generating...'
+									? $t('common.loading')
 									: $t('settings.security.backup_codes.regenerate_confirm')}
 							</Button>
 							<Button
@@ -231,7 +240,7 @@
 								onclick={() => (showConfirmRegenerate = false)}
 								disabled={isGenerating}
 							>
-								{$t('common.cancel') || 'Cancel'}
+								{$t('common.cancel')}
 							</Button>
 						</div>
 					{/if}
@@ -263,7 +272,7 @@
 									<button
 										onclick={() => copyCode(code, i)}
 										class="ms-2 text-muted-foreground hover:text-foreground transition-colors"
-										aria-label="Copy code"
+										aria-label={$t('settings.security.backup_codes.copy_code')}
 									>
 										{#if copiedIndex === i}
 											<Check class="h-4 w-4 text-green-500" />

@@ -316,7 +316,6 @@
       "require_number": "Le mot de passe doit contenir au moins un chiffre",
       "require_special": "Le mot de passe doit contenir au moins un caractère spécial"
     },
-    "required": "Le mot de passe est requis",
     "incorrect": "Mot de passe incorrect",
     "verification_failed": "Échec de la vérification du mot de passe",
     "strength": {

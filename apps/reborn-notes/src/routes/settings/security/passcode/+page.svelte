@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import {
     SettingsLayout,
     Card,
@@ -45,7 +45,13 @@
   let showPasscode = $state(false);
   let submitAttempted = $state(false);
   let isSaving = $state(false);
-  let error = $state<string | null>(null);
+  // Errors sit next to what the user acted on (guideline 02): a wrong current
+  // passcode under its field, a failed save right above the save button.
+  let currentRejected = $state(false);
+  let saveError = $state<string | null>(null);
+  let currentInput = $state<HTMLElement | null>(null);
+  let newInput = $state<HTMLElement | null>(null);
+  let confirmInput = $state<HTMLElement | null>(null);
   let removeOpen = $state(false);
   let removing = $state(false);
 
@@ -81,40 +87,53 @@
       : null
   );
 
+  const currentError = $derived(currentRejected ? $t('local_mode.passcode.wrong_current') : null);
+
   function resetForm() {
     currentPasscode = '';
     newPasscode = '';
     confirmPasscode = '';
     submitAttempted = false;
-    error = null;
+    currentRejected = false;
+    saveError = null;
   }
 
   async function handleSave() {
     submitAttempted = true;
-    error = null;
-    if (newError || confirmError) return;
+    currentRejected = false;
+    saveError = null;
+    if (newError || confirmError) {
+      (newError ? newInput : confirmInput)?.focus();
+      return;
+    }
     if (newPasscode.length < MIN_LENGTH || newPasscode !== confirmPasscode) return;
 
     isSaving = true;
     try {
       if (enabled) {
         const ok = await cryptoManager.changeLocalPasscode(currentPasscode, newPasscode);
-        if (!ok) {
-          error = $t('local_mode.passcode.wrong_current');
-          return;
+        if (ok) {
+          toast.success($t('local_mode.passcode.success_changed'));
+          resetForm();
+        } else {
+          currentRejected = true;
         }
-        toast.success($t('local_mode.passcode.success_changed'));
       } else {
         await cryptoManager.enableLocalPasscode(newPasscode);
         enabled = true;
         toast.success($t('local_mode.passcode.success_enabled'));
+        resetForm();
       }
-      resetForm();
     } catch (err: unknown) {
       logger.error('Failed to save local passcode:', err);
-      error = $t('local_mode.passcode.save_failed');
+      saveError = $t('local_mode.passcode.save_failed');
     } finally {
       isSaving = false;
+    }
+    // The field is disabled while saving; focus it once it is back.
+    if (currentRejected) {
+      await tick();
+      currentInput?.focus();
     }
   }
 
@@ -158,12 +177,6 @@
       <AlertDescription>{$t('local_mode.passcode.settings_intro')}</AlertDescription>
     </Alert>
 
-    {#if error}
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    {/if}
-
     <Card>
       <CardHeader>
         <CardTitle class="text-base flex items-center gap-2">
@@ -194,12 +207,19 @@
                   id="current-passcode"
                   type={showPasscode ? 'text' : 'password'}
                   bind:value={currentPasscode}
+                  bind:ref={currentInput}
+                  oninput={() => (currentRejected = false)}
                   autocomplete="off"
                   disabled={isSaving}
-                  class="pe-10"
+                  aria-invalid={currentError ? 'true' : undefined}
+                  aria-describedby={currentError ? 'current-passcode-error' : undefined}
+                  class="pe-10 {currentError ? 'border-destructive' : ''}"
                 />
                 {@render revealToggle()}
               </div>
+              {#if currentError}
+                <p id="current-passcode-error" class="text-sm text-destructive">{currentError}</p>
+              {/if}
             </div>
           {/if}
 
@@ -210,14 +230,17 @@
                 id="new-passcode"
                 type={showPasscode ? 'text' : 'password'}
                 bind:value={newPasscode}
+                bind:ref={newInput}
                 autocomplete="new-password"
                 disabled={isSaving}
+                aria-invalid={newError ? 'true' : undefined}
+                aria-describedby={newError ? 'new-passcode-error' : undefined}
                 class="pe-10 {newError ? 'border-destructive' : ''}"
               />
               {@render revealToggle()}
             </div>
             {#if newError}
-              <p class="text-sm text-destructive">{newError}</p>
+              <p id="new-passcode-error" class="text-sm text-destructive">{newError}</p>
             {:else if weakWarning}
               <p class="text-xs text-amber-600 dark:text-amber-400">{weakWarning}</p>
             {:else}
@@ -234,20 +257,29 @@
                 id="confirm-passcode"
                 type={showPasscode ? 'text' : 'password'}
                 bind:value={confirmPasscode}
+                bind:ref={confirmInput}
                 autocomplete="new-password"
                 disabled={isSaving}
+                aria-invalid={confirmError ? 'true' : undefined}
+                aria-describedby={confirmError ? 'confirm-passcode-error' : undefined}
                 class="pe-10 {confirmError ? 'border-destructive' : ''}"
               />
               {@render revealToggle()}
             </div>
             {#if confirmError}
-              <p class="text-sm text-destructive">{confirmError}</p>
+              <p id="confirm-passcode-error" class="text-sm text-destructive">{confirmError}</p>
             {/if}
           </div>
 
+          {#if saveError}
+            <Alert variant="destructive">
+              <AlertDescription>{saveError}</AlertDescription>
+            </Alert>
+          {/if}
+
           <Button type="submit" disabled={isSaving} class="w-full sm:w-auto">
             {#if isSaving}
-              {$t('common.loading') || 'Saving...'}
+              {$t('common.loading')}
             {:else if enabled}
               {$t('local_mode.passcode.change_cta')}
             {:else}
