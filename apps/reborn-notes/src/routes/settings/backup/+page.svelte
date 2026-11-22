@@ -8,7 +8,16 @@
     CardTitle,
     CardDescription
   } from '@reborn/ui';
-  import { KeyRound, FolderOpen, AlertTriangle, Copy, Check, ShieldCheck } from '@lucide/svelte';
+  import {
+    KeyRound,
+    FolderOpen,
+    AlertTriangle,
+    Copy,
+    Check,
+    ShieldCheck,
+    BellOff
+  } from '@lucide/svelte';
+  import type { ReminderPermission } from '$lib/services/auto-backup/reminder';
   import { t, locale } from '$lib/stores/i18n.store';
   import { isolateInDirection, textDirection } from '@reborn/i18n';
   import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
@@ -48,6 +57,16 @@
   let confirmChecked = $state(false);
   let copied = $state(false);
 
+  // What settings say about the overdue reminder: the promise only where one
+  // can come; with notifications turned off in the system, that instead. A
+  // desktop shell without a notification center (dev binary) says nothing.
+  let reminderPermission = $state<ReminderPermission>('prompt');
+
+  async function refreshReminderPermission() {
+    const { getBackupReminderPermission } = await import('$lib/services/auto-backup/reminder');
+    reminderPermission = await getBackupReminderPermission();
+  }
+
   let busyNow = $state(false);
   let nowResult = $state<'done' | 'nothing' | 'error' | null>(null);
   let nowError = $state('');
@@ -78,6 +97,23 @@
     const { loadRecoveryPhrase } = await import('$lib/services/auto-backup/recovery-phrase-vault');
     phraseSet = Boolean(await loadRecoveryPhrase());
     phraseChanged = hasPhraseChangedNotice();
+    await refreshReminderPermission();
+  });
+
+  // Coming back from the system settings (notifications turned on or off
+  // there) updates the text: a window focus on desktop, a visibility change
+  // on the phones.
+  $effect(() => {
+    if (!supported) return;
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void refreshReminderPermission();
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   });
 
   function generate() {
@@ -168,6 +204,7 @@
     );
     if (cfg.enabled) await ensureReminderPermission();
     await syncBackupReminders();
+    await refreshReminderPermission();
   }
 
   async function backupNow() {
@@ -441,7 +478,12 @@
                   </p>
                 {/if}
               {/if}
-              {#if cfg.enabled}
+              {#if cfg.enabled && reminderPermission === 'denied'}
+                <p class="flex items-start gap-1.5 text-xs text-muted-foreground ps-6">
+                  <BellOff class="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span>{$t('settings_page.backup.reminder_denied')}</span>
+                </p>
+              {:else if cfg.enabled && reminderPermission !== 'unsupported'}
                 <p class="text-xs text-muted-foreground/80 ps-6">
                   {$t('settings_page.backup.reminder_hint')}
                 </p>

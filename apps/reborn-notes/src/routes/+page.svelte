@@ -1,6 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy, tick, untrack } from 'svelte';
   import { get } from 'svelte/store';
+  import {
+    onDesktopMenuNewNote,
+    setNewNotePending,
+    takeNewNotePending
+  } from '$lib/utils/desktop-menu';
   import { beforeNavigate } from '$app/navigation';
   import { base } from '$app/paths';
   import { copyText } from '$lib/utils/clipboard';
@@ -2220,6 +2225,22 @@
       placeTracking = true;
     }
   }
+
+  // Desktop "New Note" (File menu, Cmd+N): the same as the "+" button. Until
+  // the start place is open the request waits as a flag, so the restored place
+  // cannot cover the new note; a request made from Settings arrives as the
+  // flag the layout left before opening this view.
+  $effect(() => {
+    if (!__REBORN_DESKTOP__) return;
+    return onDesktopMenuNewNote(() => {
+      if (placeTracking) void handleNewNote();
+      else setNewNotePending();
+    });
+  });
+  $effect(() => {
+    if (!__REBORN_DESKTOP__) return;
+    if (placeTracking && takeNewNotePending()) untrack(() => void handleNewNote());
+  });
 
   /** Opens a place: section, then its folder / smart folder / tag, then the note. */
   async function openPlace(place: ViewPlace) {

@@ -28,6 +28,10 @@ const APP_COMMANDS: &[&str] = &[
     "app_lock_authenticate",
     "app_info",
     "desktop_menu_localize",
+    "backup_reminder_status",
+    "backup_reminder_request_permission",
+    "backup_reminder_schedule",
+    "backup_reminder_cancel",
 ];
 
 fn main() {

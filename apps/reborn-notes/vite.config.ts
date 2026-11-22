@@ -6,6 +6,9 @@ import tailwindcss from '@tailwindcss/vite';
 
 const rootPkg = JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf-8'));
 
+/** The desktop (Tauri) build: a native build whose shell is not Capacitor. */
+const desktopBuild = process.env.BUILD_TARGET === 'native' && process.env.NATIVE_SHELL === 'tauri';
+
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(rootPkg.version),
@@ -18,9 +21,7 @@ export default defineConfig({
     // `__REBORN_NATIVE__` stays true there - the desktop shell is a native
     // shell (static SPA, token auth, no Service Worker); this flag only picks
     // the desktop implementations where Capacitor plugins do not exist.
-    __REBORN_DESKTOP__: JSON.stringify(
-      process.env.BUILD_TARGET === 'native' && process.env.NATIVE_SHELL === 'tauri'
-    )
+    __REBORN_DESKTOP__: JSON.stringify(desktopBuild)
   },
   plugins: [tailwindcss(), sveltekit()],
   // Load .env from monorepo root. Consequence for store builds: every PUBLIC_*
@@ -33,6 +34,14 @@ export default defineConfig({
   envDir: '../../',
   resolve: {
     alias: {
+      // Desktop build: Capacitor's core swapped for a stub that only throws.
+      // The Capacitor bridges import it statically (iOS boot-wedge rule), so
+      // without this the desktop bundle kept the whole package as a
+      // side-effect import; the stub also fails the build if desktop code
+      // starts using Capacitor (see the stub's header).
+      ...(desktopBuild && {
+        '@capacitor/core': resolve('./src/lib/platform/desktop-capacitor-stub.ts')
+      }),
       $lib: resolve('./src/lib'),
       '@reborn/auth/server': resolve('../../packages/auth/src/server.ts'),
       '@reborn/auth': resolve('../../packages/auth/src/index.ts'),

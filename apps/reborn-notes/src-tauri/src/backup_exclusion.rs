@@ -23,6 +23,12 @@
 //!   skips `~/Library/Caches` through its standard exclusions; the flag keeps
 //!   that true even if the policy changes.
 //!
+//! A bare binary (`cargo tauri dev`, not inside an `.app` bundle) gets the
+//! same flags for its own directories as well: WebKit then names its store
+//! after the executable (`~/Library/WebKit/reborn-notes-desktop`, found in the
+//! D3 smoke, 2026-11-22), not after the bundle identifier. Development builds
+//! only, but after a login they hold the same plaintext.
+//!
 //! Left in backups on purpose: `Application Support/<bundle id>` (the linked
 //! folder registry and the window geometry - folder paths and sizes, no note
 //! content). The login keychain (master key and refresh token) is backed up
@@ -67,6 +73,22 @@ fn excluded_dirs(library: &Path, bundle_id: &str) -> Vec<PathBuf> {
         .iter()
         .map(|dir| library.join(dir).join(bundle_id))
         .collect()
+}
+
+/// The names WebKit may store this app's data under: the bundle identifier,
+/// plus the executable's name when the binary does not run from an `.app`
+/// bundle (WebKit falls back to it there). Names that are not a single plain
+/// segment are left out by [`excluded_dirs`].
+fn data_dir_names<'a>(
+    bundle_id: &'a str,
+    in_app_bundle: bool,
+    executable: Option<&'a str>,
+) -> Vec<&'a str> {
+    let mut names = vec![bundle_id];
+    if let Some(name) = executable.filter(|name| !in_app_bundle && *name != bundle_id) {
+        names.push(name);
+    }
+    names
 }
 
 /// Flags the webview's data directories as excluded from backups. Call before
@@ -155,12 +177,28 @@ mod macos {
         size > 0
     }
 
+    /// Whether the process runs from an `.app` bundle (not the bare binary of
+    /// `cargo tauri dev`).
+    fn in_app_bundle() -> bool {
+        objc2_foundation::NSBundle::mainBundle()
+            .bundlePath()
+            .to_string()
+            .ends_with(".app")
+    }
+
     pub(super) fn exclude_web_data(bundle_id: &str) {
         let Some(library) = library_dir() else {
             eprintln!("re/notes: no Library directory, web data stays in backups");
             return;
         };
-        exclude_in(&library, bundle_id);
+        let executable = std::env::current_exe().ok();
+        let executable = executable
+            .as_deref()
+            .and_then(Path::file_name)
+            .and_then(|name| name.to_str());
+        for name in super::data_dir_names(bundle_id, in_app_bundle(), executable) {
+            exclude_in(&library, name);
+        }
     }
 
     /// Creates the app's directories under `library` if needed and flags them.
@@ -197,6 +235,18 @@ mod tests {
                 PathBuf::from("/Users/someone/Library/Caches/eu.reapps.notes"),
             ]
         );
+    }
+
+    #[test]
+    fn a_bare_binary_also_covers_the_store_named_after_it() {
+        let id = "eu.reapps.notes";
+        assert_eq!(data_dir_names(id, true, Some("reborn-notes-desktop")), [id]);
+        assert_eq!(
+            data_dir_names(id, false, Some("reborn-notes-desktop")),
+            [id, "reborn-notes-desktop"]
+        );
+        assert_eq!(data_dir_names(id, false, None), [id]);
+        assert_eq!(data_dir_names(id, false, Some(id)), [id]);
     }
 
     #[test]

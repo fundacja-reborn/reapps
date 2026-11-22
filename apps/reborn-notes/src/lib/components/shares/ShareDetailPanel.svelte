@@ -20,7 +20,7 @@
   import { textDirection } from '@reborn/i18n';
   import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
   import { formatSettingsDateTime } from '$lib/utils/date-format';
-  import { shareLink } from '$lib/utils/native-share';
+  import { hasNativeShare, shareLink } from '$lib/utils/native-share';
   import { copyText } from '$lib/utils/clipboard';
   import {
     toastStore,
@@ -68,8 +68,9 @@
     urlShown = false;
   });
 
-  // Native build only: OS share sheet. Web is copy-only (DCE'd via the define).
-  const isNative = __REBORN_NATIVE__;
+  // Native build only: OS share sheet (desktop: only where WebKit has one).
+  // Web is copy-only (DCE'd via the define).
+  const isNative = __REBORN_NATIVE__ && hasNativeShare();
 
   // Stale hint: load the source note (by the id baked into the encrypted payload)
   // only to read its updated_at, and compare it to when the snapshot was taken.

@@ -1116,7 +1116,8 @@
       "cadence_note": "Las copias se crean automáticamente al abrir la aplicación, como máximo una vez al día.",
       "reminder_title": "Copia de seguridad automática pendiente",
       "reminder_body": "Abra la aplicación para crear una copia cifrada reciente de sus notas.",
-      "reminder_hint": "Si una copia queda pendiente, una notificación le recordará abrir la aplicación."
+      "reminder_hint": "Si una copia queda pendiente, una notificación le recordará abrir la aplicación.",
+      "reminder_denied": "Las notificaciones de re/notes están desactivadas en los ajustes del sistema, así que no recibirá ningún recordatorio si una copia queda pendiente. Puede activarlas en los ajustes de notificaciones del sistema."
     },
     "export_import": {
       "title": "Exportar e importar",
@@ -1696,6 +1697,8 @@
       "hide_others": "Ocultar otros",
       "show_all": "Mostrar todo",
       "quit": "Salir de re/notes",
+      "file": "Archivo",
+      "new_note": "Nueva nota",
       "edit": "Edición",
       "undo": "Deshacer",
       "redo": "Rehacer",

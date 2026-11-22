@@ -19,6 +19,10 @@
     "allow-app-lock-authenticate",
     "allow-app-info",
     "allow-desktop-menu-localize",
+    "allow-backup-reminder-status",
+    "allow-backup-reminder-request-permission",
+    "allow-backup-reminder-schedule",
+    "allow-backup-reminder-cancel",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     {

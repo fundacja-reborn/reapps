@@ -1116,7 +1116,8 @@
       "cadence_note": "Sicherungen laufen automatisch beim Öffnen der App, höchstens einmal täglich.",
       "reminder_title": "Automatische Sicherung fällig",
       "reminder_body": "Öffnen Sie die App, um eine frische verschlüsselte Kopie Ihrer Notizen zu erstellen.",
-      "reminder_hint": "Wenn eine Sicherung überfällig ist, erinnert Sie eine Benachrichtigung daran, die App zu öffnen."
+      "reminder_hint": "Wenn eine Sicherung überfällig ist, erinnert Sie eine Benachrichtigung daran, die App zu öffnen.",
+      "reminder_denied": "Benachrichtigungen für re/notes sind in den Systemeinstellungen ausgeschaltet, daher kommt keine Erinnerung, wenn eine Sicherung überfällig ist. Sie können sie in den Benachrichtigungseinstellungen des Systems einschalten."
     },
     "export_import": {
       "title": "Export & Import",
@@ -1696,6 +1697,8 @@
       "hide_others": "Andere ausblenden",
       "show_all": "Alle einblenden",
       "quit": "re/notes beenden",
+      "file": "Ablage",
+      "new_note": "Neue Notiz",
       "edit": "Bearbeiten",
       "undo": "Widerrufen",
       "redo": "Wiederholen",

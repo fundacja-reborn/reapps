@@ -17,7 +17,7 @@
   import { textDirection } from '@reborn/i18n';
   import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
   import { formatSettingsDateTime } from '$lib/utils/date-format';
-  import { shareLink } from '$lib/utils/native-share';
+  import { hasNativeShare, shareLink } from '$lib/utils/native-share';
   import { copyText } from '$lib/utils/clipboard';
   import { formatExpiryRelative } from '$lib/utils/expiry-format';
   import {
@@ -113,9 +113,10 @@
     }
   }
 
-  // Native build only: open the OS share sheet for a stored share link. Web
-  // keeps copy-only (the button and `shareLink` are DCE'd on web).
-  const isNative = __REBORN_NATIVE__;
+  // Native build only: open the OS share sheet for a stored share link
+  // (desktop: only where WebKit has one). Web keeps copy-only (the button and
+  // `shareLink` are DCE'd on web).
+  const isNative = __REBORN_NATIVE__ && hasNativeShare();
 
   async function shareUrl(id: string) {
     const entry = decoded[id];

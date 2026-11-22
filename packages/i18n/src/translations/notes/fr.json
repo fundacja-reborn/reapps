@@ -1116,7 +1116,8 @@
       "cadence_note": "Les sauvegardes se font automatiquement à l'ouverture de l'application, au maximum une fois par jour.",
       "reminder_title": "Sauvegarde automatique à faire",
       "reminder_body": "Ouvrez l'application pour créer une nouvelle copie chiffrée de vos notes.",
-      "reminder_hint": "Si une sauvegarde est en retard, une notification vous rappellera d'ouvrir l'application."
+      "reminder_hint": "Si une sauvegarde est en retard, une notification vous rappellera d'ouvrir l'application.",
+      "reminder_denied": "Les notifications de re/notes sont désactivées dans les réglages du système, vous ne recevrez donc pas de rappel si une sauvegarde est en retard. Vous pouvez les activer dans les réglages de notifications du système."
     },
     "export_import": {
       "title": "Export et import",
@@ -1696,6 +1697,8 @@
       "hide_others": "Masquer les autres",
       "show_all": "Tout afficher",
       "quit": "Quitter re/notes",
+      "file": "Fichier",
+      "new_note": "Nouvelle note",
       "edit": "Édition",
       "undo": "Annuler",
       "redo": "Rétablir",

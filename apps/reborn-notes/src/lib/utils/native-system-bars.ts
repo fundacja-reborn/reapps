@@ -36,7 +36,9 @@ interface SystemBarsPlugin {
  * failure leaves the theme-default icons - cosmetic, never blocking.
  */
 export async function applyNativeStatusBarStyle(): Promise<void> {
-  if (!__REBORN_NATIVE__) return;
+  // The desktop shell has no status bar (its title bar is painted by the
+  // shell itself), and no Capacitor bridge to ask.
+  if (!__REBORN_NATIVE__ || __REBORN_DESKTOP__) return;
   try {
     const systemBars = registerPlugin<SystemBarsPlugin>('SystemBars');
     await systemBars.setStyle({ style: 'LIGHT', bar: 'StatusBar' });

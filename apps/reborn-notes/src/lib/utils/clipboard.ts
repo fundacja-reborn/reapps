@@ -10,22 +10,30 @@
  *   entirely. The dynamic import sits behind `__REBORN_NATIVE__` so the web build
  *   dead-code-eliminates both the branch and the plugin (same pattern as
  *   `$lib/utils/native-auth-storage.ts`).
- * - **Web:** the async Clipboard API, with a legacy `execCommand('copy')`
- *   fallback for the rare insecure-context case.
+ * - **Web, and the desktop (Tauri) shell:** the async Clipboard API, with a
+ *   legacy `execCommand('copy')` fallback for the rare insecure-context case.
+ *   The desktop's WKWebView writes the system clipboard itself; the Capacitor
+ *   plugin has no native side there (its web version is the same API without
+ *   the fallback), so the desktop bundle leaves it out.
  *
  * Returns true on success so callers can pick the right toast / status.
  */
-export async function copyText(text: string): Promise<boolean> {
-  if (__REBORN_NATIVE__) {
-    try {
-      const { Clipboard } = await import('@capacitor/clipboard');
-      await Clipboard.write({ string: text });
-      return true;
-    } catch {
-      return false;
-    }
-  }
+export function copyText(text: string): Promise<boolean> {
+  // One branch per build (a constant ternary is what the bundler folds).
+  return __REBORN_NATIVE__ && !__REBORN_DESKTOP__ ? copyTextCapacitor(text) : copyTextWeb(text);
+}
 
+async function copyTextCapacitor(text: string): Promise<boolean> {
+  try {
+    const { Clipboard } = await import('@capacitor/clipboard');
+    await Clipboard.write({ string: text });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function copyTextWeb(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);

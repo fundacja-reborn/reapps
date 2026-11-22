@@ -12,11 +12,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   canOpenSettingsFrom,
   DESKTOP_MENU_KEYS,
+  DESKTOP_MENU_NEW_NOTE_EVENT,
   DESKTOP_MENU_SETTINGS_EVENT,
   desktopMenuMessageId,
   desktopMenuTexts,
+  isNotesView,
   localizeDesktopMenu,
-  onDesktopMenuSettings
+  onDesktopMenuNewNote,
+  onDesktopMenuSettings,
+  setNewNotePending,
+  takeNewNotePending
 } from './desktop-menu';
 
 const rustSource = readFileSync(
@@ -52,6 +57,9 @@ describe('desktop menu contract', () => {
     expect(rustSource).toContain(
       `pub const OPEN_SETTINGS_EVENT: &str = "${DESKTOP_MENU_SETTINGS_EVENT}";`
     );
+    expect(rustSource).toContain(
+      `pub const NEW_NOTE_EVENT: &str = "${DESKTOP_MENU_NEW_NOTE_EVENT}";`
+    );
   });
 });
 
@@ -82,6 +90,26 @@ describe('canOpenSettingsFrom', () => {
     expect(canOpenSettingsFrom('/auth/lock', '')).toBe(false);
     expect(canOpenSettingsFrom('/s/abc', '')).toBe(false);
     expect(canOpenSettingsFrom('/notes/auth/unlock', '/notes')).toBe(false);
+  });
+});
+
+describe('isNotesView', () => {
+  it('is the root route only', () => {
+    expect(isNotesView('/', '')).toBe(true);
+    expect(isNotesView('/notes', '/notes')).toBe(true);
+    expect(isNotesView('/notes/', '/notes')).toBe(true);
+    expect(isNotesView('/settings', '')).toBe(false);
+    expect(isNotesView('/notes/settings/backup', '/notes')).toBe(false);
+    expect(isNotesView('/task/', '/notes')).toBe(false);
+  });
+});
+
+describe('new note pending flag', () => {
+  it('is read once', () => {
+    expect(takeNewNotePending()).toBe(false);
+    setNewNotePending();
+    expect(takeNewNotePending()).toBe(true);
+    expect(takeNewNotePending()).toBe(false);
   });
 });
 
@@ -121,6 +149,19 @@ describe('shell calls', () => {
     const handler = vi.fn();
     const off = onDesktopMenuSettings(handler);
     expect(listen).toHaveBeenCalledWith(DESKTOP_MENU_SETTINGS_EVENT, expect.any(Function));
+    await Promise.resolve();
+
+    emit?.({ payload: null });
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    off();
+    expect(unlisten).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls the handler on the New Note event', async () => {
+    const handler = vi.fn();
+    const off = onDesktopMenuNewNote(handler);
+    expect(listen).toHaveBeenCalledWith(DESKTOP_MENU_NEW_NOTE_EVENT, expect.any(Function));
     await Promise.resolve();
 
     emit?.({ payload: null });
