@@ -4,7 +4,12 @@ import {
   extractFolderSegments,
   containsHiddenSegment,
   countImportableMarkdownFiles,
+  countImportableFlatMarkdownFiles,
   getRootFolderName,
+  isMarkdownImportFileName,
+  MARKDOWN_FILE_ACCEPT,
+  partitionFlatMarkdownImport,
+  stripMarkdownImportExtension,
   normalizeFrontmatterDate,
   pickImportTimestamps
 } from './markdown-import-utils';
@@ -193,6 +198,82 @@ describe('countImportableMarkdownFiles', () => {
 
   it('counts flat files without a relative path by extension only', () => {
     expect(countImportableMarkdownFiles([{ name: 'a.md' }, { name: 'b.txt' }])).toBe(1);
+  });
+});
+
+describe('flat Markdown import filters (smoke D1: a .zip imported as a note)', () => {
+  const MAX = 500_000;
+
+  it('accepts .md, .markdown and .txt in any letter case', () => {
+    for (const name of ['a.md', 'B.MD', 'c.markdown', 'D.Markdown', 'e.txt', 'F.TXT']) {
+      expect(isMarkdownImportFileName(name)).toBe(true);
+    }
+  });
+
+  it('rejects other extensions, including look-alikes', () => {
+    for (const name of [
+      'reborn-notes-export.zip',
+      'backup.json',
+      'photo.png',
+      'notes.md.zip',
+      'README',
+      'notes.mdx'
+    ]) {
+      expect(isMarkdownImportFileName(name)).toBe(false);
+    }
+  });
+
+  it('keeps `accept` in step with the extension list', () => {
+    expect(MARKDOWN_FILE_ACCEPT.split(',')).toEqual([
+      '.md',
+      '.markdown',
+      '.txt',
+      'text/markdown',
+      'text/plain'
+    ]);
+  });
+
+  it('strips only an accepted extension for the title fallback', () => {
+    expect(stripMarkdownImportExtension('Shopping.md')).toBe('Shopping');
+    expect(stripMarkdownImportExtension('Draft.MARKDOWN')).toBe('Draft');
+    expect(stripMarkdownImportExtension('todo.txt')).toBe('todo');
+    expect(stripMarkdownImportExtension('v1.2 notes.md')).toBe('v1.2 notes');
+    expect(stripMarkdownImportExtension('archive.zip')).toBe('archive.zip');
+    expect(stripMarkdownImportExtension('.md')).toBe('');
+  });
+
+  it('counts the files the importer will read, by extension only', () => {
+    expect(
+      countImportableFlatMarkdownFiles([
+        { name: 'a.md' },
+        { name: 'b.txt' },
+        { name: 'reborn-notes-export.zip' }
+      ])
+    ).toBe(2);
+  });
+
+  it('splits files into accepted ones and per-reason skip counters', () => {
+    const files = [
+      { name: 'small.md', size: 1_000 },
+      { name: 'reborn-notes-export.zip', size: 4_000_000 },
+      { name: 'huge.md', size: MAX + 1 },
+      { name: 'edge.txt', size: MAX },
+      { name: 'photo.png', size: 10 }
+    ];
+    const r = partitionFlatMarkdownImport(files, MAX);
+    expect(r.accepted.map((f) => f.name)).toEqual(['small.md', 'edge.txt']);
+    expect(r.skippedNonMarkdown).toBe(2);
+    expect(r.skippedTooLarge).toBe(1);
+  });
+
+  it('counts an oversized non-Markdown file once, as non-Markdown', () => {
+    const r = partitionFlatMarkdownImport([{ name: 'big.zip', size: MAX * 10 }], MAX);
+    expect(r).toEqual({ accepted: [], skippedNonMarkdown: 1, skippedTooLarge: 0 });
+  });
+
+  it('returns the same File objects it was given', () => {
+    const file = { name: 'a.md', size: 1 };
+    expect(partitionFlatMarkdownImport([file], MAX).accepted[0]).toBe(file);
   });
 });
 

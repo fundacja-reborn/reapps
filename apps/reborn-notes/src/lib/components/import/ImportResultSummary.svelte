@@ -42,31 +42,30 @@
       {/if}
     </p>
   {/if}
-  {#if folderResult}
-    {#if folderResult.skippedHidden > 0}
-      <p class="text-muted-foreground">
-        {$t('settings_page.export_import.folder_import_skipped_hidden', {
-          values: { count: folderResult.skippedHidden }
-        })}
-      </p>
-    {/if}
-    {#if folderResult.skippedNonMarkdown > 0}
-      <p class="text-muted-foreground">
-        {$t('settings_page.export_import.folder_import_skipped_non_md', {
-          values: { count: folderResult.skippedNonMarkdown }
-        })}
-      </p>
-    {/if}
-    {#if folderResult.skippedTooLarge > 0}
-      <p class="text-muted-foreground">
-        {$t('settings_page.export_import.folder_import_skipped_too_large', {
-          values: {
-            count: folderResult.skippedTooLarge,
-            max: Math.round(MAX_NOTE_CONTENT_BYTES / 1000)
-          }
-        })}
-      </p>
-    {/if}
+  {#if folderResult && folderResult.skippedHidden > 0}
+    <p class="text-muted-foreground">
+      {$t('settings_page.export_import.folder_import_skipped_hidden', {
+        values: { count: folderResult.skippedHidden }
+      })}
+    </p>
+  {/if}
+  <!-- Both import kinds filter by type and per-note size (flat .md import since smoke D1). -->
+  {#if result.skippedNonMarkdown > 0}
+    <p class="text-muted-foreground">
+      {$t('settings_page.export_import.folder_import_skipped_non_md', {
+        values: { count: result.skippedNonMarkdown }
+      })}
+    </p>
+  {/if}
+  {#if result.skippedTooLarge > 0}
+    <p class="text-muted-foreground">
+      {$t('settings_page.export_import.folder_import_skipped_too_large', {
+        values: {
+          count: result.skippedTooLarge,
+          max: Math.round(MAX_NOTE_CONTENT_BYTES / 1000)
+        }
+      })}
+    </p>
   {/if}
   {#if result.duplicatesOverwritten > 0}
     <p class="text-muted-foreground">
