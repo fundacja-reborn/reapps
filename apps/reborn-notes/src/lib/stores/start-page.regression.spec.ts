@@ -143,4 +143,19 @@ describe('first start page by layout - wiring', () => {
     const pane = between(page(), '{#if $isInitialSync}\n          <InitialSyncState />', '{/if}');
     expect(pane).toMatch(/<NoteWelcome oncreate=\{handleNewNote\} onsearch=\{\(\) => \(activeSection = 'search'\)\}/);
   });
+
+  it('the welcome waits for the start place, so it never flashes before the remembered note', () => {
+    const pane = between(page(), '{#if $isInitialSync}\n          <InitialSyncState />', '{/if}');
+    expect(pane).toMatch(/\{:else if placeTracking\}[\s\S]*<NoteWelcome /);
+  });
+
+  it('the phone panels do not slide the start place in', () => {
+    // A note restored on a cold start appears in place; the slide is for notes
+    // the user opens. Both panels take the slide only from panelsAnimate, which
+    // turns on after the start place is open.
+    const src = page();
+    expect(src.match(/transition-transform duration-300/g)).toHaveLength(1);
+    expect(src.match(/class="absolute inset-0 flex[^"]*\{panelsAnimate \? PANEL_SLIDE : ''\}"/g)).toHaveLength(2);
+    expect(src).toMatch(/if \(!placeTracking \|\| panelsAnimate\) return;/);
+  });
 });
