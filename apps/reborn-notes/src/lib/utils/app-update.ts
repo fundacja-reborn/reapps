@@ -14,7 +14,8 @@
  * runtime half lives in native-app-update.ts.
  */
 
-export type NativePlatform = 'android' | 'ios';
+/** The shells with a store channel: the phones and the Mac App Store app. */
+export type NativePlatform = 'android' | 'ios' | 'macos';
 export type UpdateSeverity = 'ok' | 'recommended' | 'required';
 
 export interface NativeUpdateConfig {
@@ -71,9 +72,19 @@ export function evaluateUpdateSeverity(
 }
 
 /**
+ * The update-gate platform of a desktop shell, from the system its `app_info`
+ * reports. Only the macOS app has a store channel (Mac App Store, D4); the
+ * Windows app gets its entry with its distribution (D5), until then no gate.
+ */
+export function desktopUpdatePlatform(system: string | null): NativePlatform | null {
+  return system === 'macos' ? 'macos' : null;
+}
+
+/**
  * Store listing fallback when the server does not provide one. Android's URL
- * derives from the package id; iOS needs the numeric App Store id, which only
- * exists post-publication - served via NATIVE_STORE_URL_IOS then.
+ * derives from the package id; iOS and macOS need the numeric App Store id,
+ * which only exists post-publication - served via NATIVE_STORE_URL_IOS /
+ * NATIVE_STORE_URL_MACOS then.
  */
 export function defaultStoreUrl(platform: NativePlatform, appId: string): string | null {
   if (platform === 'android' && appId) {

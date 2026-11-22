@@ -5,7 +5,8 @@
   import { Download } from '@lucide/svelte';
 
   function openStore(url: string) {
-    // External origin - Capacitor routes it to the system browser.
+    // External origin - Capacitor routes it to the system browser, the
+    // desktop shell to the default app (src-tauri/src/external_links.rs).
     window.open(url, '_blank', 'noopener');
   }
 </script>
