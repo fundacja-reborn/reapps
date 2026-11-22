@@ -111,6 +111,8 @@ interface SourceRange {
 interface WidgetPaint {
   base: Range[];
   active: Range | null;
+  /** Widget roots repainted after the registry changes (WebKit keeps stale paint). */
+  roots: HTMLElement[];
 }
 
 /**
@@ -155,6 +157,9 @@ function widgetSourceRanges(view: EditorView, hasTocRoot: boolean): SourceRange[
  * back to base-only, so a pathological query can never colour the wrong entry.
  */
 class NoteSearchWidgetHighlighter implements PluginValue {
+  /** Whether the last write left widget highlights on screen. */
+  private painted = false;
+
   constructor(view: EditorView) {
     this.schedule(view);
   }
@@ -173,16 +178,26 @@ class NoteSearchWidgetHighlighter implements PluginValue {
     view.requestMeasure<WidgetPaint>({
       key: this,
       read: () => this.collect(view),
-      write: ({ base, active }) => paintWidgetHighlights(base, active)
+      write: (paint) => this.paint(paint)
     });
   }
 
+  private paint({ base, active, roots }: WidgetPaint): void {
+    const has = base.length > 0 || active !== null;
+    // Nothing on screen before or after: leave the registry (and the paint) be.
+    if (!has && !this.painted) return;
+    paintWidgetHighlights(base, active, roots);
+    this.painted = has;
+  }
+
   private collect(view: EditorView): WidgetPaint {
-    const empty: WidgetPaint = { base: [], active: null };
     const state = view.state.field(noteSearchField, false);
-    if (!state || !state.query) return empty;
-    const roots = view.contentDOM.querySelectorAll<HTMLElement>(WIDGET_SELECTOR);
-    if (!roots.length) return empty;
+    const searching = !!state && !!state.query;
+    // Runs on every edit: no search and nothing to wipe means no DOM scan.
+    if (!searching && !this.painted) return { base: [], active: null, roots: [] };
+    const roots = Array.from(view.contentDOM.querySelectorAll<HTMLElement>(WIDGET_SELECTOR));
+    const empty: WidgetPaint = { base: [], active: null, roots };
+    if (!state || !state.query || !roots.length) return empty;
 
     const activeMatch = state.active >= 0 ? state.matches[state.active] : null;
     const hasTocRoot =
@@ -220,10 +235,10 @@ class NoteSearchWidgetHighlighter implements PluginValue {
       for (let i = 0; i < hits.length; i++) {
         if (i === activeIdx) active = hits[i];
         else base.push(hits[i]);
-        if (++count >= NOTE_SEARCH_MATCH_CAP) return { base, active };
+        if (++count >= NOTE_SEARCH_MATCH_CAP) return { base, active, roots };
       }
     }
-    return { base, active };
+    return { base, active, roots };
   }
 
   destroy(): void {

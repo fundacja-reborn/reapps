@@ -2003,7 +2003,8 @@
     pendingSearchScroll = false;
     cmMatches = [];
     domMatches = [];
-    clearDomHighlights();
+    // Pass the preview so the wiped highlights are repainted (WebKit keeps them).
+    clearDomHighlights(previewContentEl);
     editorView?.dispatch({ effects: setNoteSearch.of(null) });
     // Return focus to the editor so typing resumes where the user left off.
     if (effectiveViewMode !== 'preview') editorView?.focus();
@@ -2078,7 +2079,9 @@
     if (mode === 'preview') {
       const ranges = domMatches;
       editorView?.dispatch({ effects: setNoteSearch.of(null) });
-      paintDomHighlights(ranges, active);
+      // The preview is repainted after each change: WebKit leaves the previous
+      // query's highlights on screen otherwise (see nudgeRepaint).
+      paintDomHighlights(ranges, active, previewContentEl);
     } else {
       const matches = cmMatches;
       clearDomHighlights();
