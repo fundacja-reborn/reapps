@@ -17,6 +17,7 @@
     type ImportMarkdownResult
   } from '$lib/services/export-import.service';
   import {
+    countImportableFlatMarkdownFiles,
     countImportableMarkdownFiles,
     getRootFolderName
   } from '$lib/services/markdown-import-utils';
@@ -56,7 +57,11 @@
 
   const rootName = $derived(mode === 'folder' && files ? getRootFolderName(files) : null);
   const importableCount = $derived(
-    !files ? 0 : mode === 'folder' ? countImportableMarkdownFiles(files) : files.length
+    !files
+      ? 0
+      : mode === 'folder'
+        ? countImportableMarkdownFiles(files)
+        : countImportableFlatMarkdownFiles(files)
   );
   const destinationPath = $derived(
     keepRootFolder && rootName ? `${folderName}/${rootName}` : folderName
@@ -108,6 +113,8 @@
     } catch (err: unknown) {
       result = {
         imported: 0,
+        skippedNonMarkdown: 0,
+        skippedTooLarge: 0,
         duplicatesSkipped: 0,
         duplicatesOverwritten: 0,
         duplicatesRenamed: 0,

@@ -32,6 +32,41 @@ export function supportsHighlightApi(): boolean {
   return typeof CSS !== 'undefined' && 'highlights' in CSS && typeof Highlight !== 'undefined';
 }
 
+/**
+ * Invisible paint-only style that {@link nudgeRepaint} toggles. Any change of
+ * `background-image` makes the engine repaint the element's whole box; a
+ * transparent gradient draws nothing in either theme.
+ */
+const REPAINT_NUDGE = 'linear-gradient(transparent, transparent)';
+const nudgeQueued = new WeakSet<HTMLElement>();
+
+/**
+ * Repaint `el` (and everything inside it) on the next frame.
+ *
+ * Why: WebKit (Safari, the desktop shell) does not repaint the text a highlight
+ * is taken OFF. Replacing a name with `CSS.highlights.set` left every range of
+ * the previous query painted (smoke D1, 2026-11-21: after "a" -> "aa" -> "aaa"
+ * the counter said 1/1 while all the "a"s still glowed), although the registry
+ * held only the current ranges. Deleting the name before setting it cleaned
+ * most of it but left slivers above bold text, where the highlight box is
+ * taller than the area WebKit repaints. A style change on the container
+ * repaints its whole box, which cleared all of it (checked in Safari's Web
+ * Inspector on the localprod image before this code was written). Brave
+ * (Chromium) left stale paint too; there an own layer for the preview helped,
+ * which did nothing in Safari, so the nudge is the one fix for both.
+ *
+ * Coalesced to one toggle per element per frame: two toggles in one frame
+ * would cancel out and repaint nothing.
+ */
+export function nudgeRepaint(el: HTMLElement | null | undefined): void {
+  if (!el || nudgeQueued.has(el) || typeof requestAnimationFrame !== 'function') return;
+  nudgeQueued.add(el);
+  requestAnimationFrame(() => {
+    nudgeQueued.delete(el);
+    el.style.backgroundImage = el.style.backgroundImage ? '' : REPAINT_NUDGE;
+  });
+}
+
 interface NodeOffset {
   node: Text;
   /** Index in the concatenated text where this node's data begins. */
@@ -107,8 +142,16 @@ export function findDomMatchRanges(
  * highlight. The active range is kept OUT of the base set so the two
  * `::highlight()` styles don't blend where they'd overlap. No-op without API
  * support (matches still navigate/scroll; only the paint is skipped).
+ *
+ * `repaintRoot` is the element holding the ranges (the rendered preview); it is
+ * repainted so the previous query's highlights don't stay on screen, see
+ * {@link nudgeRepaint}.
  */
-export function paintDomHighlights(ranges: Range[], active: number): void {
+export function paintDomHighlights(
+  ranges: Range[],
+  active: number,
+  repaintRoot?: HTMLElement | null
+): void {
   if (!supportsHighlightApi()) return;
   const base = new Highlight();
   let activeRange: Range | null = null;
@@ -124,13 +167,19 @@ export function paintDomHighlights(ranges: Range[], active: number): void {
   } else {
     CSS.highlights.delete(HL_ACTIVE);
   }
+  nudgeRepaint(repaintRoot);
 }
 
-/** Remove both in-note search highlights from the registry. */
-export function clearDomHighlights(): void {
+/**
+ * Remove both in-note search highlights from the registry. Pass the element
+ * that showed them (`repaintRoot`) when they may be on screen, so they are
+ * actually wiped, see {@link nudgeRepaint}.
+ */
+export function clearDomHighlights(repaintRoot?: HTMLElement | null): void {
   if (!supportsHighlightApi()) return;
   CSS.highlights.delete(HL_ALL);
   CSS.highlights.delete(HL_ACTIVE);
+  nudgeRepaint(repaintRoot);
 }
 
 /**
@@ -141,8 +190,15 @@ export function clearDomHighlights(): void {
  * DOM); the CSS Custom Highlight API is the only way to colour them without
  * mutating widget markup. The active range is kept OUT of `base` by the caller so
  * the two `::highlight()` styles don't blend. Empty input clears each layer.
+ *
+ * `repaintRoots` are the widget roots in the editor; each is repainted so the
+ * previous query's highlights don't stay on screen, see {@link nudgeRepaint}.
  */
-export function paintWidgetHighlights(base: Range[], active: Range | null): void {
+export function paintWidgetHighlights(
+  base: Range[],
+  active: Range | null,
+  repaintRoots: Iterable<HTMLElement> = []
+): void {
   if (!supportsHighlightApi()) return;
   if (base.length) {
     const hl = new Highlight();
@@ -158,6 +214,7 @@ export function paintWidgetHighlights(base: Range[], active: Range | null): void
   } else {
     CSS.highlights.delete(HL_WIDGET_ACTIVE);
   }
+  for (const root of repaintRoots) nudgeRepaint(root);
 }
 
 /** Remove both Live Preview widget search highlights from the registry. */
