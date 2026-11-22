@@ -1,5 +1,73 @@
 [
   {
+    "version": "0.58.1",
+    "date": "2026-11-22",
+    "items": [
+      {
+        "id": "0.58.1-errors-where-you-act",
+        "category": "improved",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.58.1-auto-backup-steps",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": [
+          "android",
+          "ios"
+        ]
+      },
+      {
+        "id": "0.58.1-password-eye",
+        "category": "improved",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.58.1-appearance-order",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.58.1-translated-errors",
+        "category": "fixed",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.58.1-md-import-filter",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.58.1-find-highlights",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.58.0",
     "date": "2026-11-21",
     "items": [
