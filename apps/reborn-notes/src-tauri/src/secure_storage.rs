@@ -27,11 +27,17 @@
 //! with a profile). No access group attribute is set on the items: the system
 //! uses the first group of the entitlement (`<team id>.<bundle id>`).
 //!
-//! Without the entitlement every call fails with `errSecMissingEntitlement`.
-//! A release build reports that as an error and never falls back. A debug
-//! build (`cargo tauri dev`, an `.app` built without a profile) retries in the
-//! login keychain, so development keeps a session across launches; that path
-//! is not compiled into release builds at all.
+//! Which keychain a process uses is decided once, from its own signature:
+//! with a keychain access group the data protection keychain, without one a
+//! debug build (`cargo tauri dev`, an `.app` built without a profile) uses the
+//! login keychain, so development keeps a session across launches. A release
+//! build without the group makes no keychain call and reports the store as
+//! unavailable; the login keychain path is not compiled into it at all.
+//!
+//! Not from a failed call: without the group `SecItemAdd` and `SecItemDelete`
+//! fail with `errSecMissingEntitlement`, but `SecItemCopyMatching` answers
+//! `errSecItemNotFound`, so a read would never fall back (the session was
+//! gone after every restart of the first D4 development build).
 //!
 //! No migration from the login keychain: the store build has its own bundle
 //! identifier and runs in the sandbox, so it never sees entries that earlier
@@ -169,23 +175,34 @@ mod store {
         attrs
     }
 
-    /// The four keychain calls, as `OSStatus` results.
+    /// The keychain calls, as `OSStatus` results, and the one fact about the
+    /// process they depend on.
     pub(super) trait Keychains {
+        /// Whether the process's signature carries `keychain-access-groups`.
+        fn has_access_group(&self) -> bool;
         fn add(&self, attrs: &[Attr]) -> i32;
         fn update(&self, query: &[Attr], changes: &[Attr]) -> i32;
         fn copy_data(&self, query: &[Attr]) -> Result<Vec<u8>, i32>;
         fn delete(&self, query: &[Attr]) -> i32;
     }
 
-    /// Runs `op` in the data protection keychain. A debug build without the
-    /// entitlement runs it in the login keychain instead.
-    pub(super) fn in_keychain<T>(op: impl Fn(Keychain) -> Result<T, i32>) -> Result<T, i32> {
-        let result = op(Keychain::DataProtection);
-        #[cfg(debug_assertions)]
-        if matches!(result, Err(MISSING_ENTITLEMENT)) {
-            return op(Keychain::Login);
+    /// The keychain this process keeps its items in (see the module docs).
+    pub(super) fn keychain(system: &impl Keychains) -> Result<Keychain, i32> {
+        if system.has_access_group() {
+            Ok(Keychain::DataProtection)
+        } else {
+            without_access_group()
         }
-        result
+    }
+
+    #[cfg(debug_assertions)]
+    fn without_access_group() -> Result<Keychain, i32> {
+        Ok(Keychain::Login)
+    }
+
+    #[cfg(not(debug_assertions))]
+    fn without_access_group() -> Result<Keychain, i32> {
+        Err(MISSING_ENTITLEMENT)
     }
 
     pub(super) fn read(
@@ -193,15 +210,13 @@ mod store {
         service: &str,
         account: &str,
     ) -> Result<Option<Vec<u8>>, i32> {
-        in_keychain(|keychain| {
-            let mut query = identity(keychain, service, account);
-            query.push(Attr::ReturnData);
-            match system.copy_data(&query) {
-                Ok(data) => Ok(Some(data)),
-                Err(ITEM_NOT_FOUND) => Ok(None),
-                Err(status) => Err(status),
-            }
-        })
+        let mut query = identity(keychain(system)?, service, account);
+        query.push(Attr::ReturnData);
+        match system.copy_data(&query) {
+            Ok(data) => Ok(Some(data)),
+            Err(ITEM_NOT_FOUND) => Ok(None),
+            Err(status) => Err(status),
+        }
     }
 
     pub(super) fn write(
@@ -210,33 +225,31 @@ mod store {
         account: &str,
         data: &[u8],
     ) -> Result<(), i32> {
-        in_keychain(|keychain| {
-            let query = identity(keychain, service, account);
-            let changes = content(keychain, data);
-            let mut item = query.clone();
-            item.extend_from_slice(&changes);
-            match system.add(&item) {
+        let keychain = keychain(system)?;
+        let query = identity(keychain, service, account);
+        let changes = content(keychain, data);
+        let mut item = query.clone();
+        item.extend_from_slice(&changes);
+        match system.add(&item) {
+            OK => Ok(()),
+            DUPLICATE_ITEM => match system.update(&query, &changes) {
                 OK => Ok(()),
-                DUPLICATE_ITEM => match system.update(&query, &changes) {
-                    OK => Ok(()),
-                    status => Err(status),
-                },
                 status => Err(status),
-            }
-        })
+            },
+            status => Err(status),
+        }
     }
 
     pub(super) fn delete(system: &impl Keychains, service: &str, account: &str) -> Result<(), i32> {
-        in_keychain(
-            |keychain| match system.delete(&identity(keychain, service, account)) {
-                OK | ITEM_NOT_FOUND => Ok(()),
-                status => Err(status),
-            },
-        )
+        match system.delete(&identity(keychain(system)?, service, account)) {
+            OK | ITEM_NOT_FOUND => Ok(()),
+            status => Err(status),
+        }
     }
 
     /// A fixed message for a failed call: "unavailable" when the binary has
-    /// no keychain access group (a build without its provisioning profile).
+    /// no keychain access group (a release build without its provisioning
+    /// profile).
     fn message(status: i32, failed: &str) -> String {
         if status == MISSING_ENTITLEMENT {
             UNAVAILABLE.into()
@@ -270,7 +283,8 @@ mod store {
     /// setter for `kSecAttrAccessible`.
     mod ffi {
         use super::{Attr, Keychains};
-        use core_foundation::base::{CFGetTypeID, CFRelease, CFTypeRef};
+        use core_foundation::array::{CFArray, CFArrayRef};
+        use core_foundation::base::{CFAllocatorRef, CFGetTypeID, CFRelease, CFTypeRef};
         use core_foundation::base::{CFType, TCFType};
         use core_foundation::boolean::CFBoolean;
         use core_foundation::data::{CFData, CFDataRef};
@@ -284,11 +298,54 @@ mod store {
         use security_framework_sys::keychain_item::{
             SecItemAdd, SecItemCopyMatching, SecItemDelete, SecItemUpdate,
         };
+        use std::sync::OnceLock;
 
         #[link(name = "Security", kind = "framework")]
         extern "C" {
             // Not declared by security-framework-sys.
             static kSecAttrAccessible: CFStringRef;
+            // `SecTaskRef` is a CF object; the error out pointer may be null.
+            fn SecTaskCreateFromSelf(allocator: CFAllocatorRef) -> CFTypeRef;
+            fn SecTaskCopyValueForEntitlement(
+                task: CFTypeRef,
+                entitlement: CFStringRef,
+                error: *mut CFTypeRef,
+            ) -> CFTypeRef;
+        }
+
+        /// Whether this process's signature carries a non-empty
+        /// `keychain-access-groups`. Read once: a signature does not change
+        /// while the process runs.
+        fn signed_with_access_group() -> bool {
+            static ACCESS_GROUP: OnceLock<bool> = OnceLock::new();
+            *ACCESS_GROUP.get_or_init(|| {
+                let name = CFString::from_static_string("keychain-access-groups");
+                // SAFETY: both calls follow the create rule; every non-null
+                // result is released exactly once (by the wrappers or by
+                // CFRelease).
+                unsafe {
+                    let task = SecTaskCreateFromSelf(std::ptr::null());
+                    if task.is_null() {
+                        return false;
+                    }
+                    let value = SecTaskCopyValueForEntitlement(
+                        task,
+                        name.as_concrete_TypeRef(),
+                        std::ptr::null_mut(),
+                    );
+                    CFRelease(task);
+                    if value.is_null() {
+                        return false;
+                    }
+                    if CFGetTypeID(value) == CFArray::<CFType>::type_id() {
+                        let groups = CFArray::<CFType>::wrap_under_create_rule(value as CFArrayRef);
+                        !groups.is_empty()
+                    } else {
+                        CFRelease(value);
+                        false
+                    }
+                }
+            })
         }
 
         /// `errSecDecode`: the keychain returned something other than data.
@@ -344,6 +401,10 @@ mod store {
         pub struct System;
 
         impl Keychains for System {
+            fn has_access_group(&self) -> bool {
+                signed_with_access_group()
+            }
+
             fn add(&self, attrs: &[Attr]) -> i32 {
                 let attrs = dictionary(attrs);
                 // SAFETY: a valid dictionary; no result is requested.
@@ -395,9 +456,11 @@ mod store {
         use super::*;
         use std::cell::RefCell;
 
-        /// Records the calls and answers with scripted statuses.
+        /// Records the calls and answers with scripted statuses. Signed with
+        /// a keychain access group unless `unsigned` is set.
         #[derive(Default)]
         struct Fake {
+            unsigned: bool,
             calls: RefCell<Vec<String>>,
             add: RefCell<Vec<i32>>,
             update: RefCell<Vec<i32>>,
@@ -418,6 +481,9 @@ mod store {
         }
 
         impl Keychains for Fake {
+            fn has_access_group(&self) -> bool {
+                !self.unsigned
+            }
             fn add(&self, attrs: &[Attr]) -> i32 {
                 self.calls
                     .borrow_mut()
@@ -513,28 +579,42 @@ mod store {
 
         #[cfg(debug_assertions)]
         #[test]
-        fn without_the_entitlement_a_debug_build_uses_the_login_keychain() {
-            let fake = Fake::default();
-            fake.add.borrow_mut().extend([MISSING_ENTITLEMENT, OK]);
-            fake.copy
-                .borrow_mut()
-                .extend([Err(MISSING_ENTITLEMENT), Ok(b"v".to_vec())]);
-            fake.delete.borrow_mut().extend([MISSING_ENTITLEMENT, OK]);
+        fn without_an_access_group_a_debug_build_uses_the_login_keychain() {
+            let fake = Fake {
+                unsigned: true,
+                ..Fake::default()
+            };
+            fake.add.borrow_mut().push(OK);
+            // What SecItemCopyMatching answers in the data protection
+            // keychain without the group: it must not be asked there at all.
+            fake.copy.borrow_mut().push(Ok(b"v".to_vec()));
+            fake.delete.borrow_mut().push(OK);
 
             assert_eq!(write(&fake, "s", "a", b"v"), Ok(()));
             assert_eq!(read(&fake, "s", "a"), Ok(Some(b"v".to_vec())));
             assert_eq!(delete(&fake, "s", "a"), Ok(()));
-            assert_eq!(
-                calls(&fake),
-                [
-                    "add:dp",
-                    "add:login",
-                    "copy:dp",
-                    "copy:login",
-                    "delete:dp",
-                    "delete:login"
-                ]
-            );
+            assert_eq!(calls(&fake), ["add:login", "copy:login", "delete:login"]);
+        }
+
+        #[cfg(not(debug_assertions))]
+        #[test]
+        fn without_an_access_group_a_release_build_makes_no_call() {
+            let fake = Fake {
+                unsigned: true,
+                ..Fake::default()
+            };
+
+            assert_eq!(write(&fake, "s", "a", b"v"), Err(MISSING_ENTITLEMENT));
+            assert_eq!(read(&fake, "s", "a"), Err(MISSING_ENTITLEMENT));
+            assert_eq!(delete(&fake, "s", "a"), Err(MISSING_ENTITLEMENT));
+            assert!(calls(&fake).is_empty());
+        }
+
+        #[test]
+        fn a_process_without_a_profile_has_no_access_group() {
+            // The test binary is not signed with a provisioning profile; the
+            // call itself must work and say so.
+            assert!(!ffi::System.has_access_group());
         }
 
         #[cfg(debug_assertions)]
