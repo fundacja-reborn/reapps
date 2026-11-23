@@ -38,15 +38,28 @@ describe('backup settings and notifications', () => {
   });
 
   it('asks for notifications on a click instead of promising a reminder', () => {
-    const prompt = settings.slice(settings.indexOf("reminderPermission === 'prompt'"));
+    const prompt = settings.slice(
+      settings.indexOf("cfg.enabled && reminderPermission === 'prompt'")
+    );
     expect(prompt).toContain('onclick={allowReminders}');
     expect(settings).toContain("cfg.enabled && reminderPermission === 'granted'");
   });
 
+  it('answers a click the system did not ask about (desktop smoke 2026-11-23)', () => {
+    // macOS refused a build without a valid signature without showing the
+    // question, and the button looked dead.
+    expect(settings).toContain("reminderStillOff = reminderPermission === 'prompt';");
+    const prompt = settings.slice(
+      settings.indexOf("cfg.enabled && reminderPermission === 'prompt'")
+    );
+    expect(prompt).toContain("$t('settings_page.backup.reminder_still_off')");
+    expect(prompt).toContain('{#if reminderStillOff && canOpenSystemSettings}');
+  });
+
   it('opens the system notification settings where the platform can', () => {
     const denied = settings.slice(
-      settings.indexOf("reminderPermission === 'denied'"),
-      settings.indexOf("reminderPermission === 'prompt'")
+      settings.indexOf("cfg.enabled && reminderPermission === 'denied'"),
+      settings.indexOf("cfg.enabled && reminderPermission === 'prompt'")
     );
     expect(denied).toContain('{#if canOpenSystemSettings}');
     expect(denied).toContain('onclick={openSystemNotificationSettings}');

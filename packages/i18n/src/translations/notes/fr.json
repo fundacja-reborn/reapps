@@ -1122,6 +1122,7 @@
       "reminder_denied": "Les notifications de re/notes sont désactivées dans les réglages du système, vous ne recevrez donc pas de rappel si une sauvegarde est en retard. Vous pouvez les activer dans les réglages de notifications du système.",
       "reminder_prompt": "Le rappel d'une sauvegarde en retard nécessite l'autorisation d'afficher des notifications.",
       "reminder_allow_btn": "Autoriser les notifications",
+      "reminder_still_off": "Les notifications sont toujours désactivées. Vous pouvez les activer pour re/notes dans les réglages de notifications du système.",
       "reminder_open_settings_btn": "Ouvrir les réglages de notifications"
     },
     "export_import": {

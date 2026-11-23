@@ -1122,6 +1122,7 @@
       "reminder_denied": "Las notificaciones de re/notes están desactivadas en los ajustes del sistema, así que no recibirá ningún recordatorio si una copia queda pendiente. Puede activarlas en los ajustes de notificaciones del sistema.",
       "reminder_prompt": "El recordatorio de una copia pendiente necesita permiso para mostrar notificaciones.",
       "reminder_allow_btn": "Permitir notificaciones",
+      "reminder_still_off": "Las notificaciones siguen desactivadas. Puede activarlas para re/notes en los ajustes de notificaciones del sistema.",
       "reminder_open_settings_btn": "Abrir ajustes de notificaciones"
     },
     "export_import": {

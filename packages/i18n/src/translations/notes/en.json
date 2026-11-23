@@ -1122,6 +1122,7 @@
       "reminder_denied": "Notifications for re/notes are turned off in the system settings, so no reminder will come when a backup is overdue. You can turn them on in the system notification settings.",
       "reminder_prompt": "A reminder about an overdue backup needs permission to show notifications.",
       "reminder_allow_btn": "Turn on notifications",
+      "reminder_still_off": "Notifications are still off. You can turn them on for re/notes in the system notification settings.",
       "reminder_open_settings_btn": "Open notification settings"
     },
     "export_import": {

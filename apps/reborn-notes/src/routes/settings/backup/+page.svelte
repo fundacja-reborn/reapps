@@ -75,6 +75,10 @@
   // Notifications turned off: macOS and iOS can open the system page where
   // they are turned back on; Android only gets the text.
   let canOpenSystemSettings = $state(false);
+  // "Turn on notifications" was clicked and the permission is still undecided:
+  // the system did not ask (macOS refuses a build without a valid signature
+  // silently) or the question was dismissed. The click must still answer.
+  let reminderStillOff = $state(false);
 
   async function refreshReminderPermission() {
     const { getBackupReminderPermission } = await import('$lib/services/auto-backup/reminder');
@@ -93,6 +97,7 @@
     await ensureReminderPermission();
     await syncBackupReminders();
     await refreshReminderPermission();
+    reminderStillOff = reminderPermission === 'prompt';
   }
 
   async function openSystemNotificationSettings() {
@@ -244,9 +249,8 @@
     // Overdue reminders follow the toggle. Enabling is the one moment the OS
     // notification prompt has obvious context; a denial only mutes reminders,
     // the backups themselves are unaffected.
-    const { ensureReminderPermission, syncBackupReminders } = await import(
-      '$lib/services/auto-backup/reminder'
-    );
+    const { ensureReminderPermission, syncBackupReminders } =
+      await import('$lib/services/auto-backup/reminder');
     if (cfg.enabled) await ensureReminderPermission();
     await syncBackupReminders();
     await refreshReminderPermission();
@@ -309,7 +313,9 @@
             <p class="text-xs text-muted-foreground">{$t('settings_page.backup.phrase_intro')}</p>
 
             {#if phraseChanged}
-              <div class="flex items-start gap-2 rounded-md border border-amber-400/50 bg-amber-500/10 px-3 py-2.5">
+              <div
+                class="flex items-start gap-2 rounded-md border border-amber-400/50 bg-amber-500/10 px-3 py-2.5"
+              >
                 <AlertTriangle class="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                 <p class="text-xs text-amber-700 dark:text-amber-400">
                   {$t('settings_page.backup.phrase_updated_notice')}
@@ -544,14 +550,31 @@
                     <Bell class="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span>{$t('settings_page.backup.reminder_prompt')}</span>
                   </p>
-                  <button
-                    type="button"
-                    onclick={allowReminders}
-                    class="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent"
-                  >
-                    <Bell class="h-3.5 w-3.5" aria-hidden="true" />
-                    {$t('settings_page.backup.reminder_allow_btn')}
-                  </button>
+                  {#if reminderStillOff}
+                    <p role="status" class="text-xs text-amber-700 dark:text-amber-400">
+                      {$t('settings_page.backup.reminder_still_off')}
+                    </p>
+                  {/if}
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onclick={allowReminders}
+                      class="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent"
+                    >
+                      <Bell class="h-3.5 w-3.5" aria-hidden="true" />
+                      {$t('settings_page.backup.reminder_allow_btn')}
+                    </button>
+                    {#if reminderStillOff && canOpenSystemSettings}
+                      <button
+                        type="button"
+                        onclick={openSystemNotificationSettings}
+                        class="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent"
+                      >
+                        <Settings class="h-3.5 w-3.5" aria-hidden="true" />
+                        {$t('settings_page.backup.reminder_open_settings_btn')}
+                      </button>
+                    {/if}
+                  </div>
                 </div>
               {:else if cfg.enabled && reminderPermission === 'granted'}
                 <p class="text-xs text-muted-foreground/80 ps-6">
@@ -570,7 +593,12 @@
                   {$t('settings_page.backup.status_last', {
                     values: {
                       time: isolateInDirection(
-                        formatSettingsDateTime(bstate.lastBackupAt, $dateFormat, $timeFormat, $locale),
+                        formatSettingsDateTime(
+                          bstate.lastBackupAt,
+                          $dateFormat,
+                          $timeFormat,
+                          $locale
+                        ),
                         $textDirection
                       )
                     }

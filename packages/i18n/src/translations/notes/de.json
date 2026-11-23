@@ -1122,6 +1122,7 @@
       "reminder_denied": "Benachrichtigungen für re/notes sind in den Systemeinstellungen ausgeschaltet, daher kommt keine Erinnerung, wenn eine Sicherung überfällig ist. Sie können sie in den Benachrichtigungseinstellungen des Systems einschalten.",
       "reminder_prompt": "Für die Erinnerung an eine überfällige Sicherung braucht re/notes die Erlaubnis, Benachrichtigungen zu senden.",
       "reminder_allow_btn": "Benachrichtigungen erlauben",
+      "reminder_still_off": "Benachrichtigungen sind weiterhin ausgeschaltet. Sie können sie für re/notes in den Benachrichtigungseinstellungen des Systems einschalten.",
       "reminder_open_settings_btn": "Benachrichtigungseinstellungen öffnen"
     },
     "export_import": {

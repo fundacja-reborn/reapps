@@ -271,18 +271,28 @@ mod platform {
         if current != Permission::Prompt {
             return current;
         }
-        let (sender, receiver) = mpsc::channel::<()>();
-        // Called once the user answers the prompt (or the system declines to
-        // show it); the outcome is read back from the settings below.
-        let handler = RcBlock::new(move |_granted: Bool, _error: *mut NSError| {
-            let _ = sender.send(());
+        let (sender, receiver) = mpsc::channel::<Option<String>>();
+        // Called once the user answers the prompt, or right away with an error
+        // when the system declines to show it; the outcome is read back from
+        // the settings below.
+        let handler = RcBlock::new(move |_granted: Bool, error: *mut NSError| {
+            // SAFETY: when not null, the framework passes a valid NSError for
+            // the duration of the call.
+            let refusal =
+                unsafe { error.as_ref() }.map(|error| error.localizedDescription().to_string());
+            let _ = sender.send(refusal);
         });
         center.requestAuthorizationWithOptions_completionHandler(
             UNAuthorizationOptions::Alert | UNAuthorizationOptions::Sound,
             &handler,
         );
         drop(handler);
-        let _ = receiver.recv();
+        if let Ok(Some(reason)) = receiver.recv() {
+            // The system did not ask (seen with a build that had only the
+            // linker's ad hoc signature, smoke 2026-11-23). The permission
+            // stays undecided and the page says notifications are still off.
+            eprintln!("re/notes: the system did not ask about notifications: {reason}");
+        }
         status_of(&center)
     }
 

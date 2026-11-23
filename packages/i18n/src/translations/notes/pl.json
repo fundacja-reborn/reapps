@@ -1122,6 +1122,7 @@
       "reminder_denied": "Powiadomienia re/notes są wyłączone w ustawieniach systemu, więc przypomnienie o zaległej kopii nie przyjdzie. Możesz je włączyć w ustawieniach powiadomień systemu.",
       "reminder_prompt": "Przypomnienie o zaległej kopii wymaga zgody na powiadomienia.",
       "reminder_allow_btn": "Włącz powiadomienia",
+      "reminder_still_off": "Powiadomienia nadal są wyłączone. Możesz je włączyć dla re/notes w ustawieniach powiadomień systemu.",
       "reminder_open_settings_btn": "Otwórz ustawienia powiadomień"
     },
     "export_import": {
