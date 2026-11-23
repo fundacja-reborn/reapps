@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   defaultStoreUrl,
+  desktopUpdatePlatform,
   evaluateUpdateSeverity,
   parseAppConfig,
   type NativeUpdateConfig
@@ -30,6 +31,27 @@ describe('parseAppConfig', () => {
       'ios'
     );
     expect(parsed).toEqual({ minBuild: 7, recommendedBuild: 9, storeUrl: null });
+  });
+
+  it('reads the macOS entry of the desktop app', () => {
+    const parsed = parseAppConfig(
+      {
+        success: true,
+        data: {
+          native: {
+            android: {},
+            ios: {},
+            macos: { min_build: 2, recommended_build: 4, store_url: 'macappstore://x' }
+          }
+        }
+      },
+      'macos'
+    );
+    expect(parsed).toEqual({ minBuild: 2, recommendedBuild: 4, storeUrl: 'macappstore://x' });
+  });
+
+  it('fails open for a desktop app when the server has no macOS entry yet', () => {
+    expect(parseAppConfig(body({ min_build: 3 }, { min_build: 7 }), 'macos')).toBeNull();
   });
 
   it('normalizes missing/invalid fields to "no enforcement"', () => {
@@ -96,5 +118,14 @@ describe('defaultStoreUrl', () => {
 
   it('returns null for an empty app id', () => {
     expect(defaultStoreUrl('android', '')).toBeNull();
+  });
+});
+
+describe('desktopUpdatePlatform', () => {
+  it('gates the macOS app only', () => {
+    expect(desktopUpdatePlatform('macos')).toBe('macos');
+    expect(desktopUpdatePlatform('windows')).toBeNull();
+    expect(desktopUpdatePlatform('linux')).toBeNull();
+    expect(desktopUpdatePlatform(null)).toBeNull();
   });
 });

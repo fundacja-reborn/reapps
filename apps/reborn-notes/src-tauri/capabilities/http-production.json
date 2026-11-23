@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "http-production",
+  "description": "HTTP transport to the production API (Mac App Store build, tauri.appstore.conf.json): the only origin the store build may reach.",
+  "windows": ["main"],
+  "permissions": [
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://reapps.eu/notes/api/*"
+        }
+      ]
+    }
+  ]
+}

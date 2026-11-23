@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Development build in the sandbox (tauri.dev-sandbox.conf.json): the same
+	     sandbox and keychain as the store build, under the development bundle
+	     identifier. Exactly this set:
+	     scripts/build-desktop-mas.mjs compares it with what the signed app
+	     carries and refuses anything more. Needs the "macOS App Development"
+	     provisioning profile of team 9ML434R9RK embedded in the bundle; without
+	     a profile macOS kills an app with keychain-access-groups at launch. -->
+
+	<!-- The sandbox, as in the store build. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- The API (HTTP transport in Rust) and the server probe. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Folders the user picks for folder sync and the automated backup, and
+	     "Save as..." for exports. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<!-- Security-scoped bookmarks: the picked folders stay reachable after a
+	     relaunch (folder_fs.rs). -->
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
+
+	<!-- From the provisioning profile; codesign does not copy them itself. -->
+	<key>com.apple.application-identifier</key>
+	<string>9ML434R9RK.eu.reapps.notes.dev</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>9ML434R9RK</string>
+	<!-- The data protection keychain (secure_storage.rs): the master key and
+	     the refresh token as items of this Mac only. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>9ML434R9RK.eu.reapps.notes.dev</string>
+	</array>
+</dict>
+</plist>

@@ -32,10 +32,6 @@ tauri-plugin-http = { version = "2", default-features = false, features = [
   "charset",
   "system-proxy",
 ] }
-# OS credential store (macOS Keychain, Windows Credential Manager) for the
-# refresh token and the master key. Pinned to 3.x: 4.x moved to a different
-# crate layout.
-keyring = { version = "3", features = ["apple-native", "windows-native"] }
 # System folder dialog for linking a folder (folder sync, automated backup).
 # Only its Rust API is used; the webview gets no dialog permission.
 tauri-plugin-dialog = "2"
@@ -48,6 +44,12 @@ serde_json = "1"
 getrandom = "0.3"
 # Export payloads arrive from the webview as base64.
 base64 = "0.22"
+
+# Refresh token and master key on Windows: Credential Manager (D5). Pinned to
+# 3.x: 4.x moved to a different crate layout. macOS uses its own keychain code
+# (secure_storage.rs, below).
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
 
 # App Lock on macOS: LocalAuthentication (Touch ID, account password). The
 # objc2 crates are the bindings Tauri itself already builds on, so only the
@@ -62,11 +64,15 @@ objc2-local-authentication = { version = "0.3", default-features = false, featur
 ] }
 objc2 = "0.6"
 # NSBundle: build number (app_info). NSFileManager, NSURL and NSValue: the
-# Time Machine exclusion of the webview's data (backup_exclusion).
+# Time Machine exclusion of the webview's data (backup_exclusion). NSData and
+# the bookmark options (bitflags): security-scoped bookmarks of linked folders
+# (folder_fs).
 objc2-foundation = { version = "0.3", default-features = false, features = [
   "std",
+  "bitflags",
   "NSArray",
   "NSBundle",
+  "NSData",
   "NSError",
   "NSFileManager",
   "NSPathUtilities",
@@ -75,6 +81,17 @@ objc2-foundation = { version = "0.3", default-features = false, features = [
   "NSValue",
 ] }
 block2 = "0.6"
+# External links (external_links.rs): NSWorkspace opens them in the default
+# app. Same objc2 family; already in the lockfile (Tauri's window code).
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSWorkspace",
+] }
+# Refresh token and master key on macOS: the data protection keychain, items
+# of this Mac only (secure_storage.rs). Both crates were already in the
+# lockfile (security-framework, rustls).
+security-framework-sys = { version = "2.17", features = ["OSX_10_15"] }
+core-foundation = "0.10"
 # Overdue-backup reminder (backup_reminder): UNUserNotificationCenter. Same
 # objc2 family; the crate was already in the lockfile (objc2-ui-kit, iOS).
 objc2-user-notifications = { version = "0.3", default-features = false, features = [

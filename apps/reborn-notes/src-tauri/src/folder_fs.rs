@@ -25,8 +25,26 @@
 //!
 //! A compromised page can therefore reach exactly the folders the user linked,
 //! with the access they were linked for - the same bound as on mobile.
+//!
+//! # Sandbox (Mac App Store)
+//!
+//! In the App Sandbox a picked folder is reachable only for the rest of the
+//! launch; a plain path in the grants file would be dead after a restart. So
+//! on macOS each grant also keeps a security-scoped bookmark of its folder
+//! (read only for a folder linked without `write`), created when the user
+//! picks it. The first use of a token in a launch resolves the bookmark and
+//! starts the access to the folder, which then lasts until the app quits; a
+//! folder moved or renamed since is followed to its new place, and a stale
+//! bookmark is renewed. The page sees none of this: tokens and errors are the
+//! same as before.
+//!
+//! Outside the sandbox (development builds) the bookmark is kept as well when
+//! macOS creates one, and the path still works without it. In the sandbox a
+//! folder the system gives no bookmark for is not linked at all, rather than
+//! linked until the next launch. Grants from before D4 have a path only: in
+//! the store build (a fresh container) there are none.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -98,6 +116,10 @@ const STORE_FAILED: FolderFsError = FolderFsError {
 struct Grant {
     path: PathBuf,
     write: bool,
+    /// Security-scoped bookmark of the folder, base64 (macOS; see the module
+    /// docs). Absent in grants from before D4 and where none was created.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    bookmark: Option<String>,
 }
 
 /// On-disk shape of the grants file.
@@ -110,6 +132,9 @@ struct GrantsDocument {
 pub struct FolderGrants {
     file: PathBuf,
     grants: Mutex<HashMap<String, Grant>>,
+    /// Tokens whose folder this launch already has access to: picked in this
+    /// launch, or with the bookmark resolved. Locked after `grants`.
+    opened: Mutex<HashSet<String>>,
 }
 
 impl FolderGrants {
@@ -134,6 +159,7 @@ impl FolderGrants {
         Self {
             file,
             grants: Mutex::new(grants),
+            opened: Mutex::new(HashSet::new()),
         }
     }
 
@@ -141,13 +167,51 @@ impl FolderGrants {
         self.grants.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
+    fn opened(&self) -> MutexGuard<'_, HashSet<String>> {
+        self.opened.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// The grant behind a token. On the first use in a launch its bookmark is
+    /// resolved, which starts the access to the folder in the sandbox and
+    /// picks up a folder that was moved or renamed.
     fn get(&self, token: &str) -> Result<Grant, FolderFsError> {
-        self.lock().get(token).cloned().ok_or(ACCESS_DENIED)
+        let mut grants = self.lock();
+        let grant = grants.get(token).cloned().ok_or(ACCESS_DENIED)?;
+        let Some(bookmark) = grant.bookmark.as_deref() else {
+            return Ok(grant);
+        };
+        if self.opened().contains(token) {
+            return Ok(grant);
+        }
+        // An unreadable or unresolvable bookmark leaves the path: outside the
+        // sandbox it still works, inside it fails as a folder that is gone.
+        let Some(resolved) = decode(bookmark).and_then(|data| bookmarks::open(&data)) else {
+            return Ok(grant);
+        };
+        self.opened().insert(token.to_owned());
+        let renewed = if resolved.stale {
+            bookmarks::create(&resolved.path, !grant.write).map(|data| encode(&data))
+        } else {
+            None
+        };
+        if resolved.path == grant.path && renewed.is_none() {
+            return Ok(grant);
+        }
+        let updated = Grant {
+            path: resolved.path,
+            write: grant.write,
+            bookmark: renewed.or(grant.bookmark),
+        };
+        grants.insert(token.to_owned(), updated.clone());
+        // Best effort: without the update the next launch resolves the
+        // bookmark again.
+        let _ = self.persist(&grants);
+        Ok(updated)
     }
 
     /// Register a folder and return its token. The grant only counts once it
     /// is on disk: a link that would vanish at the next launch is not handed
-    /// out.
+    /// out. The folder was just picked, so this launch already has access.
     fn add(&self, grant: Grant) -> Result<String, FolderFsError> {
         let token = random_hex().map_err(|_| STORE_FAILED)?;
         let mut grants = self.lock();
@@ -156,6 +220,7 @@ impl FolderGrants {
             grants.remove(&token);
             return Err(STORE_FAILED);
         }
+        self.opened().insert(token.clone());
         Ok(token)
     }
 
@@ -170,6 +235,8 @@ impl FolderGrants {
             grants.insert(token.to_owned(), removed);
             return Err(STORE_FAILED);
         }
+        // The access itself lasts until the app quits; the token is gone.
+        self.opened().remove(token);
         Ok(())
     }
 
@@ -182,6 +249,104 @@ impl FolderGrants {
         };
         let bytes = serde_json::to_vec_pretty(&document).map_err(io::Error::other)?;
         write_atomic(&self.file, &bytes, true)
+    }
+}
+
+fn encode(bookmark: &[u8]) -> String {
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD.encode(bookmark)
+}
+
+fn decode(bookmark: &str) -> Option<Vec<u8>> {
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD
+        .decode(bookmark)
+        .ok()
+}
+
+/// Whether this process runs in the App Sandbox (the system sets the variable
+/// for every sandboxed process).
+fn sandboxed() -> bool {
+    std::env::var_os("APP_SANDBOX_CONTAINER_ID").is_some()
+}
+
+/// Security-scoped bookmarks of linked folders (see the module docs).
+#[cfg(target_os = "macos")]
+mod bookmarks {
+    use objc2::runtime::Bool;
+    use objc2_foundation::{
+        NSData, NSString, NSURLBookmarkCreationOptions, NSURLBookmarkResolutionOptions, NSURL,
+    };
+    use std::path::{Path, PathBuf};
+
+    /// A bookmark of `folder`, which this process must have access to (the
+    /// user just picked it). Read only unless the folder takes writes.
+    pub fn create(folder: &Path, read_only: bool) -> Option<Vec<u8>> {
+        let url = NSURL::fileURLWithPath_isDirectory(&NSString::from_str(folder.to_str()?), true);
+        let mut options = NSURLBookmarkCreationOptions::WithSecurityScope;
+        if read_only {
+            options |= NSURLBookmarkCreationOptions::SecurityScopeAllowOnlyReadAccess;
+        }
+        let data = url
+            .bookmarkDataWithOptions_includingResourceValuesForKeys_relativeToURL_error(
+                options, None, None,
+            )
+            .ok()?;
+        Some(data.to_vec())
+    }
+
+    pub struct Resolved {
+        /// Where the folder is now.
+        pub path: PathBuf,
+        /// The bookmark still resolves but should be created again.
+        pub stale: bool,
+    }
+
+    /// Resolves a bookmark and starts the access to its folder for this
+    /// process. The access is never stopped: it ends with the process, once
+    /// per folder and launch, which is what the grants need (a released
+    /// folder only loses its token).
+    pub fn open(bookmark: &[u8]) -> Option<Resolved> {
+        let data = NSData::with_bytes(bookmark);
+        let mut stale = Bool::NO;
+        // SAFETY: `stale` is a valid out pointer for the duration of the call.
+        let url = unsafe {
+            NSURL::URLByResolvingBookmarkData_options_relativeToURL_bookmarkDataIsStale_error(
+                &data,
+                NSURLBookmarkResolutionOptions::WithSecurityScope
+                    | NSURLBookmarkResolutionOptions::WithoutUI,
+                None,
+                &mut stale,
+            )
+        }
+        .ok()?;
+        // SAFETY: a plain message to a URL resolved with a security scope;
+        // `false` (outside the sandbox) is fine, the path works there anyway.
+        let _ = unsafe { url.startAccessingSecurityScopedResource() };
+        let path = PathBuf::from(url.path()?.to_string());
+        Some(Resolved {
+            path,
+            stale: stale.as_bool(),
+        })
+    }
+}
+
+/// Bookmarks are a macOS thing; elsewhere grants keep the path only.
+#[cfg(not(target_os = "macos"))]
+mod bookmarks {
+    use std::path::{Path, PathBuf};
+
+    pub struct Resolved {
+        pub path: PathBuf,
+        pub stale: bool,
+    }
+
+    pub fn create(_folder: &Path, _read_only: bool) -> Option<Vec<u8>> {
+        None
+    }
+
+    pub fn open(_bookmark: &[u8]) -> Option<Resolved> {
+        None
     }
 }
 
@@ -480,12 +645,20 @@ pub fn folder_fs_pick_directory(
         return Err(PICK_FAILED);
     }
     let name = leaf_name(&root);
-    let bookmark = grants.add(Grant {
+    let write = write.unwrap_or(false);
+    let bookmark = bookmarks::create(&root, !write).map(|data| encode(&data));
+    // In the sandbox a folder without a bookmark would be unreachable after
+    // the next launch, so it is not linked at all.
+    if bookmark.is_none() && sandboxed() {
+        return Err(PICK_FAILED);
+    }
+    let token = grants.add(Grant {
         path: root,
-        write: write.unwrap_or(false),
+        write,
+        bookmark,
     })?;
     Ok(PickResult {
-        bookmark: Some(bookmark),
+        bookmark: Some(token),
         name: Some(name),
         cancelled: None,
     })
@@ -850,6 +1023,7 @@ mod tests {
         let grant = Grant {
             path: folder.clone(),
             write: true,
+            bookmark: None,
         };
 
         let token = FolderGrants::open(file.clone()).add(grant.clone()).unwrap();
@@ -870,6 +1044,7 @@ mod tests {
         let grant = Grant {
             path: scratch.0.clone(),
             write: false,
+            bookmark: None,
         };
 
         let first = grants.add(grant.clone()).unwrap();
@@ -897,9 +1072,96 @@ mod tests {
         let grant = Grant {
             path: scratch.0.join("moved-away"),
             write: false,
+            bookmark: None,
         };
 
         assert_eq!(root_of(&grant), Err(FOLDER_NOT_FOUND));
+    }
+
+    #[test]
+    fn grants_from_before_bookmarks_still_load() {
+        let scratch = Scratch::new();
+        let folder = scratch.dir("Vault");
+        let file = scratch.file(
+            "folder-grants.json",
+            &format!(
+                r#"{{"grants":{{"abc":{{"path":{:?},"write":false}}}}}}"#,
+                folder.to_str().unwrap()
+            ),
+        );
+
+        let grant = FolderGrants::open(file).get("abc").unwrap();
+
+        assert_eq!(grant.path, folder);
+        assert_eq!(grant.bookmark, None);
+    }
+
+    #[test]
+    fn a_grant_without_a_bookmark_is_saved_without_one() {
+        let scratch = Scratch::new();
+        let file = scratch.0.join("folder-grants.json");
+        FolderGrants::open(file.clone())
+            .add(Grant {
+                path: scratch.0.clone(),
+                write: false,
+                bookmark: None,
+            })
+            .unwrap();
+
+        assert!(!fs::read_to_string(file).unwrap().contains("bookmark"));
+    }
+
+    #[test]
+    fn an_unusable_bookmark_falls_back_to_the_path() {
+        let scratch = Scratch::new();
+        let folder = scratch.dir("Vault");
+        let grants = FolderGrants::open(scratch.0.join("folder-grants.json"));
+        for bookmark in ["not base64!", "AAAA"] {
+            let grant = Grant {
+                path: folder.clone(),
+                write: false,
+                bookmark: Some(bookmark.to_owned()),
+            };
+            let token = grants.add(grant.clone()).unwrap();
+            grants.opened().clear();
+
+            assert_eq!(grants.get(&token), Ok(grant));
+        }
+    }
+
+    /// The round trip of a real bookmark and a moved folder. Creating a
+    /// security-scoped bookmark goes through a system agent, and a process
+    /// outside the App Sandbox does not always get one (the test binary in a
+    /// sandboxed session gets error 256): the test then has nothing to check
+    /// and says so. Run it outside such a session to exercise it.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_bookmarked_folder_is_followed_after_a_move() {
+        let scratch = Scratch::new();
+        let file = scratch.0.join("folder-grants.json");
+        let folder = scratch.dir("Vault");
+        let Some(bookmark) = bookmarks::create(&folder, true) else {
+            eprintln!("skipped: no security-scoped bookmark outside the App Sandbox here");
+            return;
+        };
+        let token = FolderGrants::open(file.clone())
+            .add(Grant {
+                path: folder.clone(),
+                write: false,
+                bookmark: Some(encode(&bookmark)),
+            })
+            .unwrap();
+
+        let moved = scratch.0.join("Renamed");
+        fs::rename(&folder, &moved).unwrap();
+        let reopened = FolderGrants::open(file.clone());
+        let grant = reopened.get(&token).unwrap();
+
+        assert_eq!(fs::canonicalize(&grant.path).unwrap(), moved);
+        assert!(grant.bookmark.is_some());
+        // The new place is saved for the next launch.
+        let saved = FolderGrants::open(file);
+        assert_eq!(saved.lock().get(&token).unwrap().path, grant.path);
     }
 
     #[cfg(unix)]
@@ -914,6 +1176,7 @@ mod tests {
             .add(Grant {
                 path: scratch.0.clone(),
                 write: false,
+                bookmark: None,
             })
             .unwrap();
 

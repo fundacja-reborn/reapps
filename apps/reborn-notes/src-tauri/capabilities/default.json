@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The page in the main window: the shell's own commands it calls, event listening for the app menu, and HTTP to the API origin only. Nothing else from core (no menu, window, webview, app or path API). A store build must list its own API origin here and nothing else. Kept in step with build.rs and lib.rs by src/lib/utils/desktop-capabilities.spec.ts.",
+  "description": "The page in the main window: the shell's own commands it calls and event listening for the app menu. Nothing else from core (no menu, window, webview, app or path API). HTTP to the API is a separate capability per build: http-local (development, tauri.conf.json) or http-production (Mac App Store, tauri.appstore.conf.json), selected in app > security > capabilities. Kept in step with build.rs and lib.rs by src/lib/utils/desktop-capabilities.spec.ts.",
   "windows": ["main"],
   "permissions": [
     "allow-secure-storage-get",
@@ -24,10 +24,6 @@
     "allow-backup-reminder-schedule",
     "allow-backup-reminder-cancel",
     "core:event:allow-listen",
-    "core:event:allow-unlisten",
-    {
-      "identifier": "http:default",
-      "allow": [{ "url": "http://localhost/*" }]
-    }
+    "core:event:allow-unlisten"
   ]
 }

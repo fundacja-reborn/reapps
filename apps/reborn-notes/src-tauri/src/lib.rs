@@ -20,9 +20,17 @@
 //!
 //! What the page may call is listed in `capabilities/default.json`: each of
 //! the commands above by its own `allow-*` permission (`build.rs` declares
-//! them to the ACL, so an unlisted command is refused), event listening for
-//! the app menu, and HTTP to the API origin. Nothing else from Tauri's core:
-//! the page cannot rebuild the menu, move or close the window, or read paths.
+//! them to the ACL, so an unlisted command is refused) and event listening
+//! for the app menu. HTTP to the API origin is one more capability per build
+//! (`http-local` for development, `http-production` for the Mac App Store),
+//! chosen in `app > security > capabilities` of the build's config. Nothing
+//! else from Tauri's core: the page cannot rebuild the menu, move or close
+//! the window, or read paths.
+//!
+//! Build variants: `tauri.conf.json` (development, `eu.reapps.notes.dev`),
+//! merged with `tauri.appstore.conf.json` for the Mac App Store or
+//! `tauri.dev-sandbox.conf.json` for a sandboxed development build
+//! (`scripts/build-desktop-mas.mjs`).
 //!
 //! Window chrome: a transparent title bar (`tauri.conf.json`) over the
 //! brand-yellow window background (`paint_title_bar`). Window size and
@@ -30,6 +38,10 @@
 //!
 //! The webview's data (IndexedDB with decrypted shadow indexes) is kept out
 //! of Time Machine at every launch (`backup_exclusion`).
+//!
+//! The main window is created here, not from the config (`create: false`), to
+//! hand it the link policy of `external_links`: web pages and mail open in the
+//! default app, the window itself never leaves the bundled app.
 
 mod app_info;
 mod app_lock;
@@ -38,16 +50,39 @@ mod backup_exclusion;
 mod backup_reminder;
 #[cfg(test)]
 mod capability_tests;
+mod external_links;
 mod file_export;
 mod folder_fs;
 mod secure_storage;
 
+use tauri::webview::NewWindowResponse;
 use tauri::window::Color;
-use tauri::{AppHandle, Manager, Runtime, Webview};
+use tauri::{AppHandle, Manager, Runtime, Webview, WebviewWindowBuilder};
 use tauri_plugin_window_state::StateFlags;
 
 /// Label of the only window, from `tauri.conf.json`.
 const MAIN_WINDOW: &str = "main";
+
+/// Creates the main window from its entry in `tauri.conf.json`, with the link
+/// policy of `external_links`.
+fn create_main_window<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|window| window.label == MAIN_WINDOW)
+        .cloned()
+        .ok_or_else(|| tauri::Error::WindowNotFound)?;
+    WebviewWindowBuilder::from_config(app, &config)?
+        .on_navigation(external_links::on_navigation)
+        .on_new_window(|url, _features| {
+            external_links::on_new_window(&url);
+            NewWindowResponse::Deny
+        })
+        .build()?;
+    Ok(())
+}
 
 /// Brand yellow (#FFD43B), seen through the transparent title bar.
 const TITLE_BAR_COLOR: Color = Color(0xFF, 0xD4, 0x3B, 0xFF);
@@ -84,8 +119,8 @@ fn window_state_flags() -> StateFlags {
 /// command `plugin:webview|internal_toggle_devtools`, which `core:default`
 /// used to grant. The page's capability no longer includes it, so the debug
 /// build adds it at runtime. Release builds compile neither the shortcut nor
-/// the command (no `devtools` feature), and their capability stays exactly as
-/// written in `capabilities/default.json`.
+/// the command (no `devtools` feature), and their capabilities stay exactly
+/// as written in `capabilities/`.
 #[cfg(debug_assertions)]
 fn allow_devtools_shortcut<R: Runtime>(app: &AppHandle<R>) {
     use tauri::ipc::CapabilityBuilder;
@@ -134,6 +169,7 @@ pub fn run() {
     builder
         .setup(|app| {
             app.manage(folder_fs::FolderGrants::load(app.handle()));
+            create_main_window(app.handle())?;
             paint_title_bar(app.handle());
             #[cfg(debug_assertions)]
             allow_devtools_shortcut(app.handle());

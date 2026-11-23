@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "re-notes",
+  "identifier": "eu.reapps.notes",
+  "app": {
+    "security": {
+      "capabilities": ["default", "http-production"]
+    }
+  },
+  "bundle": {
+    "macOS": {
+      "entitlements": "macos/appstore.entitlements",
+      "files": {
+        "Resources/en.lproj/InfoPlist.strings": "macos/InfoPlist.appstore.strings",
+        "Resources/pl.lproj/InfoPlist.strings": "macos/InfoPlist.appstore.strings",
+        "Resources/de.lproj/InfoPlist.strings": "macos/InfoPlist.appstore.strings",
+        "Resources/es.lproj/InfoPlist.strings": "macos/InfoPlist.appstore.strings",
+        "Resources/fr.lproj/InfoPlist.strings": "macos/InfoPlist.appstore.strings",
+        "Resources/ar.lproj/InfoPlist.strings": "macos/InfoPlist.appstore.strings"
+      }
+    }
+  }
+}

@@ -23,15 +23,18 @@ declare const __APP_VERSION__: string;
  * round-trip. Still zero client telemetry - it is a plain GET.
  *
  * Env (all optional; 0 / unset = no enforcement):
- *   NATIVE_MIN_BUILD_ANDROID / NATIVE_MIN_BUILD_IOS
- *     build number (versionCode / CURRENT_PROJECT_VERSION) below which the
- *     shell shows a hard "update required" gate.
- *   NATIVE_RECOMMENDED_BUILD_ANDROID / NATIVE_RECOMMENDED_BUILD_IOS
+ *   NATIVE_MIN_BUILD_ANDROID / NATIVE_MIN_BUILD_IOS / NATIVE_MIN_BUILD_MACOS
+ *     build number (versionCode / CURRENT_PROJECT_VERSION / CFBundleVersion of
+ *     the desktop app) below which the shell shows a hard "update required"
+ *     gate.
+ *   NATIVE_RECOMMENDED_BUILD_ANDROID / _IOS / _MACOS
  *     below which the shell shows a one-per-session "update available" toast.
- *   NATIVE_STORE_URL_ANDROID / NATIVE_STORE_URL_IOS
+ *   NATIVE_STORE_URL_ANDROID / _IOS / _MACOS
  *     store listing URL override. Android falls back to the Play listing
- *     derived client-side from the package id; iOS has no derivable URL
- *     (numeric App Store id), so the update button hides until this is set.
+ *     derived client-side from the package id; iOS and macOS have no
+ *     derivable URL (numeric App Store id, shared by both with universal
+ *     purchase), so the update button hides until this is set. For macOS
+ *     `macappstore://apps.apple.com/app/id<n>` opens the store app directly.
  *
  * No DB, no auth, static per process - as cheap as /api/health.
  */
@@ -41,7 +44,7 @@ const toBuild = (raw: string | undefined): number => {
 	return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
 };
 
-const platformConfig = (suffix: 'ANDROID' | 'IOS') => ({
+const platformConfig = (suffix: 'ANDROID' | 'IOS' | 'MACOS') => ({
 	min_build: toBuild(env[`NATIVE_MIN_BUILD_${suffix}`]),
 	recommended_build: toBuild(env[`NATIVE_RECOMMENDED_BUILD_${suffix}`]),
 	store_url: env[`NATIVE_STORE_URL_${suffix}`] || null
@@ -54,7 +57,8 @@ export const GET: RequestHandler = () =>
 			version: __APP_VERSION__,
 			native: {
 				android: platformConfig('ANDROID'),
-				ios: platformConfig('IOS')
+				ios: platformConfig('IOS'),
+				macos: platformConfig('MACOS')
 			}
 		}
 	});

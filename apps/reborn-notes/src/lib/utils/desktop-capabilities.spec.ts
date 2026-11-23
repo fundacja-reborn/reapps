@@ -10,11 +10,22 @@
  * (`src-tauri/src/capability_tests.rs`) do not run in CI, so the lists are
  * compared here.
  *
- * The capability is also pinned as a whole: widening what the page may call
- * (another core API, another plugin, another HTTP origin) has to change this
- * spec too, so it shows up in review.
+ * The capabilities are also pinned as a whole: widening what the page may
+ * call (another core API, another plugin, another HTTP origin) has to change
+ * this spec too, so it shows up in review. HTTP to the API is one capability
+ * per build (`http-local` for development, `http-production` for the Mac App
+ * Store), selected by `app > security > capabilities` of the build's config;
+ * each must name exactly the API origin its web build talks to.
+ *
+ * The build variants (`tauri.conf.json` = development, overlays
+ * `tauri.appstore.conf.json` and `tauri.dev-sandbox.conf.json`) and their
+ * entitlements are pinned here too: the store build's sandbox, keychain group
+ * and bundle identifier must agree, or the shipped app loses its keychain.
+ * So is the name macOS shows (Finder, Dock, menu bar), which comes from an
+ * `InfoPlist.strings` in the folder of every app language.
  */
 import { readdirSync, readFileSync } from 'node:fs';
+import { SUPPORTED_LOCALES } from '@reborn/i18n/config';
 import { describe, expect, it } from 'vitest';
 
 const srcTauri = new URL('../../../src-tauri/', import.meta.url);
@@ -73,7 +84,11 @@ interface Capability {
   permissions: (string | { identifier: string; allow?: unknown; deny?: unknown })[];
 }
 
-const capability = JSON.parse(readShellFile('capabilities/default.json')) as Capability;
+function readCapability(name: string): Capability {
+  return JSON.parse(readShellFile(`capabilities/${name}.json`)) as Capability;
+}
+
+const capability = readCapability('default');
 const declared = rustStringList(readShellFile('build.rs'), 'const APP_COMMANDS');
 const sorted = (list: string[]) => [...list].sort();
 
@@ -94,26 +109,28 @@ describe('desktop shell commands', () => {
 });
 
 describe('desktop shell capability', () => {
-  it('is the only capability of the shell', () => {
-    // tauri-build loads every file in capabilities/, so a second file would
-    // add permissions without touching this one.
+  it('has one capability for the page and one HTTP capability per build', () => {
+    // tauri-build loads every file in capabilities/; the config of each build
+    // selects which of them apply (see the variant tests below).
     const files = readdirSync(new URL('capabilities/', srcTauri)).filter(
       (name) => !name.startsWith('.')
     );
-    expect(files).toEqual(['default.json']);
+    expect(sorted(files)).toEqual(['default.json', 'http-local.json', 'http-production.json']);
   });
 
   it('applies to the main window and the bundled page only', () => {
     const lib = readShellFile('src/lib.rs');
-    const config = JSON.parse(readShellFile('tauri.conf.json')) as {
-      app: { windows: { label: string }[] };
-    };
-    expect(capability.windows).toEqual(['main']);
+    const config = readConfig('tauri.conf.json');
     expect(lib).toContain('const MAIN_WINDOW: &str = "main";');
-    expect(config.app.windows.map((w) => w.label)).toEqual(['main']);
-    expect(capability.local).not.toBe(false);
-    expect(capability.remote).toBeUndefined();
-    expect(capability.webviews).toBeUndefined();
+    expect(config.app?.windows?.map((w) => w.label)).toEqual(['main']);
+    for (const name of ['default', 'http-local', 'http-production']) {
+      const entry = readCapability(name);
+      expect(entry.identifier).toBe(name);
+      expect(entry.windows).toEqual(['main']);
+      expect(entry.local).not.toBe(false);
+      expect(entry.remote).toBeUndefined();
+      expect(entry.webviews).toBeUndefined();
+    }
   });
 
   it('grants each app command by its own permission', () => {
@@ -123,14 +140,175 @@ describe('desktop shell capability', () => {
     expect(sorted(granted)).toEqual(sorted(declared.map(allowPermission)));
   });
 
-  it('grants nothing else but event listening and HTTP to the API origin', () => {
+  it('grants the page nothing else but event listening', () => {
     const rest = capability.permissions.filter(
       (p) => !(typeof p === 'string' && p.startsWith('allow-'))
     );
-    expect(rest).toEqual([
-      'core:event:allow-listen',
-      'core:event:allow-unlisten',
-      { identifier: 'http:default', allow: [{ url: 'http://localhost/*' }] }
+    expect(rest).toEqual(['core:event:allow-listen', 'core:event:allow-unlisten']);
+  });
+
+  it('lets each build reach exactly the API origin of its web build', () => {
+    expect(readCapability('http-local').permissions).toEqual([
+      { identifier: 'http:default', allow: [{ url: `${apiBase('build-desktop-local')}/*` }] }
     ]);
+    expect(readCapability('http-production').permissions).toEqual([
+      { identifier: 'http:default', allow: [{ url: `${apiBase('build-desktop-prod')}/*` }] }
+    ]);
+    expect(apiBase('build-desktop-prod')).toBe('https://reapps.eu/notes/api');
+  });
+});
+
+interface ShellConfig {
+  productName?: string;
+  identifier?: string;
+  app?: {
+    windows?: { label: string; create?: boolean }[];
+    security?: { capabilities?: unknown[] };
+  };
+  bundle?: {
+    macOS?: {
+      entitlements?: string;
+      minimumSystemVersion?: string;
+      files?: Record<string, string>;
+    };
+  };
+}
+
+function readConfig(name: string): ShellConfig {
+  return JSON.parse(readShellFile(name)) as ShellConfig;
+}
+
+/** `PUBLIC_API_BASE_URL` of an nx target of this app. */
+function apiBase(target: string): string {
+  const project = JSON.parse(
+    readFileSync(new URL('../../../project.json', import.meta.url), 'utf8')
+  ) as {
+    targets: Record<string, { options: { command: string } }>;
+  };
+  const command = project.targets[target]?.options.command ?? '';
+  return /\bPUBLIC_API_BASE_URL=(\S+)/.exec(command)?.[1] ?? '';
+}
+
+/**
+ * The XML without its comments, in one pass from each `<!--` to the next
+ * `-->` (an unterminated comment drops the rest). Not a regex replace: what a
+ * single replace leaves behind can join into a new `<!--`.
+ */
+function withoutComments(xml: string): string {
+  let text = '';
+  let at = 0;
+  for (;;) {
+    const start = xml.indexOf('<!--', at);
+    if (start === -1) return text + xml.slice(at);
+    text += xml.slice(at, start);
+    const end = xml.indexOf('-->', start + 4);
+    if (end === -1) return text;
+    at = end + 3;
+  }
+}
+
+/** Top-level string and array values of an entitlements plist. */
+function entitlements(path: string): Record<string, string | string[] | true> {
+  const xml = withoutComments(readShellFile(path));
+  const entries: Record<string, string | string[] | true> = {};
+  for (const match of xml.matchAll(
+    /<key>([^<]+)<\/key>\s*(<true\/>|<string>([^<]*)<\/string>|<array>([\s\S]*?)<\/array>)/g
+  )) {
+    const [, key, raw, text, items] = match;
+    entries[key] =
+      raw === '<true/>'
+        ? true
+        : text !== undefined
+          ? text
+          : [...(items ?? '').matchAll(/<string>([^<]*)<\/string>/g)].map((m) => m[1]);
+  }
+  return entries;
+}
+
+/** The entitlements a sandboxed build of `identifier` must carry, no more. */
+function sandboxEntitlements(identifier: string) {
+  const team = '9ML434R9RK';
+  return {
+    'com.apple.security.app-sandbox': true,
+    'com.apple.security.network.client': true,
+    'com.apple.security.files.user-selected.read-write': true,
+    'com.apple.security.files.bookmarks.app-scope': true,
+    'com.apple.application-identifier': `${team}.${identifier}`,
+    'com.apple.developer.team-identifier': team,
+    'keychain-access-groups': [`${team}.${identifier}`]
+  };
+}
+
+describe('desktop shell build variants', () => {
+  const base = readConfig('tauri.conf.json');
+  const appstore = readConfig('tauri.appstore.conf.json');
+  const devSandbox = readConfig('tauri.dev-sandbox.conf.json');
+
+  it('develops under its own identifier against the local stack', () => {
+    expect(base.identifier).toBe('eu.reapps.notes.dev');
+    expect(base.app?.security?.capabilities).toEqual(['default', 'http-local']);
+    // No entitlements without a provisioning profile: macOS kills an app that
+    // claims keychain-access-groups without one.
+    expect(base.bundle?.macOS?.entitlements).toBeUndefined();
+    expect(base.bundle?.macOS?.minimumSystemVersion).toBe('14.0');
+  });
+
+  it('creates the main window in Rust, where the link policy is attached', () => {
+    expect(base.app?.windows?.[0]?.create).toBe(false);
+    expect(readShellFile('src/lib.rs')).toContain('.on_new_window(');
+  });
+
+  it('ships the store build as eu.reapps.notes against the production API only', () => {
+    expect(appstore.identifier).toBe('eu.reapps.notes');
+    expect(appstore.app?.security?.capabilities).toEqual(['default', 'http-production']);
+    expect(appstore.bundle?.macOS?.entitlements).toBe('macos/appstore.entitlements');
+    expect(entitlements('macos/appstore.entitlements')).toEqual(
+      sandboxEntitlements('eu.reapps.notes')
+    );
+  });
+
+  it('shows its own name in every app language of each build', () => {
+    // Info.plist keeps the file name from productName and asks macOS for the
+    // localized one; a language without the strings file shows "re-notes".
+    expect(readShellFile('Info.plist')).toMatch(/<key>LSHasLocalizedDisplayName<\/key>\s*<true\/>/);
+    expect(readShellFile('Info.plist')).not.toContain('<key>CFBundleName</key>');
+    const builds = [
+      {
+        files: base.bundle?.macOS?.files,
+        source: 'macos/InfoPlist.dev.strings',
+        name: 're/notes dev'
+      },
+      {
+        files: appstore.bundle?.macOS?.files,
+        source: 'macos/InfoPlist.appstore.strings',
+        name: 're/notes'
+      }
+    ];
+    for (const { files, source, name } of builds) {
+      expect(files).toEqual(
+        Object.fromEntries(
+          SUPPORTED_LOCALES.map((locale) => [`Resources/${locale}.lproj/InfoPlist.strings`, source])
+        )
+      );
+      // The entries after the file's header comment.
+      const entries = readShellFile(source).split('*/').pop() ?? '';
+      expect(entries.trim().split('\n')).toEqual([
+        `"CFBundleName" = "${name}";`,
+        `"CFBundleDisplayName" = "${name}";`
+      ]);
+    }
+    expect(appstore.productName).toBe('re-notes');
+    expect(devSandbox.bundle?.macOS?.files).toBeUndefined();
+  });
+
+  it('runs the sandboxed development build under the development identifier', () => {
+    // Same container and keychain group as the store build would mix a local
+    // stack and production in one IndexedDB on the same Mac.
+    expect(devSandbox.identifier).toBeUndefined();
+    expect(devSandbox.app).toBeUndefined();
+    expect(devSandbox.bundle?.macOS?.entitlements).toBe('macos/dev-sandbox.entitlements');
+    expect(entitlements('macos/dev-sandbox.entitlements')).toEqual(
+      sandboxEntitlements('eu.reapps.notes.dev')
+    );
   });
 });

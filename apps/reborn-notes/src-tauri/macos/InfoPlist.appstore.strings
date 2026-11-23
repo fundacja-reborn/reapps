@@ -1,0 +1,7 @@
+/* The name Finder, the Dock, Launchpad and the menu bar show for the Mac App
+   Store build (re-notes.app): the product's own name, as CFBundleDisplayName
+   of the iOS shell. Copied into the folder of every app language
+   (bundle > macOS > files in tauri.appstore.conf.json); see
+   InfoPlist.dev.strings for how macOS picks it up. */
+"CFBundleName" = "re/notes";
+"CFBundleDisplayName" = "re/notes";
