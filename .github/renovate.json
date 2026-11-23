@@ -63,6 +63,11 @@
       "labels": ["dependencies", "ci"]
     },
     {
+      "description": "Rust crates of the desktop shell (src-tauri): Cargo.lock already holds the exact versions, so keep the semver ranges in Cargo.toml and update the lockfile instead of pinning. An exact '=x.y.z' requirement in Cargo.toml blocks every compatible release (cargo update cannot move it) and clashes with the Tauri plugins, which require a matching tauri. Same as Renovate's default for cargo, which the global 'pin' overrides.",
+      "matchManagers": ["cargo"],
+      "rangeStrategy": "update-lockfile"
+    },
+    {
       "description": "Postgres major bumps break the storage layout (v18+ require new mount path + pg_upgrade) - disable to prevent accidental merge. Re-enable temporarily and plan dump/restore across local/staging/prod when ready to upgrade.",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["postgres"],
