@@ -12,21 +12,21 @@ name = "reborn_notes_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "=2.7.6", features = [] }
 
 [dev-dependencies]
 # Mock runtime for the IPC permission tests (src/capability_tests.rs). Dev
 # dependency features apply to test builds only; no new crate in the lockfile.
-tauri = { version = "2", features = ["test"] }
+tauri = { version = "=2.12.7", features = ["test"] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "=2.12.7", features = [] }
 # HTTP transport for the remote API (the webview is cross-origin to it and the
 # server sends no CORS headers - same role as CapacitorHttp on mobile).
 # Default features are off on purpose: the default `cookies` feature keeps a
 # cookie jar and writes it to a plaintext `.cookies` file in the app cache
 # directory. Native auth is token-based, so no cookie may be stored at all.
-tauri-plugin-http = { version = "2", default-features = false, features = [
+tauri-plugin-http = { version = "=2.9.0", default-features = false, features = [
   "rustls-tls",
   "http2",
   "charset",
@@ -35,35 +35,35 @@ tauri-plugin-http = { version = "2", default-features = false, features = [
 # OS credential store (macOS Keychain, Windows Credential Manager) for the
 # refresh token and the master key. Pinned to 3.x: 4.x moved to a different
 # crate layout.
-keyring = { version = "3", features = ["apple-native", "windows-native"] }
+keyring = { version = "=3.6.3", features = ["apple-native", "windows-native"] }
 # System folder dialog for linking a folder (folder sync, automated backup).
 # Only its Rust API is used; the webview gets no dialog permission.
-tauri-plugin-dialog = "2"
+tauri-plugin-dialog = "=2.8.4"
 # Window size, position and maximized state across launches. Only its Rust
 # side is used; the webview gets no window-state permission.
-tauri-plugin-window-state = "2"
+tauri-plugin-window-state = "=2.5.0"
 # Folder grants: the token -> folder registry kept on the Rust side.
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-getrandom = "0.3"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+getrandom = "=0.3.4"
 # Export payloads arrive from the webview as base64.
-base64 = "0.22"
+base64 = "=0.22.1"
 
 # App Lock on macOS: LocalAuthentication (Touch ID, account password). The
 # objc2 crates are the bindings Tauri itself already builds on, so only the
 # LocalAuthentication one is new to the lockfile.
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2-local-authentication = { version = "0.3", default-features = false, features = [
+objc2-local-authentication = { version = "=0.3.2", default-features = false, features = [
   "std",
   "block2",
   "LABiometryType",
   "LAContext",
   "LAError",
 ] }
-objc2 = "0.6"
+objc2 = "=0.6.5"
 # NSBundle: build number (app_info). NSFileManager, NSURL and NSValue: the
 # Time Machine exclusion of the webview's data (backup_exclusion).
-objc2-foundation = { version = "0.3", default-features = false, features = [
+objc2-foundation = { version = "=0.3.2", default-features = false, features = [
   "std",
   "NSArray",
   "NSBundle",
@@ -74,10 +74,10 @@ objc2-foundation = { version = "0.3", default-features = false, features = [
   "NSURL",
   "NSValue",
 ] }
-block2 = "0.6"
+block2 = "=0.6.2"
 # Overdue-backup reminder (backup_reminder): UNUserNotificationCenter. Same
 # objc2 family; the crate was already in the lockfile (objc2-ui-kit, iOS).
-objc2-user-notifications = { version = "0.3", default-features = false, features = [
+objc2-user-notifications = { version = "=0.3.2", default-features = false, features = [
   "std",
   "block2",
   "bitflags",
