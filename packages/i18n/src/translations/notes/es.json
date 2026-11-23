@@ -1119,7 +1119,11 @@
       "reminder_title": "Copia de seguridad automática pendiente",
       "reminder_body": "Abra la aplicación para crear una copia cifrada reciente de sus notas.",
       "reminder_hint": "Si una copia queda pendiente, una notificación le recordará abrir la aplicación.",
-      "reminder_denied": "Las notificaciones de re/notes están desactivadas en los ajustes del sistema, así que no recibirá ningún recordatorio si una copia queda pendiente. Puede activarlas en los ajustes de notificaciones del sistema."
+      "reminder_denied": "Las notificaciones de re/notes están desactivadas en los ajustes del sistema, así que no recibirá ningún recordatorio si una copia queda pendiente. Puede activarlas en los ajustes de notificaciones del sistema.",
+      "reminder_prompt": "El recordatorio de una copia pendiente necesita permiso para mostrar notificaciones.",
+      "reminder_allow_btn": "Permitir notificaciones",
+      "reminder_still_off": "Las notificaciones siguen desactivadas. Puede activarlas para re/notes en los ajustes de notificaciones del sistema.",
+      "reminder_open_settings_btn": "Abrir ajustes de notificaciones"
     },
     "export_import": {
       "title": "Exportar e importar",
@@ -1690,6 +1694,14 @@
     "pink": "Rosa",
     "gray": "Gris"
   },
+  "backup_attention": {
+    "title_failed": "La copia automática ha fallado",
+    "no_access": "re/notes ya no tiene acceso a la carpeta de copias. Vuelva a elegirla o elija otra carpeta.",
+    "folder_missing": "No se encuentra la carpeta de copias: se movió o se eliminó, o su disco está desconectado. Conecte el disco o elija otra carpeta.",
+    "title_no_phrase": "Copia automática en pausa",
+    "no_phrase": "En este dispositivo falta la frase de recuperación que cifra sus copias. Configúrela en la configuración de copias.",
+    "open_settings_btn": "Abrir la configuración de copias"
+  },
   "desktop": {
     "menu": {
       "about": "Acerca de re/notes",
@@ -1701,6 +1713,7 @@
       "quit": "Salir de re/notes",
       "file": "Archivo",
       "new_note": "Nueva nota",
+      "backup_now": "Crear copia de seguridad ahora",
       "edit": "Edición",
       "undo": "Deshacer",
       "redo": "Rehacer",

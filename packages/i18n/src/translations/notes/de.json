@@ -1119,7 +1119,11 @@
       "reminder_title": "Automatische Sicherung fällig",
       "reminder_body": "Öffnen Sie die App, um eine frische verschlüsselte Kopie Ihrer Notizen zu erstellen.",
       "reminder_hint": "Wenn eine Sicherung überfällig ist, erinnert Sie eine Benachrichtigung daran, die App zu öffnen.",
-      "reminder_denied": "Benachrichtigungen für re/notes sind in den Systemeinstellungen ausgeschaltet, daher kommt keine Erinnerung, wenn eine Sicherung überfällig ist. Sie können sie in den Benachrichtigungseinstellungen des Systems einschalten."
+      "reminder_denied": "Benachrichtigungen für re/notes sind in den Systemeinstellungen ausgeschaltet, daher kommt keine Erinnerung, wenn eine Sicherung überfällig ist. Sie können sie in den Benachrichtigungseinstellungen des Systems einschalten.",
+      "reminder_prompt": "Für die Erinnerung an eine überfällige Sicherung braucht re/notes die Erlaubnis, Benachrichtigungen zu senden.",
+      "reminder_allow_btn": "Benachrichtigungen erlauben",
+      "reminder_still_off": "Benachrichtigungen sind weiterhin ausgeschaltet. Sie können sie für re/notes in den Benachrichtigungseinstellungen des Systems einschalten.",
+      "reminder_open_settings_btn": "Benachrichtigungseinstellungen öffnen"
     },
     "export_import": {
       "title": "Export & Import",
@@ -1690,6 +1694,14 @@
     "pink": "Rosa",
     "gray": "Grau"
   },
+  "backup_attention": {
+    "title_failed": "Automatische Sicherung fehlgeschlagen",
+    "no_access": "re/notes hat keinen Zugriff mehr auf den Sicherungsordner. Wählen Sie ihn erneut oder einen anderen Ordner aus.",
+    "folder_missing": "Der Sicherungsordner wurde nicht gefunden: Er wurde verschoben oder gelöscht, oder sein Laufwerk ist nicht verbunden. Verbinden Sie das Laufwerk oder wählen Sie einen anderen Ordner aus.",
+    "title_no_phrase": "Automatische Sicherung angehalten",
+    "no_phrase": "Auf diesem Gerät fehlt die Wiederherstellungsphrase, mit der Ihre Sicherungen verschlüsselt werden. Legen Sie sie in den Sicherungseinstellungen fest.",
+    "open_settings_btn": "Sicherungseinstellungen öffnen"
+  },
   "desktop": {
     "menu": {
       "about": "Über re/notes",
@@ -1701,6 +1713,7 @@
       "quit": "re/notes beenden",
       "file": "Ablage",
       "new_note": "Neue Notiz",
+      "backup_now": "Jetzt sichern",
       "edit": "Bearbeiten",
       "undo": "Widerrufen",
       "redo": "Wiederholen",

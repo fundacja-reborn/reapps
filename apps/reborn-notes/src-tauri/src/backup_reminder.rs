@@ -16,6 +16,10 @@
 //! shell's own, so the page can only replace or cancel these two reminders,
 //! never post or remove any other notification. Title and body are bounded
 //! plain text (the page sends static, localized copy - never note data).
+//!
+//! When the user turned the notifications off, the page can open this app's
+//! page in System Settings > Notifications (a fixed address built from the
+//! app's own bundle identifier; the page passes nothing).
 
 use serde::Serialize;
 
@@ -172,6 +176,29 @@ pub async fn backup_reminder_cancel() {
     let _ = tauri::async_runtime::spawn_blocking(platform::cancel).await;
 }
 
+/// Open this app's page in System Settings > Notifications, where the user
+/// turns the notifications back on. Answers whether it was opened (false
+/// outside an app bundle and where the shell has no notifications).
+#[tauri::command]
+pub fn backup_reminder_open_settings() -> bool {
+    platform::open_settings()
+}
+
+/// System Settings > Notifications, on the page of the app with this bundle
+/// identifier (macOS 13 and later; the app needs 14).
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn notification_settings_url(bundle_id: &str) -> Option<String> {
+    let valid = !bundle_id.is_empty()
+        && bundle_id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+    valid.then(|| {
+        format!(
+            "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id={bundle_id}"
+        )
+    })
+}
+
 #[cfg(target_os = "macos")]
 mod platform {
     use std::ptr::NonNull;
@@ -180,14 +207,17 @@ mod platform {
     use block2::RcBlock;
     use objc2::rc::Retained;
     use objc2::runtime::Bool;
-    use objc2_foundation::{NSArray, NSBundle, NSError, NSString};
+    use objc2_app_kit::NSWorkspace;
+    use objc2_foundation::{NSArray, NSBundle, NSError, NSString, NSURL};
     use objc2_user_notifications::{
         UNAuthorizationOptions, UNAuthorizationStatus, UNMutableNotificationContent,
         UNNotificationContent, UNNotificationRequest, UNNotificationSettings,
         UNNotificationTrigger, UNTimeIntervalNotificationTrigger, UNUserNotificationCenter,
     };
 
-    use super::{Permission, Planned, ReminderError, IDENTIFIERS, SCHEDULE_FAILED};
+    use super::{
+        notification_settings_url, Permission, Planned, ReminderError, IDENTIFIERS, SCHEDULE_FAILED,
+    };
 
     /// The notification center, or `None` outside an app bundle.
     ///
@@ -241,18 +271,28 @@ mod platform {
         if current != Permission::Prompt {
             return current;
         }
-        let (sender, receiver) = mpsc::channel::<()>();
-        // Called once the user answers the prompt (or the system declines to
-        // show it); the outcome is read back from the settings below.
-        let handler = RcBlock::new(move |_granted: Bool, _error: *mut NSError| {
-            let _ = sender.send(());
+        let (sender, receiver) = mpsc::channel::<Option<String>>();
+        // Called once the user answers the prompt, or right away with an error
+        // when the system declines to show it; the outcome is read back from
+        // the settings below.
+        let handler = RcBlock::new(move |_granted: Bool, error: *mut NSError| {
+            // SAFETY: when not null, the framework passes a valid NSError for
+            // the duration of the call.
+            let refusal =
+                unsafe { error.as_ref() }.map(|error| error.localizedDescription().to_string());
+            let _ = sender.send(refusal);
         });
         center.requestAuthorizationWithOptions_completionHandler(
             UNAuthorizationOptions::Alert | UNAuthorizationOptions::Sound,
             &handler,
         );
         drop(handler);
-        let _ = receiver.recv();
+        if let Ok(Some(reason)) = receiver.recv() {
+            // The system did not ask (seen with a build that had only the
+            // linker's ad hoc signature, smoke 2026-11-23). The permission
+            // stays undecided and the page says notifications are still off.
+            eprintln!("re/notes: the system did not ask about notifications: {reason}");
+        }
         status_of(&center)
     }
 
@@ -315,6 +355,23 @@ mod platform {
             remove_pending(&center);
         }
     }
+
+    pub(super) fn open_settings() -> bool {
+        // Same condition as the notification center: a bare binary has no
+        // page in System Settings.
+        if center().is_none() {
+            return false;
+        }
+        let Some(identifier) = NSBundle::mainBundle().bundleIdentifier() else {
+            return false;
+        };
+        let Some(url) = notification_settings_url(&identifier.to_string())
+            .and_then(|url| NSURL::URLWithString(&NSString::from_str(&url)))
+        else {
+            return false;
+        };
+        NSWorkspace::sharedWorkspace().openURL(&url)
+    }
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -339,6 +396,10 @@ mod platform {
     }
 
     pub(super) fn cancel() {}
+
+    pub(super) fn open_settings() -> bool {
+        false
+    }
 }
 
 #[cfg(test)]
@@ -430,5 +491,25 @@ mod tests {
         assert_eq!(platform::request_permission(), Permission::Unsupported);
         assert_eq!(platform::schedule(&[], "t", "b"), Ok(()));
         platform::cancel();
+        assert!(!platform::open_settings());
+    }
+
+    #[test]
+    fn settings_open_on_the_page_of_this_app() {
+        assert_eq!(
+            notification_settings_url("eu.reapps.notes").as_deref(),
+            Some("x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=eu.reapps.notes")
+        );
+        assert_eq!(
+            notification_settings_url("eu.reapps.notes.dev").as_deref(),
+            Some("x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=eu.reapps.notes.dev")
+        );
+    }
+
+    #[test]
+    fn an_unexpected_bundle_identifier_opens_nothing() {
+        assert_eq!(notification_settings_url(""), None);
+        assert_eq!(notification_settings_url("eu.reapps&x=1"), None);
+        assert_eq!(notification_settings_url("eu reapps"), None);
     }
 }

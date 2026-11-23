@@ -47,6 +47,7 @@
     localizeDesktopMenu,
     onDesktopMenuSettings,
     onDesktopMenuNewNote,
+    onDesktopMenuBackupNow,
     isNotesView,
     setNewNotePending
   } from '$lib/utils/desktop-menu';
@@ -543,6 +544,7 @@
     let offDeepLink: (() => void) | undefined;
     let offMenuSettings: (() => void) | undefined;
     let offMenuNewNote: (() => void) | undefined;
+    let offMenuBackupNow: (() => void) | undefined;
     let updateGateTimer: ReturnType<typeof setTimeout> | undefined;
     if (__REBORN_NATIVE__) {
       // App Lock: start tracking background time so a resume after the idle
@@ -609,6 +611,20 @@
           setNewNotePending();
           void goto('/');
         });
+        // "Back Up Now": a backup right away, answered with a toast (and, when
+        // it fails, by the notice above the sync status); without automatic
+        // backup set up, the backup settings. Not from the sign-in, lock or
+        // share screens.
+        offMenuBackupNow = onDesktopMenuBackupNow(() => {
+          if (!appReady || !canOpenSettingsFrom(get(page).url.pathname, base || '')) return;
+          void (async () => {
+            const [{ backUpNow }, { announceBackupNow }] = await Promise.all([
+              import('$lib/services/auto-backup'),
+              import('$lib/services/auto-backup/announce')
+            ]);
+            announceBackupNow(await backUpNow());
+          })();
+        });
       }
 
       // Min-version gate (Faza 5, plan D5): the first check is deferred a few
@@ -629,6 +645,7 @@
       offDeepLink?.();
       offMenuSettings?.();
       offMenuNewNote?.();
+      offMenuBackupNow?.();
       mediaQuery.removeEventListener('change', handleSchemeChange);
     };
   });

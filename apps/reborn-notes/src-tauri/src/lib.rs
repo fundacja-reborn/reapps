@@ -15,7 +15,8 @@
 //!   account password on macOS);
 //! - `app_info`: version and build of the app for Settings;
 //! - `backup_reminder_*`: the system notification that reminds the user to
-//!   open the app when the automated backup is overdue (macOS);
+//!   open the app when the automated backup is overdue, and the way to its
+//!   page in System Settings when notifications are off (macOS);
 //! - `desktop_menu_localize`: the app menu in the app's language (macOS).
 //!
 //! What the page may call is listed in `capabilities/default.json`: each of
@@ -196,7 +197,8 @@ pub fn run() {
             backup_reminder::backup_reminder_status,
             backup_reminder::backup_reminder_request_permission,
             backup_reminder::backup_reminder_schedule,
-            backup_reminder::backup_reminder_cancel
+            backup_reminder::backup_reminder_cancel,
+            backup_reminder::backup_reminder_open_settings
         ])
         .run(context)
         .expect("error while running the re/notes desktop shell");

@@ -62,6 +62,19 @@ export async function scheduleDesktopReminders(
   await invokeDesktop<null>('backup_reminder_schedule', { at, title, body });
 }
 
+/**
+ * Open this app's page in System Settings > Notifications (where notifications
+ * turned off for re/notes are turned back on). Resolves whether it opened.
+ * Never rejects.
+ */
+export async function openDesktopNotificationSettings(): Promise<boolean> {
+  try {
+    return (await invokeDesktop<unknown>('backup_reminder_open_settings')) === true;
+  } catch {
+    return false;
+  }
+}
+
 /** Drop the pending reminders. Never rejects. */
 export async function cancelDesktopReminders(): Promise<void> {
   try {

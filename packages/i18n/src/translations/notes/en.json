@@ -1119,7 +1119,11 @@
       "reminder_title": "Automatic backup is due",
       "reminder_body": "Open the app to create a fresh encrypted copy of your notes.",
       "reminder_hint": "If a backup becomes overdue, a notification will remind you to open the app.",
-      "reminder_denied": "Notifications for re/notes are turned off in the system settings, so no reminder will come when a backup is overdue. You can turn them on in the system notification settings."
+      "reminder_denied": "Notifications for re/notes are turned off in the system settings, so no reminder will come when a backup is overdue. You can turn them on in the system notification settings.",
+      "reminder_prompt": "A reminder about an overdue backup needs permission to show notifications.",
+      "reminder_allow_btn": "Turn on notifications",
+      "reminder_still_off": "Notifications are still off. You can turn them on for re/notes in the system notification settings.",
+      "reminder_open_settings_btn": "Open notification settings"
     },
     "export_import": {
       "title": "Export & Import",
@@ -1690,6 +1694,14 @@
     "pink": "Pink",
     "gray": "Gray"
   },
+  "backup_attention": {
+    "title_failed": "Automatic backup failed",
+    "no_access": "re/notes no longer has access to the backup folder. Choose it again or choose another folder.",
+    "folder_missing": "The backup folder can't be found: it was moved or deleted, or its drive is disconnected. Connect the drive or choose another folder.",
+    "title_no_phrase": "Automatic backup paused",
+    "no_phrase": "This device is missing the recovery phrase that encrypts your backups. Set it in the backup settings.",
+    "open_settings_btn": "Open backup settings"
+  },
   "desktop": {
     "menu": {
       "about": "About re/notes",
@@ -1701,6 +1713,7 @@
       "quit": "Quit re/notes",
       "file": "File",
       "new_note": "New Note",
+      "backup_now": "Back Up Now",
       "edit": "Edit",
       "undo": "Undo",
       "redo": "Redo",

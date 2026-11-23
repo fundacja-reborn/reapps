@@ -226,10 +226,54 @@ export async function ensureReminderPermission(): Promise<boolean> {
 }
 
 /**
- * The notification permission as settings should describe it: `granted` or
- * `prompt` - a reminder will come (or the prompt comes when backup is
- * enabled); `denied` - turned off in the system settings, so settings say so
- * instead of promising a reminder; `unsupported` - web, or a desktop shell
+ * Whether this build can take the user to the system page where notifications
+ * for re/notes are turned back on: macOS (a shell command opens System
+ * Settings > Notifications on the app's page) and iOS (the app's page in
+ * Settings, `app-settings:`). Android has no such link without another
+ * plugin, so there Settings only say where to look.
+ */
+export async function canOpenNotificationSettings(): Promise<boolean> {
+  if (!__REBORN_NATIVE__) return false;
+  // One branch per build (a constant ternary is what the bundler folds).
+  return __REBORN_DESKTOP__ ? true : isCapacitorIos();
+}
+
+/** Open that system page (see {@link canOpenNotificationSettings}). Never throws. */
+export async function openNotificationSettings(): Promise<boolean> {
+  if (!__REBORN_NATIVE__) return false;
+  return __REBORN_DESKTOP__ ? openDesktopSettings() : openIosSettings();
+}
+
+async function isCapacitorIos(): Promise<boolean> {
+  try {
+    const { Capacitor } = await import('@capacitor/core');
+    return Capacitor.getPlatform() === 'ios';
+  } catch {
+    return false;
+  }
+}
+
+async function openDesktopSettings(): Promise<boolean> {
+  const { openDesktopNotificationSettings } = await import('$lib/utils/desktop-backup-reminder');
+  return openDesktopNotificationSettings();
+}
+
+async function openIosSettings(): Promise<boolean> {
+  if (!(await isCapacitorIos())) return false;
+  // Capacitor hands a new-window URL to UIApplication.open, and `app-settings:`
+  // (UIApplication.openSettingsURLString) opens the app's page in Settings,
+  // with Notifications on it.
+  window.open('app-settings:', '_blank');
+  return true;
+}
+
+/**
+ * The notification permission as settings should describe it: `granted` - a
+ * reminder will come; `prompt` - not asked yet (a new install or build with
+ * backup already on), so settings offer to turn notifications on instead of
+ * promising a reminder; `denied` - turned off in the system settings, so
+ * settings say so and, where possible, open that page
+ * ({@link openNotificationSettings}); `unsupported` - web, or a desktop shell
  * without a notification center (the bare dev binary; Windows until its
  * phase). Never throws.
  */

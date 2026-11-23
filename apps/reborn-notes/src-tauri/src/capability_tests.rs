@@ -39,6 +39,7 @@ const PAGE_COMMANDS: &[&str] = &[
     "backup_reminder_request_permission",
     "backup_reminder_schedule",
     "backup_reminder_cancel",
+    "backup_reminder_open_settings",
 ];
 
 fn mock_app() -> App<MockRuntime> {

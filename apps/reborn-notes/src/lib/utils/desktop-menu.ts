@@ -3,9 +3,9 @@
  *
  * The menu is native, but its texts follow the app's language rather than the
  * system's: the page sends them (keys `desktop.menu.*`) at startup and on each
- * language change. The shell keeps English texts until then. "Settings..."
- * and "New Note" come back as events, so the page decides what they do on the
- * screen it shows.
+ * language change. The shell keeps English texts until then. "Settings...",
+ * "New Note" and "Back Up Now" come back as events, so the page decides what
+ * they do on the screen it shows.
  *
  * Desktop-only: callers sit behind `__REBORN_DESKTOP__`. On Windows and Linux
  * the shell has no menu and ignores the texts.
@@ -27,6 +27,7 @@ export const DESKTOP_MENU_KEYS = [
   'quit',
   'file',
   'new_note',
+  'backup_now',
   'edit',
   'undo',
   'redo',
@@ -51,6 +52,9 @@ export const DESKTOP_MENU_SETTINGS_EVENT = 'desktop-menu:settings';
 
 /** Event the shell emits for "New Note" (`NEW_NOTE_EVENT` in Rust). */
 export const DESKTOP_MENU_NEW_NOTE_EVENT = 'desktop-menu:new-note';
+
+/** Event the shell emits for "Back Up Now" (`BACKUP_NOW_EVENT` in Rust). */
+export const DESKTOP_MENU_BACKUP_NOW_EVENT = 'desktop-menu:backup-now';
 
 /**
  * The menu texts in the current language. A key without a translation comes
@@ -139,4 +143,9 @@ export function onDesktopMenuSettings(handler: () => void): () => void {
 /** Call `handler` when the user picks "New Note" (Cmd+N). Returns an unsubscribe. */
 export function onDesktopMenuNewNote(handler: () => void): () => void {
   return onDesktopMenuEvent(DESKTOP_MENU_NEW_NOTE_EVENT, handler);
+}
+
+/** Call `handler` when the user picks "Back Up Now". Returns an unsubscribe. */
+export function onDesktopMenuBackupNow(handler: () => void): () => void {
+  return onDesktopMenuEvent(DESKTOP_MENU_BACKUP_NOW_EVENT, handler);
 }

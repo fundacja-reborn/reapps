@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   cancelDesktopReminders,
   getDesktopReminderPermission,
+  openDesktopNotificationSettings,
   requestDesktopReminderPermission,
   scheduleDesktopReminders
 } from './desktop-backup-reminder';
@@ -82,5 +83,16 @@ describe('desktop-backup-reminder', () => {
 
     invoke.mockRejectedValueOnce(new Error('ipc down'));
     await expect(cancelDesktopReminders()).resolves.toBeUndefined();
+  });
+
+  it('opens the notification settings and reports whether it did', async () => {
+    invoke.mockResolvedValueOnce(true);
+    await expect(openDesktopNotificationSettings()).resolves.toBe(true);
+    expect(invoke).toHaveBeenCalledWith('backup_reminder_open_settings', undefined);
+
+    invoke.mockResolvedValueOnce(false);
+    await expect(openDesktopNotificationSettings()).resolves.toBe(false);
+    invoke.mockRejectedValueOnce(new Error('ipc down'));
+    await expect(openDesktopNotificationSettings()).resolves.toBe(false);
   });
 });

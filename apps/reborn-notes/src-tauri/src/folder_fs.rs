@@ -570,7 +570,19 @@ pub(crate) fn write_atomic(target: &Path, bytes: &[u8], private: bool) -> io::Re
 /// Create or replace one UTF-8 file.
 fn write_file(root: &Path, relative: &str, content: &str) -> Result<(), FolderFsError> {
     let target = target_child(root, relative)?;
-    write_atomic(&target, content.as_bytes(), false).map_err(|_| WRITE_FAILED)
+    write_atomic(&target, content.as_bytes(), false).map_err(|error| write_error(&error))
+}
+
+/// A refused write (EPERM / EACCES: the sandbox or macOS privacy protection
+/// took the access away, or the folder is read-only) is "no access", which
+/// the page explains with "pick the folder again"; anything else (disk full,
+/// I/O) stays a failed write.
+fn write_error(error: &io::Error) -> FolderFsError {
+    if error.kind() == io::ErrorKind::PermissionDenied {
+        ACCESS_DENIED
+    } else {
+        WRITE_FAILED
+    }
 }
 
 /// Delete one file. An already missing file is the desired end state.
@@ -970,6 +982,36 @@ mod tests {
             .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
             .collect();
         assert_eq!(names, ["backup.json"]);
+    }
+
+    #[test]
+    fn a_refused_write_is_no_access_and_other_failures_a_failed_write() {
+        use std::io::{Error, ErrorKind};
+        assert_eq!(
+            write_error(&Error::from(ErrorKind::PermissionDenied)),
+            ACCESS_DENIED
+        );
+        // EPERM, what the sandbox and macOS privacy protection answer.
+        assert_eq!(write_error(&Error::from_raw_os_error(1)), ACCESS_DENIED);
+        assert_eq!(
+            write_error(&Error::from(ErrorKind::StorageFull)),
+            WRITE_FAILED
+        );
+        assert_eq!(write_error(&Error::other("io")), WRITE_FAILED);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn writing_into_a_read_only_folder_is_no_access() {
+        use std::os::unix::fs::PermissionsExt;
+        let scratch = Scratch::new();
+        let backups = scratch.dir("Backups");
+        fs::set_permissions(&backups, fs::Permissions::from_mode(0o500)).unwrap();
+
+        let result = write_file(&backups, "backup.json", "x");
+
+        fs::set_permissions(&backups, fs::Permissions::from_mode(0o700)).unwrap();
+        assert_eq!(result, Err(ACCESS_DENIED));
     }
 
     #[test]

@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   canOpenSettingsFrom,
+  DESKTOP_MENU_BACKUP_NOW_EVENT,
   DESKTOP_MENU_KEYS,
   DESKTOP_MENU_NEW_NOTE_EVENT,
   DESKTOP_MENU_SETTINGS_EVENT,
@@ -18,6 +19,7 @@ import {
   desktopMenuTexts,
   isNotesView,
   localizeDesktopMenu,
+  onDesktopMenuBackupNow,
   onDesktopMenuNewNote,
   onDesktopMenuSettings,
   setNewNotePending,
@@ -59,6 +61,9 @@ describe('desktop menu contract', () => {
     );
     expect(rustSource).toContain(
       `pub const NEW_NOTE_EVENT: &str = "${DESKTOP_MENU_NEW_NOTE_EVENT}";`
+    );
+    expect(rustSource).toContain(
+      `pub const BACKUP_NOW_EVENT: &str = "${DESKTOP_MENU_BACKUP_NOW_EVENT}";`
     );
   });
 });
@@ -162,6 +167,19 @@ describe('shell calls', () => {
     const handler = vi.fn();
     const off = onDesktopMenuNewNote(handler);
     expect(listen).toHaveBeenCalledWith(DESKTOP_MENU_NEW_NOTE_EVENT, expect.any(Function));
+    await Promise.resolve();
+
+    emit?.({ payload: null });
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    off();
+    expect(unlisten).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls the handler on the Back Up Now event', async () => {
+    const handler = vi.fn();
+    const off = onDesktopMenuBackupNow(handler);
+    expect(listen).toHaveBeenCalledWith(DESKTOP_MENU_BACKUP_NOW_EVENT, expect.any(Function));
     await Promise.resolve();
 
     emit?.({ payload: null });
