@@ -160,6 +160,33 @@
     isMobileQuery.value ? 'w-full max-w-[18.375rem] grid-cols-6' : 'w-fit grid-cols-8'
   );
   const iconColorClass = $derived(appearanceTextClass(color) ?? 'text-muted-foreground');
+
+  // "There is more" cue for the scrolling region: its content fades out at an
+  // edge with more beyond it. Not a forced scrollbar - on iOS, Android and
+  // macOS ("show scroll bars: when scrolling") the bar is the system's overlay,
+  // shown only while scrolling, and scrollbar styles are ignored there.
+  // Re-measured on scroll and when the region or its content changes size
+  // (phone rotation, the tile size switching with the layout).
+  let scrollEl = $state<HTMLElement | null>(null);
+  let scrollContentEl = $state<HTMLElement | null>(null);
+  let moreAbove = $state(false);
+  let moreBelow = $state(false);
+
+  function updateScrollEdges() {
+    if (!scrollEl) return;
+    const { scrollTop, clientHeight, scrollHeight } = scrollEl;
+    // 1 px slack: fractional sizes on scaled displays.
+    moreAbove = scrollTop > 1;
+    moreBelow = scrollTop + clientHeight < scrollHeight - 1;
+  }
+
+  $effect(() => {
+    if (!scrollEl || !scrollContentEl) return;
+    const observer = new ResizeObserver(updateScrollEdges);
+    observer.observe(scrollEl);
+    observer.observe(scrollContentEl);
+    return () => observer.disconnect();
+  });
 </script>
 
 {#snippet preview()}
@@ -228,6 +255,32 @@
   {/if}
 {/snippet}
 
+{#snippet scrollingChoices()}
+  <!-- Wrapper = the flex item that shrinks; it also anchors the edge fades,
+       which sit outside the scrolling box so they stay put while it scrolls. -->
+  <div class="relative -mx-6 mt-3 flex min-h-0 flex-col border-y">
+    <div
+      bind:this={scrollEl}
+      class="min-h-0 overflow-y-auto overscroll-contain px-6 py-3"
+      onscroll={updateScrollEdges}
+    >
+      <div bind:this={scrollContentEl}>
+        {@render choices()}
+      </div>
+    </div>
+    <div
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-popover to-transparent transition-opacity motion-reduce:transition-none
+        {moreAbove ? 'opacity-100' : 'opacity-0'}"
+    ></div>
+    <div
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-popover to-transparent transition-opacity motion-reduce:transition-none
+        {moreBelow ? 'opacity-100' : 'opacity-0'}"
+    ></div>
+  </div>
+{/snippet}
+
 <!--
   Layout (#642): title and preview on top and "Done" at the bottom stay put;
   colors and icons scroll together in between. One scroll region rather than a
@@ -235,10 +288,10 @@
   ~7 rows of icons in view instead of ~4. The region is the default
   `flex: 0 1 auto` (not `flex-1`), so a short list keeps the dialog short and
   only a long one shrinks it to the height cap. `-mx-6 px-6` and `py-3` keep
-  focus rings and the swatches' hover zoom inside the clipped region, and the
-  borders mark where the scrolling part starts and ends.
--->
-{#if isMobileQuery.value}
+  focus rings and the swatches' hover zoom inside the clipped region, the
+  borders mark where the scrolling part starts and ends, and the fades say
+  there is more beyond an edge (nothing shows when everything fits).
+-->{#if isMobileQuery.value}
   <Sheet bind:open>
     <SheetContent
       side="bottom"
@@ -251,9 +304,7 @@
       <div class="mt-3 shrink-0">
         {@render preview()}
       </div>
-      <div class="-mx-6 mt-3 min-h-0 overflow-y-auto overscroll-contain border-y px-6 py-3">
-        {@render choices()}
-      </div>
+      {@render scrollingChoices()}
       <Button class="mt-4 w-full shrink-0" onclick={() => (open = false)}>
         {$t('folders.appearance.done')}
       </Button>
@@ -269,9 +320,7 @@
       <div class="mt-4 shrink-0">
         {@render preview()}
       </div>
-      <div class="-mx-6 mt-3 min-h-0 overflow-y-auto overscroll-contain border-y px-6 py-3">
-        {@render choices()}
-      </div>
+      {@render scrollingChoices()}
       <DialogFooter class="mt-4 shrink-0">
         <Button onclick={() => (open = false)}>{$t('folders.appearance.done')}</Button>
       </DialogFooter>
