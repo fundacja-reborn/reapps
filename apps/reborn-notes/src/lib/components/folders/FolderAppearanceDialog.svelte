@@ -162,15 +162,20 @@
   const iconColorClass = $derived(appearanceTextClass(color) ?? 'text-muted-foreground');
 </script>
 
-{#snippet picker()}
+{#snippet preview()}
   {#if folder}
-    <!-- Live preview: the folder as it now looks in the tree. -->
+    <!-- Live preview: the folder as it now looks in the tree. Stays in view
+         while the choices below scroll. -->
     <div class="flex min-w-0 items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-sm">
       <FolderGlyph {color} {icon} class="h-5 w-5" />
       <span class="min-w-0 truncate"><bdi>{folder.name}</bdi></span>
     </div>
+  {/if}
+{/snippet}
 
-    <section class="mt-4">
+{#snippet choices()}
+  {#if folder}
+    <section>
       <h3 id="folder-appearance-color" class="mb-2 text-sm font-medium">
         {$t('folders.appearance.color')}
       </h3>
@@ -223,30 +228,51 @@
   {/if}
 {/snippet}
 
+<!--
+  Layout (#642): title and preview on top and "Done" at the bottom stay put;
+  colors and icons scroll together in between. One scroll region rather than a
+  grid scrolling on its own under fixed colors: on a small phone that leaves
+  ~7 rows of icons in view instead of ~4. The region is the default
+  `flex: 0 1 auto` (not `flex-1`), so a short list keeps the dialog short and
+  only a long one shrinks it to the height cap. `-mx-6 px-6` and `py-3` keep
+  focus rings and the swatches' hover zoom inside the clipped region, and the
+  borders mark where the scrolling part starts and ends.
+-->
 {#if isMobileQuery.value}
   <Sheet bind:open>
-    <SheetContent side="bottom" class="h-auto max-h-[90dvh] overflow-y-auto">
-      <SheetHeader>
+    <SheetContent
+      side="bottom"
+      class="flex h-auto max-h-[90dvh] flex-col gap-0 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+    >
+      <SheetHeader class="shrink-0">
         <SheetTitle>{$t('folders.appearance.title')}</SheetTitle>
         <SheetDescription>{$t('folders.appearance.description')}</SheetDescription>
       </SheetHeader>
-      <div class="mt-2">
-        {@render picker()}
+      <div class="mt-3 shrink-0">
+        {@render preview()}
       </div>
-      <Button class="mt-4 w-full" onclick={() => (open = false)}>
+      <div class="-mx-6 mt-3 min-h-0 overflow-y-auto overscroll-contain border-y px-6 py-3">
+        {@render choices()}
+      </div>
+      <Button class="mt-4 w-full shrink-0" onclick={() => (open = false)}>
         {$t('folders.appearance.done')}
       </Button>
     </SheetContent>
   </Sheet>
 {:else}
   <Dialog bind:open>
-    <DialogContent class="sm:max-w-sm">
-      <DialogHeader>
+    <DialogContent class="flex flex-col gap-0 overflow-hidden sm:max-w-sm">
+      <DialogHeader class="shrink-0">
         <DialogTitle>{$t('folders.appearance.title')}</DialogTitle>
         <DialogDescription>{$t('folders.appearance.description')}</DialogDescription>
       </DialogHeader>
-      {@render picker()}
-      <DialogFooter>
+      <div class="mt-4 shrink-0">
+        {@render preview()}
+      </div>
+      <div class="-mx-6 mt-3 min-h-0 overflow-y-auto overscroll-contain border-y px-6 py-3">
+        {@render choices()}
+      </div>
+      <DialogFooter class="mt-4 shrink-0">
         <Button onclick={() => (open = false)}>{$t('folders.appearance.done')}</Button>
       </DialogFooter>
     </DialogContent>
