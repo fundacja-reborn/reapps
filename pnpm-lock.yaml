@@ -280,8 +280,8 @@ importers:
         specifier: 1.8.1
         version: 1.8.1
       '@lucide/svelte':
-        specifier: 1.16.0
-        version: 1.16.0(svelte@5.56.3(@typescript-eslint/types@8.59.3))
+        specifier: 1.77.0
+        version: 1.77.0(svelte@5.56.3(@typescript-eslint/types@8.59.3))
       '@reborn/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -419,8 +419,8 @@ importers:
         specifier: 3.12.4
         version: 3.12.4
       '@lucide/svelte':
-        specifier: 1.16.0
-        version: 1.16.0(svelte@5.56.3(@typescript-eslint/types@8.59.3))
+        specifier: 1.77.0
+        version: 1.77.0(svelte@5.56.3(@typescript-eslint/types@8.59.3))
       '@reborn/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -808,8 +808,8 @@ importers:
         specifier: 3.12.4
         version: 3.12.4
       '@lucide/svelte':
-        specifier: 1.16.0
-        version: 1.16.0(svelte@5.56.3(@typescript-eslint/types@8.59.3))
+        specifier: 1.77.0
+        version: 1.77.0(svelte@5.56.3(@typescript-eslint/types@8.59.3))
       '@reborn/auth':
         specifier: workspace:*
         version: link:../auth
@@ -2260,8 +2260,8 @@ packages:
   '@lezer/yaml@1.0.4':
     resolution: {integrity: sha512-2lrrHqxalACEbxIbsjhqGpSW8kWpUKuY6RHgnSAFZa6qK62wvnPxA8hGOwOoDbwHcOFs5M4o27mjGu+P7TvBmw==}
 
-  '@lucide/svelte@1.16.0':
-    resolution: {integrity: sha512-AvvPJnaWxeiNkAljI5MsSEc84yHPLMaWQIAJOcbX7k9au/f9ITS7cxTTQiautDiOFKVOXiYdZ+d6mtl88J+Kbg==}
+  '@lucide/svelte@1.77.0':
+    resolution: {integrity: sha512-gXjmQ4VK3Mh/M11Nn/XCeln3XZByR4MxX5o+NMfr/Wg9MQs+BffvXTnW+0WvmjV1u58TXJhXvgJZHrMASUnqow==}
     peerDependencies:
       svelte: ^5
 
@@ -8534,7 +8534,7 @@ snapshots:
       '@lezer/highlight': 1.2.5
       '@lezer/lr': 1.4.10
 
-  '@lucide/svelte@1.16.0(svelte@5.56.3(@typescript-eslint/types@8.59.3))':
+  '@lucide/svelte@1.77.0(svelte@5.56.3(@typescript-eslint/types@8.59.3))':
     dependencies:
       svelte: 5.56.3(@typescript-eslint/types@8.59.3)
 

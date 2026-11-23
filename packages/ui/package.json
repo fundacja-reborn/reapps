@@ -64,7 +64,7 @@
   },
   "dependencies": {
     "@internationalized/date": "3.12.4",
-    "@lucide/svelte": "1.16.0",
+    "@lucide/svelte": "1.77.0",
     "@reborn/auth": "workspace:*",
     "@reborn/i18n": "workspace:*",
     "@reborn/types": "workspace:*",
