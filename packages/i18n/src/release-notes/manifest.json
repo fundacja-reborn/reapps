@@ -1,5 +1,57 @@
 [
   {
+    "version": "0.59.0",
+    "date": "2026-11-23",
+    "items": [
+      {
+        "id": "0.59.0-folder-icons",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.59.0-backup-attention",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": [
+          "android",
+          "ios"
+        ]
+      },
+      {
+        "id": "0.59.0-start-page-wide",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.59.0-icon-picker-phone",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.59.0-backup-notifications",
+        "category": "improved",
+        "apps": [
+          "notes"
+        ],
+        "platforms": [
+          "android",
+          "ios"
+        ]
+      }
+    ]
+  },
+  {
     "version": "0.58.1",
     "date": "2026-11-22",
     "items": [
