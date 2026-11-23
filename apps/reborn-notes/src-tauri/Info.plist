@@ -2,15 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Merged by the Tauri bundler into every macOS build of the shell. The
-	     store build overrides the names in macos/Info.appstore.plist. -->
+	<!-- Merged by the Tauri bundler into every macOS build of the shell. -->
 	<!-- "re/notes" cannot be the product name (Tauri refuses a "/" there, it
-	     names the .app file), so the names the user sees are set here: the
-	     menu bar, the Dock, the notification and keychain prompts. -->
-	<key>CFBundleName</key>
-	<string>re/notes dev</string>
-	<key>CFBundleDisplayName</key>
-	<string>re/notes dev</string>
+	     names the .app file). CFBundleName and CFBundleDisplayName stay the
+	     file name (Tauri sets both from productName: macOS only shows a
+	     localized name when they match the file name), and the name the user
+	     sees comes from <language>.lproj/InfoPlist.strings (macos/InfoPlist.*.strings).
+	     Set in Info.plist itself, the Dock and Finder showed the file name. -->
+	<key>LSHasLocalizedDisplayName</key>
+	<true/>
 	<!-- Standard encryption only (Web Crypto in WebKit, TLS), the same answer
 	     as the iOS shell: no export compliance documents per upload. -->
 	<key>ITSAppUsesNonExemptEncryption</key>

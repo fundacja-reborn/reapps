@@ -21,8 +21,11 @@
  * `tauri.appstore.conf.json` and `tauri.dev-sandbox.conf.json`) and their
  * entitlements are pinned here too: the store build's sandbox, keychain group
  * and bundle identifier must agree, or the shipped app loses its keychain.
+ * So is the name macOS shows (Finder, Dock, menu bar), which comes from an
+ * `InfoPlist.strings` in the folder of every app language.
  */
 import { readdirSync, readFileSync } from 'node:fs';
+import { SUPPORTED_LOCALES } from '@reborn/i18n/config';
 import { describe, expect, it } from 'vitest';
 
 const srcTauri = new URL('../../../src-tauri/', import.meta.url);
@@ -162,7 +165,13 @@ interface ShellConfig {
     windows?: { label: string; create?: boolean }[];
     security?: { capabilities?: unknown[] };
   };
-  bundle?: { macOS?: { entitlements?: string; infoPlist?: string; minimumSystemVersion?: string } };
+  bundle?: {
+    macOS?: {
+      entitlements?: string;
+      minimumSystemVersion?: string;
+      files?: Record<string, string>;
+    };
+  };
 }
 
 function readConfig(name: string): ShellConfig {
@@ -256,6 +265,40 @@ describe('desktop shell build variants', () => {
     expect(entitlements('macos/appstore.entitlements')).toEqual(
       sandboxEntitlements('eu.reapps.notes')
     );
+  });
+
+  it('shows its own name in every app language of each build', () => {
+    // Info.plist keeps the file name from productName and asks macOS for the
+    // localized one; a language without the strings file shows "re-notes".
+    expect(readShellFile('Info.plist')).toMatch(/<key>LSHasLocalizedDisplayName<\/key>\s*<true\/>/);
+    expect(readShellFile('Info.plist')).not.toContain('<key>CFBundleName</key>');
+    const builds = [
+      {
+        files: base.bundle?.macOS?.files,
+        source: 'macos/InfoPlist.dev.strings',
+        name: 're/notes dev'
+      },
+      {
+        files: appstore.bundle?.macOS?.files,
+        source: 'macos/InfoPlist.appstore.strings',
+        name: 're/notes'
+      }
+    ];
+    for (const { files, source, name } of builds) {
+      expect(files).toEqual(
+        Object.fromEntries(
+          SUPPORTED_LOCALES.map((locale) => [`Resources/${locale}.lproj/InfoPlist.strings`, source])
+        )
+      );
+      // The entries after the file's header comment.
+      const entries = readShellFile(source).split('*/').pop() ?? '';
+      expect(entries.trim().split('\n')).toEqual([
+        `"CFBundleName" = "${name}";`,
+        `"CFBundleDisplayName" = "${name}";`
+      ]);
+    }
+    expect(appstore.productName).toBe('re-notes');
+    expect(devSandbox.bundle?.macOS?.files).toBeUndefined();
   });
 
   it('runs the sandboxed development build under the development identifier', () => {

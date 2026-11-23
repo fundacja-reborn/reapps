@@ -1,0 +1,8 @@
+/* The name Finder, the Dock, Launchpad and the menu bar show for the
+   development builds. "re/notes" cannot name a file, so the app is
+   re-notes-dev.app (CFBundleName and CFBundleDisplayName in Info.plist come
+   from productName) and macOS shows the name from here, because Info.plist
+   sets LSHasLocalizedDisplayName. The same file is copied into the folder of
+   every app language (bundle > macOS > files in tauri.conf.json). */
+"CFBundleName" = "re/notes dev";
+"CFBundleDisplayName" = "re/notes dev";

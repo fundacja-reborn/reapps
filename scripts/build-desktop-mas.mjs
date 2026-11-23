@@ -40,6 +40,7 @@ import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readSupportedLocales } from './supported-locales.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const APP_DIR = join(REPO_ROOT, 'apps', 'reborn-notes');
@@ -561,8 +562,20 @@ const plist = plistToJson(join(appPath, 'Contents', 'Info.plist')) ?? {};
 check(plist.CFBundleIdentifier === variant.identifier, `CFBundleIdentifier is ${variant.identifier}`, `found ${plist.CFBundleIdentifier}`);
 check(plist.CFBundleShortVersionString === marketingVersion, `CFBundleShortVersionString is ${marketingVersion}`, `found ${plist.CFBundleShortVersionString}`);
 check(plist.CFBundleVersion === String(version.to), `CFBundleVersion is ${version.to}`, `found ${plist.CFBundleVersion}`);
-check(plist.CFBundleDisplayName === variant.displayName, `CFBundleDisplayName is ${variant.displayName}`, `found ${plist.CFBundleDisplayName}`);
-check(plist.CFBundleName === variant.displayName, `CFBundleName is ${variant.displayName}`, `found ${plist.CFBundleName}`);
+// The visible name: Info.plist keeps the file name (macOS only shows a
+// localized name when it matches the file), every app language names it.
+check(plist.CFBundleDisplayName === variant.productName, `CFBundleDisplayName is ${variant.productName}`, `found ${plist.CFBundleDisplayName}`);
+check(plist.CFBundleName === variant.productName, `CFBundleName is ${variant.productName}`, `found ${plist.CFBundleName}`);
+check(plist.LSHasLocalizedDisplayName === true, 'LSHasLocalizedDisplayName is true', `found ${plist.LSHasLocalizedDisplayName}`);
+const unnamed = readSupportedLocales().filter((locale) => {
+	const strings = plistToJson(join(appPath, 'Contents', 'Resources', `${locale}.lproj`, 'InfoPlist.strings'));
+	return strings?.CFBundleDisplayName !== variant.displayName || strings?.CFBundleName !== variant.displayName;
+});
+check(
+	unnamed.length === 0,
+	`every app language names it ${variant.displayName} (InfoPlist.strings)`,
+	`wrong or missing in ${unnamed.join(', ')}`
+);
 check(plist.LSMinimumSystemVersion === minimumSystem, `LSMinimumSystemVersion is ${minimumSystem}`, `found ${plist.LSMinimumSystemVersion}`);
 check(plist.ITSAppUsesNonExemptEncryption === false, 'ITSAppUsesNonExemptEncryption is false', `found ${plist.ITSAppUsesNonExemptEncryption}`);
 check(
