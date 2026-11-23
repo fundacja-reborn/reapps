@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
+  backupErrorCode,
   runAutoBackup,
   type BackupDestination,
   type RunAutoBackupDeps,
@@ -104,7 +105,8 @@ describe('runAutoBackup', () => {
     expect(dest.files.has(expectedName)).toBe(true);
     expect(deps.saveState).toHaveBeenCalledWith({
       lastBackupAt: new Date(NOW).toISOString(),
-      lastError: null
+      lastError: null,
+      lastErrorCode: null
     });
   });
 
@@ -120,7 +122,11 @@ describe('runAutoBackup', () => {
     expect(verifyBackup).toHaveBeenCalledOnce();
     // The corrupt file must not be left behind.
     expect(dest.files.size).toBe(0);
-    expect(deps.saveState).toHaveBeenCalledWith({ lastBackupAt: null, lastError: 'decrypt failed' });
+    expect(deps.saveState).toHaveBeenCalledWith({
+      lastBackupAt: null,
+      lastError: 'decrypt failed',
+      lastErrorCode: null
+    });
   });
 
   it('reports an error and preserves lastBackupAt when the build throws', async () => {
@@ -132,10 +138,30 @@ describe('runAutoBackup', () => {
       }
     });
     const result = await runAutoBackup(deps);
-    expect(result).toEqual({ status: 'error', error: 'crypto offline' });
+    expect(result).toEqual({ status: 'error', error: 'crypto offline', code: null });
     expect(deps.saveState).toHaveBeenCalledWith({
       lastBackupAt: '2026-06-01T00:00:00.000Z',
-      lastError: 'crypto offline'
+      lastError: 'crypto offline',
+      lastErrorCode: null
+    });
+  });
+
+  it('records the code of a folder failure so the app can explain it', async () => {
+    const dest = new FakeDestination();
+    dest.write = async () => {
+      throw Object.assign(new Error('No access to this folder'), { code: 'ACCESS_DENIED' });
+    };
+    const deps = makeDeps({ destination: dest });
+    const result = await runAutoBackup(deps);
+    expect(result).toEqual({
+      status: 'error',
+      error: 'No access to this folder',
+      code: 'ACCESS_DENIED'
+    });
+    expect(deps.saveState).toHaveBeenCalledWith({
+      lastBackupAt: null,
+      lastError: 'No access to this folder',
+      lastErrorCode: 'ACCESS_DENIED'
     });
   });
 
@@ -165,5 +191,25 @@ describe('runAutoBackup', () => {
     const result = await runAutoBackup(deps);
     expect(result.status).toBe('backed-up');
     if (result.status === 'backed-up') expect(result.removed).toEqual([]);
+  });
+});
+
+describe('backupErrorCode', () => {
+  it('takes the string code of a folder bridge rejection', () => {
+    expect(backupErrorCode(Object.assign(new Error('x'), { code: 'WRITE_FAILED' }))).toBe(
+      'WRITE_FAILED'
+    );
+  });
+
+  it('reads a NotFoundError DOMException as a folder that is gone', () => {
+    // DOMException carries a numeric legacy code (8), which is not a code here.
+    expect(backupErrorCode(new DOMException('gone', 'NotFoundError'))).toBe('FOLDER_NOT_FOUND');
+  });
+
+  it('has no code for plain errors and non-errors', () => {
+    expect(backupErrorCode(new Error('decrypt failed'))).toBeNull();
+    expect(backupErrorCode('boom')).toBeNull();
+    expect(backupErrorCode(null)).toBeNull();
+    expect(backupErrorCode({ code: '' })).toBeNull();
   });
 });

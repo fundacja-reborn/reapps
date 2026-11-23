@@ -1119,7 +1119,10 @@
       "reminder_title": "Czas na automatyczną kopię notatek",
       "reminder_body": "Otwórz aplikację, aby utworzyć świeżą zaszyfrowaną kopię notatek.",
       "reminder_hint": "Gdy kopia będzie zaległa, powiadomienie przypomni o otwarciu aplikacji.",
-      "reminder_denied": "Powiadomienia re/notes są wyłączone w ustawieniach systemu, więc przypomnienie o zaległej kopii nie przyjdzie. Możesz je włączyć w ustawieniach powiadomień systemu."
+      "reminder_denied": "Powiadomienia re/notes są wyłączone w ustawieniach systemu, więc przypomnienie o zaległej kopii nie przyjdzie. Możesz je włączyć w ustawieniach powiadomień systemu.",
+      "reminder_prompt": "Przypomnienie o zaległej kopii wymaga zgody na powiadomienia.",
+      "reminder_allow_btn": "Włącz powiadomienia",
+      "reminder_open_settings_btn": "Otwórz ustawienia powiadomień"
     },
     "export_import": {
       "title": "Eksport i import",
@@ -1690,6 +1693,14 @@
     "pink": "Różowy",
     "gray": "Szary"
   },
+  "backup_attention": {
+    "title_failed": "Kopia automatyczna nie powiodła się",
+    "no_access": "re/notes nie ma już dostępu do folderu kopii. Wybierz go ponownie albo wskaż inny folder.",
+    "folder_missing": "Nie można znaleźć folderu kopii: został przeniesiony lub usunięty albo jego dysk jest odłączony. Podłącz dysk albo wskaż inny folder.",
+    "title_no_phrase": "Kopia automatyczna wstrzymana",
+    "no_phrase": "Na tym urządzeniu brakuje frazy odzyskiwania, którą szyfrowane są kopie. Ustaw ją w ustawieniach kopii.",
+    "open_settings_btn": "Otwórz ustawienia kopii"
+  },
   "desktop": {
     "menu": {
       "about": "Informacje o re/notes",
@@ -1701,6 +1712,7 @@
       "quit": "Zakończ re/notes",
       "file": "Plik",
       "new_note": "Nowa notatka",
+      "backup_now": "Utwórz kopię zapasową",
       "edit": "Edycja",
       "undo": "Cofnij",
       "redo": "Przywróć",

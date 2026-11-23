@@ -23,6 +23,7 @@
     "allow-backup-reminder-request-permission",
     "allow-backup-reminder-schedule",
     "allow-backup-reminder-cancel",
+    "allow-backup-reminder-open-settings",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

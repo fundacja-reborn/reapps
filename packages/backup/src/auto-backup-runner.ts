@@ -40,6 +40,14 @@ export interface AutoBackupState {
   lastBackupAt: string | null;
   /** Human-readable reason the last attempt failed, or null if it succeeded. */
   lastError: string | null;
+  /**
+   * Stable code of that failure when the destination gave one (the folder
+   * bridges' `ACCESS_DENIED`, `FOLDER_NOT_FOUND`, `WRITE_FAILED`, ...), so the
+   * app can explain it in the user's language instead of showing the raw
+   * message. Null on success or when the failure carried no code; absent in
+   * state saved before it existed.
+   */
+  lastErrorCode?: string | null;
 }
 
 export interface RunAutoBackupDeps {
@@ -86,7 +94,22 @@ export type AutoBackupSkipReason =
 export type AutoBackupOutcome =
   | { status: 'skipped'; reason: AutoBackupSkipReason }
   | { status: 'backed-up'; filename: string; removed: string[] }
-  | { status: 'error'; error: string };
+  | { status: 'error'; error: string; code: string | null };
+
+/**
+ * The stable code of a failure, if it has one: the `code` of a folder bridge
+ * rejection (Capacitor plugins and the desktop shell set it), or
+ * `FOLDER_NOT_FOUND` for the `NotFoundError` DOMException that the desktop
+ * shell and the web File System Access API raise for a folder that is gone.
+ */
+export function backupErrorCode(error: unknown): string | null {
+  if (typeof error !== 'object' || error === null) return null;
+  const { code, name } = error as { code?: unknown; name?: unknown };
+  // DOMException also has a numeric legacy `code`; only strings are codes here.
+  if (typeof code === 'string' && code.length > 0) return code;
+  if (name === 'NotFoundError') return 'FOLDER_NOT_FOUND';
+  return null;
+}
 
 /**
  * Run one automated-backup cycle. Returns a structured outcome (never throws):
@@ -136,15 +159,24 @@ export async function runAutoBackup(deps: RunAutoBackupDeps): Promise<AutoBackup
       }
     }
 
-    await deps.saveState({ lastBackupAt: new Date(now).toISOString(), lastError: null });
+    await deps.saveState({
+      lastBackupAt: new Date(now).toISOString(),
+      lastError: null,
+      lastErrorCode: null
+    });
 
     const removed = await rotate(deps);
     return { status: 'backed-up', filename, removed };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const code = backupErrorCode(error);
     // Keep the previous lastBackupAt so the run stays due next time; record why.
-    await deps.saveState({ lastBackupAt: state.lastBackupAt, lastError: message });
-    return { status: 'error', error: message };
+    await deps.saveState({
+      lastBackupAt: state.lastBackupAt,
+      lastError: message,
+      lastErrorCode: code
+    });
+    return { status: 'error', error: message, code };
   }
 }
 

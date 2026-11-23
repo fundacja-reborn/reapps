@@ -6,14 +6,14 @@
 //!
 //! - re/notes: About, Settings... (Cmd+,), Services, Hide, Hide Others,
 //!   Show All, Quit;
-//! - File: New Note (Cmd+N), Close Window (Cmd+W);
+//! - File: New Note (Cmd+N), Back Up Now, Close Window (Cmd+W);
 //! - Edit: Undo, Redo, Cut, Copy, Paste, Select All;
 //! - View: full screen;
 //! - Window: Minimize, Zoom.
 //!
-//! "Settings..." and "New Note" only send an event to the page
-//! ([`OPEN_SETTINGS_EVENT`], [`NEW_NOTE_EVENT`]); the page decides what they do
-//! on the screen it shows.
+//! "Settings...", "New Note" and "Back Up Now" only send an event to the page
+//! ([`OPEN_SETTINGS_EVENT`], [`NEW_NOTE_EVENT`], [`BACKUP_NOW_EVENT`]); the
+//! page decides what they do on the screen it shows.
 //!
 //! The texts follow the app's language, not the system's: the page sends them
 //! at startup and on every language change (`desktop_menu_localize`, keys
@@ -46,12 +46,21 @@ pub const NEW_NOTE_ITEM_ID: &str = "new-note";
 /// Event the page listens to; the menu emits it for "New Note".
 pub const NEW_NOTE_EVENT: &str = "desktop-menu:new-note";
 
+/// Menu id of "Back Up Now".
+pub const BACKUP_NOW_ITEM_ID: &str = "backup-now";
+
+/// Event the page listens to; the menu emits it for "Back Up Now". The page
+/// writes an automatic backup right away, or opens the backup settings when
+/// automatic backup is not set up.
+pub const BACKUP_NOW_EVENT: &str = "desktop-menu:backup-now";
+
 /// The event a click on a menu item of ours sends to the page, if any.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub fn event_for_item(id: &str) -> Option<&'static str> {
     match id {
         SETTINGS_ITEM_ID => Some(OPEN_SETTINGS_EVENT),
         NEW_NOTE_ITEM_ID => Some(NEW_NOTE_EVENT),
+        BACKUP_NOW_ITEM_ID => Some(BACKUP_NOW_EVENT),
         _ => None,
     }
 }
@@ -75,6 +84,7 @@ const DEFAULT_TEXTS: &[(&str, &str)] = &[
     ("quit", "Quit re/notes"),
     ("file", "File"),
     ("new_note", "New Note"),
+    ("backup_now", "Back Up Now"),
     ("edit", "Edit"),
     ("undo", "Undo"),
     ("redo", "Redo"),
@@ -202,6 +212,15 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, MenuText
         true,
         Some("CmdOrCtrl+N"),
     )?;
+    // No shortcut: the editor owns the free combinations, and a backup is not
+    // an everyday action.
+    let backup_now = MenuItem::with_id(
+        app,
+        BACKUP_NOW_ITEM_ID,
+        default_text("backup_now"),
+        true,
+        None::<&str>,
+    )?;
     let close_window = PredefinedMenuItem::close_window(app, Some(default_text("close_window")))?;
     let file_menu = Submenu::with_items(
         app,
@@ -210,12 +229,15 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<(Menu<R>, MenuText
         &[
             &new_note,
             &PredefinedMenuItem::separator(app)?,
+            &backup_now,
+            &PredefinedMenuItem::separator(app)?,
             &close_window,
         ],
     )?;
     for (key, item) in [
         ("file", &file_menu as &dyn IsMenuItem<R>),
         ("new_note", &new_note),
+        ("backup_now", &backup_now),
         ("close_window", &close_window),
     ] {
         texts.track(key, item);
@@ -324,6 +346,10 @@ mod tests {
     fn only_our_items_send_events() {
         assert_eq!(event_for_item("settings"), Some("desktop-menu:settings"));
         assert_eq!(event_for_item("new-note"), Some("desktop-menu:new-note"));
+        assert_eq!(
+            event_for_item("backup-now"),
+            Some("desktop-menu:backup-now")
+        );
         assert_eq!(event_for_item("quit"), None);
     }
 

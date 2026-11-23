@@ -18,8 +18,15 @@ import {
   clearAutoBackupPrefs,
   loadAutoBackupConfig,
   loadAutoBackupState,
+  saveAutoBackupConfig,
   saveAutoBackupState
 } from './prefs';
+import {
+  attentionAfterRun,
+  clearBackupAttention,
+  setBackupRunning,
+  showBackupAttention
+} from './attention';
 import { getLastDataChangeAt } from './watermark';
 import { verifyBackup } from './verify';
 
@@ -60,6 +67,7 @@ export async function runNotesAutoBackupIfDue(
     // (e.g. a config wipe) - make sure no stale "backup overdue" nudge fires.
     const { cancelBackupReminders } = await import('./reminder');
     void cancelBackupReminders();
+    showBackupAttention(null);
     return { status: 'skipped', reason: 'disabled' };
   }
 
@@ -82,6 +90,10 @@ export async function runNotesAutoBackupIfDue(
     verifyBackup
   });
 
+  // The notes view tells the user when backups stop working, with the reason
+  // and a fix (attention.ts).
+  showBackupAttention(attentionAfterRun(outcome, config.enabled, loadAutoBackupState()));
+
   // Re-plan the overdue reminders from the just-persisted state: a successful
   // run pushes them ~a day out, so they only ever fire when the app stays
   // closed past the cadence. Internally best-effort, never affects the outcome.
@@ -89,6 +101,44 @@ export async function runNotesAutoBackupIfDue(
   void syncBackupReminders();
 
   return outcome;
+}
+
+let manualRun: Promise<AutoBackupOutcome> | null = null;
+
+/**
+ * "Back up now" from the notes view, the desktop menu or Settings: a forced
+ * run, one at a time (a second click joins the run in progress). Progress is
+ * in `backupRunning` (attention.ts). Never throws.
+ */
+export function backUpNow(): Promise<AutoBackupOutcome> {
+  if (!manualRun) {
+    setBackupRunning(true);
+    manualRun = runNotesAutoBackupIfDue({ force: true }).finally(() => {
+      manualRun = null;
+      setBackupRunning(false);
+    });
+  }
+  return manualRun;
+}
+
+/**
+ * Pick the backup folder again (or another one) and back up into it right
+ * away: the fix for a folder the app lost access to or that is gone. Picking
+ * it again renews the access the system gives with the pick (sandbox
+ * bookmark, SAF grant). Null when the user cancels the dialog.
+ */
+export async function pickBackupFolderAndBackUp(): Promise<AutoBackupOutcome | null> {
+  if (!__REBORN_NATIVE__) return null;
+  const { getFolderFs } = await import('$lib/utils/native-folder-fs');
+  // Backups need a writable grant, as in Settings.
+  const picked = await getFolderFs().pickDirectory({ write: true });
+  if (picked.cancelled || !picked.bookmark) return null;
+  saveAutoBackupConfig({
+    ...loadAutoBackupConfig(),
+    folderBookmark: picked.bookmark,
+    folderName: picked.name ?? ''
+  });
+  return backUpNow();
 }
 
 /**
@@ -102,6 +152,7 @@ export async function runNotesAutoBackupIfDue(
  * what might remain).
  */
 export async function clearAutoBackupState(): Promise<void> {
+  clearBackupAttention();
   try {
     // Capture the bookmark BEFORE the prefs wipe: releasing the persisted SAF
     // grant needs the tree Uri, and once the config entry is gone the Uri is

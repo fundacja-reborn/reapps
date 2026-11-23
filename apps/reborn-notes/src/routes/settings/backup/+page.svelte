@@ -15,7 +15,9 @@
     Copy,
     Check,
     ShieldCheck,
-    BellOff
+    BellOff,
+    Bell,
+    Settings
   } from '@lucide/svelte';
   import type { ReminderPermission } from '$lib/services/auto-backup/reminder';
   import { t, locale } from '$lib/stores/i18n.store';
@@ -28,7 +30,7 @@
   import { generateRecoveryPhrase } from '@reborn/crypto';
   import type { AutoBackupState } from '@reborn/backup';
   import {
-    runNotesAutoBackupIfDue,
+    backUpNow,
     loadAutoBackupConfig,
     saveAutoBackupConfig,
     loadAutoBackupState,
@@ -39,6 +41,13 @@
     hasPhraseChangedNotice,
     clearPhraseChangedNotice
   } from '$lib/services/auto-backup/prefs';
+  import {
+    attentionFromState,
+    backupProblem,
+    backupProblemText,
+    backupRunning,
+    showBackupAttention
+  } from '$lib/services/auto-backup/attention';
 
   const supported = IS_NATIVE;
 
@@ -60,16 +69,47 @@
   // What settings say about the overdue reminder: the promise only where one
   // can come; with notifications turned off in the system, that instead. A
   // desktop shell without a notification center (dev binary) says nothing.
-  let reminderPermission = $state<ReminderPermission>('prompt');
+  // `unsupported` until the system answers, so neither the promise nor the
+  // "turn on" button flashes before it is known.
+  let reminderPermission = $state<ReminderPermission>('unsupported');
+  // Notifications turned off: macOS and iOS can open the system page where
+  // they are turned back on; Android only gets the text.
+  let canOpenSystemSettings = $state(false);
 
   async function refreshReminderPermission() {
     const { getBackupReminderPermission } = await import('$lib/services/auto-backup/reminder');
     reminderPermission = await getBackupReminderPermission();
   }
 
-  let busyNow = $state(false);
+  /**
+   * Backup already on, but the system never asked about notifications (a new
+   * install or build, or a device where it was turned on before the prompt
+   * existed): ask now, on the user's click, instead of promising a reminder
+   * that cannot come.
+   */
+  async function allowReminders() {
+    const { ensureReminderPermission, syncBackupReminders } =
+      await import('$lib/services/auto-backup/reminder');
+    await ensureReminderPermission();
+    await syncBackupReminders();
+    await refreshReminderPermission();
+  }
+
+  async function openSystemNotificationSettings() {
+    const { openNotificationSettings } = await import('$lib/services/auto-backup/reminder');
+    await openNotificationSettings();
+  }
+
   let nowResult = $state<'done' | 'nothing' | 'error' | null>(null);
   let nowError = $state('');
+
+  // The last failure as the user is told it: an explanation for a lost or
+  // missing folder, the raw reason otherwise.
+  const statusError = $derived(
+    bstate.lastError
+      ? backupProblemText(backupProblem(bstate.lastErrorCode), bstate.lastError, $t)
+      : ''
+  );
 
   const canEnable = $derived(phraseSet && !!cfg.folderBookmark);
   const words = $derived(shownPhrase ? shownPhrase.split(' ') : []);
@@ -98,6 +138,8 @@
     phraseSet = Boolean(await loadRecoveryPhrase());
     phraseChanged = hasPhraseChangedNotice();
     await refreshReminderPermission();
+    const { canOpenNotificationSettings } = await import('$lib/services/auto-backup/reminder');
+    canOpenSystemSettings = await canOpenNotificationSettings();
   });
 
   // Coming back from the system settings (notifications turned on or off
@@ -171,6 +213,9 @@
     cfg.folderBookmark = res.bookmark;
     cfg.folderName = res.name ?? '';
     saveAutoBackupConfig(cfg);
+    // The last backup failed (no access, folder gone): try the new pick right
+    // away, so the status below says whether it works now.
+    if (cfg.enabled && bstate.lastError) await backupNow();
   }
 
   async function onToggleChange(e: Event & { currentTarget: HTMLInputElement }) {
@@ -205,22 +250,20 @@
     if (cfg.enabled) await ensureReminderPermission();
     await syncBackupReminders();
     await refreshReminderPermission();
+    // The notice in the notes view follows the switch (off hides it).
+    showBackupAttention(attentionFromState(cfg.enabled, loadAutoBackupState()));
   }
 
   async function backupNow() {
-    busyNow = true;
     nowResult = null;
-    try {
-      const out = await runNotesAutoBackupIfDue({ force: true });
-      bstate = loadAutoBackupState();
-      if (out.status === 'backed-up') nowResult = 'done';
-      else if (out.status === 'error') {
-        nowResult = 'error';
-        nowError = out.error;
-      } else nowResult = 'nothing';
-    } finally {
-      busyNow = false;
-    }
+    // Shared with the notes view and the desktop menu: one run at a time.
+    const out = await backUpNow();
+    bstate = loadAutoBackupState();
+    if (out.status === 'backed-up') nowResult = 'done';
+    else if (out.status === 'error') {
+      nowResult = 'error';
+      nowError = backupProblemText(backupProblem(out.code), out.error, $t);
+    } else nowResult = 'nothing';
   }
 </script>
 
@@ -479,11 +522,38 @@
                 {/if}
               {/if}
               {#if cfg.enabled && reminderPermission === 'denied'}
-                <p class="flex items-start gap-1.5 text-xs text-muted-foreground ps-6">
-                  <BellOff class="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  <span>{$t('settings_page.backup.reminder_denied')}</span>
-                </p>
-              {:else if cfg.enabled && reminderPermission !== 'unsupported'}
+                <div class="space-y-2 ps-6">
+                  <p class="flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <BellOff class="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span>{$t('settings_page.backup.reminder_denied')}</span>
+                  </p>
+                  {#if canOpenSystemSettings}
+                    <button
+                      type="button"
+                      onclick={openSystemNotificationSettings}
+                      class="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent"
+                    >
+                      <Settings class="h-3.5 w-3.5" aria-hidden="true" />
+                      {$t('settings_page.backup.reminder_open_settings_btn')}
+                    </button>
+                  {/if}
+                </div>
+              {:else if cfg.enabled && reminderPermission === 'prompt'}
+                <div class="space-y-2 ps-6">
+                  <p class="flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <Bell class="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span>{$t('settings_page.backup.reminder_prompt')}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onclick={allowReminders}
+                    class="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent"
+                  >
+                    <Bell class="h-3.5 w-3.5" aria-hidden="true" />
+                    {$t('settings_page.backup.reminder_allow_btn')}
+                  </button>
+                </div>
+              {:else if cfg.enabled && reminderPermission === 'granted'}
                 <p class="text-xs text-muted-foreground/80 ps-6">
                   {$t('settings_page.backup.reminder_hint')}
                 </p>
@@ -514,17 +584,18 @@
               {#if bstate.lastError}
                 <p class="flex items-start gap-1.5 text-xs text-destructive">
                   <AlertTriangle class="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  {$t('settings_page.backup.status_error', { values: { error: bstate.lastError } })}
+                  {$t('settings_page.backup.status_error', { values: { error: statusError } })}
                 </p>
               {/if}
               <div class="flex items-center gap-3 pt-1">
                 <button
                   type="button"
                   onclick={backupNow}
-                  disabled={busyNow}
+                  disabled={$backupRunning}
+                  aria-busy={$backupRunning}
                   class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {busyNow
+                  {$backupRunning
                     ? $t('settings_page.backup.now_running')
                     : $t('settings_page.backup.now_btn')}
                 </button>

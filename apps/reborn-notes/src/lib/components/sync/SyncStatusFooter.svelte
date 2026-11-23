@@ -3,6 +3,8 @@
   Sync status footer for the sidebar second column.
   Shows last sync time, pending changes count, and manual sync button.
   When session is expired, replaces normal content with a re-login prompt.
+  Above it, only when the automatic backup stopped working (native builds),
+  the backup notice with the reason and the fix (BackupAttentionNotice).
 -->
 <script lang="ts">
   import {
@@ -24,6 +26,10 @@
   import { t, locale } from '$lib/stores/i18n.store';
   import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
   import { formatSyncTimestamp } from '$lib/utils/date-format';
+  import BackupAttentionNotice from './BackupAttentionNotice.svelte';
+
+  // Automatic backup exists in the native builds only (guideline 71).
+  const backupNotice = __REBORN_NATIVE__;
 
   let manualSyncing = $state(false);
 
@@ -152,6 +158,9 @@
   class="border-t px-3 py-2"
   style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));"
 >
+  {#if backupNotice}
+    <BackupAttentionNotice />
+  {/if}
   {#if isSessionExpired}
     <div
       class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-start

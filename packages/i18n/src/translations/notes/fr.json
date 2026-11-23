@@ -1119,7 +1119,10 @@
       "reminder_title": "Sauvegarde automatique à faire",
       "reminder_body": "Ouvrez l'application pour créer une nouvelle copie chiffrée de vos notes.",
       "reminder_hint": "Si une sauvegarde est en retard, une notification vous rappellera d'ouvrir l'application.",
-      "reminder_denied": "Les notifications de re/notes sont désactivées dans les réglages du système, vous ne recevrez donc pas de rappel si une sauvegarde est en retard. Vous pouvez les activer dans les réglages de notifications du système."
+      "reminder_denied": "Les notifications de re/notes sont désactivées dans les réglages du système, vous ne recevrez donc pas de rappel si une sauvegarde est en retard. Vous pouvez les activer dans les réglages de notifications du système.",
+      "reminder_prompt": "Le rappel d'une sauvegarde en retard nécessite l'autorisation d'afficher des notifications.",
+      "reminder_allow_btn": "Autoriser les notifications",
+      "reminder_open_settings_btn": "Ouvrir les réglages de notifications"
     },
     "export_import": {
       "title": "Export et import",
@@ -1690,6 +1693,14 @@
     "pink": "Rose",
     "gray": "Gris"
   },
+  "backup_attention": {
+    "title_failed": "Échec de la sauvegarde automatique",
+    "no_access": "re/notes n'a plus accès au dossier de sauvegarde. Choisissez-le à nouveau ou choisissez un autre dossier.",
+    "folder_missing": "Le dossier de sauvegarde est introuvable : il a été déplacé ou supprimé, ou son disque est déconnecté. Connectez le disque ou choisissez un autre dossier.",
+    "title_no_phrase": "Sauvegarde automatique suspendue",
+    "no_phrase": "Il manque sur cet appareil la phrase de récupération qui chiffre vos sauvegardes. Définissez-la dans les paramètres de sauvegarde.",
+    "open_settings_btn": "Ouvrir les paramètres de sauvegarde"
+  },
   "desktop": {
     "menu": {
       "about": "À propos de re/notes",
@@ -1701,6 +1712,7 @@
       "quit": "Quitter re/notes",
       "file": "Fichier",
       "new_note": "Nouvelle note",
+      "backup_now": "Sauvegarder maintenant",
       "edit": "Édition",
       "undo": "Annuler",
       "redo": "Rétablir",
