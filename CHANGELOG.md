@@ -1,3 +1,15 @@
+## 0.59.0 (2026-11-23)
+
+### 🚀 Features
+
+- **notes:** open the last note by default on wide screens ([#638](https://github.com/fundacja-reborn/reapps/pull/638), [#511](https://github.com/fundacja-reborn/reapps/issues/511))
+- **notes:** show why automatic backup stopped, with a fix ([#643](https://github.com/fundacja-reborn/reapps/pull/643))
+- **notes:** add 31 folder icons and keep Done in view in the picker ([#645](https://github.com/fundacja-reborn/reapps/pull/645), [#642](https://github.com/fundacja-reborn/reapps/issues/642))
+
+### 🩹 Fixes
+
+- **deps:** update patch-updates ([#641](https://github.com/fundacja-reborn/reapps/pull/641))
+
 ## 0.58.1 (2026-11-22)
 
 ### 🩹 Fixes
