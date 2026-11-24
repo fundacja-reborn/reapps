@@ -45,7 +45,6 @@
 //! the store build (a fresh container) there are none.
 
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsString;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -372,25 +371,60 @@ fn root_of(grant: &Grant) -> Result<PathBuf, FolderFsError> {
     Ok(root)
 }
 
-/// The user's home folder, from `HOME`. In the App Sandbox `HOME` is the
-/// app's container (`~/Library/Containers/<container id>/Data`), so that part
-/// is cut off again; `None` when the variable is missing (Windows).
-fn real_home(home: Option<OsString>, container_id: Option<OsString>) -> Option<PathBuf> {
-    let home = PathBuf::from(home?);
-    let Some(id) = container_id else {
-        return Some(home);
-    };
-    let container = Path::new("Library")
-        .join("Containers")
-        .join(id)
-        .join("Data");
-    if home.ends_with(&container) {
-        home.ancestors()
-            .nth(container.components().count())
-            .map(Path::to_path_buf)
-    } else {
-        Some(home)
+/// The user's real home folder, from the user database, not from `HOME`.
+///
+/// In the App Sandbox `HOME` points into the app's container. The first
+/// version cut `Library/Containers/<APP_SANDBOX_CONTAINER_ID>/Data` off it
+/// again, and the store build still showed every folder in full
+/// (`/Users/...`, smoke test 2026-11-24): what the sandbox puts in those
+/// variables at run time is not visible from outside the process, so the
+/// lookup does not depend on them. `getpwuid_r` answers the same in and out
+/// of the sandbox. Canonical like the linked folders, so the prefix matches.
+#[cfg(target_os = "macos")]
+fn user_home() -> Option<PathBuf> {
+    use std::ffi::{CStr, OsStr};
+    use std::os::unix::ffi::OsStrExt;
+
+    let mut size = 1024;
+    loop {
+        let mut buffer = vec![0 as libc::c_char; size];
+        // SAFETY: an all-zero `passwd` is a valid value (null pointers,
+        // zero ids); getpwuid_r only fills it in.
+        let mut entry: libc::passwd = unsafe { std::mem::zeroed() };
+        let mut found: *mut libc::passwd = std::ptr::null_mut();
+        // SAFETY: every pointer refers to a live local of the right type and
+        // `buffer.len()` is the buffer's real size; the strings in `entry`
+        // point into `buffer`, which outlives their use below.
+        let status = unsafe {
+            libc::getpwuid_r(
+                libc::getuid(),
+                &mut entry,
+                buffer.as_mut_ptr(),
+                buffer.len(),
+                &mut found,
+            )
+        };
+        if status == libc::ERANGE && size < 1 << 20 {
+            size *= 2;
+            continue;
+        }
+        if status != 0 || found.is_null() || entry.pw_dir.is_null() {
+            return None;
+        }
+        // SAFETY: on success `pw_dir` is a NUL-terminated string in `buffer`.
+        let dir = unsafe { CStr::from_ptr(entry.pw_dir) };
+        let dir = PathBuf::from(OsStr::from_bytes(dir.to_bytes()));
+        if !dir.is_absolute() {
+            return None;
+        }
+        return Some(fs::canonicalize(&dir).unwrap_or(dir));
     }
+}
+
+/// Elsewhere (Windows, D5) the settings show the path in full for now.
+#[cfg(not(target_os = "macos"))]
+fn user_home() -> Option<PathBuf> {
+    None
 }
 
 /// A folder path the way the settings show it: iCloud Drive by its name,
@@ -776,12 +810,8 @@ pub fn folder_fs_describe_directory(
     bookmark: String,
 ) -> Result<DescribeResult, FolderFsError> {
     let root = root_of(&grants.get(&bookmark)?)?;
-    let home = real_home(
-        std::env::var_os("HOME"),
-        std::env::var_os("APP_SANDBOX_CONTAINER_ID"),
-    );
     Ok(DescribeResult {
-        path: display_path(&root, home.as_deref()),
+        path: display_path(&root, user_home().as_deref()),
     })
 }
 
@@ -843,26 +873,21 @@ pub fn folder_fs_release_directory(
 mod tests {
     use super::*;
 
+    /// The home folder comes from the user database: an existing, canonical
+    /// folder, whatever `HOME` says. (Inside the App Sandbox only the store
+    /// build itself can show it: smoke test, guideline 86.)
+    #[cfg(target_os = "macos")]
     #[test]
-    fn the_home_folder_is_found_inside_and_outside_the_sandbox() {
-        let os = |s: &str| Some(OsString::from(s));
-        assert_eq!(
-            real_home(
-                os("/Users/a/Library/Containers/eu.reapps.notes/Data"),
-                os("eu.reapps.notes")
-            ),
-            Some(PathBuf::from("/Users/a"))
+    fn the_home_folder_comes_from_the_user_database() {
+        let home = user_home().expect("the current user has a home folder");
+        assert!(home.is_absolute(), "{}", home.display());
+        assert!(home.is_dir(), "{}", home.display());
+        assert_eq!(fs::canonicalize(&home).ok(), Some(home.clone()));
+        assert!(
+            !home.to_string_lossy().contains("/Library/Containers/"),
+            "a container, not the home folder: {}",
+            home.display()
         );
-        assert_eq!(
-            real_home(os("/Users/a"), None),
-            Some(PathBuf::from("/Users/a"))
-        );
-        // A HOME that is not the container is taken as it is.
-        assert_eq!(
-            real_home(os("/Users/a"), os("eu.reapps.notes")),
-            Some(PathBuf::from("/Users/a"))
-        );
-        assert_eq!(real_home(None, os("eu.reapps.notes")), None);
     }
 
     #[test]

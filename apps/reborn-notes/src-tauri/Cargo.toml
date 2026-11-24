@@ -81,6 +81,9 @@ objc2-foundation = { version = "0.3", default-features = false, features = [
   "NSValue",
 ] }
 block2 = "0.6"
+# The user's real home folder (folder_fs, getpwuid_r): in the App Sandbox
+# HOME points into the app's container. Already in the lockfile (Tauri, std).
+libc = "0.2"
 # External links (external_links.rs): NSWorkspace opens them in the default
 # app. Same objc2 family; already in the lockfile (Tauri's window code).
 objc2-app-kit = { version = "0.3", default-features = false, features = [
