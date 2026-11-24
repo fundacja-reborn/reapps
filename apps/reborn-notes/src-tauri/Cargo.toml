@@ -26,8 +26,15 @@ tauri = { version = "2", features = [] }
 # Default features are off on purpose: the default `cookies` feature keeps a
 # cookie jar and writes it to a plaintext `.cookies` file in the app cache
 # directory. Native auth is token-based, so no cookie may be stored at all.
+# TLS comes from the operating system (`native-tls`: Security.framework on
+# macOS, SChannel on Windows), not from rustls + ring compiled into the app.
+# The App Store export compliance answer (ITSAppUsesNonExemptEncryption =
+# false, guideline 62) holds only while all encryption goes through the
+# system's cryptography; a TLS stack of our own would make it untrue
+# (decision 2026-11-24). `native-tls-alpn` keeps HTTP/2 negotiation.
 tauri-plugin-http = { version = "2", default-features = false, features = [
-  "rustls-tls",
+  "native-tls",
+  "native-tls-alpn",
   "http2",
   "charset",
   "system-proxy",
