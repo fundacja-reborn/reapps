@@ -270,10 +270,19 @@ const plistToJson = (input) => {
 	}
 };
 
-/** The XML plist inside a CMS-signed provisioning profile. */
+/**
+ * The XML plist inside a CMS-signed provisioning profile. Every real profile
+ * carries <date> (CreationDate, ExpirationDate) and <data>
+ * (DeveloperCertificates, DER-Encoded-Profile), which `plutil -convert json`
+ * refuses ("Invalid object in plist for JSON format"), so both are read as
+ * strings: dates stay ISO 8601, data stays base64. A literal "<date>" inside
+ * a value would be escaped as &lt;date&gt;, so the tags are safe to rename.
+ */
 const decodeProfile = (path) => {
 	const decoded = capture('security', ['cms', '-D', '-i', path]);
-	return decoded.status === 0 ? plistToJson(decoded.stdout) : null;
+	if (decoded.status !== 0) return null;
+	const xml = decoded.stdout.toString('utf8').replace(/<(\/?)(?:date|data)(\s*\/?)>/g, '<$1string$2>');
+	return plistToJson(Buffer.from(xml, 'utf8'));
 };
 
 /**

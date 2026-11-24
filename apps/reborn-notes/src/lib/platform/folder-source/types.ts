@@ -64,6 +64,12 @@ export interface FolderSource {
   isSupported(): boolean;
   /** On-disk leaf name of the directory, for display (synchronous). */
   dirName(ref: DirectoryRef): string;
+  /**
+   * Where the directory is now, for display ("~/Documents/Notes"), or null.
+   * Only the desktop shell knows a path; the browser and the mobile systems
+   * give the name only, so their sources leave this out. Never stored.
+   */
+  location?(ref: DirectoryRef): Promise<string | null>;
   /** Open the system directory picker. MUST be called from a user gesture. */
   pick(): Promise<PickOutcome>;
   /** Whether two refs point at the same on-disk directory (link-time dedup). */

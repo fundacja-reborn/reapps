@@ -132,6 +132,11 @@ export type FolderSyncConfigStatus = {
   targetFolderId: string | null;
   /** On-disk directory leaf name; the UI's fallback + placeholder when no `sourceLabel`. */
   dirName: string;
+  /**
+   * Where the directory is now ("~/Documents/Notes"), desktop shell only; null
+   * where the platform gives a name only. Read live, never persisted.
+   */
+  location: string | null;
   /** User-set cosmetic label for the source directory; null = fall back to `dirName`. */
   sourceLabel: string | null;
   state: 'idle' | 'syncing' | 'needs-permission' | 'error';
@@ -206,11 +211,13 @@ function patchStatus(id: string, patch: Partial<FolderSyncConfigStatus>): void {
 async function projectConfigStatus(cfg: FolderSyncConfigRecord): Promise<FolderSyncConfigStatus> {
   const ref = cfg.handle as DirectoryRef;
   const perm = await folderSource.queryAccess(ref);
+  const location = (await folderSource.location?.(ref)) ?? null;
   return {
     id: cfg.id,
     name: cfg.root_name,
     targetFolderId: cfg.target_folder_id ?? null,
     dirName: folderSource.dirName(ref),
+    location,
     sourceLabel: cfg.source_label ?? null,
     state: perm === 'granted' ? 'idle' : 'needs-permission',
     autoSync: cfg.auto_sync === 1,
@@ -357,7 +364,10 @@ export type PickFolderOutcome =
   | { kind: 'picked'; ref: DirectoryRef; name: string }
   | { kind: 'cancelled' }
   | { kind: 'limit-reached' }
-  | { kind: 'already-linked'; name: string };
+  | { kind: 'already-linked'; name: string }
+  // The picker failed: the system gave the app no access to the chosen
+  // directory (on a Mac, security software can block Documents and Desktop).
+  | { kind: 'pick-failed' };
 
 /**
  * Open the directory picker and vet the choice against existing configs.
@@ -367,7 +377,13 @@ export type PickFolderOutcome =
  * `addLinkedFolder` with the returned handle.
  */
 export async function pickFolderToLink(): Promise<PickFolderOutcome> {
-  const picked = await folderSource.pick();
+  let picked: Awaited<ReturnType<typeof folderSource.pick>>;
+  try {
+    picked = await folderSource.pick();
+  } catch (error) {
+    logger.warn('Folder picker failed:', error);
+    return { kind: 'pick-failed' };
+  }
   // 'cancelled' (user dismissed) and 'unsupported' both surface as a plain cancel.
   if (picked.kind !== 'picked') return { kind: 'cancelled' };
   const configs = await readConfigs();

@@ -11,6 +11,7 @@
     "allow-folder-fs-list-files",
     "allow-folder-fs-read-file",
     "allow-folder-fs-is-same-directory",
+    "allow-folder-fs-describe-directory",
     "allow-folder-fs-write-file",
     "allow-folder-fs-delete-file",
     "allow-folder-fs-release-directory",

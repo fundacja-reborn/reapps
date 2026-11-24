@@ -6,6 +6,7 @@ import {
   getTextDirection,
   inlineSide,
   isolateInDirection,
+  isolateLeftToRight,
   isTextDirection
 } from '../direction';
 import {
@@ -128,6 +129,25 @@ describe('isolateInDirection', () => {
     // The isolate controls are not strong characters: a caller that inspects
     // the text afterwards still sees digits and punctuation only.
     expect(detectTextDirection(isolateInDirection('2026-11-13', 'rtl'))).toBeNull();
+  });
+});
+
+describe('isolateLeftToRight', () => {
+  const LRI = String.fromCodePoint(0x2066);
+  const PDI = String.fromCodePoint(0x2069);
+
+  it('wraps a path in a left-to-right isolate for an RTL UI', () => {
+    expect(isolateLeftToRight('iCloud Drive/re-notes', 'rtl')).toBe(
+      `${LRI}iCloud Drive/re-notes${PDI}`
+    );
+  });
+
+  it('returns the text unchanged for an LTR UI, with no invisible characters', () => {
+    expect(isolateLeftToRight('~/Documents/Notes', 'ltr')).toBe('~/Documents/Notes');
+  });
+
+  it('leaves an empty text empty', () => {
+    expect(isolateLeftToRight('', 'rtl')).toBe('');
   });
 });
 

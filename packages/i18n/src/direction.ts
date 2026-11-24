@@ -91,6 +91,7 @@ export function containsRtlText(text: string): boolean {
 }
 
 /** Unicode isolate controls: the plain-text counterpart of `<bdi dir="...">`. */
+const LEFT_TO_RIGHT_ISOLATE = String.fromCodePoint(0x2066);
 const RIGHT_TO_LEFT_ISOLATE = String.fromCodePoint(0x2067);
 const POP_DIRECTIONAL_ISOLATE = String.fromCodePoint(0x2069);
 
@@ -111,4 +112,19 @@ const POP_DIRECTIONAL_ISOLATE = String.fromCodePoint(0x2069);
 export function isolateInDirection(text: string, dir: TextDirection): string {
   if (dir !== 'rtl' || text === '') return text;
   return RIGHT_TO_LEFT_ISOLATE + text + POP_DIRECTIONAL_ISOLATE;
+}
+
+/**
+ * Keeps a left-to-right text, such as a file path ("~/Documents/Notes" or
+ * "iCloud Drive/Projects"), in its own order when it is inserted into a
+ * translated sentence of a right-to-left UI: `<bdi dir="ltr">` for a place
+ * that takes no markup. Without it the bidi algorithm would move the slashes
+ * and the segments around after an Arabic word.
+ *
+ * Pass the UI direction (`$textDirection`). A left-to-right UI needs none of
+ * this, so the text comes back unchanged there.
+ */
+export function isolateLeftToRight(text: string, uiDir: TextDirection): string {
+  if (uiDir !== 'rtl' || text === '') return text;
+  return LEFT_TO_RIGHT_ISOLATE + text + POP_DIRECTIONAL_ISOLATE;
 }
