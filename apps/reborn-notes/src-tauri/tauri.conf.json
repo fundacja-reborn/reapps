@@ -40,7 +40,7 @@
     "copyright": "Copyright © 2025-2026 Fundacja Reborn",
     "macOS": {
       "minimumSystemVersion": "14.0",
-      "bundleVersion": "2",
+      "bundleVersion": "3",
       "files": {
         "Resources/en.lproj/InfoPlist.strings": "macos/InfoPlist.dev.strings",
         "Resources/pl.lproj/InfoPlist.strings": "macos/InfoPlist.dev.strings",
