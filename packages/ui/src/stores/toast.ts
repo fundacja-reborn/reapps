@@ -28,10 +28,20 @@ export const toastStore = {
 			} : undefined,
 		});
 	},
+	/**
+	 * An error stays until the user closes it (close button), unless the
+	 * caller sets a duration: a failed export vanished after Sonner's 4 s in a
+	 * corner of a large desktop window, unnoticed (smoke test 2026-11-24).
+	 * Successes, info and warnings keep the timeout. The same message again
+	 * replaces the one on screen instead of stacking a copy, since automatic
+	 * runs (sync retries) can report the same error repeatedly.
+	 */
 	error: (message: string, options?: Partial<Toast>) => {
 		return sonnerToast.error(message, {
+			id: options?.id ?? `error:${message}`,
 			description: options?.description,
-			duration: options?.duration,
+			duration: options?.duration ?? Number.POSITIVE_INFINITY,
+			closeButton: true,
 			action: options?.action ? {
 				label: options.action.label,
 				onClick: options.action.onClick,

@@ -36,8 +36,9 @@ class NotificationService {
 			});
 		}
 		
+		// No default duration: an error stays until it is closed (toastStore).
 		toastStore.error(message, {
-			duration: options?.duration ?? 5000,
+			duration: options?.duration,
 		});
 	}
 	
