@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Toaster as Sonner } from "svelte-sonner";
-	
+	import { t } from "@reborn/i18n";
+
 	// Re-export as Toaster for backward compatibility
 </script>
 
@@ -8,6 +9,7 @@
 	richColors
 	theme="light"
 	position="bottom-right"
+	closeButtonAriaLabel={$t("common.close")}
 	class="toaster group"
 	toastOptions={{
 		classes: {
