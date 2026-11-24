@@ -1,3 +1,10 @@
+## 0.59.1 (2026-11-24)
+
+### 🩹 Fixes
+
+- **notes:** desktop sandbox fixes from the Mac App Store smoke test ([#647](https://github.com/fundacja-reborn/reapps/pull/647))
+- **ui:** keep error toasts on screen until closed ([#648](https://github.com/fundacja-reborn/reapps/pull/648))
+
 ## 0.59.0 (2026-11-23)
 
 ### 🚀 Features
