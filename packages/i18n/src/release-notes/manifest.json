@@ -1,5 +1,28 @@
 [
   {
+    "version": "0.59.1",
+    "date": "2026-11-24",
+    "items": [
+      {
+        "id": "0.59.1-error-toasts-stay",
+        "category": "improved",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.59.1-unreported-failures",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.59.0",
     "date": "2026-11-23",
     "items": [
