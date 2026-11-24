@@ -77,6 +77,10 @@ export function getDesktopFolderFs(): FolderFsPlugin {
       return call<{ same: boolean }>('folder_fs_is_same_directory', { a, b });
     },
 
+    describeDirectory({ bookmark }) {
+      return call<{ path: string }>('folder_fs_describe_directory', { bookmark });
+    },
+
     writeFile({ bookmark, path, content }) {
       return call<{ staleBookmark?: string }>('folder_fs_write_file', { bookmark, path, content });
     },

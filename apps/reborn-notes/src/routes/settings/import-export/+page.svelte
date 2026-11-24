@@ -130,13 +130,20 @@
 
   // ── Export handlers ──────────────────────────────────────────────
 
+  // Which export failed last: said in that export's row, not only in the
+  // console (guideline 02; a sandboxed desktop build once failed every export
+  // without a word, smoke test 2026-11-24).
+  let exportFailedKind = $state<'zip' | 'backup' | null>(null);
+
   async function handleExportAllZip() {
     exportingKind = 'zip';
+    exportFailedKind = null;
     try {
       const allNotes = await getAllNotes();
       await exportNotesAsZip(allNotes, $foldersStore, 'reborn-notes-export');
     } catch (e: unknown) {
       logger.error('Export failed:', e);
+      exportFailedKind = 'zip';
     } finally {
       exportingKind = null;
     }
@@ -144,10 +151,12 @@
 
   async function handleExportBackup() {
     exportingKind = 'backup';
+    exportFailedKind = null;
     try {
       await exportJsonBackup();
     } catch (e: unknown) {
       logger.error('Backup export failed:', e);
+      exportFailedKind = 'backup';
     } finally {
       exportingKind = null;
     }
@@ -167,7 +176,9 @@
       showExportPasswordForm = false;
       exportPassword = '';
     } catch (err: unknown) {
-      exportError = err instanceof Error ? err.message : 'Export failed';
+      // The raw message is for the log; the user gets the plain sentence.
+      logger.error('Encrypted export failed:', err);
+      exportError = $t('settings_page.export_import.export_failed');
     } finally {
       exportingKind = null;
     }
@@ -442,6 +453,12 @@
               <span>{$t('settings_page.export_import.export_status_zip')}</span>
             </div>
           {/if}
+          {#if exportFailedKind === 'zip'}
+            <p role="alert" class="mt-3 flex items-start gap-2 text-xs text-destructive">
+              <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>{$t('settings_page.export_import.export_failed')}</span>
+            </p>
+          {/if}
         </div>
 
         <!-- Export backup (account-encrypted JSON) -->
@@ -483,6 +500,12 @@
               <LoadingSpinner size="sm" />
               <span>{$t('settings_page.export_import.export_status_backup')}</span>
             </div>
+          {/if}
+          {#if exportFailedKind === 'backup'}
+            <p role="alert" class="flex items-start gap-2 text-xs text-destructive">
+              <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>{$t('settings_page.export_import.export_failed')}</span>
+            </p>
           {/if}
         </div>
 

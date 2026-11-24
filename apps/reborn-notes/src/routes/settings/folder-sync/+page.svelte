@@ -26,6 +26,8 @@
   import ImportResultSummary from '$lib/components/import/ImportResultSummary.svelte';
 
   const supported = isFolderSyncSupported();
+  // The desktop shell shows where each linked folder is (FolderSyncItem).
+  const SHOWS_FOLDER_PATHS = __REBORN_DESKTOP__;
 
   // Add-folder flow: the picker returns an opaque directory ref, then a small
   // form collects the destination (defaults to the directory name; may be a
@@ -49,7 +51,7 @@
   let nameInvalid = $state(false);
   let adding = $state(false);
   // Errors of the PICK step (shown near the add button, no form open).
-  let pickError = $state<'already-linked' | 'limit-reached' | null>(null);
+  let pickError = $state<'already-linked' | 'limit-reached' | 'pick-failed' | null>(null);
   let alreadyLinkedName = $state('');
   // Result panel for the initial import of the most recently added folder.
   let addResult = $state<ImportFolderResult | null>(null);
@@ -67,6 +69,10 @@
     addResult = null;
     const outcome = await pickFolderToLink();
     if (outcome.kind === 'cancelled') return;
+    if (outcome.kind === 'pick-failed') {
+      pickError = 'pick-failed';
+      return;
+    }
     if (outcome.kind === 'limit-reached') {
       pickError = 'limit-reached';
       return;
@@ -256,6 +262,12 @@
                   </p>
                 </div>
               {/if}
+              {#if pickError === 'pick-failed'}
+                <p role="alert" class="flex items-start gap-2 text-xs text-destructive">
+                  <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span>{$t('settings_page.export_import.folder_sync_pick_failed')}</span>
+                </p>
+              {/if}
             </div>
           {/if}
 
@@ -267,11 +279,15 @@
             <p class="text-xs text-muted-foreground">
               {$t('settings_page.export_import.folder_sync_safety_note')}
             </p>
-            <p class="text-[0.6875rem] text-muted-foreground/70">
-              {IS_NATIVE
-                ? $t('settings_page.export_import.folder_sync_no_full_path_native')
-                : $t('settings_page.export_import.folder_sync_no_full_path')}
-            </p>
+            <!-- The desktop shell shows each folder's path, so the note that
+                 only a name is available holds for the browser and mobile only. -->
+            {#if !SHOWS_FOLDER_PATHS}
+              <p class="text-[0.6875rem] text-muted-foreground/70">
+                {IS_NATIVE
+                  ? $t('settings_page.export_import.folder_sync_no_full_path_native')
+                  : $t('settings_page.export_import.folder_sync_no_full_path')}
+              </p>
+            {/if}
           </div>
         {/if}
       </CardContent>

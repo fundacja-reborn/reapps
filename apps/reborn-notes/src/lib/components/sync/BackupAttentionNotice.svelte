@@ -39,8 +39,19 @@
     announceBackupNow(await backUpNow());
   }
 
+  // The picked folder could not be used (the system gave no access to it):
+  // said above the buttons, where the user just clicked (guideline 02).
+  let pickFailed = $state(false);
+
   async function pickAgain() {
-    const outcome = await pickBackupFolderAndBackUp();
+    pickFailed = false;
+    let outcome: Awaited<ReturnType<typeof pickBackupFolderAndBackUp>>;
+    try {
+      outcome = await pickBackupFolderAndBackUp();
+    } catch {
+      pickFailed = true;
+      return;
+    }
     if (outcome) announceBackupNow(outcome);
   }
 </script>
@@ -90,6 +101,11 @@
       </span>
     </p>
     <p class="ps-5 break-words text-muted-foreground">{reason}</p>
+    {#if pickFailed}
+      <p role="alert" class="ps-5 break-words text-destructive">
+        {$t('settings_page.backup.folder_pick_failed')}
+      </p>
+    {/if}
     <div class="flex flex-wrap gap-1.5 ps-5">
       {#if attention.kind === 'failed'}
         {#if folderFirst}

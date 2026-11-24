@@ -2,7 +2,7 @@
   import { LoadingSpinner, Progress } from '@reborn/ui';
   import { FolderSync, RefreshCw, Unlink, AlertTriangle, Pencil } from '@lucide/svelte';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { isolateInDirection, textDirection } from '@reborn/i18n';
+  import { isolateInDirection, isolateLeftToRight, textDirection } from '@reborn/i18n';
   import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
   import { formatSettingsDateTime } from '$lib/utils/date-format';
   import {
@@ -44,8 +44,14 @@
   const busy = $derived(status.state === 'syncing');
   const controlsDisabled = $derived(busy || disabled);
   const actionsDisabled = $derived(controlsDisabled || editing);
-  // Source line text: the user's label, else the on-disk leaf name.
-  const sourceText = $derived(status.sourceLabel ?? status.dirName);
+  // Source line text: where the folder is now when the platform knows it (the
+  // desktop shell: a path that follows renames, kept in order in an RTL
+  // sentence), else the user's label, else the on-disk leaf name.
+  const sourceText = $derived(
+    status.location
+      ? isolateLeftToRight(status.location, $textDirection)
+      : (status.sourceLabel ?? status.dirName)
+  );
 
   // Destination is linked by id, so prefer the LIVE folder breadcrumb (root →
   // leaf, reflecting a rename/move in the folder tree) and fall back to the
@@ -137,7 +143,8 @@
       <FolderSync class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div class="min-w-0 text-xs">
         <p class="truncate text-sm font-medium">{leafName}</p>
-        <p class="truncate text-muted-foreground">
+        <!-- A path wraps rather than losing its end (the folder's own name). -->
+        <p class="[overflow-wrap:anywhere] text-muted-foreground">
           {$t('settings_page.export_import.folder_sync_source_dir', {
             values: { name: sourceText }
           })}
@@ -223,23 +230,27 @@
       <p class="text-xs font-medium">
         {$t('settings_page.export_import.folder_sync_edit_heading')}
       </p>
-      <div class="space-y-1">
-        <label class="text-xs font-medium" for="fs-src-{status.id}">
-          {$t('settings_page.export_import.folder_sync_source_label_field')}
-        </label>
-        <input
-          id="fs-src-{status.id}"
-          type="text"
-          bind:value={editSourceLabel}
-          placeholder={status.dirName}
-          maxlength="200"
-          disabled={savingEdit}
-          class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-        />
-        <p class="text-xs text-muted-foreground">
-          {$t('settings_page.export_import.folder_sync_source_label_desc')}
-        </p>
-      </div>
+      <!-- The label stands in for a path the platform does not give; with the
+           path shown (desktop) it is not needed. -->
+      {#if !status.location}
+        <div class="space-y-1">
+          <label class="text-xs font-medium" for="fs-src-{status.id}">
+            {$t('settings_page.export_import.folder_sync_source_label_field')}
+          </label>
+          <input
+            id="fs-src-{status.id}"
+            type="text"
+            bind:value={editSourceLabel}
+            placeholder={status.dirName}
+            maxlength="200"
+            disabled={savingEdit}
+            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+          />
+          <p class="text-xs text-muted-foreground">
+            {$t('settings_page.export_import.folder_sync_source_label_desc')}
+          </p>
+        </div>
+      {/if}
       <div class="space-y-1">
         <label class="text-xs font-medium" for="fs-dst-{status.id}">
           {$t('settings_page.export_import.folder_sync_name_label')}

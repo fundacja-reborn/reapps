@@ -45,6 +45,7 @@
 //! the store build (a fresh container) there are none.
 
 use std::collections::{HashMap, HashSet};
+use std::ffi::OsString;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -371,6 +372,54 @@ fn root_of(grant: &Grant) -> Result<PathBuf, FolderFsError> {
     Ok(root)
 }
 
+/// The user's home folder, from `HOME`. In the App Sandbox `HOME` is the
+/// app's container (`~/Library/Containers/<container id>/Data`), so that part
+/// is cut off again; `None` when the variable is missing (Windows).
+fn real_home(home: Option<OsString>, container_id: Option<OsString>) -> Option<PathBuf> {
+    let home = PathBuf::from(home?);
+    let Some(id) = container_id else {
+        return Some(home);
+    };
+    let container = Path::new("Library")
+        .join("Containers")
+        .join(id)
+        .join("Data");
+    if home.ends_with(&container) {
+        home.ancestors()
+            .nth(container.components().count())
+            .map(Path::to_path_buf)
+    } else {
+        Some(home)
+    }
+}
+
+/// A folder path the way the settings show it: iCloud Drive by its name,
+/// the home folder as `~`, anything else in full.
+fn display_path(path: &Path, home: Option<&Path>) -> String {
+    if let Some(home) = home {
+        let icloud = home
+            .join("Library")
+            .join("Mobile Documents")
+            .join("com~apple~CloudDocs");
+        if let Ok(rest) = path.strip_prefix(&icloud) {
+            return below("iCloud Drive", rest);
+        }
+        if let Ok(rest) = path.strip_prefix(home) {
+            return below("~", rest);
+        }
+    }
+    path.to_string_lossy().into_owned()
+}
+
+/// `head` followed by `rest`, or `head` alone for the folder itself.
+fn below(head: &str, rest: &Path) -> String {
+    if rest.as_os_str().is_empty() {
+        head.to_owned()
+    } else {
+        format!("{head}/{}", rest.to_string_lossy())
+    }
+}
+
 /// Display name of a folder: its last path component.
 fn leaf_name(root: &Path) -> String {
     root.file_name()
@@ -539,7 +588,9 @@ fn read_file(root: &Path, relative: &str) -> Result<(String, f64), FolderFsError
 /// the content goes to a hidden temp file in the same directory, is flushed
 /// to disk and then renamed over the target. `private` restricts the file to
 /// the current user (the grants file); backups keep the folder's defaults.
-pub(crate) fn write_atomic(target: &Path, bytes: &[u8], private: bool) -> io::Result<()> {
+/// Needs write access to the whole directory, which a linked folder has; an
+/// export to a file picked in the save dialog does not (see `file_export`).
+fn write_atomic(target: &Path, bytes: &[u8], private: bool) -> io::Result<()> {
     let invalid = || io::Error::from(io::ErrorKind::InvalidInput);
     let parent = target.parent().ok_or_else(invalid)?;
     let name = target.file_name().ok_or_else(invalid)?.to_string_lossy();
@@ -627,6 +678,11 @@ pub struct SameResult {
     same: bool,
 }
 
+#[derive(Serialize)]
+pub struct DescribeResult {
+    path: String,
+}
+
 /// Empty success payload: mobile returns `{ staleBookmark? }` here, and a
 /// desktop token never goes stale.
 #[derive(Serialize)]
@@ -707,6 +763,28 @@ pub fn folder_fs_read_file(
     Ok(ReadResult { content, mtime })
 }
 
+/// Where a linked folder is now, for display only.
+///
+/// The settings show it on the desktop, where the shell knows the path (the
+/// mobile systems and the browser give the page a name only). It follows the
+/// folder: a folder renamed or moved since it was picked is shown where it is
+/// now. The page cannot use the path for anything - every other command still
+/// takes the token - and it is not stored anywhere.
+#[tauri::command(async)]
+pub fn folder_fs_describe_directory(
+    grants: State<'_, FolderGrants>,
+    bookmark: String,
+) -> Result<DescribeResult, FolderFsError> {
+    let root = root_of(&grants.get(&bookmark)?)?;
+    let home = real_home(
+        std::env::var_os("HOME"),
+        std::env::var_os("APP_SANDBOX_CONTAINER_ID"),
+    );
+    Ok(DescribeResult {
+        path: display_path(&root, home.as_deref()),
+    })
+}
+
 /// Whether two tokens point at the same folder on disk.
 #[tauri::command(async)]
 pub fn folder_fs_is_same_directory(
@@ -764,6 +842,54 @@ pub fn folder_fs_release_directory(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_home_folder_is_found_inside_and_outside_the_sandbox() {
+        let os = |s: &str| Some(OsString::from(s));
+        assert_eq!(
+            real_home(
+                os("/Users/a/Library/Containers/eu.reapps.notes/Data"),
+                os("eu.reapps.notes")
+            ),
+            Some(PathBuf::from("/Users/a"))
+        );
+        assert_eq!(
+            real_home(os("/Users/a"), None),
+            Some(PathBuf::from("/Users/a"))
+        );
+        // A HOME that is not the container is taken as it is.
+        assert_eq!(
+            real_home(os("/Users/a"), os("eu.reapps.notes")),
+            Some(PathBuf::from("/Users/a"))
+        );
+        assert_eq!(real_home(None, os("eu.reapps.notes")), None);
+    }
+
+    #[test]
+    fn folders_are_shown_from_icloud_drive_or_home_or_in_full() {
+        let home = Path::new("/Users/a");
+        let show = |path: &str| display_path(Path::new(path), Some(home));
+        assert_eq!(
+            show("/Users/a/Library/Mobile Documents/com~apple~CloudDocs/re-notes-sync"),
+            "iCloud Drive/re-notes-sync"
+        );
+        assert_eq!(
+            show("/Users/a/Library/Mobile Documents/com~apple~CloudDocs"),
+            "iCloud Drive"
+        );
+        assert_eq!(
+            show("/Users/a/Documents/Notes backup"),
+            "~/Documents/Notes backup"
+        );
+        assert_eq!(show("/Users/a"), "~");
+        // Not inside the home folder: a prefix of the name does not count.
+        assert_eq!(show("/Users/ab/Documents"), "/Users/ab/Documents");
+        assert_eq!(show("/Volumes/Backup/notes"), "/Volumes/Backup/notes");
+        assert_eq!(
+            display_path(Path::new("/Users/a/Documents"), None),
+            "/Users/a/Documents"
+        );
+    }
 
     /// A fresh, canonical scratch directory, removed on drop.
     struct Scratch(PathBuf);

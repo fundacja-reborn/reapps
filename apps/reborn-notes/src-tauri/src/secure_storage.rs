@@ -12,14 +12,30 @@
 //! # macOS: the data protection keychain, this Mac only
 //!
 //! Both entries go to the data protection keychain
-//! (`kSecUseDataProtectionKeychain`) with the access class
-//! `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` - the class the iOS shell
-//! gives the same two entries. Items of that class stay on this Mac: they are
-//! not in Time Machine backups, Migration Assistant does not move them to a new
-//! Mac, and iCloud Keychain does not sync them. The file-based login keychain
+//! (`kSecUseDataProtectionKeychain`) with a "this device only" access class.
+//! Items of such a class stay on this Mac: they are not in Time Machine
+//! backups, Migration Assistant does not move them to a new Mac, and iCloud
+//! Keychain does not sync them. The file-based login keychain
 //! (`~/Library/Keychains/login.keychain-db`, what `keyring` 3 wrote to until
 //! D4) has no such class: Time Machine copies it, protected by the account
 //! password only.
+//!
+//! The two entries differ in when they can be read:
+//! - the master key: `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, the class
+//!   the iOS shell gives it. It is read only at launch and when the user
+//!   unlocks the app lock, both on a Mac in use;
+//! - the refresh token: `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`,
+//!   readable from the first login after a restart until shutdown, also while
+//!   the screen is locked. Unlike an iOS app, the desktop app keeps running
+//!   behind the lock screen: when the Mac wakes, the overdue sync runs before
+//!   the user has typed the password, its access token has expired, and the
+//!   refresh needs this entry. With the stricter class the read failed, the
+//!   webview took the failure for "no session" and showed "Session expired"
+//!   although the session on the server was valid (smoke test 2026-11-24).
+//!   The token gives access to ciphertext only, never to the key that
+//!   decrypts it.
+//!
+//! Any other key gets the stricter class.
 //!
 //! The data protection keychain needs a keychain access group, that is the
 //! `keychain-access-groups` entitlement, which macOS only honours in an app
@@ -143,8 +159,24 @@ mod store {
         Account(&'a str),
         UseDataProtectionKeychain,
         AccessibleWhenUnlockedThisDeviceOnly,
+        AccessibleAfterFirstUnlockThisDeviceOnly,
         Data(&'a [u8]),
         ReturnData,
+    }
+
+    /// The key the webview keeps the refresh token under (`REFRESH_TOKEN_KEY`
+    /// in `native-auth-storage.ts`).
+    const REFRESH_TOKEN: &str = "refresh_token";
+
+    /// The access class of an item in the data protection keychain (see the
+    /// module docs): the refresh token stays readable behind the lock screen,
+    /// everything else only while the Mac is unlocked.
+    pub(super) fn access_class(account: &str) -> Attr<'static> {
+        if account == REFRESH_TOKEN {
+            Attr::AccessibleAfterFirstUnlockThisDeviceOnly
+        } else {
+            Attr::AccessibleWhenUnlockedThisDeviceOnly
+        }
     }
 
     /// The attributes that identify an item.
@@ -166,11 +198,12 @@ mod store {
 
     /// The content of an item: its data and, in the data protection keychain,
     /// its access class. Used for a new item and for the update of an
-    /// existing one, so an update also restores the class.
-    pub(super) fn content(keychain: Keychain, data: &[u8]) -> Vec<Attr<'_>> {
+    /// existing one, so an update also sets the class (an entry written before
+    /// the class changed takes the new one at its next write).
+    pub(super) fn content<'a>(keychain: Keychain, account: &str, data: &'a [u8]) -> Vec<Attr<'a>> {
         let mut attrs = vec![Attr::Data(data)];
         if keychain == Keychain::DataProtection {
-            attrs.push(Attr::AccessibleWhenUnlockedThisDeviceOnly);
+            attrs.push(access_class(account));
         }
         attrs
     }
@@ -227,7 +260,7 @@ mod store {
     ) -> Result<(), i32> {
         let keychain = keychain(system)?;
         let query = identity(keychain, service, account);
-        let changes = content(keychain, data);
+        let changes = content(keychain, account, data);
         let mut item = query.clone();
         item.extend_from_slice(&changes);
         match system.add(&item) {
@@ -290,7 +323,10 @@ mod store {
         use core_foundation::data::{CFData, CFDataRef};
         use core_foundation::dictionary::CFDictionary;
         use core_foundation::string::{CFString, CFStringRef};
-        use security_framework_sys::access_control::kSecAttrAccessibleWhenUnlockedThisDeviceOnly;
+        use security_framework_sys::access_control::{
+            kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        };
         use security_framework_sys::item::{
             kSecAttrAccount, kSecAttrService, kSecClass, kSecClassGenericPassword, kSecReturnData,
             kSecUseDataProtectionKeychain, kSecValueData,
@@ -380,6 +416,10 @@ mod store {
                     Attr::AccessibleWhenUnlockedThisDeviceOnly => (
                         constant(kSecAttrAccessible),
                         constant(kSecAttrAccessibleWhenUnlockedThisDeviceOnly).into_CFType(),
+                    ),
+                    Attr::AccessibleAfterFirstUnlockThisDeviceOnly => (
+                        constant(kSecAttrAccessible),
+                        constant(kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly).into_CFType(),
                     ),
                     Attr::Data(data) => (
                         constant(kSecValueData),
@@ -517,7 +557,7 @@ mod store {
         #[test]
         fn new_items_are_this_device_only_in_the_data_protection_keychain() {
             let mut item = identity(Keychain::DataProtection, "eu.reapps.notes", "master_key");
-            item.extend(content(Keychain::DataProtection, b"secret"));
+            item.extend(content(Keychain::DataProtection, "master_key", b"secret"));
             assert_eq!(
                 item,
                 [
@@ -532,19 +572,40 @@ mod store {
         }
 
         #[test]
+        fn only_the_refresh_token_stays_readable_behind_the_lock_screen() {
+            assert_eq!(
+                content(Keychain::DataProtection, "refresh_token", b"t"),
+                [
+                    Attr::Data(b"t"),
+                    Attr::AccessibleAfterFirstUnlockThisDeviceOnly,
+                ]
+            );
+            for account in ["master_key", "refresh_token_old", "Refresh_Token", "x"] {
+                assert_eq!(
+                    access_class(account),
+                    Attr::AccessibleWhenUnlockedThisDeviceOnly,
+                    "{account}"
+                );
+            }
+        }
+
+        #[test]
         fn an_update_matches_by_identity_and_rewrites_data_and_class() {
             let fake = Fake::default();
             fake.add.borrow_mut().push(DUPLICATE_ITEM);
             fake.update.borrow_mut().push(OK);
 
-            assert_eq!(write(&fake, "s", "a", b"new"), Ok(()));
+            assert_eq!(write(&fake, "s", "refresh_token", b"new"), Ok(()));
             assert_eq!(calls(&fake), ["add:dp", "update:dp"]);
             // The query of the update holds no content attribute, so it
-            // matches the item whatever class it was created with.
-            let query = identity(Keychain::DataProtection, "s", "a");
+            // matches the item whatever class it was created with: a token
+            // written with the stricter class before 2026-11-24 moves to the
+            // lock screen class at its next rotation.
+            let query = identity(Keychain::DataProtection, "s", "refresh_token");
             assert!(!query.contains(&Attr::AccessibleWhenUnlockedThisDeviceOnly));
-            assert!(content(Keychain::DataProtection, b"new")
-                .contains(&Attr::AccessibleWhenUnlockedThisDeviceOnly));
+            assert!(!query.contains(&Attr::AccessibleAfterFirstUnlockThisDeviceOnly));
+            assert!(content(Keychain::DataProtection, "refresh_token", b"new")
+                .contains(&Attr::AccessibleAfterFirstUnlockThisDeviceOnly));
         }
 
         #[test]
@@ -620,10 +681,19 @@ mod store {
         #[cfg(debug_assertions)]
         #[test]
         fn login_keychain_items_carry_no_data_protection_attributes() {
-            let mut item = identity(Keychain::Login, "s", "a");
-            item.extend(content(Keychain::Login, b"x"));
-            assert!(!item.contains(&Attr::UseDataProtectionKeychain));
-            assert!(!item.contains(&Attr::AccessibleWhenUnlockedThisDeviceOnly));
+            for account in ["master_key", "refresh_token"] {
+                let mut item = identity(Keychain::Login, "s", account);
+                item.extend(content(Keychain::Login, account, b"x"));
+                assert_eq!(
+                    item,
+                    [
+                        Attr::ClassGenericPassword,
+                        Attr::Service("s"),
+                        Attr::Account(account),
+                        Attr::Data(b"x"),
+                    ]
+                );
+            }
         }
 
         #[test]
