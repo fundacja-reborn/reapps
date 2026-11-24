@@ -62,6 +62,16 @@ const FORBIDDEN_IN_BINARY = [
 	'developerExtrasEnabled'
 ];
 
+/**
+ * Crypto that must not be compiled into a store binary: a TLS stack of our
+ * own (rustls with ring) instead of the system's. The export compliance answer
+ * (ITSAppUsesNonExemptEncryption = false, guideline 62) holds only while all
+ * encryption goes through the system's cryptography; the shell gets TLS from
+ * `native-tls` (Security.framework). Build 1.0.0 (2) still had rustls - these
+ * needles found it there (crate paths in panic messages, ring's symbol prefix).
+ */
+const FORBIDDEN_CRYPTO_IN_BINARY = ['rustls', 'ring_core_'];
+
 const VARIANTS = {
 	appstore: {
 		overlay: 'tauri.appstore.conf.json',
@@ -651,6 +661,9 @@ if (variant.distribution) {
 	check(binary.includes(`${PRODUCTION_API}/*`), `HTTP capability is ${PRODUCTION_API}/* only`);
 	for (const needle of FORBIDDEN_IN_BINARY) {
 		check(!binary.includes(needle), `no "${needle}" in the binary`);
+	}
+	for (const needle of FORBIDDEN_CRYPTO_IN_BINARY) {
+		check(!binary.includes(needle), `no "${needle}" in the binary (system TLS, export compliance)`);
 	}
 
 	if (!existsSync(pkgPath)) die(`no package at ${relative(REPO_ROOT, pkgPath)}`);
