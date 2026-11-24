@@ -20,6 +20,7 @@ const APP_COMMANDS: &[&str] = &[
     "folder_fs_list_files",
     "folder_fs_read_file",
     "folder_fs_is_same_directory",
+    "folder_fs_describe_directory",
     "folder_fs_write_file",
     "folder_fs_delete_file",
     "folder_fs_release_directory",

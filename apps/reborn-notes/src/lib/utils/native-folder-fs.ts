@@ -104,6 +104,13 @@ export interface FolderFsPlugin {
    * unknown grant is a no-op, so the call is safe to repeat.
    */
   releaseDirectory(options: { bookmark: string; write?: boolean }): Promise<void>;
+  /**
+   * Where the linked folder is now, for display ("~/Documents/Notes",
+   * "iCloud Drive/Projects"). Desktop shell only: iOS and Android give the app
+   * the folder's name, not its path, so the Capacitor plugin has no such
+   * method. The path follows a folder renamed or moved since it was picked.
+   */
+  describeDirectory?(options: { bookmark: string }): Promise<{ path: string }>;
 }
 
 let plugin: FolderFsPlugin | null = null;

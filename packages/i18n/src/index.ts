@@ -64,6 +64,7 @@ export {
   detectTextDirection,
   containsRtlText,
   isolateInDirection,
+  isolateLeftToRight,
   isTextDirection,
   inlineSide,
   RTL_LANGUAGES,

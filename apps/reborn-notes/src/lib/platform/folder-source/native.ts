@@ -35,6 +35,21 @@ export function createNativeFolderSource(): FolderSource {
       return asRef(ref).name;
     },
 
+    async location(ref: DirectoryRef): Promise<string | null> {
+      // Desktop shell only (see FolderFsPlugin.describeDirectory). Gated on the
+      // build flag, not on the method: the Capacitor plugin proxy answers any
+      // method name and would make a bridge call that can only fail. A folder
+      // that is gone shows its name; the sync run reports the error.
+      if (!__REBORN_DESKTOP__) return null;
+      const fs = getFolderFs();
+      if (!fs.describeDirectory) return null;
+      try {
+        return (await fs.describeDirectory({ bookmark: asRef(ref).bookmark })).path;
+      } catch {
+        return null;
+      }
+    },
+
     async pick(): Promise<PickOutcome> {
       const res = await getFolderFs().pickDirectory();
       if (res.cancelled || !res.bookmark || !res.name) return { kind: 'cancelled' };

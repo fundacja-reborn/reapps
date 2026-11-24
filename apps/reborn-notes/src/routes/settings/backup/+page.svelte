@@ -21,7 +21,7 @@
   } from '@lucide/svelte';
   import type { ReminderPermission } from '$lib/services/auto-backup/reminder';
   import { t, locale } from '$lib/stores/i18n.store';
-  import { isolateInDirection, textDirection } from '@reborn/i18n';
+  import { isolateInDirection, isolateLeftToRight, textDirection } from '@reborn/i18n';
   import { dateFormat, timeFormat } from '$lib/stores/app-settings.store';
   import { formatSettingsDateTime } from '$lib/utils/date-format';
   import { localOnly } from '$lib/stores/sync-status.store';
@@ -130,10 +130,35 @@
   let missingPhraseButton = $state<HTMLButtonElement | null>(null);
   let missingFolderButton = $state<HTMLButtonElement | null>(null);
 
+  // Where the backup folder is now ("~/Documents/Backups"): the desktop shell
+  // knows the path and follows a folder renamed or moved since it was picked.
+  // The phones give the name only, so there the name picked is shown. Read
+  // live, never stored.
+  let folderLocation = $state<string | null>(null);
+  const folderShown = $derived(
+    folderLocation ? isolateLeftToRight(folderLocation, $textDirection) : cfg.folderName
+  );
+
+  async function refreshFolderLocation() {
+    const bookmark = cfg.folderBookmark;
+    if (!__REBORN_DESKTOP__ || !bookmark) {
+      folderLocation = null;
+      return;
+    }
+    const { getFolderFs } = await import('$lib/utils/native-folder-fs');
+    try {
+      folderLocation = (await getFolderFs().describeDirectory?.({ bookmark }))?.path ?? null;
+    } catch {
+      // Folder gone or unreachable: the name stays, the backup status says why.
+      folderLocation = null;
+    }
+  }
+
   onMount(async () => {
     if (!supported) return;
     cfg = loadAutoBackupConfig();
     bstate = loadAutoBackupState();
+    void refreshFolderLocation();
     // Hydrate the vault from the account-scoped wrapped copy first, so a
     // phrase enabled on another device (or before a logout) shows up as set
     // here instead of prompting for a brand-new one. Never throws.
@@ -149,11 +174,14 @@
 
   // Coming back from the system settings (notifications turned on or off
   // there) updates the text: a window focus on desktop, a visibility change
-  // on the phones.
+  // on the phones. Coming back from Finder (folder renamed or moved) updates
+  // the folder's path.
   $effect(() => {
     if (!supported) return;
     const refresh = () => {
-      if (document.visibilityState === 'visible') void refreshReminderPermission();
+      if (document.visibilityState !== 'visible') return;
+      void refreshReminderPermission();
+      void refreshFolderLocation();
     };
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
@@ -210,14 +238,27 @@
     shownPhrase = null;
   }
 
+  // The system gave the app no access to the folder the user picked (on a Mac,
+  // security software can block Documents and Desktop; smoke test 2026-11-24).
+  // Said under the folder buttons instead of failing silently (guideline 02).
+  let folderPickFailed = $state(false);
+
   async function pickFolder() {
     const { getFolderFs } = await import('$lib/utils/native-folder-fs');
-    // Backups need a writable grant; sync picks elsewhere stay read-only.
-    const res = await getFolderFs().pickDirectory({ write: true });
+    folderPickFailed = false;
+    let res: Awaited<ReturnType<ReturnType<typeof getFolderFs>['pickDirectory']>>;
+    try {
+      // Backups need a writable grant; sync picks elsewhere stay read-only.
+      res = await getFolderFs().pickDirectory({ write: true });
+    } catch {
+      folderPickFailed = true;
+      return;
+    }
     if (res.cancelled || !res.bookmark) return;
     cfg.folderBookmark = res.bookmark;
     cfg.folderName = res.name ?? '';
     saveAutoBackupConfig(cfg);
+    void refreshFolderLocation();
     // The last backup failed (no access, folder gone): try the new pick right
     // away, so the status below says whether it works now.
     if (cfg.enabled && bstate.lastError) await backupNow();
@@ -429,8 +470,9 @@
             <p class="text-xs text-muted-foreground">{$t('settings_page.backup.folder_intro')}</p>
             {#if cfg.folderName}
               <div class="flex flex-wrap items-center gap-3">
-                <span class="text-sm">
-                  {$t('settings_page.backup.folder_current', { values: { name: cfg.folderName } })}
+                <!-- A path wraps rather than losing its end (the folder's own name). -->
+                <span class="min-w-0 text-sm [overflow-wrap:anywhere]">
+                  {$t('settings_page.backup.folder_current', { values: { name: folderShown } })}
                 </span>
                 <button
                   type="button"
@@ -449,6 +491,12 @@
                 <FolderOpen class="h-3.5 w-3.5" />
                 {$t('settings_page.backup.folder_pick_btn')}
               </button>
+            {/if}
+            {#if folderPickFailed}
+              <p role="alert" class="flex items-start gap-2 text-xs text-destructive">
+                <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>{$t('settings_page.backup.folder_pick_failed')}</span>
+              </p>
             {/if}
           </section>
 
