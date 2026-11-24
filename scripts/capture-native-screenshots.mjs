@@ -21,7 +21,9 @@
  * On macOS there is no status bar: the script sizes the app window to
  * 1440x900 points, which `screencapture` saves as 2880x1800 on a Retina
  * display (1440x900 on another) - both are Mac App Store sizes - and puts the
- * system appearance it found back at the end.
+ * system appearance it found back at the end. For each shot it brings the app
+ * to the front (an inactive window has grey traffic lights) and then gives the
+ * focus back to the terminal.
  *
  * Usage (from the repo root):
  *   node scripts/capture-native-screenshots.mjs --platform=android
@@ -311,6 +313,11 @@ const MAC_WINDOW = { width: 1440, height: 900 };
 /** The sizes App Store Connect takes for a Mac app (16:10). */
 const MAC_STORE_SIZES = ['1280x800', '1440x900', '2560x1600', '2880x1800'];
 
+/** Blocks for `ms` milliseconds (the capture steps are synchronous). */
+function pause(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
 function osascript(script, language = 'AppleScript') {
   return run('osascript', ['-l', language, '-e', script]).trim();
 }
@@ -369,9 +376,36 @@ mine.length ? String(mine[0].kCGWindowNumber) : ''`,
       tryRun('osascript', ['-e', `${appearance} set dark mode to ${theme === 'dark'}`]);
     },
     screenshot(target) {
-      const id = windowId();
-      if (!id) throw new Error('no window of the app on screen');
-      run('screencapture', ['-o', '-x', `-l${id}`, target]);
+      // Enter was pressed in the terminal, so the app window is in the
+      // background, and macOS draws an inactive window with grey traffic
+      // lights (first App Store set, 2026-11-24). Bring the app to the front,
+      // give it a moment to redraw as the active window, take the shot, then
+      // hand the focus back for the next Enter.
+      let before = null;
+      try {
+        before = osascript(
+          'tell application "System Events" to get bundle identifier of first process whose frontmost is true'
+        );
+      } catch {
+        // Not known: the focus stays with the app after the shot.
+      }
+      tryRun('osascript', [
+        '-e',
+        `tell application "System Events" to set frontmost of ${processRef} to true`
+      ]);
+      pause(800);
+      try {
+        const id = windowId();
+        if (!id) throw new Error('no window of the app on screen');
+        run('screencapture', ['-o', '-x', `-l${id}`, target]);
+      } finally {
+        if (before && before !== bundleId) {
+          tryRun('osascript', [
+            '-e',
+            `tell application "System Events" to set frontmost of (first process whose bundle identifier is ${JSON.stringify(before)}) to true`
+          ]);
+        }
+      }
       const png = readFileSync(target);
       const { width, height } = pngSize(png);
       if (!MAC_STORE_SIZES.includes(`${width}x${height}`)) {
