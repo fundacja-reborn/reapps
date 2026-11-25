@@ -21,3 +21,4 @@ export {
   type UpdateSeverity
 } from './app-update';
 export { parseBackendVersion } from './app-version';
+export { shareDeepLinkToRoute } from './deep-link';

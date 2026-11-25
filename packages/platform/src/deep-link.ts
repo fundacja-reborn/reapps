@@ -1,11 +1,11 @@
 /**
  * Map an inbound public-share deep link to its in-app route.
  *
- * Android App Links deliver the PUBLIC url, e.g.
- *   https://reapps.eu/notes/s/<slug>#k=...&v=1
- * The native build serves its own routes from the scheme root (`base` is '' on
+ * Android App Links / iOS Universal Links deliver the PUBLIC url, e.g.
+ *   https://reapps.eu/notes/s/<slug>#k=...&v=1  (re/task: /task/s/<slug>)
+ * A native build serves its own routes from the scheme root (`base` is '' on
  * native), so we strip everything up to `/s/` and rebuild the in-app path while
- * KEEPING the fragment.
+ * KEEPING the fragment. Shared by both apps.
  *
  * Zero-Knowledge: the `#k=...` fragment carries the per-share decryption key.
  * It must stay client-side - we route with it via `goto` (a client navigation),

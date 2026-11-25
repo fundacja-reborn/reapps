@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 /**
- * Render the @capacitor/assets source images from the PWA brand (Faza 5, D6).
+ * Render the @capacitor/assets source images of a native app from its PWA
+ * brand (Faza 5, D6; shared by re/notes and re/task).
  *
- * Single source of truth for the native icons/splash is the existing brand
- * mark (static/icons/icon.svg - the yellow #FFD43B circle with the white
- * "n" glyph; Michal confirmed the PWA icon IS the product icon, 2026-06-11).
- * This script rasterizes the five inputs @capacitor/assets expects in
- * assets/, mirroring the PWA maskable icon's full-bleed composition:
+ * Run from the app directory (`pnpm gen:store-assets`): the brand comes from
+ * the app's `scripts/store-assets-brand.mjs` - the brand mark SVG (re/notes:
+ * yellow #FFD43B circle with a white "n"; re/task: green #43a047 circle with a
+ * white "t"; the PWA icon IS the product icon, Michal 2026-06-11), its colour,
+ * glyph paths and wordmark. This script rasterizes the five inputs
+ * @capacitor/assets expects in assets/, mirroring the PWA maskable icon's
+ * full-bleed composition:
  *
  *   icon-only.png        1024  full-bleed brand square (opaque - iOS app
  *                              icons reject alpha) + base for legacy Android
@@ -21,9 +24,9 @@
  * Also renders the Play Store feature graphic (not a @capacitor/assets
  * input - the fan-out only picks up the five names above and ignores it):
  *
- *   feature-graphic.png  1024x500  "re/notes" wordmark on the brand yellow
+ *   feature-graphic.png  1024x500  the app wordmark on the brand colour
  *                                  (locale-neutral - the brand name is the
- *                                  same in all five locales)
+ *                                  same in every locale)
  *
  * Then `pnpm gen:store-assets` (package.json) runs the pinned
  * @capacitor/assets to fan these out into android/ mipmaps+drawables and
@@ -31,15 +34,16 @@
  * committed (the stores build from the repo, not from this script).
  */
 import { mkdirSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import sharp from 'sharp';
-import { BRAND_YELLOW, GLYPH_MARKERS, GLYPH_PATHS } from './store-assets-glyph.mjs';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const appDir = resolve(here, '..');
-const brandSvgPath = resolve(appDir, 'static/icons/icon.svg');
-const wordmarkSvgPath = resolve(appDir, 'static/logo-black.svg');
+// The app to render for: its directory (default: the current one).
+const appDir = resolve(process.argv[2] ?? process.cwd());
+const { BRAND_COLOR, BRAND_SVG, BRAND_VIEWBOX, GLYPH_MARKERS, GLYPH_PATHS, WORDMARK_SVG } =
+  await import(pathToFileURL(resolve(appDir, 'scripts/store-assets-brand.mjs')).href);
+const brandSvgPath = resolve(appDir, BRAND_SVG);
+const wordmarkSvgPath = resolve(appDir, WORDMARK_SVG);
 const outDir = resolve(appDir, 'assets');
 const SPLASH_LIGHT_BG = '#ffffff';
 // App dark theme --background is oklch(0.145 0 0) = #0a0a0a (packages/ui
@@ -56,22 +60,23 @@ const FEATURE_HEIGHT = 500;
 // ~162px side / ~185px top-bottom margins keep it inside Play's crop-safe zone.
 const FEATURE_WORDMARK_WIDTH = 700;
 
-// The white glyph paths from icon.svg live in store-assets-glyph.mjs (shared
-// with the Android vector-icon postfix); the guard below fails the build if
-// icon.svg ever changes shape without updating them.
+// The white glyph paths from the brand SVG live in the app's
+// store-assets-brand.mjs (shared with the Android vector-icon postfix); the
+// guard below fails the build if the SVG ever changes shape without updating
+// them.
 const brandSvg = readFileSync(brandSvgPath, 'utf-8');
 if (!GLYPH_MARKERS.every((m) => brandSvg.includes(m))) {
   throw new Error(
-    'gen-store-assets-sources: static/icons/icon.svg changed - update store-assets-glyph.mjs so the store assets keep matching the brand.'
+    `gen-store-assets-sources: ${BRAND_SVG} changed - update scripts/store-assets-brand.mjs so the store assets keep matching the brand.`
   );
 }
 
 const svg = (size, body) =>
   Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 1178 1178">${body}</svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${BRAND_VIEWBOX} ${BRAND_VIEWBOX}">${body}</svg>`
   );
 
-const glyphGroup = `<g fill="#ffffff" fill-rule="evenodd">${GLYPH_PATHS}</g>`;
+const glyphGroup = `<g fill="#ffffff" fill-rule="evenodd">${GLYPH_PATHS.map((d) => `<path d="${d}"/>`).join('')}</g>`;
 
 async function renderIcon(name, body) {
   await sharp(svg(ICON_SIZE, body)).png().toFile(resolve(outDir, name));
@@ -79,7 +84,7 @@ async function renderIcon(name, body) {
 }
 
 async function renderFeatureGraphic(name) {
-  // The wordmark on brand yellow (not the icon on dark) follows Google's
+  // The wordmark on the brand colour (not the icon on dark) follows Google's
   // preview-asset guidelines: avoid white/dark-gray backgrounds (they blend
   // with the store themes) and don't repeat the app icon - the graphic always
   // renders next to the icon and app name in featured/collection cards.
@@ -92,7 +97,7 @@ async function renderFeatureGraphic(name) {
       width: FEATURE_WIDTH,
       height: FEATURE_HEIGHT,
       channels: 3,
-      background: BRAND_YELLOW
+      background: BRAND_COLOR
     }
   })
     .composite([{ input: wordmark, gravity: 'center' }])
@@ -104,7 +109,7 @@ async function renderFeatureGraphic(name) {
 }
 
 async function renderSplash(name, background) {
-  // The brand circle (original icon.svg, transparent corners) centered on a
+  // The brand circle (original brand SVG, transparent corners) centered on a
   // solid background - neutral across all 5 locales (no text).
   const logo = await sharp(Buffer.from(brandSvg))
     .resize(SPLASH_LOGO_SIZE, SPLASH_LOGO_SIZE)
@@ -125,12 +130,10 @@ async function renderSplash(name, background) {
 }
 
 mkdirSync(outDir, { recursive: true });
-await renderIcon(
-  'icon-only.png',
-  `<rect width="1178" height="1178" fill="${BRAND_YELLOW}"/>${glyphGroup}`
-);
+const brandSquare = `<rect width="${BRAND_VIEWBOX}" height="${BRAND_VIEWBOX}" fill="${BRAND_COLOR}"/>`;
+await renderIcon('icon-only.png', `${brandSquare}${glyphGroup}`);
 await renderIcon('icon-foreground.png', glyphGroup);
-await renderIcon('icon-background.png', `<rect width="1178" height="1178" fill="${BRAND_YELLOW}"/>`);
+await renderIcon('icon-background.png', brandSquare);
 await renderSplash('splash.png', SPLASH_LIGHT_BG);
 await renderSplash('splash-dark.png', SPLASH_DARK_BG);
 await renderFeatureGraphic('feature-graphic.png');

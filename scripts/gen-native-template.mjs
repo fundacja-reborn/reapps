@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 /**
- * Generate `src/app.native.html` from `src/app.html` for the Capacitor (static)
- * build. Run before `vite build` in the `build-native*` Nx targets; the output is
- * gitignored (a build artifact), so it never drifts from app.html.
+ * Generate `src/app.native.html` from `src/app.html` for the native (static)
+ * build of an app (re/notes, re/task). Run before `vite build` in the
+ * `build-native*` / `build-desktop*` Nx targets, from the app directory:
+ *
+ *   node ../../scripts/gen-native-template.mjs [appDir]
+ *
+ * The output is gitignored (a build artifact), so it never drifts from app.html.
  *
  * Transforms (native static + hash-CSP needs these):
  *  1. Strip `nonce="%sveltekit.nonce%"` - a prerendered SPA fallback can't fill a
@@ -25,13 +29,17 @@
  * leaves a nonce placeholder or an un-hashable inline script - prompting an
  * update here instead of silently shipping a broken native CSP.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const SRC = resolve(here, '../src/app.html');
-const OUT = resolve(here, '../src/app.native.html');
+// The app to generate for: its directory (the `build-native*` targets run with
+// `cwd` = the app, so the default is the current directory).
+const APP_DIR = resolve(process.argv[2] ?? process.cwd());
+const SRC = resolve(APP_DIR, 'src/app.html');
+const OUT = resolve(APP_DIR, 'src/app.native.html');
+if (!existsSync(SRC)) {
+  throw new Error(`gen-native-template: ${SRC} not found - run from an app directory.`);
+}
 
 let html = readFileSync(SRC, 'utf-8');
 
@@ -81,4 +89,4 @@ if (/<script(?![^>]*\bsrc=)[^>]*>/.test(html)) {
 }
 
 writeFileSync(OUT, html);
-console.log('gen-native-template: wrote src/app.native.html from app.html');
+console.log(`gen-native-template: wrote ${OUT} from app.html`);

@@ -45,20 +45,24 @@ interface SystemBarsPlugin {
 }
 
 /**
- * Dark status-bar icons over the brand band the app paints behind the
+ * Status-bar icon colour over the brand band the app paints behind the
  * transparent system bar (PWA parity, guideline 61 "Brandowy status bar").
+ * `style` names the BACKGROUND, as the plugin does: 'LIGHT' (re/notes'
+ * yellow) gives dark icons, 'DARK' (re/task's green) light ones - on both
+ * platforms.
  *
  * Talks to Capacitor 8's BUILT-IN SystemBars plugin (compiled into
  * `@capacitor/android` / `@capacitor/ios`, auto-registered by the Bridge;
- * there is no npm package) through a raw `registerPlugin` proxy. 'LIGHT'
- * means "light background, dark icons" on BOTH platforms; `bar: 'StatusBar'`
- * leaves the Android gesture bar on its theme-following default. Cosmetic
- * fire-and-forget at boot: a failure keeps the default icons.
+ * there is no npm package) through a raw `registerPlugin` proxy.
+ * `bar: 'StatusBar'` leaves the Android gesture bar on its theme-following
+ * default. Cosmetic fire-and-forget at boot: a failure keeps the default icons.
  */
-export async function applyCapacitorStatusBarStyle(): Promise<void> {
+export async function applyCapacitorStatusBarStyle(
+  style: 'LIGHT' | 'DARK' = 'LIGHT'
+): Promise<void> {
   try {
     const systemBars = registerPlugin<SystemBarsPlugin>('SystemBars');
-    await systemBars.setStyle({ style: 'LIGHT', bar: 'StatusBar' });
+    await systemBars.setStyle({ style, bar: 'StatusBar' });
   } catch {
     // Plugin missing or bridge hiccup: keep the default icons.
   }

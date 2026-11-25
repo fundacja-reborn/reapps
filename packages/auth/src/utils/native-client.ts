@@ -27,6 +27,15 @@ export const NATIVE_CLIENT_HEADER = 'x-reborn-client';
 export const NATIVE_CLIENT_VALUE = 'native';
 
 /**
+ * Header carrying a native client's current session id (the web reads it from
+ * the httpOnly `session_id` cookie, which never reaches a cross-site native
+ * request). Not a secret: a plaintext FK the server stores anyway; every
+ * operation stays authorised by the Bearer token. It only lets a native shell
+ * name its own session (logout of this device, sessions-list highlight).
+ */
+export const NATIVE_SESSION_HEADER = 'x-reborn-session-id';
+
+/**
  * True when the request comes from a native shell (carries the native client
  * header). Server-side gate for the additive "refresh token in body" branch of
  * token-issuing endpoints. `Headers.get` is case-insensitive per the Fetch

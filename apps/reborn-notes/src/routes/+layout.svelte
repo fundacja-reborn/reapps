@@ -6,7 +6,7 @@
   import { browser } from '$app/environment';
   import type { Snippet } from 'svelte';
   import { goto } from '$lib/utils/navigation';
-  import { shareDeepLinkToRoute } from '$lib/utils/deep-link';
+  import { shareDeepLinkToRoute } from '@reborn/platform';
   import { base } from '$app/paths';
   import { page } from '$app/stores';
   import { afterNavigate } from '$app/navigation';

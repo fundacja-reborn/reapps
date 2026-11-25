@@ -13,10 +13,11 @@
  * Web stays byte-identical: `IS_NATIVE` is a build-time `false`, so every function
  * short-circuits before touching storage and the header helper returns `{}`.
  */
+import { NATIVE_SESSION_HEADER } from '@reborn/auth/native-client';
 import { IS_NATIVE } from '$lib/utils/native-client';
 
-/** Header carrying the native client's current session id to the server. */
-export const NATIVE_SESSION_HEADER = 'x-reborn-session-id';
+/** Header carrying the native client's current session id (shared contract). */
+export { NATIVE_SESSION_HEADER };
 
 const SESSION_ID_KEY = 'reborn_session_id';
 

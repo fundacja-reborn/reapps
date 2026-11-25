@@ -76,6 +76,9 @@ scripts/*
 !scripts/check-i18n-parity.mjs
 !scripts/export-release-notes.mjs
 !scripts/build-native-aab.mjs
+!scripts/gen-native-template.mjs
+!scripts/gen-store-assets-sources.mjs
+!scripts/postfix-android-adaptive-icon.mjs
 !scripts/build-desktop-mas.mjs
 !scripts/check-rtl-direction.mjs
 !scripts/check-rtl-direction.d.mts
