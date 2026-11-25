@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Release-only manifest overlay. Merged on top of src/main for the release
+     build type; debug builds never see it.
+
+     Purpose: make the shipped binary HTTPS-only STRUCTURALLY, not procedurally
+     (audit 014 S2).
+
+     Background: `cap sync` writes android:usesCleartextTraffic="true" into
+     capacitor-cordova-android-plugins/src/main/AndroidManifest.xml whenever
+     capacitor.config.ts resolves server.cleartext to true - which is what
+     CAP_DEV_CLEARTEXT=1 does for emulator/localprod runs against a plain-http
+     backend. Both that manifest and the generated capacitor.config.json are
+     gitignored and are regenerated ONLY by `cap sync`, never by a Gradle build.
+     So a tree left in dev-sync state looks perfectly clean in `git status` while
+     bundleRelease happily packages the cleartext flag - a silent failure with no
+     tripwire, the same shape as the unsigned-AAB trap that made the runbook add
+     an explicit `keytool -printcert` check ("BUILD SUCCESSFUL does not prove the
+     signature", guideline 62 section 3).
+
+     tools:replace is required because the Capacitor Cordova plugins library
+     manifest declares the attribute as true; without it the merger reports a
+     conflict instead of letting the app win. Debug is untouched, so the
+     CAP_DEV_CLEARTEXT=1 emulator flow keeps working exactly as before. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application
+        android:usesCleartextTraffic="false"
+        tools:replace="android:usesCleartextTraffic" />
+</manifest>

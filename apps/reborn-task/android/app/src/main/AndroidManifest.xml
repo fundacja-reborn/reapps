@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Zero Knowledge backup posture: the app's data directory holds DECRYPTED
+         state (WebView IndexedDB shadow indexes - note titles, folder names -
+         plus the localStorage access token), so it must never ride OS backups
+         off the device. allowBackup="false" disables cloud backup on every API
+         level, but on Android 12+ it no longer governs device-to-device
+         transfer - dataExtractionRules excludes everything from that (and from
+         cloud backup, belt and braces) too. The sanctioned backup is the app's
+         backup posture as re/notes: restore = fresh login + re-sync of
+         ciphertext; the sanctioned local backup is the app's encrypted
+         portable export (Settings > Import / export). -->
+    <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- App Links for public share URLs: open https://<host>/task/s/...
+                 inside the app instead of the browser. The shell forwards the
+                 full URL (fragment included) to JS via @capacitor/app
+                 `appUrlOpen`; +layout.svelte routes it to the in-app /s/<slug>
+                 viewer, keeping the #k=... key client-side.
+
+                 android:autoVerify requests Digital Asset Links verification
+                 against https://<host>/.well-known/assetlinks.json, which lists
+                 the app's Play App Signing SHA-256 - for re/task it exists only
+                 after the first Play upload, so until the reapps-www file gains
+                 an eu.reapps.task entry, links open via the chooser.
+
+                 PRODUCTION SHIPS reapps.eu ONLY - do not add staging.reapps.eu
+                 here. Every host inside an autoVerify filter must serve a
+                 matching assetlinks.json, and staging serves none (nginx has no
+                 .well-known location for it). On Android 11 and lower - in scope
+                 at minSdk 24 - verification is all-or-nothing across hosts, so a
+                 single failing host silently un-verifies reapps.eu too, and share
+                 links stop opening without a chooser. Android 12+ verifies
+                 per-host, so there the staging entry would just fail quietly.
+                 The staging filter lives in src/debug/AndroidManifest.xml, where
+                 it is deliberately NOT autoVerify. This mirrors the same decision
+                 already made for iOS in App.entitlements. (Audit 014 S1, same as
+                 re/notes.) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="reapps.eu" android:pathPrefix="/task/s/" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>
