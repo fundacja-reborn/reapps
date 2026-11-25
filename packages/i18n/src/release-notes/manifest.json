@@ -1,5 +1,20 @@
 [
   {
+    "version": "0.59.2",
+    "date": "2026-11-25",
+    "items": [
+      {
+        "id": "0.59.2-logout-this-device",
+        "category": "fixed",
+        "apps": [
+          "notes",
+          "task"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.59.1",
     "date": "2026-11-24",
     "items": [
