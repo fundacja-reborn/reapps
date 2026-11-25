@@ -1,6 +1,7 @@
-import { PUBLIC_BASE_PATH } from '$env/static/public';
 import { cryptoManager } from '@reborn/crypto';
 import { parseUserAgent, createLogger } from '@reborn/utils';
+import { API_BASE } from '$lib/utils/api-base';
+import { readNativeSessionId } from '$lib/utils/native-session';
 
 const logger = createLogger('DeviceInfoService');
 
@@ -29,13 +30,20 @@ export async function sendEncryptedDeviceInfo(): Promise<void> {
 			return;
 		}
 
-		const res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/sessions/current`, {
+		// Native sends session_id explicitly (its httpOnly session_id cookie is
+		// cross-site and undelivered). On web readNativeSessionId() is null, so the
+		// body stays { device_info_encrypted } and the request is unchanged.
+		const payload: Record<string, string> = { device_info_encrypted: encrypted };
+		const sessionId = readNativeSessionId();
+		if (sessionId) payload.session_id = sessionId;
+
+		const res = await fetch(`${API_BASE}/auth/sessions/current`, {
 			method: 'PATCH',
 			headers: {
 				'Content-Type': 'application/json',
 				Authorization: `Bearer ${accessToken}`
 			},
-			body: JSON.stringify({ device_info_encrypted: encrypted })
+			body: JSON.stringify(payload)
 		});
 
 		if (!res.ok) {

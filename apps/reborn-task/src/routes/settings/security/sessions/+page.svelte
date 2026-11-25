@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { PUBLIC_BASE_PATH } from '$env/static/public';
+	import { API_BASE } from '$lib/utils/api-base';
+	import { nativeSessionHeader } from '$lib/utils/native-session';
 	import { onMount } from 'svelte';
 	import { Monitor, LogOut, RefreshCw, AlertTriangle, X } from '@lucide/svelte';
 	import { t, locale } from '$lib/stores/i18n.store';
@@ -64,8 +65,10 @@
 		sessionsError = null;
 		try {
 			const accessToken = localStorage.getItem('access_token');
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/sessions`, {
-				headers: { Authorization: `Bearer ${accessToken}` }
+			const response = await fetch(`${API_BASE}/auth/sessions`, {
+				// Native: name this device's session (its cookie never reaches the
+				// server cross-site). Empty on web.
+				headers: { Authorization: `Bearer ${accessToken}`, ...nativeSessionHeader() }
 			});
 			const data = await response.json();
 			if (data.success) {
@@ -87,7 +90,7 @@
 		revokingSessionId = sessionId;
 		try {
 			const accessToken = localStorage.getItem('access_token');
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/sessions/${sessionId}`, {
+			const response = await fetch(`${API_BASE}/auth/sessions/${sessionId}`, {
 				method: 'DELETE',
 				headers: { Authorization: `Bearer ${accessToken}` }
 			});
@@ -112,7 +115,7 @@
 			const accessToken = localStorage.getItem('access_token');
 			await Promise.all(
 				otherSessions.map(async (s) => {
-					const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/sessions/${s.id}`, {
+					const response = await fetch(`${API_BASE}/auth/sessions/${s.id}`, {
 						method: 'DELETE',
 						headers: { Authorization: `Bearer ${accessToken}` }
 					});

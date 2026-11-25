@@ -25,6 +25,12 @@
 	import { whatsNew } from '$lib/stores/whats-new.svelte';
 	import { maybeShowWhatsNew } from '$lib/services/whats-new.service';
 	import { applyDocumentLocale, readDirectionOverride } from '@reborn/i18n';
+	import { shareDeepLinkToRoute } from '@reborn/platform';
+	import { platform } from '$lib/platform';
+	import { goto } from '$lib/utils/navigation';
+	import { hideNativeSplash } from '$lib/utils/native-shell';
+	import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
+	import UpdateRequiredGate from '$lib/components/layout/UpdateRequiredGate.svelte';
 
 	const logger = createLogger('Layout');
 
@@ -37,6 +43,15 @@
 
 	// Track initialization timeout
 	let initTimeout = $state(false);
+
+	// Native: drop the held system splash the moment the shell can paint (the
+	// app-ready gate below opens). A no-op once hidden; if this never runs, the
+	// splash plugin's own launchShowDuration auto-hide is the fallback. The web
+	// build folds `__REBORN_NATIVE__` to false and drops the effect body.
+	$effect(() => {
+		if (!__REBORN_NATIVE__) return;
+		if ($session?.isInitialized || initTimeout || isPublicShareRoute) void hideNativeSplash();
+	});
 	// One-shot guard of the hasE2E effect below, which is the ONLY place that
 	// starts the initial pull on a cold start. Only that effect may set it:
 	// onMount's init() used to set it too ("E2E already active on mount") without
@@ -179,6 +194,40 @@
 		};
 		document.addEventListener('visibilitychange', handleVisibilityChange);
 
+		// Native shell: no Service Worker drives foreground sync there and the
+		// webview may not fire visibilitychange reliably on app switch, so the
+		// platform lifecycle resume is the dependable signal - same as re/notes.
+		// Native-only -> the whole block is dead-code-eliminated from the web
+		// bundle.
+		let offResume: (() => void) | undefined;
+		let offDeepLink: (() => void) | undefined;
+		let updateGateTimer: ReturnType<typeof setTimeout> | undefined;
+		if (__REBORN_NATIVE__) {
+			offResume = platform.lifecycle.onResume(() => {
+				// Min-version gate re-check (throttled internally, fail-open).
+				void checkNativeUpdateGate();
+				if ($session?.isAuthenticated && navigator.onLine) {
+					lastPeriodicSyncTimestamp = Date.now();
+					syncService.periodicSync().catch((error) => {
+						logger.error('Resume sync failed:', error);
+					});
+				}
+			});
+
+			// Inbound App Links / Universal Links to a public share
+			// (https://<host>/task/s/<slug>#k=...): route into the in-app read-only
+			// viewer, keeping the key fragment client-side. The URL carries the
+			// decryption key, so it is never logged.
+			offDeepLink = platform.deepLinks.onOpen((url) => {
+				const route = shareDeepLinkToRoute(url);
+				if (route) void goto(route);
+			});
+
+			// The first min-version check is deferred a few seconds so it never
+			// competes with the boot path (guideline 61); later checks ride resume.
+			updateGateTimer = setTimeout(() => void checkNativeUpdateGate(), 3000);
+		}
+
 		const init = async () => {
 			// Public read-only share view (/s/[slug]) bypass: skip auth/storage/sync
 			// init entirely. The snapshot page fetches its own ciphertext and decrypts
@@ -310,6 +359,9 @@
 			clearTimeout(timeoutId);
 			clearInterval(syncInterval);
 			document.removeEventListener('visibilitychange', handleVisibilityChange);
+			if (updateGateTimer) clearTimeout(updateGateTimer);
+			offResume?.();
+			offDeepLink?.();
 			unsubscribe();
 		};
 	});
@@ -354,4 +406,23 @@
 		platform="web"
 		fullChangelogHref={changelogHref}
 	/>
+	{#if __REBORN_NATIVE__}
+		<UpdateRequiredGate />
+	{/if}
+{/if}
+
+{#if __REBORN_NATIVE__}
+	<!-- Brand strip behind the transparent system status bar (PWA parity: on
+	     the installed web app Chrome paints this area from the theme-color
+	     meta, #43a047). The shells run edge-to-edge (enforced on Android
+	     15+/16; iOS always worked this way), so the bar's "background" is
+	     whatever the app draws beneath it - this fixed band, sized by the top
+	     safe-area inset (0 in landscape), is that background. Light icons come
+	     from native-shell.ts. Rendered outside the app-ready gate so the bar is
+	     branded from first paint, and above UpdateRequiredGate (z-100) because
+	     it stands in for a system surface. -->
+	<div
+		class="pointer-events-none fixed inset-x-0 top-0 z-[110] h-[env(safe-area-inset-top,0px)] bg-[#43a047]"
+		aria-hidden="true"
+	></div>
 {/if}

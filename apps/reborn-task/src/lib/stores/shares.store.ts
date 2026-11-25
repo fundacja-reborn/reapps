@@ -1,7 +1,8 @@
 import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
-import { base } from '$app/paths';
 import { authFetch } from '$lib/utils/auth-fetch';
+import { API_BASE } from '$lib/utils/api-base';
+import { getShareBase } from '$lib/utils/share-base';
 import { connectivityStore } from '$lib/stores/connectivity.store';
 import { sessionExpired } from '$lib/stores/session-expired.store';
 import { localOnly } from '$lib/stores/local-mode.store';
@@ -65,7 +66,8 @@ function createSharesStore() {
 		const nextDecoded: Record<string, DecodedTaskShare> = {};
 		const nextErrors = new Set<string>();
 		if (!cryptoManager.isInitialized()) return { decoded: nextDecoded, decryptErrors: nextErrors };
-		const origin = typeof window !== 'undefined' ? window.location.origin : '';
+		// Public web base (not the shell's local origin) - see share-base.ts.
+		const shareBase = getShareBase();
 		await Promise.all(
 			items.map(async (s) => {
 				let rawKey: string;
@@ -76,7 +78,7 @@ function createSharesStore() {
 					nextErrors.add(s.id);
 					return;
 				}
-				const url = buildShareUrl(`${origin}${base}`, s.slug, rawKey, SNAPSHOT_PAYLOAD_VERSION);
+				const url = buildShareUrl(shareBase, s.slug, rawKey, SNAPSHOT_PAYLOAD_VERSION);
 				try {
 					const key = await importKeyFromBase64url(rawKey);
 					const plaintext = await decryptSnapshotPayload(s.payload_encrypted, key);
@@ -111,7 +113,7 @@ function createSharesStore() {
 		}
 		state.update((s) => ({ ...s, loading: true, error: null }));
 		try {
-			const res = await authFetch(`${base}/api/shares`);
+			const res = await authFetch(`${API_BASE}/shares`);
 			const data = await res.json();
 			if (!data.success) {
 				state.update((s) => ({ ...s, loading: false, error: 'load_failed' }));
@@ -136,7 +138,7 @@ function createSharesStore() {
 	async function revoke(slug: string): Promise<boolean> {
 		if (!browser) return false;
 		try {
-			const res = await authFetch(`${base}/api/shares/${slug}`, { method: 'DELETE' });
+			const res = await authFetch(`${API_BASE}/shares/${slug}`, { method: 'DELETE' });
 			if (!res.ok) return false;
 			const now = new Date().toISOString();
 			state.update((s) => ({

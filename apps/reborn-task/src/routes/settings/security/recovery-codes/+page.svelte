@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { PUBLIC_BASE_PATH } from '$env/static/public';
+	import { API_BASE } from '$lib/utils/api-base';
+	import { copyText } from '$lib/utils/clipboard';
+	import { downloadBlob } from '$lib/utils/download';
 	import { onMount } from 'svelte';
 	import {
 		SettingsLayout,
@@ -52,7 +54,7 @@
 	async function fetchStatus() {
 		try {
 			const accessToken = localStorage.getItem('access_token');
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/recovery-codes`, {
+			const response = await fetch(`${API_BASE}/auth/recovery-codes`, {
 				headers: { Authorization: `Bearer ${accessToken}` }
 			});
 			const data = await response.json();
@@ -77,7 +79,7 @@
 
 		try {
 			const accessToken = localStorage.getItem('access_token');
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/recovery-codes`, {
+			const response = await fetch(`${API_BASE}/auth/recovery-codes`, {
 				method: 'POST',
 				headers: { Authorization: `Bearer ${accessToken}` }
 			});
@@ -115,18 +117,13 @@
 			...newCodes.map((code, i) => `${i + 1}. ${code}`)
 		].join('\n');
 
-		const blob = new Blob([content], { type: 'text/plain' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = 'reborn-backup-codes.txt';
-		a.click();
-		URL.revokeObjectURL(url);
+		// Native shells save through the share sheet (`<a download>` does nothing in WKWebView).
+		void downloadBlob(new Blob([content], { type: 'text/plain' }), 'reborn-backup-codes.txt');
 	}
 
 	async function copyCode(code: string, index: number) {
 		try {
-			await navigator.clipboard.writeText(code);
+			await copyText(code);
 			copiedIndex = index;
 			setTimeout(() => (copiedIndex = null), 2000);
 		} catch {
@@ -137,7 +134,7 @@
 	async function copyAllCodes() {
 		if (!newCodes.length) return;
 		try {
-			await navigator.clipboard.writeText(newCodes.join('\n'));
+			await copyText(newCodes.join('\n'));
 			toast.success($t('settings.security.backup_codes.copied'));
 		} catch {
 			// Clipboard not available

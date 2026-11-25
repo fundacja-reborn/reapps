@@ -19,6 +19,13 @@ import { taskTitleIndex } from './task-title-index.svelte';
 import { taskListStore } from '$lib/stores/decrypted-lists.store';
 import { setLocale } from '$lib/stores/i18n.store';
 import { sessionExpired } from '$lib/stores/session-expired.store';
+import { API_BASE } from '$lib/utils/api-base';
+import { nativeAuthHeaders } from '$lib/utils/native-client';
+import {
+	clearNativeRefreshToken,
+	persistNativeRefreshToken
+} from '$lib/utils/native-auth-storage';
+import { clearNativeSessionId, persistNativeSessionId } from '$lib/utils/native-session';
 
 const logger = createLogger('AuthOperationsService');
 
@@ -30,10 +37,23 @@ interface ReAuthResponseBody {
 		twoFactorRequired?: boolean;
 		challengeToken?: string;
 		access_token?: string;
+		/** Native shells only: the new session's refresh token and id (body transport). */
+		refresh_token?: string;
+		session_id?: string;
 		/** The account's password-wrapped master key, as the server holds it now. */
 		encryptedMasterKey?: string;
 		masterKeySalt?: string;
 	};
+}
+
+/**
+ * What a native shell keeps of a session a re-auth step opened: its refresh
+ * token (Keychain / Keystore) and id. Always empty on web, where both live in
+ * httpOnly cookies the server set.
+ */
+interface NativeSessionHandoff {
+	refreshToken?: string;
+	sessionId?: string;
 }
 
 /**
@@ -47,7 +67,7 @@ interface ReAuthResponseBody {
  * `@reborn/crypto` local-passcode.ts.
  */
 type SignInStepResult =
-	| { kind: 'ok'; accessToken: string; wrapStored: boolean }
+	| { kind: 'ok'; accessToken: string; wrapStored: boolean; native: NativeSessionHandoff }
 	| { kind: 'two_factor_required'; challengeToken: string; wrapStored: boolean }
 	| { kind: 'invalid_password' }
 	| { kind: 'locked'; retryAfter: number }
@@ -601,6 +621,10 @@ export class AuthOperationsService {
 
 			// Clear tokens
 			localStorage.removeItem('access_token');
+			// Native: this device's refresh token (Keychain / Keystore) and session
+			// id go with the session. No-ops on web; never throw.
+			await clearNativeRefreshToken();
+			clearNativeSessionId();
 
 			// The Web App Lock is tied to this account's password wrap: the next
 			// session (another account, or local-only mode) starts without it.
@@ -648,9 +672,8 @@ export class AuthOperationsService {
 
 		// Call server to invalidate all sessions
 		try {
-			const { PUBLIC_BASE_PATH } = await import('$env/static/public');
 			const accessToken = localStorage.getItem('access_token');
-			await fetch(`${PUBLIC_BASE_PATH}/api/auth/logout-all`, {
+			await fetch(`${API_BASE}/auth/logout-all`, {
 				method: 'POST',
 				headers: { Authorization: `Bearer ${accessToken}` }
 			});
@@ -671,6 +694,8 @@ export class AuthOperationsService {
 
 		// Full local cleanup (same as logout)
 		localStorage.removeItem('access_token');
+		await clearNativeRefreshToken();
+		clearNativeSessionId();
 		await this.clearWebLock();
 
 		if (globalThis.__tokenRefreshInterval) {
@@ -1175,8 +1200,18 @@ export class AuthOperationsService {
 		}
 		if (step.kind !== 'ok') return step;
 
+		await this.adoptNativeSession(step.native);
 		await this.refreshAfterReauth(step.accessToken);
 		return { kind: 'ok' };
+	}
+
+	/**
+	 * Native: keep the refresh token and session id of a session a re-auth step
+	 * opened, so the shell's later refreshes and logout use it. No-ops on web.
+	 */
+	private async adoptNativeSession(handoff: NativeSessionHandoff): Promise<void> {
+		await persistNativeRefreshToken(handoff.refreshToken);
+		persistNativeSessionId(handoff.sessionId);
 	}
 
 	/**
@@ -1206,6 +1241,7 @@ export class AuthOperationsService {
 		if (step.kind === 'error') return { kind: 'error' };
 
 		if (step.kind === 'ok') {
+			await this.adoptNativeSession(step.native);
 			localStorage.setItem('access_token', step.accessToken);
 			syncService.setAuthToken(step.accessToken);
 			this.clearSessionExpired();
@@ -1262,12 +1298,12 @@ export class AuthOperationsService {
 			return { kind: 'error', message: 'Corrupted credentials' };
 		}
 
-		const { PUBLIC_BASE_PATH } = await import('$env/static/public');
 		let res: Response;
 		try {
-			res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/login`, {
+			res = await fetch(`${API_BASE}/auth/login`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				// Native shell: ask for the refresh token in the body (no-op on web).
+				headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
 				body: JSON.stringify({ username, password })
 			});
 		} catch (err) {
@@ -1304,7 +1340,12 @@ export class AuthOperationsService {
 		}
 
 		if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
-		return { kind: 'ok', accessToken: data.access_token, wrapStored };
+		return {
+			kind: 'ok',
+			accessToken: data.access_token,
+			wrapStored,
+			native: { refreshToken: data.refresh_token, sessionId: data.session_id }
+		};
 	}
 
 	/**
@@ -1314,12 +1355,12 @@ export class AuthOperationsService {
 	async verifyTotpForReauth(challengeToken: string, code: string): Promise<ReAuthResult> {
 		if (!browser) return { kind: 'error', message: 'Not in browser' };
 
-		const { PUBLIC_BASE_PATH } = await import('$env/static/public');
 		let res: Response;
 		try {
-			res = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa/verify`, {
+			res = await fetch(`${API_BASE}/auth/2fa/verify`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				// Native shell: ask for the refresh token in the body (no-op on web).
+				headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
 				body: JSON.stringify({ challengeToken, code })
 			});
 		} catch (err) {
@@ -1355,6 +1396,7 @@ export class AuthOperationsService {
 		if (!data?.access_token) return { kind: 'error', message: 'Missing access token' };
 
 		this.storeAccountWrap(data);
+		await this.adoptNativeSession({ refreshToken: data.refresh_token, sessionId: data.session_id });
 		await this.refreshAfterReauth(data.access_token);
 		return { kind: 'ok' };
 	}

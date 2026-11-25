@@ -5,7 +5,6 @@
 
   /** A failure whose message is already a translated text for the user. */
   class ShareUiError extends Error {}
-  import { base } from '$app/paths';
   import {
     Dialog,
     DialogContent,
@@ -20,6 +19,9 @@
   } from '@reborn/ui';
   import { t } from '$lib/stores/i18n.store';
   import { authFetch } from '$lib/utils/auth-fetch';
+  import { API_BASE } from '$lib/utils/api-base';
+  import { getShareBase } from '$lib/utils/share-base';
+  import { copyText } from '$lib/utils/clipboard';
   import { sharesStore } from '$lib/stores/shares.store';
   import {
     cryptoManager,
@@ -163,7 +165,7 @@
       const ownerKeyWrapped = await cryptoManager.encryptString(keyBase64url);
 
       const expirySeconds = SHARE_EXPIRY_PRESETS[expiry];
-      const res = await authFetch(`${base}/api/shares`, {
+      const res = await authFetch(`${API_BASE}/shares`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -181,9 +183,9 @@
         );
       }
       const json = (await res.json()) as { success: boolean; data: CreateShareResponse };
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      // Public web base (not the native shell's local origin) - share-base.ts.
       resultUrl = buildShareUrl(
-        `${origin}${base}`,
+        getShareBase(),
         json.data.slug,
         keyBase64url,
         SNAPSHOT_PAYLOAD_VERSION
@@ -201,7 +203,7 @@
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(resultUrl);
+      await copyText(resultUrl);
       toastStore.success($t('share.create.copied'));
     } catch {
       toastStore.error($t('share.create.copy_failed'));

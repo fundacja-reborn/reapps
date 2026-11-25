@@ -1,5 +1,5 @@
 import { browser } from '$app/environment';
-import { PUBLIC_BASE_PATH } from '$env/static/public';
+import { API_BASE } from '$lib/utils/api-base';
 import { cryptoManager } from '@reborn/crypto';
 import { AuthService, SessionManager } from '@reborn/auth';
 import { AuthStorageAdapter } from './adapters/authStorage';
@@ -38,7 +38,7 @@ export function initializeAuthService(
 
 		// Create adapters
 		const storage = new AuthStorageAdapter();
-		const apiClient = new AuthApiAdapter(import.meta.env.VITE_API_URL || `${PUBLIC_BASE_PATH}/api`);
+		const apiClient = new AuthApiAdapter(import.meta.env.VITE_API_URL || API_BASE);
 
 		// Create auth service
 		authService = new AuthService(

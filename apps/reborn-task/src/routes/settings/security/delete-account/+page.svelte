@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { PUBLIC_BASE_PATH } from '$env/static/public';
+	import { API_BASE } from '$lib/utils/api-base';
+	import { clearNativeRefreshToken } from '$lib/utils/native-auth-storage';
+	import { clearNativeSessionId } from '$lib/utils/native-session';
 	import { tick } from 'svelte';
 	import {
 		SettingsLayout,
@@ -57,7 +59,7 @@
 				return;
 			}
 
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/delete-account`, {
+			const response = await fetch(`${API_BASE}/auth/delete-account`, {
 				method: 'DELETE',
 				headers: {
 					'Content-Type': 'application/json',
@@ -75,8 +77,11 @@
 					submitError = $t('settings.delete_account.error_generic');
 				}
 			} else {
-				// Clear local data: auth state + IndexedDB + hard redirect
+				// Clear local data: auth state + IndexedDB + hard redirect. Native: the
+				// account's refresh token and session id go too.
 				await authLogout(true);
+				await clearNativeRefreshToken();
+				clearNativeSessionId();
 				try {
 					const { clearAllUserData } = await import('@reborn/storage');
 					await clearAllUserData();

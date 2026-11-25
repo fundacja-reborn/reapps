@@ -415,6 +415,36 @@ importers:
 
   apps/reborn-task:
     dependencies:
+      '@aparajita/capacitor-secure-storage':
+        specifier: 8.0.1
+        version: 8.0.1
+      '@capacitor/android':
+        specifier: 8.4.3
+        version: 8.4.3(@capacitor/core@8.4.3)
+      '@capacitor/app':
+        specifier: 8.1.2
+        version: 8.1.2(@capacitor/core@8.4.3)
+      '@capacitor/clipboard':
+        specifier: 8.0.1
+        version: 8.0.1(@capacitor/core@8.4.3)
+      '@capacitor/core':
+        specifier: 8.4.3
+        version: 8.4.3
+      '@capacitor/filesystem':
+        specifier: 8.1.5
+        version: 8.1.5(@capacitor/core@8.4.3)
+      '@capacitor/ios':
+        specifier: 8.4.3
+        version: 8.4.3(@capacitor/core@8.4.3)
+      '@capacitor/network':
+        specifier: 8.0.1
+        version: 8.0.1(@capacitor/core@8.4.3)
+      '@capacitor/share':
+        specifier: 8.0.3
+        version: 8.0.3(@capacitor/core@8.4.3)
+      '@capacitor/splash-screen':
+        specifier: 8.0.2
+        version: 8.0.2(@capacitor/core@8.4.3)
       '@internationalized/date':
         specifier: 3.12.4
         version: 3.12.4
@@ -436,6 +466,9 @@ importers:
       '@reborn/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@reborn/platform':
+        specifier: workspace:*
+        version: link:../../packages/platform
       '@reborn/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -470,6 +503,9 @@ importers:
         specifier: 3.6.7
         version: 3.6.7
     devDependencies:
+      '@capacitor/cli':
+        specifier: 8.4.3
+        version: 8.4.3
       '@eslint/js':
         specifier: 10.0.1
         version: 10.0.1(eslint@10.4.1(jiti@2.7.0))

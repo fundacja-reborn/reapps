@@ -1,30 +1,28 @@
-import { base } from '$app/paths';
 import { browser } from '$app/environment';
 import { derived, readable, type Readable } from 'svelte/store';
-import {
-	getConnectivity,
-	type ConnectivityState,
-	type ConnectivityStore
-} from '@reborn/api-client';
+import type { NetworkState, PlatformNetwork } from '@reborn/platform';
+import { platform } from '$lib/platform';
 
 /**
- * App-local wrapper around `@reborn/api-client`'s connectivity singleton.
- * Binds the probe endpoint to this app's `/api/health` and exposes Svelte
- * stores for reactive consumption.
+ * App-facing connectivity, sourced from the platform layer (`@reborn/platform`).
  *
- * Why an active probe instead of `navigator.onLine`: an active VPN tunnel
- * (e.g. Proton in airplane mode) keeps a network interface up, so the browser
- * reports `online: true` even when there is no upstream. Only a real HTTP
- * round-trip against our own origin tells the truth.
+ * - **Web**: an active HTTP probe against this app's same-origin `/api/health`
+ *   (configured in `$lib/platform`). `navigator.onLine` lies with a VPN tunnel
+ *   up - e.g. Proton in airplane mode keeps a network interface alive - so only
+ *   a real round-trip against our own origin tells the truth.
+ * - **Native**: device network state via `@capacitor/network`. The web HTTP
+ *   probe is meaningless in the shell (assets are local and answer same-origin
+ *   regardless of upstream).
+ *
+ * The exported surface is unchanged, so consumers (network store, sync,
+ * shares, layout) need no changes.
  */
 
-const ssrState: ConnectivityState = { status: 'unknown', lastProbeAt: null };
+const ssrState: NetworkState = { status: 'unknown', lastProbeAt: null };
 
-export const connectivityStore: ConnectivityStore | null = browser
-	? getConnectivity({ endpoint: `${base}/api/health` })
-	: null;
+export const connectivityStore: PlatformNetwork | null = browser ? platform.network : null;
 
-export const connectivity: Readable<ConnectivityState> = connectivityStore
+export const connectivity: Readable<NetworkState> = connectivityStore
 	? { subscribe: connectivityStore.subscribe.bind(connectivityStore) }
 	: readable(ssrState);
 

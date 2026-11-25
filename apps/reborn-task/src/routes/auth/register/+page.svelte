@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { PUBLIC_BASE_PATH } from '$env/static/public';
+	import { API_BASE } from '$lib/utils/api-base';
+	import { nativeAuthHeaders } from '$lib/utils/native-client';
+	import { persistNativeRefreshToken } from '$lib/utils/native-auth-storage';
 	import { PUBLIC_SITE_URL } from '$env/static/public';
 	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
@@ -122,10 +124,12 @@
 
 			// 2. Call register API — user (+ default task list for fresh accounts)
 			//    created atomically on server.
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/register`, {
+			const response = await fetch(`${API_BASE}/auth/register`, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					// Native shell: ask for the refresh token in the body (no-op on web).
+					...nativeAuthHeaders()
 				},
 				body: JSON.stringify({
 					username: detail.username,
@@ -147,6 +151,11 @@
 				error = $t(authErrorKey(data.error, 'auth.register.errors.server_error'));
 				return;
 			}
+
+			// Native: the new account's refresh token came in the body - keep it in
+			// secure storage (no-op on web, where it is an httpOnly cookie). A fresh
+			// account re-logs in below, which replaces it with the login session's.
+			await persistNativeRefreshToken(data.data?.refresh_token);
 
 			if (isUpgrade) {
 				// 3a. Promote the local session to the new account WITHOUT the login
@@ -207,7 +216,7 @@
 	showLoginLink={true}
 	loginUrl="/auth/login"
 	showLocalModeLink={true}
-	powEndpoint="{PUBLIC_BASE_PATH}/api/auth/pow"
+	powEndpoint="{API_BASE}/auth/pow"
 	{termsUrl}
 	{privacyUrl}
 	themeStorageKey="reborn-task-theme"

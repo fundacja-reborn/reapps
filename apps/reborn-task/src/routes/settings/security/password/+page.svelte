@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { PUBLIC_BASE_PATH } from '$env/static/public';
+	import { API_BASE } from '$lib/utils/api-base';
+	import { clearNativeRefreshToken } from '$lib/utils/native-auth-storage';
+	import { clearNativeSessionId } from '$lib/utils/native-session';
 	import { tick } from 'svelte';
 	import { SettingsLayout, Card, CardContent, CardHeader, CardTitle, CardDescription, Label, Input, Button, Alert, AlertDescription } from '@reborn/ui';
 	import { Lock, AlertTriangle, Eye, EyeOff } from '@lucide/svelte';
@@ -90,7 +92,7 @@
 				return;
 			}
 
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/change-password`, {
+			const response = await fetch(`${API_BASE}/auth/change-password`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -121,8 +123,11 @@
 
 				toast.success($t('settings.security.password.success'));
 
-				// Logout and redirect to login (all refresh tokens invalidated)
+				// Logout and redirect to login (all refresh tokens invalidated). Native:
+				// the stored refresh token is dead now - drop it with the session id.
 				await authLogout(true);
+				await clearNativeRefreshToken();
+				clearNativeSessionId();
 				await goto('/auth/login');
 			}
 		} catch (err: unknown) {

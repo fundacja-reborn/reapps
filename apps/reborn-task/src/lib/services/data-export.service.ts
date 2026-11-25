@@ -4,6 +4,7 @@ import {
 	encryptWithPassword
 } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
+import { downloadBlob } from '$lib/utils/download';
 import type {
 	ListDecrypted,
 	ListEncrypted,
@@ -264,7 +265,7 @@ export class DataExportService {
 	 */
 	async exportDecrypted(): Promise<void> {
 		const exportData = await this.buildDecryptedPayload();
-		this.triggerDownload(exportData, `reborn-task-export-${this.dateStamp()}.json`);
+		await this.triggerDownload(exportData, `reborn-task-export-${this.dateStamp()}.json`);
 	}
 
 	/**
@@ -314,7 +315,7 @@ export class DataExportService {
 	 */
 	async exportEncryptedPortable(password: string): Promise<void> {
 		const { blob } = await this.buildPortableBackup(password);
-		this.triggerDownloadBlob(blob, `reborn-task-backup-portable-${this.dateStamp()}.json`);
+		await downloadBlob(blob, `reborn-task-backup-portable-${this.dateStamp()}.json`);
 	}
 
 	/**
@@ -367,7 +368,7 @@ export class DataExportService {
 			subtasks: exportData.data.subtasks.length
 		});
 
-		this.triggerDownload(exportData, `reborn-task-backup-${this.dateStamp()}.json`);
+		await this.triggerDownload(exportData, `reborn-task-backup-${this.dateStamp()}.json`);
 	}
 
 	/**
@@ -407,21 +408,13 @@ export class DataExportService {
 		]) as unknown as SubtaskEncrypted;
 	}
 
-	private triggerDownload(data: ExportData | PortableEncryptedExport, filename: string): void {
+	/** Save the export: a browser download on web, the share sheet in the native shell. */
+	private async triggerDownload(
+		data: ExportData | PortableEncryptedExport,
+		filename: string
+	): Promise<void> {
 		const json = JSON.stringify(data, null, 2);
-		this.triggerDownloadBlob(new Blob([json], { type: 'application/json' }), filename);
-	}
-
-	private triggerDownloadBlob(blob: Blob, filename: string): void {
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = filename;
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-		// Defer revoke so the browser has time to start the download.
-		setTimeout(() => URL.revokeObjectURL(url), 1000);
+		await downloadBlob(new Blob([json], { type: 'application/json' }), filename);
 	}
 
 	private dateStamp(): string {

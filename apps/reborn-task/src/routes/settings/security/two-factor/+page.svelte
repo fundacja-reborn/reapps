@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { PUBLIC_BASE_PATH } from '$env/static/public';
+	import { API_BASE } from '$lib/utils/api-base';
+	import { copyText } from '$lib/utils/clipboard';
+	import { downloadBlob } from '$lib/utils/download';
 	import { onMount, tick } from 'svelte';
 	import {
 		SettingsLayout,
@@ -95,7 +97,7 @@
 	async function fetchStatus() {
 		try {
 			const accessToken = getAccessToken();
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa`, {
+			const response = await fetch(`${API_BASE}/auth/2fa`, {
 				headers: { Authorization: `Bearer ${accessToken}` }
 			});
 			const data = await response.json();
@@ -123,7 +125,7 @@
 
 		try {
 			const accessToken = getAccessToken();
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa`, {
+			const response = await fetch(`${API_BASE}/auth/2fa`, {
 				method: 'POST',
 				headers: { Authorization: `Bearer ${accessToken}` }
 			});
@@ -169,7 +171,7 @@
 
 		try {
 			const accessToken = getAccessToken();
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa`, {
+			const response = await fetch(`${API_BASE}/auth/2fa`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json',
@@ -192,7 +194,7 @@
 
 				// Auto-generate recovery codes
 				try {
-					const codesResponse = await fetch(`${PUBLIC_BASE_PATH}/api/auth/recovery-codes`, {
+					const codesResponse = await fetch(`${API_BASE}/auth/recovery-codes`, {
 						method: 'POST',
 						headers: { Authorization: `Bearer ${accessToken}` }
 					});
@@ -254,7 +256,7 @@
 
 		try {
 			const accessToken = getAccessToken();
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa`, {
+			const response = await fetch(`${API_BASE}/auth/2fa`, {
 				method: 'DELETE',
 				headers: {
 					'Content-Type': 'application/json',
@@ -301,18 +303,13 @@
 			...recoveryCodes.map((code, i) => `${i + 1}. ${code}`)
 		].join('\n');
 
-		const blob = new Blob([content], { type: 'text/plain' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = 'reborn-backup-codes.txt';
-		a.click();
-		URL.revokeObjectURL(url);
+		// Native shells save through the share sheet (`<a download>` does nothing in WKWebView).
+		void downloadBlob(new Blob([content], { type: 'text/plain' }), 'reborn-backup-codes.txt');
 	}
 
 	async function copyCode(code: string, index: number) {
 		try {
-			await navigator.clipboard.writeText(code);
+			await copyText(code);
 			copiedIndex = index;
 			setTimeout(() => (copiedIndex = null), 2000);
 		} catch {
@@ -323,7 +320,7 @@
 	async function copyAllCodes() {
 		if (!recoveryCodes.length) return;
 		try {
-			await navigator.clipboard.writeText(recoveryCodes.join('\n'));
+			await copyText(recoveryCodes.join('\n'));
 			toast.success($t('settings.security.backup_codes.copied'));
 		} catch {
 			// Clipboard not available
@@ -332,7 +329,7 @@
 
 	async function copySecret() {
 		try {
-			await navigator.clipboard.writeText(secretBase32);
+			await copyText(secretBase32);
 			secretCopied = true;
 			setTimeout(() => (secretCopied = false), 2000);
 		} catch {

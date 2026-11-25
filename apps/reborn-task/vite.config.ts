@@ -8,7 +8,11 @@ const rootPkg = JSON.parse(readFileSync(resolve(__dirname, '../../package.json')
 
 export default defineConfig({
 	define: {
-		__APP_VERSION__: JSON.stringify(rootPkg.version)
+		__APP_VERSION__: JSON.stringify(rootPkg.version),
+		// Build-time native (Capacitor) flag. Statically `false` on the web build,
+		// so every `if (__REBORN_NATIVE__)` branch (and the Capacitor plugins
+		// behind it) is dead-code-eliminated - keeping the web bundle unchanged.
+		__REBORN_NATIVE__: JSON.stringify(process.env.BUILD_TARGET === 'native')
 	},
 	plugins: [
 		tailwindcss(),
@@ -23,18 +27,25 @@ export default defineConfig({
 			}
 		}
 	],
-	// Load .env from monorepo root
+	// Load .env from monorepo root. Consequence for store builds: every PUBLIC_*
+	// the dev box happens to have in that file is baked into the bundle, so the
+	// `build-native*` targets pin the user-facing ones inline (process.env wins
+	// over .env in Vite's loadEnv) - same rule as re/notes (fixed there 2026-07-30).
 	envDir: '../../',
 	resolve: {
 		alias: {
 			$lib: resolve('./src/lib'),
 			'@reborn/auth/server': resolve('../../packages/auth/src/server.ts'),
+			'@reborn/auth/native-client': resolve('../../packages/auth/src/utils/native-client.ts'),
 			'@reborn/auth': resolve('../../packages/auth/src/index.ts'),
 			'@reborn/crypto': resolve('../../packages/crypto/src/index.ts'),
 			'@reborn/types': resolve('../../packages/types/src/index.ts'),
 			'@reborn/utils': resolve('../../packages/utils/src/index.ts'),
 			'@reborn/storage': resolve('../../packages/storage/src/index.ts'),
 			'@reborn/api-client': resolve('../../packages/api-client/src/index.ts'),
+			// Subpath first, or the alias below would capture it as `index.ts/native`.
+			'@reborn/platform/native': resolve('../../packages/platform/src/native/index.ts'),
+			'@reborn/platform': resolve('../../packages/platform/src/index.ts'),
 			// Removed @reborn/ui alias to let Vite use package.json exports
 			// Subpaths first: the alias below would otherwise also capture
 			// `@reborn/i18n/direction` / `/config` (used by server code) as

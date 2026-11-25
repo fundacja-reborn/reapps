@@ -12,3 +12,15 @@ vite.config.ts.timestamp-*
 # Tailwind v4 doesn't need config file
 tailwind.config.js
 tailwind.config.js.backup
+
+# Native (Capacitor) static build - Capacitor's webDir (svelte.config.js).
+/build-native
+# Generated from app.html by the root scripts/gen-native-template.mjs on every build-native*.
+/src/app.native.html
+
+# Capacitor native projects: `android/` and `ios/` are tracked (as in
+# re/notes); their nested `.gitignore` files keep build artifacts,
+# `local.properties`, DerivedData, copied web assets and generated config out.
+# Signing material never enters the repo (android/keystore.properties is
+# ignored by the nested android/.gitignore).
+/android/.idea/

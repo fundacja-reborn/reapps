@@ -12,6 +12,38 @@
 				"command": "vite build"
 			}
 		},
+		"build-native": {
+			"executor": "nx:run-commands",
+			"outputs": ["{projectRoot}/build-native"],
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "node ../../scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_BASE_PATH= PUBLIC_SITE_URL=https://reapps.eu PUBLIC_NOTES_URL=https://reapps.eu/notes PUBLIC_API_BASE_URL=https://staging.reapps.eu/task/api vite build"
+			}
+		},
+		"build-native-local": {
+			"executor": "nx:run-commands",
+			"outputs": ["{projectRoot}/build-native"],
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "node ../../scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_BASE_PATH= PUBLIC_SITE_URL=https://reapps.eu PUBLIC_NOTES_URL=https://reapps.eu/notes PUBLIC_API_BASE_URL=http://10.0.2.2/task/api vite build"
+			}
+		},
+		"build-native-local-ios": {
+			"executor": "nx:run-commands",
+			"outputs": ["{projectRoot}/build-native"],
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "node ../../scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_BASE_PATH= PUBLIC_SITE_URL=https://reapps.eu PUBLIC_NOTES_URL=https://reapps.eu/notes PUBLIC_API_BASE_URL=http://localhost/task/api vite build"
+			}
+		},
+		"build-native-prod": {
+			"executor": "nx:run-commands",
+			"outputs": ["{projectRoot}/build-native"],
+			"options": {
+				"cwd": "apps/reborn-task",
+				"command": "node ../../scripts/gen-native-template.mjs && NODE_ENV=production BUILD_TARGET=native PUBLIC_BASE_PATH= PUBLIC_SITE_URL=https://reapps.eu PUBLIC_NOTES_URL=https://reapps.eu/notes PUBLIC_API_BASE_URL=https://reapps.eu/task/api vite build"
+			}
+		},
 		"dev": {
 			"executor": "nx:run-commands",
 			"options": {

@@ -1,10 +1,10 @@
 import { ApiClient } from '@reborn/api-client';
 import type { UnauthorizedResult } from '@reborn/api-client';
 import { TransientRefreshError } from '@reborn/auth';
-import { PUBLIC_BASE_PATH } from '$env/static/public';
 import { createLogger } from '@reborn/utils';
 import type { Logger } from '@reborn/utils';
 import { authFetch } from '$lib/utils/auth-fetch';
+import { API_BASE } from '$lib/utils/api-base';
 import { sessionExpired } from '$lib/stores/session-expired.store';
 
 /**
@@ -17,8 +17,9 @@ export abstract class SyncBaseService {
 	constructor(loggerName: string) {
 		this.logger = createLogger(loggerName);
 
-		// Use base path prefix for sub-path deployments (e.g. /task/api when PUBLIC_BASE_PATH=/task)
-		const baseUrl = `${PUBLIC_BASE_PATH}/api`;
+		// Same-origin `${base}/api` on web (e.g. /task/api when PUBLIC_BASE_PATH=/task),
+		// the absolute remote API in the native shell - see api-base.ts.
+		const baseUrl = API_BASE;
 		this.logger.debug('Initializing sync service with base URL:', baseUrl);
 
 		// Create API client. AuthInterceptor adds the Bearer header on each
