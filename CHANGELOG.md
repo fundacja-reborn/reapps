@@ -1,3 +1,11 @@
+## 0.59.2 (2026-11-25)
+
+### 🩹 Fixes
+
+- **auth:** log out only the current device ([#655](https://github.com/fundacja-reborn/reapps/pull/655))
+- **notes:** show desktop folder paths from the real home folder ([#650](https://github.com/fundacja-reborn/reapps/pull/650))
+- **notes:** use the system TLS in the desktop shell ([#653](https://github.com/fundacja-reborn/reapps/pull/653))
+
 ## 0.59.1 (2026-11-24)
 
 ### 🩹 Fixes
