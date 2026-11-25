@@ -36,7 +36,12 @@ const RATE_LIMITED_AUTH = new Set([
 	`${BASE}/api/auth/login`,
 	`${BASE}/api/auth/2fa/verify`,
 ]);
-const RATE_LIMITED_REFRESH = new Set([`${BASE}/api/auth/refresh`]);
+const RATE_LIMITED_REFRESH = new Set([
+	`${BASE}/api/auth/refresh`,
+	// Native refresh takes the token in the body instead of the cookie but is
+	// the same unauthenticated DB-hitting operation (audit 012 N1).
+	`${BASE}/api/auth/refresh-native`
+]);
 const RATE_LIMITED_REGISTER = new Set([`${BASE}/api/auth/register`]);
 const RATE_LIMITED_POW = new Set([`${BASE}/api/auth/pow`]);
 const MAX_BODY_BYTES = 1 * 1024 * 1024;
@@ -205,14 +210,14 @@ const localeHandle: Handle = async ({ event, resolve }) => {
 // Per-user data endpoint rate limiting
 //
 // Abuse backstop for every /api/ data route. Auth routes keep their own,
-// stricter per-IP limiters above; health is public, cheap and polled by
-// monitors, so it stays out. Runs AFTER authHandle so it can key by the
+// stricter per-IP limiters above; health and app-config are public, cheap and
+// polled (monitors, native shells on resume), so they stay out. Runs AFTER authHandle so it can key by the
 // stable userId - an IP key would punish users behind one NAT while doing
 // nothing against an attacker rotating IPs. Unauthenticated hits (e.g.
 // public share views) fall back to the IP key; the dedicated per-route
 // limiters (sharePublicLimiter, notificationLimiter) stay the tighter
 // bound where they apply.
-const DATA_RATE_EXEMPT = new Set([`${BASE}/api/health`]);
+const DATA_RATE_EXEMPT = new Set([`${BASE}/api/health`, `${BASE}/api/app-config`]);
 
 const dataRateLimitHandle: Handle = async ({ event, resolve }) => {
 	const { pathname } = event.url;

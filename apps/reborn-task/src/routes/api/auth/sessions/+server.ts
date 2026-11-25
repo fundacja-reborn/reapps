@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createLogger } from '@reborn/utils';
-import { verifyToken } from '@reborn/auth/server';
+import { NATIVE_SESSION_HEADER, verifyToken } from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 
 const logger = createLogger('Sessions');
@@ -30,8 +30,11 @@ export const GET: RequestHandler = async ({ request, cookies }) => {
 		if (!info) return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
 		// Use session_id cookie (set at login) — JWT sessionId is a random UUID that
-		// never matches UserSession.id, so cookie is the reliable source.
-		const currentSessionId = cookies.get('session_id') ?? null;
+		// never matches UserSession.id, so cookie is the reliable source. A native
+		// shell never delivers that cookie cross-site and names its session in a
+		// header instead; it only picks which row is highlighted as "this device".
+		const currentSessionId =
+			cookies.get('session_id') ?? request.headers.get(NATIVE_SESSION_HEADER) ?? null;
 
 		const now = new Date();
 		const sessions = await prisma.userSession.findMany({

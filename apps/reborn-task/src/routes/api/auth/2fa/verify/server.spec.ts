@@ -35,7 +35,8 @@ vi.mock('@reborn/auth/server', () => ({
 	refreshTokenExpiryDate: () => new Date(Date.now() + 60 * 60 * 24 * 30 * 1000),
 	TWO_FACTOR_CHALLENGE_PURPOSE: '2fa_challenge',
 	verifySingleUseToken: mockChallenge.verifySingleUseToken,
-	consumeSingleUseToken: mockChallenge.consumeSingleUseToken
+	consumeSingleUseToken: mockChallenge.consumeSingleUseToken,
+	isNativeClient: (request: Request) => request.headers.get('x-reborn-client') === 'native'
 }));
 
 vi.mock('@reborn/utils', () => ({

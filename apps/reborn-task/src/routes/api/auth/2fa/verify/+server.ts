@@ -7,7 +7,8 @@ import {
 	REFRESH_TOKEN_TTL_SECONDS,
 	refreshTokenExpiryDate,
 	TWO_FACTOR_CHALLENGE_PURPOSE,
-	verifySingleUseToken
+	verifySingleUseToken,
+	isNativeClient
 } from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 import { v4 as uuidv4 } from 'uuid';
@@ -140,6 +141,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		});
 
 		// Create UserSession
+		let nativeSessionId: string | undefined;
 		try {
 			const session = await prisma.userSession.create({
 				data: {
@@ -149,6 +151,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 					is_active: true
 				}
 			});
+
+			// Native clients can't read the httpOnly session_id cookie below
+			// (cross-site), so capture the id to hand back in the body.
+			nativeSessionId = session.id;
 
 			// Link the refresh token to this session
 			await prisma.refreshToken.updateMany({
@@ -176,20 +182,27 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		logger.info(`2FA verification successful for user ${user.username}`);
 
-		return json({
-			success: true,
-			data: {
-				user: {
-					id: user.id,
-					username: user.username,
-					created_at: user.created_at.toISOString(),
-					updated_at: user.updated_at.toISOString()
-				},
-				encryptedMasterKey: user.master_key_encrypted,
-				masterKeySalt: user.master_key_salt,
-				access_token: accessToken
-			}
-		});
+		const responseBody: Record<string, unknown> = {
+			user: {
+				id: user.id,
+				username: user.username,
+				created_at: user.created_at.toISOString(),
+				updated_at: user.updated_at.toISOString()
+			},
+			encryptedMasterKey: user.master_key_encrypted,
+			masterKeySalt: user.master_key_salt,
+			access_token: accessToken
+		};
+		// A native shell persists the refresh token in secure storage (it cannot
+		// use the httpOnly cookie cross-origin). Web clients send no native header
+		// -> the response stays byte-identical.
+		if (isNativeClient(request)) {
+			responseBody.refresh_token = refreshToken;
+			// Native names its current session with this (logout, list highlight).
+			if (nativeSessionId) responseBody.session_id = nativeSessionId;
+		}
+
+		return json({ success: true, data: responseBody });
 	} catch (error: unknown) {
 		logger.error('2FA verify error:', error);
 		return json({ success: false, error: 'Internal server error' }, { status: 500 });
