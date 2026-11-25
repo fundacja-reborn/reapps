@@ -318,15 +318,72 @@ export async function handleLogin(
   }
 }
 
+/** What the device that logs out presents to name its own session. */
+export interface LogoutDevice {
+  /**
+   * The refresh token this device holds: the httpOnly cookie on web, the token
+   * from secure storage sent in the body by the native shell. It pins the exact
+   * token family, and names the user when the access token has already expired.
+   */
+  refreshToken?: string;
+  /** This device's `UserSession` id: the httpOnly cookie on web, a header on native. */
+  sessionId?: string;
+}
+
+export interface LogoutResult {
+  /** The user the logout resolved to (from the access token or the refresh token). */
+  userId: string;
+  /** `UserSession` ids of this device, for the route to deactivate. */
+  sessionIds: string[];
+}
+
 /**
- * Handle user logout
+ * Handle user logout - of THIS device only.
+ *
+ * Revokes the refresh-token family this device holds and the tokens linked to
+ * its session, never the user's other devices: "log out everywhere" is the
+ * separate `/logout-all` endpoint. Logout used to delete every refresh token of
+ * the user, so signing out on one device expired the session on all the others
+ * as soon as their 15-minute access token ran out.
+ *
+ * Every deletion is scoped to `userId`. With neither a refresh token nor a
+ * session id there is nothing that names this device, so only the access token
+ * is revoked - falling back to "all of the user's tokens" is the bug above.
  */
 export async function handleLogout(
   userId: string | undefined,
   options: HandlerOptions,
-  accessToken?: string
-): Promise<ApiResponse<void>> {
+  accessToken?: string,
+  device: LogoutDevice = {}
+): Promise<ApiResponse<LogoutResult>> {
   try {
+    const { dbClient } = options;
+
+    // Blacklist the access token so it's rejected immediately (a no-op for an
+    // expired or invalid one).
+    if (accessToken) {
+      await blacklistAccessToken(accessToken);
+    }
+
+    let familyId: string | undefined;
+    const sessionIds = new Set<string>();
+    if (device.sessionId) sessionIds.add(device.sessionId);
+
+    if (device.refreshToken) {
+      const stored = await dbClient.refreshToken.findUnique({
+        where: { token: device.refreshToken },
+        select: { user_id: true, family_id: true, session_id: true }
+      });
+      // A token of another user than the access token names is ignored, never
+      // revoked from here. Without a valid access token, holding the refresh
+      // token is what proves the session is this device's.
+      if (stored && (!userId || stored.user_id === userId)) {
+        userId = stored.user_id;
+        familyId = stored.family_id;
+        if (stored.session_id) sessionIds.add(stored.session_id);
+      }
+    }
+
     if (!userId) {
       return {
         success: false,
@@ -334,22 +391,25 @@ export async function handleLogout(
       };
     }
 
-    const { dbClient } = options;
+    const scope: Record<string, unknown>[] = [];
+    if (familyId) scope.push({ family_id: familyId });
+    if (sessionIds.size > 0) scope.push({ session_id: { in: [...sessionIds] } });
 
-    // Blacklist the access token so it's rejected immediately
-    if (accessToken) {
-      await blacklistAccessToken(accessToken);
+    if (scope.length > 0) {
+      await dbClient.refreshToken.deleteMany({
+        where: { user_id: userId, OR: scope }
+      });
+    } else {
+      logger.warn(
+        'Logout without a refresh token or session id: only the access token was revoked'
+      );
     }
-
-    // Optional: Invalidate refresh tokens
-    await dbClient.refreshToken.deleteMany({
-      where: { user_id: userId }
-    });
 
     logger.info(`User logged out: ${userId}`);
 
     return {
-      success: true
+      success: true,
+      data: { userId, sessionIds: [...sessionIds] }
     };
   } catch (error) {
     logger.error('Logout handler error:', error);

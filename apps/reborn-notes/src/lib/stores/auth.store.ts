@@ -23,8 +23,9 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { base } from '$app/paths';
 import { API_BASE } from '$lib/utils/api-base';
-import { clearNativeRefreshToken } from '$lib/utils/native-auth-storage';
-import { clearNativeSessionId } from '$lib/utils/native-session';
+import { clearNativeRefreshToken, readNativeRefreshToken } from '$lib/utils/native-auth-storage';
+import { clearNativeSessionId, nativeSessionHeader } from '$lib/utils/native-session';
+import { IS_NATIVE } from '$lib/utils/native-client';
 import { cryptoManager } from '@reborn/crypto';
 import { sessionExpired, localOnly } from '$lib/stores/sync-status.store';
 import { forgetRememberedPlace } from '$lib/stores/start-place';
@@ -439,13 +440,23 @@ function createAuthStore() {
     sessionExpired.set(false);
     localOnly.set(false);
 
-    // Notify server to deactivate session (best-effort, fire-and-forget)
+    // Notify server to end THIS device's session (best-effort, fire-and-forget).
+    // Web: the httpOnly cookies name the session. Native: no cookie reaches this
+    // cross-site call, so send the refresh token from secure storage (read before
+    // it is cleared below) and the session id. The server ends only the session
+    // it can name - other devices stay logged in.
     const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`;
     }
-    fetch(`${API_BASE}/auth/logout`, { method: 'POST', headers }).catch((err) => {
+    let body: string | undefined;
+    if (IS_NATIVE) {
+      Object.assign(headers, nativeSessionHeader());
+      const refreshToken = await readNativeRefreshToken();
+      if (refreshToken) body = JSON.stringify({ refresh_token: refreshToken });
+    }
+    fetch(`${API_BASE}/auth/logout`, { method: 'POST', headers, body }).catch((err) => {
       logger.warn('Server logout call failed (non-critical):', err);
     });
 

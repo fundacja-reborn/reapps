@@ -22,9 +22,10 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
       data: { is_active: false }
     });
 
-    // Delete linked refresh tokens so the revoked device can no longer refresh
+    // Delete linked refresh tokens so the revoked device can no longer refresh.
+    // Scoped to the caller: a session id of another account must revoke nothing.
     await prisma.refreshToken.deleteMany({
-      where: { session_id: id }
+      where: { session_id: id, user_id: userId }
     });
 
     logger.info(`Session ${id} revoked for user ${userId}`);

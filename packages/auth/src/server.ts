@@ -43,7 +43,7 @@ export {
   handleRefreshToken,
   createDefaultHandlerOptions
 } from './api/handlers';
-export type { ApiResponse, HandlerOptions } from './api/handlers';
+export type { ApiResponse, HandlerOptions, LogoutDevice, LogoutResult } from './api/handlers';
 
 // E2E handlers
 export { handleE2ERegister } from './api/e2eHandlers';
