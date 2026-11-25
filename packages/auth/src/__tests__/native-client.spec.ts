@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isNativeClient, NATIVE_CLIENT_HEADER, NATIVE_CLIENT_VALUE } from './native-client';
+import { isNativeClient, NATIVE_CLIENT_HEADER, NATIVE_CLIENT_VALUE } from '../utils/native-client';
 
 function reqWith(headers: Record<string, string>): Request {
   return new Request('http://localhost/api/auth/login', { method: 'POST', headers });

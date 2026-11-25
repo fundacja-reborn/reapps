@@ -3,10 +3,10 @@ import { json } from '@sveltejs/kit';
 import {
   handleE2ERegister,
   createDefaultHandlerOptions,
-  REFRESH_TOKEN_TTL_SECONDS
+  REFRESH_TOKEN_TTL_SECONDS,
+  isNativeClient
 } from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
-import { isNativeClient } from '$lib/utils/native-client';
 import { createLogger } from '@reborn/utils';
 
 const logger = createLogger('Notes-Register');

@@ -1,66 +1,39 @@
 /**
- * Native (Capacitor) refresh-token persistence, backed by device secure storage
- * (iOS Keychain / Android Keystore-encrypted) via
- * `@aparajita/capacitor-secure-storage`.
+ * Native refresh-token persistence for re/notes: the shared implementation in
+ * `@reborn/platform/native` over this build's credential store
+ * (`getSecureStorage()` - Keychain / Keystore on the phones, the OS store on
+ * desktop).
  *
- * The refresh token cannot ride a cross-origin httpOnly cookie in the native
- * shell, so it lives here instead. Plugin access goes through
- * `getSecureStorage()` (see `native-secure-storage.ts`), which gates on
- * `__REBORN_NATIVE__` - on the web build the whole branch (and the plugin) is
- * dead-code-eliminated and each function is an inert no-op / null - and
- * applies the iOS Keychain access class (`whenUnlockedThisDeviceOnly`, no
- * backup migration, no iCloud sync) to every operation.
+ * The refresh token cannot ride a cross-origin httpOnly cookie in a native
+ * shell, so it lives here instead. This stores the rotating session refresh
+ * token only - NOT the master key.
  *
- * This stores the rotating session refresh token only - NOT the master key. The
- * master key never leaves the device unencrypted and is never written here.
- *
- * Errors from the secure-storage layer (rare OS failures) are swallowed and
- * degrade to "no token": a read failure surfaces as a missing session
- * (re-login), and createAuthFetch's refresh path handles `null` cleanly. This
- * keeps a broken secure-storage call from throwing out of the refresh flow.
+ * Every function is an inert no-op / null on web: `__REBORN_NATIVE__` is a
+ * build-time `false` there, so the bodies (and the storage plugin) are
+ * dead-code-eliminated. Storage errors degrade to "no token" (re-login); see
+ * the package module.
  */
 
+import {
+  clearRefreshToken,
+  persistRefreshToken,
+  readRefreshToken
+} from '@reborn/platform/native';
 import { getSecureStorage } from './native-secure-storage';
-
-const REFRESH_TOKEN_KEY = 'refresh_token';
 
 /** Persist the (rotated) refresh token after login / refresh. No-op on web. */
 export async function persistNativeRefreshToken(
   token: string | null | undefined
 ): Promise<void> {
-  if (!token) return;
-  if (__REBORN_NATIVE__) {
-    try {
-      const storage = await getSecureStorage();
-      await storage.setItem(REFRESH_TOKEN_KEY, token);
-    } catch {
-      // Write failed (rare OS error). The current access token is still valid for
-      // its lifetime; the next refresh will find no usable token and prompt re-login.
-    }
-  }
+  if (__REBORN_NATIVE__) await persistRefreshToken(getSecureStorage, token);
 }
 
 /** Read the persisted refresh token, or null if none / on error. null on web. */
 export async function readNativeRefreshToken(): Promise<string | null> {
-  if (__REBORN_NATIVE__) {
-    try {
-      const storage = await getSecureStorage();
-      return await storage.getItem(REFRESH_TOKEN_KEY);
-    } catch {
-      return null;
-    }
-  }
-  return null;
+  return __REBORN_NATIVE__ ? readRefreshToken(getSecureStorage) : null;
 }
 
 /** Remove the persisted refresh token (logout). No-op on web. */
 export async function clearNativeRefreshToken(): Promise<void> {
-  if (__REBORN_NATIVE__) {
-    try {
-      const storage = await getSecureStorage();
-      await storage.removeItem(REFRESH_TOKEN_KEY);
-    } catch {
-      // Best-effort on logout - a failed delete must not block the logout flow.
-    }
-  }
+  if (__REBORN_NATIVE__) await clearRefreshToken(getSecureStorage);
 }

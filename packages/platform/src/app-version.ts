@@ -3,8 +3,8 @@
  * (Settings "About" version display, guideline 38 "Wersje w aplikacji
  * natywnej"). Deliberately free of SvelteKit/Capacitor imports so it unit-tests
  * without the app environment - the native-gated runtime half (App.getInfo plus
- * the fetch) lives in native-version-info.ts, mirroring the app-update.ts /
- * native-app-update.ts split.
+ * the fetch) lives in each app's `$lib/utils/native-version-info.ts`, mirroring
+ * the app-update.ts / native-app-update.ts split.
  *
  * Returns null for any unusable shape: an old client must keep rendering its own
  * version even if a future server changes the response.

@@ -1,12 +1,13 @@
 import { createLogger } from '@reborn/utils';
+import { parseBackendVersion } from '@reborn/platform';
+import { getCapacitorAppInfo } from '@reborn/platform/native';
 import { API_BASE } from '$lib/utils/api-base';
-import { parseBackendVersion } from '$lib/utils/app-version';
 
 // No top-level side effects (logger included) - this module is imported by the
 // settings page but must stay fully treeshakeable from the web bundle (same
 // rule as native-app-update / native-master-key-vault). The __REBORN_NATIVE__
-// guard lets the bundler drop the body (and the dynamic @capacitor/app import)
-// from the web build entirely.
+// guard lets the bundler drop the body (and the App plugin behind
+// getCapacitorAppInfo) from the web build entirely.
 
 export interface NativeVersionInfo {
   /**
@@ -57,8 +58,7 @@ export async function getNativeVersionInfo(): Promise<NativeVersionInfo | null> 
 /** Capacitor shells: the App plugin's version and build. */
 async function getCapacitorVersionInfo(): Promise<NativeVersionInfo | null> {
   try {
-    const { App } = await import('@capacitor/app');
-    const info = await App.getInfo();
+    const info = await getCapacitorAppInfo();
     return {
       appVersion: info.version,
       appBuild: info.build,

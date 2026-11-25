@@ -4,7 +4,8 @@
      readable by the app the share sheet hands it to, for as long as that grant
      lives.
 
-     One consumer: native-file-export.ts writes the export blob under
+     One consumer: shareFileFromCache (@reborn/platform/native, via
+     native-file-export.ts) writes the export blob under
      Directory.Cache and passes the file URI to Share.share(), which resolves it
      through FileProvider.getUriForFile with authority ${applicationId}.fileprovider.
 
@@ -17,7 +18,8 @@
      future bug in a share call site from turning the provider into a reader for
      unrelated cached data.
 
-     `path` must stay in sync with EXPORT_SUBDIR in native-file-export.ts. -->
+     `path` must stay in sync with EXPORT_SUBDIR in @reborn/platform/native
+     (packages/platform/src/native/shell.ts). -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <cache-path name="exports" path="exports/" />
 </paths>

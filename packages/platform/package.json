@@ -4,18 +4,34 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "reborn-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./native": {
+      "reborn-source": "./src/native/index.ts",
+      "types": "./dist/native/index.d.ts",
+      "import": "./dist/native/index.js"
     }
   },
   "scripts": {
     "build": "tsup",
     "test": "vitest"
   },
+  "dependencies": {
+    "@capacitor/app": "8.1.2",
+    "@capacitor/clipboard": "8.0.1",
+    "@capacitor/core": "8.4.3",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/network": "8.0.1",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2"
+  },
   "devDependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
     "@types/node": "24.12.4",
     "tsup": "8.5.1",
     "typescript": "6.0.3",

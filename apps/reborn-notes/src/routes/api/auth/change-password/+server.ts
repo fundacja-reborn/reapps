@@ -8,10 +8,10 @@ import {
   blacklistAccessToken,
   generateTokens,
   REFRESH_TOKEN_TTL_SECONDS,
-  refreshTokenExpiryDate
+  refreshTokenExpiryDate,
+  isNativeClient
 } from '@reborn/auth/server';
 import { changePasswordLockout } from '$lib/server/rate-limit';
-import { isNativeClient } from '$lib/utils/native-client';
 
 const logger = createLogger('Notes-ChangePassword');
 

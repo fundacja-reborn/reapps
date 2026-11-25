@@ -1,11 +1,16 @@
 import { defineConfig } from 'tsup';
 
+// Two entries: the dependency-free main entry and the Capacitor one
+// (`@reborn/platform/native`). Capacitor packages are dependencies, so tsup
+// keeps them external.
+const entry = { index: 'src/index.ts', 'native/index': 'src/native/index.ts' };
+
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry,
   format: ['esm'],
   dts: {
     resolve: true,
-    entry: ['src/index.ts'],
+    entry,
     compilerOptions: {
       composite: false,
       incremental: false

@@ -1,16 +1,17 @@
 import { get } from 'svelte/store';
 import { toastStore } from '@reborn/ui';
 import { createLogger } from '@reborn/utils';
-import { t } from '$lib/stores/i18n.store';
-import { API_BASE } from '$lib/utils/api-base';
-import { appUpdateStore } from '$lib/stores/app-update.store';
 import {
   defaultStoreUrl,
   desktopUpdatePlatform,
   evaluateUpdateSeverity,
   parseAppConfig,
   type NativePlatform
-} from '$lib/utils/app-update';
+} from '@reborn/platform';
+import { getCapacitorAppInfo } from '@reborn/platform/native';
+import { t } from '$lib/stores/i18n.store';
+import { API_BASE } from '$lib/utils/api-base';
+import { appUpdateStore } from '$lib/stores/app-update.store';
 
 // No top-level side effects (logger included) - this module is imported
 // unconditionally by +layout.svelte and must stay fully treeshakeable from
@@ -33,13 +34,9 @@ interface ShellBuild {
 
 /** Capacitor shells: the App plugin. Other Capacitor platforms have no gate. */
 async function readCapacitorShell(): Promise<ShellBuild | null> {
-  const [{ App }, { Capacitor }] = await Promise.all([
-    import('@capacitor/app'),
-    import('@capacitor/core')
-  ]);
-  const platform = Capacitor.getPlatform();
+  const info = await getCapacitorAppInfo();
+  const { platform } = info;
   if (platform !== 'android' && platform !== 'ios') return null;
-  const info = await App.getInfo();
   return { platform, build: Number.parseInt(info.build, 10), appId: info.id };
 }
 
@@ -54,8 +51,9 @@ async function readDesktopShell(): Promise<ShellBuild | null> {
 
 /**
  * Native min-version gate, runtime half (Faza 5, plan D5; pure logic +
- * rationale in app-update.ts). Fetches /api/app-config, compares the shell's
- * own build number (App.getInfo on the phones, `app_info` on desktop) locally
+ * rationale in `app-update.ts` of `@reborn/platform`). Fetches
+ * /api/app-config, compares the shell's own build number (App.getInfo on the
+ * phones, `app_info` on desktop) locally
  * and flips appUpdateStore: 'required' renders the full-screen
  * UpdateRequiredGate, 'recommended' shows a one-per-session toast.
  *

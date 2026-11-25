@@ -1,11 +1,22 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/server.ts'],
+  // `native-client` is its own entry: the pure header contract, importable by
+  // client code without pulling the client barrel (whose SessionManager
+  // singleton is a module side effect the web bundle would then keep).
+  entry: {
+    index: 'src/index.ts',
+    server: 'src/server.ts',
+    'native-client': 'src/utils/native-client.ts'
+  },
   format: ['esm'],
   dts: {
     resolve: true,
-    entry: ['src/index.ts', 'src/server.ts'],
+    entry: {
+      index: 'src/index.ts',
+      server: 'src/server.ts',
+      'native-client': 'src/utils/native-client.ts'
+    },
     compilerOptions: {
       composite: false,
       incremental: false,

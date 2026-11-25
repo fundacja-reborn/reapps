@@ -2379,7 +2379,7 @@
 
       // Trampoline: on the guard entry, re-push an app entry so a browser / PWA
       // back gesture never exits the app. Native: don't re-trap - the App
-      // backButton handler exits at the guard root (see $lib/platform/native).
+      // backButton handler exits at the guard root (see @reborn/platform/native).
       if (e.state?._rn === 'guard') {
         if (!__REBORN_NATIVE__) history.pushState({ _rn: 'app' }, '');
       }

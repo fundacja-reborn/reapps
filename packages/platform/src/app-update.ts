@@ -11,7 +11,8 @@
  * Nothing is ever sent to the server (no version header - zero telemetry).
  *
  * Pure and platform-free so it unit-tests without Capacitor; the native-gated
- * runtime half lives in native-app-update.ts.
+ * runtime half lives in each app (`$lib/utils/native-app-update.ts`), which
+ * reads the shell's build and fetches the app's own /api/app-config.
  */
 
 /** The shells with a store channel: the phones and the Mac App Store app. */

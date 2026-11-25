@@ -1,17 +1,17 @@
 /**
- * Native (Capacitor) platform implementation for the reborn-notes shell.
+ * Capacitor implementation of the `@reborn/platform` interfaces, shared by the
+ * re/notes and re/task shells (promoted from re/notes when re/task became the
+ * second native app).
  *
- * Implements the `@reborn/platform` interfaces with Capacitor plugins. Each
- * plugin is loaded with a dynamic `import()` so that, on the web build, this
- * module's exports go unused and the whole thing - plugins included - is
- * dead-code-eliminated: the selector in `./index.ts` resolves to the web
- * platform when `__REBORN_NATIVE__` is false, leaving these functions
- * unreferenced. Same pattern as `$lib/utils/native-auth-storage.ts`.
+ * Each plugin is loaded with a dynamic `import()` inside the capability that
+ * needs it, so nothing Capacitor-specific runs until the app's selector picks
+ * this implementation - and on the web build the selector folds
+ * `__REBORN_NATIVE__` to false, leaves `createCapacitorPlatform` unreferenced
+ * and the bundler drops this module, plugins included.
  *
- * Native impls deliberately live here (app-local) rather than in
- * `@reborn/platform`, to keep Capacitor out of the shared package until a second
- * app needs these plugins (then they get promoted). See
- * `docs/development/planning/native-faza3-plan.md`.
+ * The plugin imports are not on the hot startup path (listeners are wired
+ * lazily, after boot), which is why dynamic imports are safe here - unlike the
+ * secure-storage bridge (see `./secure-storage.ts`, boot-wedge lesson).
  */
 import type {
   NetworkState,
@@ -20,7 +20,7 @@ import type {
   PlatformDeepLinks,
   PlatformLifecycle,
   PlatformNetwork
-} from '@reborn/platform';
+} from '../types';
 
 /**
  * Device connectivity via `@capacitor/network`, replacing the web HTTP probe
@@ -181,9 +181,10 @@ function createNativeBackButton(): PlatformBackButton {
       await App.addListener('backButton', async ({ canGoBack }) => {
         if (handler && handler()) return; // consumed by the app
         if (await dismissTopOverlay()) return; // closed a modal instead
-        // At the mobile-history "guard" root (see the +page.svelte trampoline)
+        // At a mobile-history "guard" root (an app marks it with
+        // `history.state._rn === 'guard'` - re/notes' +page.svelte trampoline)
         // or with no webview history, exit. Otherwise walk back, which drives
-        // the existing popstate up-navigation.
+        // the app's existing popstate navigation.
         const atRoot =
           typeof window !== 'undefined' &&
           (window.history.state as { _rn?: string } | null)?._rn === 'guard';
@@ -253,8 +254,8 @@ function createNativeDeepLinks(): PlatformDeepLinks {
   };
 }
 
-/** Assemble the native platform. Network is device-based, so no options needed. */
-export function createNativePlatform(): Platform {
+/** Assemble the Capacitor platform. Network is device-based, so no options needed. */
+export function createCapacitorPlatform(): Platform {
   return {
     isNative: true,
     network: new NativeNetwork(),
