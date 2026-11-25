@@ -273,7 +273,8 @@
   <meta name="referrer" content="no-referrer" />
 </svelte:head>
 
-<div class="flex min-h-screen flex-col bg-background">
+<!-- pt: the native shells open share links in-app, edge-to-edge (0 on the web). -->
+<div class="flex min-h-screen flex-col bg-background pt-[env(safe-area-inset-top,0px)]">
   <div class="mx-auto w-full max-w-3xl flex-1 px-4">
     <!-- Metadata-only header. Brand attribution lives in the footer instead -
          shared content is the user's, not re/task's, so we avoid letterhead

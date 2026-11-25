@@ -1123,8 +1123,10 @@
 					>
 						{#if mobileView === 'tasks' && activeSection === 'lists' && mobileSelectedList}
 							<!-- ── Mobile Panel 1: Task list view ──────────────── -->
+							<!-- Screen-top rows pad by the top safe-area inset (native
+							     edge-to-edge shells; 0 on the web), height grows with it. -->
 							<div
-								class="flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border px-3"
+								class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-sidebar-border px-3 pt-[env(safe-area-inset-top,0px)]"
 							>
 								<button
 									class="flex items-center justify-center h-11 w-11 rounded-md hover:bg-sidebar-accent text-sidebar-foreground"
@@ -1217,7 +1219,7 @@
 							<!-- ── Mobile Panel 1: Sidebar view (lists or sections) ── -->
 							<!-- Header: logo -->
 							<div
-								class="flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border px-5"
+								class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-sidebar-border px-5 pt-[env(safe-area-inset-top,0px)]"
 							>
 								<img
 									src="{base}/logo-black.svg"
@@ -1324,7 +1326,9 @@
 				<!-- ── Column 2: Sidebar content ─────────────────────────── -->
 				<div class="flex flex-1 flex-col min-w-0 overflow-hidden">
 					<SidebarHeader class="border-b p-0 gap-0">
-						<div class="flex h-12 items-center gap-2 px-5">
+						<div
+							class="flex min-h-[calc(3rem+env(safe-area-inset-top,0px))] items-center gap-2 px-5 pt-[env(safe-area-inset-top,0px)]"
+						>
 							<img src="{base}/logo-black.svg" alt="re/task" class="h-4 w-auto block dark:hidden" />
 							<img
 								src="{base}/logo-white.svg"
