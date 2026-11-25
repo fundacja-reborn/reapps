@@ -34,6 +34,7 @@
   } from '$lib/stores/shares.store';
   import type { OwnShareListItem, SharedSnapshotTaskPayload } from '@reborn/types';
   import TaskSnapshotView from './TaskSnapshotView.svelte';
+  import { copyText } from '$lib/utils/clipboard';
 
   let {
     open = $bindable(false),
@@ -93,7 +94,7 @@
     const url = decoded[id]?.url;
     if (!url) return;
     try {
-      await navigator.clipboard.writeText(url);
+      await copyText(url);
       toastStore.success($t('share.create.copied'));
     } catch {
       toastStore.error($t('share.create.copy_failed'));

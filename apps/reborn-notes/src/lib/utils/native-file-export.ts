@@ -9,32 +9,13 @@
  * export UX and keeps both shells on one code path, so the native branch
  * covers both platforms.
  *
- * Gated behind `__REBORN_NATIVE__` with dynamic plugin imports - on the web
- * build the whole module is dead-code-eliminated (pattern: native-share.ts).
+ * The Capacitor half (cache dir + share sheet, the FileProvider-scoped
+ * `exports/` subdirectory) is `shareFileFromCache` in `@reborn/platform/native`.
+ * Gated behind `__REBORN_NATIVE__` - on the web build the whole module is
+ * dead-code-eliminated (pattern: native-share.ts).
  */
 
-/**
- * Subdirectory of the cache dir that exports are written to.
- *
- * Android only shares what the FileProvider path map declares, and that map is
- * scoped to exactly this directory - see android/app/src/main/res/xml/file_paths.xml
- * (audit 014 N2). Renaming it here without renaming it there makes Share.share()
- * throw "Failed to find configured root that contains ..." on Android.
- */
-const EXPORT_SUBDIR = 'exports';
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error ?? new Error('blob read failed'));
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const comma = dataUrl.indexOf(',');
-      resolve(comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl);
-    };
-    reader.readAsDataURL(blob);
-  });
-}
+import { blobToBase64, shareFileFromCache } from '@reborn/platform/native';
 
 /**
  * Export `blob` as `filename`: the system share sheet on the phones, "Save
@@ -51,37 +32,10 @@ export async function exportFileNative(blob: Blob, filename: string): Promise<vo
   // plugins do not exist there - the system "Save as..." dialog is the export
   // UX (see desktop-file-export.ts). One branch per build (a constant ternary
   // is what the bundler folds; a block with a return keeps the code after it).
-  await (__REBORN_DESKTOP__ ? saveDesktop(filename, data) : shareFromCache(filename, data));
+  await (__REBORN_DESKTOP__ ? saveDesktop(filename, data) : shareFileFromCache(filename, data));
 }
 
 async function saveDesktop(filename: string, data: string): Promise<void> {
   const { saveFileDesktop } = await import('./desktop-file-export');
   await saveFileDesktop(filename, data);
-}
-
-/** Capacitor: write to the cache dir, then open the system share sheet. */
-async function shareFromCache(filename: string, data: string): Promise<void> {
-  const { Filesystem, Directory } = await import('@capacitor/filesystem');
-  // No `encoding` option: the Filesystem plugin treats the payload as base64
-  // and writes the decoded bytes. Cache directory: OS-managed and reclaimable,
-  // never backed up - the file only needs to outlive the share sheet.
-  // `recursive` creates EXPORT_SUBDIR on first use; the plugin defaults it to
-  // false and then fails the write with a missing-parent-directory error.
-  const { uri } = await Filesystem.writeFile({
-    path: `${EXPORT_SUBDIR}/${filename}`,
-    data,
-    directory: Directory.Cache,
-    recursive: true
-  });
-
-  try {
-    const { Share } = await import('@capacitor/share');
-    await Share.share({ title: filename, files: [uri] });
-  } catch (error) {
-    // Dismissing the share sheet rejects with a "canceled" error - that is a
-    // user choice, not a failure; the write above already succeeded.
-    const message = error instanceof Error ? error.message.toLowerCase() : '';
-    if (message.includes('cancel')) return;
-    throw error;
-  }
 }

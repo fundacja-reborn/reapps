@@ -2379,7 +2379,8 @@
 
       // Trampoline: on the guard entry, re-push an app entry so a browser / PWA
       // back gesture never exits the app. Native: don't re-trap - the App
-      // backButton handler exits at the guard root (see $lib/platform/native).
+      // backButton handler exits at the guard root (see @reborn/platform/native),
+      // and this page's back handler exits before reaching it (onMount below).
       if (e.state?._rn === 'guard') {
         if (!__REBORN_NATIVE__) history.pushState({ _rn: 'app' }, '');
       }
@@ -2411,6 +2412,14 @@
       offPause = platform.lifecycle.onPause(() => {
         if (noteDetailService.hasPendingChanges()) noteDetailService.flushAndSnapshot();
       });
+      // Android BACK on the phone layout with nothing pushed (the list home):
+      // exit on the first press. Walking the history from here only pops the
+      // base app entry onto the guard, which shows nothing and made the user
+      // press BACK twice. With entries pushed, the default history walk drives
+      // the popstate up-navigation above. Wide layouts keep the default.
+      platform.backButton.setHandler(() =>
+        isMobile && mobileHistoryDepth === 0 ? 'exit' : 'default'
+      );
     }
 
     return () => {
@@ -2420,6 +2429,7 @@
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       offPause?.();
+      if (__REBORN_NATIVE__) platform.backButton.setHandler(null);
     };
   });
 

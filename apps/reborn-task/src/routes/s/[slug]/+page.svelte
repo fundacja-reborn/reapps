@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { copyText } from '$lib/utils/clipboard';
+  import { downloadBlob } from '$lib/utils/download';
+  import { API_BASE } from '$lib/utils/api-base';
   import { onMount } from 'svelte';
   import { base } from '$app/paths';
   import { page } from '$app/stores';
@@ -114,7 +117,7 @@
   async function handleCopyMarkdown() {
     if (!taskPayload) return;
     try {
-      await navigator.clipboard.writeText(buildTaskMarkdown(taskPayload));
+      await copyText(buildTaskMarkdown(taskPayload));
       copyStatus = 'copied';
     } catch {
       copyStatus = 'failed';
@@ -135,14 +138,8 @@
     const blob = new Blob([buildTaskMarkdown(taskPayload)], {
       type: 'text/markdown; charset=utf-8'
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${sanitizeFilename(label)}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // Native shells save through the share sheet (`<a download>` does nothing in WKWebView).
+    void downloadBlob(blob, `${sanitizeFilename(label)}.md`);
   }
 
   function classifyGoneCode(code: string | undefined): Stage {
@@ -154,7 +151,9 @@
   async function fetchSnapshot(passwordValue?: string) {
     const headers: Record<string, string> = {};
     if (passwordValue) headers['X-Share-Password'] = passwordValue;
-    return fetch(`${base}/api/shares/${slug}`, {
+    // API_BASE: the remote API in the native shell, where a deep link opens
+    // this page (same-origin `${base}/api` on web).
+    return fetch(`${API_BASE}/shares/${slug}`, {
       method: 'GET',
       credentials: 'omit',
       headers
@@ -274,7 +273,8 @@
   <meta name="referrer" content="no-referrer" />
 </svelte:head>
 
-<div class="flex min-h-screen flex-col bg-background">
+<!-- pt: the native shells open share links in-app, edge-to-edge (0 on the web). -->
+<div class="flex min-h-screen flex-col bg-background pt-[env(safe-area-inset-top,0px)]">
   <div class="mx-auto w-full max-w-3xl flex-1 px-4">
     <!-- Metadata-only header. Brand attribution lives in the footer instead -
          shared content is the user's, not re/task's, so we avoid letterhead

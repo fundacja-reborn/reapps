@@ -23,11 +23,7 @@
  * clipboard.
  */
 
-interface ShareLinkOptions {
-  url: string;
-  title?: string;
-  dialogTitle?: string;
-}
+import { shareLinkCapacitor, type ShareLinkOptions } from '@reborn/platform/native';
 
 /**
  * Whether the share button belongs in the UI. Callers write
@@ -63,28 +59,5 @@ async function shareLinkDesktop(opts: ShareLinkOptions): Promise<boolean> {
     // gesture, sharing refused) falls back to copying, so the button never
     // does nothing.
     return error instanceof DOMException && error.name === 'AbortError';
-  }
-}
-
-async function shareLinkCapacitor(opts: ShareLinkOptions): Promise<boolean> {
-  try {
-    const { Share } = await import('@capacitor/share');
-    const can = await Share.canShare().catch(() => ({ value: true }));
-    if (!can.value) return false;
-    try {
-      await Share.share({
-        title: opts.title,
-        url: opts.url,
-        dialogTitle: opts.dialogTitle
-      });
-    } catch {
-      // The sheet was presented; a throw here is a user cancel or a transient
-      // OS hiccup. Treat as handled - do NOT fall back to clipboard (that
-      // would surprise a user who deliberately dismissed the sheet).
-    }
-    return true;
-  } catch {
-    // Plugin missing / failed to load - let the caller fall back to clipboard.
-    return false;
   }
 }

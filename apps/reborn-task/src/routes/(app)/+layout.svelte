@@ -44,6 +44,9 @@
 	import { page } from '$app/stores';
 	import { goto } from '$lib/utils/navigation';
 	import { goBackFromTaskDetail } from '$lib/utils/task-detail-nav';
+	import { platform } from '$lib/platform';
+	import { IS_NATIVE } from '$lib/utils/native-client';
+	import type { BackButtonOutcome } from '@reborn/platform';
 	import { requireActiveSession } from '$lib/utils/require-active-session';
 	import { session } from '$lib/stores/auth.store';
 	import { t } from '$lib/stores/i18n.store';
@@ -600,6 +603,52 @@
 		}
 	}
 
+	// Android BACK in the native shell (the platform closes an open dialog or
+	// sheet before asking). Mobile section changes REPLACE the history entry, so
+	// the webview history no longer mirrors what the user walked through and a
+	// plain history.back() lands on whatever entry sits below (smoke 2026-11-25:
+	// always "Task lists"). Mirror the on-screen navigation instead: task detail
+	// -> where it was opened from, a list -> the list catalogue, any other
+	// section -> All tasks (the start destination), All tasks -> close the app.
+	// Pushed pages (profile, ...) and the tablet layout keep the history walk.
+	const SECTION_ROUTE_IDS = new Set([
+		'/(app)/all',
+		'/(app)/lists',
+		'/(app)/lists/[listId]',
+		'/(app)/starred',
+		'/(app)/overdue',
+		'/(app)/today',
+		'/(app)/upcoming',
+		'/(app)/no-date',
+		'/(app)/trash'
+	]);
+
+	function handleNativeBack(): BackButtonOutcome {
+		if (!isMobile) return 'default';
+		const routeId = $page.route.id ?? '';
+		if (routeId.includes('/tasks/')) {
+			handleMobileBack();
+			return 'handled';
+		}
+		if (!SECTION_ROUTE_IDS.has(routeId)) return 'default';
+		if (activeSection === 'lists' && mobileView === 'tasks') {
+			handleBackToLists();
+			return 'handled';
+		}
+		if (activeSection !== 'all') {
+			taskListView.clear();
+			activeSection = 'all';
+			return 'handled';
+		}
+		return 'exit';
+	}
+
+	onMount(() => {
+		if (!IS_NATIVE) return;
+		platform.backButton.setHandler(handleNativeBack);
+		return () => platform.backButton.setHandler(null);
+	});
+
 	async function handleNavigateToList(listId: string) {
 		if (isMobile) {
 			// Navigate to the specific task list, switching NavIcon to "Lists" section
@@ -1074,8 +1123,10 @@
 					>
 						{#if mobileView === 'tasks' && activeSection === 'lists' && mobileSelectedList}
 							<!-- ── Mobile Panel 1: Task list view ──────────────── -->
+							<!-- Screen-top rows pad by the top safe-area inset (native
+							     edge-to-edge shells; 0 on the web), height grows with it. -->
 							<div
-								class="flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border px-3"
+								class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-sidebar-border px-3 pt-[env(safe-area-inset-top,0px)]"
 							>
 								<button
 									class="flex items-center justify-center h-11 w-11 rounded-md hover:bg-sidebar-accent text-sidebar-foreground"
@@ -1168,7 +1219,7 @@
 							<!-- ── Mobile Panel 1: Sidebar view (lists or sections) ── -->
 							<!-- Header: logo -->
 							<div
-								class="flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border px-5"
+								class="flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] shrink-0 items-center gap-2 border-b border-sidebar-border px-5 pt-[env(safe-area-inset-top,0px)]"
 							>
 								<img
 									src="{base}/logo-black.svg"
@@ -1275,7 +1326,9 @@
 				<!-- ── Column 2: Sidebar content ─────────────────────────── -->
 				<div class="flex flex-1 flex-col min-w-0 overflow-hidden">
 					<SidebarHeader class="border-b p-0 gap-0">
-						<div class="flex h-12 items-center gap-2 px-5">
+						<div
+							class="flex min-h-[calc(3rem+env(safe-area-inset-top,0px))] items-center gap-2 px-5 pt-[env(safe-area-inset-top,0px)]"
+						>
 							<img src="{base}/logo-black.svg" alt="re/task" class="h-4 w-auto block dark:hidden" />
 							<img
 								src="{base}/logo-white.svg"

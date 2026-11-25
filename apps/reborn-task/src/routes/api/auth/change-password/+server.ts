@@ -6,7 +6,8 @@ import {
 	blacklistAccessToken,
 	generateTokens,
 	REFRESH_TOKEN_TTL_SECONDS,
-	refreshTokenExpiryDate
+	refreshTokenExpiryDate,
+	isNativeClient
 } from '@reborn/auth/server';
 import { hashPassword, verifyPassword } from '@reborn/crypto';
 import { prisma } from '@reborn/database';
@@ -117,10 +118,15 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		logger.info(`Password changed for user ${tokenData.userId}`);
 
-		return json({
-			success: true,
-			data: { access_token: newTokens.accessToken }
-		});
+		const responseBody: Record<string, unknown> = { access_token: newTokens.accessToken };
+		// change-password revokes ALL of the user's refresh tokens and issues a
+		// fresh one, so a native client MUST receive the new token to re-persist in
+		// secure storage - otherwise its stored token is dead and the next refresh
+		// fails. Gated by the native header -> web stays byte-identical (cookie only).
+		if (isNativeClient(request)) {
+			responseBody.refresh_token = newTokens.refreshToken;
+		}
+		return json({ success: true, data: responseBody });
 	} catch (error: unknown) {
 		logger.error('Change password error:', error);
 		return json({ success: false, error: 'Internal server error' }, { status: 500 });

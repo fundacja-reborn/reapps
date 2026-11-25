@@ -1,0 +1,92 @@
+#!/usr/bin/env node
+/**
+ * Generate `src/app.native.html` from `src/app.html` for the native (static)
+ * build of an app (re/notes, re/task). Run before `vite build` in the
+ * `build-native*` / `build-desktop*` Nx targets, from the app directory:
+ *
+ *   node ../../scripts/gen-native-template.mjs [appDir]
+ *
+ * The output is gitignored (a build artifact), so it never drifts from app.html.
+ *
+ * Transforms (native static + hash-CSP needs these):
+ *  1. Strip `nonce="%sveltekit.nonce%"` - a prerendered SPA fallback can't fill a
+ *     per-request nonce, and native CSP is hash-based.
+ *  2. Drop the web manifest <link> - served by a +server.ts route absent from the
+ *     static bundle (was a 404); Capacitor provides app identity natively.
+ *  3. Drop the web/PWA-only inline <script> blocks (theme-flash, offline/SW
+ *     detect): SvelteKit does not hash template inline scripts, so under hash-CSP
+ *     they'd be blocked; offline/SW detection is moot under Capacitor. The only
+ *     inline script left in the rendered page is SvelteKit's bootstrap, which it
+ *     hashes itself. Trade-off: brief theme FOUC on native cold start.
+ *  4. Drop the now-orphaned data-stall-msg / data-offline-msg attrs.
+ *  5. Pin the viewport to maximum-scale=1: WKWebView auto-zooms the layout
+ *     viewport when a focused input has font-size < 16px (the search input
+ *     blew the layout up on iOS, pushing the icon rail off screen). Capping
+ *     the scale is the canonical Capacitor-app fix; the WEB template keeps
+ *     pinch-zoom untouched for accessibility.
+ *
+ * Self-validating: throws (fails the build) if app.html changed in a way that
+ * leaves a nonce placeholder or an un-hashable inline script - prompting an
+ * update here instead of silently shipping a broken native CSP.
+ */
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+// The app to generate for: its directory (the `build-native*` targets run with
+// `cwd` = the app, so the default is the current directory).
+const APP_DIR = resolve(process.argv[2] ?? process.cwd());
+const SRC = resolve(APP_DIR, 'src/app.html');
+const OUT = resolve(APP_DIR, 'src/app.native.html');
+if (!existsSync(SRC)) {
+  throw new Error(`gen-native-template: ${SRC} not found - run from an app directory.`);
+}
+
+let html = readFileSync(SRC, 'utf-8');
+
+// 1. CSP nonce attributes.
+html = html.replace(/ nonce="%sveltekit\.nonce%"/g, '');
+// 2. Web manifest link.
+html = html.replace(/[\t ]*<link rel="manifest"[^>]*>\r?\n/g, '');
+// 4. Orphaned loading-message data attrs (consumed only by the dropped script).
+html = html.replace(/[\t ]*data-(?:stall|offline)-msg="[^"]*"\r?\n?/g, '');
+// 3. Web/PWA-only inline scripts (no `src`). Leaves <style> blocks intact. Loop
+//    until stable: removing one <script> could expose a new `<script` sequence
+//    (CodeQL: incomplete multi-character sanitization). app.html has no such
+//    nesting, but the loop is correct and clears the alert.
+let prevHtml;
+do {
+  prevHtml = html;
+  html = html.replace(/[\t ]*<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>\r?\n?/g, '');
+} while (html !== prevHtml);
+// 5. Native viewport: forbid zoom so focusing a small-font input cannot blow
+//    the layout up (see header comment). Guardrail below verifies the meta
+//    matched - a reworded viewport in app.html must update this transform.
+const viewportBefore = html;
+html = html.replace(
+  /(<meta name="viewport" content="[^"]*?)(, viewport-fit=cover")/,
+  '$1, maximum-scale=1$2'
+);
+if (html === viewportBefore) {
+  throw new Error(
+    'gen-native-template: viewport <meta> not found/changed in app.html - update transform 5.'
+  );
+}
+
+const banner =
+  '<!--\n' +
+  '  GENERATED from app.html by scripts/gen-native-template.mjs - DO NOT EDIT.\n' +
+  '  Native (Capacitor) template for the static + hash-CSP build. Regenerated on\n' +
+  '  every `build-native*`; gitignored. See the script for the transforms.\n' +
+  '-->\n';
+html = html.replace(/^<!doctype html>\r?\n/i, (m) => m + banner);
+
+// Guardrails - fail loudly if app.html drifted past what the transforms handle.
+if (html.includes('%sveltekit.nonce%')) {
+  throw new Error('gen-native-template: nonce placeholder remains - prerender would fail. Update the transforms.');
+}
+if (/<script(?![^>]*\bsrc=)[^>]*>/.test(html)) {
+  throw new Error('gen-native-template: an inline <script> remains - hash-CSP would block it. Update the transforms.');
+}
+
+writeFileSync(OUT, html);
+console.log(`gen-native-template: wrote ${OUT} from app.html`);

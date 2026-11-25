@@ -13,9 +13,11 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.check.json --watch --threshold warning",
     "lint": "eslint src",
     "format": "prettier --check src",
-    "clean": "rm -rf .svelte-kit node_modules dist build"
+    "clean": "rm -rf .svelte-kit node_modules dist build",
+    "gen:store-assets": "node ../../scripts/gen-store-assets-sources.mjs && npx -y @capacitor/assets@3.0.5 generate --android --ios --assetPath assets && node ../../scripts/postfix-android-adaptive-icon.mjs"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.6.2",
     "@eslint/js": "10.0.1",
     "@sveltejs/adapter-auto": "7.0.1",
     "@sveltejs/kit": "2.70.4",
@@ -48,6 +50,16 @@
   },
   "type": "module",
   "dependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
+    "@capacitor/android": "8.6.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/clipboard": "8.0.1",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/ios": "8.6.2",
+    "@capacitor/network": "8.0.1",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2",
     "@internationalized/date": "3.12.4",
     "@lucide/svelte": "1.77.0",
     "@reborn/api-client": "workspace:*",
@@ -55,6 +67,7 @@
     "@reborn/crypto": "workspace:*",
     "@reborn/database": "workspace:*",
     "@reborn/i18n": "workspace:*",
+    "@reborn/platform": "workspace:*",
     "@reborn/storage": "workspace:*",
     "@reborn/types": "workspace:*",
     "@reborn/ui": "workspace:*",

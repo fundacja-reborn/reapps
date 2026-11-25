@@ -1,5 +1,8 @@
 <script lang="ts">
-	import { PUBLIC_BASE_PATH } from '$env/static/public';
+	import { API_BASE } from '$lib/utils/api-base';
+	import { nativeAuthHeaders } from '$lib/utils/native-client';
+	import { persistNativeRefreshToken } from '$lib/utils/native-auth-storage';
+	import { persistNativeSessionId } from '$lib/utils/native-session';
 	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
 	import { goto } from '$lib/utils/navigation';
@@ -70,9 +73,10 @@
 		isLoading = true;
 
 		try {
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/2fa/verify`, {
+			const response = await fetch(`${API_BASE}/auth/2fa/verify`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				// Native shell: ask for the refresh token in the body (no-op on web).
+				headers: { 'Content-Type': 'application/json', ...nativeAuthHeaders() },
 				body: JSON.stringify({ challengeToken, code: codeToVerify })
 			});
 
@@ -98,10 +102,14 @@
 
 			sessionStorage.removeItem('2fa_challenge_token');
 
-			// Store access token (refresh token is managed via httpOnly cookie)
+			// Store access token. Web: the refresh token is managed via httpOnly
+			// cookie. Native: it came in the body - keep it in the Keychain /
+			// Keystore with the session id (both no-ops on web).
 			if (data.data.access_token) {
 				localStorage.setItem('access_token', data.data.access_token);
 			}
+			await persistNativeRefreshToken(data.data.refresh_token);
+			persistNativeSessionId(data.data.session_id);
 
 			// Set token in sync service
 			if (data.data.access_token) {

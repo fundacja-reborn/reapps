@@ -9,13 +9,16 @@
  * `$lib/platform` selector, gated by `__REBORN_NATIVE__`).
  *
  * Design notes:
- * - This package is intentionally dependency-free. The web connectivity store
- *   already lives in `@reborn/api-client` (`getConnectivity`), so the app
- *   injects it via `createWebPlatform({ network })` instead of the package
- *   hard-wiring a dependency - keeping the boundary clean and the build trivial.
- * - Native implementations (Capacitor plugins) live app-local for now; they are
- *   promoted into this package once a second app consumes them, to avoid pulling
- *   Capacitor deps into a shared package before there is a second consumer.
+ * - The main entry (`@reborn/platform`) is intentionally dependency-free. The
+ *   web connectivity store already lives in `@reborn/api-client`
+ *   (`getConnectivity`), so the app injects it via `createWebPlatform({ network })`
+ *   instead of the package hard-wiring a dependency - keeping the boundary clean
+ *   and the build trivial.
+ * - The Capacitor implementations live behind the separate `@reborn/platform/native`
+ *   entry (promoted from re/notes when re/task became the second native app).
+ *   Only that entry depends on Capacitor; it reads no build flags - the apps
+ *   decide which implementation a build uses (`__REBORN_NATIVE__` /
+ *   `__REBORN_DESKTOP__`), so the web bundle drops the native entry entirely.
  */
 
 export type NetworkStatus = 'online' | 'offline' | 'unknown';
@@ -57,17 +60,28 @@ export interface PlatformLifecycle {
 }
 
 /**
+ * What an app's back handler did with a BACK press:
+ * - `handled` - consumed it (navigated, closed a panel); nothing else runs.
+ * - `exit` - the app is at its start destination: close it, whatever the
+ *   webview history still holds.
+ * - `default` - not the app's business: walk the webview history back (and
+ *   exit at a guard root or with no history left).
+ */
+export type BackButtonOutcome = 'handled' | 'exit' | 'default';
+
+/**
  * System (hardware) back button. Web is a no-op - the browser / PWA history
  * stack already handles back. Native (Android) wires `@capacitor/app`
  * `backButton`.
  */
 export interface PlatformBackButton {
   /**
-   * Register a back handler that runs before the default behaviour. Return
-   * `true` to consume the event (suppress the default). Pass `null` to clear.
-   * Web ignores it.
+   * Register the app's back handler. Native runs it after closing the
+   * front-most open overlay (dialog, sheet, menu) - a press that closed one
+   * does nothing else - and before the default history walk. Pass `null` to
+   * clear. Web ignores it.
    */
-  setHandler(handler: (() => boolean) | null): void;
+  setHandler(handler: (() => BackButtonOutcome) | null): void;
 }
 
 /**
@@ -94,6 +108,18 @@ export interface Platform {
   readonly lifecycle: PlatformLifecycle;
   readonly backButton: PlatformBackButton;
   readonly deepLinks: PlatformDeepLinks;
+}
+
+/**
+ * Minimal key/value surface over the device credential store: the Capacitor
+ * SecureStorage plugin on the phones (iOS Keychain / Android Keystore), the
+ * shell's own commands in the desktop app. The refresh token and the
+ * master-key vault are built on it (`@reborn/platform/native`).
+ */
+export interface NativeSecureStorage {
+  setItem(key: string, value: string): Promise<void>;
+  getItem(key: string): Promise<string | null>;
+  removeItem(key: string): Promise<void>;
 }
 
 /** Inputs the app supplies when assembling the web platform. */

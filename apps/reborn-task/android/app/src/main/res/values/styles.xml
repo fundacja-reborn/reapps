@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <!-- Android <= 14: the status bar is a legacy opaque surface colored
+             by the theme - brand it (light icons on green, the contrast Chrome
+             picks for the installed PWA's theme-color) like Chrome brands the
+             installed PWA. Both attrs are no-ops under the edge-to-edge
+             enforced on Android 15+, where the brand strip is painted by the
+             in-app band + the SystemBars style call instead. -->
+        <item name="android:statusBarColor">@color/brand_status_bar</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">@drawable/splash</item>
+        <!-- API 31+: the platform splash ignores the @drawable/splash PNG and
+             paints windowSplashScreenBackground behind a centered app icon.
+             Point it at the DayNight @color so a system-dark cold start opens
+             on the app's dark surface instead of the default light window (the
+             @drawable night PNGs only cover the pre-31 compat path). The
+             androidx core-splashscreen attr (app namespace, no android:) drives
+             both the pre-31 compat window and the 31+ platform splash. -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <!-- Same branding for the cold-start splash window (BridgeActivity
+             swaps to AppTheme.NoActionBar in onCreate). -->
+        <item name="android:statusBarColor">@color/brand_status_bar</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

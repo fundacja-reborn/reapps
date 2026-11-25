@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">re/task</string>
+    <string name="title_activity_main">re/task</string>
+    <string name="package_name">eu.reapps.task</string>
+    <string name="custom_url_scheme">eu.reapps.task</string>
+</resources>

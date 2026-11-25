@@ -7,13 +7,13 @@ import {
   REFRESH_TOKEN_TTL_SECONDS,
   refreshTokenExpiryDate,
   TWO_FACTOR_CHALLENGE_PURPOSE,
-  verifySingleUseToken
+  verifySingleUseToken,
+  isNativeClient
 } from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 import { v4 as uuidv4 } from 'uuid';
 import * as OTPAuth from 'otpauth';
 import { twoFactorLockout } from '$lib/server/rate-limit';
-import { isNativeClient } from '$lib/utils/native-client';
 
 const logger = createLogger('Notes-2FA-Verify');
 const ISSUER = 'Reborn Apps';

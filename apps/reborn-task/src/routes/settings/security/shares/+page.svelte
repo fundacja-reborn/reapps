@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { copyText } from '$lib/utils/clipboard';
   import { onMount } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
   import {
@@ -68,7 +69,7 @@
     const url = decoded[id]?.url;
     if (!url) return;
     try {
-      await navigator.clipboard.writeText(url);
+      await copyText(url);
       toastStore.success($t('share.create.copied'));
     } catch {
       toastStore.error($t('share.create.copy_failed'));

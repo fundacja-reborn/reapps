@@ -26,9 +26,12 @@
 	}: Props = $props();
 </script>
 
+<!-- Top of the screen: in the edge-to-edge native shells the header starts
+     under the status bar, so it pads by the top safe-area inset and its height
+     grows by the same amount (0 on the web). Guideline 61, "Safe-area". -->
 <header
 	class={cn(
-		'flex h-14 md:h-12 items-center border-b bg-background',
+		'flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:min-h-[calc(3rem+env(safe-area-inset-top,0px))] shrink-0 items-center border-b bg-background pt-[env(safe-area-inset-top,0px)]',
 		showBackButton ? 'gap-1 px-3' : 'gap-4 px-6',
 		className
 	)}

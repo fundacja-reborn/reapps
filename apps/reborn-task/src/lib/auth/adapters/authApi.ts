@@ -7,6 +7,9 @@ import type {
 import { createLogger } from '@reborn/utils';
 import { syncService } from '$lib/services/sync.service';
 import { authFetch } from '$lib/utils/auth-fetch';
+import { IS_NATIVE, nativeAuthHeaders } from '$lib/utils/native-client';
+import { persistNativeRefreshToken, readNativeRefreshToken } from '$lib/utils/native-auth-storage';
+import { nativeSessionHeader, persistNativeSessionId } from '$lib/utils/native-session';
 
 const logger = createLogger('AuthApiAdapter');
 
@@ -21,7 +24,9 @@ export class AuthApiAdapter implements IAuthApiClient {
 			const response = await fetch(`${this.apiUrl}/auth/login`, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					// Native shell: ask for the refresh token in the body (no-op on web).
+					...nativeAuthHeaders()
 				},
 				body: JSON.stringify({ username, password })
 			});
@@ -57,7 +62,12 @@ export class AuthApiAdapter implements IAuthApiClient {
 			if (result.accessToken && !result.twoFactorRequired) {
 				// Save to localStorage first
 				localStorage.setItem('access_token', result.accessToken);
-				// Note: refresh_token is managed exclusively via httpOnly cookie (set by server)
+				// Web: refresh_token is managed exclusively via httpOnly cookie (set by
+				// server). Native: it came in the body - keep it in the Keychain /
+				// Keystore, and the session id for logout of this device (both no-ops
+				// on web).
+				await persistNativeRefreshToken(data.data.refresh_token);
+				persistNativeSessionId(data.data.session_id);
 				// Then set in sync service
 				syncService.setAuthToken(result.accessToken);
 				logger.debug('Auth token set in sync service immediately after login API call');
@@ -82,7 +92,9 @@ export class AuthApiAdapter implements IAuthApiClient {
 			const response = await fetch(`${this.apiUrl}/auth/register`, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					// Native shell: ask for the refresh token in the body (no-op on web).
+					...nativeAuthHeaders()
 				},
 				body: JSON.stringify({
 					username,
@@ -114,7 +126,9 @@ export class AuthApiAdapter implements IAuthApiClient {
 			if (result.accessToken) {
 				// Save to localStorage
 				localStorage.setItem('access_token', result.accessToken);
-				// Note: refresh_token is managed exclusively via httpOnly cookie (set by server)
+				// Web: refresh_token is managed exclusively via httpOnly cookie (set by
+				// server). Native: it came in the body - keep it in secure storage.
+				await persistNativeRefreshToken(data.data.refresh_token);
 				// Then set in sync service
 				syncService.setAuthToken(result.accessToken);
 				logger.debug('Auth token set in sync service immediately after register API call');
@@ -139,15 +153,28 @@ export class AuthApiAdapter implements IAuthApiClient {
 			if (accessToken) {
 				headers['Authorization'] = `Bearer ${accessToken}`;
 			}
+			// Web: the httpOnly cookies name this device's session. Native: no
+			// cookie reaches this cross-site call, so send the refresh token from
+			// secure storage and the session id - the server ends only the
+			// session it can name, other devices stay logged in.
+			let body: string | undefined;
+			if (IS_NATIVE) {
+				Object.assign(headers, nativeSessionHeader());
+				const refreshToken = await readNativeRefreshToken();
+				if (refreshToken) body = JSON.stringify({ refresh_token: refreshToken });
+			}
 
 			await fetch(`${this.apiUrl}/auth/logout`, {
 				method: 'POST',
-				headers
+				headers,
+				body
 			});
 		} catch (error: unknown) {
 			// Ignore logout errors
 			logger.error('Logout API error:', error);
 		}
+		// The native secrets are dropped by the logout flow itself
+		// (authOperationsService), after this call has read them.
 	}
 
 	async verifyTwoFactor(
@@ -192,7 +219,8 @@ export class AuthApiAdapter implements IAuthApiClient {
 		// so this caller (bootstrap checkSession + 10-min background interval)
 		// shares one refresh path with sync's onUnauthorized handler. The
 		// _refreshToken parameter is kept for interface compatibility but
-		// ignored: the refresh token rides exclusively on the httpOnly cookie.
+		// ignored: the refresh token rides on the httpOnly cookie (web) or comes
+		// from secure storage inside authFetch (native).
 		void _refreshToken;
 
 		try {

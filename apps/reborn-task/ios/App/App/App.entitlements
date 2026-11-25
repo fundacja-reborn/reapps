@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal Links for public share deep links (/task/s/<slug>), the iOS
+	     mirror of the Android App Links intent-filter. End-to-end verification
+	     needs an eu.reapps.task entry (TeamID-prefixed, path /task/s/*) in the
+	     apple-app-site-association file that reapps-www serves for re/notes
+	     today (guideline 61). Harmless in simulator builds, where associated
+	     domains are not validated. -->
+	<key>com.apple.developer.associated-domains</key>
+	<!-- Production ships reapps.eu ONLY: a TestFlight build can be promoted to
+	     release as-is, so the release entitlements must not claim a staging
+	     Universal Links association. Do not re-add applinks:staging.reapps.eu. -->
+	<array>
+		<string>applinks:reapps.eu</string>
+	</array>
+</dict>
+</plist>

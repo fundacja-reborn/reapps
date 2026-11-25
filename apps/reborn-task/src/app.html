@@ -20,6 +20,12 @@
 					var t=localStorage.getItem('reborn-task-theme');
 					var d=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);
 					if(d)document.documentElement.classList.add('dark');
+					// Marker: the inline theme script ran. In the native shell this
+					// whole <script> is stripped (gen-native-template.mjs), so the
+					// marker is absent, which arms the prefers-color-scheme fallback
+					// in the <style> below. On web it is always present, so that
+					// fallback stays inert and the saved-theme choice wins.
+					document.documentElement.classList.add('theme-resolved');
 				}catch(e){}
 			})()
 		</script>
@@ -73,6 +79,21 @@
 			.dark #app-loading .app-loading__spinner {
 				border-color: #404040;
 				border-top-color: #43a047;
+			}
+			/* Native cold-start fallback: in the native shell the inline theme
+			   script above is stripped, so .dark is not set at first paint. This
+			   @media rule (kept in the native template) still paints a dark loader
+			   on a system-dark launch. On web the script adds .theme-resolved, so
+			   html:not(.theme-resolved) never matches and the saved theme wins. */
+			@media (prefers-color-scheme: dark) {
+				html:not(.theme-resolved) #app-loading {
+					background: #0a0a0a;
+					color: #a3a3a3;
+				}
+				html:not(.theme-resolved) #app-loading .app-loading__spinner {
+					border-color: #404040;
+					border-top-color: #43a047;
+				}
 			}
 			/* Hide loading indicator when app is ready */
 			body:has(.svelte-app-ready) #app-loading {

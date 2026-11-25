@@ -7,11 +7,11 @@ import {
   REFRESH_TOKEN_TTL_SECONDS,
   refreshTokenExpiryDate,
   TWO_FACTOR_CHALLENGE_PURPOSE,
-  TWO_FACTOR_CHALLENGE_TTL_MINUTES
+  TWO_FACTOR_CHALLENGE_TTL_MINUTES,
+  isNativeClient
 } from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 import { loginLockout } from '$lib/server/rate-limit';
-import { isNativeClient } from '$lib/utils/native-client';
 import { createLogger } from '@reborn/utils';
 
 const logger = createLogger('Notes-Login');

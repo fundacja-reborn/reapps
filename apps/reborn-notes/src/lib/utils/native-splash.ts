@@ -1,3 +1,5 @@
+import { hideCapacitorSplash } from '@reborn/platform/native';
+
 /**
  * Native splash-screen handoff (cold-start UX, third phase after PR #433/#434).
  *
@@ -19,19 +21,11 @@
  * cosmetic, never blocking. Safe to call repeatedly (hide() no-ops once the
  * splash is gone) and on every boot path: unauth / App-Lock boots flip
  * appReady fast, so their screens come up straight from the splash, masked by
- * the config's fade-out. The dynamic import sits INSIDE the positive
- * `if (__REBORN_NATIVE__)` block (same pattern as `$lib/utils/clipboard.ts`,
- * verified by build grep) so the web build dead-code-eliminates both the
- * branch and the plugin - boot-wedge lesson, guideline 61.
+ * the config's fade-out. The plugin call (`hideCapacitorSplash` in
+ * `@reborn/platform/native`) sits INSIDE the positive `if (__REBORN_NATIVE__)`
+ * block, so the web build dead-code-eliminates both the branch and the plugin.
  */
 export async function hideNativeSplash(): Promise<void> {
   // The desktop shell shows no splash: its window opens on the page itself.
-  if (__REBORN_NATIVE__ && !__REBORN_DESKTOP__) {
-    try {
-      const { SplashScreen } = await import('@capacitor/splash-screen');
-      await SplashScreen.hide();
-    } catch {
-      // Plugin missing or bridge hiccup: launchShowDuration auto-hide covers it.
-    }
-  }
+  if (__REBORN_NATIVE__ && !__REBORN_DESKTOP__) await hideCapacitorSplash();
 }

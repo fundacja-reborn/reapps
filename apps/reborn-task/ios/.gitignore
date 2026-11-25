@@ -1,0 +1,21 @@
+App/build
+App/Pods
+App/output
+App/App/public
+DerivedData
+xcuserdata
+
+# Xcode workspace IDE settings - regenerated locally by Xcode, not source
+# (an empty <dict/> appears on first open; keep it out of the tree)
+**/xcshareddata/WorkspaceSettings.xcsettings
+**/xcshareddata/IDEWorkspaceChecks.plist
+# Xcode Cloud manifest (project and target IDs) - Xcode 27 writes it on open;
+# we do not use Xcode Cloud
+**/xcshareddata/xcodecloud/
+
+# Cordova plugins for Capacitor
+capacitor-cordova-ios-plugins
+
+# Generated Config files
+App/App/capacitor.config.json
+App/App/config.xml

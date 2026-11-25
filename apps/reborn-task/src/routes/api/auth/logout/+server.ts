@@ -1,11 +1,41 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createLogger } from '@reborn/utils';
-import { handleLogout, createDefaultHandlerOptions, verifyToken } from '@reborn/auth/server';
+import {
+	handleLogout,
+	createDefaultHandlerOptions,
+	verifyToken,
+	NATIVE_SESSION_HEADER
+} from '@reborn/auth/server';
 import { prisma } from '@reborn/database';
 
 const logger = createLogger('AuthLogout');
 
+/**
+ * The refresh token a native shell sends in the body. The web client sends no
+ * body (its token is the httpOnly cookie), so a missing or malformed body means
+ * "no token", never an error: logout must not fail on it.
+ */
+async function readBodyRefreshToken(request: Request): Promise<string | undefined> {
+	try {
+		const body = (await request.json()) as { refresh_token?: unknown } | null;
+		const token = body?.refresh_token;
+		return typeof token === 'string' && token.length > 0 && token.length <= 2048
+			? token
+			: undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * POST /api/auth/logout - end the session of THIS device only.
+ *
+ * Other devices keep their sessions; ending all of them is `/logout-all`. The
+ * device names its session with what it holds. Web: the httpOnly `refresh_token`
+ * and `session_id` cookies. Native: no cookie reaches this cross-site call, so the
+ * shell sends its refresh token in the body and its session id in a header.
+ */
 export const POST: RequestHandler = async ({ request, cookies }) => {
 	try {
 		// Get token to identify user
@@ -24,12 +54,14 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			}
 		}
 
-		// Fallback: if token verification failed, try to identify user via session_id cookie
-		const sessionId = cookies.get('session_id');
-		if (!userId && sessionId) {
+		// Fallback: if token verification failed, try to identify user via session_id cookie.
+		// Only the httpOnly cookie may name the user here: the native session-id
+		// header is not a secret and only narrows an already authorised logout.
+		const cookieSessionId = cookies.get('session_id');
+		if (!userId && cookieSessionId) {
 			try {
 				const session = await prisma.userSession.findUnique({
-					where: { id: sessionId },
+					where: { id: cookieSessionId },
 					select: { user_id: true }
 				});
 				if (session) {
@@ -37,14 +69,16 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 					logger.info('User identified via session_id cookie fallback');
 				}
 			} catch {
-				logger.warn('Failed to look up session by cookie:', sessionId);
+				logger.warn('Failed to look up session by cookie:', cookieSessionId);
 			}
 		}
 
-		// End the session of THIS browser only, named by its httpOnly cookies.
-		// Other devices keep their sessions; ending all of them is /logout-all.
-		// With an expired access token the refresh token alone still names the user.
-		const refreshToken = cookies.get('refresh_token');
+		// End the session of THIS device only: the web names it with its httpOnly
+		// cookies, a native shell with its body token and session header. Other
+		// devices keep their sessions; ending all of them is /logout-all. With an
+		// expired access token the refresh token alone still names the user.
+		const sessionId = cookieSessionId ?? request.headers.get(NATIVE_SESSION_HEADER) ?? undefined;
+		const refreshToken = cookies.get('refresh_token') ?? (await readBodyRefreshToken(request));
 		if (userId || refreshToken) {
 			const result = await handleLogout(
 				userId,

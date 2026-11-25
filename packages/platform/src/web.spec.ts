@@ -94,7 +94,7 @@ describe('createWebPlatform', () => {
 
   it('web back button is a no-op (does not throw)', () => {
     const platform = createWebPlatform({ network: fakeNetwork() });
-    expect(() => platform.backButton.setHandler(() => true)).not.toThrow();
+    expect(() => platform.backButton.setHandler(() => 'handled')).not.toThrow();
     expect(() => platform.backButton.setHandler(null)).not.toThrow();
   });
 

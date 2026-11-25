@@ -44,11 +44,14 @@ export default defineConfig({
       }),
       $lib: resolve('./src/lib'),
       '@reborn/auth/server': resolve('../../packages/auth/src/server.ts'),
+      '@reborn/auth/native-client': resolve('../../packages/auth/src/utils/native-client.ts'),
       '@reborn/auth': resolve('../../packages/auth/src/index.ts'),
       '@reborn/crypto': resolve('../../packages/crypto/src/index.ts'),
       '@reborn/types': resolve('../../packages/types/src/index.ts'),
       '@reborn/utils': resolve('../../packages/utils/src/index.ts'),
       '@reborn/storage': resolve('../../packages/storage/src/index.ts'),
+      // Subpath first, or the alias below would capture it as `index.ts/native`.
+      '@reborn/platform/native': resolve('../../packages/platform/src/native/index.ts'),
       '@reborn/platform': resolve('../../packages/platform/src/index.ts'),
       // Subpaths first: the alias below would otherwise also capture
       // `@reborn/i18n/direction` / `/config` (used by server code) as

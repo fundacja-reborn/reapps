@@ -36,7 +36,12 @@
 </script>
 
 <Sheet open={open} onOpenChange={(isOpen) => {if (!isOpen) onClose();}}>
-	<SheetContent>
+	<!-- Full-height side sheet: in the edge-to-edge native shells its top (and
+	     the close button pinned there) starts under the status bar, so both move
+	     down by the top safe-area inset (0 on the web). -->
+	<SheetContent
+		class="pt-[calc(1.5rem+env(safe-area-inset-top,0px))] [&>button:last-child]:top-[calc(1rem+env(safe-area-inset-top,0px))]"
+	>
 		<SheetHeader>
 			<SheetTitle>{$t('taskList.create_list')}</SheetTitle>
 			<SheetDescription>

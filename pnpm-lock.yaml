@@ -415,6 +415,36 @@ importers:
 
   apps/reborn-task:
     dependencies:
+      '@aparajita/capacitor-secure-storage':
+        specifier: 8.0.1
+        version: 8.0.1
+      '@capacitor/android':
+        specifier: 8.6.2
+        version: 8.6.2(@capacitor/core@8.6.2)
+      '@capacitor/app':
+        specifier: 8.1.2
+        version: 8.1.2(@capacitor/core@8.6.2)
+      '@capacitor/clipboard':
+        specifier: 8.0.1
+        version: 8.0.1(@capacitor/core@8.6.2)
+      '@capacitor/core':
+        specifier: 8.6.2
+        version: 8.6.2
+      '@capacitor/filesystem':
+        specifier: 8.1.5
+        version: 8.1.5(@capacitor/core@8.6.2)
+      '@capacitor/ios':
+        specifier: 8.6.2
+        version: 8.6.2(@capacitor/core@8.6.2)
+      '@capacitor/network':
+        specifier: 8.0.1
+        version: 8.0.1(@capacitor/core@8.6.2)
+      '@capacitor/share':
+        specifier: 8.0.3
+        version: 8.0.3(@capacitor/core@8.6.2)
+      '@capacitor/splash-screen':
+        specifier: 8.0.2
+        version: 8.0.2(@capacitor/core@8.6.2)
       '@internationalized/date':
         specifier: 3.12.4
         version: 3.12.4
@@ -436,6 +466,9 @@ importers:
       '@reborn/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@reborn/platform':
+        specifier: workspace:*
+        version: link:../../packages/platform
       '@reborn/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -470,6 +503,9 @@ importers:
         specifier: 3.6.7
         version: 3.6.7
     devDependencies:
+      '@capacitor/cli':
+        specifier: 8.6.2
+        version: 8.6.2
       '@eslint/js':
         specifier: 10.0.1
         version: 10.0.1(eslint@10.4.1(jiti@2.7.0))
@@ -747,7 +783,32 @@ importers:
         version: 4.1.12(@types/node@24.12.4)(@vitest/coverage-v8@4.1.12)(@vitest/ui@4.1.12)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.6(@types/node@24.12.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/platform:
+    dependencies:
+      '@capacitor/app':
+        specifier: 8.1.2
+        version: 8.1.2(@capacitor/core@8.6.2)
+      '@capacitor/clipboard':
+        specifier: 8.0.1
+        version: 8.0.1(@capacitor/core@8.6.2)
+      '@capacitor/core':
+        specifier: 8.6.2
+        version: 8.6.2
+      '@capacitor/filesystem':
+        specifier: 8.1.5
+        version: 8.1.5(@capacitor/core@8.6.2)
+      '@capacitor/network':
+        specifier: 8.0.1
+        version: 8.0.1(@capacitor/core@8.6.2)
+      '@capacitor/share':
+        specifier: 8.0.3
+        version: 8.0.3(@capacitor/core@8.6.2)
+      '@capacitor/splash-screen':
+        specifier: 8.0.2
+        version: 8.0.2(@capacitor/core@8.6.2)
     devDependencies:
+      '@aparajita/capacitor-secure-storage':
+        specifier: 8.0.1
+        version: 8.0.1
       '@types/node':
         specifier: 24.12.4
         version: 24.12.4

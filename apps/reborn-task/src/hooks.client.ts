@@ -16,6 +16,8 @@ import { pushNotificationService } from '$lib/services/push-notification.service
 import { startSwUpdateWatcher } from '$lib/services/sw-update.service';
 import { startPwaInstallPrompt } from '$lib/services/pwa-install.service';
 import { initWebLock } from '$lib/services/web-lock.service';
+import { createNativeMasterKeyVault } from '$lib/utils/native-master-key-vault';
+import { applyNativeStatusBarStyle } from '$lib/utils/native-shell';
 
 const logger = createLogger('hooks.client');
 
@@ -28,6 +30,43 @@ const logger = createLogger('hooks.client');
 const isPublicShareRoute =
 	typeof window !== 'undefined' &&
 	window.location.pathname.startsWith(`${base}/s/`);
+
+// Native (Capacitor): persist the master key through the device vault (Android
+// Keystore / iOS Keychain-wrapped) instead of an extractable CryptoKey in
+// IndexedDB, so kill / reopen restores it without the password. Must be wired
+// BEFORE the first waitForRestore() call anywhere - the restoration source is
+// decided when the lazy restore runs. Deliberately outside the
+// isPublicShareRoute guard: the injection is pure state (no IO, guideline 59
+// rule #12) and a session entered via a share deep link must still use the
+// vault once the user navigates into the app. Same wiring as re/notes.
+if (__REBORN_NATIVE__) {
+	cryptoManager.setMasterKeyVault(createNativeMasterKeyVault());
+
+	// The shell must not run a Service Worker: assets are bundled locally, so a
+	// SW adds only a cache layer that can serve a stale shell after a store
+	// update (and its Web Push path has no addressee there). Registration is
+	// off for native builds (svelte.config.js `serviceWorker.register`); this
+	// sweep removes any SW a dev build registered before (`https://localhost`
+	// is SW-capable on Android; on iOS the API is absent, hence the guard).
+	if ('serviceWorker' in navigator) {
+		void navigator.serviceWorker
+			.getRegistrations()
+			.then((registrations) => {
+				for (const registration of registrations) void registration.unregister();
+			})
+			.catch(() => {});
+	}
+
+	// Best-effort storage durability: iOS can evict WKWebView website data
+	// (IndexedDB) under disk pressure. Eviction stays survivable - the server
+	// holds all encrypted data and the master key / refresh token live in the
+	// Keychain / Keystore, so recovery is a silent re-sync (guideline 04).
+	void navigator.storage?.persist?.()?.catch(() => {});
+
+	// Status-bar icons over the brand band the root layout paints behind the
+	// transparent system bar (PWA parity). Cosmetic fire-and-forget.
+	void applyNativeStatusBarStyle();
+}
 
 // Eagerly construct the session manager singleton at module load time so that
 // `auth.store.ts` (which retries on a short interval) can attach immediately
@@ -80,8 +119,11 @@ export const handleError: HandleClientError = ({ error }) => {
 // version is deployed so the user can reload to pick up fresh code.
 // Skipped on /s/<slug> - service worker is bypassed there per rule #9, and
 // SSO logout/unlock listeners + storage init have no addressee in the
-// anonymous snapshot viewer.
-if (!isPublicShareRoute) {
+// anonymous snapshot viewer. Web-PWA-only flows: in the native shell code
+// updates arrive via the store, never via a SW swap, and
+// `beforeinstallprompt` never fires inside a webview - so the native build
+// drops both watchers.
+if (!isPublicShareRoute && !__REBORN_NATIVE__) {
 	startSwUpdateWatcher();
 	startPwaInstallPrompt();
 }
@@ -206,7 +248,10 @@ if (!isPublicShareRoute) {
 			//   1. Whenever the decrypted task store changes (edits, sync pulls)
 			//   2. When the tab becomes visible (user returns after the SW was idle)
 			//   3. Periodically every 15 minutes while the tab is open
-			if (pushNotificationService.isSupported()) {
+			//
+			// Web only: Web Push needs a Service Worker, which the native shell does
+			// not run (reminders there are planned as device-local notifications).
+			if (!__REBORN_NATIVE__ && pushNotificationService.isSupported()) {
 				try {
 					const { tasks } = await import('$lib/stores/decrypted-tasks.store');
 					const { getSetting } = await import('$lib/utils/app-settings');

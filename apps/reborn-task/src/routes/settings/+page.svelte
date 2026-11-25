@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { PUBLIC_BASE_PATH } from '$env/static/public';
+	import { API_BASE } from '$lib/utils/api-base';
 	import { onMount } from 'svelte';
 	import {
 		Palette,
@@ -216,7 +216,7 @@
 			return;
 		}
 		try {
-			const response = await fetch(`${PUBLIC_BASE_PATH}/api/auth/sessions`, {
+			const response = await fetch(`${API_BASE}/auth/sessions`, {
 				headers: { Authorization: `Bearer ${accessToken}` }
 			});
 			const data = await response.json();

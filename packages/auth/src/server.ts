@@ -89,3 +89,12 @@ export type {
   RateLimitOptions,
   RateLimitStore
 } from './middleware/authMiddleware';
+
+// Native-shell signaling: gate for the body-token branch of token-issuing
+// endpoints (same pure module as the client barrel exports).
+export {
+  NATIVE_CLIENT_HEADER,
+  NATIVE_CLIENT_VALUE,
+  NATIVE_SESSION_HEADER,
+  isNativeClient
+} from './utils/native-client';

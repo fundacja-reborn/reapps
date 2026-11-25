@@ -14,7 +14,7 @@
  */
 
 import { invokeDesktop } from './desktop-bridge';
-import type { NativeSecureStorage } from './native-secure-storage';
+import type { NativeSecureStorage } from '@reborn/platform';
 
 export function getDesktopSecureStorage(): NativeSecureStorage {
   return {

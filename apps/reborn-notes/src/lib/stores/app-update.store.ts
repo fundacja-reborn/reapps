@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { UpdateSeverity } from '$lib/utils/app-update';
+import type { UpdateSeverity } from '@reborn/platform';
 
 export interface AppUpdateState {
   severity: UpdateSeverity;
