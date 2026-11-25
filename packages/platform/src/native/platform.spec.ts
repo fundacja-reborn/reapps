@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-type Listener = (payload: unknown) => void;
+type Listener = (payload: unknown) => void | Promise<void>;
 const appListeners = new Map<string, Listener>();
 let networkListener: Listener | null = null;
 let launchUrl: string | null = null;
@@ -72,6 +72,69 @@ describe('createCapacitorPlatform', () => {
     offPause();
     appListeners.get('appStateChange')?.({ isActive: false });
     expect(events).toEqual(['pause', 'resume']);
+  });
+
+  describe('back button', () => {
+    const historyBack = vi.fn();
+    /** Open overlay layers the stubbed document reports, before and after BACK. */
+    let openLayers: number[] = [];
+
+    beforeEach(() => {
+      exitApp.mockClear();
+      historyBack.mockClear();
+      openLayers = [];
+      vi.stubGlobal('window', { history: { state: null, back: historyBack } });
+      vi.stubGlobal('requestAnimationFrame', (cb: () => void) => setTimeout(cb, 0));
+      vi.stubGlobal('KeyboardEvent', class {
+        constructor(readonly type: string) {}
+      });
+      vi.stubGlobal('HTMLElement', class {});
+      vi.stubGlobal('document', {
+        activeElement: null,
+        body: { dispatchEvent: () => true },
+        querySelectorAll: () => ({ length: openLayers.shift() ?? 0 })
+      });
+      return () => vi.unstubAllGlobals();
+    });
+
+    const press = (canGoBack: boolean) => appListeners.get('backButton')?.({ canGoBack });
+
+    it('closes an open overlay without asking the app or navigating', async () => {
+      const platform = await createPlatform();
+      const handler = vi.fn(() => 'exit' as const);
+      platform.backButton.setHandler(handler);
+      openLayers = [1, 0];
+      await press(true);
+      expect(handler).not.toHaveBeenCalled();
+      expect(exitApp).not.toHaveBeenCalled();
+      expect(historyBack).not.toHaveBeenCalled();
+    });
+
+    it('does nothing more when the app handled the press', async () => {
+      const platform = await createPlatform();
+      platform.backButton.setHandler(() => 'handled');
+      await press(true);
+      expect(exitApp).not.toHaveBeenCalled();
+      expect(historyBack).not.toHaveBeenCalled();
+    });
+
+    it('exits on request even with webview history left', async () => {
+      const platform = await createPlatform();
+      platform.backButton.setHandler(() => 'exit');
+      await press(true);
+      expect(exitApp).toHaveBeenCalledOnce();
+      expect(historyBack).not.toHaveBeenCalled();
+    });
+
+    it('walks the history by default and exits when none is left', async () => {
+      const platform = await createPlatform();
+      platform.backButton.setHandler(() => 'default');
+      await press(true);
+      expect(historyBack).toHaveBeenCalledOnce();
+      platform.backButton.setHandler(null);
+      await press(false);
+      expect(exitApp).toHaveBeenCalledOnce();
+    });
   });
 
   it('delivers the cold-start launch URL once, then warm opens', async () => {

@@ -14,6 +14,7 @@
  * secure-storage bridge (see `./secure-storage.ts`, boot-wedge lesson).
  */
 import type {
+  BackButtonOutcome,
   NetworkState,
   Platform,
   PlatformBackButton,
@@ -168,9 +169,12 @@ async function dismissTopOverlay(): Promise<boolean> {
   return document.querySelectorAll(OPEN_OVERLAY_SELECTOR).length < before;
 }
 
-/** Android hardware back via `@capacitor/app` `backButton`. */
+/**
+ * Android hardware back via `@capacitor/app` `backButton`. Order: close the
+ * front-most overlay, else ask the app's handler, else walk the history.
+ */
 function createNativeBackButton(): PlatformBackButton {
-  let handler: (() => boolean) | null = null;
+  let handler: (() => BackButtonOutcome) | null = null;
   let wired = false;
 
   const ensureWired = async () => {
@@ -179,8 +183,11 @@ function createNativeBackButton(): PlatformBackButton {
     try {
       const { App } = await import('@capacitor/app');
       await App.addListener('backButton', async ({ canGoBack }) => {
-        if (handler && handler()) return; // consumed by the app
-        if (await dismissTopOverlay()) return; // closed a modal instead
+        // A modal is up: BACK closes it and means nothing else - the app's
+        // handler must not navigate underneath a dialog still on screen.
+        if (await dismissTopOverlay()) return;
+        const outcome = handler ? handler() : 'default';
+        if (outcome === 'handled') return;
         // At a mobile-history "guard" root (an app marks it with
         // `history.state._rn === 'guard'` - re/notes' +page.svelte trampoline)
         // or with no webview history, exit. Otherwise walk back, which drives
@@ -188,7 +195,7 @@ function createNativeBackButton(): PlatformBackButton {
         const atRoot =
           typeof window !== 'undefined' &&
           (window.history.state as { _rn?: string } | null)?._rn === 'guard';
-        if (atRoot || !canGoBack) {
+        if (outcome === 'exit' || atRoot || !canGoBack) {
           void App.exitApp();
         } else {
           window.history.back();

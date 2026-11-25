@@ -60,17 +60,28 @@ export interface PlatformLifecycle {
 }
 
 /**
+ * What an app's back handler did with a BACK press:
+ * - `handled` - consumed it (navigated, closed a panel); nothing else runs.
+ * - `exit` - the app is at its start destination: close it, whatever the
+ *   webview history still holds.
+ * - `default` - not the app's business: walk the webview history back (and
+ *   exit at a guard root or with no history left).
+ */
+export type BackButtonOutcome = 'handled' | 'exit' | 'default';
+
+/**
  * System (hardware) back button. Web is a no-op - the browser / PWA history
  * stack already handles back. Native (Android) wires `@capacitor/app`
  * `backButton`.
  */
 export interface PlatformBackButton {
   /**
-   * Register a back handler that runs before the default behaviour. Return
-   * `true` to consume the event (suppress the default). Pass `null` to clear.
-   * Web ignores it.
+   * Register the app's back handler. Native runs it after closing the
+   * front-most open overlay (dialog, sheet, menu) - a press that closed one
+   * does nothing else - and before the default history walk. Pass `null` to
+   * clear. Web ignores it.
    */
-  setHandler(handler: (() => boolean) | null): void;
+  setHandler(handler: (() => BackButtonOutcome) | null): void;
 }
 
 /**

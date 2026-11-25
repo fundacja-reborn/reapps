@@ -44,6 +44,9 @@
 	import { page } from '$app/stores';
 	import { goto } from '$lib/utils/navigation';
 	import { goBackFromTaskDetail } from '$lib/utils/task-detail-nav';
+	import { platform } from '$lib/platform';
+	import { IS_NATIVE } from '$lib/utils/native-client';
+	import type { BackButtonOutcome } from '@reborn/platform';
 	import { requireActiveSession } from '$lib/utils/require-active-session';
 	import { session } from '$lib/stores/auth.store';
 	import { t } from '$lib/stores/i18n.store';
@@ -599,6 +602,52 @@
 			history.back();
 		}
 	}
+
+	// Android BACK in the native shell (the platform closes an open dialog or
+	// sheet before asking). Mobile section changes REPLACE the history entry, so
+	// the webview history no longer mirrors what the user walked through and a
+	// plain history.back() lands on whatever entry sits below (smoke 2026-11-25:
+	// always "Task lists"). Mirror the on-screen navigation instead: task detail
+	// -> where it was opened from, a list -> the list catalogue, any other
+	// section -> All tasks (the start destination), All tasks -> close the app.
+	// Pushed pages (profile, ...) and the tablet layout keep the history walk.
+	const SECTION_ROUTE_IDS = new Set([
+		'/(app)/all',
+		'/(app)/lists',
+		'/(app)/lists/[listId]',
+		'/(app)/starred',
+		'/(app)/overdue',
+		'/(app)/today',
+		'/(app)/upcoming',
+		'/(app)/no-date',
+		'/(app)/trash'
+	]);
+
+	function handleNativeBack(): BackButtonOutcome {
+		if (!isMobile) return 'default';
+		const routeId = $page.route.id ?? '';
+		if (routeId.includes('/tasks/')) {
+			handleMobileBack();
+			return 'handled';
+		}
+		if (!SECTION_ROUTE_IDS.has(routeId)) return 'default';
+		if (activeSection === 'lists' && mobileView === 'tasks') {
+			handleBackToLists();
+			return 'handled';
+		}
+		if (activeSection !== 'all') {
+			taskListView.clear();
+			activeSection = 'all';
+			return 'handled';
+		}
+		return 'exit';
+	}
+
+	onMount(() => {
+		if (!IS_NATIVE) return;
+		platform.backButton.setHandler(handleNativeBack);
+		return () => platform.backButton.setHandler(null);
+	});
 
 	async function handleNavigateToList(listId: string) {
 		if (isMobile) {
