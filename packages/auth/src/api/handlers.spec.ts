@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { handleRefreshToken } from './handlers';
+import { handleLogout, handleRefreshToken } from './handlers';
 
 /**
  * Regression coverage for the "false 'Session expired' banner after local
@@ -166,5 +166,112 @@ describe('handleRefreshToken - auth vs infrastructure failure classification', (
         user_id: 'user-1'
       })
     });
+  });
+});
+
+/**
+ * Logout ends the session of the device that logs out, never the user's other
+ * devices. It used to delete every refresh token of the user, so signing out on
+ * one device (e.g. the macOS app) expired the session on the phone as soon as its
+ * 15-minute access token ran out. "Log out everywhere" is `/logout-all`.
+ */
+describe('handleLogout - ends only the current device', () => {
+  it('revokes the family of the presented refresh token and its session, scoped to the user', async () => {
+    const findUnique = vi
+      .fn()
+      .mockResolvedValue({ user_id: 'user-1', family_id: 'family-1', session_id: 'session-1' });
+    const deleteMany = vi.fn().mockResolvedValue({ count: 2 });
+    const dbClient = makeDbClient({ findUnique, deleteMany });
+
+    const result = await handleLogout('user-1', { dbClient }, undefined, {
+      refreshToken: 'device-refresh-token'
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual({ userId: 'user-1', sessionIds: ['session-1'] });
+    expect(findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { token: 'device-refresh-token' } })
+    );
+    expect(deleteMany).toHaveBeenCalledTimes(1);
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: {
+        user_id: 'user-1',
+        OR: [{ family_id: 'family-1' }, { session_id: { in: ['session-1'] } }]
+      }
+    });
+  });
+
+  it('revokes by session id alone when no refresh token is presented', async () => {
+    const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+    const dbClient = makeDbClient({ deleteMany });
+
+    const result = await handleLogout('user-1', { dbClient }, undefined, {
+      sessionId: 'session-1'
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.sessionIds).toEqual(['session-1']);
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: { user_id: 'user-1', OR: [{ session_id: { in: ['session-1'] } }] }
+    });
+  });
+
+  it('revokes no refresh token when nothing names the device (never all of the user)', async () => {
+    const deleteMany = vi.fn();
+    const dbClient = makeDbClient({ deleteMany });
+
+    const result = await handleLogout('user-1', { dbClient });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual({ userId: 'user-1', sessionIds: [] });
+    expect(deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("ignores a refresh token of another user than the access token's", async () => {
+    const findUnique = vi
+      .fn()
+      .mockResolvedValue({ user_id: 'user-2', family_id: 'family-2', session_id: 'session-2' });
+    const deleteMany = vi.fn();
+    const dbClient = makeDbClient({ findUnique, deleteMany });
+
+    const result = await handleLogout('user-1', { dbClient }, undefined, {
+      refreshToken: 'someone-elses-token'
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual({ userId: 'user-1', sessionIds: [] });
+    expect(deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('names the user from the refresh token when the access token has expired', async () => {
+    const findUnique = vi
+      .fn()
+      .mockResolvedValue({ user_id: 'user-1', family_id: 'family-1', session_id: null });
+    const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+    const dbClient = makeDbClient({ findUnique, deleteMany });
+
+    const result = await handleLogout(undefined, { dbClient }, undefined, {
+      refreshToken: 'device-refresh-token'
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual({ userId: 'user-1', sessionIds: [] });
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: { user_id: 'user-1', OR: [{ family_id: 'family-1' }] }
+    });
+  });
+
+  it('fails without touching the database when neither a user nor a known token is given', async () => {
+    const findUnique = vi.fn().mockResolvedValue(null);
+    const deleteMany = vi.fn();
+    const dbClient = makeDbClient({ findUnique, deleteMany });
+
+    const result = await handleLogout(undefined, { dbClient }, undefined, {
+      refreshToken: 'unknown-token',
+      sessionId: 'session-1'
+    });
+
+    expect(result.success).toBe(false);
+    expect(deleteMany).not.toHaveBeenCalled();
   });
 });

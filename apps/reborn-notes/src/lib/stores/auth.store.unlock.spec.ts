@@ -27,8 +27,14 @@ vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$app/paths', () => ({ base: '' }));
 vi.mock('@reborn/crypto', () => ({ cryptoManager: crypto }));
 vi.mock('$lib/utils/api-base', () => ({ API_BASE: '/api' }));
-vi.mock('$lib/utils/native-auth-storage', () => ({ clearNativeRefreshToken: vi.fn() }));
-vi.mock('$lib/utils/native-session', () => ({ clearNativeSessionId: vi.fn() }));
+vi.mock('$lib/utils/native-auth-storage', () => ({
+  clearNativeRefreshToken: vi.fn(),
+  readNativeRefreshToken: vi.fn()
+}));
+vi.mock('$lib/utils/native-session', () => ({
+  clearNativeSessionId: vi.fn(),
+  nativeSessionHeader: vi.fn(() => ({}))
+}));
 vi.mock('$lib/stores/start-place', () => ({ forgetRememberedPlace: vi.fn() }));
 vi.mock('$lib/stores/sync-status.store', () => ({
   sessionExpired: { set: vi.fn() },

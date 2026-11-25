@@ -41,30 +41,32 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			}
 		}
 
-		// Call logout handler if we have a user ID
-		if (userId) {
+		// End the session of THIS browser only, named by its httpOnly cookies.
+		// Other devices keep their sessions; ending all of them is /logout-all.
+		// With an expired access token the refresh token alone still names the user.
+		const refreshToken = cookies.get('refresh_token');
+		if (userId || refreshToken) {
 			const result = await handleLogout(
 				userId,
 				createDefaultHandlerOptions({
 					user: prisma.user,
 					refreshToken: prisma.refreshToken
 				}),
-				token
+				token,
+				{ refreshToken, sessionId }
 			);
 
-			if (!result.success) {
+			if (!result.success || !result.data) {
 				logger.warn('Logout handler failed:', result.error);
-			}
-
-			// Deactivate the current UserSession
-			if (sessionId) {
+			} else if (result.data.sessionIds.length > 0) {
+				// Deactivate the current UserSession
 				try {
-					await prisma.userSession.update({
-						where: { id: sessionId, user_id: userId },
+					await prisma.userSession.updateMany({
+						where: { id: { in: result.data.sessionIds }, user_id: result.data.userId },
 						data: { is_active: false }
 					});
 				} catch {
-					logger.warn('Failed to deactivate session:', sessionId);
+					logger.warn('Failed to deactivate session:', result.data.sessionIds);
 				}
 			}
 		}
