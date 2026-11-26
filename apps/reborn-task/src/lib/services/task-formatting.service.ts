@@ -1,4 +1,4 @@
-import { formatTimeOfDay } from '@reborn/i18n/config';
+import { formatDateTime, formatTimeOfDay, intlLocale } from '@reborn/i18n/config';
 import { formatDateWithSetting } from '@reborn/utils';
 
 export interface DueDateFormatResult {
@@ -68,6 +68,40 @@ export function formatSettingsDateTime(
 /** Time of day in the app language, on the user's 12h/24h clock (`timeFormat` setting). */
 export function getTimeString(date: Date, locale: string, timeFormat: string = '24h'): string {
 	return formatTimeOfDay(date, locale, timeFormat);
+}
+
+/**
+ * Due date of a shared task snapshot. `timeFormat` null = the public share
+ * page: the visitor has no account settings, so the language shapes the date
+ * and picks the clock. A string = the owner's preview of their share, on
+ * their 12h/24h clock.
+ *
+ * A date-only task keeps its calendar day as UTC midnight (see
+ * `computeReminderFireAt`), so it formats in UTC and without a time of day.
+ * Read in the viewer's zone it showed "1:00:00 AM" in Poland, and west of UTC
+ * it would land on the previous day. A task with a time formats in the
+ * viewer's zone, like everywhere else in the app.
+ */
+export function formatSnapshotDueDate(
+	iso: string | null | undefined,
+	hasTime: boolean | undefined,
+	locale: string | null | undefined,
+	timeFormat: string | null
+): string {
+	if (!iso) return '';
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return iso;
+	if (timeFormat === null) {
+		const tag = intlLocale(locale);
+		// date-format-ignore: public share page - the visitor has no account settings
+		if (!hasTime) return date.toLocaleDateString(tag, { timeZone: 'UTC' });
+		// time-format-ignore: public share page - the visitor has no account settings, so the clock follows the language
+		return date.toLocaleString(tag);
+	}
+	// date-format-ignore: owner preview of a share, in the style of its "Shared" line
+	return hasTime
+		? formatDateTime(date, locale, timeFormat)
+		: formatDateTime(date, locale, timeFormat, { dateStyle: 'medium', timeZone: 'UTC' });
 }
 
 /**
