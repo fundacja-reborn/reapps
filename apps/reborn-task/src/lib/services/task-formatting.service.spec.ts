@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatTimeOfDay } from '@reborn/i18n/config';
-import { formatSettingsDateTime } from './task-formatting.service';
+import { formatDateTime, formatTimeOfDay } from '@reborn/i18n/config';
+import { formatSettingsDateTime, formatSnapshotDueDate } from './task-formatting.service';
 
 describe('formatSettingsDateTime', () => {
 	// Local time, written without a zone: the same wall clock on every machine.
@@ -39,5 +39,41 @@ describe('formatSettingsDateTime', () => {
 		const date = new Date(2026, 10, 6, 17, 13);
 		expect(formatSettingsDateTime(date, 'DD.MM.YYYY', '24h', 'pl')).toBe('06.11.2026, 17:13');
 		expect(formatSettingsDateTime(date, 'DD.MM.YYYY', '24h', undefined)).toBe('06.11.2026, 17:13');
+	});
+});
+
+describe('formatSnapshotDueDate', () => {
+	// A date-only task stores its calendar day as UTC midnight.
+	const dateOnly = '2026-11-25T00:00:00.000Z';
+	const timed = '2026-11-25T09:30:00.000Z';
+	const clockTime = /\d{1,2}:\d{2}/;
+
+	it('shows a date-only due date without a time, on its UTC calendar day (public page)', () => {
+		expect(formatSnapshotDueDate(dateOnly, false, 'pl', null)).toBe('25.11.2026');
+		expect(formatSnapshotDueDate(dateOnly, false, 'en', null)).toBe('11/25/2026');
+		expect(formatSnapshotDueDate(dateOnly, undefined, 'de', null)).not.toMatch(clockTime);
+	});
+
+	it('shows a date-only due date without a time in the owner preview', () => {
+		expect(formatSnapshotDueDate(dateOnly, false, 'en', '24h')).toBe('Nov 25, 2026');
+		expect(formatSnapshotDueDate(dateOnly, false, 'pl', '12h')).not.toMatch(clockTime);
+	});
+
+	it('keeps digits 0-9 in Arabic', () => {
+		expect(formatSnapshotDueDate(dateOnly, false, 'ar', null)).not.toMatch(/[٠-٩]/);
+		expect(formatSnapshotDueDate(dateOnly, false, 'ar', '24h')).not.toMatch(/[٠-٩]/);
+	});
+
+	it('shows the time of a timed due date, on the clock of the page', () => {
+		const date = new Date(timed);
+		expect(formatSnapshotDueDate(timed, true, 'pl', null)).toBe(date.toLocaleString('pl'));
+		expect(formatSnapshotDueDate(timed, true, 'en', '12h')).toBe(formatDateTime(date, 'en', '12h'));
+		expect(formatSnapshotDueDate(timed, true, 'en', '12h')).toMatch(clockTime);
+	});
+
+	it('returns an empty text without a date and the raw value when it is not a date', () => {
+		expect(formatSnapshotDueDate(null, false, 'en', null)).toBe('');
+		expect(formatSnapshotDueDate('', true, 'en', '24h')).toBe('');
+		expect(formatSnapshotDueDate('not a date', false, 'en', null)).toBe('not a date');
 	});
 });

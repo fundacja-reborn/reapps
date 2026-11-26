@@ -26,6 +26,7 @@
   import { t, locale } from '$lib/stores/i18n.store';
   import { intlLocale } from '@reborn/i18n';
   import TaskSnapshotView from '$lib/components/tasks/TaskSnapshotView.svelte';
+  import { formatSnapshotDueDate } from '$lib/services/task-formatting.service';
   import ShareGate from '$lib/components/share/ShareGate.svelte';
   import {
     importKeyFromBase64url,
@@ -89,7 +90,9 @@
 
     const meta: string[] = [];
     if (p.metadata.due_date) {
-      meta.push(`${$t('share.view.task.due_date_label')}: ${formatDate(p.metadata.due_date)}`);
+      meta.push(
+        `${$t('share.view.task.due_date_label')}: ${formatDueDate(p.metadata.due_date, p.metadata.has_time)}`
+      );
     }
     if (p.metadata.is_completed) {
       meta.push(`✓ ${$t('share.view.task.completed_badge')}`);
@@ -255,6 +258,11 @@
     }
   }
 
+  // A date-only due date shows no time of day (formatSnapshotDueDate).
+  function formatDueDate(iso: string | null | undefined, hasTime: boolean | undefined): string {
+    return formatSnapshotDueDate(iso, hasTime, get(locale), null);
+  }
+
   const taskPayload = $derived(payload && payload.type === 'task' ? payload : null);
   // Only `due_date` and `is_completed` are surfaced in the public snapshot.
   // `is_starred` is intentionally NOT read here: starring is the owner's
@@ -263,7 +271,7 @@
   // state. The full payload field stays in the encrypted blob for owner-side
   // previews (TaskSnapshotView with showHeader=true), just not here.
   const taskMeta = $derived(taskPayload?.metadata as
-    | { due_date?: string | null; is_completed?: boolean }
+    | { due_date?: string | null; has_time?: boolean; is_completed?: boolean }
     | undefined);
 </script>
 
@@ -513,7 +521,7 @@
         {#if taskMeta?.due_date || taskMeta?.is_completed}
           <div class="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
             {#if taskMeta?.due_date}
-              <span>{$t('share.view.task.due_date_label')}: {formatDate(taskMeta.due_date)}</span>
+              <span>{$t('share.view.task.due_date_label')}: {formatDueDate(taskMeta.due_date, taskMeta.has_time)}</span>
             {/if}
             {#if taskMeta?.due_date && taskMeta?.is_completed}
               <span aria-hidden="true">·</span>

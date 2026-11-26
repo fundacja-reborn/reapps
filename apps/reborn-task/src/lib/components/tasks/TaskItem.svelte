@@ -160,9 +160,10 @@
 					<div class="flex items-center gap-1">
 						{#if dueDate.status === 'overdue'}
 							<AlertCircle class="h-4 w-4 task-date-overdue" />
+							<!-- No line break before {#if}: it renders as a space before the comma ("yesterday , 10:00"). -->
 							<span class="task-date-overdue font-medium">
-								{dueDate.relativeText || dueDate.text}
-								{#if dueDate.text && dueDate.relativeText}, {dueDate.text}{/if}
+								{dueDate.relativeText ||
+									dueDate.text}{#if dueDate.text && dueDate.relativeText}, {dueDate.text}{/if}
 							</span>
 						{:else if dueDate.status === 'today'}
 							{#if dueDate.isTimeOverdue}

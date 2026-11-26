@@ -4,6 +4,7 @@
   import { formatDateTime } from '@reborn/i18n';
   import { timeFormat } from '$lib/stores/app-settings.store';
   import type { SharedSnapshotTaskPayload } from '@reborn/types';
+  import { formatSnapshotDueDate } from '$lib/services/task-formatting.service';
 
   let { payload, showHeader = true }: { payload: SharedSnapshotTaskPayload; showHeader?: boolean } = $props();
 
@@ -48,7 +49,14 @@
     {#if meta?.due_date || meta?.is_completed}
       <div class="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
         {#if meta?.due_date}
-          <span>{$t('share.view.task.due_date_label')}: {formatDate(meta.due_date)}</span>
+          <span
+            >{$t('share.view.task.due_date_label')}: {formatSnapshotDueDate(
+              meta.due_date,
+              meta.has_time,
+              $locale,
+              $timeFormat
+            )}</span
+          >
         {/if}
         {#if meta?.due_date && meta?.is_completed}
           <span aria-hidden="true">·</span>
