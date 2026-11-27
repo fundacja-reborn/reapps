@@ -25,8 +25,8 @@
 
 <p align="center">
   <a href="https://play.google.com/store/apps/details?id=eu.reapps.notes"><img src="docs/assets/badges/google-play.png" alt="Get it on Google Play" height="40"></a>&nbsp;
-  <a href="https://apps.apple.com/app/reborn-notes/id6781237599"><img src="docs/assets/badges/app-store.svg" alt="Download on the App Store" height="40"></a>&nbsp;
-  <a href="https://apps.apple.com/app/reborn-notes/id6781237599?platform=mac"><img src="docs/assets/badges/mac-app-store.svg" alt="Download on the Mac App Store" height="40"></a>
+  <a href="https://apps.apple.com/app/id6781237599"><img src="docs/assets/badges/app-store.svg" alt="Download on the App Store" height="40"></a>&nbsp;
+  <a href="https://apps.apple.com/app/id6781237599?platform=mac"><img src="docs/assets/badges/mac-app-store.svg" alt="Download on the Mac App Store" height="40"></a>
 </p>
 
 > 📱 **re/notes is in the app stores** - for Android, iPhone and iPad, and Mac, built from this same open-source code. re/task follows. Both apps also keep working in the browser at [reapps.eu](https://reapps.eu). Track what's next on the [changelog and roadmap](https://reapps.eu/changelog/).
@@ -126,7 +126,7 @@ A free public instance is available at **[reapps.eu](https://reapps.eu)**, maint
 | App | URL |
 |---|---|
 | re/notes | [reapps.eu/notes](https://reapps.eu/notes) |
-| re/notes apps | [Google Play](https://play.google.com/store/apps/details?id=eu.reapps.notes) (Android) · [App Store](https://apps.apple.com/app/reborn-notes/id6781237599) (iPhone, iPad) · [Mac App Store](https://apps.apple.com/app/reborn-notes/id6781237599?platform=mac) (Mac) |
+| re/notes apps | [Google Play](https://play.google.com/store/apps/details?id=eu.reapps.notes) (Android) · [App Store](https://apps.apple.com/app/id6781237599) (iPhone, iPad) · [Mac App Store](https://apps.apple.com/app/id6781237599?platform=mac) (Mac) |
 | re/task | [reapps.eu/task](https://reapps.eu/task) |
 
 No email required. Create an account with just a username and password. The same account works in the browser and in the apps.
