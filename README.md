@@ -23,9 +23,15 @@
 
 ---
 
-> 📱 **Coming soon - native mobile apps.** Native apps are coming to the App Store and Google Play - re/notes first, with re/task following shortly after. The same end-to-end encrypted notes and tasks as dedicated apps, built from this same open-source code. Track progress on the [changelog and roadmap](https://reapps.eu/changelog/).
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=eu.reapps.notes"><img src="docs/assets/badges/google-play.png" alt="Get it on Google Play" height="40"></a>&nbsp;
+  <a href="https://apps.apple.com/app/reborn-notes/id6781237599"><img src="docs/assets/badges/app-store.svg" alt="Download on the App Store" height="40"></a>&nbsp;
+  <a href="https://apps.apple.com/app/reborn-notes/id6781237599?platform=mac"><img src="docs/assets/badges/mac-app-store.svg" alt="Download on the Mac App Store" height="40"></a>
+</p>
 
-**Reborn Apps** is a suite of two Progressive Web Apps built with a **Zero Knowledge architecture** - all user data is encrypted on your device before it ever reaches the server. The server stores only ciphertext and cannot read your tasks, notes, or metadata.
+> 📱 **re/notes is in the app stores** - for Android, iPhone and iPad, and Mac, built from this same open-source code. re/task follows. Both apps also keep working in the browser at [reapps.eu](https://reapps.eu). Track what's next on the [changelog and roadmap](https://reapps.eu/changelog/).
+
+**Reborn Apps** is a suite of two apps built with a **Zero Knowledge architecture** - all user data is encrypted on your device before it ever reaches the server. The server stores only ciphertext and cannot read your tasks, notes, or metadata. Both run in the browser as Progressive Web Apps, and re/notes also ships as a native app for Android, iOS and macOS.
 
 Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-profit. Hosted on Hetzner Cloud (Germany). No tracking, no ads, no email required.
 
@@ -120,9 +126,10 @@ A free public instance is available at **[reapps.eu](https://reapps.eu)**, maint
 | App | URL |
 |---|---|
 | re/notes | [reapps.eu/notes](https://reapps.eu/notes) |
+| re/notes apps | [Google Play](https://play.google.com/store/apps/details?id=eu.reapps.notes) (Android) · [App Store](https://apps.apple.com/app/reborn-notes/id6781237599) (iPhone, iPad) · [Mac App Store](https://apps.apple.com/app/reborn-notes/id6781237599?platform=mac) (Mac) |
 | re/task | [reapps.eu/task](https://reapps.eu/task) |
 
-No email required. Create an account with just a username and password.
+No email required. Create an account with just a username and password. The same account works in the browser and in the apps.
 
 **Live status:** [stats.uptimerobot.com/JDB9dZbrRv](https://stats.uptimerobot.com/JDB9dZbrRv)
 
@@ -353,3 +360,5 @@ Reborn Apps is built by a non-profit foundation - no investors, no ads, no track
 ---
 
 Built with privacy in mind by [Reborn Foundation](https://reborn.org.pl) (Poland).
+
+<sub>Google Play and the Google Play logo are trademarks of Google LLC. Apple, the Apple logo, iPhone, iPad and Mac are trademarks of Apple Inc., registered in the U.S. and other countries and regions. App Store and Mac App Store are service marks of Apple Inc.</sub>
