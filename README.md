@@ -86,7 +86,7 @@ Built by [Reborn Foundation](https://reborn.org.pl) (Poland), a European non-pro
 - 👤 **One account, no email** - just a username and password, shared across both apps (SSO)
 - 🌍 **Installable** - add to home screen as a native-like app
 - 🌙 **Dark mode** - full dark theme support
-- 🌐 **Multilingual** - English 🇬🇧, French 🇫🇷, German 🇩🇪, Polish 🇵🇱, Spanish 🇪🇸, and Arabic (beta) with a full right-to-left layout; text in right-to-left languages follows its own direction whatever the interface language
+- 🌐 **Multilingual** - English 🇬🇧, French 🇫🇷, German 🇩🇪, Polish 🇵🇱, Spanish 🇪🇸, and Arabic with a full right-to-left layout; text in right-to-left languages follows its own direction whatever the interface language
 - 📅 **Date & time your way** - date format, 12- or 24-hour clock, first day of the week, and in re/notes an optional Hijri date
 
 ## Security & privacy
