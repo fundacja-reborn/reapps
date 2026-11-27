@@ -4,11 +4,14 @@
   import { API_BASE } from '$lib/utils/api-base';
   import { onMount } from 'svelte';
   import { base } from '$app/paths';
+  import { afterNavigate } from '$app/navigation';
+  import { goto } from '$lib/utils/navigation';
   import { page } from '$app/stores';
   import { Button, Input, Card } from '@reborn/ui';
   import {
     AlertCircle,
     AlertOctagon,
+    ArrowLeft,
     Ban,
     Check,
     Clock,
@@ -28,6 +31,7 @@
   import TaskSnapshotView from '$lib/components/tasks/TaskSnapshotView.svelte';
   import { formatSnapshotDueDate } from '$lib/services/task-formatting.service';
   import ShareGate from '$lib/components/share/ShareGate.svelte';
+  import { shareViewExit, type ShareViewExit } from '@reborn/platform';
   import {
     importKeyFromBase64url,
     decryptSnapshotPayload,
@@ -143,6 +147,29 @@
     });
     // Native shells save through the share sheet (`<a download>` does nothing in WKWebView).
     void downloadBlob(blob, `${sanitizeFilename(label)}.md`);
+  }
+
+  // Native shells only: the way out of the snapshot (see the notes share view
+  // and guideline 59, "Wyjście z podglądu"). The previous route decides between
+  // walking back to the screen the app showed before the link and replacing
+  // this entry with the start route, whose redirect lands on All tasks or the
+  // login / lock screen (a full load when the document itself started here,
+  // see shareViewExit). The Android hardware BACK keeps its own meaning: after
+  // a cold start it returns to the app that sent the link.
+  let exitTarget: ShareViewExit = 'home';
+  // The component outlives a second share link (same route, reused), so its
+  // first navigation tells whether the document itself started here.
+  let bootedOnShareView: boolean | null = null;
+
+  afterNavigate(({ from }) => {
+    bootedOnShareView ??= from === null;
+    exitTarget = shareViewExit(from?.url.pathname, bootedOnShareView);
+  });
+
+  function exitShareView() {
+    if (exitTarget === 'back') history.back();
+    else if (exitTarget === 'reload') window.location.replace(`${base}/`);
+    else void goto('/', { replaceState: true });
   }
 
   function classifyGoneCode(code: string | undefined): Stage {
@@ -283,6 +310,24 @@
 
 <!-- pt: the native shells open share links in-app, edge-to-edge (0 on the web). -->
 <div class="flex min-h-screen flex-col bg-background pt-[env(safe-area-inset-top,0px)]">
+  {#if __REBORN_NATIVE__}
+    <!-- Native shells: the way back into the app, above every stage, sticky
+         below the safe-area inset. Same bar as the notes share view. -->
+    <nav class="sticky top-[env(safe-area-inset-top,0px)] z-10 border-b bg-background">
+      <div class="mx-auto flex h-12 w-full max-w-3xl items-center px-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onclick={exitShareView}
+          aria-label={$t('share.view.back_to_app', { values: { app: 're/task' } })}
+          class="-ms-2 h-10 gap-1 px-2"
+        >
+          <ArrowLeft class="size-5" aria-hidden="true" />
+          <span>re/task</span>
+        </Button>
+      </div>
+    </nav>
+  {/if}
   <div class="mx-auto w-full max-w-3xl flex-1 px-4">
     <!-- Metadata-only header. Brand attribution lives in the footer instead -
          shared content is the user's, not re/task's, so we avoid letterhead

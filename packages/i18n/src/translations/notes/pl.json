@@ -1585,6 +1585,7 @@
       "loading": "Wczytywanie…",
       "error_title": "Nie można wyświetlić udostępnienia",
       "read_only_badge": "Migawka tylko do odczytu",
+      "back_to_app": "Powrót do {app}",
       "untitled": "Bez tytułu",
       "missing_key": "Link jest niekompletny - brakuje klucza deszyfrującego (po znaku #). Sprawdź, czy skopiowano cały adres URL.",
       "not_found": "Udostępnienie nie istnieje lub zostało odwołane.",

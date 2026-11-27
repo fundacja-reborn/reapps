@@ -30,3 +30,40 @@ export function shareDeepLinkToRoute(rawUrl: string): string | null {
   // route is just `/s/<slug>` plus the original fragment.
   return `/s/${match[1]}${url.hash}`;
 }
+
+/** How the native share view's back button leaves the snapshot. */
+export type ShareViewExit = 'back' | 'home' | 'reload';
+
+/** True for the in-app share route `/s/<slug>` (any base prefix). */
+function isShareViewPath(pathname: string): boolean {
+  return /\/s\/[^/]+\/?$/.test(pathname);
+}
+
+/**
+ * Decide how the native share view's back button leaves the snapshot, from the
+ * route the app showed right before it (SvelteKit `afterNavigate` -> `from`).
+ *
+ * - `'reload'`: the document itself started on the share view (a webview that
+ *   reloaded the current URL, e.g. iOS after its content process died). The
+ *   boot-time bypass for anonymous viewers (`hooks.client.ts`, `+layout.svelte`)
+ *   then skipped storage and auth, so only a full load of the start route boots
+ *   the app properly - a client-side `goto` would land in an uninitialised app.
+ * - `'back'`: the app was already showing one of its own screens when the link
+ *   arrived (a note, Settings, the lock screen). Walking the history returns
+ *   the user exactly there, and leaves the webview history in the shape a
+ *   hardware BACK leaves it. A cold start from a link lands here too: the shell
+ *   boots at its root route before the deep link navigates, so the entry below
+ *   is that root - the start of the app.
+ * - `'home'`: nothing of the app's own came before - another share view (a
+ *   second link opened over the first, which the button must not reopen). The
+ *   caller replaces the entry with the start route, where the auth guard shows
+ *   the login or lock screen when needed.
+ */
+export function shareViewExit(
+  fromPathname: string | null | undefined,
+  bootedOnShareView: boolean
+): ShareViewExit {
+  if (bootedOnShareView) return 'reload';
+  if (!fromPathname || isShareViewPath(fromPathname)) return 'home';
+  return 'back';
+}
