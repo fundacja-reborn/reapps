@@ -102,7 +102,8 @@ describe('i18n config', () => {
         const expected = BETA_LOCALES.includes(l) ? `${LOCALE_NAMES[l]} (beta)` : LOCALE_NAMES[l];
         expect(localeLabel(l)).toBe(expected);
       }
-      expect(localeLabel('ar')).toBe(`${LOCALE_NAMES.ar} (beta)`);
+      // Arabic left the beta on 2026-11-27.
+      expect(localeLabel('ar')).toBe('العربية');
       expect(localeLabel('en')).toBe('English');
     });
   });

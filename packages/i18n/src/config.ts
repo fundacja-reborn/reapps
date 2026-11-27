@@ -282,8 +282,10 @@ export const LOCALE_NAMES: Record<SupportedLocale, string> = {
 /**
  * Locales shipped as a beta: the translation is a draft still under review by
  * a native speaker (Arabic plan, decision D6). Language pickers mark them.
+ * Empty since Arabic left the beta (2026-11-27, the volunteer translator had
+ * reviewed every batch); kept for the next language that starts as a draft.
  */
-export const BETA_LOCALES: readonly SupportedLocale[] = ['ar'];
+export const BETA_LOCALES: readonly SupportedLocale[] = [];
 
 /** A locale's name as a language picker shows it, with the beta marker. */
 export function localeLabel(locale: SupportedLocale): string {
