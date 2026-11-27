@@ -65,6 +65,8 @@
 	import { taskCounts } from '$lib/stores/task-counts.store';
 	import { taskStore } from '@reborn/storage';
 	import { taskOperationsService } from '$lib/services/task-operations.service';
+	import { subtaskOperationsService } from '$lib/services/subtask-operations.service';
+	import { takeSharedTaskSave } from '$lib/services/share-save';
 	import { syncConflict } from '$lib/services/sync.service';
 	import { layoutStore } from '$lib/stores/layout.store';
 	import { taskListView } from '$lib/stores/task-list-view.store';
@@ -391,6 +393,58 @@
 			isLoading = false;
 		}
 	});
+
+	// "Save to my tasks" from a share view (share-save.ts, guideline 59): the
+	// view left the snapshot as a draft in memory and came here through the
+	// start route - and the lock or login screen when needed - so the task is
+	// created only once the tasks are unlocked and a list exists. A fresh login
+	// on a new device has no lists until the first sync pulls them; the draft
+	// waits for that (within its TTL) instead of creating a second default list.
+	$effect(() => {
+		if (!showContent || isLoading || needsOnlineSetup) return;
+		const account = $session.user?.id;
+		const lists = $activeLists;
+		if (!account || lists.length === 0) return;
+		const listId = (lists.find((l) => l.is_default) ?? lists[0]).id;
+		untrack(() => void createSharedTaskIfPending(account, listId));
+	});
+
+	// Creates the task in the default list (it starts open; the subtasks keep the
+	// ticks the recipient saw) and opens it. Never logs the draft: it is the
+	// decrypted snapshot.
+	async function createSharedTaskIfPending(account: string, listId: string) {
+		const draft = takeSharedTaskSave(account);
+		if (!draft) return;
+		let taskId: string;
+		try {
+			taskId = await taskOperationsService.createTask(
+				{
+					title: draft.title,
+					description: draft.description,
+					due_date: draft.due_date,
+					has_time: draft.has_time
+				},
+				listId
+			);
+		} catch {
+			toastStore.error($t('share.view.save_failed'));
+			return;
+		}
+		let created = 0;
+		if (draft.subtasks.length > 0) {
+			try {
+				created = await subtaskOperationsService.createSubtasks(taskId, draft.subtasks);
+			} catch {
+				created = 0;
+			}
+		}
+		if (created < draft.subtasks.length) {
+			toastStore.warning($t('share.view.save_partial'));
+		} else {
+			toastStore.success($t('share.view.saved_toast'));
+		}
+		await goto(`/tasks/${taskId}`);
+	}
 
 	// Watch for route changes to update selected list
 	// Use $page.route.id (base-path agnostic) instead of $page.url.pathname

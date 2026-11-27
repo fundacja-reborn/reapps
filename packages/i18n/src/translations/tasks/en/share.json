@@ -44,6 +44,9 @@
     "error_title": "Cannot show share",
     "read_only_badge": "Read-only snapshot",
     "back_to_app": "Back to {app}",
+    "saved_toast": "Saved to your tasks",
+    "save_failed": "Couldn't save the shared task. Open the link again to retry.",
+    "save_partial": "Saved the task, but not all of its subtasks.",
     "untitled": "Untitled",
     "missing_key": "The link is incomplete - the decryption key (after #) is missing. Make sure you copied the entire URL.",
     "not_found": "This share does not exist or was revoked.",
@@ -86,7 +89,8 @@
       "copy_markdown": "Copy markdown",
       "copy_done": "Copied",
       "copy_failed": "Copy failed",
-      "download_markdown": "Download .md"
+      "download_markdown": "Download .md",
+      "save_to_tasks": "Save to my tasks"
     },
     "task": {
       "completed_badge": "Completed",

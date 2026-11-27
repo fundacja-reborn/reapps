@@ -26,43 +26,7 @@ export class SubtaskOperationsService {
 			const existingSubtasks = await subtaskQueries.byTask(taskId);
 			const maxPosition = existingSubtasks.reduce((max, st) => Math.max(max, st.position), 0);
 
-			const subtaskId = crypto.randomUUID();
-			const now = new Date().toISOString();
-
-			// Create subtask data
-			const subtaskData: Subtask = {
-				id: subtaskId,
-				task_id: taskId,
-				title: title.trim(),
-				is_completed: false,
-				position: maxPosition + 1000,
-				created_at: now,
-				updated_at: now
-			};
-
-			// Encrypt the title and metadata
-			const metadataEncrypted = await cryptoManager.encryptObject<SubtaskSensitiveMetadata>({
-				is_completed: false
-			});
-
-			const encrypted: SubtaskStoredLocal = {
-				id: subtaskId,
-				task_id: taskId,
-				name_encrypted: await cryptoManager.encryptText(subtaskData.title),
-				metadata_encrypted: metadataEncrypted,
-				is_completed: 0, // Shadow index (local-only)
-				position: subtaskData.position,
-				user_id: '', // Will be filled by store
-				created_at: now,
-				updated_at: now,
-				deleted_at: null,
-				sync_status: 'pending',
-				last_sync_at: null,
-				sync_version: 0
-			};
-
-			// Save to store
-			await subtaskStore.save(encrypted);
+			const subtaskId = await this.saveNewSubtask(taskId, title.trim(), false, maxPosition + 1000);
 
 			// Manually refresh items to ensure reactivity
 			await subtaskStore.refreshItems();
@@ -72,14 +36,6 @@ export class SubtaskOperationsService {
 			await refreshDecryptedSubtasks();
 			logger.debug('Decrypted subtasks refreshed');
 
-			// Queue for sync — strip shadow index
-			const forSync = this.stripLocalIndexes(encrypted);
-			await addOperation({
-				type: 'create',
-				entityType: 'sub_task',
-				entityId: subtaskId,
-				data: forSync
-			});
 			syncService.scheduleSyncSoon();
 
 			logger.info('Subtask created successfully', { subtaskId, taskId });
@@ -88,6 +44,97 @@ export class SubtaskOperationsService {
 			logger.error('Failed to create subtask:', error);
 			throw error;
 		}
+	}
+
+	/**
+	 * Create several subtasks for a task at once, after the existing ones and in
+	 * the given order, each with its own completion state ("Save to my tasks"
+	 * from a share view keeps the ticks the recipient saw). The stores are
+	 * refreshed once at the end instead of per subtask. A subtask that fails is
+	 * skipped and the rest still go in; returns how many were created. Items
+	 * without a title are skipped.
+	 */
+	async createSubtasks(
+		taskId: string,
+		items: ReadonlyArray<{ title: string; is_completed: boolean }>
+	): Promise<number> {
+		if (!cryptoManager.isInitialized()) {
+			throw new Error('CryptoManager not initialized');
+		}
+
+		const existingSubtasks = await subtaskQueries.byTask(taskId);
+		let position = existingSubtasks.reduce((max, st) => Math.max(max, st.position), 0);
+		let created = 0;
+
+		for (const item of items) {
+			const title = item.title.trim();
+			if (!title) continue;
+			position += 1000;
+			try {
+				await this.saveNewSubtask(taskId, title, item.is_completed, position);
+				created += 1;
+			} catch (error: unknown) {
+				logger.error('Failed to create subtask in batch:', error);
+			}
+		}
+
+		if (created > 0) {
+			await subtaskStore.refreshItems();
+			await refreshDecryptedSubtasks();
+			syncService.scheduleSyncSoon();
+		}
+
+		logger.info('Subtasks created', { taskId, created, requested: items.length });
+		return created;
+	}
+
+	/**
+	 * Encrypt, save and queue one new subtask. Does not refresh the stores or
+	 * schedule a sync - the callers do that once.
+	 */
+	private async saveNewSubtask(
+		taskId: string,
+		title: string,
+		isCompleted: boolean,
+		position: number
+	): Promise<string> {
+		const subtaskId = crypto.randomUUID();
+		const now = new Date().toISOString();
+
+		// Encrypt the title and metadata
+		const metadataEncrypted = await cryptoManager.encryptObject<SubtaskSensitiveMetadata>({
+			is_completed: isCompleted
+		});
+
+		const encrypted: SubtaskStoredLocal = {
+			id: subtaskId,
+			task_id: taskId,
+			name_encrypted: await cryptoManager.encryptText(title),
+			metadata_encrypted: metadataEncrypted,
+			is_completed: isCompleted ? 1 : 0, // Shadow index (local-only)
+			position,
+			user_id: '', // Will be filled by store
+			created_at: now,
+			updated_at: now,
+			deleted_at: null,
+			sync_status: 'pending',
+			last_sync_at: null,
+			sync_version: 0
+		};
+
+		// Save to store
+		await subtaskStore.save(encrypted);
+
+		// Queue for sync - strip shadow index
+		const forSync = this.stripLocalIndexes(encrypted);
+		await addOperation({
+			type: 'create',
+			entityType: 'sub_task',
+			entityId: subtaskId,
+			data: forSync
+		});
+
+		return subtaskId;
 	}
 
 	/**
@@ -444,7 +491,7 @@ export class SubtaskOperationsService {
 	 * Strip local-only shadow index before sending to server.
 	 */
 	private stripLocalIndexes(subtask: SubtaskStoredLocal): SubtaskEncrypted {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentional destructure to strip shadow indexes
+		// Intentional destructure to strip the shadow index (rest siblings are exempt from no-unused-vars).
 		const { is_completed, ...rest } = subtask;
 		return rest;
 	}

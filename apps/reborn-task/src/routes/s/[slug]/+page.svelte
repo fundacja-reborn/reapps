@@ -21,12 +21,15 @@
     EyeOff,
     KeyRound,
     Link2Off,
+    ListPlus,
     Lock,
     ShieldAlert,
     ShieldCheck
   } from '@lucide/svelte';
   import { get } from 'svelte/store';
   import { t, locale } from '$lib/stores/i18n.store';
+  import { user } from '$lib/stores/auth.store';
+  import { stashSharedTaskSave, taskFromSnapshot } from '$lib/services/share-save';
   import { intlLocale } from '@reborn/i18n';
   import TaskSnapshotView from '$lib/components/tasks/TaskSnapshotView.svelte';
   import { formatSnapshotDueDate } from '$lib/services/task-formatting.service';
@@ -163,10 +166,15 @@
   // The component outlives a second share link (same route, reused), so its
   // first navigation tells whether the document itself started here.
   let bootedOnShareView: boolean | null = null;
+  // "Save to my tasks" needs the app booted (it hands over to the app layout),
+  // so it stays hidden when the document started here.
+  let saveAvailable = $state(false);
+  let saving = $state(false);
 
   afterNavigate(({ from }) => {
     bootedOnShareView ??= from === null;
     exitTarget = shareViewExit(from?.url.pathname, bootedOnShareView);
+    saveAvailable = __REBORN_NATIVE__ && !bootedOnShareView;
     loadShare();
   });
 
@@ -174,6 +182,23 @@
     if (exitTarget === 'back') history.back();
     else if (exitTarget === 'reload') window.location.replace(`${base}/`);
     else void goto('/', { replaceState: true });
+  }
+
+  // "Save to my tasks" (native shells; guideline 59, same hand-over as "Save to
+  // my notes"): leaves the snapshot as a task draft in memory and opens the
+  // start route; the app layout creates the task in the default list once the
+  // lists are loaded - right away, or after the lock / login screen the auth
+  // guard puts up - and opens it. No second fetch, so a share limited to one
+  // open still saves. The account the app is on rides along, so the draft is
+  // dropped if a different account unlocks.
+  function handleSaveToTasks() {
+    if (!taskPayload || saving) return;
+    saving = true;
+    stashSharedTaskSave(
+      taskFromSnapshot(taskPayload, $t('share.view.untitled')),
+      get(user)?.id ?? null
+    );
+    void goto('/', { replaceState: true });
   }
 
   function classifyGoneCode(code: string | undefined): Stage {
@@ -278,6 +303,7 @@
     accessCount = null;
     maxAccessCount = null;
     copyStatus = 'idle';
+    saving = false;
     if (fragment) void attempt(true);
     else stage = 'missing-key';
   }
@@ -423,6 +449,20 @@
          meta + subtasks as GFM task-list + description) before copy/save -
          see buildTaskMarkdown above. -->
     <div class="mt-2 flex justify-end gap-1">
+      {#if __REBORN_NATIVE__ && saveAvailable}
+        <!-- The recipient's main action in the app, so its label stays
+             visible on a phone (Copy / Download shrink to icons). -->
+        <Button
+          variant="outline"
+          size="sm"
+          onclick={handleSaveToTasks}
+          disabled={saving}
+          class="text-xs font-normal"
+        >
+          <ListPlus class="h-3.5 w-3.5" />
+          <span>{$t('share.view.actions.save_to_tasks')}</span>
+        </Button>
+      {/if}
       <Button
         variant="ghost"
         size="sm"
