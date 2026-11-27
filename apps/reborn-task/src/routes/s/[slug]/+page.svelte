@@ -72,6 +72,9 @@
 
   let slug = '';
   let fragmentKey = '';
+  // Bumped on every load. A response for a share the view has already left (a
+  // second link opened over the first) must not overwrite the newer one.
+  let loadSeq = 0;
 
   let copyStatus = $state<'idle' | 'copied' | 'failed'>('idle');
   let copyResetTimer: ReturnType<typeof setTimeout> | null = null;
@@ -164,6 +167,7 @@
   afterNavigate(({ from }) => {
     bootedOnShareView ??= from === null;
     exitTarget = shareViewExit(from?.url.pathname, bootedOnShareView);
+    loadShare();
   });
 
   function exitShareView() {
@@ -190,10 +194,11 @@
     });
   }
 
-  async function decryptAndShow(ciphertext: string) {
+  async function decryptAndShow(ciphertext: string, seq: number) {
     try {
       const key = await importKeyFromBase64url(fragmentKey);
       const decrypted = await decryptSnapshotPayload(ciphertext, key);
+      if (seq !== loadSeq) return;
       const parsed = SharedSnapshotPayloadSchema.safeParse(decrypted);
       if (!parsed.success) {
         stage = 'decrypt-failed';
@@ -202,13 +207,16 @@
       payload = parsed.data;
       stage = 'ready';
     } catch {
+      if (seq !== loadSeq) return;
       stage = 'decrypt-failed';
     }
   }
 
   async function attempt(initial: boolean, passwordValue?: string) {
+    const seq = loadSeq;
     try {
       const res = await fetchSnapshot(passwordValue);
+      if (seq !== loadSeq) return;
       if (res.status === 401 && !initial) {
         passwordWrong = true;
         passwordSubmitting = false;
@@ -221,6 +229,7 @@
         }
         if (res.status === 410) {
           const body = await res.json().catch(() => ({}));
+          if (seq !== loadSeq) return;
           stage = classifyGoneCode(body?.code);
           return;
         }
@@ -228,6 +237,7 @@
         return;
       }
       const json = (await res.json()) as { success: boolean; data: SharePublicResponse };
+      if (seq !== loadSeq) return;
       const data = json.data;
       if (data.password_required) {
         stage = 'password-prompt';
@@ -236,11 +246,40 @@
       expiresAt = data.expires_at;
       accessCount = data.access_count;
       maxAccessCount = data.max_access_count;
-      await decryptAndShow(data.payload_encrypted);
+      await decryptAndShow(data.payload_encrypted, seq);
     } catch (err: unknown) {
+      if (seq !== loadSeq) return;
       stage = 'error';
       errorDetail = err instanceof Error ? err.message : String(err);
     }
+  }
+
+  // Loads the share the URL names. The page component is reused when a second
+  // link opens over the first (same route, new slug or key: an App Link while
+  // the view is up, or a share link inside a shared note), so this runs on
+  // every navigation (afterNavigate above), not once on mount. Each load counts
+  // as one open of the share, like a page load on the web.
+  function loadShare() {
+    const nextSlug = $page.params.slug ?? '';
+    const fragment = parseShareFragment(window.location.hash);
+    const nextKey = fragment?.key ?? '';
+    if (loadSeq > 0 && nextSlug === slug && nextKey === fragmentKey) return;
+    loadSeq += 1;
+    slug = nextSlug;
+    fragmentKey = nextKey;
+    stage = 'loading';
+    errorDetail = '';
+    password = '';
+    showPassword = false;
+    passwordWrong = false;
+    passwordSubmitting = false;
+    payload = null;
+    expiresAt = null;
+    accessCount = null;
+    maxAccessCount = null;
+    copyStatus = 'idle';
+    if (fragment) void attempt(true);
+    else stage = 'missing-key';
   }
 
   async function handlePasswordSubmit() {
@@ -259,15 +298,6 @@
     // read-only page out. Harmless if no such rule exists yet.
     document.documentElement.classList.add('share-view');
     document.body.classList.add('share-view');
-
-    slug = $page.params.slug ?? '';
-    const fragment = parseShareFragment(window.location.hash);
-    if (fragment) {
-      fragmentKey = fragment.key;
-      void attempt(true);
-    } else {
-      stage = 'missing-key';
-    }
 
     return () => {
       document.documentElement.classList.remove('share-view');
