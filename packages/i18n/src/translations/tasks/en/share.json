@@ -43,6 +43,7 @@
     "loading": "Loading…",
     "error_title": "Cannot show share",
     "read_only_badge": "Read-only snapshot",
+    "back_to_app": "Back to {app}",
     "untitled": "Untitled",
     "missing_key": "The link is incomplete - the decryption key (after #) is missing. Make sure you copied the entire URL.",
     "not_found": "This share does not exist or was revoked.",

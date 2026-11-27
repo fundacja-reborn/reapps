@@ -43,6 +43,7 @@
     "loading": "Chargement…",
     "error_title": "Impossible d'afficher le partage",
     "read_only_badge": "Instantané en lecture seule",
+    "back_to_app": "Retour à {app}",
     "untitled": "Sans titre",
     "missing_key": "Le lien est incomplet - la clé de déchiffrement (après #) est manquante. Vérifiez que vous avez copié l'URL entière.",
     "not_found": "Ce partage n'existe pas ou a été révoqué.",

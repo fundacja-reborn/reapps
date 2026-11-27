@@ -4,11 +4,14 @@
   import { API_BASE } from '$lib/utils/api-base';
   import { onMount } from 'svelte';
   import { base } from '$app/paths';
+  import { afterNavigate } from '$app/navigation';
+  import { goto } from '$lib/utils/navigation';
   import { page } from '$app/stores';
   import { Button, Input, Card } from '@reborn/ui';
   import {
     AlertCircle,
     AlertOctagon,
+    ArrowLeft,
     Ban,
     Check,
     Clock,
@@ -28,6 +31,7 @@
   import TaskSnapshotView from '$lib/components/tasks/TaskSnapshotView.svelte';
   import { formatSnapshotDueDate } from '$lib/services/task-formatting.service';
   import ShareGate from '$lib/components/share/ShareGate.svelte';
+  import { shareViewExit, type ShareViewExit } from '@reborn/platform';
   import {
     importKeyFromBase64url,
     decryptSnapshotPayload,
@@ -68,6 +72,9 @@
 
   let slug = '';
   let fragmentKey = '';
+  // Bumped on every load. A response for a share the view has already left (a
+  // second link opened over the first) must not overwrite the newer one.
+  let loadSeq = 0;
 
   let copyStatus = $state<'idle' | 'copied' | 'failed'>('idle');
   let copyResetTimer: ReturnType<typeof setTimeout> | null = null;
@@ -145,6 +152,30 @@
     void downloadBlob(blob, `${sanitizeFilename(label)}.md`);
   }
 
+  // Native shells only: the way out of the snapshot (see the notes share view
+  // and guideline 59, "Wyjście z podglądu"). The previous route decides between
+  // walking back to the screen the app showed before the link and replacing
+  // this entry with the start route, whose redirect lands on All tasks or the
+  // login / lock screen (a full load when the document itself started here,
+  // see shareViewExit). The Android hardware BACK keeps its own meaning: after
+  // a cold start it returns to the app that sent the link.
+  let exitTarget: ShareViewExit = 'home';
+  // The component outlives a second share link (same route, reused), so its
+  // first navigation tells whether the document itself started here.
+  let bootedOnShareView: boolean | null = null;
+
+  afterNavigate(({ from }) => {
+    bootedOnShareView ??= from === null;
+    exitTarget = shareViewExit(from?.url.pathname, bootedOnShareView);
+    loadShare();
+  });
+
+  function exitShareView() {
+    if (exitTarget === 'back') history.back();
+    else if (exitTarget === 'reload') window.location.replace(`${base}/`);
+    else void goto('/', { replaceState: true });
+  }
+
   function classifyGoneCode(code: string | undefined): Stage {
     if (code === 'EXHAUSTED') return 'exhausted';
     if (code === 'REVOKED') return 'revoked';
@@ -163,10 +194,11 @@
     });
   }
 
-  async function decryptAndShow(ciphertext: string) {
+  async function decryptAndShow(ciphertext: string, seq: number) {
     try {
       const key = await importKeyFromBase64url(fragmentKey);
       const decrypted = await decryptSnapshotPayload(ciphertext, key);
+      if (seq !== loadSeq) return;
       const parsed = SharedSnapshotPayloadSchema.safeParse(decrypted);
       if (!parsed.success) {
         stage = 'decrypt-failed';
@@ -175,13 +207,16 @@
       payload = parsed.data;
       stage = 'ready';
     } catch {
+      if (seq !== loadSeq) return;
       stage = 'decrypt-failed';
     }
   }
 
   async function attempt(initial: boolean, passwordValue?: string) {
+    const seq = loadSeq;
     try {
       const res = await fetchSnapshot(passwordValue);
+      if (seq !== loadSeq) return;
       if (res.status === 401 && !initial) {
         passwordWrong = true;
         passwordSubmitting = false;
@@ -194,6 +229,7 @@
         }
         if (res.status === 410) {
           const body = await res.json().catch(() => ({}));
+          if (seq !== loadSeq) return;
           stage = classifyGoneCode(body?.code);
           return;
         }
@@ -201,6 +237,7 @@
         return;
       }
       const json = (await res.json()) as { success: boolean; data: SharePublicResponse };
+      if (seq !== loadSeq) return;
       const data = json.data;
       if (data.password_required) {
         stage = 'password-prompt';
@@ -209,11 +246,40 @@
       expiresAt = data.expires_at;
       accessCount = data.access_count;
       maxAccessCount = data.max_access_count;
-      await decryptAndShow(data.payload_encrypted);
+      await decryptAndShow(data.payload_encrypted, seq);
     } catch (err: unknown) {
+      if (seq !== loadSeq) return;
       stage = 'error';
       errorDetail = err instanceof Error ? err.message : String(err);
     }
+  }
+
+  // Loads the share the URL names. The page component is reused when a second
+  // link opens over the first (same route, new slug or key: an App Link while
+  // the view is up, or a share link inside a shared note), so this runs on
+  // every navigation (afterNavigate above), not once on mount. Each load counts
+  // as one open of the share, like a page load on the web.
+  function loadShare() {
+    const nextSlug = $page.params.slug ?? '';
+    const fragment = parseShareFragment(window.location.hash);
+    const nextKey = fragment?.key ?? '';
+    if (loadSeq > 0 && nextSlug === slug && nextKey === fragmentKey) return;
+    loadSeq += 1;
+    slug = nextSlug;
+    fragmentKey = nextKey;
+    stage = 'loading';
+    errorDetail = '';
+    password = '';
+    showPassword = false;
+    passwordWrong = false;
+    passwordSubmitting = false;
+    payload = null;
+    expiresAt = null;
+    accessCount = null;
+    maxAccessCount = null;
+    copyStatus = 'idle';
+    if (fragment) void attempt(true);
+    else stage = 'missing-key';
   }
 
   async function handlePasswordSubmit() {
@@ -232,15 +298,6 @@
     // read-only page out. Harmless if no such rule exists yet.
     document.documentElement.classList.add('share-view');
     document.body.classList.add('share-view');
-
-    slug = $page.params.slug ?? '';
-    const fragment = parseShareFragment(window.location.hash);
-    if (fragment) {
-      fragmentKey = fragment.key;
-      void attempt(true);
-    } else {
-      stage = 'missing-key';
-    }
 
     return () => {
       document.documentElement.classList.remove('share-view');
@@ -283,6 +340,24 @@
 
 <!-- pt: the native shells open share links in-app, edge-to-edge (0 on the web). -->
 <div class="flex min-h-screen flex-col bg-background pt-[env(safe-area-inset-top,0px)]">
+  {#if __REBORN_NATIVE__}
+    <!-- Native shells: the way back into the app, above every stage, sticky
+         below the safe-area inset. Same bar as the notes share view. -->
+    <nav class="sticky top-[env(safe-area-inset-top,0px)] z-10 border-b bg-background">
+      <div class="mx-auto flex h-12 w-full max-w-3xl items-center px-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onclick={exitShareView}
+          aria-label={$t('share.view.back_to_app', { values: { app: 're/task' } })}
+          class="-ms-2 h-10 gap-1 px-2"
+        >
+          <ArrowLeft class="size-5" aria-hidden="true" />
+          <span>re/task</span>
+        </Button>
+      </div>
+    </nav>
+  {/if}
   <div class="mx-auto w-full max-w-3xl flex-1 px-4">
     <!-- Metadata-only header. Brand attribution lives in the footer instead -
          shared content is the user's, not re/task's, so we avoid letterhead

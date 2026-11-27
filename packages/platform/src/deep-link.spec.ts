@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { shareDeepLinkToRoute } from './deep-link';
+import { shareDeepLinkToRoute, shareViewExit } from './deep-link';
 
 describe('shareDeepLinkToRoute', () => {
   it('maps a prod share link to the in-app route, keeping the key fragment', () => {
@@ -40,5 +40,39 @@ describe('shareDeepLinkToRoute', () => {
   it('returns null for a malformed URL', () => {
     expect(shareDeepLinkToRoute('not a url')).toBeNull();
     expect(shareDeepLinkToRoute('')).toBeNull();
+  });
+});
+
+describe('shareViewExit', () => {
+  it('reloads the start route when the document started on the share view', () => {
+    // The boot bypass skipped storage and auth - whatever the previous route.
+    expect(shareViewExit(null, true)).toBe('reload');
+    expect(shareViewExit('/', true)).toBe('reload');
+    expect(shareViewExit('/s/FIRSTslug1234567', true)).toBe('reload');
+  });
+
+  it('walks back to the screen the app showed before the link opened', () => {
+    expect(shareViewExit('/', false)).toBe('back');
+    expect(shareViewExit('/settings', false)).toBe('back');
+    expect(shareViewExit('/auth/applock', false)).toBe('back');
+    expect(shareViewExit('/all', false)).toBe('back');
+    expect(shareViewExit('/lists/abc', false)).toBe('back');
+  });
+
+  it('goes home instead of reopening another share view (second link over the first)', () => {
+    expect(shareViewExit('/s/FIRSTslug1234567', false)).toBe('home');
+    expect(shareViewExit('/s/FIRSTslug1234567/', false)).toBe('home');
+    expect(shareViewExit('/notes/s/FIRSTslug1234567', false)).toBe('home');
+  });
+
+  it('goes home without a previous route in a normally booted app', () => {
+    expect(shareViewExit(null, false)).toBe('home');
+    expect(shareViewExit(undefined, false)).toBe('home');
+    expect(shareViewExit('', false)).toBe('home');
+  });
+
+  it('does not mistake a route that only contains "s" for a share view', () => {
+    expect(shareViewExit('/settings/security/shares', false)).toBe('back');
+    expect(shareViewExit('/s/', false)).toBe('back');
   });
 });

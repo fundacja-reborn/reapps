@@ -1585,6 +1585,7 @@
       "loading": "Wird geladen…",
       "error_title": "Freigabe kann nicht angezeigt werden",
       "read_only_badge": "Schreibgeschützter Schnappschuss",
+      "back_to_app": "Zurück zu {app}",
       "untitled": "Ohne Titel",
       "missing_key": "Der Link ist unvollständig - der Entschlüsselungsschlüssel (nach #) fehlt. Bitte prüfe, ob du die vollständige URL kopiert hast.",
       "not_found": "Diese Freigabe existiert nicht oder wurde widerrufen.",

@@ -1585,6 +1585,7 @@
       "loading": "Cargando…",
       "error_title": "No se puede mostrar este enlace",
       "read_only_badge": "Instantánea de solo lectura",
+      "back_to_app": "Volver a {app}",
       "untitled": "Sin título",
       "missing_key": "El enlace está incompleto - falta la clave de descifrado (tras #). Asegúrate de haber copiado toda la URL.",
       "not_found": "Este enlace no existe o ha sido revocado.",

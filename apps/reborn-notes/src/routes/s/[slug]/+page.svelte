@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { base } from '$app/paths';
+  import { afterNavigate } from '$app/navigation';
+  import { goto } from '$lib/utils/navigation';
   import { API_BASE } from '$lib/utils/api-base';
   import { copyText } from '$lib/utils/clipboard';
   import { page } from '$app/stores';
@@ -8,6 +10,7 @@
   import {
     AlertCircle,
     AlertOctagon,
+    ArrowLeft,
     Ban,
     Check,
     Clock,
@@ -34,6 +37,7 @@
     type SharedSnapshotPayload,
     type SharePublicResponse
   } from '@reborn/types';
+  import { shareViewExit, type ShareViewExit } from '@reborn/platform';
   import NoteSnapshotView from '$lib/components/notes/NoteSnapshotView.svelte';
   import ShareGate from '$lib/components/notes/ShareGate.svelte';
 
@@ -77,6 +81,9 @@
 
   let slug = '';
   let fragmentKey = '';
+  // Bumped on every load. A response for a share the view has already left (a
+  // second link opened over the first) must not overwrite the newer one.
+  let loadSeq = 0;
 
   let copyStatus = $state<'idle' | 'copied' | 'failed'>('idle');
   let copyResetTimer: ReturnType<typeof setTimeout> | null = null;
@@ -116,6 +123,32 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  // Native shells only: the way out of the snapshot. A browser tab has its own
+  // back button and address bar, the app has neither on iOS - and on Android a
+  // view opened straight from a link closes the app on BACK. The previous route
+  // decides between walking back to the screen the app showed before the link
+  // and replacing this entry with the start route, where the auth guard puts up
+  // the login or lock screen when needed - loaded in full when the document
+  // itself started here (shareViewExit; guideline 59, "Wyjście z podglądu").
+  // The Android hardware BACK keeps its own meaning on purpose: after a cold
+  // start it returns to the app that sent the link.
+  let exitTarget: ShareViewExit = 'home';
+  // The component outlives a second share link (same route, reused), so its
+  // first navigation tells whether the document itself started here.
+  let bootedOnShareView: boolean | null = null;
+
+  afterNavigate(({ from }) => {
+    bootedOnShareView ??= from === null;
+    exitTarget = shareViewExit(from?.url.pathname, bootedOnShareView);
+    loadShare();
+  });
+
+  function exitShareView() {
+    if (exitTarget === 'back') history.back();
+    else if (exitTarget === 'reload') window.location.replace(`${base}/`);
+    else void goto('/', { replaceState: true });
+  }
+
   function classifyGoneCode(code: string | undefined): Stage {
     if (code === 'EXHAUSTED') return 'exhausted';
     if (code === 'REVOKED') return 'revoked';
@@ -132,10 +165,11 @@
     });
   }
 
-  async function decryptAndShow(ciphertext: string) {
+  async function decryptAndShow(ciphertext: string, seq: number) {
     try {
       const key = await importKeyFromBase64url(fragmentKey);
       const decrypted = await decryptSnapshotPayload(ciphertext, key);
+      if (seq !== loadSeq) return;
       const parsed = SharedSnapshotPayloadSchema.safeParse(decrypted);
       if (!parsed.success) {
         stage = 'decrypt-failed';
@@ -144,13 +178,16 @@
       payload = parsed.data;
       stage = 'ready';
     } catch {
+      if (seq !== loadSeq) return;
       stage = 'decrypt-failed';
     }
   }
 
   async function attempt(initial: boolean, passwordValue?: string) {
+    const seq = loadSeq;
     try {
       const res = await fetchSnapshot(passwordValue);
+      if (seq !== loadSeq) return;
       if (res.status === 401 && !initial) {
         passwordWrong = true;
         passwordSubmitting = false;
@@ -163,6 +200,7 @@
         }
         if (res.status === 410) {
           const body = await res.json().catch(() => ({}));
+          if (seq !== loadSeq) return;
           stage = classifyGoneCode(body?.code);
           return;
         }
@@ -170,6 +208,7 @@
         return;
       }
       const json = (await res.json()) as { success: boolean; data: SharePublicResponse };
+      if (seq !== loadSeq) return;
       const data = json.data;
       if (data.password_required) {
         stage = 'password-prompt';
@@ -178,11 +217,40 @@
       expiresAt = data.expires_at;
       accessCount = data.access_count;
       maxAccessCount = data.max_access_count;
-      await decryptAndShow(data.payload_encrypted);
+      await decryptAndShow(data.payload_encrypted, seq);
     } catch (err: unknown) {
+      if (seq !== loadSeq) return;
       stage = 'error';
       errorDetail = err instanceof Error ? err.message : String(err);
     }
+  }
+
+  // Loads the share the URL names. The page component is reused when a second
+  // link opens over the first (same route, new slug or key: an App Link while
+  // the view is up, or a share link inside a shared note), so this runs on
+  // every navigation (afterNavigate above), not once on mount. Each load counts
+  // as one open of the share, like a page load on the web.
+  function loadShare() {
+    const nextSlug = $page.params.slug ?? '';
+    const fragment = parseShareFragment(window.location.hash);
+    const nextKey = fragment?.key ?? '';
+    if (loadSeq > 0 && nextSlug === slug && nextKey === fragmentKey) return;
+    loadSeq += 1;
+    slug = nextSlug;
+    fragmentKey = nextKey;
+    stage = 'loading';
+    errorDetail = '';
+    password = '';
+    showPassword = false;
+    passwordWrong = false;
+    passwordSubmitting = false;
+    payload = null;
+    expiresAt = null;
+    accessCount = null;
+    maxAccessCount = null;
+    copyStatus = 'idle';
+    if (fragment) void attempt(true);
+    else stage = 'missing-key';
   }
 
   async function handlePasswordSubmit() {
@@ -201,15 +269,6 @@
     // and the page should scroll with the native browser scrollbar.
     document.documentElement.classList.add('share-view');
     document.body.classList.add('share-view');
-
-    slug = $page.params.slug ?? '';
-    const fragment = parseShareFragment(window.location.hash);
-    if (fragment) {
-      fragmentKey = fragment.key;
-      void attempt(true);
-    } else {
-      stage = 'missing-key';
-    }
 
     return () => {
       document.documentElement.classList.remove('share-view');
@@ -240,6 +299,29 @@
 
 <!-- pt: keep the shared-note chrome below the iOS notch/Dynamic Island (env() is 0 elsewhere) -->
 <div class="flex min-h-screen flex-col bg-background pt-[env(safe-area-inset-top,0px)]">
+  {#if __REBORN_NATIVE__}
+    <!-- Native shells: the way back into the app, above every stage (loading,
+         password, the "link is gone" gates), because a recipient can get stuck
+         on any of them. Sticky below the safe-area inset (the brand strip
+         covers the inset itself), so a long note never hides it. Labelled with
+         the app name, like the logo heading the screen it leads to: the login
+         or lock screen when the app is signed out or locked, the notes
+         otherwise. Web keeps the browser's own navigation (DCE'd there). -->
+    <nav class="sticky top-[env(safe-area-inset-top,0px)] z-10 border-b bg-background">
+      <div class="mx-auto flex h-12 w-full max-w-4xl items-center px-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onclick={exitShareView}
+          aria-label={$t('share.view.back_to_app', { values: { app: 're/notes' } })}
+          class="-ms-2 h-10 gap-1 px-2"
+        >
+          <ArrowLeft class="size-5" aria-hidden="true" />
+          <span>re/notes</span>
+        </Button>
+      </div>
+    </nav>
+  {/if}
   <div class="mx-auto w-full max-w-4xl flex-1 px-4">
     <!-- Metadata-only header. No brand logo here on purpose: shared content
          belongs to the user, not to re/notes - prominent branding next to
