@@ -1586,6 +1586,8 @@
       "error_title": "No se puede mostrar este enlace",
       "read_only_badge": "Instantánea de solo lectura",
       "back_to_app": "Volver a {app}",
+      "saved_toast": "Guardada en tus notas",
+      "save_failed": "No se pudo guardar la nota compartida. Vuelve a abrir el enlace para intentarlo de nuevo.",
       "untitled": "Sin título",
       "missing_key": "El enlace está incompleto - falta la clave de descifrado (tras #). Asegúrate de haber copiado toda la URL.",
       "not_found": "Este enlace no existe o ha sido revocado.",
@@ -1630,7 +1632,8 @@
         "copy_markdown": "Copiar markdown",
         "copy_done": "Copiado",
         "copy_failed": "Error al copiar",
-        "download_markdown": "Descargar .md"
+        "download_markdown": "Descargar .md",
+        "save_to_notes": "Guardar en mis notas"
       },
       "note": {
         "tags_label": "Etiquetas"

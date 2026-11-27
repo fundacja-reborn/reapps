@@ -18,6 +18,7 @@
     Download,
     Eye,
     EyeOff,
+    FilePlus2,
     KeyRound,
     Link2Off,
     Lock,
@@ -38,6 +39,8 @@
     type SharePublicResponse
   } from '@reborn/types';
   import { shareViewExit, type ShareViewExit } from '@reborn/platform';
+  import { authStore } from '$lib/stores/auth.store';
+  import { noteFromSnapshot, stashSharedNoteSave } from '$lib/services/share-save';
   import NoteSnapshotView from '$lib/components/notes/NoteSnapshotView.svelte';
   import ShareGate from '$lib/components/notes/ShareGate.svelte';
 
@@ -136,10 +139,15 @@
   // The component outlives a second share link (same route, reused), so its
   // first navigation tells whether the document itself started here.
   let bootedOnShareView: boolean | null = null;
+  // "Save to my notes" needs the app booted (it hands over to the notes view),
+  // so it stays hidden when the document started here.
+  let saveAvailable = $state(false);
+  let saving = $state(false);
 
   afterNavigate(({ from }) => {
     bootedOnShareView ??= from === null;
     exitTarget = shareViewExit(from?.url.pathname, bootedOnShareView);
+    saveAvailable = __REBORN_NATIVE__ && !bootedOnShareView;
     loadShare();
   });
 
@@ -147,6 +155,22 @@
     if (exitTarget === 'back') history.back();
     else if (exitTarget === 'reload') window.location.replace(`${base}/`);
     else void goto('/', { replaceState: true });
+  }
+
+  // "Save to my notes" (native shells; guideline 59): leaves the snapshot's
+  // title and content in memory and opens the notes view, which creates the
+  // note once the notes are unlocked - right away, or after the lock / login
+  // screen the auth guard puts up. No second fetch, so a share limited to one
+  // open still saves. The account the app is on rides along, so the draft is
+  // dropped if a different account unlocks.
+  function handleSaveToNotes() {
+    if (!notePayload || saving) return;
+    saving = true;
+    stashSharedNoteSave(
+      noteFromSnapshot(notePayload, $t('share.view.untitled')),
+      get(authStore).userId
+    );
+    void goto('/', { replaceState: true });
   }
 
   function classifyGoneCode(code: string | undefined): Stage {
@@ -249,6 +273,7 @@
     accessCount = null;
     maxAccessCount = null;
     copyStatus = 'idle';
+    saving = false;
     if (fragment) void attempt(true);
     else stage = 'missing-key';
   }
@@ -398,6 +423,20 @@
          Mobile keeps icons only (label hidden < sm) so the strip stays
          tight on narrow viewports. -->
     <div class="mt-2 flex justify-end gap-1">
+      {#if __REBORN_NATIVE__ && saveAvailable}
+        <!-- The recipient's main action in the app, so its label stays
+             visible on a phone (Copy / Download shrink to icons). -->
+        <Button
+          variant="outline"
+          size="sm"
+          onclick={handleSaveToNotes}
+          disabled={saving}
+          class="text-xs font-normal"
+        >
+          <FilePlus2 class="h-3.5 w-3.5" />
+          <span>{$t('share.view.actions.save_to_notes')}</span>
+        </Button>
+      {/if}
       <Button
         variant="ghost"
         size="sm"

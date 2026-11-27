@@ -142,6 +142,14 @@ Visiting `/s/<slug>` triggers a strict stateless architecture without logging in
 
 Opening a public share in incognito mode and closing it leaves zero footprint aside from a potential entry in the local browser history.
 
+The anonymity is from the **account**, not from the network address. The server, like any web server, sees the IP address of the request that fetches the snapshot (the reverse proxy keeps a standard access log with the address, time and path, which includes the slug). When the same device also runs re/notes or re/task with an account, its authenticated requests come from that address too, and the native apps sync the moment they come to the foreground, which is exactly when a share link opens them. A server operator who joins the two can infer that a given account opened a given share. The content stays encrypted either way.
+
+### Saving a snapshot to your own notes (native apps)
+
+In the native re/notes app the share view offers **Save to my notes**: one tap turns the snapshot into a regular note of the recipient, encrypted with their own key like any other note. The view does not fetch the snapshot again. It keeps the title and content it already decrypted **in memory only** (never in `localStorage`, `sessionStorage` or IndexedDB) and hands them to the notes view, which creates the note once the app is unlocked, right away or after the lock or login screen. The draft is one-shot, expires after 10 minutes and is dropped if a different account unlocks. The new note carries no trace of the share: no slug, URL, key or the sender's note ID.
+
+**What this reveals to the server (accepted trade-off):** the new note is a normal encrypted note, but it is created seconds after the snapshot was fetched, and its encrypted content is close in length to the snapshot's ciphertext (note content is not padded). That gives a server operator a durable record, independent of IP addresses and log rotation, that this account most likely saved that share, i.e. one edge of the social graph (the owner of the share -> the recipient). Copying the text and pasting it into a new note by hand reveals the same, with looser timing. We consider the added exposure small next to the address-based correlation described above, and the action is always an explicit choice of the recipient. Hiding the length would require padding the content of every note, which is out of scope for now.
+
 ### Protecting the recipient
 
 **Anti-phishing:** All access gates and error screens are rendered through a standardized `ShareGate` component. Branded error pages link safely back to `reapps.eu` (or the self-hosted domain), visually distinguishing authentic application limits from external credential harvesting attempts.
