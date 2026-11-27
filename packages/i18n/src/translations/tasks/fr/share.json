@@ -44,6 +44,9 @@
     "error_title": "Impossible d'afficher le partage",
     "read_only_badge": "Instantané en lecture seule",
     "back_to_app": "Retour à {app}",
+    "saved_toast": "Enregistrée dans vos tâches",
+    "save_failed": "Impossible d'enregistrer la tâche partagée. Rouvrez le lien pour réessayer.",
+    "save_partial": "Tâche enregistrée, mais pas toutes ses sous-tâches.",
     "untitled": "Sans titre",
     "missing_key": "Le lien est incomplet - la clé de déchiffrement (après #) est manquante. Vérifiez que vous avez copié l'URL entière.",
     "not_found": "Ce partage n'existe pas ou a été révoqué.",
@@ -86,7 +89,8 @@
       "copy_markdown": "Copier le markdown",
       "copy_done": "Copié",
       "copy_failed": "Échec de la copie",
-      "download_markdown": "Télécharger en .md"
+      "download_markdown": "Télécharger en .md",
+      "save_to_tasks": "Enregistrer dans mes tâches"
     },
     "task": {
       "completed_badge": "Terminé",

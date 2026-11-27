@@ -44,6 +44,9 @@
     "error_title": "Nie można wyświetlić udostępnienia",
     "read_only_badge": "Migawka tylko do odczytu",
     "back_to_app": "Powrót do {app}",
+    "saved_toast": "Zapisano w Twoich zadaniach",
+    "save_failed": "Nie udało się zapisać udostępnionego zadania. Otwórz link ponownie, aby spróbować jeszcze raz.",
+    "save_partial": "Zapisano zadanie, ale nie wszystkie jego podzadania.",
     "untitled": "Bez tytułu",
     "missing_key": "Link jest niekompletny - brakuje klucza deszyfrującego (po znaku #). Sprawdź, czy skopiowano cały adres URL.",
     "not_found": "Udostępnienie nie istnieje lub zostało odwołane.",
@@ -86,7 +89,8 @@
       "copy_markdown": "Kopiuj markdown",
       "copy_done": "Skopiowano",
       "copy_failed": "Nie udało się skopiować",
-      "download_markdown": "Pobierz .md"
+      "download_markdown": "Pobierz .md",
+      "save_to_tasks": "Zapisz w moich zadaniach"
     },
     "task": {
       "completed_badge": "Ukończone",
