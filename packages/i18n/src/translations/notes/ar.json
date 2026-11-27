@@ -1609,6 +1609,8 @@
       "error_title": "تعذّر عرض المشاركة",
       "read_only_badge": "لقطة للقراءة فقط",
       "back_to_app": "العودة إلى {app}",
+      "saved_toast": "تم الحفظ في ملاحظاتك",
+      "save_failed": "تعذّر حفظ الملاحظة. افتح الرابط مرة أخرى وأعد المحاولة.",
       "untitled": "بلا عنوان",
       "missing_key": "الرابط غير مكتمل؛ مفتاح فك التشفير (بعد #) مفقود. تأكد من نسخ عنوان URL بالكامل.",
       "not_found": "هذه المشاركة غير موجودة أو تم إبطالها.",
@@ -1653,7 +1655,8 @@
         "copy_markdown": "نسخ Markdown",
         "copy_done": "تم النسخ",
         "copy_failed": "تعذّر النسخ",
-        "download_markdown": "تنزيل .md"
+        "download_markdown": "تنزيل .md",
+        "save_to_notes": "حفظ في ملاحظاتي"
       },
       "note": {
         "tags_label": "الوسوم"

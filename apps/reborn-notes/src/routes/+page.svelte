@@ -78,6 +78,7 @@
   import type { SavedSearchDecrypted } from '@reborn/types';
   import { defaultNoteTitle } from '$lib/utils/date-format';
   import { resolveNewNoteFolder } from '$lib/utils/new-note-folder';
+  import { takeSharedNoteSave } from '$lib/services/share-save';
   import {
     appSettings,
     dateFormat,
@@ -2210,8 +2211,15 @@
 
   async function applyStartPlace() {
     try {
-      const start = get(startPage);
       const account = get(authStore).userId;
+      // "Save to my notes" from a share view wins over the start place: the
+      // new note opens right away (also after the lock / login screen).
+      const savedNoteId = await createSharedNoteIfPending(account);
+      if (savedNoteId) {
+        await openPlace({ section: 'all', noteId: savedNoteId });
+        return;
+      }
+      const start = get(startPage);
       const session = getSessionPlace(account);
       const remembered = !session && start === 'last' ? readRememberedPlace(account) : null;
       const place = dropMissing(initialPlace(start, session, remembered), {
@@ -2225,6 +2233,29 @@
       console.error('[start-page] failed to open the start place', err);
     } finally {
       placeTracking = true;
+    }
+  }
+
+  // "Save to my notes" from a share view (share-save.ts, guideline 59): the
+  // view left the snapshot's title and content in memory and came here,
+  // through the lock or login screen when needed, so the note is created only
+  // once the notes are unlocked - in the folder for new notes (Settings >
+  // Behavior) when one is set, like a new note with no folder open. Never logs
+  // the draft: it is the decrypted snapshot.
+  async function createSharedNoteIfPending(account: string | null): Promise<string | null> {
+    const draft = takeSharedNoteSave(account);
+    if (!draft) return null;
+    try {
+      const folderId = resolveNewNoteFolder(undefined, get(newNoteFolderId), (id) =>
+        flattenFolderTree(get(foldersStore)).some((f) => f.id === id)
+      );
+      const id = await NoteService.createNote(draft.title, draft.content, folderId);
+      notesStore.refresh();
+      toastStore.success($t('share.view.saved_toast'));
+      return id;
+    } catch {
+      toastStore.error($t('share.view.save_failed'));
+      return null;
     }
   }
 

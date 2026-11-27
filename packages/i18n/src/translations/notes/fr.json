@@ -1586,6 +1586,8 @@
       "error_title": "Impossible d'afficher le partage",
       "read_only_badge": "Instantané en lecture seule",
       "back_to_app": "Retour à {app}",
+      "saved_toast": "Enregistrée dans vos notes",
+      "save_failed": "Impossible d'enregistrer la note partagée. Rouvrez le lien pour réessayer.",
       "untitled": "Sans titre",
       "missing_key": "Le lien est incomplet - la clé de déchiffrement (après #) est manquante. Vérifiez que vous avez copié l'URL entière.",
       "not_found": "Ce partage n'existe pas ou a été révoqué.",
@@ -1630,7 +1632,8 @@
         "copy_markdown": "Copier le markdown",
         "copy_done": "Copié",
         "copy_failed": "Échec de la copie",
-        "download_markdown": "Télécharger en .md"
+        "download_markdown": "Télécharger en .md",
+        "save_to_notes": "Enregistrer dans mes notes"
       },
       "note": {
         "tags_label": "Étiquettes"
