@@ -1,5 +1,49 @@
 [
   {
+    "version": "0.60.0",
+    "date": "2026-11-28",
+    "items": [
+      {
+        "id": "0.60.0-save-shared-note",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": [
+          "android",
+          "ios"
+        ]
+      },
+      {
+        "id": "0.60.0-shared-note-way-back",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": [
+          "android",
+          "ios"
+        ]
+      },
+      {
+        "id": "0.60.0-task-due-dates",
+        "category": "fixed",
+        "apps": [
+          "task"
+        ],
+        "platforms": "all"
+      },
+      {
+        "id": "0.60.0-list-under-paragraph",
+        "category": "fixed",
+        "apps": [
+          "notes"
+        ],
+        "platforms": "all"
+      }
+    ]
+  },
+  {
     "version": "0.59.2",
     "date": "2026-11-25",
     "items": [
