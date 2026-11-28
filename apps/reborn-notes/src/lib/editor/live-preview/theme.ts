@@ -3,7 +3,36 @@
  * Mirrors typography of MarkdownPreview.svelte so the editor and preview look alike.
  */
 import { EditorView } from '@codemirror/view';
+import { defaultHighlightStyle } from '@codemirror/language';
+import { oneDarkHighlightStyle } from '@codemirror/theme-one-dark';
+import { tags } from '@lezer/highlight';
 import { NOTE_FONT_BASE_STACK } from '$lib/utils/note-font';
+
+/**
+ * Classes the editor's syntax highlighters put on heading text:
+ * `defaultHighlightStyle` (bold + underline, always on) and oneDark's (bold +
+ * coral, dark mode), both wired in NoteEditor.svelte. Keep this list in step
+ * with the highlighters there.
+ */
+export const HEADING_HIGHLIGHT_CLASSES: readonly string[] = [
+  defaultHighlightStyle,
+  oneDarkHighlightStyle
+].flatMap((style) => (style.style([tags.heading]) ?? '').split(' ').filter(Boolean));
+
+/**
+ * An underlined heading whose lone `-` / `=` underline is still being typed
+ * (`cm-lp-setext-draft` line, see `setext-draft.ts`) shows as the paragraph it
+ * still looks like: the highlighters' heading weight, underline and colour are
+ * undone on its text. Inline marks keep their own look (`.cm-lp-strong` sets
+ * its weight itself, a strike line is drawn by its own span). The rule lives on
+ * the highlight class, which this theme's scoped selector outranks.
+ */
+const setextDraftRules = Object.fromEntries(
+  HEADING_HIGHLIGHT_CLASSES.map((cls) => [
+    `.cm-lp-setext-draft .${cls}`,
+    { fontWeight: 'inherit', textDecoration: 'none', color: 'inherit' }
+  ])
+);
 
 /**
  * A note-content font size: `rem` scaled by the note text size of this device
@@ -733,10 +762,13 @@ export const livePreviewTheme = EditorView.theme({
   },
   '.cm-lp-img-placeholder-load:hover': {
     opacity: '0.9'
-  }
+  },
 
   // Dark-mode token overrides live in NoteEditor.svelte's `<style>`
   // (`:global(.dark .cm-lp-codeblock .tok-*)`). They need a `.dark`
   // ancestor selector, which CM6 themes can't express - themes scope
   // every key under the editor root via a generated class.
+
+  // Underlined heading still being typed: plain paragraph (see above).
+  ...setextDraftRules
 });

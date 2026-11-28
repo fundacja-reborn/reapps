@@ -52,6 +52,7 @@ import {
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { detectTextDirection } from '@reborn/i18n/direction';
 import { FOLD_CHEVRON_ICON } from '../utils/preview-heading-fold';
+import { isDraftSetextHeading } from './setext-draft';
 
 export interface FoldRange {
   from: number;
@@ -379,6 +380,9 @@ function buildToggles(view: EditorView, labels: HeadingFoldLabels): DecorationSe
         if (headingLevel(node.name) == null) return;
         const line = state.doc.lineAt(node.from);
         const folded = foldOnLine(state, line.from, line.to) != null;
+        // A lone `-` / `=` still being typed under a paragraph is not a heading
+        // yet (`setext-draft.ts`): no button popping up on the paragraph.
+        if (!folded && isDraftSetextHeading(state, node.node)) return false;
         if (folded || headingFoldRange(state, line.from, line.to, tree)) {
           addLine(line.from, line.to, folded);
         }

@@ -30,6 +30,7 @@ import { TocWidget, type TocWidgetLabels } from './toc-widget';
 import { HeadingAnchorWidget } from './heading-anchor-widget';
 import { findTocBlockRange, tocInnerMarkdown, isTocStale } from '$lib/utils/toc';
 import { extractHeadings } from '$lib/utils/heading-outline';
+import { isDraftSetextHeading } from '../setext-draft';
 
 /**
  * Options threaded into `buildDecorations` from `createLivePreviewExtension`.
@@ -165,6 +166,9 @@ const STRIKE_MARK = Decoration.mark({ class: 'cm-lp-strike' });
 const INLINE_CODE_MARK = Decoration.mark({ class: 'cm-lp-code' });
 const BLOCKQUOTE_LINE = Decoration.line({ class: 'cm-lp-blockquote-line' });
 const HR_LINE = Decoration.line({ class: 'cm-lp-hr-line' });
+// Lines of an underlined heading whose lone `-` / `=` underline is still being
+// typed (`isDraftSetextHeading`): shown as the paragraph they still look like.
+const SETEXT_DRAFT_LINE = Decoration.line({ class: 'cm-lp-setext-draft' });
 
 // Visual cap on list nesting. Tapered ramp in `theme.ts` keeps even d12
 // (~14.5em ≈ 232px) usable on a 360px viewport; CommonMark realistically
@@ -508,6 +512,23 @@ export function buildDecorations(
           ranges.push(VISIBLE_MARK.range(line.from, line.to));
         }
         return false;
+      }
+
+      // ─── Underlined (Setext) heading still being typed ───────────
+      // A lone `-` / `=` under a paragraph with the caret on it: by CommonMark
+      // the paragraph is already a heading, but the user is most likely starting
+      // a list item (`- ` comes before `- item`). Live Preview has no styling of
+      // its own for underlined headings, so the editor's syntax highlighters make
+      // their text bold + underlined (oneDark: bold + coloured); the draft line
+      // class switches that off until the next character decides (`theme.ts`).
+      // Underlines drawn on purpose (`---`, `===`) are left alone.
+      if (isDraftSetextHeading(state, nodeRef.node)) {
+        const firstLine = doc.lineAt(from).number;
+        const lastLine = doc.lineAt(to).number;
+        for (let n = firstLine; n <= lastLine; n++) {
+          ranges.push(SETEXT_DRAFT_LINE.range(doc.line(n).from));
+        }
+        return; // descend so inline content (bold, links, ...) is decorated as usual
       }
 
       // ─── ATX Headings (# Heading) ────────────────────────────────
