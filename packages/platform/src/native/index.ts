@@ -11,6 +11,17 @@
  */
 export { createCapacitorPlatform } from './platform';
 export {
+  BIOMETRY_TYPE,
+  getCapacitorBiometryStatus,
+  NO_BIOMETRY,
+  promptCapacitorBiometric,
+  toBiometryKind,
+  type BiometricAuthResult,
+  type BiometricPromptOptions,
+  type BiometryKind,
+  type BiometryStatus
+} from './biometric-auth';
+export {
   createCapacitorSecureStorage,
   KEYCHAIN_ACCESS_WHEN_UNLOCKED_THIS_DEVICE_ONLY
 } from './secure-storage';
