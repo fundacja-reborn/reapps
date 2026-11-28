@@ -6,6 +6,7 @@
     "body_today": "لديك مهمة مجدولة اليوم.",
     "body_unknown": "لديك مهمة مجدولة في تاريخ غير محدد."
   },
+  "channel_reminders": "تذكيرات المهام",
   "token_required": "رمز الإشعارات مطلوب.",
   "registration_failed": "تعذّر تسجيل رمز الإشعارات."
 }

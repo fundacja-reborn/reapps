@@ -6,6 +6,7 @@
     "body_today": "Sie haben eine Aufgabe f\u00fcr heute geplant.",
     "body_unknown": "Sie haben eine Aufgabe f\u00fcr ein unbestimmtes Datum geplant."
   },
+  "channel_reminders": "Aufgabenerinnerungen",
   "token_required": "Benachrichtigungstoken ist erforderlich.",
   "registration_failed": "Registrierung des Benachrichtigungstokens fehlgeschlagen."
 }

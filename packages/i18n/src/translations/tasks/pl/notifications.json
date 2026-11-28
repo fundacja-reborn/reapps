@@ -6,6 +6,7 @@
     "body_today": "Masz zadanie zaplanowane na dziś.",
     "body_unknown": "Masz zadanie zaplanowane na nieokreślony termin."
   },
+  "channel_reminders": "Przypomnienia o zadaniach",
   "token_required": "Token powiadomień jest wymagany.",
   "registration_failed": "Rejestracja tokenu powiadomień nie powiodła się."
 }

@@ -6,6 +6,7 @@
     "body_today": "Tiene una tarea programada para hoy.",
     "body_unknown": "Tiene una tarea programada para una fecha no especificada."
   },
+  "channel_reminders": "Recordatorios de tareas",
   "token_required": "Se requiere el token de notificación.",
   "registration_failed": "El registro del token de notificación falló."
 }

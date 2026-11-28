@@ -249,6 +249,18 @@
     "help": "Włączone: powiadomienia działają nawet gdy aplikacja jest zamknięta. Serwer wie tylko kiedy (z dokładnością do 5 minut) ma się wysłać przypomnienie - nigdy nie widzi tytułu ani treści zadania (deszyfrowanie odbywa się lokalnie na Twoim urządzeniu). Wyłącz jeśli wolisz, by serwer nie znał terminów przypomnień; powiadomienia będą wtedy działać tylko z aplikacją otwartą."
   },
   "notifications_macos_info": "Na macOS dodatkowo sprawdź Ustawienia systemowe → Powiadomienia → Twoja przeglądarka i upewnij się, że powiadomienia są dozwolone.",
+  "notifications_native": {
+    "description": "Przypomnienia o zadaniach z terminem. re/task planuje je na tym urządzeniu, więc przychodzą także przy zamkniętej aplikacji.",
+    "other_devices": "Przypomnienie dodane na innym urządzeniu zaplanuje się tutaj, gdy następnym razem otworzysz re/task i dane się zsynchronizują.",
+    "denied": "Powiadomienia re/task są wyłączone w ustawieniach systemu, więc przypomnienia nie przyjdą.",
+    "denied_android": "Możesz je włączyć w ustawieniach systemu: Aplikacje → re/task → Powiadomienia.",
+    "open_settings_btn": "Otwórz ustawienia powiadomień",
+    "exact_title": "Dokładny czas przypomnień",
+    "exact_help": "Oszczędzając baterię, Android może dostarczyć przypomnienie nawet godzinę później. Zezwól re/task na dokładne alarmy, żeby przypomnienia przychodziły na czas.",
+    "exact_btn": "Zezwól na dokładne alarmy",
+    "exact_on": "Przypomnienia będą teraz przychodzić na czas.",
+    "exact_still_off": "Dokładne alarmy są nadal wyłączone. Przypomnienia mogą się trochę spóźniać."
+  },
   "send_test_notification": "Wyślij testowe powiadomienie",
   "test_notification_sent": "Testowe powiadomienie zostało wysłane",
   "test_notification_failed": "Nie udało się wysłać testowego powiadomienia",

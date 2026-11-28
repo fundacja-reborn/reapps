@@ -527,7 +527,7 @@ interface TaskReminderStrings {
 	bodyUnknown: string;
 }
 
-// Mirrors the keys used in formatReminderBody (push-notification.service.ts)
+// Mirrors the keys used in formatReminderBody (reminder-schedule.ts)
 // and notifications.task_due.* in the i18n bundles. Duplicated here because
 // the SW must run before any module from packages/i18n has loaded.
 const REMINDER_STRINGS: Record<SupportedLocale, TaskReminderStrings> = {

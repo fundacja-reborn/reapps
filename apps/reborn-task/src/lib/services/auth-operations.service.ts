@@ -26,6 +26,7 @@ import {
 	persistNativeRefreshToken
 } from '$lib/utils/native-auth-storage';
 import { clearNativeSessionId, persistNativeSessionId } from '$lib/utils/native-session';
+import { cancelNativeReminders } from '$lib/services/native-reminders';
 
 const logger = createLogger('AuthOperationsService');
 
@@ -209,6 +210,9 @@ export class AuthOperationsService {
 			// On 'restore' (same user, master key loaded from IndexedDB on app start)
 			// we MUST preserve local data, otherwise offline edits are lost.
 			if (context === 'login') {
+				// Native: reminders planned for a previous account on this device go
+				// with its data (the new account's tasks re-plan after the sync).
+				await cancelNativeReminders();
 				const { clearAllUserData, isDatabaseInitialized } = await import('@reborn/storage');
 				if (isDatabaseInitialized()) {
 					try {
@@ -625,6 +629,8 @@ export class AuthOperationsService {
 			// id go with the session. No-ops on web; never throw.
 			await clearNativeRefreshToken();
 			clearNativeSessionId();
+			// Native: the planned reminders carry this account's task titles.
+			await cancelNativeReminders();
 
 			// The Web App Lock is tied to this account's password wrap: the next
 			// session (another account, or local-only mode) starts without it.
@@ -696,6 +702,7 @@ export class AuthOperationsService {
 		localStorage.removeItem('access_token');
 		await clearNativeRefreshToken();
 		clearNativeSessionId();
+		await cancelNativeReminders();
 		await this.clearWebLock();
 
 		if (globalThis.__tokenRefreshInterval) {

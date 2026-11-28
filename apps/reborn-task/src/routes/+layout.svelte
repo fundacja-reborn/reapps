@@ -30,6 +30,7 @@
 	import { goto } from '$lib/utils/navigation';
 	import { hideNativeSplash } from '$lib/utils/native-shell';
 	import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
+	import { onReminderTap } from '$lib/services/native-reminders';
 	import UpdateRequiredGate from '$lib/components/layout/UpdateRequiredGate.svelte';
 
 	const logger = createLogger('Layout');
@@ -201,6 +202,7 @@
 		// bundle.
 		let offResume: (() => void) | undefined;
 		let offDeepLink: (() => void) | undefined;
+		let offReminderTap: (() => void) | undefined;
 		let updateGateTimer: ReturnType<typeof setTimeout> | undefined;
 		if (__REBORN_NATIVE__) {
 			offResume = platform.lifecycle.onResume(() => {
@@ -221,6 +223,12 @@
 			offDeepLink = platform.deepLinks.onOpen((url) => {
 				const route = shareDeepLinkToRoute(url);
 				if (route) void goto(route);
+			});
+
+			// A tapped task reminder (device-local notification) opens its task,
+			// also when the tap started the app (the plugin holds it until now).
+			offReminderTap = onReminderTap((taskId) => {
+				void goto(`/tasks/${encodeURIComponent(taskId)}`);
 			});
 
 			// The first min-version check is deferred a few seconds so it never
@@ -362,6 +370,7 @@
 			if (updateGateTimer) clearTimeout(updateGateTimer);
 			offResume?.();
 			offDeepLink?.();
+			offReminderTap?.();
 			unsubscribe();
 		};
 	});

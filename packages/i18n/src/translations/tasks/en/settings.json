@@ -156,6 +156,18 @@
     "help": "When on, notifications fire even with the app closed. The server learns when (rounded to 5 minutes) a reminder is due, but never sees the task title or body - those are decrypted locally on your device. Turn off if you prefer the server to know nothing about reminder timing; notifications will then only fire while the app is open."
   },
   "notifications_macos_info": "On macOS, also check System Settings → Notifications → your browser and make sure notifications are allowed.",
+  "notifications_native": {
+    "description": "Reminders for tasks with a due date. re/task plans them on this device, so they come even when the app is closed.",
+    "other_devices": "A reminder added on another device is planned here the next time re/task opens and syncs.",
+    "denied": "Notifications for re/task are turned off in the system settings, so no reminders will come.",
+    "denied_android": "You can turn them on in the system settings: Apps → re/task → Notifications.",
+    "open_settings_btn": "Open notification settings",
+    "exact_title": "Exact reminder times",
+    "exact_help": "To save battery, Android may deliver a reminder up to an hour late. Allow exact alarms for re/task to get reminders on time.",
+    "exact_btn": "Allow exact alarms",
+    "exact_on": "Reminders will now come on time.",
+    "exact_still_off": "Exact alarms are still off. Reminders may come a little late."
+  },
   "send_test_notification": "Send test notification",
   "test_notification_sent": "Test notification sent",
   "test_notification_failed": "Failed to send test notification",

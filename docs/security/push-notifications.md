@@ -56,6 +56,16 @@ Turning it off:
 
 The setting is part of your synced account settings, so toggling it on one device flips it on every signed-in device automatically. When you turn it off, all pending server-side schedules across every device are dropped in the same transaction.
 
+### In the native apps (Android, iOS)
+
+The native Reborn Task apps do not use this pipeline at all. The phone plans each reminder itself as a local notification of the operating system, from the tasks it has already decrypted, and the system shows it at the right time even when the app is closed. The server receives no `fire_at`, no push subscription and no request of any kind for reminders, so the native apps share nothing in this dimension and have no "Background notifications" switch. (Reminders a web browser on the same account registers with the server, if that switch is on, are unaffected.)
+
+What this means on the device:
+
+- The planned notifications, with the task title and the reminder text, wait in the system's own store of scheduled notifications until they fire (on Android in the app's private storage, which is excluded from device backups). Logging out, deleting the account or wiping the local data cancels them all.
+- A reminder added on another device is planned once the app opens on this one and syncs; nothing wakes the phone for it. iOS keeps at most 64 scheduled notifications per app, so the app plans the nearest 60 and moves the window forward each time it opens.
+- On Android 12 and newer the system may deliver a reminder up to an hour late to save battery, unless the user allows exact alarms for the app (Settings -> Notifications offers it).
+
 ---
 
 ## Part 2: Technical details

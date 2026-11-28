@@ -21,6 +21,7 @@
 	import { t } from '$lib/stores/i18n.store';
 	import { cryptoManager, LocalPasscodeThrottledError } from '@reborn/crypto';
 	import { authOperationsService } from '$lib/services/auth-operations.service';
+	import { cancelNativeReminders } from '$lib/services/native-reminders';
 	import { createLogger } from '@reborn/utils';
 
 	const logger = createLogger('LockRoute');
@@ -107,6 +108,8 @@
 		// The wrapped data is unrecoverable without the passcode - wiping is the
 		// only way out. forget → clear data → clear markers → hard redirect.
 		cryptoManager.forgetLocalPasscode();
+		// Native: reminders planned from the wiped tasks would still fire.
+		await cancelNativeReminders();
 		try {
 			const { clearAllUserData } = await import('@reborn/storage');
 			await clearAllUserData();
