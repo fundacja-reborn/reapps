@@ -18,6 +18,8 @@
 	import { goto } from '$lib/utils/navigation';
 	import { isAuthenticated, isInitialized, isLoading, user } from '$lib/stores/auth.store';
 	import { createLogger } from '@reborn/utils';
+	import { onMount } from 'svelte';
+	import { platform } from '$lib/platform';
 	import {
 		enableWebLock,
 		disableWebLock,
@@ -74,7 +76,9 @@
 
 	// Native variant
 	let enabled = $state(false);
-	let available = $state(false);
+	// null until the device answers, so "Biometrics not set up" never flashes
+	// before the real state.
+	let available = $state<boolean | null>(null);
 	let biometryKind = $state<BiometryKind>('none');
 	let timeoutMs = $state(getTimeoutMs());
 	let busy = $state(false);
@@ -107,9 +111,22 @@
 			return;
 		}
 		enabled = isAppLockEnabled();
+		refreshAvailability();
+	});
+
+	function refreshAvailability() {
 		void getAppLockAvailability().then((status) => {
 			available = status.isAvailable || status.deviceIsSecure;
 			biometryKind = status.kind;
+		});
+	}
+
+	// Native: coming back from the system settings (a fingerprint or a PIN just
+	// added) must update the page without leaving it.
+	onMount(() => {
+		if (!__REBORN_NATIVE__) return;
+		return platform.lifecycle.onResume(() => {
+			if (resolved && $isAuthenticated) refreshAvailability();
 		});
 	});
 
@@ -181,7 +198,9 @@
 				<AlertDescription>{$t('app_lock.settings_intro')}</AlertDescription>
 			</Alert>
 
-			{#if !available}
+			{#if available === null}
+				<!-- Waiting for the device's answer (a moment). -->
+			{:else if !available}
 				<Card>
 					<CardHeader>
 						<CardTitle class="text-base flex items-center gap-2">

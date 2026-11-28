@@ -3,6 +3,7 @@ import { base } from '$app/paths';
 import { goto } from '$lib/utils/navigation';
 import { get } from 'svelte/store';
 import { session } from '$lib/stores/auth.store';
+import { cryptoManager } from '@reborn/crypto';
 import { createLogger } from '@reborn/utils';
 import type { AuthSession } from '@reborn/auth';
 
@@ -110,17 +111,25 @@ export async function authGuard(options: AuthGuardOptions = {}): Promise<boolean
 
 	// Check if E2E is required and available
 	if (requireE2E && !currentSession.hasE2E) {
-		// Don't redirect if already on unlock page
-		if (currentPath.startsWith(`${base}/auth/unlock`) || currentPath.startsWith('/auth/unlock')) {
+		// Native App Lock: the key waits in the device vault behind biometrics,
+		// so the biometric screen, not the password form (guideline 66).
+		const unlockPath = cryptoManager.isAppLockLocked() ? '/auth/applock' : '/auth/unlock';
+		// Don't redirect if already on an unlock screen
+		if (
+			currentPath.startsWith(`${base}/auth/unlock`) ||
+			currentPath.startsWith('/auth/unlock') ||
+			currentPath.startsWith(`${base}/auth/applock`) ||
+			currentPath.startsWith('/auth/applock')
+		) {
 			return true;
 		}
 
 		logger.debug('E2E required but not available, redirecting to unlock');
-		let unlockUrl = '/auth/unlock';
+		let unlockUrl = unlockPath;
 		try {
 			if (returnTo) {
 				// Build URL safely without using URL constructor
-				unlockUrl = `/auth/unlock?returnTo=${encodeURIComponent(returnTo)}`;
+				unlockUrl = `${unlockPath}?returnTo=${encodeURIComponent(returnTo)}`;
 			}
 			isRedirecting = true;
 			redirectCount++;

@@ -136,14 +136,29 @@ export function lockNow(): void {
 	authOperationsService.getSessionManager().setSession({ hasE2E: false });
 }
 
+/** The unlock attempt in flight, shared by concurrent callers. */
+let unlockInFlight: Promise<BiometricAuthResult> | null = null;
+
 /**
  * Unlock from the lock screen: biometric prompt, then read the key back from
  * the vault and mark the session unlocked. `{ ok: false, code: 'vaultEmpty' }`
  * when the prompt passed but the vault held no usable key (the lock screen
  * offers the account password then).
+ *
+ * Single flight: a second call while a prompt is open (the lock screen
+ * mounted twice by a redirect) gets the same attempt instead of a second
+ * system prompt - two at once hung Android's System UI in the 2026-11-28
+ * smoke test.
  */
-export async function unlock(prompts: BiometricPromptOptions): Promise<BiometricAuthResult> {
-	if (!__REBORN_NATIVE__) return { ok: false, code: 'biometryNotAvailable' };
+export function unlock(prompts: BiometricPromptOptions): Promise<BiometricAuthResult> {
+	if (!__REBORN_NATIVE__) return Promise.resolve({ ok: false, code: 'biometryNotAvailable' });
+	unlockInFlight ??= runUnlock(prompts).finally(() => {
+		unlockInFlight = null;
+	});
+	return unlockInFlight;
+}
+
+async function runUnlock(prompts: BiometricPromptOptions): Promise<BiometricAuthResult> {
 	const result = await promptBiometric({ allowDeviceCredential: true, ...prompts });
 	if (!result.ok) return result;
 	try {

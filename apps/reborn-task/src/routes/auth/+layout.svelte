@@ -25,6 +25,12 @@
 			// Don't redirect on unlock page — it's for authenticated users who need to enter
 			// their master password to activate E2E. The page manages its own redirects.
 			if (path === `${base}/auth/unlock` || path === '/auth/unlock') return;
+			// Nor on the native App Lock screen: an account session is authenticated
+			// while its key waits in the vault behind biometrics. Sending it back to
+			// the app bounced it to the lock screen again - a second biometric
+			// prompt over the first one hung Android's System UI (smoke test
+			// 2026-11-28) - or, through a page's authGuard, to the password form.
+			if (path === `${base}/auth/applock` || path === '/auth/applock') return;
 			// Don't redirect on 2FA page — it manages its own flow
 			if (path === `${base}/auth/2fa` || path === '/auth/2fa') return;
 
