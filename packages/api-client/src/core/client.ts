@@ -362,8 +362,14 @@ export class ApiClient {
   }
 
   private async parseResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    // Handle no content
-    if (response.status === 204 || response.headers.get('content-length') === '0') {
+    // Only the status says "no content". Content-Length is not trusted for it:
+    // in the Android native shell every GET is proxied through
+    // shouldInterceptRequest, and WebView sets Content-Length from the stream's
+    // bytes-available count, which is 0 for a network stream that has not
+    // buffered yet - while the full body still arrives. Trusting that header
+    // made a 23 KB task list read as "no data", and the list sync then created
+    // a new default list on every run. An empty body is handled below anyway.
+    if (response.status === 204) {
       return {
         success: response.ok,
         data: undefined as T

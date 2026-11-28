@@ -42,11 +42,25 @@ export class SyncListsService extends SyncBaseService {
 			// Log the full response for debugging
 			this.logger.debug('Task lists API response:', response);
 
-			// Handle empty or null data
-			const lists = response.data || [];
+			// A success without a list array is not "the account has no lists".
+			// Treating it as one once created a new default list on every sync
+			// (the Android shell read every GET body as empty, see parseResponse
+			// in @reborn/api-client), so only a real empty array may create one.
+			if (!Array.isArray(response.data)) {
+				this.logger.warn('Task lists response had no list array - nothing saved, no list created');
+				return 0;
+			}
+			const lists = response.data;
 			this.logger.info(`Fetched ${lists.length} lists from server`);
 
 			if (lists.length === 0) {
+				// A list made on this device and not pushed yet (offline start,
+				// failed push) is already the default - do not add a second one.
+				const localLists = await listStore.getAll();
+				if (localLists.some((list) => !list.deleted_at)) {
+					this.logger.info('No lists on server yet, but this device has one - not creating another');
+					return 0;
+				}
 				this.logger.info('No lists found on server, creating default list');
 				await this.createDefaultList();
 				return 0;
