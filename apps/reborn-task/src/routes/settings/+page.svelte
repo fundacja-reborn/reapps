@@ -40,6 +40,7 @@
 	import { openWhatsNew } from '$lib/stores/whats-new.svelte';
 	import { resolve } from '$app/paths';
 	import { createLogger, formatDateWithSetting } from '@reborn/utils';
+	import { getNativeVersionInfo, type NativeVersionInfo } from '$lib/utils/native-version-info';
 
 	const logger = createLogger('SettingsPage');
 
@@ -231,8 +232,15 @@
 		}
 	}
 
+	// Native-only: store-installed version + live backend version (drift detail),
+	// as in re/notes. Null on web - the single __APP_VERSION__ line stays there.
+	let versionInfo = $state<NativeVersionInfo | null>(null);
+
 	onMount(() => {
 		loadSessionsCount();
+		void getNativeVersionInfo().then((info) => {
+			versionInfo = info;
+		});
 	});
 
 	const itemClasses = cn(
@@ -478,10 +486,28 @@
 					<Info class="h-5 w-5 text-muted-foreground shrink-0" />
 					<div class="flex-1 min-w-0">
 						<div class="font-medium">{$t('settings.about.name')}</div>
-						<div class="text-sm text-muted-foreground">
-							{$t('settings.about.version')}
-							{__APP_VERSION__}
-						</div>
+						{#if versionInfo}
+							<!-- Native: store-installed version, then the frozen bundled
+							     frontend vs the live backend so the drift is visible. -->
+							<div class="text-sm text-muted-foreground">
+								{$t('settings.about.version')}
+								{$t('settings.about.native_app_version', {
+									values: { version: versionInfo.appVersion, build: versionInfo.appBuild }
+								})}
+							</div>
+							<div class="text-xs text-muted-foreground">
+								{$t('settings.about.frontend_version')}
+								{__APP_VERSION__}
+								<span aria-hidden="true" class="px-0.5">·</span>
+								{$t('settings.about.backend_version')}
+								{versionInfo.backendVersion ?? '-'}
+							</div>
+						{:else}
+							<div class="text-sm text-muted-foreground">
+								{$t('settings.about.version')}
+								{__APP_VERSION__}
+							</div>
+						{/if}
 					</div>
 				</div>
 				<button
