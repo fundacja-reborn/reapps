@@ -1,3 +1,13 @@
+## 0.61.0 (2026-11-28)
+
+### 🚀 Features
+
+- **task:** show the native app, frontend and backend versions in settings ([#673](https://github.com/fundacja-reborn/reapps/pull/673))
+
+### 🩹 Fixes
+
+- **task:** read sync answers in the Android app and stop duplicate default lists ([#671](https://github.com/fundacja-reborn/reapps/pull/671))
+
 ## 0.60.0 (2026-11-28)
 
 ### 🚀 Features
