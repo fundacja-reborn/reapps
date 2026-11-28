@@ -141,9 +141,16 @@ function serialize(run: () => Promise<void>): Promise<void> {
 	return queue;
 }
 
-async function loadPlugin() {
-	const { LocalNotifications } = await import('@capacitor/local-notifications');
-	return LocalNotifications;
+/**
+ * The plugin module, never the plugin itself: a Capacitor plugin is a Proxy
+ * that answers EVERY property with a native method wrapper, `then` included.
+ * Resolving a promise with it (returning it from an async function, `.then`
+ * on a promise of it) makes the promise machinery call `plugin.then(...)`,
+ * a native call that never settles - the await hangs forever, silently. Take
+ * `LocalNotifications` out of the awaited module where it is used.
+ */
+function loadPlugin() {
+	return import('@capacitor/local-notifications');
 }
 
 async function isAndroid(): Promise<boolean> {
@@ -158,11 +165,13 @@ async function isAndroid(): Promise<boolean> {
  * app language.
  */
 async function ensureReminderChannel(name: string): Promise<void> {
-	await (await loadPlugin()).createChannel({ id: REMINDER_CHANNEL_ID, name, importance: 4 });
+	await (
+		await loadPlugin()
+	).LocalNotifications.createChannel({ id: REMINDER_CHANNEL_ID, name, importance: 4 });
 }
 
 async function cancelAllPending(): Promise<void> {
-	const LocalNotifications = await loadPlugin();
+	const { LocalNotifications } = await loadPlugin();
 	const { notifications } = await LocalNotifications.getPending();
 	if (notifications.length === 0) return;
 	await LocalNotifications.cancel({ notifications: notifications.map((n) => ({ id: n.id })) });
@@ -184,7 +193,7 @@ export function syncNativeReminders(input: NativeReminderInput): Promise<void> {
 			return;
 		}
 
-		const LocalNotifications = await loadPlugin();
+		const { LocalNotifications } = await loadPlugin();
 		if ((await LocalNotifications.checkPermissions()).display !== 'granted') {
 			// Nothing would show. Leave what is there (granting the permission
 			// later re-plans through the resume / settings triggers).
@@ -247,7 +256,7 @@ export function cancelNativeReminders(): Promise<void> {
 export async function getNativeNotificationPermission(): Promise<NativeNotificationPermission> {
 	if (!__REBORN_NATIVE__) return 'denied';
 	try {
-		return toPermission((await (await loadPlugin()).checkPermissions()).display);
+		return toPermission((await (await loadPlugin()).LocalNotifications.checkPermissions()).display);
 	} catch {
 		return 'denied';
 	}
@@ -257,7 +266,7 @@ export async function getNativeNotificationPermission(): Promise<NativeNotificat
 export async function requestNativeNotificationPermission(): Promise<NativeNotificationPermission> {
 	if (!__REBORN_NATIVE__) return 'denied';
 	try {
-		const LocalNotifications = await loadPlugin();
+		const { LocalNotifications } = await loadPlugin();
 		const current = toPermission((await LocalNotifications.checkPermissions()).display);
 		if (current !== 'prompt') return current;
 		return toPermission((await LocalNotifications.requestPermissions()).display);
@@ -273,7 +282,9 @@ function toPermission(display: string): NativeNotificationPermission {
 }
 
 async function readExactAlarmState(): Promise<ExactAlarmState> {
-	const { exact_alarm } = await (await loadPlugin()).checkExactNotificationSetting();
+	const { exact_alarm } = await (
+		await loadPlugin()
+	).LocalNotifications.checkExactNotificationSetting();
 	return exact_alarm === 'granted' ? 'granted' : 'denied';
 }
 
@@ -297,7 +308,9 @@ export async function openExactAlarmSettings(): Promise<ExactAlarmState> {
 	if (!__REBORN_NATIVE__) return 'unsupported';
 	try {
 		if (!(await isAndroid())) return 'unsupported';
-		const { exact_alarm } = await (await loadPlugin()).changeExactNotificationSetting();
+		const { exact_alarm } = await (
+			await loadPlugin()
+		).LocalNotifications.changeExactNotificationSetting();
 		return exact_alarm === 'granted' ? 'granted' : 'denied';
 	} catch (err) {
 		logger.warn('Opening the exact alarm settings failed:', err);
@@ -333,7 +346,7 @@ export async function openNotificationSettings(): Promise<boolean> {
 export async function sendNativeTestNotification(title: string, body: string): Promise<boolean> {
 	if (!__REBORN_NATIVE__) return false;
 	try {
-		const LocalNotifications = await loadPlugin();
+		const { LocalNotifications } = await loadPlugin();
 		if ((await LocalNotifications.checkPermissions()).display !== 'granted') return false;
 		const channelId = (await isAndroid()) ? REMINDER_CHANNEL_ID : undefined;
 		if (channelId) {
@@ -363,7 +376,7 @@ export function onReminderTap(open: (taskId: string) => void): () => void {
 	let removed = false;
 	let handle: { remove: () => Promise<void> } | null = null;
 	void loadPlugin()
-		.then((LocalNotifications) =>
+		.then(({ LocalNotifications }) =>
 			LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
 				const taskId = (action.notification.extra as { taskId?: unknown } | undefined)?.taskId;
 				if (typeof taskId === 'string' && taskId) open(taskId);
