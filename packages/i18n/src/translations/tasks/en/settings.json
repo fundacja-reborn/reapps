@@ -366,6 +366,9 @@
     "name": "re/task",
     "description": "E2E encrypted task management, offline-first",
     "version": "Version",
+    "native_app_version": "{version} (build {build})",
+    "frontend_version": "Frontend",
+    "backend_version": "Backend",
     "license": "License",
     "open_notes": "Open re/notes"
   },

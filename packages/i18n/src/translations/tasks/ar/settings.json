@@ -366,6 +366,9 @@
     "name": "re/task",
     "description": "إدارة مهام بتشفير تام بين الطرفين، مصمّمة للعمل دون اتصال",
     "version": "الإصدار",
+    "native_app_version": "{version} (رقم البناء {build})",
+    "frontend_version": "الواجهة الأمامية",
+    "backend_version": "الواجهة الخلفية",
     "license": "الترخيص",
     "open_notes": "فتح re/notes"
   },
