@@ -140,6 +140,17 @@ describe('headingFold', () => {
       expect(folds(v)).toEqual([]);
     });
 
+    it('none on a paragraph while a lone dash is typed under it', () => {
+      // `Foo\nBar\n-` is an underlined H2 by CommonMark, but with the caret on
+      // the dash the user is starting a list item (`- item`), not a heading.
+      const v = open('Foo\nBar\n-\n\nbody');
+      v.dispatch({ selection: EditorSelection.cursor(lineOf(v, 2).to) });
+      expect(v.dom.querySelectorAll('.cm-hfold-toggle').length).toBe(0);
+      // Caret elsewhere: the lone dash is an underline, as in the preview.
+      v.dispatch({ selection: EditorSelection.cursor(v.state.doc.length) });
+      expect(v.dom.querySelectorAll('.cm-hfold-toggle').length).toBe(1);
+    });
+
     it('marks the heading line the caret is on', () => {
       const v = open();
       v.dispatch({ selection: EditorSelection.cursor(lineOf(v, 9).from + 3) });

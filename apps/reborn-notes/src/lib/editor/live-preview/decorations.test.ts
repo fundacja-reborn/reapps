@@ -544,6 +544,69 @@ describe('buildDecorations — horizontal rule', () => {
   });
 });
 
+describe('buildDecorations — underline still being typed', () => {
+  // A lone `-` under a paragraph makes it an underlined (Setext) H2 until the
+  // next character turns the line into a list item. The editor's highlighters
+  // style heading text, so without these classes the paragraph flashed bold +
+  // underlined while a list was being started under it.
+  const lineClasses = (ranges: DecoRange[], pos: number): string[] =>
+    ranges
+      .filter((r) => r.from === pos && r.to === pos)
+      .map((r) => r.spec.class ?? '')
+      .filter(Boolean);
+  const draftLines = (ranges: DecoRange[]): number[] =>
+    ranges.filter((r) => r.spec.class === 'cm-lp-setext-draft').map((r) => r.from);
+
+  it('marks every line of the paragraph and the underline while the caret is on it', () => {
+    const doc = 'Foo\nBar\n-';
+    const ranges = asRanges(buildDecorations(makeState(doc, doc.length)));
+    expect(draftLines(ranges)).toEqual([0, 4, 8]);
+  });
+
+  it('keeps marking it after the space that starts a list item', () => {
+    const doc = 'Foo\nBar\n- ';
+    const ranges = asRanges(buildDecorations(makeState(doc, doc.length)));
+    expect(draftLines(ranges)).toEqual([0, 4, 8]);
+  });
+
+  it('the paragraph and a list item once the next character is typed', () => {
+    const doc = 'Foo\nBar\n- t';
+    const ranges = asRanges(buildDecorations(makeState(doc, doc.length)));
+    expect(draftLines(ranges)).toEqual([]);
+    expect(lineClasses(ranges, 8).some((c) => c.includes('cm-lp-bullet-line'))).toBe(true);
+  });
+
+  it('leaves the heading alone once the caret is elsewhere', () => {
+    const doc = 'Foo\n-\n\nnext';
+    const ranges = asRanges(buildDecorations(makeState(doc, doc.length)));
+    expect(draftLines(ranges)).toEqual([]);
+  });
+
+  it('leaves an underline drawn on purpose alone', () => {
+    const doc = 'Foo\n---';
+    const ranges = asRanges(buildDecorations(makeState(doc, doc.length)));
+    expect(draftLines(ranges)).toEqual([]);
+  });
+
+  it('adds to the quote styling instead of replacing it', () => {
+    const doc = '> Foo\n> -';
+    const ranges = asRanges(buildDecorations(makeState(doc, doc.length)));
+    expect(lineClasses(ranges, 0)).toEqual(
+      expect.arrayContaining(['cm-lp-blockquote-line', 'cm-lp-setext-draft'])
+    );
+    expect(lineClasses(ranges, 6)).toEqual(
+      expect.arrayContaining(['cm-lp-blockquote-line', 'cm-lp-setext-draft'])
+    );
+  });
+
+  it('still decorates inline content of the paragraph', () => {
+    const doc = 'a **b**\n-';
+    const ranges = asRanges(buildDecorations(makeState(doc, doc.length)));
+    expect(draftLines(ranges)).toEqual([0, 8]);
+    expect(classAt(ranges, 2, 7)).toBe('cm-lp-strong');
+  });
+});
+
 describe('buildDecorations — empty / no markdown', () => {
   it('returns no decorations for an empty document', () => {
     const state = makeState('', 0);
