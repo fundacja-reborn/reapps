@@ -44,6 +44,15 @@ LICENSE
 SECURITY.md
 CLAUDE.md
 
+# Native shells (Capacitor Android / iOS, Tauri desktop). The web image is
+# built with `vite build` from `src/` and never reads them, while a dev box
+# holds signing config (`android/keystore.properties`), copies of earlier web
+# builds and the Rust `target/` dir (GBs) there. `COPY . .` would carry all of
+# it into the runtime image.
+apps/*/android
+apps/*/ios
+apps/*/src-tauri
+
 # Infrastruktura buildu — kontekst nie potrzebuje siebie samego
 Dockerfile
 .dockerignore
