@@ -5,6 +5,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$lib/utils/navigation';
 	import { session } from '$lib/stores/auth.store';
+	import { cryptoManager } from '@reborn/crypto';
 
 	let { children } = $props<{ children?: Snippet }>();
 
@@ -28,8 +29,12 @@
 				isAuthRedirecting = false;
 			});
 		} else if (!$session.hasE2E) {
+			// Native App Lock first (biometrics), as in the (app) layout.
+			const target = cryptoManager.isAppLockLocked()
+				? `/auth/applock?returnTo=${encodeURIComponent($page.url.pathname)}`
+				: '/auth/unlock';
 			isAuthRedirecting = true;
-			goto('/auth/unlock', { replaceState: true }).finally(() => {
+			goto(target, { replaceState: true }).finally(() => {
 				isAuthRedirecting = false;
 			});
 		}

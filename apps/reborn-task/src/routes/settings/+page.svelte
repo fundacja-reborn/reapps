@@ -26,7 +26,8 @@
 		UserPlus,
 		Sparkles,
 		ChevronRight,
-		LockKeyhole
+		LockKeyhole,
+		Fingerprint
 	} from '@lucide/svelte';
 	import { t } from '$lib/stores/i18n.store';
 	import { locale } from '$lib/stores/i18n.store';
@@ -360,17 +361,29 @@
 
 			<!-- Auth method links -->
 			<div class="space-y-1">
-				<!-- App Lock: opt-in, off by default. While on, the encryption key is
-				     kept in memory only and the account password is needed to open
-				     the app (guideline 82). -->
+				<!-- App Lock: opt-in, off by default, first in the section. Web: the
+				     encryption key is kept in memory only and the account password is
+				     needed to open the app (guideline 82). Native shell: biometrics or
+				     the device PIN gate reading the key from the device vault, as in
+				     re/notes (guideline 66). Same place and name, two mechanisms. -->
 				<a href={resolve('/settings/security/app-lock')} class={itemClasses}>
-					<LockKeyhole class="h-5 w-5 text-muted-foreground shrink-0" />
-					<div class="flex-1 min-w-0">
-						<div class="font-medium">{$t('web_lock.title')}</div>
-						<div class="text-sm text-muted-foreground">
-							{$t('web_lock.settings_item_desc')}
+					{#if __REBORN_NATIVE__}
+						<Fingerprint class="h-5 w-5 text-muted-foreground shrink-0" />
+						<div class="flex-1 min-w-0">
+							<div class="font-medium">{$t('app_lock.settings_item_title')}</div>
+							<div class="text-sm text-muted-foreground">
+								{$t('app_lock.settings_item_desc')}
+							</div>
 						</div>
-					</div>
+					{:else}
+						<LockKeyhole class="h-5 w-5 text-muted-foreground shrink-0" />
+						<div class="flex-1 min-w-0">
+							<div class="font-medium">{$t('web_lock.title')}</div>
+							<div class="text-sm text-muted-foreground">
+								{$t('web_lock.settings_item_desc')}
+							</div>
+						</div>
+					{/if}
 				</a>
 
 				{#each securityItems as item}

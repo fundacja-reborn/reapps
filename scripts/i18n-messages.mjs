@@ -618,6 +618,7 @@ export const CRITICAL_KEY_PREFIXES = [
   'common:auth.',
   'common:password.',
   'common:profile.',
+  'tasks/app_lock:',
   'tasks/auth:',
   'tasks/e2e:',
   'tasks/unlock_e2e:',

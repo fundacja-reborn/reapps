@@ -1049,8 +1049,16 @@
 				isAuthRedirecting = false;
 			});
 		} else if (!$session.hasE2E) {
+			// Native App Lock: the key is in the device vault behind biometrics
+			// (cold start, or a resume past the idle timeout) - the biometric
+			// screen, not the password form. Inert on the web (no vault) and with
+			// App Lock off. Guideline 66.
+			const path = $page.url.pathname;
+			const target = cryptoManager.isAppLockLocked()
+				? `/auth/applock?returnTo=${encodeURIComponent(path)}`
+				: '/auth/unlock';
 			isAuthRedirecting = true;
-			goto('/auth/unlock', { replaceState: true }).finally(() => {
+			goto(target, { replaceState: true }).finally(() => {
 				isAuthRedirecting = false;
 			});
 		}

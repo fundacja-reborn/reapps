@@ -50,6 +50,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@aparajita/capacitor-biometric-auth": "10.0.0",
     "@aparajita/capacitor-secure-storage": "8.0.1",
     "@capacitor/android": "8.6.2",
     "@capacitor/app": "8.1.2",
