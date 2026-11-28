@@ -31,6 +31,7 @@
     "@capacitor/splash-screen": "8.0.2"
   },
   "devDependencies": {
+    "@aparajita/capacitor-biometric-auth": "10.0.0",
     "@aparajita/capacitor-secure-storage": "8.0.1",
     "@types/node": "24.12.4",
     "tsup": "8.5.1",

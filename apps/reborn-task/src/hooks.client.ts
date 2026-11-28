@@ -360,6 +360,13 @@ if (!isPublicShareRoute) {
 					// Don't throw - not critical
 				}
 			}
+
+			// Native shells: reminders are device-local notifications planned from
+			// the decrypted tasks (guideline 61, "Przypomnienia lokalne").
+			if (__REBORN_NATIVE__) {
+				const { startNativeReminderSync } = await import('$lib/services/native-reminder-sync');
+				await startNativeReminderSync();
+			}
 		})
 		.catch((error) => {
 			logger.error('Failed to initialize storage:', error);

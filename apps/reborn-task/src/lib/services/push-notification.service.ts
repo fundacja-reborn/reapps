@@ -8,20 +8,22 @@
  * - Sync with current task list
  */
 
-import { formatTimeOfDay, intlLocale } from '@reborn/i18n/config';
 import { browser } from '$app/environment';
 import { PUBLIC_BASE_PATH } from '$env/static/public';
 import { createLogger, parseUserAgent } from '@reborn/utils';
 import { cryptoManager } from '@reborn/crypto';
 import { pushSyncError } from '$lib/stores/push-sync-error.store';
 import type { TaskListItem } from '$lib/services/task-title-index.svelte';
+import {
+	DEFAULT_NOTIFICATION_ALL_DAY_TIME,
+	DEFAULT_NOTIFICATION_LEAD_MINUTES,
+	computeReminderFireAt,
+	formatReminderBody,
+	type ReminderTimingOptions,
+	type TranslateFn
+} from '$lib/services/reminder-schedule';
 
 const logger = createLogger('PushNotificationService');
-
-/** Default reminder lead time for tasks with `has_time === true` (minutes). */
-export const DEFAULT_NOTIFICATION_LEAD_MINUTES = 60;
-/** Default local clock time for date-only reminders (HH:MM). */
-export const DEFAULT_NOTIFICATION_ALL_DAY_TIME = '09:00';
 
 /**
  * Server-side schedule bucketing - rounds `fire_at` DOWN to the nearest
@@ -33,121 +35,14 @@ export const DEFAULT_NOTIFICATION_ALL_DAY_TIME = '09:00';
  */
 export const SERVER_SCHEDULE_BUCKET_MS = 5 * 60 * 1000;
 
-export interface ReminderTimingOptions {
-	/** Minutes before `due_date` for tasks with `has_time === true`. */
-	leadMinutes: number;
-	/** Local 'HH:MM' string used as the fire time for date-only tasks. */
-	allDayTime: string;
-	/**
-	 * When true, the client posts schedules to /api/notifications/schedule so
-	 * the server cron can wake the SW even with the app closed. When false,
-	 * notifications only fire while a tab is open (legacy SW-poll path).
-	 * Server never receives `fire_at` in the OFF state.
-	 */
-	backgroundDelivery?: boolean;
-}
-
-/** Pick of TaskListItem fields needed to compute reminder fire time. */
-type ReminderTask = Pick<TaskListItem, 'due_date' | 'has_time'>;
-
-/**
- * Compute the absolute timestamp at which a task's reminder should fire.
- *
- * - For tasks with `has_time === true`: fire `leadMinutes` before `due_date`.
- * - For date-only tasks (`has_time === false`): fire on the calendar day stored
- *   in `due_date` (UTC midnight) at the user's local `allDayTime`.
- *
- * Exported as a pure function for unit testing.
- */
-export function computeReminderFireAt(
-	task: ReminderTask,
-	options: ReminderTimingOptions
-): number | null {
-	if (!task.due_date) return null;
-
-	const due = new Date(task.due_date);
-	if (Number.isNaN(due.getTime())) return null;
-
-	if (task.has_time) {
-		return due.getTime() - options.leadMinutes * 60_000;
-	}
-
-	// Date-only: due_date is UTC midnight; treat its UTC date components as the
-	// user's local calendar day, then assemble a local Date at allDayTime.
-	const [hh, mm] = parseAllDayTime(options.allDayTime);
-	return new Date(
-		due.getUTCFullYear(),
-		due.getUTCMonth(),
-		due.getUTCDate(),
-		hh,
-		mm,
-		0,
-		0
-	).getTime();
-}
-
-/** Parse 'HH:MM' into [hour, minute]. Falls back to default on invalid input. */
-function parseAllDayTime(value: string): [number, number] {
-	const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-	if (!match) return parseAllDayTime(DEFAULT_NOTIFICATION_ALL_DAY_TIME);
-	const h = Number(match[1]);
-	const m = Number(match[2]);
-	if (h < 0 || h > 23 || m < 0 || m > 59) {
-		return parseAllDayTime(DEFAULT_NOTIFICATION_ALL_DAY_TIME);
-	}
-	return [h, m];
-}
-
-/**
- * Build the notification body text using translated strings.
- * - has_time: "scheduled for HH:MM" in the user's language, on their 12h/24h clock.
- * - date-only with calendar day == today: "scheduled for today".
- * - date-only otherwise: "scheduled for {locale-formatted date}".
- */
-type TranslateFn = (key: string, options?: { values?: Record<string, string | number> }) => string;
-
-function formatReminderBody(
-	task: ReminderTask,
-	translate: TranslateFn,
-	locale: string,
-	timeFormat: string
-): string {
-	if (!task.due_date) return translate('notifications.task_due.body_unknown');
-
-	const due = new Date(task.due_date);
-	if (Number.isNaN(due.getTime())) {
-		return translate('notifications.task_due.body_unknown');
-	}
-
-	const localeTag = intlLocale(locale);
-
-	if (task.has_time) {
-		const time = formatTimeOfDay(due, locale, timeFormat);
-		return translate('notifications.task_due.body_time', { values: { time } });
-	}
-
-	// Date-only: compare UTC calendar day against today's local calendar day.
-	const taskYear = due.getUTCFullYear();
-	const taskMonth = due.getUTCMonth();
-	const taskDay = due.getUTCDate();
-	const today = new Date();
-	if (
-		taskYear === today.getFullYear() &&
-		taskMonth === today.getMonth() &&
-		taskDay === today.getDate()
-	) {
-		return translate('notifications.task_due.body_today');
-	}
-
-	const taskLocalDay = new Date(taskYear, taskMonth, taskDay);
-	// date-format-ignore: a sentence in a system notification ("... scheduled for November 17, 2026"), outside the app's layout
-	const date = taskLocalDay.toLocaleDateString(localeTag, {
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric'
-	});
-	return translate('notifications.task_due.body_date', { values: { date } });
-}
+// Timing and text of a reminder live in reminder-schedule.ts, shared with the
+// native shells' device-local planner; re-exported for the existing callers.
+export {
+	DEFAULT_NOTIFICATION_LEAD_MINUTES,
+	DEFAULT_NOTIFICATION_ALL_DAY_TIME,
+	computeReminderFireAt,
+	type ReminderTimingOptions
+};
 
 export type PermissionState = 'granted' | 'denied' | 'default' | 'unsupported';
 

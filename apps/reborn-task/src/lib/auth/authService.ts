@@ -95,7 +95,16 @@ export async function register(username: string, password: string, preferredLang
 
 export async function logout(skipApiCall = false) {
 	const service = getAuthService();
-	return service.logout(skipApiCall);
+	try {
+		return await service.logout(skipApiCall);
+	} finally {
+		// Native App Lock off on every logout (also logout-all and account
+		// deletion, which come through here): the master key and the vault are
+		// cleared, so an armed gate would strand the next account on a biometric
+		// screen with no key behind it. Re-enabling is one tap after the next
+		// login. A no-op flag write on the web. Same as re/notes' logout.
+		cryptoManager.setAppLockEnabled(false);
+	}
 }
 
 export async function unlockE2E(password: string) {

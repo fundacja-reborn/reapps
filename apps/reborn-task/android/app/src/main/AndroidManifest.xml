@@ -74,4 +74,15 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Task reminders are device-local notifications (@capacitor/local-notifications,
+         which merges POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED and WAKE_LOCK).
+         Without an exact alarm Android 12+ may deliver one up to an hour late.
+         SCHEDULE_EXACT_ALARM is a user-granted special permission ("Alarms &
+         reminders", off by default from Android 14): Settings > Notifications
+         offers it, the plugin uses an exact alarm when it is allowed and falls
+         back to an inexact one otherwise. Deliberately NOT USE_EXACT_ALARM,
+         which Play reserves for alarm clock and calendar apps (decision
+         2026-11-28, planning/native-task-plan.md T2). -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 </manifest>

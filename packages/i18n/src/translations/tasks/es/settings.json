@@ -156,6 +156,18 @@
     "help": "Activado: las notificaciones se envían incluso con la app cerrada. El servidor solo sabe cuándo (con precisión de 5 minutos) debe dispararse un recordatorio; nunca ve el título ni el contenido de la tarea (el descifrado ocurre localmente en tu dispositivo). Desactívalo si prefieres que el servidor no conozca los tiempos de los recordatorios; las notificaciones se dispararán entonces solo mientras la app esté abierta."
   },
   "notifications_macos_info": "En macOS, también verifique Ajustes del Sistema → Notificaciones → su navegador y asegúrese de que las notificaciones estén permitidas.",
+  "notifications_native": {
+    "description": "Recordatorios de las tareas con fecha límite. re/task los programa en este dispositivo, así que llegan aunque la aplicación esté cerrada.",
+    "other_devices": "Un recordatorio añadido en otro dispositivo se programará aquí la próxima vez que abra re/task y se sincronice.",
+    "denied": "Las notificaciones de re/task están desactivadas en los ajustes del sistema, así que no recibirá recordatorios.",
+    "denied_android": "Puede activarlas en los ajustes del sistema: Aplicaciones → re/task → Notificaciones.",
+    "open_settings_btn": "Abrir ajustes de notificaciones",
+    "exact_title": "Hora exacta de los recordatorios",
+    "exact_help": "Para ahorrar batería, Android puede entregar un recordatorio hasta una hora tarde. Permita las alarmas exactas para re/task y recibirá los recordatorios a tiempo.",
+    "exact_btn": "Permitir alarmas exactas",
+    "exact_on": "Los recordatorios llegarán a tiempo a partir de ahora.",
+    "exact_still_off": "Las alarmas exactas siguen desactivadas. Los recordatorios pueden llegar con un poco de retraso."
+  },
   "send_test_notification": "Enviar notificación de prueba",
   "test_notification_sent": "Notificación de prueba enviada",
   "test_notification_failed": "Error al enviar la notificación de prueba",

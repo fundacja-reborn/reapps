@@ -166,4 +166,32 @@ describe('UI source guards (apps/reborn-task/src)', () => {
       });
     expect(hits).toEqual([]);
   });
+
+  it('never resolves a promise with a Capacitor plugin object', () => {
+    // A Capacitor plugin is a Proxy that answers every property with a native
+    // method wrapper, `then` included. Returned from an async function (or
+    // passed to resolve / a `.then` callback's return), the promise machinery
+    // calls `plugin.then(...)` - a native call that never settles, so the await
+    // hangs silently. Found 2026-11-28 in native-reminders.ts: the permission
+    // button greyed out forever and no reminder was ever planned. Return the
+    // module (`import('@capacitor/x')`) and take the plugin out at the call.
+    const PLUGIN_IMPORT =
+      /(?:import|const)\s*\{([^}]+)\}\s*(?:from|=\s*await\s+import\()\s*['"]@(?:capacitor|aparajita)\/(?!core|cli)[^'"]+['"]/g;
+    const hits = listSourceFiles([ROOT])
+      .filter((file) => /\.(svelte|ts)$/.test(file) && !/\.(spec|test)\.ts$/.test(file))
+      .flatMap((file) => {
+        const source = readFileSync(file, 'utf-8');
+        const names = [...source.matchAll(PLUGIN_IMPORT)].flatMap((m) =>
+          m[1]
+            .split(',')
+            .map((part) => part.trim().split(/\s+as\s+/).pop() ?? '')
+            .filter((name) => /^[A-Z]\w*$/.test(name))
+        );
+        return names.flatMap((name) => {
+          const returned = new RegExp(`(?:return|resolve\\()\\s*${name}\\s*[;)]`);
+          return returned.test(source) ? [`${repoRelative(file)}: ${name}`] : [];
+        });
+      });
+    expect(hits).toEqual([]);
+  });
 });

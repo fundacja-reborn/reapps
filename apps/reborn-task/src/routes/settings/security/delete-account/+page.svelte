@@ -2,6 +2,7 @@
 	import { API_BASE } from '$lib/utils/api-base';
 	import { clearNativeRefreshToken } from '$lib/utils/native-auth-storage';
 	import { clearNativeSessionId } from '$lib/utils/native-session';
+	import { cancelNativeReminders } from '$lib/services/native-reminders';
 	import { tick } from 'svelte';
 	import {
 		SettingsLayout,
@@ -78,10 +79,11 @@
 				}
 			} else {
 				// Clear local data: auth state + IndexedDB + hard redirect. Native: the
-				// account's refresh token and session id go too.
+				// account's refresh token, session id and planned reminders go too.
 				await authLogout(true);
 				await clearNativeRefreshToken();
 				clearNativeSessionId();
+				await cancelNativeReminders();
 				try {
 					const { clearAllUserData } = await import('@reborn/storage');
 					await clearAllUserData();

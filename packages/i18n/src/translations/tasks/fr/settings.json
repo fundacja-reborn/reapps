@@ -156,6 +156,18 @@
     "help": "Activ\u00e9 : les notifications se d\u00e9clenchent m\u00eame lorsque l'application est ferm\u00e9e. Le serveur sait uniquement quand (\u00e0 5 minutes pr\u00e8s) un rappel doit partir - il ne voit jamais le titre ni le contenu de la t\u00e2che (le d\u00e9chiffrement se fait localement sur votre appareil). D\u00e9sactivez si vous pr\u00e9f\u00e9rez que le serveur n'ait connaissance d'aucune heure de rappel ; les notifications ne se d\u00e9clencheront alors que lorsque l'application est ouverte."
   },
   "notifications_macos_info": "Sur macOS, v\u00e9rifiez \u00e9galement R\u00e9glages Syst\u00e8me \u2192 Notifications \u2192 votre navigateur et assurez-vous que les notifications sont autoris\u00e9es.",
+  "notifications_native": {
+    "description": "Rappels des tâches avec une échéance. re/task les planifie sur cet appareil, ils arrivent donc même lorsque l'application est fermée.",
+    "other_devices": "Un rappel ajouté sur un autre appareil sera planifié ici à la prochaine ouverture de re/task, après la synchronisation.",
+    "denied": "Les notifications de re/task sont désactivées dans les réglages du système, vous ne recevrez donc aucun rappel.",
+    "denied_android": "Vous pouvez les activer dans les réglages du système : Applications → re/task → Notifications.",
+    "open_settings_btn": "Ouvrir les réglages de notifications",
+    "exact_title": "Heure exacte des rappels",
+    "exact_help": "Pour économiser la batterie, Android peut délivrer un rappel jusqu'à une heure en retard. Autorisez les alarmes exactes pour re/task afin de recevoir les rappels à l'heure.",
+    "exact_btn": "Autoriser les alarmes exactes",
+    "exact_on": "Les rappels arriveront désormais à l'heure.",
+    "exact_still_off": "Les alarmes exactes sont toujours désactivées. Les rappels peuvent arriver un peu en retard."
+  },
   "send_test_notification": "Envoyer une notification de test",
   "test_notification_sent": "Notification de test envoy\u00e9e",
   "test_notification_failed": "\u00c9chec de l'envoi de la notification de test",

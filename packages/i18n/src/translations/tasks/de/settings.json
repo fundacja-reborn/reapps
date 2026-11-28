@@ -156,6 +156,18 @@
     "help": "Eingeschaltet: Benachrichtigungen werden auch bei geschlossener App ausgel\u00f6st. Der Server erf\u00e4hrt nur, wann (auf 5 Minuten genau) eine Erinnerung f\u00e4llig ist - Titel und Inhalt der Aufgabe sieht er nie (die Entschl\u00fcsselung erfolgt lokal auf Ihrem Ger\u00e4t). Ausschalten, wenn Sie m\u00f6chten, dass der Server keine Erinnerungszeiten kennt; Benachrichtigungen werden dann nur ausgel\u00f6st, solange die App ge\u00f6ffnet ist."
   },
   "notifications_macos_info": "Unter macOS \u00fcberpr\u00fcfen Sie auch Systemeinstellungen \u2192 Mitteilungen \u2192 Ihr Browser und stellen Sie sicher, dass Benachrichtigungen erlaubt sind.",
+  "notifications_native": {
+    "description": "Erinnerungen an Aufgaben mit Fälligkeitsdatum. re/task plant sie auf diesem Gerät, daher kommen sie auch bei geschlossener App.",
+    "other_devices": "Eine auf einem anderen Gerät hinzugefügte Erinnerung wird hier geplant, sobald re/task das nächste Mal geöffnet und synchronisiert wird.",
+    "denied": "Benachrichtigungen für re/task sind in den Systemeinstellungen ausgeschaltet, daher kommen keine Erinnerungen.",
+    "denied_android": "Sie können sie in den Systemeinstellungen einschalten: Apps → re/task → Benachrichtigungen.",
+    "open_settings_btn": "Benachrichtigungseinstellungen öffnen",
+    "exact_title": "Genaue Erinnerungszeiten",
+    "exact_help": "Um Akku zu sparen, kann Android eine Erinnerung bis zu einer Stunde später zustellen. Erlauben Sie re/task exakte Alarme, damit Erinnerungen pünktlich kommen.",
+    "exact_btn": "Exakte Alarme erlauben",
+    "exact_on": "Erinnerungen kommen jetzt pünktlich.",
+    "exact_still_off": "Exakte Alarme sind weiterhin ausgeschaltet. Erinnerungen können sich etwas verspäten."
+  },
   "send_test_notification": "Testbenachrichtigung senden",
   "test_notification_sent": "Testbenachrichtigung gesendet",
   "test_notification_failed": "Testbenachrichtigung konnte nicht gesendet werden",

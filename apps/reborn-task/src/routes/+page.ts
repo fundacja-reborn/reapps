@@ -70,7 +70,9 @@ export const load: PageLoad = async ({ parent }) => {
 					? `${base}/all`
 					: isLocalOnly
 						? `${base}/auth/login`
-						: `${base}/auth/unlock`
+						: cryptoManager.isAppLockLocked()
+							? `${base}/auth/applock`
+							: `${base}/auth/unlock`
 			);
 		}
 
@@ -83,7 +85,13 @@ export const load: PageLoad = async ({ parent }) => {
 		}
 
 		if (currentSession.isAuthenticated) {
-			redirect(303, currentSession.hasE2E ? `${base}/all` : `${base}/auth/unlock`);
+			if (currentSession.hasE2E) redirect(303, `${base}/all`);
+			// Native App Lock: biometrics before the password form (guideline 66).
+			const { cryptoManager } = await import('@reborn/crypto');
+			redirect(
+				303,
+				cryptoManager.isAppLockLocked() ? `${base}/auth/applock` : `${base}/auth/unlock`
+			);
 		}
 
 		// Local-only / no-account mode is a usable state - send it into the app.

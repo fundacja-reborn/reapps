@@ -6,6 +6,7 @@
     "body_today": "Vous avez une t\u00e2che pr\u00e9vue pour aujourd'hui.",
     "body_unknown": "Vous avez une t\u00e2che pr\u00e9vue pour une date non sp\u00e9cifi\u00e9e."
   },
+  "channel_reminders": "Rappels de tâches",
   "token_required": "Le jeton de notification est requis.",
   "registration_failed": "L'enregistrement du jeton de notification a \u00e9chou\u00e9."
 }

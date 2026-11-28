@@ -16,7 +16,7 @@
 		SelectTrigger,
 		toast
 	} from '@reborn/ui';
-	import { Bell, BellOff, AlertTriangle, Info, Send, Clock } from '@lucide/svelte';
+	import { Bell, BellOff, AlertTriangle, Info, Send, Clock, AlarmClock } from '@lucide/svelte';
 	import { appSettings } from '$lib/stores/app-settings.store';
 	import { pushSyncError } from '$lib/stores/push-sync-error.store';
 	import {
@@ -27,6 +27,19 @@
 	} from '$lib/services/push-notification.service';
 	import { createLogger } from '@reborn/utils';
 	import { t } from '$lib/stores/i18n.store';
+	import { platform } from '$lib/platform';
+	import {
+		canOpenNotificationSettings,
+		getExactAlarmState,
+		getNativeNotificationPermission,
+		openExactAlarmSettings,
+		openNotificationSettings,
+		requestNativeNotificationPermission,
+		sendNativeTestNotification,
+		type ExactAlarmState,
+		type NativeNotificationPermission
+	} from '$lib/services/native-reminders';
+	import { requestNativeReminderReplan } from '$lib/services/native-reminder-sync';
 
 	const logger = createLogger('notifications-settings');
 
@@ -45,8 +58,22 @@
 		$appSettings?.notification_background_delivery ?? true
 	);
 	const isMacOS = $derived(
-		typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+		!__REBORN_NATIVE__ &&
+			typeof navigator !== 'undefined' &&
+			/Mac|iPhone|iPad/.test(navigator.platform)
 	);
+
+	// Native shells: reminders are device-local notifications planned on the
+	// phone (native-reminders.ts) - no Service Worker, no server schedule, so
+	// no "background delivery" switch. Android 12+ adds the exact-alarm
+	// permission; iOS can open the app's page in Settings.
+	let exactAlarms = $state<ExactAlarmState>('unsupported');
+	let canOpenSystemSettings = $state(false);
+	const supported = __REBORN_NATIVE__ || pushNotificationService.isSupported();
+
+	function fromNative(permission: NativeNotificationPermission): PermissionState {
+		return permission === 'prompt' ? 'default' : permission;
+	}
 
 	const leadOptions = $derived([
 		{ value: '15', label: $t('settings.notification_lead.options.15min') },
@@ -74,7 +101,16 @@
 		// Detect permission and subscription state
 		refreshState();
 
-		return unsub;
+		// Native: the user may come back from the system settings with a
+		// different notification or exact-alarm permission.
+		const offResume = __REBORN_NATIVE__
+			? platform.lifecycle.onResume(() => void refreshState())
+			: undefined;
+
+		return () => {
+			unsub();
+			offResume?.();
+		};
 	});
 
 	async function updateLeadMinutes(value: string) {
@@ -116,6 +152,12 @@
 	}
 
 	async function refreshState() {
+		if (__REBORN_NATIVE__) {
+			permissionState = fromNative(await getNativeNotificationPermission());
+			exactAlarms = await getExactAlarmState();
+			canOpenSystemSettings = await canOpenNotificationSettings();
+			return;
+		}
 		permissionState = pushNotificationService.getPermission();
 		if (permissionState === 'granted') {
 			const sub = await pushNotificationService.getSubscription();
@@ -125,16 +167,48 @@
 		}
 	}
 
+	/** Ask for the system permission; true when granted. */
+	async function requestPermission(): Promise<boolean> {
+		if (__REBORN_NATIVE__) {
+			permissionState = fromNative(await requestNativeNotificationPermission());
+			if (permissionState === 'granted') {
+				exactAlarms = await getExactAlarmState();
+				requestNativeReminderReplan();
+			}
+			return permissionState === 'granted';
+		}
+		const granted = await pushNotificationService.requestPermission();
+		permissionState = granted ? 'granted' : pushNotificationService.getPermission();
+		return granted;
+	}
+
 	async function handleGrantPermission() {
 		isLoading = true;
 		try {
-			const granted = await pushNotificationService.requestPermission();
-			if (granted) {
-				permissionState = 'granted';
+			if (await requestPermission()) {
 				toast.success($t('settings.notification_permission_granted_toast'));
 			} else {
-				permissionState = pushNotificationService.getPermission();
 				toast.error($t('settings.notification_permission_not_granted_toast'));
+			}
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	// iOS only (the button shows where `canOpenSystemSettings`).
+	async function handleOpenSystemSettings() {
+		await openNotificationSettings();
+	}
+
+	async function handleAllowExactAlarms() {
+		isLoading = true;
+		try {
+			exactAlarms = await openExactAlarmSettings();
+			if (exactAlarms === 'granted') {
+				toast.success($t('settings.notifications_native.exact_on'));
+				requestNativeReminderReplan();
+			} else {
+				toast.info($t('settings.notifications_native.exact_still_off'));
 			}
 		} finally {
 			isLoading = false;
@@ -144,9 +218,11 @@
 	async function handleSendTestNotification() {
 		isSendingTest = true;
 		try {
-			const ok = await pushNotificationService.sendTestNotification(
-				$t('settings.test_notification_body')
-			);
+			const ok = __REBORN_NATIVE__
+				? await sendNativeTestNotification('re/task', $t('settings.test_notification_body'))
+				: await pushNotificationService.sendTestNotification(
+						$t('settings.test_notification_body')
+					);
 			if (ok) {
 				toast.success($t('settings.test_notification_sent'));
 			} else {
@@ -165,28 +241,27 @@
 		try {
 			if (enabled) {
 				// Make sure we have permission first
-				if (permissionState !== 'granted') {
-					const granted = await pushNotificationService.requestPermission();
-					if (!granted) {
-						permissionState = pushNotificationService.getPermission();
-						toast.error($t('settings.notification_permission_not_granted_toast'));
-						return;
-					}
-					permissionState = 'granted';
+				if (permissionState !== 'granted' && !(await requestPermission())) {
+					toast.error($t('settings.notification_permission_not_granted_toast'));
+					return;
 				}
 
-				// Register subscription
-				const sub = await pushNotificationService.subscribe();
-				isSubscribed = !!sub;
+				// Register subscription (web; the native shells plan on the device)
+				if (!__REBORN_NATIVE__) {
+					const sub = await pushNotificationService.subscribe();
+					isSubscribed = !!sub;
+				}
 
 				// Save to local settings
 				await appSettings.update('notifications_enabled', true);
 				notificationsEnabled = true;
 				toast.success($t('settings.notifications_enabled_toast'));
 			} else {
-				// Unsubscribe
-				await pushNotificationService.unsubscribe();
-				isSubscribed = false;
+				// Unsubscribe (web; the planner cancels the native reminders)
+				if (!__REBORN_NATIVE__) {
+					await pushNotificationService.unsubscribe();
+					isSubscribed = false;
+				}
 
 				// Save to local settings
 				await appSettings.update('notifications_enabled', false);
@@ -205,7 +280,7 @@
 <SettingsLayout title={$t('settings.notifications.title')} backHref="/settings">
 	<div class="space-y-6">
 		<!-- Not supported -->
-		{#if !pushNotificationService.isSupported()}
+		{#if !supported}
 			<Card class="border-muted">
 				<CardContent class="pt-6">
 					<div class="flex items-start gap-3">
@@ -223,9 +298,26 @@
 				<CardContent class="pt-6">
 					<div class="flex items-start gap-3">
 						<BellOff class="h-5 w-5 text-destructive mt-0.5 shrink-0" />
-						<p class="text-sm text-destructive">
-							{$t('settings.notifications_permission_denied_permanently')}
-						</p>
+						{#if __REBORN_NATIVE__}
+							<div class="space-y-3">
+								<p class="text-sm text-destructive">
+									{$t('settings.notifications_native.denied')}
+								</p>
+								{#if canOpenSystemSettings}
+									<Button variant="outline" onclick={handleOpenSystemSettings}>
+										{$t('settings.notifications_native.open_settings_btn')}
+									</Button>
+								{:else}
+									<p class="text-sm text-muted-foreground">
+										{$t('settings.notifications_native.denied_android')}
+									</p>
+								{/if}
+							</div>
+						{:else}
+							<p class="text-sm text-destructive">
+								{$t('settings.notifications_permission_denied_permanently')}
+							</p>
+						{/if}
 					</div>
 				</CardContent>
 			</Card>
@@ -238,7 +330,11 @@
 						<Bell class="h-4 w-4 text-muted-foreground" />
 						{$t('settings.notifications.title')}
 					</CardTitle>
-					<CardDescription>{$t('settings.notifications_description')}</CardDescription>
+					<CardDescription>
+						{__REBORN_NATIVE__
+							? $t('settings.notifications_native.description')
+							: $t('settings.notifications_description')}
+					</CardDescription>
 				</CardHeader>
 				<CardContent class="space-y-4">
 					<p class="text-sm text-muted-foreground">
@@ -259,7 +355,11 @@
 						<Bell class="h-4 w-4 text-muted-foreground" />
 						{$t('settings.notifications.title')}
 					</CardTitle>
-					<CardDescription>{$t('settings.notifications_description')}</CardDescription>
+					<CardDescription>
+						{__REBORN_NATIVE__
+							? $t('settings.notifications_native.description')
+							: $t('settings.notifications_description')}
+					</CardDescription>
 				</CardHeader>
 				<CardContent class="space-y-4">
 					{#if $pushSyncError && notificationsEnabled}
@@ -338,23 +438,48 @@
 							</p>
 						</div>
 
-						<!-- Background delivery (server-assisted) opt-in/out -->
-						<div class="space-y-2 rounded-md border border-border p-3">
-							<div class="flex items-center justify-between gap-4">
-								<Label for="notification-background-delivery" class="flex-1 cursor-pointer">
-									{$t('settings.notification_background_delivery.label')}
-								</Label>
-								<Switch
-									id="notification-background-delivery"
-									checked={backgroundDelivery}
-									disabled={isLoading}
-									onCheckedChange={updateBackgroundDelivery}
-								/>
+						{#if __REBORN_NATIVE__}
+							<!-- Android 12+: without exact alarms a reminder may come late -->
+							{#if exactAlarms === 'denied'}
+								<div class="space-y-2 rounded-md border border-border p-3">
+									<p class="flex items-center gap-2 text-sm font-medium">
+										<AlarmClock class="h-4 w-4 text-muted-foreground" />
+										{$t('settings.notifications_native.exact_title')}
+									</p>
+									<p class="text-xs text-muted-foreground">
+										{$t('settings.notifications_native.exact_help')}
+									</p>
+									<Button variant="outline" onclick={handleAllowExactAlarms} disabled={isLoading}>
+										{$t('settings.notifications_native.exact_btn')}
+									</Button>
+								</div>
+							{/if}
+
+							<div class="flex items-start gap-2 rounded-md bg-muted/50 p-3">
+								<Info class="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+								<p class="text-xs text-muted-foreground">
+									{$t('settings.notifications_native.other_devices')}
+								</p>
 							</div>
-							<p class="text-xs text-muted-foreground">
-								{$t('settings.notification_background_delivery.help')}
-							</p>
-						</div>
+						{:else}
+							<!-- Background delivery (server-assisted) opt-in/out -->
+							<div class="space-y-2 rounded-md border border-border p-3">
+								<div class="flex items-center justify-between gap-4">
+									<Label for="notification-background-delivery" class="flex-1 cursor-pointer">
+										{$t('settings.notification_background_delivery.label')}
+									</Label>
+									<Switch
+										id="notification-background-delivery"
+										checked={backgroundDelivery}
+										disabled={isLoading}
+										onCheckedChange={updateBackgroundDelivery}
+									/>
+								</div>
+								<p class="text-xs text-muted-foreground">
+									{$t('settings.notification_background_delivery.help')}
+								</p>
+							</div>
+						{/if}
 
 						{#if isMacOS}
 							<div class="flex items-start gap-2 rounded-md bg-muted/50 p-3">

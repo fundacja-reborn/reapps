@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon of task reminders (capacitor.config.ts LocalNotifications
+     smallIcon): the white "t" glyph of the brand mark, the same paths as
+     GLYPH_PATHS in scripts/store-assets-brand.mjs, centred on a 900-unit
+     square so it fills about 18 of the 24 dp. Android draws only the alpha
+     channel of a small icon; without one the plugin falls back to the system
+     "info" icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="900"
+    android:viewportHeight="900">
+    <group
+        android:translateX="-138.875"
+        android:translateY="-170.125">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M350.369,738.207l158.262,0l0,222.344l-158.262,0Z"/>
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M509.744,738.207l0,-309.354l-258.763,-0l-0,-149.154l675.788,0l0,149.154l-258.763,-0l-0,309.354l-158.262,-0Z"/>
+    </group>
+</vector>

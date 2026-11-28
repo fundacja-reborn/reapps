@@ -54,6 +54,7 @@ export function mergeTranslations(target: LocaleDictionary, source: LocaleDictio
 // Canonical list of modular translation files for the tasks module
 const TASKS_MODULE_FILES = [
   'app',
+  'app_lock',
   'auth',
   'common',
   'dashboard',

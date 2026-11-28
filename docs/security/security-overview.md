@@ -25,7 +25,7 @@ Reborn Apps follows a strict Zero Knowledge (ZK) principle: **the server never h
 - **Behavioral metadata**: completion status, starred/pinned flags, due dates, tag associations - bundled into a single `metadata_encrypted` field per record
 - **Device information**: session device details are encrypted client-side (`device_info_encrypted`)
 - **No email, phone, or any personally identifiable information** beyond the username
-- **Reminder timing metadata is the single exception**, scoped to users who opt in to server-assisted background push delivery. See section 7 "Known Limitations" for the documented trade-off; users who keep that option off remain fully invisible to the server in this dimension.
+- **Reminder timing metadata is the single exception**, scoped to users who opt in to server-assisted background push delivery. See section 7 "Known Limitations" for the documented trade-off; users who keep that option off remain fully invisible to the server in this dimension. The native apps (Android, iOS) plan reminders on the device and send no reminder timing at all.
 
 ### Deliberate privacy trade-offs
 
@@ -183,7 +183,7 @@ In the spirit of transparency, these are conscious trade-offs in the current arc
 | JWT algorithm | HMAC-SHA256 | Asymmetric signing (ES256) is planned but not yet implemented. Acceptable for a single-server deployment. |
 | Token blacklist | In-memory | Access token blacklist is not persisted across server restarts. Risk is low given the short token lifetime (15 minutes). Redis-backed persistence is planned for multi-instance deployments. |
 | No email-based recovery | By design | This is a feature, not a limitation - it ensures the server holds no PII beyond the username. Users are responsible for securely storing their recovery codes. |
-| Reminder timing metadata | Server-visible (opt-in) | Required for server-side push delivery so reminders fire when the app is closed. When the per-account toggle "Background notifications (server-assisted)" is on, the server stores `(task_id, fire_at)` rows with `fire_at` bucketed to 5-minute marks client-side - it learns *when* a reminder fires, never *what* it is for. The toggle can be turned off to fall back to local-only delivery; the server then receives no reminder timing data at all. Full design and threat model: [Push Notifications - Zero Knowledge Design](push-notifications.md). |
+| Reminder timing metadata | Server-visible (opt-in) | Required for server-side push delivery so reminders fire when the app is closed. When the per-account toggle "Background notifications (server-assisted)" is on, the server stores `(task_id, fire_at)` rows with `fire_at` bucketed to 5-minute marks client-side - it learns *when* a reminder fires, never *what* it is for. The toggle can be turned off to fall back to local-only delivery; the server then receives no reminder timing data at all. The native apps (Android, iOS) never send it: they plan reminders as local notifications on the device. Full design and threat model: [Push Notifications - Zero Knowledge Design](push-notifications.md). |
 
 ---
 

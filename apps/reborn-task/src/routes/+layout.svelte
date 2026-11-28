@@ -30,6 +30,8 @@
 	import { goto } from '$lib/utils/navigation';
 	import { hideNativeSplash } from '$lib/utils/native-shell';
 	import { checkNativeUpdateGate } from '$lib/utils/native-app-update';
+	import { onReminderTap } from '$lib/services/native-reminders';
+	import { initAppLock, lockNow, shouldLockOnResume } from '$lib/services/app-lock.service';
 	import UpdateRequiredGate from '$lib/components/layout/UpdateRequiredGate.svelte';
 
 	const logger = createLogger('Layout');
@@ -83,6 +85,16 @@
 	// in-memory state), this handles edge cases like internal navigation.
 	$effect(() => {
 		if (browser && $session?.isInitialized && !$session?.isAuthenticated) {
+			hasTriggeredInitialSync = false;
+		}
+	});
+
+	// Native App Lock (soft lock, no page load): the key left memory and hasE2E
+	// dropped, so the next biometric unlock must re-decrypt the stores and pull
+	// - the same path as after a password unlock. Web locks reload the page.
+	$effect(() => {
+		if (!__REBORN_NATIVE__) return;
+		if (browser && $session?.isInitialized && !$session?.hasE2E) {
 			hasTriggeredInitialSync = false;
 		}
 	});
@@ -201,9 +213,22 @@
 		// bundle.
 		let offResume: (() => void) | undefined;
 		let offDeepLink: (() => void) | undefined;
+		let offReminderTap: (() => void) | undefined;
 		let updateGateTimer: ReturnType<typeof setTimeout> | undefined;
 		if (__REBORN_NATIVE__) {
+			// App Lock: track background time so a resume past the idle timeout
+			// re-locks (wires platform.lifecycle.onPause once).
+			initAppLock();
+
 			offResume = platform.lifecycle.onResume(() => {
+				// App Lock first: re-lock and show the biometric screen instead of
+				// syncing while unlocked. No-op when App Lock is off.
+				if (shouldLockOnResume()) {
+					lockNow();
+					const path = window.location.pathname;
+					void goto(`/auth/applock?returnTo=${encodeURIComponent(path)}`);
+					return;
+				}
 				// Min-version gate re-check (throttled internally, fail-open).
 				void checkNativeUpdateGate();
 				if ($session?.isAuthenticated && navigator.onLine) {
@@ -221,6 +246,12 @@
 			offDeepLink = platform.deepLinks.onOpen((url) => {
 				const route = shareDeepLinkToRoute(url);
 				if (route) void goto(route);
+			});
+
+			// A tapped task reminder (device-local notification) opens its task,
+			// also when the tap started the app (the plugin holds it until now).
+			offReminderTap = onReminderTap((taskId) => {
+				void goto(`/tasks/${encodeURIComponent(taskId)}`);
 			});
 
 			// The first min-version check is deferred a few seconds so it never
@@ -362,6 +393,7 @@
 			if (updateGateTimer) clearTimeout(updateGateTimer);
 			offResume?.();
 			offDeepLink?.();
+			offReminderTap?.();
 			unsubscribe();
 		};
 	});

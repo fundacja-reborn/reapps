@@ -62,6 +62,13 @@ const config: CapacitorConfig = {
 			launchShowDuration: 6000,
 			launchAutoHide: true,
 			launchFadeOutDuration: 200
+		},
+		// Task reminders (src/lib/services/native-reminders.ts), Android only:
+		// the brand glyph as the status-bar icon (res/drawable/ic_stat_reminder.xml)
+		// tinted with the brand green in the notification shade.
+		LocalNotifications: {
+			smallIcon: 'ic_stat_reminder',
+			iconColor: '#43a047'
 		}
 	}
 };
