@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.61.0",
+    "date": "2026-11-28",
+    "items": [
+      {
+        "id": "0.61.0-store-apps",
+        "category": "new",
+        "apps": [
+          "notes"
+        ],
+        "platforms": [
+          "web"
+        ]
+      }
+    ]
+  },
+  {
     "version": "0.60.0",
     "date": "2026-11-28",
     "items": [
