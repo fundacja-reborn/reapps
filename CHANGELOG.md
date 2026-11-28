@@ -1,3 +1,19 @@
+## 0.60.0 (2026-11-28)
+
+### 🚀 Features
+
+- **i18n:** take Arabic out of beta ([#666](https://github.com/fundacja-reborn/reapps/pull/666))
+- **notes:** save a shared note to my notes in the native apps ([#664](https://github.com/fundacja-reborn/reapps/pull/664))
+- **task:** save a shared task to my tasks in the native apps ([#665](https://github.com/fundacja-reborn/reapps/pull/665), [#664](https://github.com/fundacja-reborn/reapps/issues/664))
+- **task:** reminders and App Lock in the native apps ([#669](https://github.com/fundacja-reborn/reapps/pull/669))
+
+### 🩹 Fixes
+
+- **notes:** adopt the iOS scene lifecycle required by Xcode 27 ([#658](https://github.com/fundacja-reborn/reapps/pull/658))
+- **notes:** add a way out of the shared-note view in the native apps ([#663](https://github.com/fundacja-reborn/reapps/pull/663))
+- **notes:** keep a paragraph plain while a list is started under it ([#667](https://github.com/fundacja-reborn/reapps/pull/667))
+- **task:** due date spacing and date-only due dates in shares ([#660](https://github.com/fundacja-reborn/reapps/pull/660))
+
 ## 0.59.2 (2026-11-25)
 
 ### 🩹 Fixes
